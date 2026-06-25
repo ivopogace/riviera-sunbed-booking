@@ -117,8 +117,10 @@ platform acts as a payment intermediary.
   refund.
 - **After the cutoff** → non-refundable (or partial), since the venue has lost the
   chance to resell the set.
-- **Weather exception** → official bad-weather forecast/closure → full refund
-  regardless of timing.
+- **Weather exception** → bad-weather day/closure → full refund regardless of
+  timing. **In v1 this is triggered manually by an admin** (you decide a beach is
+  washed out and issue the refunds); automated forecast-based refunds are out of
+  scope for the first release.
 
 This cutoff also doubles as the booking lead-time cutoff (§7, Layer 2), so the two
 policies reinforce each other.
@@ -216,8 +218,9 @@ tourist and a walk-in can never both hold the same set.
 - Push notifications, weather-forecast auto-refund automation.
 
 **Explicitly out of scope for v1 (YAGNI):** native apps, same-day booking,
-automated payout pipelines, half-day/hourly units, dynamic pricing, anything
-outside the Phase 1 beaches.
+automated payout pipelines, half-day/hourly units, dynamic pricing,
+**weather-forecast auto-refund automation** (weather refunds are manual/admin in
+v1), anything outside the Phase 1 beaches.
 
 ---
 
@@ -240,5 +243,3 @@ outside the Phase 1 beaches.
 - Exact cancellation cutoff time (6pm assumed) and partial-refund percentage.
 - Whether tourists need accounts or pure guest checkout suffices for v1.
 - Deposit vs full prepayment at booking.
-- How weather "official bad forecast" is determined (manual admin call vs data
-  feed) — v1 likely manual.
