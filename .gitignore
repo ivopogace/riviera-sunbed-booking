@@ -1,0 +1,19 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build output (added as the stack is scaffolded)
+/backend/build/
+/backend/.gradle/
+/frontend/dist/
+/frontend/node_modules/
+
+# Local env / secrets — never commit Stripe keys, DB creds, etc.
+*.env
+.env.*
+!.env.example

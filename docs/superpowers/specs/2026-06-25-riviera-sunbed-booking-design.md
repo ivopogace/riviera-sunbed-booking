@@ -183,8 +183,16 @@ tourist and a walk-in can never both hold the same set.
 ## 9. Technical Approach (locked)
 
 - **Front end:** Angular (mobile-friendly responsive web).
-- **Back end:** Spring Boot REST API.
-- **Database:** PostgreSQL.
+- **Back end:** Spring Boot REST API, structured as a **Spring Modulith** with
+  hexagonal (ports/adapters) modules.
+- **Database:** PostgreSQL, accessed via **Spring Data JDBC / `JdbcTemplate`
+  only — no JPA/Hibernate** (locked decision, project-wide). The
+  `spring-boot-starter-data-jpa` dependency must never be on the classpath, and
+  no `@Entity`/`@OneToMany`/`mappedBy` annotations appear anywhere. Rationale:
+  the availability table is concurrency-critical and write-precise; explicit SQL
+  with explicit row-locking keeps the booking-vs-walk-in invariant honest, and
+  avoids ORM surprises (lazy loading, cascade, snapshot semantics) on the one
+  table the whole business depends on.
 - **Payments:** Stripe (collection only), behind a clean payment-gateway
   interface; venue payouts handled by the platform (manual BKT batches).
 - **Rationale:** the visual beach-map seat picker with live, conflict-free
