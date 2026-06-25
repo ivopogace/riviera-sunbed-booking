@@ -1,6 +1,6 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Loads alongside pre-implementation-review-interview or peer-change-review-interview to add riviera-specific bank items — the availability single-source-of-truth invariant, JDBC-only (no JPA), Spring-Modulith boundaries, Stripe collect-only / webhook-as-source-of-truth, money in minor units, Europe/Tirane timezone, payout-ledger correctness, and booking-code security. Activates automatically when the CWD is the riviera-sunbed-booking repo (CLAUDE.md present with the riviera invariants). Not a standalone skill — always paired with one of the two review skills.
+description: Project-specific review overlay for the riviera-sunbed-booking repo. Loads alongside pre-implementation-review-interview or peer-change-review-interview to add riviera-specific bank items — the availability single-source-of-truth invariant, JDBC-only (no JPA), Spring-Modulith boundaries, Stripe collect-only / webhook-as-source-of-truth, money in minor units, Europe/Tirane timezone, payout-ledger correctness, and booking-code security. Loads only when pre-implementation-review-interview or peer-change-review-interview is running in the riviera-sunbed-booking repo (CLAUDE.md with the riviera invariants, or an AGENTS.md/CLAUDE.md referencing app.riviera.* modules). Never loads on its own — it only adds bank items to an in-progress review.
 ---
 
 # Riviera review overlay
@@ -16,13 +16,24 @@ bank items, severity hints, and verification commands.
 
 ## Activation
 
-Automatically loaded when **either** is true:
+This overlay layers onto an **in-progress review**. Load it when **both** hold:
 
-- The CWD is the riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera
-  invariants, or `.claude/skills/riviera-*` present).
-- An `AGENTS.md`/`CLAUDE.md` in the working tree references `app.riviera.*` modules.
+- One of the two parent review skills is active —
+  `pre-implementation-review-interview` or `peer-change-review-interview`; **and**
+- The work is in the riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera
+  invariants / `.claude/skills/riviera-*` present, or an `AGENTS.md`/`CLAUDE.md`
+  referencing `app.riviera.*` modules).
 
-If neither matches but the user invokes the overlay explicitly, honor that.
+The repo is the **scope**; an active review skill is the **trigger**. Do NOT load
+the overlay merely because the CWD is the repo — without a parent review running
+there is nothing for it to layer onto. If the user invokes the overlay explicitly,
+honor that.
+
+**Other review surfaces:** the slash commands `/code-review` and `/security-review`
+do not auto-load this overlay. When reviewing through them in this repo, consult
+`references/{backend,frontend,fe-be-contract}-conventions.md` and the CLAUDE.md
+invariants directly — the bank items (especially RV-BE-1 availability and the
+webhook-as-truth payment check) still apply.
 
 When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific
 bank items."*
@@ -79,8 +90,9 @@ Backend:
 - `./gradlew build` (no JPA on the classpath — a build that pulls
   `spring-boot-starter-data-jpa` is itself a finding)
 - `./gradlew test --tests "<package>.<ClassName>"` for targeted tests
-- `./gradlew modulith` / the `ApplicationModules.verify()` test if module structure
-  changed
+- the `ApplicationModules.of(…).verify()` test (e.g. `./gradlew test --tests
+  "*ModularityTests*"`) if module structure changed — Spring Modulith verification
+  is a test, not a Gradle task
 
 Frontend:
 - `npm run lint`
@@ -94,7 +106,7 @@ Frontend:
 | "I'll add `spring-boot-starter-data-jpa`, it's easier." | JDBC only (invariant #1). A JPA dependency is a Blocker finding. |
 | "Two reservations rarely collide; a check-then-insert is fine." | Check-then-insert races. Needs a unique constraint + row lock / `ON CONFLICT` (invariant #2). |
 | "The frontend confirmed payment, mark the booking paid." | Confirm only on a signature-verified webhook (invariant #8). |
-| "I'll use Stripe Connect to pay the venue." | No Connect — collect-only + manual BKT payout (invariant #9). |
+| "I'll use Stripe Connect to pay the venue." | No Connect (invariant #8) — collect-only + manual BKT payout (invariant #9). |
 | "Store the price as a euro decimal." | Integer minor units (invariant #5). |
 | "`LocalDateTime.now()` is fine for the cutoff." | Use `Europe/Tirane`; store UTC `Instant` (invariant #6). |
 | "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
@@ -107,6 +119,15 @@ Frontend:
   whenever their domain is touched.
 - Hand-offs listed if they apply; riviera verification commands included when
   relevant.
+
+## When NOT to use this skill
+
+- Outside the riviera-sunbed-booking repo — the bank items assume this project's
+  invariants.
+- **Standalone.** This overlay never runs alone; it only contributes bank items to
+  an active `pre-implementation-review-interview` or `peer-change-review-interview`.
+  Without one of those parents loaded there is nothing for it to layer onto — load
+  the parent review skill first.
 
 ## Integration
 

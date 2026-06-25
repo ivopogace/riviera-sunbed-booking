@@ -29,7 +29,8 @@ reach Albanian venues. Surface it as an open question, don't build it.
 - **Collect-and-disburse is the standard small-marketplace fallback** and is
   trivial at v1 scale (5–15 venues): one inbound gateway, a payout ledger, a
   weekly manual transfer batch. It also keeps the app **gateway-agnostic** — the
-  domain depends on a `PaymentGateway` port, not on Stripe types.
+  domain depends on an outbound `PaymentGateway` port (in
+  `payment.application.out`), not on Stripe types.
 - **Manual payout is a feature at this scale, not debt.** It avoids the KYC /
   onboarding / payment-institution weight of Connect for a seasonal business with
   a handful of venues. (A `Steuerberater` confirms the "collect on the venue's
@@ -43,9 +44,11 @@ numbers reference `CLAUDE.md`.
 ### Collection (the `payment` module)
 
 - **Use PaymentIntents (or Checkout Sessions) — collection only.** No Connect
-  primitives. The `payment` module exposes an inbound `api/` port like
-  `PaymentGateway.createCheckout(BookingId, Money)` and knows nothing about
-  payout.
+  primitives. The `payment` module exposes an **inbound** `api/` port like
+  `CheckoutPort.createCheckout(BookingId, Money)` (in `payment.api`) that `booking`
+  calls; the Stripe SDK sits behind the **outbound** `PaymentGateway` port in
+  `payment.application.out`. Keep the two ports distinct (invariant #11) — one is
+  driving, one is driven — and neither leaks payout concerns.
 - **Webhooks are the source of truth (invariant #8).** A booking is confirmed when
   the `payment_intent.succeeded` (or `checkout.session.completed`) webhook is
   received and **its signature is verified** — never from the browser redirect.
@@ -59,6 +62,24 @@ numbers reference `CLAUDE.md`.
 - **Store the Stripe ids, not the card data.** Persist `payment_intent` id,
   `charge` id, and refund ids; never touch raw PAN/CVV (that's Stripe Elements'
   job, which keeps you out of PCI scope).
+
+### Request-to-Book vs Instant Book (booking-mode money timing)
+
+Venues choose Instant Book or Request-to-Book per venue (CLAUDE.md, `venue`
+module). The two modes charge differently — pin this down rather than re-derive it:
+
+- **Instant Book:** the flow above — pay now → verified webhook → booking
+  `CONFIRMED`. The `(set, date)` row is claimed at booking time (invariant #2).
+- **Request-to-Book:** **authorize at request, capture on accept.** Create a
+  **manual-capture** PaymentIntent when the tourist requests (the card is
+  authorized/held, not charged); **capture** it when the venue accepts → booking
+  `CONFIRMED`; **cancel/void** the authorization on venue decline or request
+  timeout (no charge). While the request is pending, the `(set, date)` row is held
+  in a **pending** state that blocks other reservations exactly like a confirmed
+  one (invariant #2) and is **released on decline/timeout**. Capture-on-accept
+  carries an idempotency key like any other money move.
+- The request-expiry window (how long a venue has to accept) is a config value;
+  expiry triggers the void + the availability release.
 
 ### Refunds & cancellation (invariant #10)
 
@@ -116,7 +137,8 @@ numbers reference `CLAUDE.md`.
 | "Stripe delivered the event, just apply it." | Stripe re-delivers. Dedupe on event id; make the transition idempotent, or you double-accrue payouts. |
 | "I'll store the amount as a BigDecimal/float of euros." | Integer minor units only (invariant #5). |
 | "The client can pass the refund amount." | Refund amount is computed server-side from the policy (invariant #10). |
-| "Pay the venue straight from Stripe." | There's no Connect. Payout is a ledger + a manual BKT transfer (invariant #9). |
+| "Pay the venue straight from Stripe." | There's no Connect (invariant #8). Payout is a ledger + a manual BKT transfer (invariant #9). |
+| "`stripe:connect-recommend` says use a destination charge / `application_fee`." | That skill doesn't know Albania blocks Connect. This project is collect-only — ignore it (invariant #8). |
 
 ## When NOT to use this skill
 
@@ -133,7 +155,13 @@ collect-only decision is far higher than reading one file.
   #11).
 - **`stripe:stripe-best-practices`** — generic Stripe API guidance (PaymentIntents
   vs Checkout, webhooks, restricted keys). This skill narrows it to the riviera
-  decision; load both.
+  decision; load both, but **ignore its Connect / Accounts-v2 / connected-account
+  sections** — only the collection-side guidance applies here.
+- **Do NOT load `stripe:connect-recommend` for this project.** It auto-triggers on
+  marketplace / payout / commission language (which describes this whole app) and
+  recommends the Connect destination-charge split this project has explicitly
+  rejected (Stripe can't reach Albanian venues). If it surfaces, this skill
+  overrides it.
 - **`stripe:test-cards`, `stripe:explain-error`** — during integration/debugging.
 - **`riviera-review-overlay`** — the review bank that checks these items on a diff.
 - **`spring-modulith-event-designer`** — when designing the booking↔payment↔payout

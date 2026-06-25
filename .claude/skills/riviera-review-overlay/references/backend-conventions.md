@@ -22,6 +22,11 @@ holdable by at most one party per date, even under concurrent requests?
 - The losing request returns a clean conflict (`409 SET_TAKEN`), not a 500.
 - There must be a test that fires two reservations of the same `(set, date)`
   concurrently and asserts exactly one wins.
+- **Request-to-Book** adds two more guarded write paths on the same row: a
+  **pending hold** when the request is placed, and a **release** on venue
+  decline/timeout. A pending hold blocks other reservations of that `(set, date)`
+  exactly like a confirmed booking; decline/expiry frees it. Treat both as
+  first-class write paths subject to the same single-winner guarantee.
 
 **Default severity:** **Blocker** for any unguarded availability write; Major for a
 missing concurrency test on a guarded path.
@@ -209,6 +214,13 @@ server, not just hidden in the UI?
 
 **Default severity:** Major for client-supplied refund amounts; Minor for duplicated
 thresholds.
+**Skill framing:**
+- Pre-impl: "List the refund triggers (cutoff, post-cutoff, weather). For each:
+  where is eligibility + amount computed, and from which single source of the
+  threshold values?"
+- Peer-review: "Trace the refund path. Does the server compute eligibility and
+  amount from booking state + policy, or does the client supply the amount? Is the
+  weather refund an explicit admin action?"
 
 ---
 

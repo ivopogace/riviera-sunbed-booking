@@ -24,6 +24,8 @@ pays venues out manually. Full design: `docs/superpowers/specs/2026-06-25-rivier
 - **Persistence:** PostgreSQL via **Spring Data JDBC / `JdbcTemplate` only**.
 - **Payments:** Stripe (collection only), behind a payment-gateway interface.
 - **Schema migrations:** Flyway (versioned forward migrations).
+- **Build:** Gradle (wrapper, `./gradlew`) for the backend; npm scripts for the
+  Angular app. (The skills' `./gradlew` / `npm` commands assume this.)
 
 ## Bounded contexts (Spring Modulith modules)
 
@@ -111,8 +113,9 @@ scaffolded. Each is a one-line change if reconsidered.
 
 - **Base package:** `app.riviera`. (Alternatives: `eu.riviera`, a personal
   reverse-domain. Trivial find-replace before first commit of code.)
-- **Collection currency:** EUR (tourists pay via Stripe). Venue **payout** currency
-  (EUR vs ALL) is set per venue and converted outside the app at BKT payout time.
+- **Venue payout currency:** EUR vs ALL, set per venue and converted outside the
+  app at BKT payout time. (The **collection** currency is not provisional — it is
+  EUR, fixed by invariant #5.)
 - **Migration tool:** Flyway (vs Liquibase). Flyway chosen for plain-SQL fit with
   the JDBC-only stack.
 
