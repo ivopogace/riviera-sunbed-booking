@@ -16,6 +16,10 @@ reference `CLAUDE.md`.
 - Match the established style; document any deliberate deviation in the plan doc.
 - Venue photos and beach imagery are image-heavy — use `NgOptimizedImage` and
   responsive sizing so the booking page stays fast on mobile.
+- The authoritative, detailed Angular standards live in the in-repo
+  `angular-developer` skill's `references/` (signals, forms, routing, testing,
+  a11y). This bank checks the project-critical subset; defer to that skill for the
+  full rules.
 
 **Default severity:** Minor (consistency), Major if a non-standard pattern spreads.
 **Skill framing:**

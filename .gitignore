@@ -11,7 +11,11 @@ Thumbs.db
 /backend/build/
 /backend/.gradle/
 /frontend/dist/
-/frontend/node_modules/
+node_modules/
+
+# JVM crash dumps
+hs_err_pid*.log
+replay_pid*.log
 
 # Local env / secrets — never commit Stripe keys, DB creds, etc.
 *.env

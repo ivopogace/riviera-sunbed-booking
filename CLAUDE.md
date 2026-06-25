@@ -133,5 +133,18 @@ These are repo-scoped — they load when working in this repository.
   Connect, manual BKT payout, German entity) plus Stripe integration conventions.
   Load it for any work in the `payment` or `payout` module.
 
+**Angular skills** (official, from `angular/skills`, installed in-repo via
+`skills add` so clones and cloud agents get them; manifest in `skills-lock.json`):
+
+- **`angular-new-app`** — use to **scaffold the Angular frontend** (the first FE
+  phase): `npx ng new` with the right flags + `--ai-config`, Tailwind via
+  `ng add`, and the CLI generators.
+- **`angular-developer`** — the Angular **component/service/architecture authority**
+  (signals, `resource`, forms, DI, routing, SSR, a11y, styling, testing; 37 files,
+  detail under its `references/`). The riviera frontend review bank (`RV-FE-*`)
+  checks the project-critical subset and defers to this skill for full standards.
+  (A copy also exists in the global skills for other projects; in this repo the
+  in-repo copy is authoritative.)
+
 A `riviera-local-debug` skill (how to run the stack locally) is **deliberately
 deferred** until the apps are scaffolded — there is nothing to run yet.

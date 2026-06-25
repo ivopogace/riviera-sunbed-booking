@@ -120,7 +120,8 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 | FE-1 | <e.g. `booking/beach-map.component.ts`> | new | standalone component | Signals + `resource()` | Signal Forms |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()`
-signal APIs, `NgOptimizedImage` for new images. Document any deviation.
+signal APIs, `NgOptimizedImage` for new images. Document any deviation. (Full
+detail in the in-repo `angular-developer` skill's `references/`.)
 
 ## FE↔BE contract
 

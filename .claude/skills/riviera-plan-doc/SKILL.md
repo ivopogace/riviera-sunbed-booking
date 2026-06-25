@@ -168,7 +168,10 @@ on a feature that touches availability or payments costs a trust-breaking bug.
   `spring-modulith-boundary-reviewer` — backend module/boundary/event design.
 - `postgres-table-design` — whenever a Flyway migration is in scope (especially the
   availability constraints that enforce invariant #2).
+- `angular-new-app` — to scaffold the Angular app (the first frontend phase):
+  `ng new` + `--ai-config`, Tailwind, CLI generators.
 - `angular-developer` — for frontend surfaces (the beach-map seat picker, the
-  booking flow).
+  booking flow) and Angular standards; consult its `references/` for signals,
+  forms, routing, and testing detail.
 - `test-driven-development`, `systematic-debugging`,
   `verification-before-completion` — standard execution discipline.
