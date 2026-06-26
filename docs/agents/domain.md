@@ -15,7 +15,7 @@ How the domain-knowledge files are laid out, so `domain-modeling`, `tdd`,
 - `docs/architecture/domain-model.md` — the aggregates/flows as diagrams.
 
 **Future: multi-context.** Once the backend modules are scaffolded under
-`backend/src/main/java/app/riviera/<module>/`, this may graduate to multi-context:
+`backend/src/main/java/ai/riviera/platform/<module>/`, this may graduate to multi-context:
 a `CONTEXT-MAP.md` at the root pointing to per-module `CONTEXT.md` files (the six
 bounded contexts: venue, availability, booking, payment, payout, customer). Until
 there is code to sit next to, one root `CONTEXT.md` is simpler and correct.

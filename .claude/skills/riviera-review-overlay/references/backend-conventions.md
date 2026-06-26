@@ -66,7 +66,7 @@ or `domain.*` instead of going through its `api/` port or an event?
 **Follow-up:**
 - Need a synchronous answer from another module → call its `api/` query port.
 - Need to react to a state change in another module → subscribe to its domain event.
-- Module layout: `app.riviera.<module>.{api, application.in, application.out,
+- Module layout: `ai.riviera.platform.<module>.{api, application.in, application.out,
   domain, infrastructure.in, infrastructure.out}`.
 - New module → top-level `package-info.java` with `@ApplicationModule`; cross-module
   types live in `api/`.
@@ -76,7 +76,7 @@ missing `@ApplicationModule`.
 **Skill framing:**
 - Pre-impl: "Map cross-module dependencies — each is which `api/` port or which
   event?"
-- Peer-review: "Grep the diff for `import app.riviera.<other>.application` /
+- Peer-review: "Grep the diff for `import ai.riviera.platform.<other>.application` /
   `.infrastructure` / `.domain`. Flag each."
 
 ---

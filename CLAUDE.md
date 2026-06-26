@@ -29,8 +29,9 @@ pays venues out manually. Full design: `docs/superpowers/specs/2026-06-25-rivier
 
 ## Bounded contexts (Spring Modulith modules)
 
-Base package is **`app.riviera`** (provisional — see "Provisional decisions"). Each
-module lives at `app.riviera.<module>` with the hexagonal layout in invariant #11.
+Base package is **`ai.riviera.platform`** (groupId `ai.riviera`, artifactId
+`platform`). Each module lives at `ai.riviera.platform.<module>` with the hexagonal
+layout in invariant #11.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
@@ -95,7 +96,7 @@ The skills reference them by number.
     automation). Refund decisions and amounts are computed on the server, then
     actioned via Stripe.
 11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout:
-    `app.riviera.<module>.{api, application.in, application.out, domain,
+    `ai.riviera.platform.<module>.{api, application.in, application.out, domain,
     infrastructure.in, infrastructure.out}`. Cross-module access is via the other
     module's `api/` port **or** a domain event — never by importing its
     `application.*`/`infrastructure.*`/`domain.*`. Event payloads carry **technical
@@ -111,8 +112,8 @@ The skills reference them by number.
 These are sensible defaults chosen so work can proceed; revisit when the repo is
 scaffolded. Each is a one-line change if reconsidered.
 
-- **Base package:** `app.riviera`. (Alternatives: `eu.riviera`, a personal
-  reverse-domain. Trivial find-replace before first commit of code.)
+- **Base package:** **decided — `ai.riviera.platform`** (groupId `ai.riviera`,
+  artifactId `platform`), set via Spring Initializr. No longer provisional.
 - **Venue payout currency:** EUR vs ALL, set per venue and converted outside the
   app at BKT payout time. (The **collection** currency is not provisional — it is
   EUR, fixed by invariant #5.)

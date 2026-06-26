@@ -27,7 +27,7 @@ Scaffolding is the next milestone — if you're picking that up, the
 `angular-new-app` skill drives the frontend and a Spring Modulith starter drives
 the backend.
 
-When code lands, you'll want locally: a recent **JDK** (21+), **Node LTS**,
+When code lands, you'll want locally: **JDK 25** (the project's Gradle toolchain), **Node LTS**,
 **Docker** (for Postgres), and later a **Stripe test account**. A
 `riviera-local-debug` skill with exact run recipes is deliberately deferred until
 there's a stack to run.

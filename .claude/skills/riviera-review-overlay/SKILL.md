@@ -1,6 +1,6 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an in-progress code review — the built-in /code-review or /review, or the superpowers *-review-interview skills if installed — to add riviera-specific bank items: the availability single-source-of-truth invariant, JDBC-only (no JPA), Spring-Modulith boundaries, Stripe collect-only / webhook-as-source-of-truth, money in minor units, Europe/Tirane timezone, payout-ledger correctness, and booking-code security. Loads when reviewing a diff or PR in the riviera-sunbed-booking repo (CLAUDE.md with the riviera invariants, or an AGENTS.md/CLAUDE.md referencing app.riviera.* modules). Adds bank items to a review; it does not run a review on its own.
+description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an in-progress code review — the built-in /code-review or /review, or the superpowers *-review-interview skills if installed — to add riviera-specific bank items: the availability single-source-of-truth invariant, JDBC-only (no JPA), Spring-Modulith boundaries, Stripe collect-only / webhook-as-source-of-truth, money in minor units, Europe/Tirane timezone, payout-ledger correctness, and booking-code security. Loads when reviewing a diff or PR in the riviera-sunbed-booking repo (CLAUDE.md with the riviera invariants, or an AGENTS.md/CLAUDE.md referencing ai.riviera.platform.* modules). Adds bank items to a review; it does not run a review on its own.
 ---
 
 # Riviera review overlay
@@ -22,7 +22,7 @@ This overlay layers onto an **in-progress review**. Load it when **both** hold:
   `*-review-interview` skill if installed; **and**
 - The work is in the riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera
   invariants / `.claude/skills/riviera-*` present, or an `AGENTS.md`/`CLAUDE.md`
-  referencing `app.riviera.*` modules).
+  referencing `ai.riviera.platform.*` modules).
 
 The repo is the **scope**; an active review skill is the **trigger**. Do NOT load
 the overlay merely because the CWD is the repo — without a parent review running
