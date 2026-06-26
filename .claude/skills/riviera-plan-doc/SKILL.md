@@ -175,3 +175,10 @@ on a feature that touches availability or payments costs a trust-breaking bug.
   forms, routing, and testing detail.
 - `test-driven-development`, `systematic-debugging`,
   `verification-before-completion` — standard execution discipline.
+
+**Orchestration & vendored craft skills:**
+- `riviera-sdd` — the workflow orchestrator; it loads this skill at the plan stage.
+- `to-issues` (slice the plan into issues), `tdd` / `diagnosing-bugs` (build/debug),
+  `codebase-design` / `domain-modeling` (module-interface & vocabulary craft),
+  `triage` (issue/PR lifecycle). These are the generic engine; this skill supplies
+  the riviera-specific plan discipline on top.

@@ -148,3 +148,16 @@ These are repo-scoped — they load when working in this repository.
 
 A `riviera-local-debug` skill (how to run the stack locally) is **deliberately
 deferred** until the apps are scaffolded — there is nothing to run yet.
+
+## Agent skills (SDD workflow)
+
+This repo runs a spec-driven development loop. The **`riviera-sdd`** skill is the
+orchestrator — load it when starting or continuing feature work; it routes each
+stage (refine → issue → plan → implement → CI → review → merge) to the right skill.
+
+- **Issue tracker / triage labels / domain-doc layout:** see `docs/agents/`.
+- **Domain glossary:** `CONTEXT.md`. **Decisions:** `docs/adr/`.
+- **Vendored craft skills** (Matt Pocock, MIT — `grilling`/`grill-me`, `to-issues`,
+  `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
+  `triage`, `improve-codebase-architecture`) provide the generic engine; the
+  `riviera-*` skills inject this project's invariants at the plan and review gates.

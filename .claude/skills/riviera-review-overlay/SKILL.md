@@ -136,3 +136,5 @@ Frontend:
   parent skills; this overlay never runs alone.
 - **`riviera-stripe-payments`, `riviera-plan-doc`,
   `spring-modulith-boundary-reviewer`** — hand-off targets.
+- **`riviera-sdd`** — the workflow orchestrator; it loads this overlay at the review
+  gate. **`triage`** — manages the issue/PR lifecycle around the review.
