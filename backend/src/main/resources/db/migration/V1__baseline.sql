@@ -1,0 +1,9 @@
+-- Baseline migration for riviera-sunbed-booking.
+--
+-- Intentionally empty. Tables are introduced by feature slices, each as its own
+-- versioned forward migration (invariant #12):
+--   * U1  venue + beach-map tables
+--   * U2  availability  (UNIQUE(set_id, booking_date) — invariant #2)
+--   * U3  booking
+--   * U4/U5 payment, payout ledger
+-- See docs/architecture/domain-model.md and CONTEXT.md.
