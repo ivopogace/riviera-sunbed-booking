@@ -161,3 +161,5 @@ stage (refine → issue → plan → implement → CI → review → merge) to t
   `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
   `triage`, `improve-codebase-architecture`) provide the generic engine; the
   `riviera-*` skills inject this project's invariants at the plan and review gates.
+- **`postgres`** (PlanetScale database-skills, MIT, trimmed to the generic-Postgres
+  subset) — table/schema/index design for Flyway migrations.

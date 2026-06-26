@@ -34,5 +34,6 @@ labels.
 | `good first issue` | Gentle, well-scoped entry point for a new contributor. |
 
 Area labels drive **skill routing** in `riviera-sdd`: `area:frontend` → Angular
-skills + Angular MCP; `area:backend` → `codebase-design` / `domain-modeling` + `riviera-stripe-payments`
-(payment/payout); both always plan with `riviera-plan-doc` and review with `riviera-review-overlay`.
+skills + Angular MCP; `area:backend` → `codebase-design` / `domain-modeling` + `postgres` (Flyway/table
+design) + `riviera-stripe-payments` (payment/payout); both always plan with
+`riviera-plan-doc` and review with `riviera-review-overlay`.

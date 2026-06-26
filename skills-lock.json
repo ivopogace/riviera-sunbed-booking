@@ -82,6 +82,13 @@
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "ref": "main",
       "vendored": true
+    },
+    "postgres": {
+      "source": "planetscale/database-skills",
+      "sourceType": "github",
+      "skillPath": "skills/postgres/SKILL.md",
+      "ref": "main",
+      "vendored": "trimmed — generic-Postgres subset; PlanetScale-product references removed"
     }
   }
 }

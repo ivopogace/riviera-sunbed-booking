@@ -36,8 +36,9 @@ Decide by the issue's `area:*` label (see `docs/agents/triage-labels.md`):
   `angular-new-app` for scaffolding). The beach-map seat picker, booking flow, etc.
 - **`area:backend`** → pull **`codebase-design`** for deep-module interface design
   and **`domain-modeling`** for the glossary/ADRs; **`riviera-stripe-payments`** for
-  anything in `payment`/`payout` or any Stripe/charge/refund/commission work. The
-  Spring-Modulith / Postgres specifics (boundaries, id-based events, the availability
+  anything in `payment`/`payout` or any Stripe/charge/refund/commission work. For any
+  **Flyway migration / table design**, pull **`postgres`** (schema-design + indexing).
+  The Spring-Modulith / Postgres specifics (boundaries, id-based events, the availability
   unique constraint + row lock) are enforced by the `CLAUDE.md` invariants (#2, #11,
   #12) and the `riviera-review-overlay` gates — not a separate skill.
 - **`area:fullstack`** → both of the above, FE and BE each as its own commit/slice.
