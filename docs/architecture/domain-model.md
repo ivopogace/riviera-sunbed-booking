@@ -118,12 +118,12 @@ units + currency (invariant #5).
 ```mermaid
 classDiagram
     class Venue {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +VenueId id
         +String name
         +Beach beach
         +String description
-        +PhotoRef[] photos
+        +List~PhotoRef~ photos
         +Rating rating
         +BookingMode mode
         +CommissionRate commissionRate
@@ -131,10 +131,10 @@ classDiagram
         +LocalTime bookingCutoff
     }
     class BeachMap {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +BeachMapId id
         +VenueId venueId
-        +SetPosition[] positions
+        +List~SetPosition~ positions
     }
     class SetPosition {
         <<entity>>
@@ -148,7 +148,7 @@ classDiagram
         +int y
     }
     class Money {
-        <<value object>>
+        <<valueObject>>
         +long minorUnits
         +Currency currency
     }
@@ -181,7 +181,7 @@ classDiagram
 ```mermaid
 classDiagram
     class SetAvailability {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +SetId setId
         +LocalDate bookingDate
         +AvailabilityState state
@@ -195,7 +195,7 @@ classDiagram
         BOOKED_ONLINE
         STAFF_MARKED
     }
-    SetAvailability --> AvailabilityState
+    SetAvailability --> AvailabilityState : state
 ```
 
 > Identity is the pair **(setId, bookingDate)**. A DB `UNIQUE(set_id, booking_date)`
@@ -209,7 +209,7 @@ classDiagram
 ```mermaid
 classDiagram
     class Booking {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +BookingId id
         +SetId setId
         +VenueId venueId
@@ -222,7 +222,7 @@ classDiagram
         +Instant createdAt
     }
     class BookingCode {
-        <<value object>>
+        <<valueObject>>
         +String value
     }
     class BookingStatus {
@@ -236,8 +236,8 @@ classDiagram
         DECLINED
         EXPIRED
     }
-    Booking --> BookingCode
-    Booking --> BookingStatus
+    Booking --> BookingCode : code
+    Booking --> BookingStatus : status
 ```
 
 > `BookingCode` is an unguessable bearer credential — ≥ 8 random base32 chars,
@@ -249,14 +249,14 @@ classDiagram
 ```mermaid
 classDiagram
     class Payment {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +PaymentId id
         +BookingId bookingId
         +Money amount
         +String stripePaymentIntentId
         +String idempotencyKey
         +PaymentStatus status
-        +Refund[] refunds
+        +List~Refund~ refunds
     }
     class Refund {
         <<entity>>
@@ -280,7 +280,7 @@ classDiagram
         WEATHER
         CONFLICT
     }
-    Payment "1" *-- "many" Refund
+    Payment "1" *-- "many" Refund : refunds
 ```
 
 > State is reconciled from **signature-verified Stripe webhooks**, never the client
@@ -292,7 +292,7 @@ classDiagram
 ```mermaid
 classDiagram
     class PayoutLedgerEntry {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +EntryId id
         +VenueId venueId
         +BookingId bookingId
@@ -304,7 +304,7 @@ classDiagram
         +Instant createdAt
     }
     class PayoutBatch {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +BatchId id
         +VenueId venueId
         +String periodKey
@@ -334,12 +334,17 @@ classDiagram
 ```mermaid
 classDiagram
     class Customer {
-        <<aggregate root>>
+        <<aggregateRoot>>
         +CustomerId id
         +Email email
         +String name
         +boolean guest
     }
+    class Email {
+        <<valueObject>>
+        +String value
+    }
+    Customer --> Email : email
 ```
 
 > Intentionally light — guest checkout with an email is acceptable (spec §4.1).
