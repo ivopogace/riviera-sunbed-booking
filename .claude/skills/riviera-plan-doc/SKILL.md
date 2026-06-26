@@ -89,8 +89,9 @@ When `writing-plans` is loaded for a riviera feature, also do:
 
 4. **Fill the Spring-Modulith section if any backend code is in scope.** List
    modules touched, any new `api/` named interfaces, and any domain events (with
-   id-based payloads). Load `spring-modulith-boundary-reviewer` /
-   `spring-modulith-event-designer` if the boundaries aren't obvious yet.
+   id-based payloads). Use `codebase-design` for the module interfaces/seams; the
+   boundary and id-based-event rules are invariant #11, checked by
+   `riviera-review-overlay` and the `ApplicationModules.verify()` test.
 
 5. **Fill the Payment & payout section if money moves.** Name the model
    (collect-only, no Connect), the webhook-as-source-of-truth rule, idempotency,
@@ -164,10 +165,11 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 **Frequently co-loaded:**
 - `riviera-stripe-payments` — any feature that moves money.
 - `riviera-review-overlay` — at the review gate.
-- `spring-modulith-ddd-jdbc-module`, `spring-modulith-event-designer`,
-  `spring-modulith-boundary-reviewer` — backend module/boundary/event design.
-- `postgres-table-design` — whenever a Flyway migration is in scope (especially the
-  availability constraints that enforce invariant #2).
+- `codebase-design`, `domain-modeling` — backend module-interface design and the
+  domain glossary/ADRs. The Spring-Modulith/Postgres specifics (boundaries, id-based
+  events, the availability `UNIQUE(set_id, booking_date)` + row-lock pattern) live in
+  `CLAUDE.md` invariants and are checked by `riviera-review-overlay` (RV-BE-1) — no
+  separate skill needed.
 - `angular-new-app` — to scaffold the Angular app (the first frontend phase):
   `ng new` + `--ai-config`, Tailwind, CLI generators.
 - `angular-developer` — for frontend surfaces (the beach-map seat picker, the

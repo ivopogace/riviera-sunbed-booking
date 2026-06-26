@@ -70,7 +70,8 @@ cleanly.
   conventions; the review surfaces the gate, that skill holds the rationale.
 - **Plan-doc discipline gaps** (missing AC, missing Availability section, stale
   execution status) → recommend `riviera-plan-doc`.
-- **Module-boundary questions** → recommend `spring-modulith-boundary-reviewer`.
+- **Module-boundary questions** → `codebase-design` (deep-module / seam design),
+  with the invariant #11 gate in this overlay as the check.
 
 The overlay does NOT execute these; it surfaces the recommendation in the output.
 
@@ -134,7 +135,7 @@ Frontend:
 - **`CLAUDE.md`** — the invariant list these banks check.
 - **`pre-implementation-review-interview` / `peer-change-review-interview`** — the
   parent skills; this overlay never runs alone.
-- **`riviera-stripe-payments`, `riviera-plan-doc`,
-  `spring-modulith-boundary-reviewer`** — hand-off targets.
+- **`riviera-stripe-payments`, `riviera-plan-doc`, `codebase-design`** — hand-off
+  targets.
 - **`riviera-sdd`** — the workflow orchestrator; it loads this overlay at the review
   gate. **`triage`** — manages the issue/PR lifecycle around the review.

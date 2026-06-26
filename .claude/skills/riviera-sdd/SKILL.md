@@ -34,10 +34,12 @@ Decide by the issue's `area:*` label (see `docs/agents/triage-labels.md`):
 
 - **`area:frontend`** → pull **`angular-developer`** + the **Angular MCP** (and
   `angular-new-app` for scaffolding). The beach-map seat picker, booking flow, etc.
-- **`area:backend`** → pull the **`spring-modulith-*`** skills for module/boundary/
-  event design; **`riviera-stripe-payments`** for anything in `payment`/`payout` or
-  any Stripe/charge/refund/commission work; **`codebase-design`** for deep-module
-  interface design.
+- **`area:backend`** → pull **`codebase-design`** for deep-module interface design
+  and **`domain-modeling`** for the glossary/ADRs; **`riviera-stripe-payments`** for
+  anything in `payment`/`payout` or any Stripe/charge/refund/commission work. The
+  Spring-Modulith / Postgres specifics (boundaries, id-based events, the availability
+  unique constraint + row lock) are enforced by the `CLAUDE.md` invariants (#2, #11,
+  #12) and the `riviera-review-overlay` gates — not a separate skill.
 - **`area:fullstack`** → both of the above, FE and BE each as its own commit/slice.
 - Always, regardless of area: `riviera-plan-doc` at plan time, `tdd` at build time,
   `riviera-review-overlay` at review time.

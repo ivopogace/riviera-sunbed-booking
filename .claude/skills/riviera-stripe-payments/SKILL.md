@@ -164,5 +164,5 @@ collect-only decision is far higher than reading one file.
   overrides it.
 - **`stripe:test-cards`, `stripe:explain-error`** — during integration/debugging.
 - **`riviera-review-overlay`** — the review bank that checks these items on a diff.
-- **`spring-modulith-event-designer`** — when designing the booking↔payment↔payout
-  events.
+- **`codebase-design`** — when designing the booking↔payment↔payout module
+  interfaces and events (id-based payloads per invariant #11).

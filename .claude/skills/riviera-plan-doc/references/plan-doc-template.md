@@ -76,8 +76,8 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 ## Spring Modulith — modules, interfaces, events
 
 > **Mandatory if any backend code is in scope. Frontend-only: `N/A — frontend-only`.**
-> Boundaries per invariant #11. Load `spring-modulith-boundary-reviewer` /
-> `spring-modulith-event-designer` if not yet settled.
+> Boundaries per invariant #11. Use `codebase-design` for module interfaces/seams;
+> the boundary & id-based-event rules are checked by `riviera-review-overlay`.
 
 **Modules touched**
 
