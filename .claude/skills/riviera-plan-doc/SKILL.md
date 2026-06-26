@@ -1,25 +1,28 @@
 ---
 name: riviera-plan-doc
-description: Use whenever the superpowers writing-plans or executing-plans skill is loaded for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. Load it alongside writing-plans when starting a riviera feature and alongside executing-plans when picking one up in a fresh session.
+description: Use at the plan stage of riviera-sdd, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is Pocock implement + tdd (installed); the superpowers writing-plans/executing-plans plugin also works if present.
 ---
 
 # Riviera Plan Doc
 
 ## Overview
 
-This skill is a project-local **supplement** to `superpowers:writing-plans` and
-`superpowers:executing-plans`. It does NOT replace them. It adds the structure
-that this specific marketplace needs: the booking domain has one invariant the
-whole business rests on (no double-sold set), a deliberately-unusual payment model
-(collect-only, no Stripe Connect), and a JDBC-only / Spring-Modulith backend whose
-boundaries are easy to violate under time pressure. The plan-doc template makes
-those concerns first-class sections instead of things you remember to check.
+This skill is a project-local **plan-doc discipline** layered on whatever
+planning/execution engine is active. In this repo that engine is **`riviera-sdd`**,
+which drives the build with Pocock's `implement` + `tdd`; the superpowers
+`writing-plans`/`executing-plans` plugin also works if you have it installed. This
+skill does NOT replace the engine — it adds the structure this specific marketplace
+needs: the booking domain has one invariant the whole business rests on (no
+double-sold set), a deliberately-unusual payment model (collect-only, no Stripe
+Connect), and a JDBC-only / Spring-Modulith backend whose boundaries are easy to
+violate under time pressure. The plan-doc template makes those concerns first-class
+sections instead of things you remember to check.
 
-Load this skill **alongside** `writing-plans` when starting a riviera feature, and
-**alongside** `executing-plans` when picking up a riviera plan in a fresh session.
+Load this skill at the **plan stage** when starting a riviera feature, and again
+when picking up a riviera plan to **execute** in a fresh session.
 
 **Announce at start:** "I'm using the riviera-plan-doc skill to enforce
-project-specific plan-doc discipline alongside writing-plans / executing-plans."
+project-specific plan-doc discipline."
 
 ## Why this skill exists
 
@@ -63,9 +66,9 @@ There is no Jira here — the source of intent is the **spec** in
 the issue number (`#NN`) in commits and the plan doc; no ticket-management MCP is
 involved.
 
-## Workflow additions on top of writing-plans
+## Workflow additions at plan time
 
-When `writing-plans` is loaded for a riviera feature, also do:
+When planning a riviera feature, also do:
 
 1. **Convert the spec's user stories (or the GitHub issue) into testable
    acceptance criteria before phase 0.** Every story becomes one or more "Given X,
@@ -73,7 +76,7 @@ When `writing-plans` is loaded for a riviera feature, also do:
    an AC and tell pass from fail, rewrite it.
 
 2. **Fill the Risk register and Open Questions sections before phase 0.** Use the
-   `brainstorming` skill if risks aren't yet visible. Categories that already
+   `grilling` skill if risks aren't yet visible. Categories that already
    matter in this project: concurrent reservation of the same set (invariant #2),
    Stripe webhook duplicate/out-of-order delivery (#8), payout double-accrual (#9),
    timezone/cutoff arithmetic (#4/#6), money rounding (#5), module boundary leaks
@@ -100,9 +103,9 @@ When `writing-plans` is loaded for a riviera feature, also do:
 6. **Decompose into PR-sized phases.** Each phase merges to the feature branch and
    is independently reviewable. Prefer a TDD red-green-refactor shape per task.
 
-## Workflow additions on top of executing-plans
+## Workflow additions at execution time
 
-When `executing-plans` is loaded for a riviera plan, also do:
+When executing a riviera plan, also do:
 
 1. **Per-phase generalization pass after every bug fix or new pattern.** Ask:
    where else does this apply? (e.g. a fix to one availability write path probably
@@ -155,12 +158,13 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 
 ## Integration
 
-**Required parent skills (load these too):**
-- `superpowers:writing-plans`, `superpowers:executing-plans`.
+**Execution engine (one of):**
+- `riviera-sdd` → Pocock `implement` + `tdd` (installed — the default here).
+- `superpowers:writing-plans` / `superpowers:executing-plans` if that plugin is installed.
 
-**Upstream feeder skills (before writing-plans):**
-- `spec` — synthesize a feature spec from the design doc + codebase.
-- `interview` — relentless Q&A when requirements are genuinely ambiguous.
+**Upstream feeder skills (before planning):**
+- the design spec in `docs/superpowers/specs/` — the source of intent.
+- `grilling` / `grill-me` — relentless Q&A when requirements are genuinely ambiguous.
 
 **Frequently co-loaded:**
 - `riviera-stripe-payments` — any feature that moves money.
@@ -175,8 +179,7 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 - `angular-developer` — for frontend surfaces (the beach-map seat picker, the
   booking flow) and Angular standards; consult its `references/` for signals,
   forms, routing, and testing detail.
-- `test-driven-development`, `systematic-debugging`,
-  `verification-before-completion` — standard execution discipline.
+- `tdd`, `diagnosing-bugs` — standard execution discipline (installed).
 
 **Orchestration & vendored craft skills:**
 - `riviera-sdd` — the workflow orchestrator; it loads this skill at the plan stage.

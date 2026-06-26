@@ -1,7 +1,7 @@
 # <Feature Title> Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development`
-> (recommended) or `superpowers:executing-plans` to implement this plan
+> **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
+> or the superpowers `subagent-driven-development`/`executing-plans` skills if present
 > task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 > **Riviera discipline baked into this template:** the Availability & concurrency,

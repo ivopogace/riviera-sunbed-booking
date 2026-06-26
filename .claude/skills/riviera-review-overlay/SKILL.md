@@ -1,25 +1,25 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Loads alongside pre-implementation-review-interview or peer-change-review-interview to add riviera-specific bank items — the availability single-source-of-truth invariant, JDBC-only (no JPA), Spring-Modulith boundaries, Stripe collect-only / webhook-as-source-of-truth, money in minor units, Europe/Tirane timezone, payout-ledger correctness, and booking-code security. Loads only when pre-implementation-review-interview or peer-change-review-interview is running in the riviera-sunbed-booking repo (CLAUDE.md with the riviera invariants, or an AGENTS.md/CLAUDE.md referencing app.riviera.* modules). Never loads on its own — it only adds bank items to an in-progress review.
+description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an in-progress code review — the built-in /code-review or /review, or the superpowers *-review-interview skills if installed — to add riviera-specific bank items: the availability single-source-of-truth invariant, JDBC-only (no JPA), Spring-Modulith boundaries, Stripe collect-only / webhook-as-source-of-truth, money in minor units, Europe/Tirane timezone, payout-ledger correctness, and booking-code security. Loads when reviewing a diff or PR in the riviera-sunbed-booking repo (CLAUDE.md with the riviera invariants, or an AGENTS.md/CLAUDE.md referencing app.riviera.* modules). Adds bank items to a review; it does not run a review on its own.
 ---
 
 # Riviera review overlay
 
 ## Purpose
 
-The two generic review skills (`pre-implementation-review-interview`,
-`peer-change-review-interview`) walk standard FE/BE/contract banks. This overlay
-layers in the **riviera-specific** items — the cross-cutting invariants in
-`CLAUDE.md`, turned into checkable review gates. It is **content**, not a workflow:
-it is loaded alongside one of the two review skills and contributes additional
-bank items, severity hints, and verification commands.
+A code review — the built-in **`/code-review`** / **`/review`**, or the superpowers
+`*-review-interview` skills if you have that plugin — walks standard FE/BE/contract
+banks. This overlay layers in the **riviera-specific** items — the cross-cutting
+invariants in `CLAUDE.md`, turned into checkable review gates. It is **content**,
+not a workflow: it is loaded alongside a review and contributes additional bank
+items, severity hints, and verification commands.
 
 ## Activation
 
 This overlay layers onto an **in-progress review**. Load it when **both** hold:
 
-- One of the two parent review skills is active —
-  `pre-implementation-review-interview` or `peer-change-review-interview`; **and**
+- A review is active — `/code-review` or `/review` (built-in), or a superpowers
+  `*-review-interview` skill if installed; **and**
 - The work is in the riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera
   invariants / `.claude/skills/riviera-*` present, or an `AGENTS.md`/`CLAUDE.md`
   referencing `app.riviera.*` modules).
@@ -126,15 +126,15 @@ Frontend:
 - Outside the riviera-sunbed-booking repo — the bank items assume this project's
   invariants.
 - **Standalone.** This overlay never runs alone; it only contributes bank items to
-  an active `pre-implementation-review-interview` or `peer-change-review-interview`.
-  Without one of those parents loaded there is nothing for it to layer onto — load
-  the parent review skill first.
+  an active review (`/code-review`, `/review`, or a superpowers `*-review-interview`
+  skill). Without a review running there is nothing for it to layer onto — start the
+  review first.
 
 ## Integration
 
 - **`CLAUDE.md`** — the invariant list these banks check.
-- **`pre-implementation-review-interview` / `peer-change-review-interview`** — the
-  parent skills; this overlay never runs alone.
+- **`/code-review` / `/review`** (built-in), or superpowers `*-review-interview` if
+  installed — the review surfaces this overlay layers onto; it never runs alone.
 - **`riviera-stripe-payments`, `riviera-plan-doc`, `codebase-design`** — hand-off
   targets.
 - **`riviera-sdd`** — the workflow orchestrator; it loads this overlay at the review
