@@ -17,9 +17,6 @@ jobs:
   backend:
     name: Backend (build + test)
     runs-on: ubuntu-latest
-    # Exposed so the Sonar step can gate itself on the secret being present.
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     defaults:
       run:
         working-directory: platform
@@ -39,22 +36,19 @@ jobs:
       - name: Build and test
         run: ./gradlew build jacocoTestReport --no-daemon
 
-      # Skipped (pipeline stays green) until the maintainer adds the SONAR_TOKEN secret.
-      - name: SonarCloud scan (backend)
-        if: ${{ env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-scan-action@v4
+      - name: Upload backend coverage + classes (for Sonar)
+        uses: actions/upload-artifact@v4
         with:
-          projectBaseDir: platform
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
+          name: backend-sonar
+          path: |
+            platform/build/reports/jacoco/test/jacocoTestReport.xml
+            platform/build/classes/java/main
+          if-no-files-found: error
+          retention-days: 1
 
   frontend:
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
-    # Exposed so the Sonar step can gate itself on the secret being present.
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     defaults:
       run:
         working-directory: frontend
@@ -81,12 +75,49 @@ jobs:
       - name: Build (production)
         run: npm run build
 
-      # Skipped (pipeline stays green) until the maintainer adds the SONAR_TOKEN secret.
-      - name: SonarCloud scan (frontend)
+      - name: Upload frontend coverage (for Sonar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sonar
+          path: frontend/coverage/frontend/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
+  sonar:
+    name: SonarCloud scan
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    # One combined scan for the single SonarCloud project. The scan steps are skipped
+    # (job stays green) until the maintainer adds the SONAR_TOKEN secret.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for accurate Sonar new-code / blame
+
+      - name: Download backend coverage + classes
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-sonar
+          path: platform/build
+
+      - name: Download frontend coverage
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-sonar
+          path: frontend/coverage/frontend
+
+      - name: Normalize frontend lcov paths to repo root
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: sed -i 's#^SF:src/#SF:frontend/src/#' frontend/coverage/frontend/lcov.info
+
+      - name: SonarCloud scan (backend + frontend, single project)
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v4
-        with:
-          projectBaseDir: frontend
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
