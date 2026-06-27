@@ -353,7 +353,7 @@ tasks.named('test') {
 - [ ] **AC-4:** Dependabot active for gradle + npm + github-actions. Verify via Insights → Dependency graph (config committed; activates on the default branch after merge).
 - [x] **AC-5:** `frontend/coverage/frontend/lcov.info` produced — verified locally (Node 26) + in the green frontend job.
 - [x] **AC-6:** `jacocoTestReport.xml` produced — verified via JDK-21 smoke + the green backend job (JDK 25).
-- [ ] **AC-7:** Sonar **skips (green) when `SONAR_TOKEN` absent** — verified (both Sonar steps `skipped` on PR run). Live reporting verified post-human-setup (Ready-for-human #2–3).
+- [x] **AC-7:** SonarCloud analysis **runs and reports** — verified: on run `28297771351` the `sonar` job downloaded both coverage reports, normalized the lcov, and the scan step succeeded (single project `ivopogace_riviera-sunbed-booking`, org `swap-shop`). The secret-gate also holds (steps skip green when `SONAR_TOKEN` is absent).
 - [ ] **AC-8:** `main` blocks merge on a red required check. Verified post-branch-protection (Ready-for-human #4).
 
 ## Self-review checklist (before merge / PR)
