@@ -50,17 +50,18 @@ significant decision is **test-runner choice** (see Risk R-1): the issue AC assu
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Issue AC's `--browsers=ChromeHeadless` (Karma) is outdated; the current CLI scaffolds a modern runner. | — | — | **Resolved (decision):** drop the Karma command entirely; use the CLI's default modern test runner and record its exact headless command in phase 4 for issue #3 to reuse. | Ivo | resolved (planning) |
-| R-2 | `npm run lint` script absent — `ng new` doesn't add ESLint by default. | high | low | Run `ng add @angular-eslint/schematics`, which wires the `lint` target + `npm run lint`. | Claude | open |
-| R-3 | Node 26 / latest CLI version skew vs CI's pinned Node LTS (#3 says "Node LTS"). Build green locally, red in CI on a different Node. | med | med | Record the exact Node + CLI + Angular versions in this doc and `frontend/package.json` engines; #3 pins CI Node to a version that builds this scaffold. | Ivo | open |
-| R-4 | Tailwind v4 `ng add` changes build/styles wiring in a way that breaks the prod build. | low | med | Run `npm run build` immediately after `ng add tailwindcss`; fix per Tailwind v4 upgrade guide before proceeding. | Claude | open |
+| R-2 | `npm run lint` script absent — `ng new` doesn't add ESLint by default. | high | low | Run `ng add @angular-eslint/schematics`, which wires the `lint` target + `npm run lint`. | Claude | **resolved** — ESLint added; `npm run lint` green |
+| R-3 | Node 26 / latest CLI version skew vs CI's pinned Node LTS (#3 says "Node LTS"). Build green locally, red in CI on a different Node. | med | med | Record the exact Node + CLI + Angular versions in this doc and `frontend/package.json` engines; #3 pins CI Node to a version that builds this scaffold. | Ivo | **resolved** — `engines.node` set to Angular 22's supported range; #3 pins CI Node within it |
+| R-4 | Tailwind v4 `ng add` changes build/styles wiring in a way that breaks the prod build. | low | med | Run `npm run build` immediately after `ng add tailwindcss`; fix per Tailwind v4 upgrade guide before proceeding. | Claude | **resolved** — prod build green post-`ng add` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** App lives at repo-root `frontend/` (sibling of `platform/`), matching issue #2 ("under `frontend/`") and #3's frontend job cwd. — *Owner:* Ivo · *Resolves by:* phase 0.
-- **Q-1 (style):** SCSS vs CSS for the stylesheet format. — *Owner:* Claude (I'll pick **SCSS**) · *Resolves by:* phase 0.
-- **Q-3 (style):** SCSS chosen.
+_None open — all resolved below._
 
 ### Resolved
+
+- **Assumption (confirmed):** App lives at repo-root `frontend/` (sibling of `platform/`), matching issue #2 and #3's frontend job cwd.
+- **Q-1 (style):** **SCSS** chosen.
 
 - **Q-2 (SSR):** **No SSR** — client-side only. Decided 2026-06-27; scaffold overhead not justified for a shell with no public pages yet; cheap to re-scaffold if SEO/first-paint matters later.
 - **R-1 (test runner):** Use the current CLI's **default modern runner**, not Karma `--browsers=ChromeHeadless`. Decided 2026-06-27 per user; exact command to be recorded in phase 4.
@@ -188,12 +189,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has a verifying command and a passing result.
-- [ ] No placeholders / TODO / TBD left in this doc (test-runner command is concrete).
-- [ ] **No JPA / no backend** touched (invariant #1) — frontend-only confirmed.
-- [ ] Availability / Modulith / Payment sections justified N/A (no spine code).
-- [ ] Frontend standards met (standalone, `inject()`, control flow) or deviation documented; no `as any`.
-- [ ] `.gitignore` excludes `frontend/node_modules`, `frontend/dist`, `.angular/`.
-- [ ] Node/CLI/Angular versions recorded (R-3) for issue #3 to pin CI.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has a verifying command and a passing result.
+- [x] No placeholders / TODO / TBD left in this doc (test-runner command is concrete: `npm test`).
+- [x] **No JPA / no backend** touched (invariant #1) — frontend-only confirmed.
+- [x] Availability / Modulith / Payment sections justified N/A (no spine code).
+- [x] Frontend standards met (standalone, signals, no `NgModule`/`standalone:true`) — no DI/control-flow/inputs in this shell; no `as any`.
+- [x] `.gitignore` excludes `frontend/node_modules`, `frontend/dist`, `.angular/` (via `frontend/.gitignore`).
+- [x] Node/CLI/Angular versions recorded (R-3) for issue #3 to pin CI; `engines.node` set in `package.json`.
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+
+### Post-review cleanup (PR #15 review, 2026-06-27)
+
+- Removed duplicate `tailwindcss` (was in both `dependencies@^4.3.1` and `devDependencies@^4.1.12`) → single `devDependencies@^4.3.1`; lockfile re-synced.
+- `index.html` static `<title>` `Frontend` → `Riviera`.
+- Added `engines.node` (Angular 22 supported range) to `package.json`.
+- Re-verified after cleanup: lint clean · `npm test` 5/5 · prod build green.
