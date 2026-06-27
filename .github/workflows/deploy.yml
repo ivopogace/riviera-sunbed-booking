@@ -12,38 +12,64 @@ name: CD
 # SONAR_TOKEN is set" pattern). See docs/deploy/cd-pipeline.md.
 
 on:
+  # Automatic, production path: deploy only after CI succeeds on `main`.
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+  # Manual path (works once this workflow is on the default branch, i.e. after merge):
+  # re-deploy on demand, choosing the target.
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        options: [frontend, backend, both]
+        default: frontend
+  # TEMPORARY — smoke-test the frontend deploy from the PR branch BEFORE merging #33.
+  # `workflow_dispatch` only appears once the file is on the default branch, so a
+  # branch-scoped push trigger is the only way to exercise the Pages deploy pre-merge.
+  # REMOVE THIS BLOCK before/at merge — main deploys are workflow_run-gated.
+  push:
+    branches: [feature/cd-pipeline]
 
-# One deploy per branch at a time; a newer green `main` waits rather than racing.
+# One deploy per branch at a time; a newer green run waits rather than racing.
 concurrency:
-  group: cd-${{ github.event.workflow_run.head_branch }}
+  group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  # Single decision point: CI must have SUCCEEDED on `main`. If not, this job is
-  # skipped, the deploy jobs (needs: guard) are skipped too, and nothing turns red.
+  # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
+  # Manual dispatch and the temporary branch push are themselves explicit opt-ins, so
+  # they pass the gate directly. If the gate fails, the deploy jobs are skipped and
+  # nothing turns red.
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+      ${{ (github.event_name == 'workflow_run'
+            && github.event.workflow_run.conclusion == 'success'
+            && github.event.workflow_run.head_branch == 'main')
+          || github.event_name == 'workflow_dispatch'
+          || github.event_name == 'push' }}
     steps:
       - name: Confirm gate
         run: |
-          echo "CI '${{ github.event.workflow_run.name }}' succeeded on main"
-          echo "commit: ${{ github.event.workflow_run.head_sha }}"
+          echo "event: ${{ github.event_name }}"
           echo "Proceeding to deploy."
 
   frontend-pages:
     name: Deploy frontend → GitHub Pages
     needs: guard
-    if: vars.DEPLOY_FRONTEND_PAGES == 'true'
+    # workflow_run path is opt-in via the repo variable; manual dispatch / the temporary
+    # branch push are explicit and run regardless of the variable.
+    if: >-
+      ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_FRONTEND_PAGES == 'true')
+          || (github.event_name == 'workflow_dispatch'
+                && (inputs.target == 'frontend' || inputs.target == 'both'))
+          || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -53,10 +79,11 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - name: Checkout the exact commit CI built
+      - name: Checkout the commit to deploy
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          # workflow_run: the exact commit CI built; otherwise the triggering ref.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Node (from .nvmrc)
         uses: actions/setup-node@v4
@@ -89,6 +116,11 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Enable Pages (source = GitHub Actions) automatically if the maintainer
+          # hasn't yet. Requires admin on the repo; if it can't, enable it manually
+          # under Settings → Pages → Source: GitHub Actions and re-run.
+          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -102,7 +134,12 @@ jobs:
   backend-render:
     name: Deploy backend → Render
     needs: guard
-    if: vars.DEPLOY_BACKEND_RENDER == 'true'
+    # Never runs on the temporary branch push (no secrets there); opt-in via the repo
+    # variable on the automatic path, or explicit dispatch targeting the backend.
+    if: >-
+      ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
+          || (github.event_name == 'workflow_dispatch'
+                && (inputs.target == 'backend' || inputs.target == 'both')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy (Render git-builds the Docker image)
@@ -110,11 +147,11 @@ jobs:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "::error::DEPLOY_BACKEND_RENDER is true but the RENDER_DEPLOY_HOOK_URL secret is not set."
+            echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
             exit 1
           fi
           curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
-          echo "Render deploy triggered for commit ${{ github.event.workflow_run.head_sha }}."
+          echo "Render deploy triggered."
 
       - name: Wait for backend health (AC-1 / AC-2)
         env:
