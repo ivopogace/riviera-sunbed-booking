@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": ["angular-cli"],
+  "permissions": {
+    "allow": ["mcp__angular-cli"]
+  }
+}
