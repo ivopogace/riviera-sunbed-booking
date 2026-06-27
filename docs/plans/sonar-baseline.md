@@ -66,7 +66,7 @@ markers); no module boundary is crossed or added.
 | 0 — Empty-SCSS smells (FE) | ✅ | (this commit) |
 | 1 — S4032 Modulith-marker exclusion | ✅ | (this commit) |
 | 2 — Dependency advisories (accepted) | ✅ | (this commit) |
-| 3 — PR + verify gate | ⏳ | |
+| 3 — PR + verify gate | ✅ | PR #35 — all checks green; smells 8→0; coverage 91.4% |
 
 ## Phase 0 — remove empty stylesheets
 Remove the two `styleUrl` refs + delete the two empty `.scss`; `npm run lint && npm run test:coverage && npm run build` green.
