@@ -11,20 +11,45 @@ reference `CLAUDE.md`.
 ### RV-FE-1. Angular standards
 **Gate:** Does new Angular code follow the project standards?
 - [ ] standalone components (no `NgModule` for new code)  [ ] `inject()` not constructor DI  [ ] `@if`/`@for`/`@switch` not `*ngIf`/`*ngFor`  [ ] `input()`/`output()` signal APIs not `@Input`/`@Output`  [ ] `NgOptimizedImage` for new `<img>` (venue photos especially)
+- **Greppable "don't write the obsolete thing" (Angular 22+):**  [ ] no redundant `standalone: true` (it's the default ≥ v20)  [ ] no explicit `changeDetection: OnPush` (it's the default ≥ v22)  [ ] `class`/`style` bindings, not `ngClass`/`ngStyle`  [ ] host bindings in the `host: {}` object, not `@HostBinding`/`@HostListener`  [ ] singleton services use `providedIn: 'root'` (or the `@Service` decorator, v22+)
 
 **Follow-up:**
 - Match the established style; document any deliberate deviation in the plan doc.
 - Venue photos and beach imagery are image-heavy — use `NgOptimizedImage` and
   responsive sizing so the booking page stays fast on mobile.
+- The greppable checks are fast to verify: `grep -rn "standalone: true\|ChangeDetectionStrategy.OnPush\|ngClass\|ngStyle\|@HostBinding\|@HostListener" frontend/src` should return nothing for new code.
 - The authoritative, detailed Angular standards live in the in-repo
   `angular-developer` skill's `references/` (signals, forms, routing, testing,
-  a11y). This bank checks the project-critical subset; defer to that skill for the
-  full rules.
+  a11y) and mirror the Angular CLI's `get_best_practices` (v22). This bank checks
+  the project-critical subset; defer to that skill for the full rules.
 
 **Default severity:** Minor (consistency), Major if a non-standard pattern spreads.
 **Skill framing:**
 - Peer-review: "Each new component: standalone? `inject()`? new control flow? signal
-  I/O?"
+  I/O? Any `ngClass`/`ngStyle`/`@HostBinding` or redundant `standalone: true`?"
+
+---
+
+### RV-FE-6. Forms use the modern API (Signal Forms / Reactive, never Template-driven)
+**Gate:** Do new forms (booking, venue/beach-map editor, cancellation, guest-checkout
+contact) use a modern forms API with typed, server-validated state?
+- [ ] **Signal Forms** (`@angular/forms/signals`, stable v22+) preferred for new forms  [ ] Reactive forms acceptable when Signal Forms don't fit  [ ] **Template-driven** forms (`[(ngModel)]`-driven) for new work (violation)  [ ] form types are explicit — no `any` on form values that cross the FE↔BE contract  [ ] client validation is UX only; the **server** is authoritative (esp. money, dates, availability)
+
+**Follow-up:**
+- The MCP/`angular-developer` standard for Angular 22+ is Signal Forms first
+  (signal-based state, type-safe field access, schema validation); Reactive next;
+  Template-driven is discouraged for new code.
+- Client-side validation never replaces server checks — price (minor units, #5),
+  booking date / cutoff (`Europe/Tirane`, #4/#6), and set availability (#2) are all
+  decided server-side. A form that "validates" availability locally and trusts it is
+  a smell (see RV-FE-2).
+- Defer to the `angular-developer` skill's forms reference for the full API.
+
+**Default severity:** Major for a new Template-driven form or `any`-typed form values
+on the contract; Minor for a Reactive-where-Signal-Forms-fit style choice.
+**Skill framing:**
+- Peer-review: "Is this a Signal Form or Reactive? Any Template-driven `ngModel`? Are
+  the form value types explicit, and is the server still the authority for money/date/availability?"
 
 ---
 
