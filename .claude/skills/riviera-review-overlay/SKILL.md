@@ -95,9 +95,10 @@ Backend:
   "*ModularityTests*"`) if module structure changed — Spring Modulith verification
   is a test, not a Gradle task
 
-Frontend:
+Frontend (run in `frontend/`):
 - `npm run lint`
-- `npm test -- --watch=false --browsers=ChromeHeadless`
+- `npm test` — Vitest via `@angular/build:unit-test` (Angular 22+); runs once in jsdom.
+  NOT Karma — there is no `--browsers=ChromeHeadless` flag.
 - `npm run build` if production-build risk
 
 ## Red flags specific to this repo
