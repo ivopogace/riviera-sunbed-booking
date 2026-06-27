@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref (a PR branch fires both push + pull_request).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle (cached)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew build jacocoTestReport --no-daemon
+
+      - name: Upload backend coverage + classes (for Sonar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-sonar
+          path: |
+            platform/build/reports/jacoco/test/jacocoTestReport.xml
+            platform/build/classes/java/main
+          if-no-files-found: error
+          retention-days: 1
+
+  frontend:
+    name: Frontend (lint + test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (hard gate)
+        run: npm run lint
+
+      - name: Test (Vitest, once, with coverage)
+        run: npm run test:coverage
+
+      - name: Build (production)
+        run: npm run build
+
+      - name: Upload frontend coverage (for Sonar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sonar
+          path: frontend/coverage/frontend/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
+  sonar:
+    name: SonarCloud scan
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    # One combined scan for the single SonarCloud project. The scan steps are skipped
+    # (job stays green) until the maintainer adds the SONAR_TOKEN secret.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for accurate Sonar new-code / blame
+
+      - name: Download backend coverage + classes
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-sonar
+          path: platform/build
+
+      - name: Download frontend coverage
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-sonar
+          path: frontend/coverage/frontend
+
+      - name: Normalize frontend lcov paths to repo root
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: sed -i 's#^SF:src/#SF:frontend/src/#' frontend/coverage/frontend/lcov.info
+
+      - name: SonarCloud scan (backend + frontend, single project)
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io

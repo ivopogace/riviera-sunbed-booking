@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Backend (Spring Boot / Gradle)
+  - package-ecosystem: gradle
+    directory: /platform
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # Frontend (Angular / npm)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # CI workflow actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
