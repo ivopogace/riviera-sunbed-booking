@@ -316,12 +316,10 @@ tasks.named('test') {
 
 ### Ready-for-human (maintainer-only; pipeline authored, these wire it live)
 
-1. **Enable code scanning (GitHub Advanced Security)** — Settings → Code security →
-   enable Code scanning. **Required for CodeQL on this private repo:** the analysis
-   already runs correctly, but GitHub rejects the SARIF upload with `configuration
-   error: Code scanning is not enabled` until this is on. Once enabled, the existing
-   CodeQL workflow goes green automatically (no workflow change — confirmed decision).
-   May incur a GHAS cost on a private repo.
+1. ~~**Enable code scanning (GHAS)** for CodeQL on the private repo.~~ ✅ **Resolved —
+   repo made public**, so code scanning is free; CodeQL is now green (run `28295767260`).
+   Note: if the repo is ever set back to **private**, CodeQL upload will fail again
+   unless a Code Security/GHAS license is added (or make the CodeQL step advisory).
 2. **Create the SonarCloud project(s)** for this repo (org + project key(s) — default
    assumption: `*-backend` + `*-frontend`; adjust keys in `platform/sonar-project.properties`
    and `frontend/sonar-project.properties` if you choose one project).
@@ -346,7 +344,7 @@ tasks.named('test') {
 
 - [x] **AC-1:** backend job **green** on PR run `28295326592` (JDK 25 provisioned, `./gradlew build jacocoTestReport` success), commit `d904f35`.
 - [x] **AC-2:** frontend job **green** (lint hard-gate + Vitest once + prod build) on PR run `28295326592`, commit `d904f35`.
-- [~] **AC-3:** CodeQL `java-kotlin` + `javascript-typescript` analyses **run and produce SARIF**; upload blocked by `configuration error: code scanning not enabled` (private-repo GHAS). Goes green once the maintainer enables code scanning (Ready-for-human #1). Workflow correct, no change needed (confirmed decision).
+- [x] **AC-3:** CodeQL `java-kotlin` + `javascript-typescript` analyses **complete and upload** — both **green** on run `28295767260` (attempt 2) after the repo was made **public** (code scanning is free on public repos; the earlier `configuration error: code scanning not enabled` was the private-repo GHAS gate). Workflow unchanged.
 - [ ] **AC-4:** Dependabot active for gradle + npm + github-actions. Verify via Insights → Dependency graph (config committed; activates on the default branch after merge).
 - [x] **AC-5:** `frontend/coverage/frontend/lcov.info` produced — verified locally (Node 26) + in the green frontend job.
 - [x] **AC-6:** `jacocoTestReport.xml` produced — verified via JDK-21 smoke + the green backend job (JDK 25).
