@@ -146,8 +146,8 @@ no module boundary and the `ApplicationModules.verify()` test is unaffected. Inv
 | 1 — Frontend coverage tooling (Vitest v8) | ✅ | `5d8d767` |
 | 2 — Core CI workflow (backend + frontend jobs) | ✅ | `bbd911f` |
 | 3 — CodeQL + Dependabot | ✅ | `210d1f6` |
-| 4 — SonarCloud wiring (secret-gated) | ✅ | (this commit) |
-| 5 — PR, green-gate, Ready-for-human | ⏳ | |
+| 4 — SonarCloud wiring (secret-gated) | ✅ | `d904f35` |
+| 5 — PR, green-gate, Ready-for-human | ✅ | PR #22; CI green; CodeQL pending human enablement |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -316,14 +316,20 @@ tasks.named('test') {
 
 ### Ready-for-human (maintainer-only; pipeline authored, these wire it live)
 
-1. **Create the SonarCloud project(s)** for this repo (org + project key(s) — default
-   assumption: `*-backend` + `*-frontend`; adjust keys in `platform/build.gradle`
-   `sonar { }` and `frontend/sonar-project.properties` if you choose one project).
-2. **Add the `SONAR_TOKEN` repo secret** (Settings → Secrets → Actions). Until then,
+1. **Enable code scanning (GitHub Advanced Security)** — Settings → Code security →
+   enable Code scanning. **Required for CodeQL on this private repo:** the analysis
+   already runs correctly, but GitHub rejects the SARIF upload with `configuration
+   error: Code scanning is not enabled` until this is on. Once enabled, the existing
+   CodeQL workflow goes green automatically (no workflow change — confirmed decision).
+   May incur a GHAS cost on a private repo.
+2. **Create the SonarCloud project(s)** for this repo (org + project key(s) — default
+   assumption: `*-backend` + `*-frontend`; adjust keys in `platform/sonar-project.properties`
+   and `frontend/sonar-project.properties` if you choose one project).
+3. **Add the `SONAR_TOKEN` repo secret** (Settings → Secrets → Actions). Until then,
    Sonar steps skip and CI stays green; once added they activate automatically.
-3. **Enable branch protection on `main`** requiring: the `backend` + `frontend` CI
+4. **Enable branch protection on `main`** requiring: the `backend` + `frontend` CI
    checks and the CodeQL `java` + `javascript` checks (and Sonar once wired). This is
-   what makes AC-8 ("`main` can't merge red") true. CodeQL/Dependabot need no secrets.
+   what makes AC-8 ("`main` can't merge red") true. (CodeQL becomes green after item 1.)
 
 ---
 
@@ -338,15 +344,14 @@ tasks.named('test') {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** backend job green on the PR run. Verified at `<sha>`.
-- [ ] **AC-2:** frontend job green (lint hard-gates) on the PR run. Verified at `<sha>`.
-- [ ] **AC-3:** CodeQL `java` + `javascript` analyses complete. Verified at `<sha>`.
-- [ ] **AC-4:** Dependabot active for gradle + npm + github-actions. Verified via Insights.
-- [ ] **AC-5:** `frontend/coverage/frontend/lcov.info` produced. Verified locally + in CI artifact.
-- [ ] **AC-6:** `jacocoTestReport.xml` produced. Verified via JDK-21 smoke + CI.
-- [ ] **AC-7:** Sonar reports when `SONAR_TOKEN` present; skips (green) when absent.
-  Live half verified post-human-setup.
-- [ ] **AC-8:** `main` blocks merge on a red required check. Verified post-branch-protection.
+- [x] **AC-1:** backend job **green** on PR run `28295326592` (JDK 25 provisioned, `./gradlew build jacocoTestReport` success), commit `d904f35`.
+- [x] **AC-2:** frontend job **green** (lint hard-gate + Vitest once + prod build) on PR run `28295326592`, commit `d904f35`.
+- [~] **AC-3:** CodeQL `java-kotlin` + `javascript-typescript` analyses **run and produce SARIF**; upload blocked by `configuration error: code scanning not enabled` (private-repo GHAS). Goes green once the maintainer enables code scanning (Ready-for-human #1). Workflow correct, no change needed (confirmed decision).
+- [ ] **AC-4:** Dependabot active for gradle + npm + github-actions. Verify via Insights → Dependency graph (config committed; activates on the default branch after merge).
+- [x] **AC-5:** `frontend/coverage/frontend/lcov.info` produced — verified locally (Node 26) + in the green frontend job.
+- [x] **AC-6:** `jacocoTestReport.xml` produced — verified via JDK-21 smoke + the green backend job (JDK 25).
+- [ ] **AC-7:** Sonar **skips (green) when `SONAR_TOKEN` absent** — verified (both Sonar steps `skipped` on PR run). Live reporting verified post-human-setup (Ready-for-human #2–3).
+- [ ] **AC-8:** `main` blocks merge on a red required check. Verified post-branch-protection (Ready-for-human #4).
 
 ## Self-review checklist (before merge / PR)
 
