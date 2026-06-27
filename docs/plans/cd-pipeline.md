@@ -150,7 +150,7 @@ health probe uses `HttpClient` via a thin service (testable with
 | 0 — Backend image + runtime config (Dockerfile, CORS, port/datasource env) | ✅ | (this commit) |
 | 1 — CD workflow (`deploy.yml`: Pages + Render, gated on CI) | ✅ | (this commit) |
 | 2 — Frontend FE↔BE health ping (environments, service, home status) | ✅ | (this commit) |
-| 3 — ADR 0004 + deploy/secrets docs + ready-for-human | | |
+| 3 — ADR 0004 + deploy/secrets docs + ready-for-human | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
