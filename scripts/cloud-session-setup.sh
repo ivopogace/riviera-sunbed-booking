@@ -1,21 +1,25 @@
 #!/bin/bash
 #
-# SessionStart hook — installs frontend deps in CLOUD sessions only.
+# SessionStart hook — provisions this repo's toolchain in CLOUD sessions only.
 #
 # Registered in .claude/settings.json under hooks.SessionStart.
 #
 # WHY A HOOK (not the env setup script):
 # The env setup script selects Node 26 BEFORE Claude Code launches (so the
 # Angular CLI MCP server spawns under it), but it runs before the repo is
-# checked out, so it cannot install frontend deps. This hook runs AFTER
-# checkout (with $CLAUDE_PROJECT_DIR available), which is the supported place
-# for a repo-dependent `npm install`. It makes `frontend/node_modules` present
-# so the Angular MCP build/test targets (@angular/build:application,
-# @angular/build:unit-test via run_target) can resolve their builder packages.
+# checked out, so it cannot do repo-dependent provisioning. This hook runs
+# AFTER checkout (with $CLAUDE_PROJECT_DIR available), the supported place for it.
 #
-# Local sessions are skipped — developers manage their own deps. Idempotent:
-# skips when node_modules already exists (e.g. on resume), per the docs'
-# guidance to keep SessionStart hooks fast.
+# Two idempotent, cloud-only steps:
+#   1. Frontend deps — `npm ci` so the Angular CLI MCP build/test targets
+#      (@angular/build:application, @angular/build:unit-test via run_target)
+#      resolve their builder packages.
+#   2. Backend JDK 25 — platform/build.gradle targets JavaLanguageVersion.of(25),
+#      but the image ships only JDK 21 and no foojay resolver is configured, so
+#      ./gradlew can't otherwise provision the toolchain.
+#
+# Local sessions are skipped (CLAUDE_CODE_REMOTE != true) — developers manage
+# their own toolchain.
 set -u
 
 # Cloud-only: CLAUDE_CODE_REMOTE is "true" in Claude Code on the web.
@@ -25,15 +29,47 @@ set -u
 export PATH="$HOME/.local/bin:$PATH"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+
+# ── 1. Frontend deps (idempotent: skip when node_modules already present) ──
 FRONTEND_DIR="$PROJECT_DIR/frontend"
-
-# Already installed (fresh container may carry it via cache, or a resume) — skip.
-[ -d "$FRONTEND_DIR/node_modules" ] && exit 0
-
-if [ -f "$FRONTEND_DIR/package-lock.json" ]; then
+if [ ! -d "$FRONTEND_DIR/node_modules" ] && [ -f "$FRONTEND_DIR/package-lock.json" ]; then
   echo "cloud-session-setup: installing frontend deps (npm ci) in $FRONTEND_DIR ..." >&2
   npm --prefix "$FRONTEND_DIR" ci \
-    || echo "cloud-session-setup: npm ci failed (continuing; run_target build/test may need a manual npm ci)" >&2
+    || echo "cloud-session-setup: npm ci failed (run_target build/test may need a manual npm ci)" >&2
+fi
+
+# ── 2. Backend JDK 25 (idempotent: skip when /opt/jdk-25 is already 25) ──
+JDK_DIR=/opt/jdk-25
+if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
+  echo "cloud-session-setup: installing Temurin JDK 25 (backend toolchain) ..." >&2
+  # GitHub release assets are allowlisted (github.com / *.githubusercontent.com);
+  # api.adoptium.net is NOT, so a direct Adoptium-API download 403s. Resolve the
+  # latest linux-x64 asset via api.github.com (allowlisted) and pull the tarball.
+  asset=$(curl -fsSL "https://api.github.com/repos/adoptium/temurin25-binaries/releases/latest" \
+    | grep -oE 'https://[^"]+OpenJDK25U-jdk_x64_linux_hotspot_[0-9._]+\.tar\.gz' | head -1)
+  if [ -n "$asset" ]; then
+    tmp=$(mktemp)
+    if curl -fsSL --retry 2 -o "$tmp" "$asset"; then
+      rm -rf "$JDK_DIR" && mkdir -p "$JDK_DIR"
+      tar -xzf "$tmp" -C "$JDK_DIR" --strip-components=1
+      echo "cloud-session-setup: $("$JDK_DIR/bin/java" -version 2>&1 | grep -i version | head -1) installed." >&2
+    else
+      echo "cloud-session-setup: JDK 25 download failed (backend ./gradlew build will need JDK 25)" >&2
+    fi
+    rm -f "$tmp"
+  else
+    echo "cloud-session-setup: could not resolve a Temurin 25 asset URL" >&2
+  fi
+fi
+
+# Make JDK 25 the session default. Gradle auto-detects JDKs in /opt, but set
+# JAVA_HOME + PATH so `java`/`./gradlew` use it too. Persist for subsequent Bash
+# commands via $CLAUDE_ENV_FILE (keeps the Node-26 dir ahead of the image node).
+if [ -x "$JDK_DIR/bin/java" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  {
+    echo "JAVA_HOME=$JDK_DIR"
+    echo "PATH=$JDK_DIR/bin:$PATH"
+  } >> "$CLAUDE_ENV_FILE"
 fi
 
 exit 0
