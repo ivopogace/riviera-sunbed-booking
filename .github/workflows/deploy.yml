@@ -16,8 +16,7 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-  # Manual path (works once this workflow is on the default branch, i.e. after merge):
-  # re-deploy on demand, choosing the target.
+  # Manual path: re-deploy on demand, choosing the target.
   workflow_dispatch:
     inputs:
       target:
@@ -25,12 +24,6 @@ on:
         type: choice
         options: [frontend, backend, both]
         default: frontend
-  # TEMPORARY — smoke-test the frontend deploy from the PR branch BEFORE merging #33.
-  # `workflow_dispatch` only appears once the file is on the default branch, so a
-  # branch-scoped push trigger is the only way to exercise the Pages deploy pre-merge.
-  # REMOVE THIS BLOCK before/at merge — main deploys are workflow_run-gated.
-  push:
-    branches: [feature/cd-pipeline]
 
 # One deploy per branch at a time; a newer green run waits rather than racing.
 concurrency:
@@ -42,9 +35,8 @@ permissions:
 
 jobs:
   # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
-  # Manual dispatch and the temporary branch push are themselves explicit opt-ins, so
-  # they pass the gate directly. If the gate fails, the deploy jobs are skipped and
-  # nothing turns red.
+  # Manual dispatch is itself an explicit opt-in, so it passes the gate directly. If
+  # the gate fails, the deploy jobs are skipped and nothing turns red.
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
@@ -52,8 +44,7 @@ jobs:
       ${{ (github.event_name == 'workflow_run'
             && github.event.workflow_run.conclusion == 'success'
             && github.event.workflow_run.head_branch == 'main')
-          || github.event_name == 'workflow_dispatch'
-          || github.event_name == 'push' }}
+          || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Confirm gate
         run: |
@@ -63,13 +54,12 @@ jobs:
   frontend-pages:
     name: Deploy frontend → GitHub Pages
     needs: guard
-    # workflow_run path is opt-in via the repo variable; manual dispatch / the temporary
-    # branch push are explicit and run regardless of the variable.
+    # workflow_run path is opt-in via the repo variable; manual dispatch is explicit
+    # and runs regardless of the variable.
     if: >-
       ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_FRONTEND_PAGES == 'true')
           || (github.event_name == 'workflow_dispatch'
-                && (inputs.target == 'frontend' || inputs.target == 'both'))
-          || github.event_name == 'push' }}
+                && (inputs.target == 'frontend' || inputs.target == 'both')) }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -116,11 +106,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          # Enable Pages (source = GitHub Actions) automatically if the maintainer
-          # hasn't yet. Requires admin on the repo; if it can't, enable it manually
-          # under Settings → Pages → Source: GitHub Actions and re-run.
-          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

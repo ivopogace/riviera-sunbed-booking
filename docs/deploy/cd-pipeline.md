@@ -17,6 +17,12 @@ CI concluded **`success` on `main`** — a red build never deploys. Two independ
 Each job is **opt-in via a repository variable**, so until you wire the accounts below the
 workflow runs green as a no-op (no red `main`).
 
+A **manual** `workflow_dispatch` is also available (Actions → CD → *Run workflow*, choosing
+`frontend` / `backend` / `both`) once this workflow is on the default branch — handy for an
+on-demand re-deploy. Manual runs bypass the opt-in variables (dispatching is itself the
+opt-in). Note the auto-created **`github-pages` environment** restricts Pages deploys to the
+default branch by default; keep that restriction (deploys come from `main`).
+
 ## Required GitHub configuration
 
 Set under **Settings → Secrets and variables → Actions**.
