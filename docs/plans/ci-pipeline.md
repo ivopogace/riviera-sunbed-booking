@@ -358,14 +358,40 @@ tasks.named('test') {
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying signal (run state or local output).
-- [ ] No placeholders / TODO / TBD in the workflows or this doc.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; JaCoCo is coverage-only (invariant #1).
-- [ ] Availability section justified `N/A` (no app code) — invariant #2 untouched.
-- [ ] Modulith section justified `N/A`; the one backend edit (`build.gradle`) crosses no boundary (invariant #11).
-- [ ] Payment/payout `N/A`; no money moves (invariants #5/#8/#9 untouched).
-- [ ] **No secrets committed** — only `${{ secrets.* }}` references (R-7); `run_secret_scanning` clean.
-- [ ] Node pinned via `.nvmrc` (26.0.0); JDK pinned to 25 via `setup-java` (R-1/R-3).
-- [ ] Sonar is secret-gated and cannot red the pipeline pre-wiring (R-4).
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows at done; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying signal (run state or local output).
+- [x] No placeholders / TODO / TBD in the workflows or this doc.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; JaCoCo is coverage-only (invariant #1). Verified: `grep` clean + green backend build.
+- [x] Availability section justified `N/A` (no app code) — invariant #2 untouched.
+- [x] Modulith section justified `N/A`; the one backend edit (`build.gradle`) crosses no boundary (invariant #11); `ModularityTests` green in CI.
+- [x] Payment/payout `N/A`; no money moves (invariants #5/#8/#9 untouched).
+- [x] **No secrets committed** — only `${{ secrets.* }}` references (R-7); diff secret-scan clean.
+- [x] Node pinned via `.nvmrc` (26.0.0); JDK pinned to 25 via `setup-java` (R-1/R-3).
+- [x] Sonar is secret-gated and cannot red the pipeline pre-wiring (R-4); verified coverage imported (JaCoCo + lcov sensors).
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register: only AC-4 (post-merge) and AC-8 (branch protection) remain — both maintainer/post-merge, not build gaps. Open Questions empty.
+
+## Review (riviera-review-overlay) — 2026-06-27
+
+Scope: devops-only diff (8 files; no app code). Generic banks + riviera overlay.
+
+**Riviera overlay bank** — all `N/A` except the JDBC/secrets gates, which pass:
+- RV-BE-1 availability (#2), payment-confirmation (#8), money (#5), timezone (#6),
+  booking-code (#7), Modulith boundaries (#11): **N/A** — no `booking`/`availability`/
+  `payment`/domain code touched.
+- JDBC-only (#1): ✅ no JPA on the classpath (JaCoCo is coverage-only).
+- Frontend (RV-FE-*) / FE↔BE contract (RV-CT-*): **N/A** — no components/API.
+- No secrets in client / repo: ✅.
+
+**Findings:**
+- **[Medium → fixed]** `sonarqube-scan-action@v4` is flagged by the runner as
+  "no longer supported and contains a security vulnerability." Bumped to **`@v6`**
+  (commit below). The github-actions Dependabot ecosystem will keep it current.
+- **[Low / accepted]** Sonar `WARN: sonar.java.libraries is empty` — reduced Java
+  analysis precision because dependency jars aren't uploaded to the scan. Acceptable
+  for the current near-empty backend; revisit if BE grows (could upload the runtime
+  classpath as an artifact). Not blocking.
+- **[Info]** `push:` runs CI on all branches (intended, R-8); actions pinned by major
+  tag, not SHA — acceptable, Dependabot bumps them.
+
+**Verdict:** no blockers. One security finding fixed; one low item accepted with
+rationale. Pipeline green and coverage verified imported.
