@@ -17,6 +17,9 @@ jobs:
   backend:
     name: Backend (build + test)
     runs-on: ubuntu-latest
+    # Exposed so the Sonar step can gate itself on the secret being present.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     defaults:
       run:
         working-directory: platform
@@ -36,9 +39,22 @@ jobs:
       - name: Build and test
         run: ./gradlew build jacocoTestReport --no-daemon
 
+      # Skipped (pipeline stays green) until the maintainer adds the SONAR_TOKEN secret.
+      - name: SonarCloud scan (backend)
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v4
+        with:
+          projectBaseDir: platform
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
   frontend:
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
+    # Exposed so the Sonar step can gate itself on the secret being present.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     defaults:
       run:
         working-directory: frontend
@@ -64,3 +80,13 @@ jobs:
 
       - name: Build (production)
         run: npm run build
+
+      # Skipped (pipeline stays green) until the maintainer adds the SONAR_TOKEN secret.
+      - name: SonarCloud scan (frontend)
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v4
+        with:
+          projectBaseDir: frontend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
