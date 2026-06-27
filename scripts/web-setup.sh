@@ -65,3 +65,19 @@ for TARGET_BIN in "$HOME/.local/bin" /usr/local/bin; do
 done
 
 echo "web-setup: pinned node $("$NODE_BIN/node" --version) (npm $("$NODE_BIN/npm" --version)); a fresh shell should now resolve it via PATH."
+
+# Install the frontend dependencies so the Angular CLI MCP build/test targets
+# (@angular/build:application, @angular/build:unit-test) resolve their builder
+# packages. Selecting Node alone is not enough: run_target does NOT auto-install,
+# so without node_modules the `build`/`test` targets exit immediately with
+# "Could not find the builder's node package". registry.npmjs.org is allowlisted
+# by the env network policy. Idempotent: npm ci re-syncs against the lockfile.
+# Use the pinned npm so the install runs under Node 26.
+FRONTEND_DIR="$REPO_ROOT/frontend"
+if [ -f "$FRONTEND_DIR/package-lock.json" ]; then
+  echo "web-setup: installing frontend deps (npm ci) in $FRONTEND_DIR ..."
+  "$NODE_BIN/npm" --prefix "$FRONTEND_DIR" ci
+  echo "web-setup: frontend deps installed."
+else
+  echo "web-setup: no frontend/package-lock.json found; skipping frontend npm ci." >&2
+fi
