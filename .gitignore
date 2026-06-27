@@ -8,8 +8,8 @@ Thumbs.db
 .DS_Store
 
 # Build output (added as the stack is scaffolded)
-/backend/build/
-/backend/.gradle/
+/platform/build/
+/platform/.gradle/
 /frontend/dist/
 node_modules/
 
