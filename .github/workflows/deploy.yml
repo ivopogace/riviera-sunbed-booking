@@ -70,7 +70,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout the commit to deploy
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # workflow_run: the exact commit CI built; otherwise the triggering ref.
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
