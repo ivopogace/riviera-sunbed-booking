@@ -319,7 +319,7 @@ subset; document any deviation.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Schema + demo seed (Flyway) | ✅ (CI green — run 28328644785) | `689dd55` — V2/V3 + `VenueSeedMigrationIT` |
-| 1 — Venue read model + API + security | | |
+| 1 — Venue read model + API + security | ⏳ (pending CI — IT skips locally, no Docker) | `api` port+views, `JdbcVenueCatalog`, controller, security permit + `VenueReadControllerIT` |
 | 2 — Angular beach-map component | | |
 | 3 — Wiring, full-suite, AC verification | | |
 
