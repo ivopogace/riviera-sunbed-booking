@@ -12,4 +12,13 @@ public interface VenueCatalog {
 
 	/** The venue and its beach map, or empty if no venue has that id. */
 	Optional<VenueMapView> findVenueMap(VenueId id);
+
+	/**
+	 * The pool token ({@code "ONLINE"} or {@code "WALK_IN"}) of the given set, or empty if no
+	 * set has that id. Used by the {@code availability} module to enforce invariant #3 (an
+	 * online booking can only target an {@code ONLINE}-pool set) before claiming, without
+	 * reaching into venue's tables. The token is the same string the database CHECK constraint
+	 * stores and the read views carry.
+	 */
+	Optional<String> poolOf(SetId setId);
 }
