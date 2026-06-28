@@ -6,7 +6,9 @@ metadata:
   author: planetscale
   source: https://github.com/planetscale/database-skills (skills/postgres)
   vendored: "trimmed — generic-Postgres subset; PlanetScale-product references removed"
-  version: "1.0.0"
+  version: "1.1.0"
+  additional_sources:
+    - "concurrency-and-locking.md adapted (MIT) from supabase/agent-skills (skills/supabase-postgres-best-practices), Supabase-specific advice excluded"
 ---
 
 # Postgres
@@ -36,6 +38,7 @@ PlanetScale's database-skills, trimmed to the provider-agnostic subset — see
 | Optimization Checklist | [references/optimization-checklist.md](references/optimization-checklist.md) | Pre-optimization audit, cleanup, readiness checks  |
 | MVCC and VACUUM        | [references/mvcc-vacuum.md](references/mvcc-vacuum.md)               | Dead tuples, long transactions, xid wraparound prevention |
 | MVCC Transactions      | [references/mvcc-transactions.md](references/mvcc-transactions.md)   | Isolation levels, serialization errors, locking semantics |
+| Concurrency & Locking  | [references/concurrency-and-locking.md](references/concurrency-and-locking.md) | Short transactions, `FOR UPDATE [SKIP LOCKED]`, `INSERT … ON CONFLICT` claims, advisory locks, deadlock prevention (invariant #2) |
 
 ## Operations and Architecture (reference for later)
 
