@@ -17,13 +17,8 @@
     <p class="availability" data-testid="availability">
       <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free today
     </p>
-    <div
-      class="progress"
-      role="progressbar"
-      aria-valuemin="0"
-      [attr.aria-valuemax]="totalCount()"
-      [attr.aria-valuenow]="freeCount()"
-    >
+    <!-- Decorative: the "{free} of {total}" count above already conveys this to AT. -->
+    <div class="progress" aria-hidden="true">
       <span class="progress-fill" [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"></span>
     </div>
 
@@ -36,11 +31,10 @@
             <span class="row-label">{{ row.label }}</span>
             <span class="row-price">{{ money(row.sets[0].price) }} / set</span>
           </div>
-          <ul class="set-grid" role="list">
+          <ul class="set-grid">
             @for (set of row.sets; track set.id) {
               <li
                 class="set-tile"
-                role="listitem"
                 data-testid="set-tile"
                 [class.premium]="set.tier === 'PREMIUM'"
                 [class.taken]="set.availability === 'TAKEN'"

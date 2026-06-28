@@ -21,7 +21,7 @@
   display: inline-block;
   border-radius: 999px;
   background: #e6f4f3;
-  color: #0e7a89;
+  color: #0c6675; /* AA contrast on #e6f4f3 (css:S7924) */
   font-weight: 700;
   font-size: 0.78rem;
   padding: 0.25rem 0.7rem;
@@ -82,7 +82,8 @@
   text-transform: uppercase;
   font-size: 0.78rem;
   color: #ffffff;
-  background: linear-gradient(180deg, #2f9fab, #5cc0c6);
+  /* Dark teal so white text clears AA contrast (css:S7924); lighter sea tones failed. */
+  background: linear-gradient(180deg, #0e7a89, #0c6675);
   margin: 0 -0.85rem 0.85rem;
   padding: 0.6rem;
   border-radius: 1rem 1rem 0 0;
@@ -130,12 +131,12 @@
 .set-tile.premium {
   background: #fbf1d9;
   border-color: #e6c483;
-  color: #9c6a16;
+  color: #875911; /* AA contrast on #fbf1d9 (css:S7924) */
 }
 .set-tile.taken {
   background: #ece8e0;
   border: 1.5px dashed #d2ccbf;
-  color: #aaa399;
+  color: #696459; /* AA contrast on #ece8e0 — readable even though muted (css:S7924) */
 }
 
 .legend {
