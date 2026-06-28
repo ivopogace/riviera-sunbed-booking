@@ -124,13 +124,15 @@ there; commits reference `#4`.
 - **Assumption:** `beach` is stored as free text (`"Ksamil"`) and `region` as
   `"Albanian Riviera"`, matching the design sample, rather than a locked `Beach` enum;
   the Phase-1 beach enum (Palasë/Drymades/Dhërmi) is a U7 onboarding concern. — *Owner:* Ivo · *Resolves by:* U7
-- **Assumption:** Ids are `BIGINT` identity (not UUID). `VenueId`/`SetId` wrap `long`.
-  The seed venue is the first row (id `1`); the FE demo link points at `/venues/1`. This
-  is a **cross-cutting** choice — invariant-#11 event payloads (`BookingId`/`SetId`/`VenueId`)
-  inherit it across all future modules. — *Owner:* Ivo · *Resolves by:* phase 1 (flag if you
-  want UUIDs instead)
-
 ### Resolved
+
+- **Ids are `BIGINT` identity (not UUID) — confirmed by Ivo.** `VenueId`/`SetId` wrap
+  `long`; the seed venue is the first row (id `1`); the FE demo link targets `/venues/1`.
+  Cross-cutting: invariant-#11 event payloads (`BookingId`/`SetId`/`VenueId`) inherit
+  `long` across all future modules. — *Resolved 2026-06-28.*
+- **Home routing — keep the health-tracer home page and add a "View demo venue" link to
+  `/venues/1`** (no `/` → venue redirect). Confirmed by Ivo (default accepted). The
+  health tracer stays useful as the FE↔BE reachability check. — *Resolved 2026-06-28.*
 
 - **PK type — UUIDv4 vs BIGINT vs uuidv7:** chose **`BIGINT GENERATED ALWAYS AS IDENTITY`**.
   Rationale (`postgres` skill): random UUIDv4 PKs fragment indexes and cost more on joins;
@@ -661,7 +663,7 @@ describe('VenueMap', () => {
 
 **Files:** `app.routes.ts` (demo link/redirect per the resolved Open Question); any polish.
 
-- [ ] **Step 1:** Resolve the home→venue Open Question (default: add a "View demo venue" link on home).
+- [ ] **Step 1:** Add a "View demo venue" link on the home page → `/venues/1` (decided — keep the health tracer; no `/` redirect).
 - [ ] **Step 2:** Run the **full** backend suite — `./gradlew build` (includes `ModularityTests`).
 - [ ] **Step 3:** Run the **full** frontend gate — `npm run build && npm test -- --watch=false --browsers=ChromeHeadless && npm run lint`.
 - [ ] **Step 4:** Walk the Acceptance-criteria verification table below; tick each with its commit SHA.
