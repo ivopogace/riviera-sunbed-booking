@@ -8,6 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage --coverage-reporters lcovonly",
+    "test:a11y": "ng test --watch=false --include=\"src/**/*.a11y.spec.ts\" --include=\"src/**/*.contrast.spec.ts\" --include=\"src/testing/axe.spec.ts\"",
     "lint": "ng lint"
   },
   "private": true,
@@ -33,6 +34,7 @@
     "@tailwindcss/postcss": "^4.1.12",
     "@vitest/coverage-v8": "^4.1.9",
     "angular-eslint": "22.0.0",
+    "axe-core": "^4.12.1",
     "eslint": "^10.3.0",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.3",

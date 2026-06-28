@@ -44,6 +44,27 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 ng test
 ```
 
+## Accessibility audit
+
+Accessibility is machine-checked, not just reviewed by eye (issue #38). The checks are
+ordinary Vitest specs, so they run as part of `ng test` / `npm run test:coverage` (and
+therefore in CI). To run only the a11y checks:
+
+```bash
+npm run test:a11y
+```
+
+This covers two things:
+
+- **Structural audit (`*.a11y.spec.ts`)** — runs [axe-core](https://github.com/dequelabs/axe-core)
+  over each rendered component (the beach map in its loaded / loading / error states, and
+  the home page) and fails on any critical or serious violation.
+- **WCAG-AA contrast (`venue-map.contrast.spec.ts`)** — checks the contrast ratio of the
+  beach-map design tokens by relative-luminance maths. axe's own `color-contrast` rule
+  can't run under jsdom (it needs real rendering), so the colour pairs the map uses are
+  asserted deterministically instead. The token table mirrors `venue-map.scss`: change a
+  colour there and you must re-pass AA here.
+
 ## Running end-to-end tests
 
 For end-to-end (e2e) testing, run:

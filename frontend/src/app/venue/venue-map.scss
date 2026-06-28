@@ -90,7 +90,7 @@
 }
 .promenade {
   background: none;
-  color: #8a7a52;
+  color: #6f5f2c; /* AA on the sandy map background; 12px-bold so the 4.5 threshold applies (venue-map.contrast.spec) */
   margin: 0.85rem -0.85rem 0;
   border-radius: 0;
 }
@@ -102,7 +102,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.75rem;
-  color: #8a7a52;
+  color: #6f5f2c; /* AA on the sandy map background; 12px-bold so the 4.5 threshold applies (venue-map.contrast.spec) */
   font-weight: 700;
   margin-bottom: 0.35rem;
 }
