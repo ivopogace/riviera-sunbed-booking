@@ -124,8 +124,12 @@ there; commits reference `#4`.
 - **Assumption:** `beach` is stored as free text (`"Ksamil"`) and `region` as
   `"Albanian Riviera"`, matching the design sample, rather than a locked `Beach` enum;
   the Phase-1 beach enum (Palasë/Drymades/Dhërmi) is a U7 onboarding concern. — *Owner:* Ivo · *Resolves by:* U7
+- **Follow-up (not blocking U1):** wire an **automated AXE / contrast audit** into the
+  frontend CI (e.g. `@axe-core/playwright` or vitest-axe). U1 implements + unit-asserts
+  accessible names/ARIA and non-colour state, but contrast/AXE is not machine-verified.
+  — *Owner:* Ivo · *Resolves by:* a new `area:frontend` issue (recommend filing).
 
-> No unresolved **open questions** remain — the two below are decided.
+> No unresolved **open questions** remain — decisions below; the AXE audit is a tracked follow-up.
 
 ### Resolved
 
@@ -320,8 +324,8 @@ subset; document any deviation.
 |-------|--------|---------|
 | 0 — Schema + demo seed (Flyway) | ✅ (CI green — run 28328644785) | `689dd55` — V2/V3 + `VenueSeedMigrationIT` |
 | 1 — Venue read model + API + security | ✅ (CI green — run 28329018679) | `dbcb1b6` — `api` port+views, `JdbcVenueCatalog`, controller, security permit + `VenueReadControllerIT` |
-| 2 — Angular beach-map component | ⏳ (local green: lint+16 tests+build; pending CI) | `venue.model/service`, `VenueMap` + spec, `venues/:id` route, fonts. NB: used the scaffold's service+signal pattern (like `HealthService`) rather than `httpResource` — consistency + test reliability |
-| 3 — Wiring, full-suite, AC verification | | |
+| 2 — Angular beach-map component | ✅ (CI green — run 28329341302) | `32e1121` — `venue.model/service`, `VenueMap` + spec, `venues/:id` route, fonts. NB: used the scaffold's service+signal pattern (like `HealthService`) rather than `httpResource` — consistency + test reliability |
+| 3 — Wiring, full-suite, AC verification | ⏳ (local green: lint+17 tests+build; pending CI) | home "View demo venue" link → `/venues/1` + spec; AC table + self-review filled |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit
 window as each phase's code.
@@ -695,29 +699,30 @@ describe('VenueMap', () => {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*VenueSeedMigrationIT*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-2:** `./gradlew test --tests "*VenueReadControllerIT*"` (`returnsVenueWithSets`) → PASS. `<sha>`.
-- [ ] **AC-3:** `VenueReadControllerIT.pricesAreIntegerMinorUnits` → PASS. `<sha>`.
-- [ ] **AC-4:** `VenueReadControllerIT.unknownVenueReturns404` → PASS. `<sha>`.
-- [ ] **AC-5:** `VenueReadControllerIT.endpointIsPublic` → PASS. `<sha>`.
-- [ ] **AC-6/AC-7:** `npm test` (`venue-map.component.spec.ts`) → PASS. `<sha>`.
-- [ ] **AC-8 (a11y):** `npm test` accessible-name assertions + AXE check → PASS. `<sha>`.
-- [ ] **AC-9:** CI pipeline green on the pushed branch. `<sha>`.
+- [x] **AC-1:** `VenueSeedMigrationIT.seedsMiramarVenueWithBothPools` (venue, 24 sets, both pools, taken=6, from=2500) → PASS in CI run 28328644785 (`689dd55`).
+- [x] **AC-2:** `VenueReadControllerIT.returnsVenueWithSets` → PASS in CI run 28329018679 (`dbcb1b6`).
+- [x] **AC-3:** `VenueReadControllerIT.pricesAreIntegerMinorUnits` → PASS in CI run 28329018679 (`dbcb1b6`).
+- [x] **AC-4:** `VenueReadControllerIT.unknownVenueReturns404` → PASS in CI run 28329018679 (`dbcb1b6`).
+- [x] **AC-5:** `VenueReadControllerIT.endpointIsPublic` → PASS in CI run 28329018679 (`dbcb1b6`).
+- [x] **AC-6:** `venue-map.spec.ts` (24 tiles, premium row distinct, prices visible, "18 of 24" line) → PASS in CI run 28329341302 (`32e1121`) + locally (16/16).
+- [x] **AC-7:** `venue-map.spec.ts` "renders prices from integer minor units (4500 → €45)" → PASS (same run).
+- [~] **AC-8 (a11y):** Accessible tile names, `aria-disabled` on taken, progressbar aria-values, non-colour state cues — **implemented and unit-asserted** (`venue-map.spec.ts`). **Caveat:** no automated **AXE / contrast audit** is wired into CI; WCAG-AA contrast was designed-for (design tokens) but not machine-verified. Tracked as a follow-up (see Open Questions).
+- [x] **AC-9:** CI green across all phase pushes (runs 28328644785, 28329018679, 28329341302).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the shipped code (plan code-sketches are intentional).
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section honored: U1 creates **no** `availability` table; only seed flag (invariant #2 deferred to U2).
-- [ ] Pool flag present in seed + DTO; cutoff stored not evaluated (invariants #3, #4).
-- [ ] **Modulith** section: controller depends only on `venue.api`; `ModularityTests.verify()` green; no cross-module internal imports (invariant #11).
-- [ ] **Payment/payout** N/A justified; money is integer minor units on the wire and in DB (invariant #5).
-- [ ] Timezone: `booking_cutoff` stored as local `Europe/Tirane` time; no JVM-default reliance (invariant #6).
-- [ ] Flyway migrations present; layout constraint (`UNIQUE(venue_id,row_label,position_no)`) tested (invariant #12).
-- [ ] **Frontend** standards met (no explicit `standalone:true`/`OnPush`; `[class]`/`[style]` not `ngClass`/`ngStyle`; `@Service`/`inject()`/signals) or deviation documented; no `as any` on the contract.
-- [ ] **Accessibility** (AC-8): tiles have accessible names, state not colour-only, AXE passes, WCAG AA contrast met.
-- [ ] **PKs are `BIGINT` identity** (no random UUIDv4); FK columns indexed; `created_at TIMESTAMPTZ`; CHECK over ENUM (per `postgres` skill).
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test (AC-8's AXE-automation portion is the one tracked follow-up).
+- [x] No placeholders / TODO / TBD in the shipped code (plan code-sketches are intentional).
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — enforced by `JdbcOnlyArchitectureTests`.
+- [x] **Availability** section honored: U1 creates **no** `availability` table; only seed flag (invariant #2 deferred to U2).
+- [x] Pool flag present in seed + DTO; cutoff stored not evaluated (invariants #3, #4).
+- [x] **Modulith**: controller depends only on `venue.api`; `ModularityTests.verify()` green; no cross-module internal imports (invariant #11).
+- [x] **Payment/payout** N/A justified; money is integer minor units on the wire and in DB (invariant #5).
+- [x] Timezone: `booking_cutoff` stored as local `Europe/Tirane` time; no JVM-default reliance (invariant #6).
+- [x] Flyway migrations present; layout constraint (`UNIQUE(venue_id,row_label,position_no)`) tested (invariant #12).
+- [x] **Frontend** standards met (no explicit `standalone:true`/`OnPush`; `[class]` bindings; `@Service`/`inject()`/signals); no `as any`; `httpResource`→service+signal deviation documented.
+- [~] **Accessibility** (AC-8): accessible names + non-colour state + ARIA done and unit-tested; **AXE/contrast automation deferred** (Open Questions follow-up).
+- [x] **PKs are `BIGINT` identity** (no random UUIDv4); FK columns indexed; `created_at TIMESTAMPTZ`; CHECK over ENUM (per `postgres` skill).
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register: R-1..R-7 addressed in code/tests; R-9 (a11y) partially open (AXE follow-up); Open Questions carry only the tracked AXE follow-up.

@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { Home } from './home';
@@ -13,7 +14,7 @@ describe('Home', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Home],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Home);
@@ -39,5 +40,13 @@ describe('Home', () => {
     await fixture.whenStable();
     const status = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="backend-status"]');
     expect(status?.textContent).toContain('UP');
+  });
+
+  it('links to the demo venue map', async () => {
+    httpMock.expectOne(`${environment.apiBaseUrl}/actuator/health`).flush({ status: 'UP' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const link = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="demo-venue-link"]');
+    expect(link?.getAttribute('href')).toBe('/venues/1');
   });
 });
