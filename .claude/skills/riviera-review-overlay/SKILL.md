@@ -93,6 +93,9 @@ cleanly.
   execution status) → recommend `riviera-plan-doc`.
 - **Module-boundary questions** → `codebase-design` (deep-module / seam design),
   with the invariant #11 gate in this overlay as the check.
+- **Java idiom violations** (a JPA `@Entity`/`JpaRepository`, Lombok, field injection, a
+  mutable POJO where a record belongs, `null` from a port, a public JDBC adapter) →
+  `riviera-java-conventions` holds the language-level rules; this overlay flags the breach.
 
 The overlay does NOT execute these; it surfaces the recommendation in the output.
 

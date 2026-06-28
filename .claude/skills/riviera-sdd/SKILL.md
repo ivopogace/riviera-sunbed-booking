@@ -81,6 +81,7 @@ The size flexes; the gate does not.
 |---|---|---|
 | **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
 | **Any backend module** (Spring Modulith: new `api/` port, service, event, seam) | **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | deep modules, real-vs-hypothetical seams; ubiquitous language |
+| **Writing/refactoring any Java** (class, record, port, JDBC adapter, event, test) | **`riviera-java-conventions`** | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — not Spring-tutorial defaults |
 | **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
 | **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
 | **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |

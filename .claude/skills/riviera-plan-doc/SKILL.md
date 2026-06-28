@@ -202,6 +202,9 @@ on a feature that touches availability or payments costs a trust-breaking bug.
   separate skill needed.
 - `postgres` — table/schema/index craft for any Flyway migration (the availability
   `UNIQUE(set_id, booking_date)` constraint, the venue-map tables, the payout ledger).
+- `riviera-java-conventions` — the backend Java language idioms (JDBC-only/no-JPA/no-Lombok,
+  records, constructor injection, package-private adapters, Java 25 features) for any phase
+  that writes Java.
 - `angular-new-app` — to scaffold the Angular app (the first frontend phase):
   `ng new` + `--ai-config`, Tailwind, CLI generators.
 - `angular-developer` — for frontend surfaces (the beach-map seat picker, the
