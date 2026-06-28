@@ -99,14 +99,14 @@ jobs:
 
       - name: Download backend coverage + classes
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: backend-sonar
           path: platform/build
 
       - name: Download frontend coverage
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: frontend-sonar
           path: frontend/coverage/frontend
