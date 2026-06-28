@@ -26,10 +26,18 @@ write Java," referencing invariants by number where they bite.
 
 ### 1. Persistence: JDBC only — no JPA, no Hibernate, no Lombok (invariant #1)
 
-- **Never** `@Entity`, `@Table`, `@Id`, `@OneToMany`/`@ManyToOne`, `EntityManager`,
-  `JpaRepository`, or `spring-boot-starter-data-jpa`. Persistence is `JdbcClient` /
-  `JdbcTemplate` with **explicit SQL** (Spring Data JDBC aggregates only if a real
-  aggregate earns it).
+- **Never any JPA/Hibernate type:** `jakarta.persistence.*` — `@Entity`,
+  `jakarta.persistence.@Table`, `jakarta.persistence.@Id`, `@OneToMany`/`@ManyToOne`,
+  `EntityManager` — `org.hibernate.*`, `JpaRepository`, or `spring-boot-starter-data-jpa`.
+  Persistence is `JdbcClient` / `JdbcTemplate` with **explicit SQL**.
+- **`@Table`/`@Id` are package-sensitive — disambiguate, don't blanket-ban.** The
+  `jakarta.persistence` ones are JPA → forbidden. But
+  `org.springframework.data.relational.core.mapping.@Table` and
+  `org.springframework.data.annotation.@Id` are **Spring Data JDBC** mapping annotations,
+  which invariant #1 explicitly permits — use them **only** on a genuine Spring Data JDBC
+  aggregate root that earns it (otherwise prefer `JdbcClient` + explicit SQL, the repo's
+  default). `JdbcOnlyArchitectureTests` enforces this precisely: it probes
+  `jakarta.persistence.*`/`org.hibernate.*`, not the annotation simple-name.
 - **No Lombok.** No `@Data`/`@Getter`/`@Builder`/`@RequiredArgsConstructor`. Records give
   you immutability + accessors + equals/hashCode with zero magic; for the rare mutable
   holder, write the constructor by hand. Lombok is not a dependency and must not become one.
