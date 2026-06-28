@@ -318,7 +318,7 @@ subset; document any deviation.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Schema + demo seed (Flyway) | | |
+| 0 — Schema + demo seed (Flyway) | ⏳ (pending CI — IT skips locally, no Docker) | V2/V3 + `VenueSeedMigrationIT` |
 | 1 — Venue read model + API + security | | |
 | 2 — Angular beach-map component | | |
 | 3 — Wiring, full-suite, AC verification | | |
