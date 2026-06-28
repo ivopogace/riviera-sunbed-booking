@@ -124,6 +124,9 @@ there; commits reference `#4`.
 - **Assumption:** `beach` is stored as free text (`"Ksamil"`) and `region` as
   `"Albanian Riviera"`, matching the design sample, rather than a locked `Beach` enum;
   the Phase-1 beach enum (Palasë/Drymades/Dhërmi) is a U7 onboarding concern. — *Owner:* Ivo · *Resolves by:* U7
+
+> No unresolved **open questions** remain — the two below are decided.
+
 ### Resolved
 
 - **Ids are `BIGINT` identity (not UUID) — confirmed by Ivo.** `VenueId`/`SetId` wrap
@@ -139,8 +142,6 @@ there; commits reference `#4`.
   `uuidv7()` would avoid that but needs PG 18 / an extension on the self-hosted Docker
   Postgres and buys non-enumerable ids we don't need (the venue catalogue is public; the
   unguessable credential is the booking code, invariant #7). — *Resolved at plan revision.*
-- **Open question:** Should U1 add a route redirect (`/` → `/venues/{seedId}`) for the
-  demo, or keep the health-tracer home page and add a link? — *Owner:* Ivo · *Resolves by:* phase 2 (default: keep home, add a "View demo venue" link)
 
 ## Availability & concurrency (invariant #2)
 
