@@ -1,0 +1,8 @@
+# Keep the build context small and reproducible — never ship local build output
+# or IDE/gradle caches into the image build.
+build/
+.gradle/
+*.log
+.idea/
+*.iml
+compose.yaml

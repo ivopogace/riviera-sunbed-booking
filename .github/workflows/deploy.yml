@@ -1,0 +1,161 @@
+name: CD
+
+# Continuous deployment to the NON-PROD / demo environment.
+#
+# Gated on a green CI run on `main` (invariant for #33 AC-5: never deploy a red
+# build). This is a SEPARATE workflow from CI on purpose — it keeps deploy concerns
+# out of the required status checks and uses `workflow_run` so it can only start once
+# the CI workflow has already concluded.
+#
+# Each deploy job is opt-in via a repository VARIABLE so the workflow stays green as a
+# no-op until the maintainer has wired the accounts/secrets (mirrors CI's "skip until
+# SONAR_TOKEN is set" pattern). See docs/deploy/cd-pipeline.md.
+
+on:
+  # Automatic, production path: deploy only after CI succeeds on `main`.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  # Manual path: re-deploy on demand, choosing the target.
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        options: [frontend, backend, both]
+        default: frontend
+
+# One deploy per branch at a time; a newer green run waits rather than racing.
+concurrency:
+  group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
+  # Manual dispatch is itself an explicit opt-in, so it passes the gate directly. If
+  # the gate fails, the deploy jobs are skipped and nothing turns red.
+  guard:
+    name: Gate on green CI on main
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ (github.event_name == 'workflow_run'
+            && github.event.workflow_run.conclusion == 'success'
+            && github.event.workflow_run.head_branch == 'main')
+          || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Confirm gate
+        run: |
+          echo "event: ${{ github.event_name }}"
+          echo "Proceeding to deploy."
+
+  frontend-pages:
+    name: Deploy frontend → GitHub Pages
+    needs: guard
+    # workflow_run path is opt-in via the repo variable; manual dispatch is explicit
+    # and runs regardless of the variable.
+    if: >-
+      ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_FRONTEND_PAGES == 'true')
+          || (github.event_name == 'workflow_dispatch'
+                && (inputs.target == 'frontend' || inputs.target == 'both')) }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout the commit to deploy
+        uses: actions/checkout@v7
+        with:
+          # workflow_run: the exact commit CI built; otherwise the triggering ref.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up Node (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build (production, repo-subpath base href)
+        working-directory: frontend
+        env:
+          BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
+        run: |
+          # Optionally override the committed prod API base URL with a repo variable,
+          # so the backend host can change without a code edit. No secret involved —
+          # it is a public URL.
+          if [ -n "$BACKEND_API_URL" ]; then
+            printf "export const environment = {\n  production: true,\n  apiBaseUrl: '%s',\n};\n" "$BACKEND_API_URL" > src/environments/environment.prod.ts
+            echo "Overrode prod apiBaseUrl with BACKEND_API_URL=$BACKEND_API_URL"
+          fi
+          npm run build -- --base-href="/${{ github.event.repository.name }}/"
+
+      - name: SPA deep-link fallback (404 → index)
+        working-directory: frontend
+        run: cp dist/frontend/browser/index.html dist/frontend/browser/404.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist/frontend/browser
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  backend-render:
+    name: Deploy backend → Render
+    needs: guard
+    # Never runs on the temporary branch push (no secrets there); opt-in via the repo
+    # variable on the automatic path, or explicit dispatch targeting the backend.
+    if: >-
+      ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
+          || (github.event_name == 'workflow_dispatch'
+                && (inputs.target == 'backend' || inputs.target == 'both')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy (Render git-builds the Docker image)
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
+            exit 1
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          echo "Render deploy triggered."
+
+      - name: Wait for backend health (AC-1 / AC-2)
+        env:
+          BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
+        run: |
+          if [ -z "$BACKEND_API_URL" ]; then
+            echo "::warning::BACKEND_API_URL not set — skipping post-deploy health check."
+            exit 0
+          fi
+          url="$BACKEND_API_URL/actuator/health"
+          echo "Polling $url for {\"status\":\"UP\"} (Render free tier cold-starts; up to ~15 min)…"
+          for i in $(seq 1 90); do
+            body=$(curl -fsS --max-time 10 "$url" 2>/dev/null || true)
+            if echo "$body" | grep -q '"status":"UP"'; then
+              echo "attempt $i: $body — backend healthy."
+              exit 0
+            fi
+            echo "attempt $i: not ready yet ($body)"
+            sleep 10
+          done
+          echo "::error::Backend did not report UP within the timeout (check Render build/boot logs)."
+          exit 1
