@@ -285,8 +285,13 @@ invariant #2) verified PASS; RV-CT-3/RV-BE-7 (payment-confirmation) N/A — no m
 All 12 invariants checked green; module-boundary/contract finder found no breakage.
 
 Resolved minor findings:
-- **Test hygiene:** added bounded `Future.get(10s)` in `ConcurrentClaimIT` so a hang fails
-  fast instead of blocking CI.
+- **Test hygiene:** bounded `Future.get` in `ConcurrentClaimIT` so a hang fails fast
+  instead of blocking CI.
+- **Hardened the #1-invariant test:** beyond the minimal 2-thread proof, added
+  `manyConcurrentClaimsYieldExactlyOneWinner` — 16 contenders racing the same `(set, date)`,
+  `@RepeatedTest(5)` with a distinct date per repetition — so a single lucky-scheduling pass
+  can't mask a regression. Asserts exactly one `CLAIMED`, the rest `ALREADY_TAKEN` (never an
+  exception or a second win), one row.
 - **Process:** recorded the FK-index deviation (no standalone `set_id` index) in the
   Generalization-audit log.
 
