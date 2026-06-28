@@ -325,7 +325,7 @@ subset; document any deviation.
 | 0 — Schema + demo seed (Flyway) | ✅ (CI green — run 28328644785) | `689dd55` — V2/V3 + `VenueSeedMigrationIT` |
 | 1 — Venue read model + API + security | ✅ (CI green — run 28329018679) | `dbcb1b6` — `api` port+views, `JdbcVenueCatalog`, controller, security permit + `VenueReadControllerIT` |
 | 2 — Angular beach-map component | ✅ (CI green — run 28329341302) | `32e1121` — `venue.model/service`, `VenueMap` + spec, `venues/:id` route, fonts. NB: used the scaffold's service+signal pattern (like `HealthService`) rather than `httpResource` — consistency + test reliability |
-| 3 — Wiring, full-suite, AC verification | ⏳ (local green: lint+17 tests+build; pending CI) | home "View demo venue" link → `/venues/1` + spec; AC table + self-review filled |
+| 3 — Wiring, full-suite, AC verification | ✅ (CI green — run 28329554394) | `aee9b7a` — home "View demo venue" link → `/venues/1` + spec; AC table + self-review filled |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit
 window as each phase's code.
