@@ -38,7 +38,6 @@
                 data-testid="set-tile"
                 [class.premium]="set.tier === 'PREMIUM'"
                 [class.taken]="set.availability === 'TAKEN'"
-                [attr.aria-disabled]="set.availability === 'TAKEN'"
                 [attr.aria-label]="setLabel(set)"
               >
                 <span aria-hidden="true">{{ money(set.price) }}</span>

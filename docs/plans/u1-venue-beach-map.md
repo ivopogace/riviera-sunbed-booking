@@ -330,6 +330,17 @@ subset; document any deviation.
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit
 window as each phase's code.
 
+### SDD review gate (`riviera-review-overlay` + `/code-review`)
+
+Ran on PR #37 (3 finder angles + the riviera bank). Invariants all clean (#1, #2, #5,
+#6, #11, #12); FE↔BE contract matches; RV-PROC-1 (Skills consulted) passes. **5 findings
+fixed:** (1) `gradlew.bat` CRLF→LF flip reverted to upstream; (2) `money()` pinned to
+`en-IE` locale (was runtime-default → non-deterministic); (3) `JdbcVenueCatalog` ORDER BY
+`grid_y, grid_x` (was `position_no` — conflated render axis); (4) removed non-meaningful
+`aria-disabled` on the `<li>` tile (state already in `aria-label`); (5) NaN-id guard in the
+component. Accepted/deferred: `money()` exponent heuristic (EUR-locked, #5), row-price
+uniformity assumption (→ U7), 400-vs-404 doc nuance.
+
 ---
 
 ## File structure

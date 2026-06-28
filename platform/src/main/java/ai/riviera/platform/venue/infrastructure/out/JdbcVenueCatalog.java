@@ -53,7 +53,7 @@ class JdbcVenueCatalog implements VenueCatalog {
 				       grid_x, grid_y, seed_availability
 				FROM set_position
 				WHERE venue_id = :id
-				ORDER BY grid_y, position_no
+				ORDER BY grid_y, grid_x
 				""")
 				.param("id", id.value())
 				.query((rs, rowNum) -> new SetView(

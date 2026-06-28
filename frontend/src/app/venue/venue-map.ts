@@ -46,15 +46,24 @@ export class VenueMap {
 
   constructor() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    if (!Number.isInteger(id)) {
+      // Non-numeric path (e.g. /venues/abc) — fail fast instead of requesting /venues/NaN.
+      this.failed.set(true);
+      return;
+    }
     this.venues.getVenueMap(id).subscribe({
       next: (venue) => this.venue.set(venue),
       error: () => this.failed.set(true),
     });
   }
 
-  /** Render integer minor units as a currency string (display only — no float stored). */
+  /**
+   * Render integer minor units as a currency string (display only — no float stored).
+   * Pinned to a fixed Eurozone-English locale so output is deterministic across deploy
+   * environments (a runtime-default locale would render "45 €" under de/fr).
+   */
   protected money(amount: MoneyView): string {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat('en-IE', {
       style: 'currency',
       currency: amount.currency,
       minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
