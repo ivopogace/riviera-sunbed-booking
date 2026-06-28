@@ -45,6 +45,38 @@ write Java," referencing invariants by number where they bite.
   `JdbcVenueCatalog` / `JdbcAvailabilityClaim`. Bind with named params (`:id`), never string
   concatenation.
 
+### 1a. If a Spring Data JDBC aggregate earns it — model it correctly
+
+The repo's default is `JdbcClient` + explicit SQL. Reach for a Spring Data JDBC **aggregate**
+only when a cluster of rows is genuinely one consistency unit (loaded, mutated, and saved
+together). When you do, follow these rules — they keep the aggregate aligned with the
+Modulith boundaries (invariant #11), and several are the persistence-level form of decisions
+we already made:
+
+- **The aggregate is the consistency + transaction boundary.** One repository
+  (`CrudRepository`/`ListCrudRepository`) **per aggregate root only** — never a repository for
+  an entity that lives *inside* an aggregate. Save the root; it persists its children.
+- **Cross-aggregate references are by id, never by object.** A `Booking` holds a
+  `SetId`/`CustomerId`, not a `Set`/`Customer` instance — the same rule invariant #11 puts on
+  event payloads, and exactly why `SetId` lives in `venue.api`.
+- **No cascade between aggregates.** Saving one aggregate must never save another — aggregates
+  are autonomous. A cross-aggregate effect happens via a **domain event** or a second explicit
+  `save`, not a persistence cascade. (This is the storage-level shape of the event spine:
+  `BookingConfirmed` → availability marks the set **and** payout accrues, as two independent
+  writes — not one cascading save.)
+- **Inside an aggregate, references go root → child only, and unidirectional.** No child→root
+  back-reference, no bidirectional object graphs; the child row carries the root's FK in the DB.
+- **Model M:N join tables explicitly** as their own type (e.g. a `ProductCategory` row).
+  Spring Data JDBC has no JPA-style hidden join table — and explicit is what we want anyway.
+- **`save` is explicit.** There is no JPA dirty-checking / autoflush: a load-then-mutate with
+  no `save` persists nothing. Write the `save`.
+- **Mind the imports** (the classic footgun): `org.springframework.data.annotation.@Id` and
+  `org.springframework.data.relational.core.mapping.@Table`/`@Column`/`@MappedCollection` —
+  never the `jakarta.persistence` annotations of the same simple name (see rule 1).
+
+*(Distilled from a JPA→Spring Data JDBC migration write-up — we have no JPA to migrate, but
+these are the right way to use Spring Data JDBC from the start.)*
+
 ### 2. Data shapes: records for DTOs, value objects, and ids
 
 - DTOs / API views / event payloads / typed ids are **`record`s** (`VenueId`, `SetId`,
