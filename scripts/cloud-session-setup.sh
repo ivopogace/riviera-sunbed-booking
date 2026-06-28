@@ -72,4 +72,18 @@ if [ -x "$JDK_DIR/bin/java" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   } >> "$CLAUDE_ENV_FILE"
 fi
 
+# ── 3. Docker daemon (backend Testcontainers ITs) ─────────────────────────
+# The backend ITs are gated by @EnabledIfDockerAvailable and SKIP when no daemon
+# is running (the cloud default), so ./gradlew test can't verify DB/IT behaviour
+# locally. Bring a daemon up so the full suite runs. Best-effort: a Docker
+# failure must not abort the rest of session setup (Docker is an enhancement,
+# not a hard dependency of the session). See scripts/start-dockerd.sh and
+# docs/agents/docker-testcontainers.md.
+DOCKERD_SCRIPT="$PROJECT_DIR/scripts/start-dockerd.sh"
+if [ -x "$DOCKERD_SCRIPT" ]; then
+  echo "cloud-session-setup: starting Docker daemon for backend ITs ..." >&2
+  "$DOCKERD_SCRIPT" \
+    || echo "cloud-session-setup: start-dockerd failed; backend ITs will skip (run 'bash scripts/start-dockerd.sh' to retry)" >&2
+fi
+
 exit 0
