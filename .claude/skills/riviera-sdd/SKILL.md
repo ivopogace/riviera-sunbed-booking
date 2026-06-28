@@ -22,12 +22,50 @@ refine → issue → plan → implement → CI gate → PR → review → merge
 |---|---|---|
 | **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. | `to-issues` |
-| **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **Run the Skill-routing gate first.** | `riviera-plan-doc` (owner) + `grilling` + **the Skill-routing gate (below)** |
+| **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **When entering at an existing issue, run the Issue-intake grill gate first; then the Skill-routing gate.** | `riviera-plan-doc` (owner) + `grilling` + **the Issue-intake grill gate + the Skill-routing gate (below)** |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
 | **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
 | **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
 | **Merge** | Only after **green CI + Review gate done + findings resolved** → merge; close the issue. | — |
+
+## Issue-intake grill gate (mandatory when entering at an existing issue)
+
+> A written issue is a **snapshot of intent at creation time, not ground truth.** By the
+> time you pick it up the code may have moved, a sibling slice may have changed a
+> contract, an ADR may have landed, or the issue may simply have missed something nobody
+> thought of at creation. **Before** you author the plan doc for an already-written issue
+> you **MUST** run a `grilling` pass over it. This is a **gate, not a suggestion** — do
+> not treat the issue text as correct-by-default, and "the issue looked complete" is never
+> a reason to skip (that is exactly when stale ACs slip through).
+
+**How the gate runs — every time work starts from an existing issue:**
+
+1. **Trigger.** Any time you enter the loop at an **existing** issue (you grabbed `#NN`,
+   or the user said "implement/work on #NN") rather than refining a fresh idea, this gate
+   is **due before the Plan stage**. Refining a brand-new idea already runs `grilling` at
+   the Refine stage, so it is exempt — this gate is the catch for work that *skips* Refine
+   by starting from a written ticket.
+2. **Grill the issue against current reality.** Load `grilling` and interrogate the ticket:
+   - Are the acceptance criteria still **correct, complete, and testable today**?
+   - Has the codebase moved since it was written — APIs, schema, sibling slices, ADRs,
+     design tokens? Cross-check against the **actual code/spec**, not the issue's
+     assumptions. (E.g. example values inlined in the issue may be stale.)
+   - What did we **not** think of when we wrote it — missing states, edge cases, the
+     invariants in play (esp. #2 availability, #4 cutoff, #5 money, #8 webhook-as-truth)?
+   - Division of labor (same rule as any grill): answer the **discoverable/factual**
+     questions yourself from the code/spec and mark each "← confirm?"; escalate the
+     **intent/decision** questions to the user via `AskUserQuestion`. Never auto-fill a
+     product decision the human owns.
+3. **Reconcile before building.** Fold the outcome into the plan doc's
+   **Open questions / Assumptions** and **Acceptance criteria**. If the issue is materially
+   stale, say so and **update the issue (or record the drift)** before you plan against it.
+   A surprise caught at this gate is far cheaper than one caught at the review gate or in
+   production.
+
+**Proportional, never skipped:** a one-line/copy fix needs only a quick sanity read, not a
+full interview; a spine-touching slice (booking, availability, money) gets the full grill.
+The size flexes; the gate does not.
 
 ## Skill-routing gate (mandatory — load *before* you write)
 
@@ -120,6 +158,11 @@ the slice is still in flight — say so rather than reporting it done.
    money, the plan doc states how the invariant holds, and review checks it.
 6. **Right-size it.** A one-line/copy fix skips the plan doc; a feature that touches
    the spine does not. (A code change still gets the review gate — proportional to size.)
+7. **An existing issue gets grilled before it gets planned.** Entering the loop at a
+   written ticket skips the Refine stage where `grilling` normally runs — so the
+   Issue-intake grill gate (above) re-validates the issue against current code/ADRs and
+   surfaces what creation-time missed, before the plan is authored. Don't trust a ticket
+   just because it reads complete.
 
 ## When NOT to use
 
