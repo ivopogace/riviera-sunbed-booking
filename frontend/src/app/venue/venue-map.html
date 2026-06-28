@@ -1,0 +1,70 @@
+@if (venue(); as v) {
+  <article class="venue mx-auto max-w-3xl px-5 py-6" aria-labelledby="venue-name">
+    <p class="mode-pill">{{ bookingModeLabel(v.bookingMode) }}</p>
+
+    <h1 id="venue-name" class="display-title">{{ v.name }}</h1>
+    <p class="location">{{ v.beach }} · {{ v.region }}</p>
+
+    <p class="meta">
+      <span class="star" aria-hidden="true">★</span>
+      <span class="rating" aria-label="Rated {{ rating(v) }} out of 5">{{ rating(v) }}</span>
+      <span class="dot">·</span> {{ v.reviewsCount }} reviews
+      @if (v.fromPrice; as from) {
+        <span class="dot">·</span> <strong>{{ money(from) }}</strong> / set
+      }
+    </p>
+
+    <p class="availability" data-testid="availability">
+      <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free today
+    </p>
+    <div
+      class="progress"
+      role="progressbar"
+      aria-valuemin="0"
+      [attr.aria-valuemax]="totalCount()"
+      [attr.aria-valuenow]="freeCount()"
+    >
+      <span class="progress-fill" [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"></span>
+    </div>
+
+    <section class="map" aria-label="Beach map — {{ v.name }}">
+      <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
+
+      @for (row of rows(); track row.label) {
+        <div class="map-row">
+          <div class="row-head">
+            <span class="row-label">{{ row.label }}</span>
+            <span class="row-price">{{ money(row.sets[0].price) }} / set</span>
+          </div>
+          <ul class="set-grid" role="list">
+            @for (set of row.sets; track set.id) {
+              <li
+                class="set-tile"
+                role="listitem"
+                data-testid="set-tile"
+                [class.premium]="set.tier === 'PREMIUM'"
+                [class.taken]="set.availability === 'TAKEN'"
+                [attr.aria-disabled]="set.availability === 'TAKEN'"
+                [attr.aria-label]="setLabel(set)"
+              >
+                <span aria-hidden="true">{{ money(set.price) }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      <p class="promenade"><span aria-hidden="true">▼</span> Promenade · Entrance</p>
+    </section>
+
+    <ul class="legend" aria-label="Legend">
+      <li><span class="swatch available" aria-hidden="true"></span> Available</li>
+      <li><span class="swatch premium" aria-hidden="true"></span> Front row</li>
+      <li><span class="swatch taken" aria-hidden="true"></span> Taken</li>
+    </ul>
+  </article>
+} @else if (failed()) {
+  <p class="state" role="alert">Sorry — we couldn’t load this venue. Please try again.</p>
+} @else {
+  <p class="state" aria-live="polite">Loading the beach map…</p>
+}
