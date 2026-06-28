@@ -134,6 +134,7 @@ Frontend (run in `frontend/`):
 | "`LocalDateTime.now()` is fine for the cutoff." | Use `Europe/Tirane`; store UTC `Instant` (invariant #6). |
 | "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
 | "I'll call the other module's service directly." | Cross-module only via `api/` or events (invariant #11). |
+| "`gradlew.bat` flipped CRLF→LF — that's a corruption, revert it." | Check `.gitattributes` **at every level** (incl. `platform/.gitattributes`) first. `*.bat text eol=crlf` means the **blob is stored LF, checked out CRLF** — an LF blob is the *correct* normalized form, not a bug. The stale-CRLF *blob* (often on `main`) is the anomaly. Don't "revert" a normalized blob; git's clean filter will re-normalize it on `add` anyway. Only a wrong **working-tree** EOL (e.g. an LF `.bat` on checkout) is a real finding. |
 
 ## Done criteria (for the overlay's contribution)
 
