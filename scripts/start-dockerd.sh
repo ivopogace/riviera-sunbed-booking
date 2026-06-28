@@ -87,6 +87,12 @@ fi
 # setsid + redirected stdio reparents dockerd to init so it OUTLIVES this script
 # (and the SessionStart hook process), staying up for the whole session. vfs is
 # the only storage driver that works in the sandbox (no overlay/privileged).
+#
+# Clear any stale pidfile first: we only reach here when `docker info` failed
+# (daemon unreachable), so a leftover /var/run/docker.pid from a SIGKILLed daemon
+# is stale and would make dockerd refuse to start. Safe to remove — no live
+# daemon is using it.
+rm -f "$DOCKER_PID"
 log "Starting dockerd (vfs) ; logs → $DOCKER_LOG"
 setsid env "${PROXY_ENV[@]}" dockerd \
   --storage-driver=vfs \

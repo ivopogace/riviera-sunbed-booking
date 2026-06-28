@@ -134,6 +134,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - AC-6 ✅ `docs/agents/docker-testcontainers.md` present with the manual one-liner.
 - AC-7 ✅ no secrets in the diff (all proxy/CA values read from env at runtime).
 
+**SDD Review gate (riviera-review-overlay + /code-review on PR #40):**
+- RV-BE-1 (availability), RV-CT-3/RV-BE-7 (payment), all RV-BE-*/RV-FE-* — **N/A**:
+  no app/DB/module/FE/money code in the diff (scripts + docs only).
+- RV-PROC-1 (Skill-routing honored) — ✅: diff touches only the devops/session-setup
+  area; *Skills consulted* lists `session-start-hook` + `riviera-plan-doc` +
+  `riviera-review-overlay`, which covers it.
+- Finding (Minor, fixed): stale `/var/run/docker.pid` from a SIGKILLed daemon could
+  make a later start refuse, since the idempotency guard only checks `docker info`.
+  Fixed by `rm -f "$DOCKER_PID"` immediately before launch (safe — only reached when
+  the daemon is unreachable). Commit in this branch.
+- Refuted: empty-array `"${PROXY_ENV[@]}"` under `set -u` — bash 5.2 expands it
+  without error, and the no-proxy branch never triggers in the cloud env.
+
 ---
 
 ## File structure
