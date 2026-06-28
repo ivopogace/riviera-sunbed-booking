@@ -136,6 +136,17 @@ there; commits reference `#4`.
 - **Home routing — keep the health-tracer home page and add a "View demo venue" link to
   `/venues/1`** (no `/` → venue redirect). Confirmed by Ivo (default accepted). The
   health tracer stays useful as the FE↔BE reachability check. — *Resolved 2026-06-28.*
+- **Persistence mechanism for U1 — explicit `JdbcClient` join, NOT a Spring Data JDBC
+  repository.** Invariant #1 permits *both* (Spring Data JDBC aggregates **and/or**
+  `JdbcTemplate`/`JdbcClient`); only JPA/Hibernate is banned. U1 is a read-only
+  cross-aggregate projection (`venue ⨝ set_position` → `VenueMapView`, computed
+  `fromPrice`), so one explicit join mapped to the view DTO is the deeper fit. Spring
+  Data JDBC aggregate mapping (`@Table`/`@MappedCollection`/`CrudRepository`) is deferred
+  to the **write** side (U7 beach-map editor — the editable `BeachMap` aggregate) and
+  added then if needed, not pre-emptively. Confirmed by Ivo. — *Resolved 2026-06-28.*
+- **JDBC-only is now mechanically enforced**, not convention-only: `JdbcOnlyArchitectureTests`
+  fails the build if any JPA/Hibernate type reaches the classpath (fulfils issue #1's
+  previously-unimplemented dependency-check AC). — *Added 2026-06-28.*
 
 - **PK type — UUIDv4 vs BIGINT vs uuidv7:** chose **`BIGINT GENERATED ALWAYS AS IDENTITY`**.
   Rationale (`postgres` skill): random UUIDv4 PKs fragment indexes and cost more on joins;
