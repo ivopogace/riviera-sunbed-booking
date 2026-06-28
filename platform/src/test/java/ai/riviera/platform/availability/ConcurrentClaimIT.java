@@ -68,8 +68,9 @@ class ConcurrentClaimIT {
 			startGate.await();
 			return claim.claim(set, date);
 		};
-		ExecutorService pool = Executors.newFixedThreadPool(contenders);
-		try {
+		// try-with-resources: ExecutorService is AutoCloseable since Java 19, so close()
+		// performs the orderly shutdown + awaitTermination for us on exit (normal or thrown).
+		try (ExecutorService pool = Executors.newFixedThreadPool(contenders)) {
 			List<Future<ClaimOutcome>> futures = new ArrayList<>();
 			for (int i = 0; i < contenders; i++) {
 				futures.add(pool.submit(attempt));
@@ -80,9 +81,6 @@ class ConcurrentClaimIT {
 				outcomes.add(f.get(15, TimeUnit.SECONDS));
 			}
 			return outcomes;
-		}
-		finally {
-			pool.shutdownNow();
 		}
 	}
 
