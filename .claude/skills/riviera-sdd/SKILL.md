@@ -22,28 +22,47 @@ refine → issue → plan → implement → CI gate → PR → review → merge
 |---|---|---|
 | **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. | `to-issues` |
-| **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. | `riviera-plan-doc` (owner) + `grilling`, `codebase-design` (module interface design) |
-| **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. | `implement` + `tdd` + **area skill (below)** |
+| **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **Run the Skill-routing gate first.** | `riviera-plan-doc` (owner) + `grilling` + **the Skill-routing gate (below)** |
+| **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
 | **PR / review** | Open a PR into `main`; review against the invariants. | `riviera-review-overlay` (gates) + `triage` (issue/PR lifecycle) |
 | **Merge** | Green + approved → merge; close the issue. | — |
 
-## Area routing (the "pull the right skill" rule)
+## Skill-routing gate (mandatory — load *before* you write)
 
-Decide by the issue's `area:*` label (see `docs/agents/triage-labels.md`):
+> This is a **gate, not a suggestion.** Before you author a plan section or a line of
+> code for an area, you **MUST load that area's skill(s) first** and **announce which
+> you loaded**. The `area:*` label (see `docs/agents/triage-labels.md`) is only the
+> starting hint — the real trigger is **what the change actually touches**, and one
+> slice usually trips several rows below. A migration written without `postgres`, a new
+> module seam without `codebase-design`, or an Angular component without
+> `angular-developer` + the Angular MCP is a **process miss** the review gate will flag.
 
-- **`area:frontend`** → pull **`angular-developer`** + the **Angular MCP** (and
-  `angular-new-app` for scaffolding). The beach-map seat picker, booking flow, etc.
-- **`area:backend`** → pull **`codebase-design`** for deep-module interface design
-  and **`domain-modeling`** for the glossary/ADRs; **`riviera-stripe-payments`** for
-  anything in `payment`/`payout` or any Stripe/charge/refund/commission work. For any
-  **Flyway migration / table design**, pull **`postgres`** (schema-design + indexing).
-  The Spring-Modulith / Postgres specifics (boundaries, id-based events, the availability
-  unique constraint + row lock) are enforced by the `CLAUDE.md` invariants (#2, #11,
-  #12) and the `riviera-review-overlay` gates — not a separate skill.
-- **`area:fullstack`** → both of the above, FE and BE each as its own commit/slice.
-- Always, regardless of area: `riviera-plan-doc` at plan time, `tdd` at build time,
-  `riviera-review-overlay` at review time.
+| If the change touches… | Load BEFORE writing it (MUST) | Why |
+|---|---|---|
+| **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
+| **Any backend module** (Spring Modulith: new `api/` port, service, event, seam) | **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | deep modules, real-vs-hypothetical seams; ubiquitous language |
+| **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
+| **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
+| **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
+| **Anything, always** | **`riviera-plan-doc`** (plan) · **`tdd`** (build) · **`riviera-review-overlay`** (review) | the always-on spine |
+
+**How the gate runs — three steps, every time:**
+
+1. **Detect.** List what the slice touches: DB? a backend module? the frontend? money?
+   An `area:fullstack` issue almost always trips DB **and** BE **and** FE — load all of
+   them. Don't stop at the label.
+2. **Load + announce.** Load each triggered skill **before** authoring that part and say
+   so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
+   `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
+   migration before loading `postgres`, the gate already failed — redo it.
+3. **Record.** Name each loaded skill and what it changed in the plan doc's **Skills
+   consulted** line (one phrase each). `riviera-review-overlay` checks that line against
+   the diff: a migration in the diff with no `postgres` in *Skills consulted* is a finding.
+
+This gate fires at **both** the plan stage (vet the design) and the implement stage (vet
+the code). Loading a skill at plan time does **not** exempt you at build time if a new
+area appears, and re-loading is cheap — when in doubt, load it.
 
 ## The substrate these skills read
 
