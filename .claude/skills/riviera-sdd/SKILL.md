@@ -25,8 +25,9 @@ refine → issue → plan → implement → CI gate → PR → review → merge
 | **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **Run the Skill-routing gate first.** | `riviera-plan-doc` (owner) + `grilling` + **the Skill-routing gate (below)** |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
-| **PR / review** | Open a PR into `main`; review against the invariants. | `riviera-review-overlay` (gates) + `triage` (issue/PR lifecycle) |
-| **Merge** | Green + approved → merge; close the issue. | — |
+| **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
+| **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
+| **Merge** | Only after **green CI + Review gate done + findings resolved** → merge; close the issue. | — |
 
 ## Skill-routing gate (mandatory — load *before* you write)
 
@@ -64,6 +65,34 @@ This gate fires at **both** the plan stage (vet the design) and the implement st
 the code). Loading a skill at plan time does **not** exempt you at build time if a new
 area appears, and re-loading is cheap — when in doubt, load it.
 
+## Review gate (mandatory — between PR and merge)
+
+> The `review` stage is a **gate, not a label on the diagram.** Opening a PR, getting
+> green CI, and clearing Sonar are **necessary but not sufficient** — none of them is the
+> review. A slice is **not done** and **must not be merged** until the review gate has run
+> and its findings are resolved or explicitly deferred. The single most common way this
+> stage is skipped: treating "PR opened + CI green" as the finish line and sliding to
+> "done." It is not.
+
+**How the gate runs — every PR, before merge:**
+
+1. **Trigger.** The moment a PR exists (or before you would call a slice "done"/"ready to
+   merge"), the review gate is **due**. Do not wait to be asked.
+2. **Run the review.** Start a review over the **PR diff** — `/code-review`
+   `origin/main...HEAD` (or `/review <PR>`) — and **load `riviera-review-overlay`** so the
+   project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the availability and payment Blockers,
+   RV-PROC-1) are walked **on top of** the generic banks. Announce it: *"Running the SDD
+   review gate (riviera-review-overlay + code-review) on PR #NN."*
+3. **Resolve.** Every Blocker/Major finding is fixed or, if genuinely out of scope, moved
+   to a follow-up issue with a one-line rationale. Record the outcome (findings + fixes)
+   where the slice's intent lives — the plan doc's review note, or the PR.
+4. **Only then merge.** Merge is reached **only** when CI is green **and** the review gate
+   has run **and** findings are resolved/deferred. "Green + reviewed," never "green."
+
+**Definition of done for a slice:** green CI **and** review gate run **and** findings
+resolved/deferred **and** the issue's acceptance criteria verified. Missing any one means
+the slice is still in flight — say so rather than reporting it done.
+
 ## The substrate these skills read
 
 - **`CLAUDE.md`** — conventions + the 12 invariants (canonical rules).
@@ -83,10 +112,14 @@ area appears, and re-loading is cheap — when in doubt, load it.
    `#NN` in commits.
 3. **The CI gate is non-negotiable.** Don't merge red. A red pipeline is a
    `diagnosing-bugs` feedback loop, not a nuisance to bypass.
-4. **The plan owns the invariants.** If the slice touches booking, availability, or
+4. **The review gate is non-negotiable too.** Green CI is not a review. Don't merge —
+   and don't call a slice done — until the Review gate (above) has run on the PR diff and
+   its findings are resolved or deferred. "PR opened + CI green" is the trap, not the
+   finish line.
+5. **The plan owns the invariants.** If the slice touches booking, availability, or
    money, the plan doc states how the invariant holds, and review checks it.
-5. **Right-size it.** A one-line/copy fix skips the plan doc; a feature that touches
-   the spine does not.
+6. **Right-size it.** A one-line/copy fix skips the plan doc; a feature that touches
+   the spine does not. (A code change still gets the review gate — proportional to size.)
 
 ## When NOT to use
 

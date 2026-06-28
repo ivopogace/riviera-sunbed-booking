@@ -29,6 +29,13 @@ the overlay merely because the CWD is the repo — without a parent review runni
 there is nothing for it to layer onto. If the user invokes the overlay explicitly,
 honor that.
 
+**In the `riviera-sdd` flow this is a duty, not just a passive trigger.** The SDD
+**Review gate** is mandatory: when a PR exists (or before a slice is called done), you
+must **start** a review yourself — `/code-review origin/main...HEAD` (or `/review <PR>`) —
+and load this overlay. Do not wait for the review to be "active" on its own, and do not
+treat an open PR + green CI as having completed the review stage. Opening the review *is*
+the gate.
+
 **Other review surfaces:** the slash commands `/code-review` and `/security-review`
 do not auto-load this overlay. When reviewing through them in this repo, consult
 `references/{backend,frontend,fe-be-contract}-conventions.md` and the CLAUDE.md
