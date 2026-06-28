@@ -266,6 +266,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-06-28 | Phase 0 — FK index on `set_availability.set_id` | every FK column has a backing index (cf. V2's `set_position_venue_id_idx`) | reviewed V2 + V4 migrations | V2 creates a standalone FK index; V4's FK is the leading column of `UNIQUE(set_id, booking_date)` | **Deviation, recorded:** no standalone `set_id` index in V4 — the composite unique index already serves `set_id` lookups/cascade checks via its leftmost prefix, so a standalone one would be a duplicate (`postgres` index-optimization). V2 needed its index because `venue_id` is not the lead of any unique key there. The "index every FK column" rule holds; the backing index just comes from the unique constraint. |
 
 ---
 
@@ -275,6 +276,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   → all green (AvailabilityMigrationIT 2, AvailabilityClaimIT 4, ConcurrentClaimIT 1).
 - [x] **AC-7:** `./gradlew test --tests "*ModularityTests*"` → green.
 - [ ] **AC-8:** CI green on the PR (pending push).
+
+## Review gate outcome (SDD)
+
+Ran `riviera-review-overlay` + `/code-review origin/main...HEAD` (high effort, 8 finder
+angles). **No Blocker/Major findings.** RV-BE-1 (availability single-source-of-truth,
+invariant #2) verified PASS; RV-CT-3/RV-BE-7 (payment-confirmation) N/A — no money in U2.
+All 12 invariants checked green; module-boundary/contract finder found no breakage.
+
+Resolved minor findings:
+- **Test hygiene:** added bounded `Future.get(10s)` in `ConcurrentClaimIT` so a hang fails
+  fast instead of blocking CI.
+- **Process:** recorded the FK-index deviation (no standalone `set_id` index) in the
+  Generalization-audit log.
+
+Noted, not fixed (deliberate / out-of-scope):
+- **TOCTOU on concurrent set deletion** → uncaught `DataIntegrityViolationException` from the
+  FK if a set were deleted between the pool check and the insert. Unreachable in v1 (no
+  set-deletion path exists); revisit when venue/set deletion lands.
+- **Read map shows `seed_availability` until U3** — documented deferral (see drift note); the
+  authoritative table is write-only until U3 makes booking dates first-class on the read side.
 
 ## Self-review checklist (before merge / PR)
 

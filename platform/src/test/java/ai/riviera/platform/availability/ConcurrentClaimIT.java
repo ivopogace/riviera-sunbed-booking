@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,9 @@ class ConcurrentClaimIT {
 			Future<ClaimOutcome> b = pool.submit(attempt);
 			startGate.countDown(); // release both as close to simultaneously as possible
 
-			List<ClaimOutcome> outcomes = List.of(a.get(), b.get());
+			// Bounded waits: a deadlock or lock-wait hang fails the test fast rather than
+			// blocking until the CI job times out.
+			List<ClaimOutcome> outcomes = List.of(a.get(10, TimeUnit.SECONDS), b.get(10, TimeUnit.SECONDS));
 
 			assertEquals(1, outcomes.stream().filter(o -> o == ClaimOutcome.CLAIMED).count(),
 					() -> "exactly one claim must win, got " + outcomes);
