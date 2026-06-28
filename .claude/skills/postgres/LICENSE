@@ -1,7 +1,8 @@
 This skill vendors MIT-licensed content from two sources:
   * Most references — PlanetScale database-skills (copyright below).
-  * references/concurrency-and-locking.md — adapted from Supabase agent-skills
-    (skills/supabase-postgres-best-practices), Copyright (c) 2026 Supabase, MIT.
+  * references/concurrency-and-locking.md and references/connection-pooling.md, and the
+    keyset-pagination guidance in references/query-patterns.md — adapted from Supabase
+    agent-skills (skills/supabase-postgres-best-practices), Copyright (c) 2026 Supabase, MIT.
 Both are MIT; the single permission notice below covers both copyright holders.
 
 MIT License
