@@ -2,6 +2,7 @@ package ai.riviera.platform;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -15,6 +16,8 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * <p>This is an intentionally minimal placeholder. The real authentication model
  * (staff, admin, booking-code verification) is a later concern and will replace this.
+ * Public tourist reads (the venue/beach-map catalogue, U1) are permitted; everything
+ * else still requires authentication.
  */
 @Configuration
 @EnableWebSecurity
@@ -26,6 +29,7 @@ class SecurityConfig {
 				.cors(Customizer.withDefaults())
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						.anyRequest().authenticated())
 				.httpBasic(Customizer.withDefaults());
 		return http.build();

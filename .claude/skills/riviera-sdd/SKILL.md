@@ -22,28 +22,76 @@ refine → issue → plan → implement → CI gate → PR → review → merge
 |---|---|---|
 | **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. | `to-issues` |
-| **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. | `riviera-plan-doc` (owner) + `grilling`, `codebase-design` (module interface design) |
-| **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. | `implement` + `tdd` + **area skill (below)** |
+| **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **Run the Skill-routing gate first.** | `riviera-plan-doc` (owner) + `grilling` + **the Skill-routing gate (below)** |
+| **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
-| **PR / review** | Open a PR into `main`; review against the invariants. | `riviera-review-overlay` (gates) + `triage` (issue/PR lifecycle) |
-| **Merge** | Green + approved → merge; close the issue. | — |
+| **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
+| **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
+| **Merge** | Only after **green CI + Review gate done + findings resolved** → merge; close the issue. | — |
 
-## Area routing (the "pull the right skill" rule)
+## Skill-routing gate (mandatory — load *before* you write)
 
-Decide by the issue's `area:*` label (see `docs/agents/triage-labels.md`):
+> This is a **gate, not a suggestion.** Before you author a plan section or a line of
+> code for an area, you **MUST load that area's skill(s) first** and **announce which
+> you loaded**. The `area:*` label (see `docs/agents/triage-labels.md`) is only the
+> starting hint — the real trigger is **what the change actually touches**, and one
+> slice usually trips several rows below. A migration written without `postgres`, a new
+> module seam without `codebase-design`, or an Angular component without
+> `angular-developer` + the Angular MCP is a **process miss** the review gate will flag.
 
-- **`area:frontend`** → pull **`angular-developer`** + the **Angular MCP** (and
-  `angular-new-app` for scaffolding). The beach-map seat picker, booking flow, etc.
-- **`area:backend`** → pull **`codebase-design`** for deep-module interface design
-  and **`domain-modeling`** for the glossary/ADRs; **`riviera-stripe-payments`** for
-  anything in `payment`/`payout` or any Stripe/charge/refund/commission work. For any
-  **Flyway migration / table design**, pull **`postgres`** (schema-design + indexing).
-  The Spring-Modulith / Postgres specifics (boundaries, id-based events, the availability
-  unique constraint + row lock) are enforced by the `CLAUDE.md` invariants (#2, #11,
-  #12) and the `riviera-review-overlay` gates — not a separate skill.
-- **`area:fullstack`** → both of the above, FE and BE each as its own commit/slice.
-- Always, regardless of area: `riviera-plan-doc` at plan time, `tdd` at build time,
-  `riviera-review-overlay` at review time.
+| If the change touches… | Load BEFORE writing it (MUST) | Why |
+|---|---|---|
+| **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
+| **Any backend module** (Spring Modulith: new `api/` port, service, event, seam) | **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | deep modules, real-vs-hypothetical seams; ubiquitous language |
+| **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
+| **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
+| **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
+| **Anything, always** | **`riviera-plan-doc`** (plan) · **`tdd`** (build) · **`riviera-review-overlay`** (review) | the always-on spine |
+
+**How the gate runs — three steps, every time:**
+
+1. **Detect.** List what the slice touches: DB? a backend module? the frontend? money?
+   An `area:fullstack` issue almost always trips DB **and** BE **and** FE — load all of
+   them. Don't stop at the label.
+2. **Load + announce.** Load each triggered skill **before** authoring that part and say
+   so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
+   `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
+   migration before loading `postgres`, the gate already failed — redo it.
+3. **Record.** Name each loaded skill and what it changed in the plan doc's **Skills
+   consulted** line (one phrase each). `riviera-review-overlay` checks that line against
+   the diff: a migration in the diff with no `postgres` in *Skills consulted* is a finding.
+
+This gate fires at **both** the plan stage (vet the design) and the implement stage (vet
+the code). Loading a skill at plan time does **not** exempt you at build time if a new
+area appears, and re-loading is cheap — when in doubt, load it.
+
+## Review gate (mandatory — between PR and merge)
+
+> The `review` stage is a **gate, not a label on the diagram.** Opening a PR, getting
+> green CI, and clearing Sonar are **necessary but not sufficient** — none of them is the
+> review. A slice is **not done** and **must not be merged** until the review gate has run
+> and its findings are resolved or explicitly deferred. The single most common way this
+> stage is skipped: treating "PR opened + CI green" as the finish line and sliding to
+> "done." It is not.
+
+**How the gate runs — every PR, before merge:**
+
+1. **Trigger.** The moment a PR exists (or before you would call a slice "done"/"ready to
+   merge"), the review gate is **due**. Do not wait to be asked.
+2. **Run the review.** Start a review over the **PR diff** — `/code-review`
+   `origin/main...HEAD` (or `/review <PR>`) — and **load `riviera-review-overlay`** so the
+   project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the availability and payment Blockers,
+   RV-PROC-1) are walked **on top of** the generic banks. Announce it: *"Running the SDD
+   review gate (riviera-review-overlay + code-review) on PR #NN."*
+3. **Resolve.** Every Blocker/Major finding is fixed or, if genuinely out of scope, moved
+   to a follow-up issue with a one-line rationale. Record the outcome (findings + fixes)
+   where the slice's intent lives — the plan doc's review note, or the PR.
+4. **Only then merge.** Merge is reached **only** when CI is green **and** the review gate
+   has run **and** findings are resolved/deferred. "Green + reviewed," never "green."
+
+**Definition of done for a slice:** green CI **and** review gate run **and** findings
+resolved/deferred **and** the issue's acceptance criteria verified. Missing any one means
+the slice is still in flight — say so rather than reporting it done.
 
 ## The substrate these skills read
 
@@ -64,10 +112,14 @@ Decide by the issue's `area:*` label (see `docs/agents/triage-labels.md`):
    `#NN` in commits.
 3. **The CI gate is non-negotiable.** Don't merge red. A red pipeline is a
    `diagnosing-bugs` feedback loop, not a nuisance to bypass.
-4. **The plan owns the invariants.** If the slice touches booking, availability, or
+4. **The review gate is non-negotiable too.** Green CI is not a review. Don't merge —
+   and don't call a slice done — until the Review gate (above) has run on the PR diff and
+   its findings are resolved or deferred. "PR opened + CI green" is the trap, not the
+   finish line.
+5. **The plan owns the invariants.** If the slice touches booking, availability, or
    money, the plan doc states how the invariant holds, and review checks it.
-5. **Right-size it.** A one-line/copy fix skips the plan doc; a feature that touches
-   the spine does not.
+6. **Right-size it.** A one-line/copy fix skips the plan doc; a feature that touches
+   the spine does not. (A code change still gets the review gate — proportional to size.)
 
 ## When NOT to use
 

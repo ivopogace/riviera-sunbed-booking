@@ -17,6 +17,13 @@
 
 **Source of intent:** <spec path in docs/superpowers/specs/ and/or GitHub issue #NN>
 
+**Skills consulted:** <the `riviera-sdd` Skill-routing gate output — every craft skill
+loaded at plan time + one phrase on what each changed. e.g. `postgres` (BIGINT identity
+PKs, not UUIDv4), `codebase-design` (collapsed the hypothetical out-port seam),
+`angular-developer` + angular-cli MCP (v22 APIs + mandatory a11y). Must cover every area
+the diff touches — a migration in scope with no `postgres` here means the plan is not
+ready. `N/A — <reason>` only for a truly single-area trivial slice.>
+
 **Branch:** `<feature|bugfix>/<short-slug>` <must exist in git before phase 0>
 
 ---

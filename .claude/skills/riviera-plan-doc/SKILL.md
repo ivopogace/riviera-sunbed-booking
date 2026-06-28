@@ -55,6 +55,12 @@ Every riviera feature large enough to need a plan doc gets:
 - **A plan doc** at `docs/plans/<short-slug>.md`. Format follows
   `references/plan-doc-template.md` in this skill directory exactly. Empty
   sections are filled with `N/A — <reason>`, not deleted.
+- **A `Skills consulted` line** in the plan doc naming every craft skill the
+  `riviera-sdd` Skill-routing gate triggered (`postgres` for migrations,
+  `codebase-design` + `domain-modeling` for backend modules, `angular-developer` +
+  the angular-cli MCP for frontend, `riviera-stripe-payments` for money) **and one
+  phrase on what each changed**. If the slice touches a DB table, a backend module, or
+  the frontend and that skill is absent from this line, the plan is not ready.
 - **A branch** named `<feature|bugfix>/<short-slug>`. Must exist before phase 0.
 - **An entry in the Execution-status table** updated in the same commit window as
   each phase's code change.
@@ -69,6 +75,15 @@ involved.
 ## Workflow additions at plan time
 
 When planning a riviera feature, also do:
+
+0. **Run the `riviera-sdd` Skill-routing gate FIRST — before authoring any design.**
+   Detect what the slice touches (DB table/migration → `postgres`; backend module/seam →
+   `codebase-design` + `domain-modeling`; frontend → `angular-developer` + the angular-cli
+   MCP; money → `riviera-stripe-payments`), **load those skills**, and design each section
+   *through* them — not from first principles to be "verified later." Record them in the
+   plan's **Skills consulted** line. Skipping this is the single most common way a plan
+   ships an avoidable design miss (e.g. UUIDv4 PKs the `postgres` skill would have caught,
+   or a colour-only UI the `angular-developer` a11y rules would have caught).
 
 1. **Convert the spec's user stories (or the GitHub issue) into testable
    acceptance criteria before phase 0.** Every story becomes one or more "Given X,
@@ -128,6 +143,11 @@ When executing a riviera plan, also do:
    `riviera-local-debug` skill will hold the exact run recipes; until then, prefer
    `./gradlew test --tests "*ClassName*"`.)
 
+6. **Re-run the Skill-routing gate when a phase enters a new area.** If a phase that
+   the plan called backend-only turns out to add a migration, load `postgres` then —
+   the plan-time load does not carry over to an area the plan didn't anticipate. Update
+   *Skills consulted* in the same commit window.
+
 ## Resources in this skill directory
 
 - `SKILL.md` — this file.
@@ -147,6 +167,12 @@ When executing a riviera plan, also do:
   pinned by `ConcurrentReservationIT`" is.
 - **Don't resolve an Open Question by deleting it.** Move it under `### Resolved`
   with the outcome and commit SHA.
+- **Don't design an area from first principles "to verify with the skill later."**
+  That defers the gate until after the design is anchored, and the skill's corrections
+  arrive too late to be cheap. Load `postgres` / `codebase-design` / `angular-developer`
+  (+ MCP) / `riviera-stripe-payments` **before** writing that section, and list them in
+  *Skills consulted*. A plan whose *Skills consulted* line doesn't cover the areas the
+  diff touches is incomplete.
 
 ## When NOT to use this skill
 

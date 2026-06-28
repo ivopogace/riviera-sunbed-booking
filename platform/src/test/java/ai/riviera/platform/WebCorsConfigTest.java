@@ -1,11 +1,17 @@
 package ai.riviera.platform;
 
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+
+import ai.riviera.platform.venue.api.VenueCatalog;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -17,12 +23,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * with a matching {@code Access-Control-Allow-Origin}; an unknown origin must not be.
  */
 @WebMvcTest
-@Import({SecurityConfig.class, WebCorsConfig.class})
+@Import({SecurityConfig.class, WebCorsConfig.class, WebCorsConfigTest.StubVenueCatalog.class})
 @TestPropertySource(properties = "app.web.cors.allowed-origins=https://ivopogace.github.io")
 class WebCorsConfigTest {
 
 	@Autowired
 	MockMvc mockMvc;
+
+	/**
+	 * The web slice registers every {@code @RestController} (including the venue read
+	 * controller) but not {@code @Repository} beans, so its {@link VenueCatalog} port is
+	 * stubbed here. This test only exercises the CORS/security filter chain on a preflight,
+	 * which never reaches the controller — an empty result is enough.
+	 */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class StubVenueCatalog {
+
+		@Bean
+		VenueCatalog venueCatalog() {
+			return id -> Optional.empty();
+		}
+	}
 
 	@Test
 	void preflightFromPagesOriginIsAllowed() throws Exception {

@@ -29,6 +29,13 @@ the overlay merely because the CWD is the repo — without a parent review runni
 there is nothing for it to layer onto. If the user invokes the overlay explicitly,
 honor that.
 
+**In the `riviera-sdd` flow this is a duty, not just a passive trigger.** The SDD
+**Review gate** is mandatory: when a PR exists (or before a slice is called done), you
+must **start** a review yourself — `/code-review origin/main...HEAD` (or `/review <PR>`) —
+and load this overlay. Do not wait for the review to be "active" on its own, and do not
+treat an open PR + green CI as having completed the review stage. Opening the review *is*
+the gate.
+
 **Other review surfaces:** the slash commands `/code-review` and `/security-review`
 do not auto-load this overlay. When reviewing through them in this repo, consult
 `references/{backend,frontend,fe-be-contract}-conventions.md` and the CLAUDE.md
@@ -63,6 +70,20 @@ cleanly.
 - **RV-CT-3 / RV-BE-7 Payment confirmation source (invariant #8).** Confirming a
   booking from a client redirect instead of a verified webhook is a money/trust
   bug — default **Blocker**.
+
+## Process gate (check when a plan doc is in scope)
+
+- **RV-PROC-1 Skill-routing gate honored (process).** Cross-check the plan doc's
+  **Skills consulted** line against what the diff actually touches: a Flyway migration /
+  table / index change ⇒ `postgres` must be listed; a new backend module seam / `api/`
+  port / event ⇒ `codebase-design` (+ `domain-modeling`); an Angular component / service /
+  route ⇒ `angular-developer` + the angular-cli MCP; `payment`/`payout`/Stripe ⇒
+  `riviera-stripe-payments`. A diff that touches an area with **no** matching skill in
+  *Skills consulted* (or no such line at all) is a **finding** — default **Major** —
+  because the design was likely anchored from first principles and the skill's corrections
+  (PK type, seam depth, v22 API/a11y, collect-only model) were never applied. Fix: load
+  the missing skill, re-vet that section, update the line. (Trigger-map authority: the
+  `riviera-sdd` Skill-routing gate.)
 
 ## Hand-offs to other riviera skills
 
@@ -113,6 +134,7 @@ Frontend (run in `frontend/`):
 | "`LocalDateTime.now()` is fine for the cutoff." | Use `Europe/Tirane`; store UTC `Instant` (invariant #6). |
 | "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
 | "I'll call the other module's service directly." | Cross-module only via `api/` or events (invariant #11). |
+| "`gradlew.bat` flipped CRLF→LF — that's a corruption, revert it." | Check `.gitattributes` **at every level** (incl. `platform/.gitattributes`) first. `*.bat text eol=crlf` means the **blob is stored LF, checked out CRLF** — an LF blob is the *correct* normalized form, not a bug. The stale-CRLF *blob* (often on `main`) is the anomaly. Don't "revert" a normalized blob; git's clean filter will re-normalize it on `add` anyway. Only a wrong **working-tree** EOL (e.g. an LF `.bat` on checkout) is a real finding. |
 
 ## Done criteria (for the overlay's contribution)
 
