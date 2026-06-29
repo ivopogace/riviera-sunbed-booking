@@ -78,25 +78,27 @@ payout currency, **no Connect**), `postgres` (the V9 ledger table — cross-modu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking is confirmed, when the create transaction commits, then a
+- [x] **AC-1:** Given a booking is confirmed, when the create transaction commits, then a
   `BookingConfirmed` is published carrying **ids + immutable value only** (`BookingId, VenueId, SetId,
   LocalDate, long amountMinor, String currency`) — no aggregates, no mutable fields. *Pinned by:*
-  `BookingEventIT.publishesBookingConfirmed` (`AssertablePublishedEvents`).
-- [ ] **AC-2:** Given a `BookingConfirmed`, when the `payout` listener runs, then exactly one
+  `BookingEventIT.publishesBookingConfirmedOnConfirm` (`@RecordApplicationEvents` / `ApplicationEvents`).
+- [x] **AC-2:** Given a `BookingConfirmed`, when the `payout` listener runs, then exactly one
   `ACCRUAL` ledger entry exists for that booking with `net = gross − commission`. *Pinned by:*
   `PayoutAccrualIT.accruesOnceOnConfirmation`.
-- [ ] **AC-3:** Given the same `BookingConfirmed` is delivered twice (registry redelivery / crash
+- [x] **AC-3:** Given the same `BookingConfirmed` is delivered twice (registry redelivery / crash
   recovery), then still exactly one `ACCRUAL` entry exists (no double-accrual, invariant #9).
-  *Pinned by:* `PayoutAccrualIT.redeliveryIsIdempotent`.
-- [ ] **AC-4:** `net`/`commission` are exact integer minor units; `commission = floor(gross × bps ÷
+  *Pinned by:* `PayoutAccrualIT.redeliveryIsIdempotent` (end-to-end) + `PayoutLedgerIT` /
+  `PayoutMigrationIT` (deterministic, at the `UNIQUE` guard).
+- [x] **AC-4:** `net`/`commission` are exact integer minor units; `commission = floor(gross × bps ÷
   10000)` with the bps read from the **venue**; `net = gross − commission`. *Pinned by:*
   `CommissionMathTest`.
-- [ ] **AC-5:** No cross-module internal imports — `payout` depends only on `booking::api` (the event)
+- [x] **AC-5:** No cross-module internal imports — `payout` depends only on `booking::api` (the event)
   and `venue::api` (commission); `ApplicationModules.verify()` passes. *Pinned by:* `ModularityTests`.
-- [ ] **AC-6:** The async flow completes end-to-end against real Postgres (event persisted by the
+- [x] **AC-6:** The async flow completes end-to-end against real Postgres (event persisted by the
   registry, listener accrues, publication marked complete). *Pinned by:* `PayoutSpineScenarioIT`
   (`Scenario` DSL + `@EnableScenarios`).
-- [ ] **AC-7:** CI green; `ModularityTests` + `JdbcOnlyArchitectureTests` still pass.
+- [x] **AC-7:** Full suite green (119 tests, 0 failures, 0 skipped); `ModularityTests` +
+  `JdbcOnlyArchitectureTests` pass.
 
 ## Non-goals
 
@@ -116,7 +118,8 @@ payout currency, **no Connect**), `postgres` (the V9 ledger table — cross-modu
 | R-3 | Listener failure silently loses the accrual | low | high | Registry persists the publication; incomplete ones re-submit on restart (at-least-once). Listener idempotent so re-run is safe | tbd | open |
 | R-4 | `event_publication` table grows unbounded | med | low | `spring.modulith.events.completion-mode = ARCHIVE` (or `DELETE`); migration creates the table (no auto-DDL) | tbd | open |
 | R-5 | Money rounding wrong (float / wrong direction) | low | high | Integer-only `floorDiv(gross*bps, 10000)`; rounding direction written down + tested (AC-4) | tbd | open |
-| R-6 | `payout` reaches into `booking`/`venue` internals | low | med | Only `booking::api` (event) + `venue::api` (commission); `ModularityTests` gate | tbd | open |
+| R-6 | `payout` reaches into `booking`/`venue` internals | low | med | Only `booking::api` (event) + `venue::api` (commission); `ModularityTests` gate | tbd | resolved — deps locked + verified |
+| R-7 | Missing commission rate ⇒ listener throws ⇒ registry redelivers forever (poison-pill) | very low | low | Unreachable today (`commission_bps NOT NULL` + venue FK). Throw-and-retry is the correct posture for a money accrual (loud over silent under-pay, #9); dead-lettering is out of v1 scope | review | accepted by design (review-gate note) |
 
 ## Open questions / Assumptions
 
@@ -198,11 +201,11 @@ payout currency, **no Connect**), `postgres` (the V9 ledger table — cross-modu
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Registry migration + completion-mode config | ✅ done in U4 (V8) | — |
-| 1 — `booking.api` event + single `ConfirmBooking` seam; publish on confirm | ✅ | _pending commit_ |
-| 2 — `venue.api`: commissionBps(VenueId) | ✅ | _pending commit_ |
-| 3 — `payout`: ledger table (V9) + domain + accrual port/adapter | ✅ | _pending commit_ |
-| 4 — `payout`: @ApplicationModuleListener + idempotency + Scenario IT | ✅ | _pending commit_ |
-| 5 — verify + review gate | ⏳ | |
+| 1 — `booking.api` event + single `ConfirmBooking` seam; publish on confirm | ✅ | `[U5] booking: single confirm seam…` |
+| 2 — `venue.api`: commissionBps(VenueId) | ✅ | `[U5] venue.api: commissionBps…` |
+| 3 — `payout`: ledger table (V9) + domain + accrual port/adapter | ✅ | `[U5] payout: ledger table (V9)…` |
+| 4 — `payout`: @ApplicationModuleListener + idempotency + Scenario IT | ✅ | `[U5] payout: BookingConfirmed listener…` |
+| 5 — verify + review gate | ✅ | review-gate note above; full suite green |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -364,22 +367,49 @@ class BookingConfirmedPayoutListener {
   `stimulate(confirm)` → `andWaitForStateChange(() -> ledger.countFor(bookingId))` → `== 1`.
 - [ ] Commit `[U5] payout: BookingConfirmed listener + idempotent accrual (#9)`.
 
-## Phase 5 — verify + PR + review gate
+## Phase 5 — verify + review gate
 
-- [ ] `./gradlew test` (incl. `ModularityTests`, `JdbcOnlyArchitectureTests`) green.
-- [ ] Update issue #9 wording re: availability (drift). Open PR into `main` referencing #9.
-- [ ] **Review gate:** `/code-review origin/main...HEAD` + `riviera-review-overlay` (RV-BE-1 N/A
-  availability; focus RV-BE payout exactly-once, RV-PROC-1 skills line incl. `riviera-modulith`).
-- [ ] Merge only when CI green + review resolved + ACs verified.
+- [x] `./gradlew test` (incl. `ModularityTests`, `JdbcOnlyArchitectureTests`) green — 119 tests, 0
+  failures, 0 skipped (39 classes; Docker ITs ran).
+- [x] Issue #9 wording re: availability — already reconciled in the issue body (updated 2026-06-29);
+  no further edit needed. **PR deferred** — not opening one (per instruction: no PR/merge unless asked).
+- [x] **Review gate run:** SDD review gate (`code-review` over `origin/main...HEAD` + `riviera-review-overlay`)
+  across correctness / cleanup / invariant-overlay angles. See the review note below.
+- [ ] Merge — **deferred to the user** (no PR/merge requested).
+
+### Review-gate note (2026-06-29)
+
+Ran the review across three angles (correctness line-scan/removed-behavior/cross-file; cleanup
+reuse/simplification/efficiency/altitude; the riviera invariant overlay RV-BE/RV-CT/RV-PROC).
+**Outcome: no blocking or major findings.**
+
+- **Invariant overlay — clean.** #1 JDBC-only (no JPA/Lombok), #5 money (BIGINT minor units, floor
+  rounding documented + tested), #6 time (TIMESTAMPTZ), #9 ledger (append-only, no cascade,
+  `UNIQUE`+`ON CONFLICT` exactly-once), #11 boundaries (id-based event in `booking.api`, `ConfirmBooking`
+  internal in `application.in`, commission re-read not baked into the event, `payout` deps =
+  `{booking::api, venue::api}`), #12 (V9 next after V8 registry), #8 (webhook still source of truth).
+  **RV-PROC-1 satisfied** — *Skills consulted* covers every touched area.
+- **Correctness — no defects.** Overflow safe (`long × int` into `long`; realistic amounts), idempotency
+  two-layered (publish-only-on-transition + ledger `ON CONFLICT`), transaction/proxy/event-timing correct
+  (separate `@Transactional` bean, `AFTER_COMMIT` after the producer commits), removed `confirm` strict /
+  `confirmFromPayment` idempotent semantics preserved.
+- **Cleanup — no defects.** `commissionBps` `Optional→OptionalInt` idiom matches the house pattern in
+  `JdbcBookings`; `JdbcPayoutLedger` matches `JdbcAvailabilityClaim`; V9 matches V4/V5 style.
+- **One low-severity observation (triaged — by design, no change):** the payout listener
+  `commissionBps(...).orElseThrow(...)` would retry forever via the registry if a venue had no rate.
+  This is **unreachable today** (`venue.commission_bps NOT NULL` V2 + booking/payout FKs to `venue(id)`),
+  and for a *money* path the loud throw-and-retry is the **correct posture** — silently skipping would
+  under-pay the venue (breaks #9) and accruing at a guessed rate is worse. Dead-lettering is out of v1
+  scope. Recorded in the risk register (R-7); no code change.
 
 ---
 
 ## Self-review checklist (before merge)
 
-- [ ] `BookingConfirmed` payload is ids + immutable value only (invariant #11).
-- [ ] Accrual exactly-once: `UNIQUE(booking_id, entry_type)` + `ON CONFLICT`; redelivery IT passes (#9).
-- [ ] Money integer minor units; commission rounding direction tested (#5).
-- [ ] `payout` imports only `booking::api` + `venue::api`; `ModularityTests` green (#11).
-- [ ] Registry table via Flyway; completion-mode set (no unbounded growth, #12).
-- [ ] No availability re-marking (drift reconciled); no Stripe/Connect (#8).
-- [ ] Execution status current; Open Questions resolved or deferred with an issue ref.
+- [x] `BookingConfirmed` payload is ids + immutable value only (invariant #11).
+- [x] Accrual exactly-once: `UNIQUE(booking_id, entry_type)` + `ON CONFLICT`; redelivery IT passes (#9).
+- [x] Money integer minor units; commission rounding direction tested (#5).
+- [x] `payout` imports only `booking::api` + `venue::api`; `ModularityTests` green (#11).
+- [x] Registry table via Flyway; completion-mode set (no unbounded growth, #12) — reused from U4 (V8).
+- [x] No availability re-marking (drift reconciled); no Stripe/Connect (#8).
+- [x] Execution status current; Open Questions resolved or deferred with an issue ref.
