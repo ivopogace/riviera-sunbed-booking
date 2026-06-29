@@ -23,6 +23,12 @@ import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
 import ai.riviera.platform.payment.infrastructure.StripeProperties;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.application.in.AddSetOutcome;
+import ai.riviera.platform.venue.application.in.ChangeOutcome;
+import ai.riviera.platform.venue.application.in.EditBeachMap;
+import ai.riviera.platform.venue.application.in.OnboardVenue;
+import ai.riviera.platform.venue.application.in.SetRejection;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -158,6 +164,37 @@ class WebCorsConfigTest {
 		@Bean
 		StripeProperties stripeProperties() {
 			return new StripeProperties("", "whsec_test");
+		}
+
+		/**
+		 * {@code VenueAdminController} (U7) is loaded by {@code @WebMvcTest}, so its
+		 * {@link OnboardVenue} / {@link EditBeachMap} ports must be satisfied. The preflight tests
+		 * never reach the controller, so trivial stubs are enough.
+		 */
+		@Bean
+		OnboardVenue onboardVenue() {
+			return command -> new VenueId(0);
+		}
+
+		@Bean
+		EditBeachMap editBeachMap() {
+			return new EditBeachMap() {
+				@Override
+				public AddSetOutcome addSet(VenueId venueId, ai.riviera.platform.venue.application.in.SetCommand command) {
+					return new AddSetOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+				}
+
+				@Override
+				public ChangeOutcome editSet(VenueId venueId, SetId setId,
+						ai.riviera.platform.venue.application.in.SetCommand command) {
+					return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+				}
+
+				@Override
+				public ChangeOutcome removeSet(VenueId venueId, SetId setId) {
+					return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+				}
+			};
 		}
 	}
 

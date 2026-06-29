@@ -16,8 +16,11 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * <p>This is an intentionally minimal placeholder. The real authentication model
  * (staff, admin, booking-code verification) is a later concern and will replace this.
- * Public tourist reads (the venue/beach-map catalogue, U1) are permitted; everything
- * else still requires authentication.
+ * Public tourist reads (the venue/beach-map catalogue, U1) are permitted; the venue
+ * onboarding + beach-map write API (U7) is gated behind a single configured operator
+ * credential (httpBasic, role {@code OPERATOR}); everything else still requires
+ * authentication. The operator credential is configured via {@code spring.security.user.*}
+ * (see {@code application.properties}); its password must be supplied per environment.
  */
 @Configuration
 @EnableWebSecurity
@@ -36,11 +39,22 @@ class SecurityConfig {
 				// signature header (invariant #8), not a session/cookie — so CSRF does not apply
 				// and it must be reachable without auth. Its security IS the signature check in
 				// StripeWebhookController; an unverified call is rejected there with 400.
+				// The venue write API (U7) is a stateless operator surface authenticated by httpBasic
+				// (no session/cookie), so CSRF — which protects cookie/session-authenticated
+				// requests — does not apply; ignore it on those paths like the other token-less APIs.
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
-						"/api/bookings/*/cancel", "/api/payments/stripe/webhook"))
+						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
+						"/api/venues", "/api/venues/*/sets", "/api/venues/*/sets/*"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
+						// Venue onboarding + beach-map editing (U7) — an operator-only write surface.
+						// The real staff/admin identity model is deferred; for now a single configured
+						// operator credential (role OPERATOR) gates every write. GET stays public above.
+						.requestMatchers(HttpMethod.POST, "/api/venues").hasRole("OPERATOR")
+						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole("OPERATOR")
+						.requestMatchers(HttpMethod.PATCH, "/api/venues/*/sets/*").hasRole("OPERATOR")
+						.requestMatchers(HttpMethod.DELETE, "/api/venues/*/sets/*").hasRole("OPERATOR")
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
 						// View a booking by its code (U6) — the code is the bearer credential
 						// (invariant #7), so knowing it authorizes the read. One path segment only.

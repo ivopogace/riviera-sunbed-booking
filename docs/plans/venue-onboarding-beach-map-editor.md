@@ -186,10 +186,10 @@ preview matches U1. a11y: axe-clean + WCAG-AA contrast specs like `venue-map.a11
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V12 migration + migration IT | ✅ | V12 + BeachMapLayoutMigrationIT (5 tests green) |
-| 1 — Backend create-venue (port→service→writer→adapter→controller) | | |
-| 2 — Backend per-set add/edit/remove + outcomes | | |
-| 3 — Operator httpBasic auth + SecurityConfig | | |
-| 4 — Angular editor + service + Basic-auth interceptor + a11y | | |
+| 1 — Backend create-venue (port→service→writer→adapter→controller) | ✅ | VenueAdminService/Controller + JdbcVenues |
+| 2 — Backend per-set add/edit/remove + outcomes | ✅ | EditBeachMap + VenueAdminControllerIT (16 green) |
+| 3 — Operator httpBasic auth + SecurityConfig | ✅ | OPERATOR role + CSRF-exempt write paths |
+| 4 — Angular editor + service + Basic-auth interceptor + a11y | ⏳ | |
 | 5 — CI green + Review gate | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
