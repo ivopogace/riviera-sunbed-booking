@@ -9,6 +9,7 @@
     "test": "ng test",
     "test:coverage": "ng test --coverage --coverage-reporters lcovonly",
     "test:a11y": "ng test --watch=false --include=\"src/**/*.a11y.spec.ts\" --include=\"src/**/*.contrast.spec.ts\" --include=\"src/testing/axe.spec.ts\"",
+    "test:e2e": "playwright test",
     "lint": "ng lint"
   },
   "private": true,
@@ -30,7 +31,9 @@
     "@angular/build": "^22.0.4",
     "@angular/cli": "^22.0.4",
     "@angular/compiler-cli": "^22.0.0",
+    "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.55.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@vitest/coverage-v8": "^4.1.9",
     "angular-eslint": "22.0.0",

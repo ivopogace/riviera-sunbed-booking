@@ -72,6 +72,12 @@ jobs:
       - name: Test (Vitest, once, with coverage)
         run: npm run test:coverage
 
+      - name: Install Playwright Chromium (for the a11y e2e)
+        run: npx playwright install --with-deps chromium
+
+      - name: A11y e2e (real-render axe over the booking flow)
+        run: npm run test:e2e
+
       - name: Build (production)
         run: npm run build
 

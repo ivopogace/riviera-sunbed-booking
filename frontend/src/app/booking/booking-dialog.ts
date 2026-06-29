@@ -11,7 +11,7 @@ import { BookingService, bookingErrorOf } from './booking.service';
  * (`@angular/forms/signals`) drive the email/name/phone/date fields; submission posts through
  * {@link BookingService}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC
  * and backdrop close, and focus returns to the triggering tile (handled by the parent on
- * `close`). The set, amount and date are server-validated — the client form is UX only.
+ * `dismissed`). The set, amount and date are server-validated — the client form is UX only.
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -87,7 +87,7 @@ import { BookingService, bookingErrorOf } from './booking.service';
 export class BookingDialog {
   readonly set = input.required<SetView>();
 
-  readonly close = output<void>();
+  readonly dismissed = output<void>();
   readonly booked = output<BookingConfirmation>();
 
   protected readonly titleId = 'booking-dialog-title';
@@ -128,7 +128,7 @@ export class BookingDialog {
   }
 
   protected requestClose(): void {
-    this.close.emit();
+    this.dismissed.emit();
   }
 
   protected onSubmit(): void {

@@ -221,8 +221,8 @@ focus trap, focus returns to the invoking tile on close (a11y).
 | 4 — booking core + orchestration | ✅ | |
 | 5 — booking REST + security | ✅ | |
 | 6 — frontend booking flow | ✅ | |
-| 7 — @axe-core/playwright a11y e2e | ⏳ | |
-| 8 — verify + PR + review gate | | |
+| 7 — @axe-core/playwright a11y e2e | ✅ | |
+| 8 — verify + PR + review gate | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

@@ -71,7 +71,7 @@
   </article>
 
   @if (selectedSet(); as set) {
-    <app-booking-dialog [set]="set" (close)="onDialogClose()" (booked)="onBooked($event)" />
+    <app-booking-dialog [set]="set" (dismissed)="onDialogClose()" (booked)="onBooked($event)" />
   }
 } @else if (failed()) {
   <p class="state" role="alert">Sorry — we couldn’t load this venue. Please try again.</p>
