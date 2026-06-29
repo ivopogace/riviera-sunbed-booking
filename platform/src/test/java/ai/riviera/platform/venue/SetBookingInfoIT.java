@@ -14,6 +14,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -56,5 +57,22 @@ class SetBookingInfoIT {
 	@Test
 	void emptyForUnknownSet() {
 		assertTrue(catalog.setBookingInfo(new SetId(999_999L)).isEmpty());
+	}
+
+	@Test
+	void resolvesCommissionBpsForSeededVenue() {
+		// payout reads the commission rate here at accrual time (issue #9, invariant #9).
+		long venueId = jdbc.sql("SELECT id FROM venue WHERE name = 'Miramar Beach Club'")
+				.query(Long.class).single();
+
+		var bps = catalog.commissionBps(new VenueId(venueId));
+
+		assertTrue(bps.isPresent(), "a seeded venue must expose its commission rate");
+		assertEquals(1500, bps.getAsInt(), "Miramar commission is 1500 bps (15.00%)");
+	}
+
+	@Test
+	void emptyCommissionForUnknownVenue() {
+		assertTrue(catalog.commissionBps(new VenueId(999_999L)).isEmpty());
 	}
 }

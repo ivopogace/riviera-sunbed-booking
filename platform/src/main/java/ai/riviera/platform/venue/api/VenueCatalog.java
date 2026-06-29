@@ -2,6 +2,7 @@ package ai.riviera.platform.venue.api;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * The {@code venue} module's published query port (invariant #11) — the one real seam for
@@ -40,4 +41,14 @@ public interface VenueCatalog {
 	 * #11).
 	 */
 	Optional<SetBookingInfo> setBookingInfo(SetId setId);
+
+	/**
+	 * The venue's commission rate in <strong>basis points</strong> (1500 = 15.00%), or empty if no
+	 * venue has that id. Read by the {@code payout} module to compute the commission on a confirmed
+	 * booking (invariant #9): {@code commission = floorDiv(gross × bps, 10000)}, integer-exact
+	 * (invariant #5). It is deliberately <em>not</em> carried on the {@code BookingConfirmed} event —
+	 * the rate is mutable venue configuration, re-read here at accrual time, not a fixed fact of the
+	 * booking (invariant #11).
+	 */
+	OptionalInt commissionBps(VenueId id);
 }

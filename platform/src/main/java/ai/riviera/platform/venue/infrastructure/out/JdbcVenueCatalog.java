@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -91,6 +92,16 @@ class JdbcVenueCatalog implements VenueCatalog {
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, sets));
+	}
+
+	@Override
+	public OptionalInt commissionBps(VenueId id) {
+		return jdbc.sql("SELECT commission_bps FROM venue WHERE id = :id")
+				.param("id", id.value())
+				.query(Integer.class)
+				.optional()
+				.map(OptionalInt::of)
+				.orElseGet(OptionalInt::empty);
 	}
 
 	@Override

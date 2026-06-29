@@ -307,5 +307,10 @@ class CreateBookingServiceTest {
 		public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 			return Optional.ofNullable(info);
 		}
+
+		@Override
+		public java.util.OptionalInt commissionBps(VenueId id) {
+			return java.util.OptionalInt.empty();
+		}
 	}
 }
