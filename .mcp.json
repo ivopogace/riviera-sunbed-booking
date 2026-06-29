@@ -8,6 +8,18 @@
       "type": "http",
       "url": "https://mcp.render.com/mcp",
       "headers": { "Authorization": "Bearer ${CLAUDE_RENDER_KEY}" }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--no-sandbox",
+        "--isolated",
+        "--executable-path",
+        "/opt/pw-browsers/chromium"
+      ]
     }
   }
 }
