@@ -89,7 +89,7 @@ export class FakeStripePaymentGateway extends StripePaymentGateway {
     input.type = 'text';
     input.value = '4242 4242 4242 4242';
     input.setAttribute('aria-label', 'Card number (test mode)');
-    input.setAttribute('data-testid', 'fake-card-input');
+    input.dataset['testid'] = 'fake-card-input';
     host.appendChild(input);
     return { confirm: async () => ({}) };
   }

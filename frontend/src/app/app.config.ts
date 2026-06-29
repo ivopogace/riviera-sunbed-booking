@@ -15,9 +15,10 @@ import { routes } from './app.routes';
  * specs override the {@link StripePaymentGateway} token directly.
  */
 function stripeGatewayFactory(): StripePaymentGateway {
+  // `globalThis` is always defined (browser/SSR/test); in a browser it is `window`, so the
+  // Playwright-set flag is read the same way without a `window` reference.
   const useFake =
-    typeof window !== 'undefined' &&
-    (window as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ === true;
+    (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ === true;
   return useFake ? new FakeStripePaymentGateway() : new StripeJsPaymentGateway();
 }
 

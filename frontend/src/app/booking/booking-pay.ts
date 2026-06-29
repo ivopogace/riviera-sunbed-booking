@@ -158,10 +158,10 @@ export class BookingPay {
   protected readonly showPayButton = computed(
     () => this.state() === 'ready' || (this.state() === 'error' && !this.terminalError()),
   );
+  /** The booking total, formatted once (the awaiting summary is fixed for the page's lifetime). */
+  private readonly priceText = this.booking ? formatMoney(this.booking.amount) : '';
   protected readonly payLabel = computed(() =>
-    this.state() === 'error'
-      ? 'Try again'
-      : `Pay ${this.booking ? formatMoney(this.booking.amount) : ''}`,
+    this.state() === 'error' ? 'Try again' : `Pay ${this.priceText}`,
   );
 
   /** Exposed for the template (currency formatting helper). */
