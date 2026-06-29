@@ -10,8 +10,10 @@
 -- (StubPaymentGateway does not register one), so this refund record only materialises under the
 -- `stripe` profile; the stub refund path is a 0-row no-op by design.
 
--- Cumulative refunded amount (0 until refunded), bounded by the collected amount. The Stripe refund
--- id (re_...) for traceability; NULL until a refund is issued.
+-- Refunded amount in minor units (0 until refunded), bounded by the collected amount. v1 issues at
+-- most one refund per booking (one idempotency-keyed gateway call), so markRefunded sets this
+-- absolutely rather than accumulating. The Stripe refund id (re_...) is kept for traceability; NULL
+-- until a refund is issued.
 ALTER TABLE payment ADD COLUMN refunded_minor BIGINT NOT NULL DEFAULT 0
     CONSTRAINT payment_refunded_check CHECK (refunded_minor >= 0 AND refunded_minor <= amount_minor);
 ALTER TABLE payment ADD COLUMN refund_id TEXT;

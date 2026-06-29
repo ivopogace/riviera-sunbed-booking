@@ -264,9 +264,52 @@ the existing SCSS). No `as any` on the contract.
 | 3 — `booking` cancel orchestration + `BookingCancelled` + POST /{code}/cancel | ✅ | `[U6] booking: cancel …` |
 | 4 — `payout` proportional REVERSAL listener | ✅ | `[U6] payout: proportional REVERSAL …` |
 | 5 — Frontend booking view + cancel | ✅ | `[U6] frontend: booking view + cancel …` |
-| 6 — verify + review gate | | |
+| 6 — verify + review gate | ✅ | `[U6] review-gate fixes …` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as the code.
+
+### Review-gate note (2026-06-29)
+
+Ran the SDD review gate: `/code-review origin/main...HEAD` (high effort, 8 finder angles) +
+`riviera-review-overlay`. Full suite green at the gate — **backend 156 tests / 47 classes**, frontend
+**71 tests**, `ModularityTests` + `JdbcOnlyArchitectureTests` pass.
+
+**Confirmed findings — fixed through the loop** (re-ran the Skill-routing gate per fix:
+`riviera-modulith` + `riviera-java-conventions` for backend, `angular-developer` for FE, `postgres`
+for the migration comment):
+
+- **[Major] Refund moved real money inside the cancel `@Transactional`** (flagged by 4/8 angles).
+  Unlike the create path (which only *creates* a PaymentIntent in-tx; the charge confirms via webhook
+  outside any tx), the cancel issued a Stripe `Refund` before commit — a post-refund commit failure
+  would diverge money from state, the booking row lock was held across Stripe I/O, and a failed refund
+  was only logged with no retry. **Fix:** the refund now runs **after commit** in a booking-module
+  `@ApplicationModuleListener` (`BookingRefundListener`) on `BookingCancelled` — registry-backed,
+  idempotency-keyed, throw-on-`Failed` for at-least-once retry (same posture as the payout accrual).
+  This also realizes the design's "event-driven refund" intent cycle-free (`booking → payment::api`).
+- **[Major] FE "Refunded €0.00"** on a non-refundable cancel (`@if (b.refundedAmount)` truthiness on a
+  non-null `MoneyView(0)`). **Fix:** guard on `refundedAmount.minorUnits > 0`; cancel-result copy is
+  now "… will be refunded" (the refund is async).
+- **[Medium] Refund-rule duplicated** across the view/cancel services (+ double venue query). **Fix:**
+  extracted the shared `CancellationPolicy.quote(BookingRecord)` — one place computes the server-side
+  refund, so the displayed and actioned amounts cannot drift.
+- **[Minor] V11 "cumulative" comment** vs absolute `markRefunded`. **Fix:** comment corrected (v1 is
+  single-refund-per-booking).
+
+**Accepted / deferred (documented, no change):**
+
+- **Public `GET /api/bookings/{code}` + the code in the URL path, no throttling** (4 angles). v1
+  posture: the code is the unguessable bearer credential by design (invariant #7), `SecurityConfig`
+  is an explicit placeholder pending the real auth model, and #50 depends on `GET /{code}`. App-level
+  log discipline (never log the code) is honored. → **follow-up issue** (rate-limit + consider header
+  vs path; revisit with the auth model).
+- **Partial-reversal sub-cent floor residue** — by design (ADR-0005 rounds down; a full refund nets to
+  zero; the platform keeps the sub-cent). No change.
+- **Payment refund states unreachable under the stub profile** — by design (the stub registers no
+  payment row; the refund record materialises only under the `stripe` profile). Documented in V11.
+- **`NotCancellable` → 409 for both wrong-state and the lost-cancel race** — mitigated (the cancel
+  button is disabled while in-flight); 409 for an already-cancelled booking is a reasonable semantic.
+- **`money()` `/100` EUR assumption** — matches the existing `booking-confirmation`; v1 collection is
+  EUR (invariant #5).
 
 ---
 

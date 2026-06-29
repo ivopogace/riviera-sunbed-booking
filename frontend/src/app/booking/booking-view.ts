@@ -49,7 +49,7 @@ import { BookingService } from './booking.service';
           <dd>{{ b.bookingDate }}</dd>
           <dt>Paid</dt>
           <dd>{{ money(b.amount) }}</dd>
-          @if (b.refundedAmount) {
+          @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
             <dt>Refunded</dt>
             <dd data-testid="refunded-amount">{{ money(b.refundedAmount) }}</dd>
           }
@@ -193,7 +193,7 @@ export class BookingView {
     if (tier === 'NONE' || refund.minorUnits === 0) {
       return 'No refund applies under the cancellation policy.';
     }
-    return `${this.money(refund)} has been refunded.`;
+    return `${this.money(refund)} will be refunded to your card.`;
   }
 
   protected money(amount: MoneyView): string {
