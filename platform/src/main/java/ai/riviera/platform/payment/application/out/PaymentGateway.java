@@ -7,15 +7,21 @@ import ai.riviera.platform.payment.api.PaymentOutcome;
 /**
  * The module-internal <strong>outbound</strong> port for the actual payment provider — the
  * driven seam (riviera-stripe-payments). This is the project's gateway-agnostic boundary:
- * the domain depends on this interface, not on Stripe types. U3 ships a
- * {@code StubPaymentGateway}; U4 replaces it with a Stripe adapter behind this same port —
- * the only seam that changes.
+ * the domain depends on this interface, not on Stripe types. The default-profile
+ * {@code StubPaymentGateway} returns {@link PaymentOutcome.Succeeded} in-process; the
+ * {@code stripe}-profile {@code StripePaymentGateway} (U4) creates a PaymentIntent and returns
+ * {@link PaymentOutcome.Pending} — the only seam that changes between the two.
  *
  * <p>Not part of the module's {@code api/} — only {@code payment}'s own application layer
  * depends on it (invariant #11).
  */
 public interface PaymentGateway {
 
-	/** Charge the booking's card for {@code amount}; return a typed outcome (never throws on decline). */
-	PaymentOutcome charge(BookingRef booking, Money amount);
+	/**
+	 * Initiate collection of {@code amount} for the booking. Returns a typed outcome (never
+	 * throws on a decline / expected failure): {@code Succeeded} when collected in-process
+	 * (stub), {@code Pending} when a PaymentIntent was created and a signature-verified webhook
+	 * will complete it (Stripe, invariant #8), or {@code Failed}.
+	 */
+	PaymentOutcome initiate(BookingRef booking, Money amount);
 }

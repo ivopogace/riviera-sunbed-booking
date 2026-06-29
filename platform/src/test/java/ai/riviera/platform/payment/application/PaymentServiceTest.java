@@ -29,4 +29,15 @@ class PaymentServiceTest {
 		PaymentOutcome.Succeeded ok = assertInstanceOf(PaymentOutcome.Succeeded.class, outcome);
 		assertEquals("ref-42-4500", ok.reference(), "service must pass booking + amount through unchanged");
 	}
+
+	@Test
+	void passesPendingOutcomeThrough() {
+		PaymentGateway fake = (booking, amount) -> new PaymentOutcome.Pending("cs_test", "pi_test");
+		PaymentService service = new PaymentService(fake);
+
+		PaymentOutcome outcome = service.pay(new BookingRef(1L), new Money(4500L, "EUR"));
+
+		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome);
+		assertEquals("cs_test", pending.clientSecret(), "the Stripe pending outcome passes through unchanged");
+	}
 }

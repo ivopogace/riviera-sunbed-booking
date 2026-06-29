@@ -294,7 +294,7 @@ asserted in adapter-level tests.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V7 migration (`payment` + `stripe_webhook_event`) | ✅ | |
-| 1 — Stripe dep + config/secrets; `PaymentOutcome.Pending`; gateway `initiate` | | |
+| 1 — Stripe dep + config/secrets; `PaymentOutcome.Pending`; gateway `initiate` | ✅ | |
 | 2 — payment persistence (`Payments` port + `JdbcPayments` + `PaymentStatus`) | | |
 | 3 — `StripePaymentGateway` (`@Profile stripe`): PI + idempotency + metadata | | |
 | 4 — payment events + `StripeWebhookController` (verify, dedup, publish) | | |
