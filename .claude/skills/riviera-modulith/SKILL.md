@@ -48,8 +48,10 @@ definition of "correct structure," not intuition.** It already runs as
    `SetId`/`VenueId`/`CustomerId`, not a `Set`/`Customer`. Same for event payloads. The typed ids
    live in the owning module's `api/` (e.g. `venue.api.SetId`, `customer.api.CustomerId`).
 3. **Cross-module collaboration goes through the other module's `api/` port OR a domain event —
-   never a reach into its `application.*` / `infrastructure.*` / `domain`.** The only package another
-   module may import is the `@NamedInterface("api")` package.
+   never a reach into its `application.*` / `infrastructure.*` / `domain`.** The only packages
+   another module may import are the module's `@NamedInterface` packages: `api` (inbound ports
+   others call) and, when present, `spi` (driven ports another module implements — see
+   *`api` vs `spi`* below).
 4. **`ModularityTests.verifiesModularStructure()` stays green** after any structural change. A
    failure is the design being wrong, not the test.
 
@@ -70,8 +72,11 @@ real HTTP client, an `@ApplicationModuleTest`, or a future app-to-app caller is 
 ai.riviera.platform.<module>/
 ├── package-info.java                 # @ApplicationModule(displayName = "...")
 ├── api/                              # @NamedInterface("api") — THE published surface:
-│   ├── package-info.java             #   query/command ports (interfaces) + typed ids
+│   ├── package-info.java             #   INBOUND ports others CALL + typed ids
 │   │                                 #   + DTO/value records + published domain-event records
+├── spi/                              # @NamedInterface("spi") — OPTIONAL, only when needed:
+│   ├── package-info.java             #   DRIVEN ports another module IMPLEMENTS for this one
+│   │                                 #   (cross-module dependency inversion — see "api vs spi")
 ├── application/
 │   ├── in/                           # INTERNAL driving (use-case) ports + command/result types,
 │   │                                 #   when NOT published cross-module (e.g. booking.application.in.CreateBooking)
@@ -155,6 +160,40 @@ If you add `allowedDependencies`, it must list **every** module the code legitim
 `verify()` fails — run `ModularityTests` immediately after. (Existing modules don't set this yet;
 adding it is a safe, encouraged follow-up, not a requirement for an unrelated change.)
 
+## `api` vs `spi`: inbound ports vs cross-module driven ports
+
+A module's `api/` (`@NamedInterface("api")`) is its **inbound / driving** surface — interfaces
+other modules **call** (`VenueCatalog`, `AvailabilityClaim`). The caller depends on the provider;
+call direction == dependency direction. **This is the default — reach for it first.**
+
+A module's **driven / outbound** port normally stays **internal** in `application.out`, implemented
+by the module's *own* `infrastructure.out` adapter — it is *not* published. Promote a driven port to
+a published named interface **only** when its adapter must live in **another module** — i.e. a
+cross-module **dependency inversion**, done to keep the graph acyclic. When you do, put it in a
+dedicated **`spi`** named interface (`<module>.spi`, `@NamedInterface("spi")`), **never** in `api/`:
+
+- `api/` answers *"what others call me to do"* (inbound / driving).
+- `spi/` answers *"what I need another module to implement for me"* (driven / inverted).
+
+**Grant the named interfaces per least privilege:** the **implementing** module lists
+`<provider>::spi` (plus `<provider>::api` if it also calls it); a module that only *calls* the
+provider lists `<provider>::api` only — never `::spi`.
+
+**Worked example — the `venue ↔ availability` live-map read (issue #44).** `venue` needs "which of
+these sets are taken on date D?" but must not depend on `availability` (that would cycle —
+`availability` already depends on `venue::api` for the claim's pool check). So `venue` declares the
+driven port `SetAvailabilityLookup` in **`venue.spi`**; `availability` **implements** it (its
+`allowedDependencies` are `{ "venue::api", "venue::spi" }` — `api` for `SetId`, `spi` for the port);
+`venue`'s `JdbcVenueCatalog` calls it. The compile-time edge stays `availability → venue`
+(acyclic); the runtime call goes `venue → availability`. `booking`, which only *calls* venue, is
+granted `venue::api` only — never `venue::spi`. (`SetId` and other shared vocabulary stay in `api/`;
+only the *driven port* lives in `spi/`.)
+
+**Decision rule.** Inbound port (others call) → `api`. Driven port implemented in-module →
+`application.out` (internal, unpublished). Driven port implemented by **another** module → `spi`. If
+you're tempted to put an "implement-me" interface in `api/`, that is exactly the smell this rule
+fixes — `riviera-review-overlay` (RV-BE-3b) flags it at the review gate.
+
 ## Choosing between an `api/` port and a domain event
 
 - **Inbound `api/` port (synchronous)** when the caller needs an answer *now* — a query or a command
@@ -209,6 +248,8 @@ fix the **structure**, not the test. To debug the detected arrangement:
       internal; `infrastructure.in/out` adapters, package-private).
 - [ ] Cross-module use goes through `<module>::api` (port or published event record) — no import of
       another module's `application.*`/`infrastructure.*`/`domain`.
+- [ ] A cross-module **driven** port (implemented by *another* module) lives in `<module>.spi`
+      (`@NamedInterface("spi")`), **not** `api/`; `<module>::spi` is granted only to the implementor.
 - [ ] Aggregates and event payloads reference other aggregates by **typed id**, not by object.
 - [ ] No JPA types introduced; persistence is `JdbcClient` + SQL (or a justified aggregate).
 - [ ] `allowedDependencies` updated if a genuinely new, non-cyclic dependency was added (if the

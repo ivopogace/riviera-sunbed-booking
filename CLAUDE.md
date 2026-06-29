@@ -96,12 +96,16 @@ The skills reference them by number.
     automation). Refund decisions and amounts are computed on the server, then
     actioned via Stripe.
 11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout:
-    `ai.riviera.platform.<module>.{api, application.in, application.out, domain,
+    `ai.riviera.platform.<module>.{api, spi, application.in, application.out, domain,
     infrastructure.in, infrastructure.out}`. Cross-module access is via the other
     module's `api/` port **or** a domain event — never by importing its
-    `application.*`/`infrastructure.*`/`domain.*`. Event payloads carry **technical
-    ids** (`BookingId`, `SetId`, `VenueId`), not mutable business fields or foreign
-    aggregates.
+    `application.*`/`infrastructure.*`/`domain.*`. **`api/` holds inbound ports other
+    modules *call*; a cross-module *driven* port — one a module needs *another* module to
+    *implement* (dependency inversion, used to keep the graph acyclic) — lives in a
+    separate `spi/` named interface, and `<module>::spi` is granted only to the
+    implementing module** (a driven port implemented by the module's own infrastructure
+    stays internal in `application.out`). Event payloads carry **technical ids**
+    (`BookingId`, `SetId`, `VenueId`), not mutable business fields or foreign aggregates.
 12. **Schema changes go through Flyway.** Versioned forward migrations under
     `src/main/resources/db/migration`. No hand-run DDL, no ORM schema generation
     (there's no ORM). Every constraint that enforces an invariant (especially #2)

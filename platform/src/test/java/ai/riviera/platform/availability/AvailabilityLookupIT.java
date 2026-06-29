@@ -12,8 +12,8 @@ import org.springframework.context.annotation.Import;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.venue.api.SetAvailabilityLookup;
 import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

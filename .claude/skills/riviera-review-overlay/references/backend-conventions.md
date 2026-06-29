@@ -81,6 +81,37 @@ missing `@ApplicationModule`.
 
 ---
 
+### RV-BE-3b. API vs SPI for cross-module ports (invariant #11)
+**Gate:** Is each cross-module port in the correct named interface — inbound ports
+others *call* in `api/`, and a *driven* port another module *implements* in `spi/`?
+- [ ] no new cross-module port  [ ] inbound port (others call) in `api/`  [ ] driven port implemented by ANOTHER module in `spi/` (`@NamedInterface("spi")`), not `api/`  [ ] an `api/` interface that another module *implements* rather than calls (misfiled — belongs in `spi/`)  [ ] `<provider>::spi` granted only to the implementor; call-only modules granted `<provider>::api` only  [ ] a driven port implemented by the module's OWN infra wrongly published instead of staying in `application.out`
+
+**Follow-up:**
+- Default is `api/` (inbound). Promote a driven port to a named interface **only** when
+  its adapter lives in a *different* module (cross-module dependency inversion done to
+  avoid a cycle); then it goes in `spi/`, never `api/`.
+- Tell them apart by direction: `api` = "call me"; `spi` = "implement me." A
+  `@NamedInterface("api")` type that a sibling module `implements` (not calls) is
+  misfiled — move it to `spi`.
+- Least privilege: grant `<provider>::spi` only to the implementing module; caller-only
+  modules get `<provider>::api`. Example: `venue.spi.SetAvailabilityLookup` is
+  implemented by `availability` (granted `venue::api` + `venue::spi`); `booking`, which
+  only calls venue, is granted `venue::api` only.
+
+**Default severity:** Major for a driven cross-module port sitting in `api/` (or
+`::spi` granted too broadly); Minor for a publishable-but-internal driven port that
+leaked out of `application.out`. This is `verify()`-legal either way, so the review gate
+is the only thing that catches it — api-vs-spi is semantic, not mechanically detectable.
+**Skill framing:**
+- Pre-impl: "For each new cross-module interface: does the other module CALL it (→ `api`)
+  or IMPLEMENT it (→ `spi`)? Who needs which named interface granted?"
+- Peer-review: "Find new `@NamedInterface` types and cross-module `implements`. Is any
+  `api/` interface implemented by another module? Move it to `spi/`. Are `spi` grants
+  limited to the implementor?"
+- Deeper mechanics: `riviera-modulith` (the *`api` vs `spi`* section).
+
+---
+
 ### RV-BE-4. Domain events carry ids, not aggregates (invariant #11)
 **Gate:** Do domain-event payloads carry technical ids only?
 - [ ] no events  [ ] payload is ids (`BookingId`, `SetId`, `VenueId`, `bookingDate`)  [ ] payload embeds a full aggregate / foreign module type (violation)  [ ] payload carries mutable business fields (email, name) as identity (smell)

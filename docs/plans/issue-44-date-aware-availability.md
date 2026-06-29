@@ -122,6 +122,10 @@ control, `input()` for the dialog date, `class`/`style` bindings, a11y for the d
 ## Open questions / Assumptions
 
 ### Resolved
+- **Follow-up (post-#44):** the `SetAvailabilityLookup` port was later relocated from `venue.api`
+  to a dedicated `venue.spi` driven-port named interface, and the api-vs-spi rule was codified into
+  the workflow — see `docs/plans/spi-named-interface-convention.md`. References below to
+  "`venue.api`" for this port are historical.
 - **Seam (user-deferred → agent-decided):** dependency inversion — `SetAvailabilityLookup` in
   `venue.api`, implemented by `availability`; endpoint stays in `venue`. Chosen over (a)
   relocating the read into `availability` (moves the public `/api/venues` endpoint, lower

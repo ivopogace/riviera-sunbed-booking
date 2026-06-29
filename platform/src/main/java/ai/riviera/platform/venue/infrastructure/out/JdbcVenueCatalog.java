@@ -10,13 +10,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.api.SetAvailabilityLookup;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.api.VenueMapView;
+import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
  * JDBC adapter implementing {@link VenueCatalog} directly (no intervening application

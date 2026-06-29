@@ -10,6 +10,6 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Availability",
-    allowedDependencies = { "venue::api" }
+    allowedDependencies = { "venue::api", "venue::spi" }
 )
 package ai.riviera.platform.availability;

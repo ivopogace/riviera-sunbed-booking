@@ -9,8 +9,8 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.venue.api.SetAvailabilityLookup;
 import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
  * JDBC adapter answering {@link SetAvailabilityLookup} from the {@code set_availability} source
@@ -18,11 +18,12 @@ import ai.riviera.platform.venue.api.SetId;
  * read lives here while the map assembly stays in {@code venue} (issue #44). Invariant #1:
  * explicit SQL via {@link JdbcClient}, no JPA.
  *
- * <p>This is the implementing side of a dependency-inverted port (declared in
- * {@code venue.api}). The legal {@code availability → venue::api} edge lets us reference
- * {@link SetAvailabilityLookup}/{@link SetId} here; {@code venue} never imports
- * {@code availability}, so {@code ModularityTests} stays cycle-free. The adapter depends only on
- * {@link JdbcClient}, so the Spring bean graph is acyclic too.
+ * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong>
+ * (declared in {@code venue.spi}). The legal {@code availability → venue} edge (granted as
+ * {@code venue::api} for {@link SetId} and {@code venue::spi} for {@link SetAvailabilityLookup})
+ * lets us reference these here; {@code venue} never imports {@code availability}, so
+ * {@code ModularityTests} stays cycle-free. The adapter depends only on {@link JdbcClient}, so
+ * the Spring bean graph is acyclic too.
  *
  * <p>A row's mere existence means taken (its {@code state} — {@code BOOKED_ONLINE} or, later,
  * {@code STAFF_MARKED} — is irrelevant to "is it free?"), so the query selects {@code set_id}
