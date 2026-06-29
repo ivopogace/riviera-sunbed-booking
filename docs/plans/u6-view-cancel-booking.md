@@ -300,8 +300,8 @@ for the migration comment):
 - **Public `GET /api/bookings/{code}` + the code in the URL path, no throttling** (4 angles). v1
   posture: the code is the unguessable bearer credential by design (invariant #7), `SecurityConfig`
   is an explicit placeholder pending the real auth model, and #50 depends on `GET /{code}`. App-level
-  log discipline (never log the code) is honored. → **follow-up issue** (rate-limit + consider header
-  vs path; revisit with the auth model).
+  log discipline (never log the code) is honored. → **follow-up issue #56** (rate-limit + consider
+  header vs path; revisit with the auth model).
 - **Partial-reversal sub-cent floor residue** — by design (ADR-0005 rounds down; a full refund nets to
   zero; the platform keeps the sub-cent). No change.
 - **Payment refund states unreachable under the stub profile** — by design (the stub registers no
