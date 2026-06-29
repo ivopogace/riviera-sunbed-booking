@@ -124,10 +124,10 @@ export class VenueMap {
     }
   }
 
-  protected onBooked(): void {
+  protected async onBooked(): Promise<void> {
     this.selectedSet.set(undefined);
     // The confirmation screen reads BookingService.lastConfirmation() (set by the POST), so no
     // navigation state is needed.
-    void this.router.navigate(['/booking/confirmation']);
+    await this.router.navigate(['/booking/confirmation']);
   }
 }

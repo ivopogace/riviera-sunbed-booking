@@ -186,7 +186,7 @@ export class BookingDialog {
       return;
     }
     const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const last = focusable.at(-1)!; // non-null: guarded by the length check above
     const active = this.hostRef.nativeElement.ownerDocument.activeElement;
     if (backwards && active === first) {
       event.preventDefault();
