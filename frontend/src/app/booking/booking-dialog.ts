@@ -197,6 +197,11 @@ export class BookingDialog {
   private static defaultDate(): string {
     const date = new Date();
     date.setDate(date.getDate() + 1); // default to tomorrow; server enforces the real cutoff
-    return date.toISOString().slice(0, 10);
+    // Format from local date parts (NOT toISOString, which is UTC and can roll the day back
+    // for late-evening users in Europe/Tirane — invariant #6). The server is authoritative.
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

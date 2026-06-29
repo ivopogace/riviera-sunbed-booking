@@ -92,6 +92,40 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void regeneratesCodeOnCollisionAndConfirms() {
+		// First insert "collides" (empty), second succeeds — the booking must still confirm with
+		// the second code (proves the ON CONFLICT retry actually recovers).
+		java.util.List<String> codes = new ArrayList<>(java.util.List.of("DUPCODE0001", "FRESHCODE02"));
+		var collidingOnce = new Bookings() {
+			boolean first = true;
+
+			@Override
+			public java.util.OptionalLong insertAwaitingPayment(NewBooking booking) {
+				if (first) {
+					first = false;
+					return java.util.OptionalLong.empty();
+				}
+				return java.util.OptionalLong.of(1234L);
+			}
+
+			@Override
+			public void confirm(long bookingId, java.time.Instant at) {
+				// no-op
+			}
+		};
+		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
+		CustomerDirectory customers = contact -> new CustomerId(1);
+		var service = new CreateBookingService(catalog, (id, date) -> ClaimOutcome.CLAIMED, customers,
+				(ref, money) -> new PaymentOutcome.Succeeded("ok"), collidingOnce,
+				() -> codes.removeFirst(), new BookingCutoff(CLOCK), CLOCK);
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
+		assertEquals("FRESHCODE02", confirmed.confirmation().code(), "uses the second, non-colliding code");
+	}
+
+	@Test
 	void rejectsTakenSetWithoutPersisting() {
 		CreateBookingService service = service(set("ONLINE"),
 				(id, date) -> ClaimOutcome.ALREADY_TAKEN,
@@ -158,9 +192,9 @@ class CreateBookingServiceTest {
 		private long nextId = 1000;
 
 		@Override
-		public long insertAwaitingPayment(NewBooking booking) {
+		public java.util.OptionalLong insertAwaitingPayment(NewBooking booking) {
 			inserted.add(booking);
-			return ++nextId;
+			return java.util.OptionalLong.of(++nextId);
 		}
 
 		@Override

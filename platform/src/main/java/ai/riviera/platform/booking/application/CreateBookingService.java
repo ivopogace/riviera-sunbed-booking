@@ -2,10 +2,10 @@ package ai.riviera.platform.booking.application;
 
 import java.time.Clock;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -117,25 +117,23 @@ class CreateBookingService implements CreateBooking {
 
 	/**
 	 * Insert the booking, regenerating the code on the astronomically-unlikely
-	 * {@code UNIQUE(code)} collision (invariant #7). Bounded retries; rethrow if a
-	 * non-recoverable integrity error persists.
+	 * {@code UNIQUE(code)} collision (invariant #7). The insert is an atomic
+	 * {@code ON CONFLICT (code) DO NOTHING}, so a collision returns empty (a normal retry
+	 * signal) rather than throwing and poisoning the transaction. Bounded retries.
 	 */
 	private Inserted insertWithUniqueCode(SetBookingInfo set, CustomerId customerId,
 			CreateBookingCommand command) {
-		DataIntegrityViolationException last = null;
 		for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
 			String code = codeGenerator.next();
-			try {
-				long id = bookings.insertAwaitingPayment(new NewBooking(code, set.venueId(),
-						set.setId(), customerId, command.bookingDate(), set.price().minorUnits(),
-						set.price().currency()));
-				return new Inserted(id, code);
-			}
-			catch (DataIntegrityViolationException e) {
-				last = e; // retry with a fresh code
+			OptionalLong id = bookings.insertAwaitingPayment(new NewBooking(code, set.venueId(),
+					set.setId(), customerId, command.bookingDate(), set.price().minorUnits(),
+					set.price().currency()));
+			if (id.isPresent()) {
+				return new Inserted(id.getAsLong(), code);
 			}
 		}
-		throw last;
+		throw new IllegalStateException(
+				"could not generate a unique booking code after " + MAX_CODE_ATTEMPTS + " attempts");
 	}
 
 	private record Inserted(long id, String code) {

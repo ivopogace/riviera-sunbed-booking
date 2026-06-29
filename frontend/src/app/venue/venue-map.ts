@@ -2,7 +2,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
-import { BookingConfirmation } from '../booking/booking.model';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
 
@@ -125,10 +124,10 @@ export class VenueMap {
     }
   }
 
-  protected onBooked(confirmation: BookingConfirmation): void {
+  protected onBooked(): void {
     this.selectedSet.set(undefined);
-    void this.router.navigate(['/booking/confirmation'], {
-      state: { code: confirmation.code },
-    });
+    // The confirmation screen reads BookingService.lastConfirmation() (set by the POST), so no
+    // navigation state is needed.
+    void this.router.navigate(['/booking/confirmation']);
   }
 }

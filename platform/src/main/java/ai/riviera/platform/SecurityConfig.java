@@ -29,7 +29,9 @@ class SecurityConfig {
 				.cors(Customizer.withDefaults())
 				// Public guest checkout (U3): the booking POST is token-less and stateless (no
 				// session, no auth), so CSRF — which protects cookie/session-authenticated
-				// requests — does not apply. Scope the exemption to exactly that endpoint.
+				// requests — does not apply. The matcher is the EXACT path "/api/bookings", so it
+				// covers only this endpoint (a later sub-path like "/api/bookings/{code}" is not
+				// matched). Only POST is mapped/permitted here; other methods 401 regardless.
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()

@@ -58,7 +58,7 @@ angular-cli MCP `get_best_practices` (v22 signals, Signal Forms, modal focus man
   booking (invariant #4). *Pinned by:* `BookingCutoffTest.rejectsPastCutoff` + `BookingControllerIT.afterCutoffReturns422`
 - [ ] **AC-6:** Generated booking codes are ≥ 8 chars from an unambiguous base32 alphabet,
   non-sequential, and unique. *Pinned by:* `BookingCodeGeneratorTest.entropyAndCharset`
-- [ ] **AC-7:** The booking code is never written to logs in clear. *Pinned by:* `BookingServiceLoggingTest.codeNeverLogged`
+- [ ] **AC-7:** The booking code is never written to logs in clear. *Pinned by:* `CreateBookingServiceTest.codeNeverLogged`
 - [ ] **AC-8:** Booking amount equals the set price in integer minor units + currency (no
   float anywhere). *Pinned by:* `BookingControllerIT.createsConfirmedBooking` (asserts `amount.minorUnits`)
 - [ ] **AC-9:** Payment flows through the `payment.api` `CheckoutPort` (stub behind the
@@ -108,10 +108,9 @@ angular-cli MCP `get_best_practices` (v22 signals, Signal Forms, modal focus man
   message. — *Owner:* claude · *Resolves by:* phase 6
 - **Assumption:** Booking total = the single set's price (one set = 2 loungers + umbrella,
   full day). No fees/multi-set in U3. — *Owner:* claude · *Resolves by:* phase 4
-- **Open question:** The U1 map renders `seed_availability`, not the live table, so a set
-  booked in U3 won't grey out on the map for the chosen date. Tracked as a follow-up
-  (wire map render → live availability per date). Does not block U3 ACs. — *Owner:* claude ·
-  *Resolves by:* follow-up issue before merge
+- **Resolved (deferred):** The U1 map renders `seed_availability`, not the live table, so a set
+  booked in U3 won't grey out on the map for the chosen date. Does not block U3 ACs (booking is
+  server-authoritative; a contested set returns `409`). Tracked as follow-up issue **#44**.
 
 ### Resolved
 - **Cutoff scope** → *Full evening-before cutoff* enforced in U3 (user decision, grill gate).
@@ -210,6 +209,30 @@ focus trap, focus returns to the invoking tile on close (a11y).
 - **Money/date on the wire:** amounts as integer minor units + currency; `bookingDate` as
   ISO `LocalDate`.
 
+## Review gate outcome (SDD)
+
+Ran `riviera-review-overlay` + `/code-review origin/main...HEAD` (3 parallel finder passes:
+backend correctness, riviera invariants, frontend+contract). **No Blockers, no Majors** —
+all 12 invariant gates PASS (RV-BE-1 availability proven by `ConcurrentReservationIT`;
+RV-CT-3 payment confirmation server-side via the stub, U4-swap-ready; JDBC-only; Modulith
+boundaries clean; money minor units; Europe/Tirane cutoff; unguessable, never-logged code).
+
+Findings fixed:
+- **Booking-code retry was non-functional inside `@Transactional`** (a thrown unique violation
+  aborts the Postgres tx) → switched `insertAwaitingPayment` to `INSERT … ON CONFLICT (code)
+  DO NOTHING RETURNING id` (`OptionalLong`); retry now recovers without poisoning the tx, and
+  FK/CHECK errors propagate instead of being masked. Pinned by `CreateBookingServiceTest.regeneratesCodeOnCollisionAndConfirms`.
+- **`confirm()` ignored rows-affected** → now asserts exactly one `AWAITING_PAYMENT` row updated
+  (guards a silent false-confirm once U4 confirms via webhook).
+- **FE default date used `toISOString()` (UTC)** → off-by-one near midnight vs Europe/Tirane;
+  now formats from local date parts.
+- **Dead router `state` handoff** in `onBooked` → removed (confirmation reads the service signal).
+- Plan drift: AC-7 test name + `booking/api/BookingId` note corrected.
+
+Deferred (non-blocking): `BookingCutoff` DST-gap edge for a non-default cutoff time set inside
+the spring-forward hour (default 18:00 is safe); the U1 map renders seed availability, not the
+live per-date table — tracked as a follow-up issue. Both degrade safely (server-side `409`).
+
 ## Execution status
 
 | Phase | Status | Commits |
@@ -222,7 +245,7 @@ focus trap, focus returns to the invoking tile on close (a11y).
 | 5 — booking REST + security | ✅ | |
 | 6 — frontend booking flow | ✅ | |
 | 7 — @axe-core/playwright a11y e2e | ✅ | |
-| 8 — verify + PR + review gate | ⏳ | |
+| 8 — verify + PR + review gate | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -231,8 +254,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 **Backend (`platform/src/main/java/ai/riviera/platform/`)**
-- `booking/api/BookingId.java` — `record BookingId(long value)`
-- `booking/application/BookingService.java` — orchestration (cutoff→customer→claim→pay→confirm)
+- (`booking/api/BookingId` deferred to U5 — no cross-module consumer in U3; the public
+  seam is the `application.in.CreateBooking` driving port, used intra-module by the controller)
+- `booking/application/CreateBookingService.java` — orchestration (cutoff→claim→customer→pay→confirm)
 - `booking/application/BookingOutcome.java` — sealed result (`Confirmed`/`SetTaken`/`NotOnlinePool`/`NoSuchSet`/`BookingClosed`)
 - `booking/application/CreateBookingCommand.java` — record (setId, date, GuestContact)
 - `booking/application/out/Bookings.java` — persistence port

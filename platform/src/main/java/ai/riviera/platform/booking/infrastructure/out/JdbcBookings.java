@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.infrastructure.out;
 
 import java.time.Instant;
+import java.util.OptionalLong;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -25,11 +26,16 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public long insertAwaitingPayment(NewBooking b) {
+	public OptionalLong insertAwaitingPayment(NewBooking b) {
+		// ON CONFLICT (code) DO NOTHING makes a code collision a no-op (empty result), NOT a
+		// thrown unique violation — so the caller's regenerate-and-retry works WITHOUT aborting
+		// the surrounding transaction (a thrown violation would poison it). FK/CHECK failures
+		// still throw, as they should. RETURNING yields the id only on a real insert.
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
 				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status)
+				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
 				.param("code", b.code())
@@ -41,12 +47,14 @@ class JdbcBookings implements Bookings {
 				.param("currency", b.amountCurrency())
 				.param("status", BookingStatus.AWAITING_PAYMENT.name())
 				.query(Long.class)
-				.single();
+				.optional()
+				.map(OptionalLong::of)
+				.orElseGet(OptionalLong::empty);
 	}
 
 	@Override
 	public void confirm(long bookingId, Instant confirmedAt) {
-		jdbc.sql("""
+		int updated = jdbc.sql("""
 				UPDATE booking
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
@@ -56,5 +64,12 @@ class JdbcBookings implements Bookings {
 				.param("id", bookingId)
 				.param("awaiting", BookingStatus.AWAITING_PAYMENT.name())
 				.update();
+		// Guard against a silent no-op: a 0-row update means the booking was not AWAITING_PAYMENT
+		// (already confirmed/cancelled, or a replayed confirm — relevant once U4 confirms via the
+		// webhook). Surfacing it prevents returning a false confirmation.
+		if (updated != 1) {
+			throw new IllegalStateException(
+					"expected to confirm exactly one AWAITING_PAYMENT booking, updated " + updated);
+		}
 	}
 }
