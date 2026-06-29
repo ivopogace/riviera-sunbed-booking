@@ -289,6 +289,35 @@ asserted in adapter-level tests.
   facing.
 - **Money/date on the wire:** integer minor units + currency; `bookingDate` ISO `LocalDate`.
 
+## Review gate outcome (SDD)
+
+Ran the Review gate on `origin/main...HEAD`: `riviera-review-overlay` + `/code-review`
+(3 parallel finder passes — backend correctness, riviera invariants, cleanup/altitude/contract),
+1-vote recall-biased verify.
+
+**No Blockers, no Majors.** All invariant gates PASS: RV-BE-1 availability (the held→confirmed
+gap; `release` scoped to `BOOKED_ONLINE` + the `cancelAwaitingPayment` guard means a stale
+`canceled` can't free a row a different booking re-took — proven by
+`PaymentEventListenerIT.canceledAfterConfirmationDoesNotReleaseClaim`); RV-CT-3/RV-BE-7
+webhook-as-truth (signature-verified only, two-layer idempotency: event-id dedup + guarded
+transition); #5 money minor units (lowercase `eur` only at the Stripe edge); #1 JDBC-only;
+#11 Modulith (payment→booking events-only, no cycle — `ModularityTests` green); #7 no
+secret/code logging; ADR-0002 no Connect (`NoStripeConnectArchitectureTest`); #12 V7 constraints.
+RV-PROC-1: *Skills consulted* covers the diff (postgres / riviera-modulith / riviera-java-conventions
+/ riviera-stripe-payments / codebase-design).
+
+Findings (all **Minor**, dispositioned — none blocks merge):
+- **Network call inside the create `@Transactional`** holds the claim row lock for the Stripe PI-
+  creation latency, and `StripeClient` uses long default timeouts (~80s read). This is risk **R-3**
+  (acknowledged, v1-scale-acceptable; two-phase split is the noted future optimization). *Optional
+  hardening:* set an explicit shorter `StripeClient` connect/read timeout to bound the lock-hold. →
+  **deferred** (folds into the R-3 two-phase follow-up).
+- `AwaitingPaymentView` duplicates `BookingConfirmationView`'s field mapping (one factory). → **deferred** (minor; flat wire shape kept deliberately for the FE follow-up).
+- `JdbcBookings.confirm` vs `confirmFromPayment` share UPDATE shape but differ by design (strict throw vs idempotent boolean). → **acknowledged, no change** (the differing error semantics are intentional).
+- `paymentIntentId()` `deserializeUnsafe` fallback is guarded by `instanceof PaymentIntent` → safe `200` no-op on an unexpected shape. → **not a defect**.
+- `NoStripeConnectArchitectureTest` is a static-symbol scan (won't catch reflective Connect use). → **accepted** (defends against accidental, not adversarial, use).
+- Out-of-order confirmed-then-stale-canceled is covered at the listener level (`PaymentEventListenerIT`); webhook-level dedup is event-id based. → **covered**.
+
 ## Execution status
 
 | Phase | Status | Commits |
@@ -300,7 +329,7 @@ asserted in adapter-level tests.
 | 4 — payment events + `StripeWebhookController` (verify, dedup, publish) | ✅ | (webhook SecurityConfig permit folded in here so the IT exercises the real filter chain) |
 | 5 — booking: `AwaitingPayment` outcome, create switch, sync listener, confirm/cancel, `availability.release` | ✅ | (controller `202` mapping folded in here so the sealed switch stays exhaustive) |
 | 6 — controller mapping (202 + clientSecret) + webhook security/raw-body | ✅ | (mapping + security landed in Phases 4–5; this phase adds the stripe-profile create IT) |
-| 7 — verify + ModularityTests/JdbcOnly/Connect-scan + follow-ups + PR + review gate | ⏳ | full suite green (96+ tests, both profiles); U5 drift note appended; review gate + PR/follow-ups pending |
+| 7 — verify + ModularityTests/JdbcOnly/Connect-scan + follow-ups + PR + review gate | ✅ | full suite green (both profiles); review gate run — no Blockers/Majors; PR + follow-up issues await user go-ahead |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
