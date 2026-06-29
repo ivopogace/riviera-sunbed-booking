@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -53,6 +54,6 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("ids", ids)
 				.query(Long.class)
 				.list();
-		return taken.stream().map(SetId::new).collect(java.util.stream.Collectors.toUnmodifiableSet());
+		return taken.stream().map(SetId::new).collect(Collectors.toUnmodifiableSet());
 	}
 }

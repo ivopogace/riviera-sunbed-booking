@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
-import { defaultBookingDate } from './booking-date';
+import { defaultBookingDate, parseIsoDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
 
@@ -75,9 +75,20 @@ export class VenueMap {
     if (this.venueId === undefined) {
       return;
     }
-    this.venues.getVenueMap(this.venueId, this.selectedDate()).subscribe({
-      next: (venue) => this.venue.set(venue),
-      error: () => this.failed.set(true),
+    // Capture the requested date so a slower earlier response can't overwrite a newer one
+    // (last-writer-wins across rapid date switches) — apply only if it's still the chosen date.
+    const requested = this.selectedDate();
+    this.venues.getVenueMap(this.venueId, requested).subscribe({
+      next: (venue) => {
+        if (this.selectedDate() === requested) {
+          this.venue.set(venue);
+        }
+      },
+      error: () => {
+        if (this.selectedDate() === requested) {
+          this.failed.set(true);
+        }
+      },
     });
   }
 
@@ -94,13 +105,12 @@ export class VenueMap {
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
-    const [year, month, day] = this.selectedDate().split('-').map(Number);
     return new Intl.DateTimeFormat('en-IE', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-    }).format(new Date(Date.UTC(year, month - 1, day)));
+    }).format(parseIsoDate(this.selectedDate()));
   }
 
   /**

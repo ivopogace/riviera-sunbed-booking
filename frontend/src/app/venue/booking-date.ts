@@ -21,11 +21,19 @@ export function defaultBookingDate(now: Date): string {
   return addOneDay(tiraneToday);
 }
 
+/**
+ * Parse an ISO `YYYY-MM-DD` string to a UTC-anchored `Date` (midnight UTC of that civil day).
+ * Anchoring in UTC keeps day arithmetic and re-formatting free of local-zone/DST shifts. Shared
+ * so the map's `dateLabel` and `addOneDay` parse dates the one way.
+ */
+export function parseIsoDate(isoDate: string): Date {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
 /** Add one calendar day to an ISO `YYYY-MM-DD` string, returning the same format. */
 function addOneDay(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  // Anchor in UTC so the +1 day arithmetic can't be shifted by a local-zone DST transition.
-  const next = new Date(Date.UTC(year, month - 1, day));
+  const next = parseIsoDate(isoDate);
   next.setUTCDate(next.getUTCDate() + 1);
   const y = next.getUTCFullYear();
   const m = String(next.getUTCMonth() + 1).padStart(2, '0');

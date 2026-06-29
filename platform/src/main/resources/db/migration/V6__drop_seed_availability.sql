@@ -7,7 +7,7 @@
 -- so nothing can accidentally read a date-less, stale availability again.
 --
 -- Postgres drops the dependent CHECK (`set_position_avail_check`) automatically with the column.
--- This is a forward-only migration (invariant #12): V3 INSERTed the column on every existing DB
--- before this runs, so the drop is safe; fresh DBs run V3 then V6 in order.
+-- This is a forward-only migration (invariant #12): V2 created the column and V3 seeded its values
+-- on every existing DB before this runs, so the drop is safe; fresh DBs run V2/V3 then V6 in order.
 
 ALTER TABLE set_position DROP COLUMN seed_availability;

@@ -25,7 +25,8 @@
       />
     </p>
 
-    <p class="availability" data-testid="availability">
+    <!-- aria-live: changing the date silently swaps the grid, so announce the new count to AT. -->
+    <p class="availability" data-testid="availability" aria-live="polite">
       <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free on {{ dateLabel() }}
     </p>
     <!-- Decorative: the "{free} of {total}" count above already conveys this to AT. -->
