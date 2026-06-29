@@ -8,6 +8,8 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payout",
-    allowedDependencies = {}
+    // U5: payout reacts to booking::api's BookingConfirmed event and re-reads the commission rate
+    // from venue::api at accrual time (invariant #11). Deny-by-default: these are the only two.
+    allowedDependencies = { "booking::api", "venue::api" }
 )
 package ai.riviera.platform.payout;
