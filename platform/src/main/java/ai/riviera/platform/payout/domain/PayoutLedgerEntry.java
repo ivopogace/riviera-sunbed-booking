@@ -41,4 +41,22 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 		return new PayoutLedgerEntry(venueId, bookingId, EntryType.ACCRUAL, grossMinor, commission,
 				grossMinor - commission, currency);
 	}
+
+	/**
+	 * Build the {@code REVERSAL} entry that backs out (part of) an {@code accrual} when a booking is
+	 * refunded (U6, ADR-0005). <strong>Proportional to the refund</strong>: the reversal's gross is
+	 * the {@code refundMinor}, and its commission is the same fraction of the accrual's commission —
+	 * {@code floorDiv(accrual.commission × refundMinor, accrual.gross)} — so a full refund
+	 * ({@code refundMinor == accrual.gross}) reverses the whole accrual and a partial refund reverses
+	 * the matching share. Stored as <strong>positive</strong> magnitudes (the V9 CHECK forbids
+	 * negatives); the sign is carried by {@link EntryType#REVERSAL} for the payout sum (invariant #9).
+	 * Rounds <strong>down</strong> like the accrual (invariant #5). Caller must not reverse a zero
+	 * refund (ADR-0005: no refund ⇒ no reversal).
+	 */
+	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor) {
+		long commission = accrual.grossMinor() == 0 ? 0
+				: Math.floorDiv(accrual.commissionMinor() * refundMinor, accrual.grossMinor());
+		return new PayoutLedgerEntry(accrual.venueId(), accrual.bookingId(), EntryType.REVERSAL,
+				refundMinor, commission, refundMinor - commission, accrual.currency());
+	}
 }

@@ -1,10 +1,14 @@
 package ai.riviera.platform.payout.infrastructure.out;
 
+import java.util.Optional;
+
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.payout.application.out.PayoutLedger;
+import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.venue.api.VenueId;
 
 /**
  * JDBC adapter for {@link PayoutLedger} — explicit SQL via {@link JdbcClient}, no JPA (invariant
@@ -27,6 +31,33 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public void accrue(PayoutLedgerEntry entry) {
+		insertIdempotently(entry);
+	}
+
+	@Override
+	public void reverse(PayoutLedgerEntry entry) {
+		// Same conflict-free insert as accrual; the UNIQUE(booking_id, entry_type) guard makes a
+		// re-delivered BookingCancelled write no second REVERSAL (exactly-once, invariant #9).
+		insertIdempotently(entry);
+	}
+
+	@Override
+	public Optional<PayoutLedgerEntry> findAccrual(long bookingId) {
+		return jdbc.sql("""
+				SELECT venue_id, booking_id, gross_minor, commission_minor, net_minor, currency
+				FROM payout_ledger_entry
+				WHERE booking_id = :booking AND entry_type = 'ACCRUAL'
+				""")
+				.param("booking", bookingId)
+				.query((rs, rowNum) -> new PayoutLedgerEntry(
+						new VenueId(rs.getLong("venue_id")), rs.getLong("booking_id"), EntryType.ACCRUAL,
+						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
+						rs.getString("currency")))
+				.optional();
+	}
+
+	/** Conflict-free insert shared by accrual and reversal — {@code ON CONFLICT (booking_id, entry_type)}. */
+	private void insertIdempotently(PayoutLedgerEntry entry) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
 				                                 commission_minor, net_minor, currency)
