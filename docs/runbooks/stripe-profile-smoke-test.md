@@ -107,6 +107,38 @@ flow. It's covered by tests (`RefundPolicyTest`, `ReversalMathTest`, `PayoutReve
 `late_cancel_refund_bps` (> 0) and seed a `CONFIRMED` booking on a past date directly in Postgres, then
 run steps 5–7; expect `tier: "PARTIAL"` and a proportional `REVERSAL`.
 
+## Headless variant (no Stripe CLI, no inbound webhook)
+
+For environments without the Stripe CLI or a public URL (e.g. an ephemeral cloud container): drive
+the PaymentIntent confirmation via the API and **forge the signed webhook locally**. This needs
+**outbound** `api.stripe.com` egress and the test secret key in the env; the webhook secret is a value
+*you* choose (you sign the forged event with the same value the app verifies with).
+
+```bash
+# Run the backend with a self-chosen webhook secret:
+STRIPE_API_KEY=sk_test_xxx STRIPE_WEBHOOK_SECRET=whsec_localtest \
+  SPRING_PROFILES_ACTIVE=stripe ./gradlew bootRun            # (in platform/)
+
+# 3. create → capture CODE + PI (as above), then:
+# 4a. Actually confirm the PaymentIntent in Stripe test mode (so a real Refund is possible later):
+curl -s https://api.stripe.com/v1/payment_intents/"$PI"/confirm \
+  -u "$STRIPE_API_KEY:" -d payment_method=pm_card_visa | jq '.status'   # → "succeeded"
+
+# 4b. Forge a signed payment_intent.succeeded webhook to the local endpoint:
+PAYLOAD='{"id":"evt_local_1","object":"event","api_version":"2024-04-10","type":"payment_intent.succeeded","data":{"object":{"id":"'"$PI"'","object":"payment_intent","status":"succeeded"}}}'
+T=$(date +%s)
+SIG=$(printf '%s' "$T.$PAYLOAD" | openssl dgst -sha256 -hmac "whsec_localtest" -hex | sed 's/^.* //')
+curl -s -X POST localhost:8080/api/payments/stripe/webhook \
+  -H "Stripe-Signature: t=$T,v1=$SIG" -H 'Content-Type: application/json' -d "$PAYLOAD"   # → ok
+
+# 5–7. view / cancel / verify exactly as above. The cancel's after-commit refund is a REAL test Refund.
+```
+
+> Confirming the PI in 4a matters: a Refund requires the PaymentIntent to be genuinely `succeeded` in
+> Stripe (test mode captures a test charge). Forging only the webhook would mark the booking CONFIRMED
+> in our DB but leave the PI unrefundable, so the cancel's refund call would fail.
+
 ## Cleanup
 
-Stop `bootRun` and `stripe listen`. Sandbox data is disposable; reset from the dashboard if desired.
+Stop `bootRun` (and `stripe listen` if used). Sandbox data is disposable; reset from the dashboard if
+desired. Roll the test secret key afterward if it was set in a shared environment.
