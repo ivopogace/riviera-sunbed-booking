@@ -8,6 +8,10 @@ Connect (ADR-0002 / invariant #8).
 > The `riviera-local-debug` skill is deferred; until it lands this is the canonical recipe for the
 > `stripe` profile. The default (no-profile) run uses the stub gateway and needs none of this.
 
+> **Verified 2026-06-29 (test mode): PASS** — headless variant, sandbox `acct_1TmtV9Rc00mQRkNG`. Real
+> test-mode PaymentIntent → forged signed webhook → confirm → cancel → real test-mode Refund; DB showed
+> `payment` `REFUNDED`, payout `ACCRUAL` + full `REVERSAL` (nets to zero), set released. No real money.
+
 ## Prerequisites
 
 - **Docker** running (the backend auto-starts Postgres from `platform/compose.yaml` via the
