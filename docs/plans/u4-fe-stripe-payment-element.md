@@ -207,7 +207,7 @@ conveyed in **text** (not colour alone) for WCAG AA. No `as any` on the contract
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Service 201/202 discrimination + awaiting handoff (+ dialog/map wiring) | ✅ | (this commit) |
-| 1 — Stripe gateway seam + env config + deploy.yml | | |
+| 1 — Stripe gateway seam + env config + deploy.yml | ✅ | (this commit) |
 | 2 — `/booking/pay` page (mount → confirm → poll) + confirmation guard | | |
 | 3 — a11y/contrast specs + Playwright stripe-path e2e (mocked) | | |
 

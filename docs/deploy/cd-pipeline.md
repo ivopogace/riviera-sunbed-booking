@@ -34,6 +34,7 @@ Set under **Settings → Secrets and variables → Actions**.
 | `DEPLOY_FRONTEND_PAGES` | `true` | the GitHub Pages deploy job |
 | `DEPLOY_BACKEND_RENDER` | `true` | the Render deploy job |
 | `BACKEND_API_URL` | e.g. `https://riviera-sunbed-booking.onrender.com` | post-deploy health check **and** the frontend's baked-in API base URL (overrides the committed default) |
+| `STRIPE_PUBLISHABLE_KEY` | e.g. `pk_test_…` | the frontend's Stripe **publishable** key, baked into the prod build (public, not a secret). Unset ⇒ the payment page shows a clear config-error state instead of a broken Payment Element. |
 
 ### Secrets
 
@@ -42,7 +43,9 @@ Set under **Settings → Secrets and variables → Actions**.
 | `RENDER_DEPLOY_HOOK_URL` | the Render service's **Deploy Hook** URL (Render → service → Settings → Deploy Hook) |
 
 > No datasource or deploy credential is ever committed. The frontend's `BACKEND_API_URL`
-> is a **public URL**, so it is a variable, not a secret.
+> is a **public URL** and `STRIPE_PUBLISHABLE_KEY` is a **publishable** (`pk_`) key — both
+> are variables, not secrets. The Stripe **secret** key never touches the frontend (it lives
+> only in the backend's environment).
 
 ## Ready-for-human checklist (maintainer)
 

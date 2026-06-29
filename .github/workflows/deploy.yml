@@ -90,13 +90,17 @@ jobs:
         working-directory: frontend
         env:
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
+          STRIPE_PUBLISHABLE_KEY: ${{ vars.STRIPE_PUBLISHABLE_KEY }}
         run: |
-          # Optionally override the committed prod API base URL with a repo variable,
-          # so the backend host can change without a code edit. No secret involved —
-          # it is a public URL.
-          if [ -n "$BACKEND_API_URL" ]; then
-            printf "export const environment = {\n  production: true,\n  apiBaseUrl: '%s',\n};\n" "$BACKEND_API_URL" > src/environments/environment.prod.ts
-            echo "Overrode prod apiBaseUrl with BACKEND_API_URL=$BACKEND_API_URL"
+          # Rewrite the prod environment from repo variables so the backend host and the Stripe
+          # publishable key can change without a code edit. Neither is a secret — the API base URL
+          # is a public URL and the Stripe key is a publishable (pk_) key. Each falls back to the
+          # value committed in environment.prod.ts when its variable is unset.
+          if [ -n "$BACKEND_API_URL" ] || [ -n "$STRIPE_PUBLISHABLE_KEY" ]; then
+            api="${BACKEND_API_URL:-https://riviera-sunbed-booking.onrender.com}"
+            pk="${STRIPE_PUBLISHABLE_KEY:-}"
+            printf "export const environment = {\n  production: true,\n  apiBaseUrl: '%s',\n  stripePublishableKey: '%s',\n};\n" "$api" "$pk" > src/environments/environment.prod.ts
+            echo "Rewrote prod environment (apiBaseUrl=$api, stripePublishableKey set: $([ -n "$pk" ] && echo yes || echo no))"
           fi
           npm run build -- --base-href="/${{ github.event.repository.name }}/"
 
