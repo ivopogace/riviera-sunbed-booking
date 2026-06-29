@@ -59,6 +59,22 @@ class VenueSeedMigrationIT {
 	}
 
 	@Test
+	void seedsTheLateCancelRefundPolicyColumn() {
+		// U6 (V10): venue.late_cancel_refund_bps exists, defaults to 0 (non-refundable after cutoff),
+		// and is bounded 0..10000 like commission_bps.
+		Integer bps = jdbc.queryForObject(
+				"SELECT late_cancel_refund_bps FROM venue WHERE name = 'Miramar Beach Club'",
+				Integer.class);
+		assertThat(bps).isZero();
+
+		org.springframework.dao.DataIntegrityViolationException rejected = org.junit.jupiter.api.Assertions
+				.assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
+						() -> jdbc.update("UPDATE venue SET late_cancel_refund_bps = 10001 "
+								+ "WHERE name = 'Miramar Beach Club'"));
+		assertThat(rejected).isNotNull(); // venue_late_cancel_bps_check rejects > 10000
+	}
+
+	@Test
 	void enforcesOneSetPerGridCell() {
 		// invariant #12: the layout UNIQUE(venue_id, row_label, position_no) constraint exists.
 		Integer duplicateCells = jdbc.queryForObject(

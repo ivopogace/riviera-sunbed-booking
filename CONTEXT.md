@@ -41,9 +41,17 @@ model in `docs/architecture/domain-model.md`.
 - **Commission** — the platform's per-booking cut; rate stored per venue.
 - **Payout ledger** — the per-venue record of what is owed (booking amounts minus
   commission), entry-per-booking, reversed on refund.
+- **Accrual** — a payout-ledger entry that adds what the platform owes a venue for a
+  confirmed booking (`net = gross − commission`).
+- **Reversal** — a payout-ledger entry that backs out an accrual when a booking is
+  refunded. **Proportional to the refund**: a full refund reverses the whole accrual,
+  a partial refund reverses the matching fraction, no refund posts no reversal.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, or conflict.
+- **Refund tier** — the policy outcome of a cancellation: **full** (cancelled before
+  the cutoff), **partial** (after the cutoff, the venue's configurable late-cancel
+  share), or **none** (after the cutoff, non-refundable). Always computed server-side.
 
 ## Demand (tourist side)
 

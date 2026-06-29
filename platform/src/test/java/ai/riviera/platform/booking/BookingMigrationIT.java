@@ -103,4 +103,31 @@ class BookingMigrationIT {
 				"booking must NOT enforce (set_id, booking_date) uniqueness — that is the "
 						+ "availability table's guard (invariant #2); historical rows are expected.");
 	}
+
+	@Test
+	void cancellationColumnsAcceptAValidRefund() {
+		// U6 (V10): cancelled_at + refund_minor record the cancellation audit (invariants #5/#6/#10).
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("cancel-ok@example.com");
+		insertBooking(venue, set, cust, "CODE000010", LocalDate.of(2026, 9, 13), "CONFIRMED");
+
+		assertDoesNotThrow(() -> jdbc.sql("""
+				UPDATE booking SET status = 'CANCELLED', cancelled_at = NOW(), refund_minor = 4500
+				WHERE code = 'CODE000010'
+				""").update(), "a refund within the gross amount must be accepted (V10).");
+	}
+
+	@Test
+	void refundExceedingAmountRejected() {
+		// refund_minor <= amount_minor (no over-refund); amount is 4500 from insertBooking.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("over-refund@example.com");
+		insertBooking(venue, set, cust, "CODE000011", LocalDate.of(2026, 9, 14), "CONFIRMED");
+
+		assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.sql("UPDATE booking SET refund_minor = 9999 WHERE code = 'CODE000011'").update(),
+				"booking_refund_check must reject a refund greater than the gross amount (V10).");
+	}
 }
