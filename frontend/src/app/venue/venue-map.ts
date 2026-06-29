@@ -179,4 +179,11 @@ export class VenueMap {
     // navigation state is needed.
     await this.router.navigate(['/booking/confirmation']);
   }
+
+  protected async onAwaiting(): Promise<void> {
+    this.selectedSet.set(undefined);
+    // The payment page reads BookingService.lastAwaitingPayment() (set by the 202 POST) to mount
+    // the Stripe Payment Element; confirmation follows the verified webhook (invariant #8).
+    await this.router.navigate(['/booking/pay']);
+  }
 }

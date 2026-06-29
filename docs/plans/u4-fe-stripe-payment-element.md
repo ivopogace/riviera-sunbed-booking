@@ -206,10 +206,15 @@ conveyed in **text** (not colour alone) for WCAG AA. No `as any` on the contract
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Service 201/202 discrimination + awaiting handoff | | |
+| 0 — Service 201/202 discrimination + awaiting handoff (+ dialog/map wiring) | ✅ | (this commit) |
 | 1 — Stripe gateway seam + env config + deploy.yml | | |
-| 2 — `/booking/pay` page (mount → confirm → poll) + dialog/map wiring + confirmation guard | | |
+| 2 — `/booking/pay` page (mount → confirm → poll) + confirmation guard | | |
 | 3 — a11y/contrast specs + Playwright stripe-path e2e (mocked) | | |
+
+> **Note:** the dialog `awaiting` output + `venue-map.onAwaiting()` navigation (originally
+> Phase 2) were folded into Phase 0 — the service return-type change breaks the dialog
+> consumer, so wiring it in the same phase keeps the tree compiling. Phase 2 now adds only the
+> `/booking/pay` route + component + the confirmation-screen guard.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as
 each phase's code.
@@ -686,6 +691,7 @@ test('stripe-profile payment flow is accessible (Stripe mocked)', async ({ page 
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-06-29 | Phase 0 (createBooking return type changed to union) | callers of `createBooking` that consume the emitted value | `rg "createBooking\(" frontend/src` | `booking-dialog.ts` (only caller) | Updated the single caller to unwrap the union (confirmed → `booked`, awaiting → new `awaiting` output); `venue-map` routes the awaiting output to `/booking/pay`. No other callers. |
 
 ---
 

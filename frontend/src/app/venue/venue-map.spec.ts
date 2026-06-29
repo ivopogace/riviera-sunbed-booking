@@ -160,6 +160,16 @@ describe('VenueMap', () => {
     expect(navigate).toHaveBeenCalledWith(['/booking/confirmation']);
   });
 
+  it('navigates to the payment page when the dialog reports awaiting payment (stripe)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (fixture.componentInstance as unknown as { onAwaiting(): void }).onAwaiting();
+
+    expect(navigate).toHaveBeenCalledWith(['/booking/pay']);
+  });
+
   it('requests the venue for tomorrow in Europe/Tirane by default', () => {
     const req = venueRequest();
     expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));

@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { SetView } from '../venue/venue.model';
-import { BookingConfirmation } from './booking.model';
+import { AwaitingPayment, BookingConfirmation } from './booking.model';
 import { BookingDialog } from './booking-dialog';
 
 const SET: SetView = {
@@ -30,6 +30,20 @@ const CONFIRMATION: BookingConfirmation = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
+};
+
+const AWAITING: AwaitingPayment = {
+  code: 'WXYZ345678',
+  status: 'AWAITING_PAYMENT',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  setId: 2,
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
+  clientSecret: 'pi_123_secret_abc',
+  paymentIntentId: 'pi_123',
 };
 
 const FOCUSABLE =
@@ -105,6 +119,25 @@ describe('BookingDialog', () => {
     expect(emitted).toEqual(CONFIRMATION);
     expect((dialog as unknown as { submitting(): boolean }).submitting()).toBe(false);
     expect(host().querySelector('.form-error')).toBeNull();
+  });
+
+  it('emits awaiting (not booked) on a 202 awaiting-payment response (stripe)', async () => {
+    await fillValid();
+    let booked = false;
+    let awaiting: AwaitingPayment | undefined;
+    dialog.booked.subscribe(() => (booked = true));
+    dialog.awaiting.subscribe((a) => (awaiting = a));
+
+    submitForm();
+    await fixture.whenStable();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+      .flush(AWAITING, { status: 202, statusText: 'Accepted' });
+    await fixture.whenStable();
+
+    expect(awaiting).toEqual(AWAITING);
+    expect(booked).toBe(false);
+    expect((dialog as unknown as { submitting(): boolean }).submitting()).toBe(false);
   });
 
   it('maps a 409 to the SET_TAKEN message and does not emit booked', async () => {
