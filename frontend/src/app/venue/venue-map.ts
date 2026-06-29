@@ -36,7 +36,7 @@ export class VenueMap {
   /** The day the map reflects (ISO YYYY-MM-DD); defaults to tomorrow in Europe/Tirane. */
   protected readonly selectedDate = signal(defaultBookingDate(new Date()));
 
-  private venueId: number | undefined;
+  private readonly venueId: number | undefined;
 
   /** The set whose booking dialog is open, or undefined when closed. */
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
