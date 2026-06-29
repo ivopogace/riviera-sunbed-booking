@@ -124,9 +124,15 @@ STRIPE_API_KEY=sk_test_xxx STRIPE_WEBHOOK_SECRET=whsec_localtest \
   SPRING_PROFILES_ACTIVE=stripe ./gradlew bootRun            # (in platform/)
 
 # 3. create → capture CODE + PI (as above), then:
-# 4a. Actually confirm the PaymentIntent in Stripe test mode (so a real Refund is possible later):
+# 4a. Actually confirm the PaymentIntent in Stripe test mode (so a real Refund is possible later).
+#     A return_url is REQUIRED here: StripePaymentGateway creates the PI with automatic payment
+#     methods enabled (which may include redirect-based methods), so confirming via the API without a
+#     return_url fails ("This PaymentIntent ... requires a return_url"). The URL is never visited in
+#     this flow; any valid URL works. (Alternatively set automatic_payment_methods[allow_redirects]=never.)
 curl -s https://api.stripe.com/v1/payment_intents/"$PI"/confirm \
-  -u "$STRIPE_API_KEY:" -d payment_method=pm_card_visa | jq '.status'   # → "succeeded"
+  -u "$STRIPE_API_KEY:" \
+  -d payment_method=pm_card_visa \
+  -d return_url=https://example.com/return | jq '.status'   # → "succeeded"
 
 # 4b. Forge a signed payment_intent.succeeded webhook to the local endpoint:
 PAYLOAD='{"id":"evt_local_1","object":"event","api_version":"2024-04-10","type":"payment_intent.succeeded","data":{"object":{"id":"'"$PI"'","object":"payment_intent","status":"succeeded"}}}'
