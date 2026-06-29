@@ -111,8 +111,14 @@ these are the right way to use Spring Data JDBC from the start.)*
 
 - **Records** (above). **Sealed interfaces** for closed hierarchies (a fixed set of
   outcomes/states/commands) so `switch` is exhaustive without a `default`.
-- **Pattern-matching `switch`** and `instanceof` patterns over cast-ladders. Prefer an
-  exhaustive `switch` expression on a sealed type or enum.
+- **Pattern-matching `switch`** and `instanceof` patterns over cast-ladders — bind in the
+  pattern (`if (x instanceof SetView s)`, never test-then-cast). Prefer an exhaustive `switch`
+  expression on a sealed type or enum.
+- **Record deconstruction patterns** (`case Refund(var amount, var reason) -> …`, nested
+  patterns for layered records) and **guarded patterns** (`case Booking b when
+  b.isCancellable() -> …`) when matching over a sealed result/event hierarchy — they pay off
+  as the domain events / refund decisions land (U5/U6/U10). Don't force them where a plain
+  enum `switch` (e.g. over `ClaimOutcome`) is already clearer.
 - **Text blocks** for SQL and multi-line strings.
 - `Optional<T>` for "absent" on query ports (e.g. `VenueCatalog#findVenueMap`,
   `poolOf`) — **never return `null`** from a port. Don't use `Optional` for fields or
@@ -192,6 +198,7 @@ these are the right way to use Spring Data JDBC from the start.)*
 | "Wrap it in `catch (Exception)` to be safe." | Catch the specific type; a bare catch masks NPEs/programming bugs. |
 | "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (e.g. `ONLINE_POOL`); no magic literals. |
 | "`.collect(Collectors.toList())`." | Stale — use `.toList()` (Java 16+); method refs over trivial lambdas. |
+| "`if (x instanceof T) { T t = (T) x; … }`." | Bind in the pattern: `if (x instanceof T t)` — test + extract in one. |
 | "Store the amount as a `BigDecimal` euro." | Integer minor units + currency (invariant #5). |
 | "`new Date()` / `LocalDateTime.now()` for the cutoff." | UTC `Instant`; reason in `Europe/Tirane` (invariant #6). |
 | "Call the other module's service class directly." | Via its `api/` port or a domain event only (invariant #11). |
