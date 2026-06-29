@@ -203,9 +203,35 @@ N/A — no money moves; read-only display change.
 | 1 — `SetAvailabilityLookup` port + availability adapter | ✅ | (this slice) |
 | 2 — date-aware `findVenueMap` + controller date param/default | ✅ | (this slice) |
 | 3 — frontend date control + dialog date sync | ✅ | (this slice) |
-| 4 — full-suite verify + review gate | ⏳ | backend 0 failures; frontend 66/66; review gate running |
+| 4 — full-suite verify + review gate | ✅ | review gate run; minor findings fixed; pushed |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+## Review gate outcome (SDD)
+
+Ran `riviera-review-overlay` + `/code-review origin/main...HEAD` (high effort, 8 finder angles
+→ verify). **No Blocker/Major findings; zero correctness bugs.** Gates verified PASS: RV-BE-1
+availability single-source-of-truth (read-only, no new write path, invariant #2), invariant #1
+(JDBC-only, records, package-private adapter, `Optional`/`Set` from ports), invariant #11 (the
+dependency-inverted `SetAvailabilityLookup` keeps `verify()` acyclic — `venue` never imports
+`availability`; no `allowedDependencies` change needed), invariants #5/#6/#12, RV-FE-1 (Angular
+v22 idioms + a11y), RV-CT-2 (wire shape), RV-PROC-1 (Skills consulted matches the diff).
+
+Resolved minor findings (re-entered the loop at Implement; CI re-gated green; surface re-walked):
+- **a11y (RV-FE-5):** `aria-live="polite"` on the availability summary so a date change is
+  announced to screen-reader users.
+- **Stale availability (RV-FE-2):** guard the map fetch so an out-of-order response from a
+  rapid date switch can't overwrite the current one.
+- **Cleanup:** extracted a shared `parseIsoDate()` (was duplicated in `dateLabel`/`addOneDay`);
+  imported `Collectors` instead of an inline FQN.
+- **Docs:** V6 comment (column created in V2, seeded in V3) and the plan's SQL (`IN (:ids)`)
+  corrected.
+
+Noted, not fixed (deliberate / out of scope): the booking dialog seeds its date once via
+`ngOnInit` (the map closes the dialog on a date change, so the one-shot seed can't go stale);
+the 2N `SetId` allocation in map assembly is negligible and the `SetRow` intermediate is
+defensible; the `defaultsToTomorrowTirane` IT recomputes "tomorrow" independently of the bean
+clock — a theoretical midnight-boundary flake only.
 
 > Build note: phases were implemented and verified as one cohesive slice. Honest red→green
 > signal: the full backend suite first failed on `ConcurrentClaimIT` (`[ALREADY_TAKEN,
