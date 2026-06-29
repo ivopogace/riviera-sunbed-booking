@@ -7,6 +7,11 @@ export const routes: Routes = [
     title: 'Riviera — Sunbed Booking',
   },
   {
+    path: 'venue-admin',
+    loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
+    title: 'Venue editor — Riviera',
+  },
+  {
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
     title: 'Beach map — Riviera',

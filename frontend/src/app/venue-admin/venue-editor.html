@@ -1,0 +1,228 @@
+<section class="editor">
+  <h1>Venue editor</h1>
+
+  <!-- Operator sign-in (U7: the write API requires an operator credential) -->
+  @if (!operator.signedIn()) {
+    <form class="card sign-in" (submit)="onSignIn(); $event.preventDefault()" novalidate>
+      <h2>Operator sign-in</h2>
+      <p class="hint">The venue write API requires an operator credential.</p>
+      <label class="field">
+        <span>Username</span>
+        <input
+          type="text"
+          name="operator-username"
+          autocomplete="username"
+          [value]="username()"
+          (input)="username.set($any($event.target).value)"
+        />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input
+          type="password"
+          name="operator-password"
+          autocomplete="current-password"
+          [value]="password()"
+          (input)="password.set($any($event.target).value)"
+        />
+      </label>
+      <button type="submit" class="btn-primary">Sign in</button>
+    </form>
+  } @else {
+    <div class="card signed-in">
+      <p>Signed in as <strong>{{ operator.username() }}</strong>.</p>
+      <button type="button" class="btn-secondary" (click)="onSignOut()">Sign out</button>
+    </div>
+  }
+
+  @if (errorMessage(); as msg) {
+    <p class="form-error" role="alert">{{ msg }}</p>
+  }
+
+  @if (operator.signedIn()) {
+    @if (venueId() === undefined) {
+      <!-- Step 1: create the venue -->
+      <form class="card" (submit)="onCreateVenue(); $event.preventDefault()" novalidate>
+        <h2>1 · Create venue</h2>
+
+        <label class="field">
+          <span>Name</span>
+          <input type="text" [formField]="venueForm.name" />
+          @if (venueForm.name().touched() && venueForm.name().errors().length) {
+            <span class="field-error">{{ venueForm.name().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Beach</span>
+          <input type="text" [formField]="venueForm.beach" />
+          @if (venueForm.beach().touched() && venueForm.beach().errors().length) {
+            <span class="field-error">{{ venueForm.beach().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Region</span>
+          <input type="text" [formField]="venueForm.region" />
+          @if (venueForm.region().touched() && venueForm.region().errors().length) {
+            <span class="field-error">{{ venueForm.region().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Description</span>
+          <input type="text" [formField]="venueForm.description" />
+        </label>
+
+        <label class="field">
+          <span>Booking mode</span>
+          <select [formField]="venueForm.bookingMode">
+            <option value="INSTANT">Instant Book</option>
+            <option value="REQUEST">Request to Book</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Commission (basis points)</span>
+          <input type="text" inputmode="numeric" [formField]="venueForm.commissionBps" />
+          @if (venueForm.commissionBps().touched() && venueForm.commissionBps().errors().length) {
+            <span class="field-error">{{ venueForm.commissionBps().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Payout currency (ISO 4217)</span>
+          <input type="text" autocomplete="off" [formField]="venueForm.payoutCurrency" />
+          @if (venueForm.payoutCurrency().touched() && venueForm.payoutCurrency().errors().length) {
+            <span class="field-error">{{ venueForm.payoutCurrency().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Booking cutoff (Europe/Tirane)</span>
+          <input type="time" [formField]="venueForm.bookingCutoff" />
+        </label>
+
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="venueForm().invalid() || saving()"
+        >
+          {{ saving() ? 'Creating…' : 'Create venue' }}
+        </button>
+      </form>
+    } @else {
+      <!-- Step 2: lay out the beach map -->
+      <div class="card created" role="status">
+        Venue <strong>#{{ venueId() }}</strong> created. Add set positions below; the layout shown
+        is re-read from the public beach-map API.
+      </div>
+
+      <form class="card" (submit)="onAddSet(); $event.preventDefault()" novalidate>
+        <h2>2 · Add a set position</h2>
+
+        <label class="field">
+          <span>Row label</span>
+          <input type="text" [formField]="setForm.rowLabel" />
+          @if (setForm.rowLabel().touched() && setForm.rowLabel().errors().length) {
+            <span class="field-error">{{ setForm.rowLabel().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Position number</span>
+          <input type="text" inputmode="numeric" [formField]="setForm.positionNo" />
+          @if (setForm.positionNo().touched() && setForm.positionNo().errors().length) {
+            <span class="field-error">{{ setForm.positionNo().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Tier</span>
+          <select [formField]="setForm.tier">
+            <option value="PREMIUM">Premium</option>
+            <option value="STANDARD">Standard</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Pool</span>
+          <select [formField]="setForm.pool">
+            <option value="ONLINE">Online</option>
+            <option value="WALK_IN">Walk-in</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Price (minor units)</span>
+          <input type="text" inputmode="numeric" [formField]="setForm.priceMinor" />
+          @if (setForm.priceMinor().touched() && setForm.priceMinor().errors().length) {
+            <span class="field-error">{{ setForm.priceMinor().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Currency (ISO 4217)</span>
+          <input type="text" autocomplete="off" [formField]="setForm.priceCurrency" />
+          @if (setForm.priceCurrency().touched() && setForm.priceCurrency().errors().length) {
+            <span class="field-error">{{ setForm.priceCurrency().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Grid column (X)</span>
+          <input type="text" inputmode="numeric" [formField]="setForm.gridX" />
+          @if (setForm.gridX().touched() && setForm.gridX().errors().length) {
+            <span class="field-error">{{ setForm.gridX().errors()[0].message }}</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Grid row (Y)</span>
+          <input type="text" inputmode="numeric" [formField]="setForm.gridY" />
+          @if (setForm.gridY().touched() && setForm.gridY().errors().length) {
+            <span class="field-error">{{ setForm.gridY().errors()[0].message }}</span>
+          }
+        </label>
+
+        <button type="submit" class="btn-primary" [disabled]="setForm().invalid() || saving()">
+          {{ saving() ? 'Adding…' : 'Add set' }}
+        </button>
+      </form>
+
+      <div class="card layout">
+        <h2>Layout ({{ sets().length }})</h2>
+        @if (sets().length === 0) {
+          <p class="hint">No sets yet. Add one above.</p>
+        } @else {
+          <ul class="set-list">
+            @for (set of sets(); track set.id) {
+              <li class="set-row">
+                <span class="set-name">{{ setLabel(set) }}</span>
+                <span class="set-actions">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    [disabled]="saving()"
+                    (click)="onTogglePool(set)"
+                  >
+                    Move to {{ set.pool === 'ONLINE' ? 'walk-in' : 'online' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-danger"
+                    [disabled]="saving()"
+                    (click)="onRemoveSet(set)"
+                    [attr.aria-label]="'Remove ' + setLabel(set)"
+                  >
+                    Remove
+                  </button>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  }
+</section>

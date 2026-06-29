@@ -1,6 +1,8 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
+
+import { operatorAuthInterceptor } from './core/operator-auth.interceptor';
 
 import {
   FakeStripePaymentGateway,
@@ -25,7 +27,8 @@ function stripeGatewayFactory(): StripePaymentGateway {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(),
+    // operatorAuthInterceptor attaches the operator's Basic credentials to venue write requests (U7).
+    provideHttpClient(withInterceptors([operatorAuthInterceptor])),
     provideRouter(routes),
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory }
   ]
