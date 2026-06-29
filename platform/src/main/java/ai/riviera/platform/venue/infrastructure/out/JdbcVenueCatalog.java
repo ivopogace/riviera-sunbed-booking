@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueId;
@@ -71,6 +72,14 @@ class JdbcVenueCatalog implements VenueCatalog {
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, sets));
+	}
+
+	@Override
+	public Optional<String> poolOf(SetId setId) {
+		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id")
+				.param("id", setId.value())
+				.query(String.class)
+				.optional();
 	}
 
 	private record VenueRow(long id, String name, String beach, String region,

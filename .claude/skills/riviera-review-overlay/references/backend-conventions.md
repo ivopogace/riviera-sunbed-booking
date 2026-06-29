@@ -241,3 +241,27 @@ level; Major for unversioned schema change.
 **Skill framing:**
 - Peer-review: "Is there a migration? Does the DB enforce the availability
   uniqueness, or only the service layer?"
+
+---
+
+### RV-BE-13. No injection: SQL, log, deserialization
+**Gate:** Is untrusted input kept out of SQL string-building, log lines, and
+unsafe deserialization?
+- [ ] SQL uses bound params (`:name`), never string concatenation of input  [ ] user-controlled text logged without neutralizing `\r\n` (log forging — violation)  [ ] booking code / secret / PII logged in clear (violation — invariant #7)  [ ] untrusted bytes deserialized without an allowlist (violation)
+
+**Follow-up:**
+- SQL: `JdbcClient`/`JdbcTemplate` named parameters only; a concatenated user value
+  in SQL is a Blocker (invariant #1's explicit-SQL still binds params).
+- Logs: parameterized logging does **not** sanitize the value — strip/escape `\r\n`
+  in untrusted strings (email, free-text, headers) or use a structured (JSON)
+  appender. Logging an id/enum is fine; raw free-text is the risk.
+- Deserialization: don't deserialize untrusted input; if unavoidable, allowlist the
+  permitted types. (Sonar rules flag all three.)
+
+**Default severity:** **Blocker** for SQL injection or a secret in logs; Major for
+unsanitized untrusted text in logs or unguarded deserialization.
+**Skill framing:**
+- Peer-review: "Trace any user-controlled string into SQL, into a log line, and into
+  any deserializer. Bound param? Newlines neutralized? Type allowlist?"
+- Deeper conventions: `riviera-java-conventions` (rule 10 logging) and the
+  `postgres` skill (parameterized SQL).

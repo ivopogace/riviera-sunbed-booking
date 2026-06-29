@@ -72,7 +72,20 @@ if [ -x "$JDK_DIR/bin/java" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   } >> "$CLAUDE_ENV_FILE"
 fi
 
-# ── 3. Docker daemon (backend Testcontainers ITs) ─────────────────────────
+# ── 3. JDK trusts the agent-proxy CA (so ./gradlew works) ─────────────────
+# The wrapper download + dependency resolution go through the policy proxy; if the
+# managed JVM truststore seed failed, the JDK's default cacerts won't trust the proxy
+# CA and ./gradlew dies with PKIX errors. Import the CA into the JDK cacerts. Runs
+# AFTER the JDK step so it targets the freshly-installed cacerts. Best-effort.
+# See scripts/trust-proxy-ca-java.sh and docs/agents/gradle-proxy-trust.md.
+TRUST_SCRIPT="$PROJECT_DIR/scripts/trust-proxy-ca-java.sh"
+if [ -x "$TRUST_SCRIPT" ]; then
+  echo "cloud-session-setup: trusting agent-proxy CA for the JDK ..." >&2
+  "$TRUST_SCRIPT" \
+    || echo "cloud-session-setup: trust-proxy-ca-java failed; ./gradlew may hit PKIX (run 'bash scripts/trust-proxy-ca-java.sh' to retry)" >&2
+fi
+
+# ── 4. Docker daemon (backend Testcontainers ITs) ─────────────────────────
 # The backend ITs are gated by @EnabledIfDockerAvailable and SKIP when no daemon
 # is running (the cloud default), so ./gradlew test can't verify DB/IT behaviour
 # locally. Bring a daemon up so the full suite runs. Best-effort: a Docker

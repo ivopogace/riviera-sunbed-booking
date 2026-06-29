@@ -1,0 +1,68 @@
+package ai.riviera.platform.availability.infrastructure.out;
+
+import java.time.LocalDate;
+import java.util.Optional;
+
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.api.ClaimOutcome;
+import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.api.VenueCatalog;
+
+/**
+ * JDBC adapter implementing {@link AvailabilityClaim} directly (no intervening application
+ * service / out-port — a single adapter is a hypothetical seam, not a real one; mirrors
+ * {@code JdbcVenueCatalog}). Invariant #1: explicit SQL via {@link JdbcClient}, no JPA.
+ *
+ * <p>The claim is two steps in one transaction:
+ * <ol>
+ *   <li>look up the set's pool through {@link VenueCatalog} (venue's {@code api/} port, not
+ *       its tables — invariant #11). Pool is immutable layout data, so check-then-claim has
+ *       no meaningful race.</li>
+ *   <li>an atomic {@code INSERT ... ON CONFLICT (set_id, booking_date) DO NOTHING} against
+ *       the {@code UNIQUE} constraint. Rows-affected decides the winner: {@code 1} =
+ *       {@code CLAIMED}, {@code 0} = a concurrent/earlier claim already holds it
+ *       ({@code ALREADY_TAKEN}). This single statement is the entire concurrency primitive
+ *       (invariant #2) — no {@code SELECT ... FOR UPDATE} needed because the row's creation
+ *       is the claim.</li>
+ * </ol>
+ */
+@Repository
+class JdbcAvailabilityClaim implements AvailabilityClaim {
+
+	private static final String ONLINE_POOL = "ONLINE";
+
+	private final JdbcClient jdbc;
+	private final VenueCatalog venueCatalog;
+
+	JdbcAvailabilityClaim(JdbcClient jdbc, VenueCatalog venueCatalog) {
+		this.jdbc = jdbc;
+		this.venueCatalog = venueCatalog;
+	}
+
+	@Override
+	@Transactional
+	public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+		Optional<String> pool = venueCatalog.poolOf(setId);
+		if (pool.isEmpty()) {
+			return ClaimOutcome.NO_SUCH_SET;
+		}
+		if (!ONLINE_POOL.equals(pool.get())) {
+			return ClaimOutcome.NOT_ONLINE_POOL;
+		}
+
+		int inserted = jdbc.sql("""
+				INSERT INTO set_availability (set_id, booking_date, state)
+				VALUES (:setId, :bookingDate, 'BOOKED_ONLINE')
+				ON CONFLICT (set_id, booking_date) DO NOTHING
+				""")
+				.param("setId", setId.value())
+				.param("bookingDate", bookingDate)
+				.update();
+
+		return inserted == 1 ? ClaimOutcome.CLAIMED : ClaimOutcome.ALREADY_TAKEN;
+	}
+}

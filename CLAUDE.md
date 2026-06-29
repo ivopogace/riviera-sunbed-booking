@@ -133,6 +133,11 @@ These are repo-scoped — they load when working in this repository.
 - **`riviera-stripe-payments`** — the locked payment model (collect-only, no
   Connect, manual BKT payout, German entity) plus Stripe integration conventions.
   Load it for any work in the `payment` or `payout` module.
+- **`riviera-java-conventions`** — the **backend Java language idioms** (Java 25,
+  Spring Boot 4, Modulith): JDBC-only/no-JPA/no-Lombok, records for DTOs/value-objects/ids,
+  constructor injection with package-private adapters, typed outcomes, sealed types &
+  pattern matching. Load before writing/refactoring any Java; pairs with `codebase-design`
+  (seam shape) and `postgres` (SQL). The numbered invariants stay canonical in this file.
 
 **Angular skills** (official, from `angular/skills`, installed in-repo via
 `skills add` so clones and cloud agents get them; manifest in `skills-lock.json`):

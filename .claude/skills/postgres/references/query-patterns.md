@@ -69,12 +69,18 @@ SELECT id, name FROM user u
 WHERE EXISTS (SELECT 1 FROM order o WHERE o.user_id = u.id AND o.total > 100);
 ```
 
-**OFFSET → cursor pagination** — OFFSET scans and discards rows, degrading at depth:
+**OFFSET → keyset pagination** (a.k.a. cursor / "seek" method) — `OFFSET` scans and discards
+every skipped row, so it degrades with depth (page 10 000 scans ~200 000 rows then throws them
+away); keyset seeks the index from the last row seen and is ~O(1) per page regardless of
+depth. Use it for list endpoints (venue browse, the staff daily view), not `OFFSET`.
 ```sql
 -- Bad: OFFSET 10000 scans 10020 rows
 SELECT id, title FROM article ORDER BY created_at DESC LIMIT 20 OFFSET 10000;
--- Good: cursor-based (requires index on (created_at DESC, id DESC))
+-- Good (single key): seek past the last id returned
+SELECT id, title FROM article WHERE id < :lastId ORDER BY id DESC LIMIT 20;
+-- Good (composite sort): the cursor must carry EVERY ORDER BY column, compared as one row
+-- tuple (requires an index on (created_at DESC, id DESC))
 SELECT id, title FROM article
-WHERE (created_at, id) < ('2025-06-15T12:00:00Z', 987654)
+WHERE (created_at, id) < (:lastCreatedAt, :lastId)
 ORDER BY created_at DESC, id DESC LIMIT 20;
 ```

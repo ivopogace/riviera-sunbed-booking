@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -41,7 +42,18 @@ class WebCorsConfigTest {
 
 		@Bean
 		VenueCatalog venueCatalog() {
-			return id -> Optional.empty();
+			return new VenueCatalog() {
+				@Override
+				public Optional<ai.riviera.platform.venue.api.VenueMapView> findVenueMap(
+						ai.riviera.platform.venue.api.VenueId id) {
+					return Optional.empty();
+				}
+
+				@Override
+				public Optional<String> poolOf(SetId setId) {
+					return Optional.empty();
+				}
+			};
 		}
 	}
 
