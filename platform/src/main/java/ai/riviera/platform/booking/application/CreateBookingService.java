@@ -13,6 +13,7 @@ import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
 import ai.riviera.platform.booking.application.in.BookingConfirmation;
 import ai.riviera.platform.booking.application.in.BookingOutcome;
+import ai.riviera.platform.booking.application.in.ConfirmBooking;
 import ai.riviera.platform.booking.application.in.CreateBooking;
 import ai.riviera.platform.booking.application.in.CreateBookingCommand;
 import ai.riviera.platform.booking.application.out.BookingCodeGenerator;
@@ -57,18 +58,21 @@ class CreateBookingService implements CreateBooking {
 	private final ai.riviera.platform.customer.api.CustomerDirectory customers;
 	private final CheckoutPort checkout;
 	private final Bookings bookings;
+	private final ConfirmBooking confirmBooking;
 	private final BookingCodeGenerator codeGenerator;
 	private final BookingCutoff cutoff;
 	private final Clock clock;
 
 	CreateBookingService(VenueCatalog venueCatalog, AvailabilityClaim availability,
 			ai.riviera.platform.customer.api.CustomerDirectory customers, CheckoutPort checkout,
-			Bookings bookings, BookingCodeGenerator codeGenerator, BookingCutoff cutoff, Clock clock) {
+			Bookings bookings, ConfirmBooking confirmBooking, BookingCodeGenerator codeGenerator,
+			BookingCutoff cutoff, Clock clock) {
 		this.venueCatalog = venueCatalog;
 		this.availability = availability;
 		this.customers = customers;
 		this.checkout = checkout;
 		this.bookings = bookings;
+		this.confirmBooking = confirmBooking;
 		this.codeGenerator = codeGenerator;
 		this.cutoff = cutoff;
 		this.clock = clock;
@@ -105,8 +109,9 @@ class CreateBookingService implements CreateBooking {
 		// Log ids/date only — never the booking code (invariant #7) or the guest's PII.
 		return switch (payment) {
 			case PaymentOutcome.Succeeded ignored -> {
-				// Synchronous stub path: collected in-process, confirm now in this transaction.
-				bookings.confirm(inserted.id(), clock.instant());
+				// Synchronous stub path: collected in-process, confirm now in this transaction. The
+				// confirm seam transitions and publishes BookingConfirmed (one place, both paths).
+				confirmBooking.confirm(inserted.id(), clock.instant());
 				log.info("confirmed booking {} for set {} on {}", inserted.id(),
 						set.setId().value(), command.bookingDate());
 				yield new BookingOutcome.Confirmed(new BookingConfirmation(

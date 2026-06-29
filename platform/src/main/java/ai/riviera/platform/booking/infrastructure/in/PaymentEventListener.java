@@ -8,6 +8,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.booking.application.in.ConfirmBooking;
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.payment.api.PaymentCanceled;
 import ai.riviera.platform.payment.api.PaymentConfirmed;
@@ -40,11 +41,14 @@ class PaymentEventListener {
 
 	private static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);
 
+	private final ConfirmBooking confirmBooking;
 	private final Bookings bookings;
 	private final AvailabilityClaim availability;
 	private final Clock clock;
 
-	PaymentEventListener(Bookings bookings, AvailabilityClaim availability, Clock clock) {
+	PaymentEventListener(ConfirmBooking confirmBooking, Bookings bookings,
+			AvailabilityClaim availability, Clock clock) {
+		this.confirmBooking = confirmBooking;
 		this.bookings = bookings;
 		this.availability = availability;
 		this.clock = clock;
@@ -53,7 +57,9 @@ class PaymentEventListener {
 	@ApplicationModuleListener
 	void on(PaymentConfirmed event) {
 		long bookingId = event.bookingRef().value();
-		if (bookings.confirmFromPayment(bookingId, clock.instant())) {
+		// The confirm seam transitions and publishes BookingConfirmed iff it actually transitioned,
+		// so a re-delivery publishes nothing (idempotent — invariant #8 / #9).
+		if (confirmBooking.confirmFromPayment(bookingId, clock.instant())) {
 			log.info("confirmed booking {} from verified payment {}", bookingId,
 					event.paymentIntentId());
 		}

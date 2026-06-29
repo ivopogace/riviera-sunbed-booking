@@ -25,20 +25,23 @@ public interface Bookings {
 	OptionalLong insertAwaitingPayment(NewBooking booking);
 
 	/**
-	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}. Strict: a
-	 * non-{@code AWAITING_PAYMENT} row is an error (the synchronous stub path, where exactly-once
-	 * is guaranteed within the create transaction).
+	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}, and return the
+	 * confirmed booking's facts (for the {@code BookingConfirmed} payload, built atomically with
+	 * the transition via SQL {@code RETURNING}). Strict: a non-{@code AWAITING_PAYMENT} row is an
+	 * error (the synchronous stub path, where exactly-once is guaranteed within the create
+	 * transaction).
 	 */
-	void confirm(long bookingId, Instant confirmedAt);
+	ConfirmedBooking confirm(long bookingId, Instant confirmedAt);
 
 	/**
 	 * Confirm from a signature-verified Stripe webhook (U4): transition
-	 * {@code AWAITING_PAYMENT → CONFIRMED}. <strong>Idempotent</strong> — a 0-row update (already
-	 * confirmed/cancelled, or a re-delivered event) is a benign no-op returning {@code false},
-	 * never an error (the redelivery-safe sibling of {@link #confirm}). Returns {@code true} iff
-	 * it transitioned.
+	 * {@code AWAITING_PAYMENT → CONFIRMED} and return the confirmed booking's facts.
+	 * <strong>Idempotent</strong> — a 0-row update (already confirmed/cancelled, or a re-delivered
+	 * event) yields {@code empty}, never an error (the redelivery-safe sibling of {@link #confirm}).
+	 * A present result means it actually transitioned, so the caller publishes exactly one
+	 * {@code BookingConfirmed}.
 	 */
-	boolean confirmFromPayment(long bookingId, Instant confirmedAt);
+	Optional<ConfirmedBooking> confirmFromPayment(long bookingId, Instant confirmedAt);
 
 	/**
 	 * Cancel from a verified {@code payment_intent.canceled} webhook (U4): transition
