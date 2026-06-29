@@ -22,8 +22,9 @@ behavior and should be chosen deliberately.
 - **Third-party skills are vendored after a manual safety review** (e.g. the Supabase Postgres
   skill: checked for scripts/network/injection before adapting; the VoltAgent list: inspected,
   not blindly imported). Keep doing this — it is the skill-equivalent of dependency vetting.
-- **Scanning:** CodeQL runs in CI; SonarCloud is in the pipeline. GitHub secret scanning /
-  push protection status is a repo setting (see below).
+- **Scanning:** CodeQL runs in CI, and SonarCloud runs and reports its quality gate on
+  every PR (the `SONAR_TOKEN` secret is configured). GitHub secret scanning / push
+  protection status is a repo setting (see below).
 
 ## Standing practices (keep doing)
 
@@ -44,9 +45,10 @@ behavior and should be chosen deliberately.
   adopted, test the FE build/test first and add an explicit allowlisted step for any script
   that is genuinely required. Candidate change in `ci.yml`, `deploy.yml`, and the two session
   scripts.
-- **Branch protection on `main`:** require CI + CodeQL + SonarCloud status checks and a review
-  before merge, so a poisoned PR can't land green-but-unreviewed. (Org/repo setting — not in
-  the repo tree.)
+- **Branch protection on `main`:** the CI, CodeQL, and SonarCloud checks already run and
+  pass on PRs; making them *required* status checks (plus a required review) before merge —
+  so a poisoned PR can't land green-but-unreviewed — is still a repo setting to turn on.
+  (Org/repo setting — not in the repo tree.)
 - **Account hardening for anything that can publish or merge:** hardware (FIDO2) MFA on GitHub;
   least-privilege, time-limited tokens; enable **secret scanning + push protection**. TOTP is
   phishable (the worm captured TOTP in real time); hardware keys are the real defense.

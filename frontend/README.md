@@ -67,13 +67,15 @@ This covers two things:
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+End-to-end tests use [Playwright](https://playwright.dev/) (config in
+`playwright.config.ts`, specs under `e2e/`) and run a real-render axe pass over the
+booking flow. Run them with:
 
 ```bash
-ng e2e
+npm run test:e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+This is the same e2e suite CI runs on every PR.
 
 ## Additional Resources
 

@@ -1,12 +1,17 @@
 # Riviera Sunbed Booking — Domain Model (diagrams)
 
-> Pre-implementation modeling. This file visualizes the bounded contexts,
-> aggregates/entities, actors & use cases, and the core flows **before** any code
-> is written. It is derived from `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`
-> and the invariants in `/CLAUDE.md` (referenced below as "invariant #N").
+> **Target** domain model. This file visualizes the bounded contexts,
+> aggregates/entities, actors & use cases, and the core flows. It is derived from
+> `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` and the
+> invariants in `/CLAUDE.md` (referenced below as "invariant #N").
 >
-> All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub. Treat
-> this as a living sketch — names will firm up at scaffolding time.
+> Implementation has begun: U1 (venue/beach-map), U2 (availability claim), and U3
+> (create-booking Instant, payment stubbed) are built; the **event spine** below
+> (`PaymentSucceeded → BookingConfirmed → availability + payout`) is the U4/U5
+> target and is **not yet wired** — U3 claims availability synchronously (see §4).
+> For as-built status per slice, see `docs/plans/`.
+>
+> All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub.
 
 ---
 
@@ -199,9 +204,10 @@ classDiagram
 ```
 
 > Identity is the pair **(setId, bookingDate)**. A DB `UNIQUE(set_id, booking_date)`
-> constraint plus a claim done as `SELECT ... FOR UPDATE` or
-> `INSERT ... ON CONFLICT DO NOTHING` guarantees **at most one party per set per
-> date** (invariant #2). This module is the *only* writer of this table — both
+> constraint plus a claim guarantees **at most one party per set per date**
+> (invariant #2). The implemented mechanism (V4 + `JdbcAvailabilityClaim`) is an
+> atomic `INSERT ... ON CONFLICT DO NOTHING` (FREE = no row), chosen over
+> `SELECT ... FOR UPDATE`. This module is the *only* writer of this table — both
 > online bookings and staff taps go through it.
 
 ### 3.3 `booking`
@@ -386,6 +392,12 @@ sequenceDiagram
         B-->>FE: confirmation + code + email
     end
 ```
+
+> **As-built (U3):** the implemented flow claims availability **synchronously** via
+> the `AvailabilityClaim` port *before* payment, and the payment gateway is stubbed —
+> there are no domain events yet. The `PaymentSucceeded`/`BookingConfirmed` events and
+> the payout-ledger fan-out shown above are the **U4/U5 target** (held→confirmed on a
+> verified webhook; payout accrual via an event listener), not the current code.
 
 ---
 

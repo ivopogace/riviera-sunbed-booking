@@ -14,9 +14,9 @@ full backend suite, and how to start it by hand if needed.
 ## How Docker is provided
 
 In **cloud sessions** (Claude Code on the web), the SessionStart hook
-`scripts/cloud-session-setup.sh` calls `scripts/start-dockerd.sh` as its third step,
-after the frontend deps and the JDK 25 toolchain. So a daemon is up automatically by
-the time you run tests — no manual step. Local (non-cloud) sessions are skipped
+`scripts/cloud-session-setup.sh` calls `scripts/start-dockerd.sh` as its last step,
+after the frontend deps, the JDK 25 toolchain, and the proxy-CA-trust step. So a daemon
+is up automatically by the time you run tests — no manual step. Local (non-cloud) sessions are skipped
 (`CLAUDE_CODE_REMOTE != true`); developers manage their own Docker.
 
 ## Manual fallback (one-liner)
@@ -33,7 +33,7 @@ It exits 0 immediately if a daemon is already reachable, so it's safe to re-run.
 ```bash
 docker info                                                   # should exit 0
 cd platform && ./gradlew cleanTest test --tests "ai.riviera.platform.venue.*"
-# → 6 ITs run, 0 skipped, green (VenueReadControllerIT 4, VenueSeedMigrationIT 2)
+# → the venue ITs run, 0 skipped, green (proves the daemon is reachable)
 ```
 
 ## Why it's set up this way (gotchas)

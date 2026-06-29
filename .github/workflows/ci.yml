@@ -93,8 +93,10 @@ jobs:
     name: SonarCloud scan
     needs: [backend, frontend]
     runs-on: ubuntu-latest
-    # One combined scan for the single SonarCloud project. The scan steps are skipped
-    # (job stays green) until the maintainer adds the SONAR_TOKEN secret.
+    # One combined scan for the single SonarCloud project. SONAR_TOKEN is configured,
+    # so the scan runs and reports the quality gate on every PR. The `SONAR_TOKEN != ''`
+    # guards on the steps below are a safety fallback that keeps the job green on
+    # secret-less runs (e.g. forks), not a "skipped by default" state.
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:

@@ -5,10 +5,12 @@ Albanian-riviera beach venue — pick the exact spot from a visual beach map and
 in-app. A two-sided marketplace: tourists are demand, venues are supply, the
 platform takes a commission per booking and pays venues out manually.
 
-> **Status: pre-implementation.** The design and domain model are done; there is
-> **no application code yet**. The next milestone is scaffolding the Angular
-> frontend and the Spring Boot backend. If you're here to contribute, start with
-> [`CONTRIBUTING.md`](CONTRIBUTING.md).
+> **Status: in active development.** The Spring Boot backend (`platform/`) and the
+> Angular frontend (`frontend/`) are scaffolded and building. Implemented so far:
+> the venue beach-map (U1), the availability claim (U2), and the create-booking
+> Instant flow with payment stubbed (U3); the event spine + payout accrual (U4/U5)
+> are designed but not yet built. Per-slice status lives in [`docs/plans/`](docs/plans/).
+> If you're here to contribute, start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Start here
 
@@ -29,6 +31,26 @@ platform takes a commission per booking and pays venues out manually.
 - **Payments:** Stripe, collection-only, behind a payment-gateway interface
 - **Migrations:** Flyway (versioned forward SQL)
 - **Build:** Gradle wrapper (`./gradlew`) for the backend; npm scripts for Angular
+
+## Build & run
+
+Requires **JDK 25**, **Node 26** (see [`.nvmrc`](.nvmrc)), and **Docker** (for the
+backend Testcontainers integration tests).
+
+```bash
+# Backend (Spring Boot, port 8080)
+cd platform && ./gradlew build      # compile + test
+./gradlew bootRun                   # run the API
+
+# Frontend (Angular, port 4200)
+cd frontend && npm ci
+npm start                           # dev server
+npm test                            # unit tests (Vitest)
+npm run test:e2e                    # Playwright a11y e2e
+```
+
+CI (`.github/workflows/`) runs the same backend build/test, the frontend
+lint/test/build + e2e, CodeQL, and a SonarCloud scan on every PR.
 
 ## The system in one picture
 
