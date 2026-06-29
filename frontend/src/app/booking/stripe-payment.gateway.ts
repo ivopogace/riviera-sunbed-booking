@@ -61,3 +61,24 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
     };
   }
 }
+
+/**
+ * Deterministic fake for end-to-end a11y runs (Playwright): real Stripe.js is non-deterministic
+ * and must load from js.stripe.com, which would make CI flaky. Activated **only** when the test
+ * harness sets `window.__RIVIERA_FAKE_STRIPE__` (see app.config) — it is inert in production,
+ * which never sets that flag. It renders a labelled stand-in for the card field (so the page's
+ * a11y is audited honestly) and confirms successfully, after which the page polls the mocked
+ * backend exactly as in production.
+ */
+@Injectable()
+export class FakeStripePaymentGateway extends StripePaymentGateway {
+  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = '4242 4242 4242 4242';
+    input.setAttribute('aria-label', 'Card number (test mode)');
+    input.setAttribute('data-testid', 'fake-card-input');
+    host.appendChild(input);
+    return { confirm: async () => ({}) };
+  }
+}

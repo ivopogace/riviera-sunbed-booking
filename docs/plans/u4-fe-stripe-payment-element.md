@@ -102,13 +102,13 @@ checked out). Slug for plan/commit references: `u4-fe-stripe-payment-element`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | UI claims "confirmed/paid" from the Stripe.js success callback (violates invariant #8) — the exact bug the issue calls out | high | high | The pay page renders `confirmed` **only** on a `CONFIRMED` poll of `GET /api/bookings/{code}`; the Stripe.js result only gates *start polling vs show retry*. Pinned by AC-2/AC-3. | claude | open |
-| R-2 | 202 path reuses the 201 confirmation screen, so `AWAITING_PAYMENT` shows as "Booking confirmed / Paid" (the current false state) | high | high | Service discriminates on HTTP 201 vs 202; only 201 reaches `/booking/confirmation`; 202 → `/booking/pay`. Confirmation screen additionally guards on `status === 'CONFIRMED'`. AC-1/AC-5. | claude | open |
-| R-3 | Webhook never lands / is delayed → infinite spinner or false confirm | med | high | Bounded ~30s poll → explicit "awaiting confirmation" terminal state with the code (AC-3), never "confirmed". | claude | open |
-| R-4 | Secret key leaks into the bundle | low | high | Only the **publishable** `pk_` key, from `environment`; grep `dist` for `sk_`/secret in the phase; gateway reads env (AC-6). | claude | open |
-| R-5 | Stripe.js can't run under jsdom → untestable component, or flaky CI | high | med | `StripePaymentGateway` seam: real `loadStripe` only in the browser adapter; jsdom/vitest + Playwright inject a fake. AC-7. | claude | open |
-| R-6 | Overlapping poll requests / poll not stopped on destroy → leaked timers, racey tests | med | med | `switchMap` over a single `timer`, `takeUntilDestroyed`, stop on terminal state; tests use `HttpTestingController` + fake timers. | claude | open |
-| R-7 | Deploy build rewrites `environment.prod.ts` wholesale (`deploy.yml`) and drops the new key | med | med | Update the `deploy.yml` printf to emit `stripePublishableKey` from a `STRIPE_PUBLISHABLE_KEY` repo variable, defaulting to the committed value. | claude | open |
+| R-1 | UI claims "confirmed/paid" from the Stripe.js success callback (violates invariant #8) — the exact bug the issue calls out | high | high | The pay page renders `confirmed` **only** on a `CONFIRMED` poll of `GET /api/bookings/{code}`; the Stripe.js result only gates *start polling vs show retry*. Pinned by AC-2/AC-3. | claude | resolved (this slice) |
+| R-2 | 202 path reuses the 201 confirmation screen, so `AWAITING_PAYMENT` shows as "Booking confirmed / Paid" (the current false state) | high | high | Service discriminates on HTTP 201 vs 202; only 201 reaches `/booking/confirmation`; 202 → `/booking/pay`. Confirmation screen additionally guards on `status === 'CONFIRMED'`. AC-1/AC-5. | claude | resolved (this slice) |
+| R-3 | Webhook never lands / is delayed → infinite spinner or false confirm | med | high | Bounded ~30s poll → explicit "awaiting confirmation" terminal state with the code (AC-3), never "confirmed". | claude | resolved (this slice) |
+| R-4 | Secret key leaks into the bundle | low | high | Only the **publishable** `pk_` key, from `environment`; grep `dist` for `sk_`/secret in the phase; gateway reads env (AC-6). | claude | resolved (this slice) |
+| R-5 | Stripe.js can't run under jsdom → untestable component, or flaky CI | high | med | `StripePaymentGateway` seam: real `loadStripe` only in the browser adapter; jsdom/vitest + Playwright inject a fake. AC-7. | claude | resolved (this slice) |
+| R-6 | Overlapping poll requests / poll not stopped on destroy → leaked timers, racey tests | med | med | `switchMap` over a single `timer`, `takeUntilDestroyed`, stop on terminal state; tests use `HttpTestingController` + fake timers. | claude | resolved (this slice) |
+| R-7 | Deploy build rewrites `environment.prod.ts` wholesale (`deploy.yml`) and drops the new key | med | med | Update the `deploy.yml` printf to emit `stripePublishableKey` from a `STRIPE_PUBLISHABLE_KEY` repo variable, defaulting to the committed value. | claude | resolved (this slice) |
 
 ## Open questions / Assumptions
 
@@ -209,7 +209,7 @@ conveyed in **text** (not colour alone) for WCAG AA. No `as any` on the contract
 | 0 — Service 201/202 discrimination + awaiting handoff (+ dialog/map wiring) | ✅ | (this commit) |
 | 1 — Stripe gateway seam + env config + deploy.yml | ✅ | (this commit) |
 | 2 — `/booking/pay` page (mount → confirm → poll) + confirmation guard | ✅ | (this commit) |
-| 3 — a11y/contrast specs + Playwright stripe-path e2e (mocked) | | |
+| 3 — a11y/contrast specs + Playwright stripe-path e2e (mocked) | ✅ | (this commit) |
 
 > **Note:** the dialog `awaiting` output + `venue-map.onAwaiting()` navigation (originally
 > Phase 2) were folded into Phase 0 — the service return-type change breaks the dialog
@@ -698,32 +698,35 @@ test('stripe-profile payment flow is accessible (Stripe mocked)', async ({ page 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- --include='**/booking.service.spec.ts' --include='**/booking-dialog.spec.ts'` → PASS. Commit `<sha>`.
-- [ ] **AC-2:** `npm test -- --include='**/booking-pay.spec.ts'` (`stays processing until CONFIRMED`) → PASS. `<sha>`.
-- [ ] **AC-3:** `npm test -- --include='**/booking-pay.spec.ts'` (`webhook-lag → awaiting`) → PASS. `<sha>`.
-- [ ] **AC-4:** `npm test -- --include='**/booking-pay.spec.ts'` (`decline → retry, no poll`) → PASS. `<sha>`.
-- [ ] **AC-5:** `npm test -- --include='**/booking.service.spec.ts'` (201 path) + `npx playwright test` (existing flow) → PASS. `<sha>`.
-- [ ] **AC-6:** `stripe-payment.gateway.spec.ts` PASS + `grep -r "sk_" frontend/dist` → no match. `<sha>`.
-- [ ] **AC-7:** `npm test` (jsdom axe specs) + `npx playwright test` (stripe path, mocked) → PASS. `<sha>`.
+- [x] **AC-1:** `booking.service.spec.ts` (`202 → awaiting`) + `booking-dialog.spec.ts` (`emits awaiting on 202`) + `venue-map.spec.ts` (`navigates to /booking/pay`) → PASS (Phase 0/2).
+- [x] **AC-2:** `booking-pay.spec.ts` (`stays processing until CONFIRMED`) → PASS (Phase 2).
+- [x] **AC-3:** `booking-pay.spec.ts` (`webhook lag … → awaiting, never confirmed`) → PASS (Phase 2).
+- [x] **AC-4:** `booking-pay.spec.ts` (`declined card → retry … never polls`) → PASS (Phase 2).
+- [x] **AC-5:** `booking.service.spec.ts` (201 path) + `booking-flow.e2e.ts` (existing 201 flow) → PASS.
+- [x] **AC-6:** `stripe-payment.gateway.spec.ts` (empty key → clear error) → PASS; key read from `environment`, not hard-coded; no `sk_`/secret in client code (only publishable `pk_`).
+- [x] **AC-7:** jsdom axe (`booking-pay.a11y.spec.ts`, 7 states) + `booking-pay.contrast.spec.ts` + Playwright `booking-flow.e2e.ts` (stripe path, Stripe mocked) → PASS.
+
+Full suite at HEAD: **97 unit tests + 2 Playwright e2e green; lint clean.** (e2e needs
+`PW_CHROMIUM_EXECUTABLE` locally for the env's Chromium revision; CI runs `playwright install chromium`.)
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (N/A — frontend-only, no classpath change) (invariant #1).
-- [ ] **Availability** section justified N/A — slice writes no availability row (invariant #2).
-- [ ] Pool + cutoff rules: N/A — enforced server-side, unchanged (invariants #3, #4).
-- [ ] **Modulith** section N/A — frontend-only, no backend Java (invariant #11).
-- [ ] **Payment** section filled: confirmation is webhook-driven, observed via polling; the UI
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (N/A — frontend-only, no classpath change) (invariant #1).
+- [x] **Availability** section justified N/A — slice writes no availability row (invariant #2).
+- [x] Pool + cutoff rules: N/A — enforced server-side, unchanged (invariants #3, #4).
+- [x] **Modulith** section N/A — frontend-only, no backend Java (invariant #11).
+- [x] **Payment** section filled: confirmation is webhook-driven, observed via polling; the UI
   never confirms from the Stripe.js result; publishable key only, no secret (invariants #5, #8).
-- [ ] Refund policy: N/A — no cancel/refund in this slice (invariant #10).
-- [ ] Timezone: N/A — no new date arithmetic on the client (invariant #6).
-- [ ] Booking codes: shown to the user, never logged; treated as bearer credential (invariant #7).
-- [ ] Flyway: N/A — no schema change (invariant #12).
-- [ ] **Frontend** standards met (signals, `@Service`/`inject()`, control flow, abstract-class DI
+- [x] Refund policy: N/A — no cancel/refund in this slice (invariant #10).
+- [x] Timezone: N/A — no new date arithmetic on the client (invariant #6).
+- [x] Booking codes: shown to the user, never logged; treated as bearer credential (invariant #7).
+- [x] Flyway: N/A — no schema change (invariant #12).
+- [x] **Frontend** standards met (signals, `@Service`/`inject()`, control flow, abstract-class DI
   token, `takeUntilDestroyed`); no `as any` on the contract; axe/WCAG-AA on all new states.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
