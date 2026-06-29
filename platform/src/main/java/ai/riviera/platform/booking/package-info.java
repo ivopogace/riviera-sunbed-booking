@@ -6,5 +6,8 @@
  * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
  * {@code domain}, {@code infrastructure.in/out}.
  */
-@org.springframework.modulith.ApplicationModule(displayName = "Booking")
+@org.springframework.modulith.ApplicationModule(
+    displayName = "Booking",
+    allowedDependencies = { "venue::api", "availability::api", "payment::api", "customer::api" }
+)
 package ai.riviera.platform.booking;

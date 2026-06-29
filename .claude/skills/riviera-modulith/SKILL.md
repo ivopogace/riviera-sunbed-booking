@@ -59,6 +59,13 @@ Each module is a direct sub-package of `ai.riviera.platform`. Use this shape —
 existing `venue`, `availability`, `booking`, `customer`, `payment` modules. The **published surface
 is the `api/` package**, exposed as `@NamedInterface("api")`.
 
+The asymmetry this layout enforces is **inside vs outside**, not left vs right. Cockburn's framing:
+*"The asymmetry to exploit is not that between left and right sides of the application but between
+inside and outside... code pertaining to the inside part should not leak into the outside part."*
+`domain` + `application` are the inside; `infrastructure.in/out` are the outside adapters. The whole
+point of keeping driving adapters (`@RestController`) thin is that the inside must not know whether a
+real HTTP client, an `@ApplicationModuleTest`, or a future app-to-app caller is on the other side.
+
 ```
 ai.riviera.platform.<module>/
 ├── package-info.java                 # @ApplicationModule(displayName = "...")
@@ -84,7 +91,10 @@ Why this shape (and how it maps to real code):
   (`venue.api.SetId`/`VenueId`), the **DTO/value records** (`venue.api.SetBookingInfo`,
   `payment.api.Money`), and **published event records** (U5: `booking.api.BookingConfirmed`).
   Mark it `@NamedInterface("api")` via its own `package-info.java`. Other modules reference it as
-  `<module>::api`.
+  `<module>::api`. **Name ports by purpose, never by technology** — the weather-system lesson from
+  Cockburn's article (*"architect the system's interfaces by purpose rather than by technology"*).
+  `CheckoutPort`, not `StripePort`; `AvailabilityClaim`, not `JdbcAvailabilityTable`. The technology
+  is the *adapter's* concern in `infrastructure/out`; the port name must survive swapping it.
 - **`application/in` is for INTERNAL driving ports** — a use-case interface the module's own web
   adapter calls but that no *other* module needs (e.g. `booking.application.in.CreateBooking`,
   implemented by package-private `booking.application.CreateBookingService`). Keep it here, NOT in
@@ -107,6 +117,12 @@ the root and is not a module.
 > `booking` keeps the full hexagon because it genuinely **orchestrates** four modules. Use the full
 > layout when there is real orchestration; collapse it when the module is a thin query/command
 > adapter. Don't add an empty `application` layer for its own sake.
+
+> **A port is a purposeful conversation, not one-interface-per-use-case.** Cockburn's 2005
+> ports-and-adapters article: *"A port identifies a purposeful conversation"* and favors *"a small
+> number, two, three or four ports."* Mirror that here — a module's `api/` exposes a *few* intent-named
+> ports (`AvailabilityClaim`, `VenueCatalog`, `CheckoutPort`), not one port per method. If you're
+> tempted to add a fifth narrow port, ask whether it's the same conversation as an existing one.
 
 ## Declaring boundaries
 

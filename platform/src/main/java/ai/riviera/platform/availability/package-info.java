@@ -8,5 +8,8 @@
  * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
  * {@code domain}, {@code infrastructure.in/out}.
  */
-@org.springframework.modulith.ApplicationModule(displayName = "Availability")
+@org.springframework.modulith.ApplicationModule(
+    displayName = "Availability",
+    allowedDependencies = { "venue::api" }
+)
 package ai.riviera.platform.availability;
