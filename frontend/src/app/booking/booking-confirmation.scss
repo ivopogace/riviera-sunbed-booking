@@ -1,0 +1,67 @@
+/* Booking confirmation (U3). AA-contrast colours — pinned by
+   booking-confirmation.contrast.spec.ts. */
+
+.confirmation {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  color: #0f172a; /* slate-900 on white */
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.lead {
+  color: #334155; /* slate-700 — AA */
+}
+
+.code {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 2px dashed #1d4ed8; /* blue-700 */
+  border-radius: 0.75rem;
+  text-align: center;
+
+  .code-label {
+    display: block;
+    font-size: 0.875rem;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  strong {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: #1d4ed8; /* blue-700 on white — AA large text */
+  }
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem;
+  margin: 1rem 0 1.5rem;
+
+  dt {
+    font-weight: 700;
+    color: #334155;
+  }
+
+  dd {
+    margin: 0;
+    color: #0f172a;
+  }
+}
+
+.home-link {
+  display: inline-block;
+  font-weight: 700;
+  color: #1d4ed8; /* blue-700 link — AA */
+  text-decoration: underline;
+}

@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -79,6 +80,25 @@ class JdbcVenueCatalog implements VenueCatalog {
 		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id")
 				.param("id", setId.value())
 				.query(String.class)
+				.optional();
+	}
+
+	@Override
+	public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
+		return jdbc.sql("""
+				SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
+				       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff
+				FROM set_position sp
+				JOIN venue v ON v.id = sp.venue_id
+				WHERE sp.id = :id
+				""")
+				.param("id", setId.value())
+				.query((rs, rowNum) -> new SetBookingInfo(
+						new SetId(rs.getLong("set_id")), new VenueId(rs.getLong("venue_id")),
+						rs.getString("venue_name"), rs.getString("row_label"),
+						rs.getInt("position_no"), rs.getString("pool"),
+						new MoneyView(rs.getLong("price_minor"), rs.getString("price_currency")),
+						rs.getObject("booking_cutoff", java.time.LocalTime.class)))
 				.optional();
 	}
 

@@ -38,9 +38,22 @@
                 data-testid="set-tile"
                 [class.premium]="set.tier === 'PREMIUM'"
                 [class.taken]="set.availability === 'TAKEN'"
-                [attr.aria-label]="setLabel(set)"
+                [class.bookable]="isBookable(set)"
+                [attr.aria-label]="tileAriaLabel(set)"
               >
-                <span aria-hidden="true">{{ money(set.price) }}</span>
+                @if (isBookable(set)) {
+                  <button
+                    type="button"
+                    class="set-button"
+                    [attr.data-set-id]="set.id"
+                    [attr.aria-label]="bookLabel(set)"
+                    (click)="select(set)"
+                  >
+                    <span aria-hidden="true">{{ money(set.price) }}</span>
+                  </button>
+                } @else {
+                  <span aria-hidden="true">{{ money(set.price) }}</span>
+                }
               </li>
             }
           </ul>
@@ -56,6 +69,10 @@
       <li><span class="swatch taken" aria-hidden="true"></span> Taken</li>
     </ul>
   </article>
+
+  @if (selectedSet(); as set) {
+    <app-booking-dialog [set]="set" (dismissed)="onDialogClose()" (booked)="onBooked()" />
+  }
 } @else if (failed()) {
   <p class="state" role="alert">Sorry — we couldn’t load this venue. Please try again.</p>
 } @else {

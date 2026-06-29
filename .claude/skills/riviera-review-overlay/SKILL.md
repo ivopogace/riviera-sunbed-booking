@@ -75,15 +75,21 @@ cleanly.
 
 - **RV-PROC-1 Skill-routing gate honored (process).** Cross-check the plan doc's
   **Skills consulted** line against what the diff actually touches: a Flyway migration /
-  table / index change ⇒ `postgres` must be listed; a new backend module seam / `api/`
-  port / event ⇒ `codebase-design` (+ `domain-modeling`); an Angular component / service /
-  route ⇒ `angular-developer` + the angular-cli MCP; `payment`/`payout`/Stripe ⇒
-  `riviera-stripe-payments`. A diff that touches an area with **no** matching skill in
+  table / index change ⇒ `postgres` must be listed; **any backend Java created/modified
+  (new module, `api/` port, application service, domain event, JDBC adapter, controller,
+  or a class moved between packages) ⇒ `riviera-modulith` AND `riviera-java-conventions`
+  must be listed**; a new backend module seam ⇒ also `codebase-design` (+ `domain-modeling`);
+  an Angular component / service / route ⇒ `angular-developer` + the angular-cli MCP;
+  `payment`/`payout`/Stripe ⇒ `riviera-stripe-payments`. A diff that touches an area with **no** matching skill in
   *Skills consulted* (or no such line at all) is a **finding** — default **Major** —
   because the design was likely anchored from first principles and the skill's corrections
   (PK type, seam depth, v22 API/a11y, collect-only model) were never applied. Fix: load
   the missing skill, re-vet that section, update the line. (Trigger-map authority: the
   `riviera-sdd` Skill-routing gate.)
+  **Re-walk this on every re-review, including after review-fix commits.** Fixes change the diff,
+  so a finding patched in a new area without its skill (a migration fix with no `postgres`, an
+  Angular fix with no `angular-developer`/MCP) is caught here on the second pass — that is the
+  overlay's enforcement of the SDD rule that "review findings re-enter the loop at Implement."
 
 ## Hand-offs to other riviera skills
 

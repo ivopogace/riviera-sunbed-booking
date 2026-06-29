@@ -138,6 +138,14 @@ These are repo-scoped — they load when working in this repository.
   constructor injection with package-private adapters, typed outcomes, sealed types &
   pattern matching. Load before writing/refactoring any Java; pairs with `codebase-design`
   (seam shape) and `postgres` (SQL). The numbered invariants stay canonical in this file.
+- **`riviera-modulith`** — the **backend module STRUCTURE authority** (Spring Modulith,
+  hexagonal): per-module package layout, the `api/` `@NamedInterface` published surface,
+  `@ApplicationModule`/`allowedDependencies`, port-vs-event collaboration with id-based
+  payloads, the `ApplicationModules.verify()` contract (`ModularityTests`), the Event
+  Publication Registry, and `@ApplicationModuleTest`/`Scenario`/`Documenter`. Makes
+  invariant #11 (and #1's JDBC-only) concrete. Load before creating/modifying any backend
+  Java — which package a class belongs in is its call; pairs with `riviera-java-conventions`
+  (idioms), `codebase-design` (seam depth), `postgres` (SQL).
 
 **Angular skills** (official, from `angular/skills`, installed in-repo via
 `skills add` so clones and cloud agents get them; manifest in `skills-lock.json`):

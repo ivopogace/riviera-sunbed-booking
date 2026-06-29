@@ -16,7 +16,16 @@ here every change flows through the loop below.
 
 ```
 refine → issue → plan → implement → CI gate → PR → review → merge
+                          ▲                               │
+                          └──── findings re-enter ────────┘
+                          (fix = implement: Skill-routing gate + tdd + CI + re-review)
 ```
+
+**The loop is a loop, not a line.** Review is not the last stop before merge — its findings
+**flow back to Implement** and run the same gates again. The single most common process miss is
+treating a post-review fix as exempt: a migration patched without `postgres`, an Angular tweak
+without `angular-developer` + the MCP, a backend edit without `riviera-modulith`. A fix is a change;
+a change re-enters the loop.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
@@ -26,8 +35,8 @@ refine → issue → plan → implement → CI gate → PR → review → merge
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
 | **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
-| **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
-| **Merge** | Only after **green CI + Review gate done + findings resolved** → merge; close the issue. | — |
+| **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. **Each fix re-enters at Implement** (Skill-routing gate + `tdd` + CI gate), then the touched surface is re-reviewed. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
+| **Merge** | Only after **green CI + Review gate done + findings resolved _through the loop_** → merge; close the issue. | — |
 
 ## Issue-intake grill gate (mandatory when entering at an existing issue)
 
@@ -73,15 +82,17 @@ The size flexes; the gate does not.
 > code for an area, you **MUST load that area's skill(s) first** and **announce which
 > you loaded**. The `area:*` label (see `docs/agents/triage-labels.md`) is only the
 > starting hint — the real trigger is **what the change actually touches**, and one
-> slice usually trips several rows below. A migration written without `postgres`, a new
-> module seam without `codebase-design`, or an Angular component without
-> `angular-developer` + the Angular MCP is a **process miss** the review gate will flag.
+> slice usually trips several rows below. A migration written without `postgres`, **any
+> backend Java created or modified without `riviera-modulith` loaded** (so the class lands
+> in the right module/package and the `api/` boundary holds), a new module seam without
+> `codebase-design`, or an Angular component without `angular-developer` + the Angular MCP
+> is a **process miss** the review gate will flag.
 
 | If the change touches… | Load BEFORE writing it (MUST) | Why |
 |---|---|---|
 | **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
-| **Any backend module** (Spring Modulith: new `api/` port, service, event, seam) | **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | deep modules, real-vs-hypothetical seams; ubiquitous language |
-| **Writing/refactoring any Java** (class, record, port, JDBC adapter, event, test) | **`riviera-java-conventions`** | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — not Spring-tutorial defaults |
+| **Any backend module / structure** (Spring Modulith: new module, `api/` port, application service, domain event, JDBC adapter, controller, or moving a class between packages) | **`riviera-modulith`** (module layout, `api/` named-interface boundaries, port-vs-event, `verify()` contract) + **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | hexagonal package shape + invariant #11 boundaries enforced by `ModularityTests`, not first-principles structure |
+| **Writing/refactoring any backend Java** (class, record, port, JDBC adapter, event, controller, test) | **`riviera-java-conventions`** (Java idioms) + **`riviera-modulith`** (which package it belongs in) | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — **and** the right module/package per the hexagon. Both fire on any backend Java create/modify. |
 | **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
 | **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
 | **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
@@ -100,9 +111,15 @@ The size flexes; the gate does not.
    consulted** line (one phrase each). `riviera-review-overlay` checks that line against
    the diff: a migration in the diff with no `postgres` in *Skills consulted* is a finding.
 
-This gate fires at **both** the plan stage (vet the design) and the implement stage (vet
-the code). Loading a skill at plan time does **not** exempt you at build time if a new
-area appears, and re-loading is cheap — when in doubt, load it.
+This gate fires at the plan stage (vet the design), the implement stage (vet the code),
+**and the review-fix stage** (vet each finding fix). Fixing a finding is implementation:
+**re-detect what the fix touches and load that area's skill before you edit it** — a migration
+fix needs `postgres`, a backend fix needs `riviera-modulith` + `riviera-java-conventions`, a
+frontend fix needs `angular-developer` + the angular-cli MCP, a money fix needs
+`riviera-stripe-payments`. "It's only a review fix / it's small / CI is already green" is **not**
+an exemption — that mindset is precisely how the gate gets skipped on the last mile. Loading a
+skill earlier does **not** exempt you when a new area appears, and re-loading is cheap — when in
+doubt, load it.
 
 ## Review gate (mandatory — between PR and merge)
 
@@ -122,11 +139,26 @@ area appears, and re-loading is cheap — when in doubt, load it.
    project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the availability and payment Blockers,
    RV-PROC-1) are walked **on top of** the generic banks. Announce it: *"Running the SDD
    review gate (riviera-review-overlay + code-review) on PR #NN."*
-3. **Resolve.** Every Blocker/Major finding is fixed or, if genuinely out of scope, moved
-   to a follow-up issue with a one-line rationale. Record the outcome (findings + fixes)
-   where the slice's intent lives — the plan doc's review note, or the PR.
-4. **Only then merge.** Merge is reached **only** when CI is green **and** the review gate
-   has run **and** findings are resolved/deferred. "Green + reviewed," never "green."
+3. **Resolve — back through the loop, not around it.** A finding fix is implementation work, so
+   it gets the **same gates the original code got**:
+   - **Re-run the Skill-routing gate for each fix** — detect what the fix touches and load that
+     area's skill *before* editing (DB → `postgres`; backend → `riviera-modulith` +
+     `riviera-java-conventions`; frontend → `angular-developer` + angular-cli MCP; money →
+     `riviera-stripe-payments`). Build it test-first (`tdd`).
+   - **Update the plan's _Skills consulted_ line** with any new area a fix pulled in, so RV-PROC-1
+     stays truthful.
+   - **Re-run the CI gate** (push → green again) **and re-review the changed surface** — re-run
+     `/code-review` on the new diff, or at minimum re-walk the overlay bank items + RV-PROC-1 for
+     the area the fix touched. Fix-commits change the diff, so the routing-gate check applies to
+     them too.
+   - Out-of-scope findings → a follow-up issue with a one-line rationale.
+   - Record the outcome (findings + fixes + skills loaded) in the plan doc's review note or the PR.
+   - **No "post-review exemption":** a fix being small or arriving after a green CI does **not**
+     excuse it from the gate. That is the exact path by which the rules get skipped on the last mile.
+4. **Only then merge.** Merge is reached **only** when CI is green **and** the review gate has run
+   **and** findings are resolved/deferred **and the fix round itself cleared the loop** (routing
+   gate loaded per fix, CI green again, changed surface re-reviewed). "Green + reviewed (incl. the
+   fixes)," never "green."
 
 **Definition of done for a slice:** green CI **and** review gate run **and** findings
 resolved/deferred **and** the issue's acceptance criteria verified. Missing any one means
@@ -164,6 +196,12 @@ the slice is still in flight — say so rather than reporting it done.
    Issue-intake grill gate (above) re-validates the issue against current code/ADRs and
    surfaces what creation-time missed, before the plan is authored. Don't trust a ticket
    just because it reads complete.
+8. **Review findings re-enter the loop at Implement.** The arrow out of Review points back to
+   Implement, not straight to Merge: every fix passes the Skill-routing gate, `tdd`, and the CI
+   gate, and the touched surface is re-reviewed before merge. Fixing a finding "quickly, after
+   the review" is the most common way the routing gate gets skipped — treat a fix like any other
+   change. (Generalize the same way for a red-CI fix or a reviewer's later comment: any new edit
+   re-runs the gate for what it touches.)
 
 ## When NOT to use
 
@@ -173,7 +211,9 @@ the slice is still in flight — say so rather than reporting it done.
 ## Integration
 
 - **Riviera skills:** `riviera-plan-doc` (plan), `riviera-review-overlay` (review),
-  `riviera-stripe-payments` (money), `angular-new-app`/`angular-developer` (frontend).
+  `riviera-modulith` (backend module structure / boundaries), `riviera-java-conventions`
+  (backend Java idioms), `riviera-stripe-payments` (money),
+  `angular-new-app`/`angular-developer` (frontend).
 - **Vendored craft skills (Matt Pocock, MIT):** `grilling`/`grill-me`, `to-issues`,
   `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
   `triage`, `improve-codebase-architecture` (use the last one once there is code to

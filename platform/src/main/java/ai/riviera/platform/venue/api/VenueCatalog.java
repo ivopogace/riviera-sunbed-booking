@@ -21,4 +21,13 @@ public interface VenueCatalog {
 	 * stores and the read views carry.
 	 */
 	Optional<String> poolOf(SetId setId);
+
+	/**
+	 * The booking-relevant facts about a set (pool, price, owning venue, evening-before
+	 * cutoff), or empty if no set has that id. Consumed by the {@code booking} module (U3)
+	 * to enforce the pool rule (invariant #3), record the amount (invariant #5), and compute
+	 * the cutoff (invariant #4) — in one lookup, without touching venue's tables (invariant
+	 * #11).
+	 */
+	Optional<SetBookingInfo> setBookingInfo(SetId setId);
 }
