@@ -39,8 +39,12 @@ class BookingViewIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	// Use the LAST online set + a distinctive far-future date so this (set, date) can't collide with
+	// other create-flow ITs sharing the Testcontainers context (invariant #2 would 409 otherwise).
+	private static final LocalDate UNIQUE_DATE = LocalDate.of(2034, 6, 6);
+
 	private long onlineSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
+		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1")
 				.query(Long.class).single();
 	}
 
@@ -62,7 +66,7 @@ class BookingViewIT {
 		long setId = onlineSet();
 		long price = jdbc.sql("SELECT price_minor FROM set_position WHERE id = :id")
 				.param("id", setId).query(Long.class).single();
-		String code = createBooking(setId, LocalDate.now().plusYears(1));
+		String code = createBooking(setId, UNIQUE_DATE);
 
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(status().isOk())
