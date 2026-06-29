@@ -261,7 +261,7 @@ the existing SCSS). No `as any` on the contract.
 | 0 — Flyway V10/V11 + migration ITs + ADR-0005 | ✅ | `[U6] Flyway V10/V11 …` |
 | 1 — `booking` view: GET /{code} + refund policy + `venue.api.lateCancelRefundBps` | ✅ | `[U6] booking: GET …` |
 | 2 — `payment` RefundPort + gateway refund + record | ✅ | `[U6] payment: RefundPort …` |
-| 3 — `booking` cancel orchestration + `BookingCancelled` + POST /{code}/cancel | | |
+| 3 — `booking` cancel orchestration + `BookingCancelled` + POST /{code}/cancel | ✅ | `[U6] booking: cancel …` |
 | 4 — `payout` proportional REVERSAL listener | | |
 | 5 — Frontend booking view + cancel | | |
 | 6 — verify + review gate | | |

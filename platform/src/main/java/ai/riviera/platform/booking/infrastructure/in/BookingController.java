@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.booking.application.in.BookingOutcome;
+import ai.riviera.platform.booking.application.in.CancelBooking;
+import ai.riviera.platform.booking.application.in.CancelOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
 import ai.riviera.platform.booking.application.in.ViewBooking;
 
@@ -29,10 +31,12 @@ class BookingController {
 
 	private final CreateBooking createBooking;
 	private final ViewBooking viewBooking;
+	private final CancelBooking cancelBooking;
 
-	BookingController(CreateBooking createBooking, ViewBooking viewBooking) {
+	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
+		this.cancelBooking = cancelBooking;
 	}
 
 	/**
@@ -45,6 +49,21 @@ class BookingController {
 		return viewBooking.byCode(code)
 				.<ResponseEntity<?>>map(detail -> ResponseEntity.ok(BookingDetailView.of(detail)))
 				.orElseGet(() -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING"));
+	}
+
+	/**
+	 * Cancel a booking by its code (U6). The refund is computed server-side (invariant #10) — no
+	 * request body. {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}→409. The code
+	 * is the bearer credential (invariant #7) and is never logged.
+	 */
+	@PostMapping("/{code}/cancel")
+	ResponseEntity<?> cancel(@PathVariable String code) {
+		return switch (cancelBooking.cancel(code)) {
+			case CancelOutcome.Cancelled cancelled ->
+					ResponseEntity.ok(CancellationView.of(code, cancelled));
+			case CancelOutcome.NotFound ignored -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING");
+			case CancelOutcome.NotCancellable ignored -> error(HttpStatus.CONFLICT, "NOT_CANCELLABLE");
+		};
 	}
 
 	@PostMapping

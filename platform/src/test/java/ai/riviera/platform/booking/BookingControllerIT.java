@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
+import com.jayway.jsonpath.JsonPath;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -112,6 +114,43 @@ class BookingControllerIT {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"setId\": null}"))
 				.andExpect(status().isBadRequest());
+	}
+
+	private String createAndGetCode(long setId, LocalDate date) throws Exception {
+		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+						.content(body(setId, date)))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		return JsonPath.read(response, "$.code");
+	}
+
+	@Test
+	void cancelConfirmedReturns200WithRefund() throws Exception {
+		String code = createAndGetCode(onlineSet(), bookable().plusDays(5));
+
+		mvc.perform(post("/api/bookings/{code}/cancel", code))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CANCELLED"))
+				.andExpect(jsonPath("$.tier").value("FULL"))
+				.andExpect(jsonPath("$.refund.minorUnits").isNumber())
+				.andExpect(jsonPath("$.refund.currency").value("EUR"));
+	}
+
+	@Test
+	void cancelUnknownReturns404() throws Exception {
+		mvc.perform(post("/api/bookings/{code}/cancel", "NOSUCHCODE"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error").value("NO_SUCH_BOOKING"));
+	}
+
+	@Test
+	void cancelAlreadyCancelledReturns409() throws Exception {
+		String code = createAndGetCode(onlineSet(), bookable().plusDays(6));
+		mvc.perform(post("/api/bookings/{code}/cancel", code)).andExpect(status().isOk());
+
+		mvc.perform(post("/api/bookings/{code}/cancel", code))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error").value("NOT_CANCELLABLE"));
 	}
 
 	@Test

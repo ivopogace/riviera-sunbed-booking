@@ -59,4 +59,14 @@ public interface Bookings {
 	 * {@code AWAITING_PAYMENT} (already confirmed/cancelled) — then nothing is released.
 	 */
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
+
+	/**
+	 * Cancel a tourist-confirmed booking (U6): transition {@code CONFIRMED → CANCELLED}, stamping
+	 * {@code cancelled_at} and the server-computed {@code refundMinor}, and return the booking's facts
+	 * (for the refund + {@code BookingCancelled} payload, built atomically via SQL {@code RETURNING}).
+	 * The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row {@code empty} no-op
+	 * (so the release/refund/event fire exactly once); a non-{@code CONFIRMED} booking yields empty.
+	 */
+	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
+			long refundMinor);
 }

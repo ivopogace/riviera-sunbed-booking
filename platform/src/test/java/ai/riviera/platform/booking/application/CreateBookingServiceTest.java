@@ -149,6 +149,12 @@ class CreateBookingServiceTest {
 					String code) {
 				return java.util.Optional.empty();
 			}
+
+			@Override
+			public java.util.Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
+					long bookingId, java.time.Instant cancelledAt, long refundMinor) {
+				return java.util.Optional.empty();
+			}
 		};
 		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
@@ -282,6 +288,12 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.out.BookingRecord> findByCode(String code) {
+			return Optional.empty();
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
+				long bookingId, Instant cancelledAt, long refundMinor) {
 			return Optional.empty();
 		}
 	}

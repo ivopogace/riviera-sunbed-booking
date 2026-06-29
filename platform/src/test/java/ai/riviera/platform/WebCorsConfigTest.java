@@ -14,6 +14,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.booking.application.in.BookingOutcome;
+import ai.riviera.platform.booking.application.in.CancelBooking;
+import ai.riviera.platform.booking.application.in.CancelOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
 import ai.riviera.platform.booking.application.in.ViewBooking;
 import ai.riviera.platform.payment.application.out.Payments;
@@ -93,6 +95,12 @@ class WebCorsConfigTest {
 		@Bean
 		ViewBooking viewBooking() {
 			return code -> Optional.empty();
+		}
+
+		/** {@code BookingController}'s {@link CancelBooking} dependency (U6); never reached on preflight. */
+		@Bean
+		CancelBooking cancelBooking() {
+			return code -> new CancelOutcome.NotFound();
 		}
 
 		/**
