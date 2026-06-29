@@ -30,4 +30,16 @@ public interface AvailabilityClaim {
 	 * @return why the claim succeeded or failed
 	 */
 	ClaimOutcome claim(SetId setId, LocalDate bookingDate);
+
+	/**
+	 * Release a previously online-claimed {@code (setId, bookingDate)} — frees the
+	 * {@code BOOKED_ONLINE} row so the set is re-claimable (invariant #2). Used when a Stripe
+	 * payment is <strong>canceled</strong> before confirmation (U4): the booking never completed,
+	 * so the held set must not stay blocked. A no-op if no {@code BOOKED_ONLINE} row exists for
+	 * that {@code (set, date)} — only an online claim is released, never a staff-marked row.
+	 *
+	 * @param setId       the set to free
+	 * @param bookingDate the calendar day (a {@code LocalDate} in {@code Europe/Tirane})
+	 */
+	void release(SetId setId, LocalDate bookingDate);
 }

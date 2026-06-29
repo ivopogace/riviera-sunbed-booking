@@ -36,6 +36,11 @@ class BookingController {
 		return switch (outcome) {
 			case BookingOutcome.Confirmed confirmed -> ResponseEntity.status(HttpStatus.CREATED)
 					.body(BookingConfirmationView.of(confirmed.confirmation()));
+			// 202: created but awaiting the verified webhook (Stripe profile). The client uses the
+			// clientSecret to complete the card payment; confirmation arrives via the webhook (#8).
+			case BookingOutcome.AwaitingPayment awaiting -> ResponseEntity.status(HttpStatus.ACCEPTED)
+					.body(AwaitingPaymentView.of(awaiting.confirmation(), awaiting.clientSecret(),
+							awaiting.paymentIntentId()));
 			case BookingOutcome.Rejected rejected -> switch (rejected) {
 				case SET_TAKEN -> error(HttpStatus.CONFLICT, "SET_TAKEN");
 				case NOT_ONLINE_POOL -> error(HttpStatus.UNPROCESSABLE_ENTITY, "SET_NOT_BOOKABLE_ONLINE");
