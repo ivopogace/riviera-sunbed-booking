@@ -194,7 +194,11 @@ asserted in adapter-level tests.
   listener). — *Owner:* claude · *Resolves by:* a note appended to `docs/plans/u5-event-spine-payout-accrual.md` in Phase 7.
 
 ### Resolved
-- *(none yet — D-1/D-2/D-3 move here with the plan-accept SHA once confirmed.)*
+- **D-1 Scope = backend-only** — confirmed by user at plan-accept (AskUserQuestion). Angular
+  Stripe Payment Element → follow-up FE issue.
+- **D-2 Stub default; Stripe behind the `stripe` profile** — confirmed by user at plan-accept.
+- **D-3 Release on `payment_intent.canceled`; defer the TTL sweep** — confirmed by user at
+  plan-accept. (`payment_failed` is non-terminal → records the attempt, no release.)
 
 ## Availability & concurrency (invariant #2)
 
