@@ -59,6 +59,9 @@ jobs:
       - name: Set up Node (from .nvmrc)
         uses: actions/setup-node@v6
         with:
+          # .nvmrc lives at the REPO ROOT. `uses:` steps resolve paths from the repo
+          # root, not the job's `working-directory: frontend`, so this is correct —
+          # do NOT change it to `frontend/.nvmrc` or add one there.
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
