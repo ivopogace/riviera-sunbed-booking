@@ -10,6 +10,25 @@ import { VenueService } from '../venue/venue.service';
 import { VenueAdminErrorCode } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
+/** Parse clean digits to a non-negative whole number, or undefined ('4.5'/'12abc' are rejected, not truncated). */
+function parseWholeNumber(raw: string): number | undefined {
+  return /^\d+$/.test(raw.trim()) ? Number.parseInt(raw, 10) : undefined;
+}
+
+/** A fresh, empty add-set form model. A factory so the initial value and the reset share one source. */
+function emptySetModel() {
+  return {
+    rowLabel: '',
+    positionNo: '',
+    tier: 'PREMIUM',
+    pool: 'ONLINE',
+    priceMinor: '',
+    priceCurrency: 'EUR',
+    gridX: '',
+    gridY: '',
+  };
+}
+
 /**
  * Operator beach-map editor (U7, issue #7). Sign in as the operator, create a venue, then lay out
  * its beach map by adding set positions (tier, pool, price in minor units, grid coordinates),
@@ -42,6 +61,8 @@ export class VenueEditor {
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly saving = signal(false);
   private readonly errorCode = signal<VenueAdminErrorCode | undefined>(undefined);
+  /** Set when a write succeeded but the follow-up read-back failed — distinct from a write error. */
+  protected readonly reloadFailed = signal(false);
 
   protected readonly sets = computed<readonly SetView[]>(() => this.venue()?.sets ?? []);
 
@@ -66,16 +87,7 @@ export class VenueEditor {
   });
 
   // --- Add-set form ---
-  protected readonly setModel = signal({
-    rowLabel: '',
-    positionNo: '',
-    tier: 'PREMIUM',
-    pool: 'ONLINE',
-    priceMinor: '',
-    priceCurrency: 'EUR',
-    gridX: '',
-    gridY: '',
-  });
+  protected readonly setModel = signal(emptySetModel());
   protected readonly setForm = form(this.setModel, (path) => {
     required(path.rowLabel, { message: 'Row label is required' });
     required(path.positionNo, { message: 'Position number is required' });
@@ -102,8 +114,8 @@ export class VenueEditor {
     this.errorCode.set(undefined);
     submit(this.venueForm, async () => {
       const m = this.venueModel();
-      const commissionBps = Number.parseInt(m.commissionBps, 10);
-      if (!Number.isInteger(commissionBps)) {
+      const commissionBps = parseWholeNumber(m.commissionBps);
+      if (commissionBps === undefined) {
         this.errorCode.set('INVALID_REQUEST');
         return;
       }
@@ -122,7 +134,7 @@ export class VenueEditor {
           }),
         );
         this.venueId.set(created.id);
-        await this.reload();
+        await this.safeReload();
       } catch (error) {
         this.errorCode.set(venueAdminErrorOf(error));
       } finally {
@@ -139,11 +151,16 @@ export class VenueEditor {
     this.errorCode.set(undefined);
     submit(this.setForm, async () => {
       const m = this.setModel();
-      const positionNo = Number.parseInt(m.positionNo, 10);
-      const gridX = Number.parseInt(m.gridX, 10);
-      const gridY = Number.parseInt(m.gridY, 10);
-      const minorUnits = Number.parseInt(m.priceMinor, 10);
-      if (![positionNo, gridX, gridY, minorUnits].every(Number.isInteger)) {
+      const positionNo = parseWholeNumber(m.positionNo);
+      const gridX = parseWholeNumber(m.gridX);
+      const gridY = parseWholeNumber(m.gridY);
+      const minorUnits = parseWholeNumber(m.priceMinor);
+      if (
+        positionNo === undefined ||
+        gridX === undefined ||
+        gridY === undefined ||
+        minorUnits === undefined
+      ) {
         this.errorCode.set('INVALID_REQUEST');
         return;
       }
@@ -161,7 +178,7 @@ export class VenueEditor {
           }),
         );
         this.resetSetForm();
-        await this.reload();
+        await this.safeReload();
       } catch (error) {
         this.errorCode.set(venueAdminErrorOf(error));
       } finally {
@@ -172,7 +189,7 @@ export class VenueEditor {
 
   protected async onRemoveSet(set: SetView): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
+    if (venueId === undefined || this.saving()) {
       return;
     }
     await this.run(() => firstValueFrom(this.admin.removeSet(venueId, set.id)));
@@ -181,7 +198,7 @@ export class VenueEditor {
   /** Move a set between the online and walk-in pools — the editable pool split (invariant #3). */
   protected async onTogglePool(set: SetView): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
+    if (venueId === undefined || this.saving()) {
       return;
     }
     const pool: Pool = set.pool === 'ONLINE' ? 'WALK_IN' : 'ONLINE';
@@ -200,17 +217,32 @@ export class VenueEditor {
     );
   }
 
-  /** Run a write, then re-read the venue through the read API; map any failure to a message. */
+  /** Run a write, then re-read the venue through the read API; map a WRITE failure to a message. */
   private async run(write: () => Promise<unknown>): Promise<void> {
     this.errorCode.set(undefined);
     this.saving.set(true);
     try {
       await write();
-      await this.reload();
+      await this.safeReload();
     } catch (error) {
       this.errorCode.set(venueAdminErrorOf(error));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /**
+   * Re-read the venue through the U1 read API. A read-back failure is kept SEPARATE from a write
+   * failure ({@link reloadFailed} vs {@link errorCode}): the write already succeeded, so showing it
+   * as an error would wrongly invite a duplicate retry — instead the operator is told the preview is
+   * stale.
+   */
+  private async safeReload(): Promise<void> {
+    this.reloadFailed.set(false);
+    try {
+      await this.reload();
+    } catch {
+      this.reloadFailed.set(true);
     }
   }
 
@@ -226,16 +258,7 @@ export class VenueEditor {
   }
 
   private resetSetForm(): void {
-    this.setModel.set({
-      rowLabel: '',
-      positionNo: '',
-      tier: 'PREMIUM',
-      pool: 'ONLINE',
-      priceMinor: '',
-      priceCurrency: 'EUR',
-      gridX: '',
-      gridY: '',
-    });
+    this.setModel.set(emptySetModel());
   }
 
   protected money(set: SetView): string {

@@ -157,6 +157,53 @@ describe('VenueEditor', () => {
     expect(host().textContent).toContain('Layout (1)');
   });
 
+  it('rejects a non-integer commission client-side without calling the server', async () => {
+    auth.signIn('operator', 'pw');
+    fixture.detectChanges();
+    setField('Name', 'Sunset Bar');
+    setField('Beach', 'Ksamil');
+    setField('Region', 'Riviera');
+    setField('Commission', '15.5'); // not clean digits → must not be truncated to 15 and sent
+    fixture.detectChanges();
+
+    clickButton('Create venue');
+    await fixture.whenStable();
+
+    httpMock.expectNone(`${environment.apiBaseUrl}/api/venues`);
+    fixture.detectChanges();
+    expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
+  });
+
+  it('keeps a read-back failure distinct from a write error', async () => {
+    auth.signIn('operator', 'pw');
+    fixture.detectChanges();
+    setField('Name', 'Sunset Bar');
+    setField('Beach', 'Ksamil');
+    setField('Region', 'Riviera');
+    fixture.detectChanges();
+
+    clickButton('Create venue');
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush({ id: 5 }, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+
+    // The write succeeded (venue 5 created), but the read-back fails.
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
+      .error(new ProgressEvent('error'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The operator is told the preview is stale (a status), NOT shown a write error inviting a retry.
+    expect(host().textContent).toContain('Venue #5 created');
+    expect(host().querySelector('[role="status"].form-notice')?.textContent).toContain(
+      'couldn’t be refreshed',
+    );
+    expect(host().querySelector('.form-error')).toBeNull();
+  });
+
   it('surfaces a 401 from the server as a sign-in error', async () => {
     auth.signIn('operator', 'wrong');
     fixture.detectChanges();

@@ -117,11 +117,11 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
-	public void updateSet(VenueId venueId, SetId setId, SetCommand c) {
+	public int updateSet(VenueId venueId, SetId setId, SetCommand c) {
 		Map<String, Object> params = new HashMap<>(setParams(c));
 		params.put("venue", venueId.value());
 		params.put("setId", setId.value());
-		jdbc.sql("""
+		return jdbc.sql("""
 				UPDATE set_position
 				SET row_label = :rowLabel, position_no = :positionNo, tier = :tier, pool = :pool,
 				    price_minor = :priceMinor, price_currency = :priceCurrency,
@@ -133,8 +133,8 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
-	public void deleteSet(VenueId venueId, SetId setId) {
-		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
+	public int deleteSet(VenueId venueId, SetId setId) {
+		return jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
 				.param("setId", setId.value())
 				.param("venue", venueId.value())
 				.update();

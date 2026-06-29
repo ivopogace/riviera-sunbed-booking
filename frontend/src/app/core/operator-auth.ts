@@ -32,6 +32,16 @@ export class OperatorAuth {
   /** The `Authorization: Basic` header value for operator writes, or undefined when signed out. */
   basicAuthHeader(): string | undefined {
     const c = this.credentials();
-    return c ? `Basic ${btoa(`${c.username}:${c.password}`)}` : undefined;
+    if (!c) {
+      return undefined;
+    }
+    // UTF-8 → base64. `btoa` only accepts Latin-1, so a credential with any character above U+00FF
+    // (an accented or non-Latin password) would throw — encode the bytes first.
+    const bytes = new TextEncoder().encode(`${c.username}:${c.password}`);
+    let binary = '';
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return `Basic ${btoa(binary)}`;
   }
 }

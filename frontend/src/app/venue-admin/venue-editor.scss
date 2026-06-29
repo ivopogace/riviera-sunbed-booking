@@ -87,6 +87,14 @@ h2 {
   font-weight: 600;
 }
 
+// A write succeeded but the read-back failed — informational, uses the high-contrast body colour
+// (already AA-verified in the contrast spec), not the danger colour.
+.form-notice {
+  color: var(--editor-text);
+  font-weight: 600;
+  margin: 0;
+}
+
 .created {
   background: var(--editor-card);
 }

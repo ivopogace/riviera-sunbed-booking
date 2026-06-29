@@ -34,11 +34,15 @@ public interface Venues {
 	/** Insert a set position and return its generated id. */
 	long insertSet(VenueId venueId, SetCommand command);
 
-	/** Overwrite a set position's layout fields. The caller has confirmed it exists. */
-	void updateSet(VenueId venueId, SetId setId, SetCommand command);
+	/**
+	 * Overwrite a set position's layout fields. Returns the number of rows changed — {@code 0}
+	 * means no such set belongs to the venue (e.g. it was deleted concurrently after the caller's
+	 * existence check), so the caller must not report success.
+	 */
+	int updateSet(VenueId venueId, SetId setId, SetCommand command);
 
-	/** Remove a set position. The caller has confirmed it exists. */
-	void deleteSet(VenueId venueId, SetId setId);
+	/** Remove a set position. Returns the number of rows deleted — {@code 0} means no such set. */
+	int deleteSet(VenueId venueId, SetId setId);
 
 	/** A layout-uniqueness conflict, in priority order for reporting. */
 	enum Conflict {

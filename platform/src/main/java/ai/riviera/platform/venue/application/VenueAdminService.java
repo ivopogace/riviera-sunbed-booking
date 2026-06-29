@@ -66,8 +66,12 @@ class VenueAdminService implements OnboardVenue, EditBeachMap {
 		if (conflict.isPresent()) {
 			return new ChangeOutcome.Rejected(toRejection(conflict.get()));
 		}
-		venues.updateSet(venueId, setId, command);
-		return ChangeOutcome.Applied.APPLIED;
+		// Rows-affected is the race backstop: if the set was deleted concurrently after the
+		// existence check above, the UPDATE touches 0 rows and we must not report success.
+		int updated = venues.updateSet(venueId, setId, command);
+		return updated == 0
+				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
+				: ChangeOutcome.Applied.APPLIED;
 	}
 
 	@Override
@@ -76,11 +80,12 @@ class VenueAdminService implements OnboardVenue, EditBeachMap {
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		if (!venues.setExists(venueId, setId)) {
-			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
-		}
-		venues.deleteSet(venueId, setId);
-		return ChangeOutcome.Applied.APPLIED;
+		// The DELETE's rows-affected is the existence check: 0 ⇒ no such set (also covers a
+		// concurrent delete), 1 ⇒ removed. No separate pre-check needed.
+		int deleted = venues.deleteSet(venueId, setId);
+		return deleted == 0
+				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
+				: ChangeOutcome.Applied.APPLIED;
 	}
 
 	private static SetRejection toRejection(Venues.Conflict conflict) {

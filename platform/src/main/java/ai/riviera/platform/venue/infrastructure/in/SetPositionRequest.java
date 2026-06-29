@@ -9,6 +9,11 @@ import ai.riviera.platform.venue.application.in.SetCommand;
  * the write contract matches the U1 read contract exactly — integer minor units + ISO currency
  * (invariant #5), no float. {@link #toCommand()} checks presence and delegates range/token
  * validation to {@link SetCommand}; bad input → {@link IllegalArgumentException} → {@code 400}.
+ *
+ * <p><strong>The full set body is required on edit too</strong> — {@code PATCH} here replaces the
+ * whole set position (the editor always re-sends every field), so a partial body is rejected
+ * {@code 400}. This keeps a set's fields mutually consistent (e.g. a pool change can't be applied
+ * without re-stating its cell), which matters for the layout-uniqueness checks.
  */
 record SetPositionRequest(String rowLabel, Integer positionNo, String tier, String pool,
 		MoneyView price, Integer gridX, Integer gridY) {

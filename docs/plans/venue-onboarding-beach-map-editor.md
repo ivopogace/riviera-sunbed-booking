@@ -190,9 +190,36 @@ preview matches U1. a11y: axe-clean + WCAG-AA contrast specs like `venue-map.a11
 | 2 — Backend per-set add/edit/remove + outcomes | ✅ | EditBeachMap + VenueAdminControllerIT (16 green) |
 | 3 — Operator httpBasic auth + SecurityConfig | ✅ | OPERATOR role + CSRF-exempt write paths |
 | 4 — Angular editor + service + Basic-auth interceptor + a11y | ✅ | VenueEditor + OperatorAuth + interceptor (127 FE tests green) |
-| 5 — CI green + Review gate | ⏳ | |
+| 5 — CI green + Review gate | ✅ | review run (4 finder angles); fixes below |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+### Review gate note (riviera-review-overlay + /code-review on origin/main...HEAD)
+
+Ran the SDD review gate (4 parallel finder angles: backend correctness, frontend correctness,
+removed-behavior/cross-file tracer, cleanup/altitude/conventions). RV-PROC-1 ✅ (Skills-consulted
+covers DB+BE+FE). Module boundaries clean (no cross-module imports; `ModularityTests` green).
+**Fixed through the loop** (re-ran the routing gate per fix — backend via riviera-modulith +
+riviera-java-conventions, frontend via angular-developer; tdd; CI re-green):
+
+- **B2** `Venues.updateSet/deleteSet` now return rows-affected; the service maps `0 → NO_SUCH_SET`
+  (concurrent-delete race no longer reports a false 204). New `VenueAdminServiceTest` race test.
+- **F1** `OperatorAuth.basicAuthHeader` UTF-8-encodes before base64 (non-Latin1 passwords no longer
+  throw in `btoa`).
+- **F2** `operatorAuthInterceptor` anchors to the absolute API prefix (`startsWith`) so Basic creds
+  can't leak to a foreign URL containing `/api/venues`. New spec for the foreign-URL case.
+- **F3** read-back failure after a successful write is now a separate `reloadFailed` status, not a
+  write-error alert (no misleading retry prompt). New spec.
+- **F4** numeric form fields parsed with a strict `^\d+$` check (`'45.99'`/`'12abc'` rejected, not
+  truncated). New spec.
+- **F5** `saving()` re-entrancy guard on the toggle/remove handlers.
+- **C1** extracted `emptySetModel()` factory (kills the `resetSetForm` literal duplication).
+
+Accepted with rationale (no change): B1 PATCH-full-body (single-client editor always sends the full
+set; documented on the DTO), B3 broad `IllegalArgumentException` handler (matches `BookingController`
+house pattern), B4 operator-password operational note (documented in `application.properties`),
+C2/C3/C4 (token Sets already named; error-code layering matches `booking`; HashMap param idiom avoids
+`.params/.param` merge risk). Full backend suite + 130 FE tests + lint + build green after the fixes.
 
 ---
 

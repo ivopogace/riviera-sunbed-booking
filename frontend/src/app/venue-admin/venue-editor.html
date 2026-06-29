@@ -39,6 +39,12 @@
     <p class="form-error" role="alert">{{ msg }}</p>
   }
 
+  @if (reloadFailed()) {
+    <p class="form-notice" role="status">
+      Saved — but the layout preview couldn’t be refreshed. Reload the page to see the current map.
+    </p>
+  }
+
   @if (operator.signedIn()) {
     @if (venueId() === undefined) {
       <!-- Step 1: create the venue -->

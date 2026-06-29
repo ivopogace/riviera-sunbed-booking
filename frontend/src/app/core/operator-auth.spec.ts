@@ -2,8 +2,11 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
+import { environment } from '../../environments/environment';
 import { OperatorAuth } from './operator-auth';
 import { operatorAuthInterceptor } from './operator-auth.interceptor';
+
+const api = environment.apiBaseUrl;
 
 describe('OperatorAuth', () => {
   let auth: OperatorAuth;
@@ -55,31 +58,39 @@ describe('operatorAuthInterceptor', () => {
 
   it('attaches Basic auth to a venue write when signed in', () => {
     auth.signIn('operator', 'pw');
-    http.post('/api/venues', {}).subscribe();
-    const req = httpMock.expectOne('/api/venues');
+    http.post(`${api}/api/venues`, {}).subscribe();
+    const req = httpMock.expectOne(`${api}/api/venues`);
     expect(req.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
     req.flush({ id: 1 });
   });
 
   it('leaves public GET reads untouched', () => {
     auth.signIn('operator', 'pw');
-    http.get('/api/venues/1').subscribe();
-    const req = httpMock.expectOne('/api/venues/1');
+    http.get(`${api}/api/venues/1`).subscribe();
+    const req = httpMock.expectOne(`${api}/api/venues/1`);
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
 
   it('leaves non-venue requests untouched', () => {
     auth.signIn('operator', 'pw');
-    http.post('/api/bookings', {}).subscribe();
-    const req = httpMock.expectOne('/api/bookings');
+    http.post(`${api}/api/bookings`, {}).subscribe();
+    const req = httpMock.expectOne(`${api}/api/bookings`);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('does not leak credentials to a foreign URL that merely contains the path', () => {
+    auth.signIn('operator', 'pw');
+    http.post('https://evil.example.com/api/venues', {}).subscribe();
+    const req = httpMock.expectOne('https://evil.example.com/api/venues');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
 
   it('sends no auth header when signed out', () => {
-    http.post('/api/venues', {}).subscribe();
-    const req = httpMock.expectOne('/api/venues');
+    http.post(`${api}/api/venues`, {}).subscribe();
+    const req = httpMock.expectOne(`${api}/api/venues`);
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({ id: 1 });
   });

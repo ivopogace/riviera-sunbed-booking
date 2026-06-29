@@ -102,10 +102,24 @@ class VenueAdminServiceTest {
 	void removeUnknownSetIsRejected() {
 		venues.venues.add(VENUE.value());
 
+		// removeSet relies on the DELETE's rows-affected (0 ⇒ no such set), so it attempts the
+		// delete and maps the 0-row result to NO_SUCH_SET — no separate existence pre-check.
 		ChangeOutcome outcome = service.removeSet(VENUE, SET);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedSets);
+	}
+
+	@Test
+	void editRejectsWhenTheSetVanishesBeforeTheUpdate() {
+		// B2 race backstop: the set passes the existence check but is deleted concurrently before
+		// the UPDATE, so updateSet touches 0 rows — the service must report NO_SUCH_SET, not success.
+		venues.venues.add(VENUE.value());
+		venues.forceSetExists = true; // pre-check passes
+		venues.forceUpdateRows = 0; // ...but the UPDATE finds nothing
+
+		ChangeOutcome outcome = service.editSet(VENUE, SET, SET_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
 	}
 
 	@Test
@@ -130,6 +144,10 @@ class VenueAdminServiceTest {
 		int insertedSets;
 		int updatedSets;
 		int deletedSets;
+		// Overrides to decouple the existence check from the write's rows-affected (race tests);
+		// null ⇒ derive from the seeded `sets` map.
+		Boolean forceSetExists;
+		Integer forceUpdateRows;
 
 		@Override
 		public long insertVenue(NewVenueCommand command) {
@@ -144,7 +162,9 @@ class VenueAdminServiceTest {
 
 		@Override
 		public boolean setExists(VenueId venueId, SetId setId) {
-			return venueId.value() == sets.getOrDefault(setId.value(), -1L);
+			return forceSetExists != null
+					? forceSetExists
+					: venueId.value() == sets.getOrDefault(setId.value(), -1L);
 		}
 
 		@Override
@@ -159,13 +179,15 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
-		public void updateSet(VenueId venueId, SetId setId, SetCommand command) {
+		public int updateSet(VenueId venueId, SetId setId, SetCommand command) {
 			updatedSets++;
+			return forceUpdateRows != null ? forceUpdateRows : (sets.containsKey(setId.value()) ? 1 : 0);
 		}
 
 		@Override
-		public void deleteSet(VenueId venueId, SetId setId) {
+		public int deleteSet(VenueId venueId, SetId setId) {
 			deletedSets++;
+			return sets.containsKey(setId.value()) ? 1 : 0;
 		}
 	}
 }
