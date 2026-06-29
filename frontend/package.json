@@ -33,7 +33,7 @@
     "@angular/compiler-cli": "^22.0.0",
     "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "1.55.0",
+    "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4.1.12",
     "@vitest/coverage-v8": "^4.1.9",
     "angular-eslint": "22.0.0",
