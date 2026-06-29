@@ -322,6 +322,66 @@ Findings (all **Minor**, dispositioned — none blocks merge):
 TTL expiry sweep for abandoned `AWAITING_PAYMENT` bookings, **#52** two-phase create (PI outside
 the tx) + explicit `StripeClient` timeouts.
 
+## Change addendum — async `@ApplicationModuleListener` + Event Publication Registry (PR #53 review)
+
+**Trigger:** PR #53 review (owner). The sync `@EventListener` confirmation is correct today, but its
+reliability rests on an *implicit* invariant — a listener exception must propagate out of the
+controller's `@Transactional` to roll back and make Stripe re-deliver. A future edit
+(`@TransactionalEventListener(AFTER_COMMIT)`, `@Async`, a `try/catch`, `REQUIRES_NEW`) silently breaks
+that, and since we'd have already `200`'d Stripe the confirmation is lost with no retry. Decision
+(owner): **switch payment→booking confirmation to the registry-backed async path** so durability is
+explicit (event persisted before delivery, completed only after the listener succeeds). Completion
+mode **ARCHIVE** (owner's choice).
+
+**Skill-routing gate re-run** (review-fix re-enters at Implement): loaded `riviera-modulith` (the
+async `@ApplicationModuleListener` + registry mechanics, `verify()`), `riviera-java-conventions`
+(listener idioms, no-JPA), `postgres` (the V8 registry migration). `riviera-stripe-payments` not
+re-loaded — no Stripe-API/money change.
+
+**Reliability shift (eyes-open):** under async the webhook commits + `200`s **before** the booking is
+confirmed; confirmation is then at-least-once via the registry. To avoid "stuck until restart" on a
+transient listener failure, set `republish-outstanding-events-on-restart=true` (restart recovery) —
+continuous/staleness-based resubmission is a later tuning knob, noted not built. Idempotency is still
+required (registry at-least-once + Stripe re-delivery of the *webhook* before our 200): keep the
+`stripe_webhook_event` event-id dedup **and** the guarded `confirmFromPayment`/`cancelAwaitingPayment`
+transitions.
+
+**Schema (V8):** copy the **exact shipped Modulith 2.1 v2 Postgres schema** (not hand-rolled) —
+`event_publication` **and** `event_publication_archive` (ARCHIVE moves completed rows there), each with
+the hash index on `serialized_event` and the `completion_date` index. Modulith defaults to the v2
+structure (`use-legacy-structure=false`); `schema-initialization.enabled` stays **off** (Flyway owns
+DDL, invariant #12).
+
+**Config (`application.properties`):**
+```
+spring.modulith.events.completion-mode=archive
+spring.modulith.events.republish-outstanding-events-on-restart=true
+```
+
+**Code:** `PaymentEventListener` `@EventListener` → `@ApplicationModuleListener` (async, AFTER_COMMIT,
+own tx). No payload/port change; `payment`→`booking` still events-only (no cycle).
+
+**Tests:**
+- `EventRegistryMigrationIT` (new) — V8 creates `event_publication` + `event_publication_archive`.
+- `PaymentEventListenerIT` → drive via the **`Scenario`** DSL (`@EnableScenarios`; AFTER_COMMIT needs a
+  tx + an async wait — direct `publishEvent` outside a tx would never fire), asserting booking
+  `CONFIRMED` / `CANCELLED` + claim released after the async listener runs.
+- `StripeWebhookConfirmFailureIT` → **repurpose**: rollback no longer applies (webhook commits first);
+  now assert a failing listener leaves an **incomplete** `event_publication` row (null completion) — the
+  registry retains it for resubmission (this is the reviewer's concern, now proven handled).
+- `StripeWebhookIT` / `CreateBookingStripeProfileIT` — publication still happens in the request thread,
+  so `@RecordApplicationEvents` assertions hold; payment-status assertions are controller-tx, unaffected.
+
+**U5 plan:** U5 no longer introduces the registry (U4 brings it as V8); re-point U5's registry/ledger
+migrations to **V9+**. Update its drift note.
+
+### Change-addendum execution status
+| Step | Status |
+|---|---|
+| A1 — V8 registry migration (v2 + archive) + completion-mode/republish config + `EventRegistryMigrationIT` | ✅ |
+| A2 — `@ApplicationModuleListener` + Scenario test rewrite + repurpose the confirm-failure IT | ✅ (`PaymentEventListenerIT` → `@SpringBootTest`+`@EnableScenarios`+`Scenario`; guard semantics moved to `JdbcBookingsTransitionIT`; confirm-failure IT → `StripeWebhookListenerFailureIT` asserting an incomplete publication) |
+| A3 — full suite (both profiles) + `ModularityTests` + re-review + PR/U5-plan update | ⏳ full suite green (100 tests, **0 skipped**, both profiles); U5 plan re-pointed; PR thread update pending |
+
 ## Execution status
 
 | Phase | Status | Commits |

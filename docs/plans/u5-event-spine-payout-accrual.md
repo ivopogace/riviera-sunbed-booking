@@ -6,11 +6,16 @@
 > **⚠️ Drift recorded by U4 (#8, branch `claude/riviera-sdd-issue-8-szoljn`):** U4 landed first and
 > changed two assumptions this plan makes — reconcile before implementing U5:
 > 1. **U4 introduced the first cross-module event seam** (`payment` → `booking`:
->    `PaymentConfirmed`/`PaymentCanceled`), but as a **synchronous in-transaction `@EventListener`**
->    with **no** Event Publication Registry. So U5 is still the first **asynchronous** /
->    registry-backed seam (`@ApplicationModuleListener`) — keep that framing, but it is no longer the
->    first *event* seam, and **Phase 0 (the `event_publication` registry migration) is genuinely new
->    in U5** (U4 did not add it). The next migration version is **V8** (U4 took V7).
+>    `PaymentConfirmed`/`PaymentCanceled`) **and** — after the PR #53 review — converted it to an
+>    **asynchronous `@ApplicationModuleListener`**, so **U4 already brought the Event Publication
+>    Registry**: `V8__event_publication_registry.sql` (the shipped Modulith 2.1 **v2** Postgres schema:
+>    `event_publication` + `event_publication_archive`), with
+>    `spring.modulith.events.completion-mode=archive` and
+>    `republish-outstanding-events-on-restart=true` in `application.properties`. **U5 therefore does
+>    NOT add the registry — Phase 0 is already done.** U5's remaining migration (the payout ledger) is
+>    **V9** (U4 took V7 = payment/webhook and V8 = registry). The `@ApplicationModuleListener` +
+>    `Scenario`/`@EnableScenarios` test pattern is now established in U4 (`PaymentEventListener`,
+>    `PaymentEventListenerIT`) — reuse it.
 > 2. **The confirmation point moved.** In U3 the booking was confirmed inside
 >    `CreateBookingService.create`; after U4 it is confirmed in
 >    `booking.infrastructure.in.PaymentEventListener.on(PaymentConfirmed)` (and the synchronous stub
@@ -184,8 +189,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## File structure
 
-- `resources/db/migration/V6__event_publication.sql` — Modulith registry table.
-- `resources/db/migration/V7__payout_ledger.sql` — `payout_ledger_entry` + `UNIQUE(booking_id, entry_type)`.
+- ~~`V6__event_publication.sql` — Modulith registry table~~ **DONE in U4 (`V8__event_publication_registry.sql`); not part of U5.**
+- `resources/db/migration/V9__payout_ledger.sql` — `payout_ledger_entry` + `UNIQUE(booking_id, entry_type)`. (V7=payment, V8=registry are taken by U4.)
 - `booking/api/{BookingId,BookingConfirmed}.java` + `booking/api/package-info.java` (`@NamedInterface("api")`).
 - `booking/application/CreateBookingService.java` — inject `ApplicationEventPublisher`; publish after `confirm`.
 - `venue/api/VenueCatalog.java` (+`commissionBps`) · `venue/infrastructure/out/JdbcVenueCatalog.java`.
@@ -197,9 +202,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
-## Phase 0 — Registry migration + completion mode
+## Phase 0 — Registry migration + completion mode — ✅ ALREADY DONE IN U4
 
-**Files:** `V6__event_publication.sql`, `application.properties`; Test `EventRegistryMigrationIT`.
+**Done by U4** (PR #53): `V8__event_publication_registry.sql` (Modulith v2 Postgres schema —
+`event_publication` + `event_publication_archive`), `completion-mode=archive` +
+`republish-outstanding-events-on-restart=true`, and `EventRegistryMigrationIT`. **U5 skips this
+phase** — the registry is on the classpath and migrated. Original U5 text retained below for context.
+
+**Files (historical):** `V6__event_publication.sql`, `application.properties`; Test `EventRegistryMigrationIT`.
 
 - [ ] **Step 1: failing test** — IT asserts the `event_publication` table exists (Testcontainers).
 - [ ] **Step 3: migration** — create the Modulith JDBC registry table (columns per
@@ -241,7 +251,7 @@ publisher.publishEvent(new BookingConfirmed(new BookingId(inserted.id()), set.ve
 
 ## Phase 3 — payout ledger (table + aggregate + accrual port)
 
-**Files:** `V7__payout_ledger.sql`, `payout/domain/{PayoutLedgerEntry,EntryType}.java`,
+**Files:** `V9__payout_ledger.sql`, `payout/domain/{PayoutLedgerEntry,EntryType}.java`,
 `payout/application/out/PayoutLedger.java`, `payout/application/Commission.java`,
 `payout/infrastructure/out/JdbcPayoutLedger.java`; Tests `CommissionMathTest`, `PayoutLedgerIT`.
 

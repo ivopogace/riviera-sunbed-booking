@@ -1,13 +1,15 @@
 package ai.riviera.platform.booking.infrastructure.in;
 
+import java.time.Duration;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.test.EnableScenarios;
+import org.springframework.modulith.test.Scenario;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
@@ -18,20 +20,21 @@ import ai.riviera.platform.payment.api.PaymentConfirmed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * End-to-end proof of the {@code booking} reaction to verified payment events (issue #8,
- * AC-2/AC-6) against real Postgres: a {@link PaymentConfirmed} moves an {@code AWAITING_PAYMENT}
- * booking to {@code CONFIRMED} (idempotently); a {@link PaymentCanceled} cancels it and releases
- * the {@code (set, date)} availability claim so the set is re-bookable (invariant #2). Drives the
- * listener by publishing the events the verified webhook would. Testcontainers; skipped where
- * Docker is absent.
+ * End-to-end proof of the {@code booking} reaction to verified payment events (issue #8, PR #53)
+ * now that the listener is an <strong>async</strong> {@code @ApplicationModuleListener}: a
+ * {@link PaymentConfirmed} moves an {@code AWAITING_PAYMENT} booking to {@code CONFIRMED}; a
+ * {@link PaymentCanceled} cancels it and releases the {@code (set, date)} availability claim
+ * (invariant #2). Driven through the Modulith {@link Scenario} DSL — it publishes inside a
+ * transaction (so the {@code AFTER_COMMIT} listener fires) and waits for the asynchronous state
+ * change. Testcontainers + the Event Publication Registry (V8); skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@EnableScenarios
 class PaymentEventListenerIT {
 
-	@Autowired
-	ApplicationEventPublisher publisher;
+	private static final Duration WAIT = Duration.ofSeconds(15);
 
 	@Autowired
 	JdbcClient jdbc;
@@ -75,55 +78,32 @@ class PaymentEventListenerIT {
 	}
 
 	@Test
-	void confirmedMovesBookingToConfirmed() {
+	void confirmedMovesBookingToConfirmed(Scenario scenario) {
 		SetRef set = onlineSet();
 		LocalDate date = LocalDate.of(2027, 7, 1);
 		long booking = insertAwaitingBooking("EVTCONF0001", set, date);
 
-		publisher.publishEvent(new PaymentConfirmed(new BookingRef(booking), "pi_evt_conf"));
-
-		assertEquals("CONFIRMED", statusOf(booking), "a verified payment confirms the booking");
+		scenario.publish(new PaymentConfirmed(new BookingRef(booking), "pi_evt_conf"))
+				.andWaitAtMost(WAIT)
+				.forStateChange(() -> statusOf(booking), "CONFIRMED"::equals)
+				.andVerify(status -> assertEquals("CONFIRMED", status,
+						"a verified payment confirms the booking (async, via the registry)"));
 	}
 
 	@Test
-	void confirmedIsIdempotent() {
-		SetRef set = onlineSet();
-		LocalDate date = LocalDate.of(2027, 7, 2);
-		long booking = insertAwaitingBooking("EVTCONF0002", set, date);
-
-		publisher.publishEvent(new PaymentConfirmed(new BookingRef(booking), "pi_evt_conf2"));
-		publisher.publishEvent(new PaymentConfirmed(new BookingRef(booking), "pi_evt_conf2"));
-
-		assertEquals("CONFIRMED", statusOf(booking), "a re-delivered confirmation is a safe no-op");
-	}
-
-	@Test
-	void canceledCancelsBookingAndReleasesClaim() {
+	void canceledCancelsBookingAndReleasesClaim(Scenario scenario) {
 		SetRef set = onlineSet();
 		LocalDate date = LocalDate.of(2027, 7, 3);
 		long booking = insertAwaitingBooking("EVTCANC0001", set, date);
 		claim(set, date);
 		assertEquals(1L, availabilityRows(set, date), "precondition: the set is claimed");
 
-		publisher.publishEvent(new PaymentCanceled(new BookingRef(booking)));
-
-		assertEquals("CANCELLED", statusOf(booking), "a canceled payment cancels the booking");
-		assertEquals(0L, availabilityRows(set, date),
-				"the availability claim is released so the set is re-bookable (invariant #2)");
-	}
-
-	@Test
-	void canceledAfterConfirmationDoesNotReleaseClaim() {
-		// A stale cancel must not free a set whose booking already left AWAITING_PAYMENT.
-		SetRef set = onlineSet();
-		LocalDate date = LocalDate.of(2027, 7, 4);
-		long booking = insertAwaitingBooking("EVTCANC0002", set, date);
-		claim(set, date);
-		publisher.publishEvent(new PaymentConfirmed(new BookingRef(booking), "pi_evt_conf3"));
-
-		publisher.publishEvent(new PaymentCanceled(new BookingRef(booking)));
-
-		assertEquals("CONFIRMED", statusOf(booking), "an already-confirmed booking is not cancelled");
-		assertEquals(1L, availabilityRows(set, date), "and its claim is not released");
+		scenario.publish(new PaymentCanceled(new BookingRef(booking)))
+				.andWaitAtMost(WAIT)
+				.forStateChange(() -> availabilityRows(set, date), (Long rows) -> rows == 0L)
+				.andVerify(rows -> {
+					assertEquals(0L, rows, "the availability claim is released (invariant #2)");
+					assertEquals("CANCELLED", statusOf(booking), "and the booking is cancelled");
+				});
 	}
 }
