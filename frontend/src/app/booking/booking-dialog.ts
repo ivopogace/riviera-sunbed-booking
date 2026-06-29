@@ -11,8 +11,9 @@ import {
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { formatMoney } from '../shared/money';
 import { SetView } from '../venue/venue.model';
-import { BookingConfirmation, BookingErrorCode } from './booking.model';
+import { AwaitingPayment, BookingConfirmation, BookingErrorCode } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
 /**
@@ -103,7 +104,13 @@ export class BookingDialog implements OnInit {
   readonly date = input.required<string>();
 
   readonly dismissed = output<void>();
+  /** Emitted on a `201 CONFIRMED` (stub/Instant profile) — the booking is already paid. */
   readonly booked = output<BookingConfirmation>();
+  /**
+   * Emitted on a `202 AWAITING_PAYMENT` (stripe profile) — the parent routes to the payment page
+   * to collect the card; the booking is NOT confirmed until the verified webhook (invariant #8).
+   */
+  readonly awaiting = output<AwaitingPayment>();
 
   protected readonly titleId = 'booking-dialog-title';
 
@@ -139,12 +146,7 @@ export class BookingDialog implements OnInit {
   }
 
   protected price(): string {
-    const { minorUnits, currency } = this.set().price;
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: minorUnits % 100 === 0 ? 0 : 2,
-    }).format(minorUnits / 100);
+    return formatMoney(this.set().price);
   }
 
   protected requestClose(): void {
@@ -157,14 +159,18 @@ export class BookingDialog implements OnInit {
       const m = this.model();
       this.submitting.set(true);
       try {
-        const confirmation = await firstValueFrom(
+        const result = await firstValueFrom(
           this.bookings.createBooking({
             setId: this.set().id,
             bookingDate: m.date,
             contact: { email: m.email, fullName: m.fullName, phone: m.phone },
           }),
         );
-        this.booked.emit(confirmation);
+        if (result.kind === 'awaiting') {
+          this.awaiting.emit(result.awaiting);
+        } else {
+          this.booked.emit(result.confirmation);
+        }
       } catch (error) {
         this.errorCode.set(bookingErrorOf(error));
       } finally {

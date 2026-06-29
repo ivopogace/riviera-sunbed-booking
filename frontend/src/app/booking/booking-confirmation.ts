@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { MoneyView } from '../venue/venue.model';
+import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 
 /**
@@ -32,7 +32,7 @@ import { BookingService } from './booking.service';
           <dt>Date</dt>
           <dd>{{ c.bookingDate }}</dd>
           <dt>Paid</dt>
-          <dd>{{ money(c.amount) }}</dd>
+          <dd>{{ formatMoney(c.amount) }}</dd>
         </dl>
 
         <a [routerLink]="['/booking', c.code]" class="home-link" data-testid="manage-link">
@@ -53,13 +53,13 @@ import { BookingService } from './booking.service';
 export class BookingConfirmation {
   private readonly bookings = inject(BookingService);
 
-  protected readonly confirmation = computed(() => this.bookings.lastConfirmation());
+  // Only render the "confirmed / Paid" card for an actually-CONFIRMED booking. An
+  // AWAITING_PAYMENT booking (stripe profile) is routed to /booking/pay and confirmed via the
+  // webhook (invariant #8) — it must never surface here as paid. Defensive belt-and-braces.
+  protected readonly confirmation = computed(() => {
+    const c = this.bookings.lastConfirmation();
+    return c?.status === 'CONFIRMED' ? c : undefined;
+  });
 
-  protected money(amount: MoneyView): string {
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency: amount.currency,
-      minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-    }).format(amount.minorUnits / 100);
-  }
+  protected readonly formatMoney = formatMoney;
 }

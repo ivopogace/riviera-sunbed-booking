@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
+import { formatMoney } from '../shared/money';
 import { defaultBookingDate, parseIsoDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
@@ -113,17 +114,9 @@ export class VenueMap {
     }).format(parseIsoDate(this.selectedDate()));
   }
 
-  /**
-   * Render integer minor units as a currency string (display only — no float stored).
-   * Pinned to a fixed Eurozone-English locale so output is deterministic across deploy
-   * environments (a runtime-default locale would render "45 €" under de/fr).
-   */
+  /** Currency formatting for the template + accessible labels (shared helper, invariant #5). */
   protected money(amount: MoneyView): string {
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency: amount.currency,
-      minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-    }).format(amount.minorUnits / 100);
+    return formatMoney(amount);
   }
 
   protected rating(venue: VenueMapView): string {
@@ -178,5 +171,12 @@ export class VenueMap {
     // The confirmation screen reads BookingService.lastConfirmation() (set by the POST), so no
     // navigation state is needed.
     await this.router.navigate(['/booking/confirmation']);
+  }
+
+  protected async onAwaiting(): Promise<void> {
+    this.selectedSet.set(undefined);
+    // The payment page reads BookingService.lastAwaitingPayment() (set by the 202 POST) to mount
+    // the Stripe Payment Element; confirmation follows the verified webhook (invariant #8).
+    await this.router.navigate(['/booking/pay']);
   }
 }

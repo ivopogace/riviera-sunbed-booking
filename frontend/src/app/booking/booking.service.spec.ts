@@ -4,10 +4,12 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import {
+  AwaitingPayment,
   BookingConfirmation,
   BookingDetail,
   Cancellation,
   CreateBookingRequest,
+  CreateBookingResult,
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
@@ -29,6 +31,20 @@ const CONFIRMATION: BookingConfirmation = {
   amount: { minorUnits: 4500, currency: 'EUR' },
 };
 
+const AWAITING: AwaitingPayment = {
+  code: 'WXYZ345678',
+  status: 'AWAITING_PAYMENT',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  setId: 2,
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
+  clientSecret: 'pi_123_secret_abc',
+  paymentIntentId: 'pi_123',
+};
+
 describe('BookingService', () => {
   let service: BookingService;
   let httpMock: HttpTestingController;
@@ -43,24 +59,40 @@ describe('BookingService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('POSTs the request and exposes the confirmation', () => {
-    let received: BookingConfirmation | undefined;
-    service.createBooking(REQUEST).subscribe((c) => (received = c));
+  it('POSTs the request and exposes a confirmed result for a 201 (stub profile)', () => {
+    let received: CreateBookingResult | undefined;
+    service.createBooking(REQUEST).subscribe((r) => (received = r));
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(REQUEST);
-    req.flush(CONFIRMATION);
+    req.flush(CONFIRMATION, { status: 201, statusText: 'Created' });
 
-    expect(received).toEqual(CONFIRMATION);
+    expect(received).toEqual({ kind: 'confirmed', confirmation: CONFIRMATION });
     expect(service.lastConfirmation()).toEqual(CONFIRMATION);
+    expect(service.lastAwaitingPayment()).toBeUndefined();
   });
 
-  it('clear() resets the last confirmation', () => {
+  it('exposes an awaiting-payment result for a 202 and stores the handoff (stripe profile)', () => {
+    let received: CreateBookingResult | undefined;
+    service.createBooking(REQUEST).subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+    req.flush(AWAITING, { status: 202, statusText: 'Accepted' });
+
+    expect(received).toEqual({ kind: 'awaiting', awaiting: AWAITING });
+    expect(service.lastAwaitingPayment()).toEqual(AWAITING);
+    expect(service.lastConfirmation()).toBeUndefined();
+  });
+
+  it('clear() resets both handoffs', () => {
     service.createBooking(REQUEST).subscribe();
-    httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`).flush(CONFIRMATION);
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+      .flush(CONFIRMATION, { status: 201, statusText: 'Created' });
     service.clear();
     expect(service.lastConfirmation()).toBeUndefined();
+    expect(service.lastAwaitingPayment()).toBeUndefined();
   });
 
   it('getByCode GETs the booking by code', () => {

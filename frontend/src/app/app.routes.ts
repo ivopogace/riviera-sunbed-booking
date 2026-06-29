@@ -18,6 +18,11 @@ export const routes: Routes = [
     title: 'Booking confirmed — Riviera',
   },
   {
+    path: 'booking/pay',
+    loadComponent: () => import('./booking/booking-pay').then((m) => m.BookingPay),
+    title: 'Complete payment — Riviera',
+  },
+  {
     path: 'booking/:code',
     loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
     title: 'Your booking — Riviera',

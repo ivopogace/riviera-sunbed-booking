@@ -1,38 +1,66 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Service, inject, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import {
+  AwaitingPayment,
   BookingConfirmation,
   BookingDetail,
   BookingErrorCode,
   Cancellation,
   CreateBookingRequest,
+  CreateBookingResult,
 } from './booking.model';
 
 /**
- * Creates bookings against the U3 API (`POST /api/bookings`) and holds the most recent
- * confirmation so the confirmation screen can render it after navigation (no `GET by code`
- * endpoint until U6). Single responsibility: typed access to the booking write API + the
- * last-confirmation handoff.
+ * Creates bookings against the booking API (`POST /api/bookings`) and holds the most recent
+ * hand-off so the confirmation / payment routes can render after navigation. Single
+ * responsibility: typed access to the booking write API + the last-result hand-off.
+ *
+ * <p>The create call discriminates on the HTTP status: `201` → the booking is already
+ * `CONFIRMED` (stub/Instant profile); `202` → it is `AWAITING_PAYMENT` and the card must be
+ * collected via Stripe (stripe profile). The two outcomes are kept in separate hand-off signals
+ * so the confirmation screen never renders an awaiting-payment booking as "Paid" (invariant #8).
  */
 @Service()
 export class BookingService {
   private readonly http = inject(HttpClient);
 
   private readonly confirmation = signal<BookingConfirmation | undefined>(undefined);
-  /** The last successful confirmation, consumed by the confirmation route. */
+  /** The last confirmed booking (201 path), consumed by the confirmation route. */
   readonly lastConfirmation = this.confirmation.asReadonly();
 
-  createBooking(request: CreateBookingRequest): Observable<BookingConfirmation> {
+  private readonly awaiting = signal<AwaitingPayment | undefined>(undefined);
+  /** The last awaiting-payment booking (202 path), consumed by the payment route. */
+  readonly lastAwaitingPayment = this.awaiting.asReadonly();
+
+  createBooking(request: CreateBookingRequest): Observable<CreateBookingResult> {
     return this.http
-      .post<BookingConfirmation>(`${environment.apiBaseUrl}/api/bookings`, request)
-      .pipe(tap((confirmation) => this.confirmation.set(confirmation)));
+      .post<BookingConfirmation | AwaitingPayment>(
+        `${environment.apiBaseUrl}/api/bookings`,
+        request,
+        { observe: 'response' },
+      )
+      .pipe(
+        map((response): CreateBookingResult => {
+          if (response.status === 202) {
+            const awaiting = response.body as AwaitingPayment;
+            this.awaiting.set(awaiting);
+            this.confirmation.set(undefined);
+            return { kind: 'awaiting', awaiting };
+          }
+          const confirmation = response.body as BookingConfirmation;
+          this.confirmation.set(confirmation);
+          this.awaiting.set(undefined);
+          return { kind: 'confirmed', confirmation };
+        }),
+      );
   }
 
   clear(): void {
     this.confirmation.set(undefined);
+    this.awaiting.set(undefined);
   }
 
   /** Fetch a booking and its server-computed cancellation terms by code (U6, `GET /api/bookings/{code}`). */
