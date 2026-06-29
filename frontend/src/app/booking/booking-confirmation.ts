@@ -53,7 +53,13 @@ import { BookingService } from './booking.service';
 export class BookingConfirmation {
   private readonly bookings = inject(BookingService);
 
-  protected readonly confirmation = computed(() => this.bookings.lastConfirmation());
+  // Only render the "confirmed / Paid" card for an actually-CONFIRMED booking. An
+  // AWAITING_PAYMENT booking (stripe profile) is routed to /booking/pay and confirmed via the
+  // webhook (invariant #8) — it must never surface here as paid. Defensive belt-and-braces.
+  protected readonly confirmation = computed(() => {
+    const c = this.bookings.lastConfirmation();
+    return c?.status === 'CONFIRMED' ? c : undefined;
+  });
 
   protected money(amount: MoneyView): string {
     return new Intl.NumberFormat('en-IE', {

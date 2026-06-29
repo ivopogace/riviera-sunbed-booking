@@ -208,7 +208,7 @@ conveyed in **text** (not colour alone) for WCAG AA. No `as any` on the contract
 |-------|--------|---------|
 | 0 — Service 201/202 discrimination + awaiting handoff (+ dialog/map wiring) | ✅ | (this commit) |
 | 1 — Stripe gateway seam + env config + deploy.yml | ✅ | (this commit) |
-| 2 — `/booking/pay` page (mount → confirm → poll) + confirmation guard | | |
+| 2 — `/booking/pay` page (mount → confirm → poll) + confirmation guard | ✅ | (this commit) |
 | 3 — a11y/contrast specs + Playwright stripe-path e2e (mocked) | | |
 
 > **Note:** the dialog `awaiting` output + `venue-map.onAwaiting()` navigation (originally
@@ -692,6 +692,7 @@ test('stripe-profile payment flow is accessible (Stripe mocked)', async ({ page 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-06-29 | Phase 0 (createBooking return type changed to union) | callers of `createBooking` that consume the emitted value | `rg "createBooking\(" frontend/src` | `booking-dialog.ts` (only caller) | Updated the single caller to unwrap the union (confirmed → `booked`, awaiting → new `awaiting` output); `venue-map` routes the awaiting output to `/booking/pay`. No other callers. |
+| 2026-06-29 | Phase 2 (no-false-confirm property) | screens that render a booking as confirmed/paid from a status that isn't `CONFIRMED` | reviewed `booking-confirmation.ts`, `booking-view.ts` | `booking-confirmation` (rendered any lastConfirmation) | Added a `status === 'CONFIRMED'` guard to the confirmation screen. `booking-view` (U6) already renders the live server status via `getByCode`, so it shows `Awaiting payment` faithfully — no change needed. |
 
 ---
 

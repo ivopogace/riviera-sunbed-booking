@@ -1,0 +1,105 @@
+/* Booking payment page (U4-FE). AA-contrast colours — pinned by booking-pay.contrast.spec.ts. */
+
+.pay {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  color: #0f172a; /* slate-900 on white */
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.lead {
+  color: #334155; /* slate-700 — AA */
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem;
+  margin: 1rem 0 1.25rem;
+
+  dt {
+    font-weight: 700;
+    color: #334155;
+  }
+
+  dd {
+    margin: 0;
+    color: #0f172a;
+  }
+}
+
+.code {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 2px dashed #1d4ed8; /* blue-700 */
+  border-radius: 0.75rem;
+  text-align: center;
+
+  .code-label {
+    display: block;
+    font-size: 0.875rem;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  strong {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: #1d4ed8; /* blue-700 on white — AA large text */
+  }
+}
+
+.status {
+  margin: 0.75rem 0;
+  color: #334155; /* slate-700 — AA */
+  font-weight: 600;
+}
+
+.form-error {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #fef2f2; /* red-50 */
+  color: #991b1b; /* red-800 on red-50 — AA */
+  font-weight: 600;
+}
+
+.pe-host {
+  margin: 1rem 0 1.25rem;
+  min-height: 1.5rem;
+}
+
+.btn-primary {
+  display: inline-block;
+  padding: 0.7rem 1.4rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: #1d4ed8; /* blue-700 */
+  color: #ffffff; /* white on blue-700 — AA */
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+
+  &:disabled {
+    background: #64748b; /* slate-500 — disabled, still AA against white text */
+    cursor: not-allowed;
+  }
+}
+
+.link {
+  display: inline-block;
+  margin-top: 1rem;
+  margin-right: 1rem;
+  font-weight: 700;
+  color: #1d4ed8; /* blue-700 link — AA */
+  text-decoration: underline;
+}
