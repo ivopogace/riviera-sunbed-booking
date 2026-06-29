@@ -201,8 +201,8 @@ payout currency, **no Connect**), `postgres` (the V9 ledger table — cross-modu
 | 1 — `booking.api` event + single `ConfirmBooking` seam; publish on confirm | ✅ | _pending commit_ |
 | 2 — `venue.api`: commissionBps(VenueId) | ✅ | _pending commit_ |
 | 3 — `payout`: ledger table (V9) + domain + accrual port/adapter | ✅ | _pending commit_ |
-| 4 — `payout`: @ApplicationModuleListener + idempotency + Scenario IT | | |
-| 5 — verify + review gate | | |
+| 4 — `payout`: @ApplicationModuleListener + idempotency + Scenario IT | ✅ | _pending commit_ |
+| 5 — verify + review gate | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
