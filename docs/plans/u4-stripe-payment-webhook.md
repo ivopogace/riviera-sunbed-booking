@@ -318,6 +318,10 @@ Findings (all **Minor**, dispositioned — none blocks merge):
 - `NoStripeConnectArchitectureTest` is a static-symbol scan (won't catch reflective Connect use). → **accepted** (defends against accidental, not adversarial, use).
 - Out-of-order confirmed-then-stale-canceled is covered at the listener level (`PaymentEventListenerIT`); webhook-level dedup is event-id based. → **covered**.
 
+**Follow-up issues opened** (D-1/D-3/R-3): **#50** Angular Stripe Payment Element (FE), **#51**
+TTL expiry sweep for abandoned `AWAITING_PAYMENT` bookings, **#52** two-phase create (PI outside
+the tx) + explicit `StripeClient` timeouts.
+
 ## Execution status
 
 | Phase | Status | Commits |
