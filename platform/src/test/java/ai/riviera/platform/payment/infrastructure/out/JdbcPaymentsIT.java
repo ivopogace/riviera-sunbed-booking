@@ -42,7 +42,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void recordStartsRequiresPaymentAndIsFoundByIntent() {
-		payments.record(new NewPayment(new BookingRef(9001L), "pi_record_a", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9001L), "pi_record_a", 4500L, "EUR"));
 
 		assertEquals("REQUIRES_PAYMENT", statusOf("pi_record_a"),
 				"a freshly recorded PaymentIntent awaits payment");
@@ -53,7 +53,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markStatusTransitionsThePayment() {
-		payments.record(new NewPayment(new BookingRef(9002L), "pi_mark_b", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9002L), "pi_mark_b", 4500L, "EUR"));
 
 		payments.markStatus("pi_mark_b", PaymentStatus.SUCCEEDED);
 

@@ -23,6 +23,10 @@ import ai.riviera.platform.venue.api.SetId;
 @Repository
 class JdbcBookings implements Bookings {
 
+	// Named-parameter keys reused across the lifecycle SQL (keep them in lockstep, no typos).
+	private static final String PARAM_STATUS = "status";
+	private static final String PARAM_AWAITING = "awaiting";
+
 	private final JdbcClient jdbc;
 
 	JdbcBookings(JdbcClient jdbc) {
@@ -49,7 +53,7 @@ class JdbcBookings implements Bookings {
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
-				.param("status", BookingStatus.AWAITING_PAYMENT.name())
+				.param(PARAM_STATUS, BookingStatus.AWAITING_PAYMENT.name())
 				.query(Long.class)
 				.optional()
 				.map(OptionalLong::of)
@@ -63,10 +67,10 @@ class JdbcBookings implements Bookings {
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
 				""")
-				.param("status", BookingStatus.CONFIRMED.name())
+				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
 				.param("at", java.sql.Timestamp.from(confirmedAt))
 				.param("id", bookingId)
-				.param("awaiting", BookingStatus.AWAITING_PAYMENT.name())
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.update();
 		// Guard against a silent no-op: a 0-row update means the booking was not AWAITING_PAYMENT
 		// (already confirmed/cancelled, or a replayed confirm — relevant once U4 confirms via the
@@ -87,10 +91,10 @@ class JdbcBookings implements Bookings {
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
 				""")
-				.param("status", BookingStatus.CONFIRMED.name())
+				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
 				.param("at", java.sql.Timestamp.from(confirmedAt))
 				.param("id", bookingId)
-				.param("awaiting", BookingStatus.AWAITING_PAYMENT.name())
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.update();
 		return updated == 1;
 	}
@@ -108,7 +112,7 @@ class JdbcBookings implements Bookings {
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("id", bookingId)
-				.param("awaiting", BookingStatus.AWAITING_PAYMENT.name())
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong("set_id")),
 						rs.getObject("booking_date", LocalDate.class)))
 				.optional();

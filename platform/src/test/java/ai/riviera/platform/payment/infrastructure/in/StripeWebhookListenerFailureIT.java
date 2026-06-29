@@ -88,7 +88,7 @@ class StripeWebhookListenerFailureIT {
 	void failedListenerLeavesIncompletePublicationForResubmission() throws Exception {
 		when(bookings.confirmFromPayment(anyLong(), any()))
 				.thenThrow(new IllegalStateException("simulated failure on the async confirm"));
-		payments.record(new NewPayment(new BookingRef(8001L), "pi_listener_fail", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(8001L), "pi_listener_fail", 4500L, "EUR"));
 		String payload = eventJson("evt_listener_fail", "payment_intent.succeeded", "pi_listener_fail");
 
 		// The webhook itself succeeds and acks Stripe — confirmation is now decoupled.

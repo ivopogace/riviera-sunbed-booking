@@ -7,7 +7,7 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 
 /**
  * The {@code payment} module's outbound persistence port (driven seam) for the collection
- * record. Three narrow operations model the Stripe flow: {@code record} a PaymentIntent at
+ * record. Three narrow operations model the Stripe flow: {@code register} a PaymentIntent at
  * creation ({@code REQUIRES_PAYMENT}), {@code findBookingRefByIntent} to correlate a verified
  * webhook back to its booking, and {@code markStatus} to apply the webhook's outcome.
  * Implemented by {@code JdbcPayments} (explicit SQL, invariant #1); internal to the module.
@@ -15,7 +15,7 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 public interface Payments {
 
 	/** Persist a new PaymentIntent record in {@code REQUIRES_PAYMENT}. */
-	void record(NewPayment payment);
+	void register(NewPayment payment);
 
 	/**
 	 * The booking a PaymentIntent collects for, or empty if no such PaymentIntent is known

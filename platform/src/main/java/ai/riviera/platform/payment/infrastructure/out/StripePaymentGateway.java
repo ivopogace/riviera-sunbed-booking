@@ -63,7 +63,7 @@ class StripePaymentGateway implements PaymentGateway {
 				.build();
 		try {
 			PaymentIntent intent = stripe.v1().paymentIntents().create(params, options);
-			payments.record(new NewPayment(booking, intent.getId(), amount.minor(), amount.currency()));
+			payments.register(new NewPayment(booking, intent.getId(), amount.minor(), amount.currency()));
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
 		}
 		catch (StripeException e) {

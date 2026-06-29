@@ -19,6 +19,9 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 @Repository
 class JdbcPayments implements Payments {
 
+	// The PaymentIntent-id named-parameter key, reused across the correlation queries.
+	private static final String PARAM_INTENT = "intent";
+
 	private final JdbcClient jdbc;
 
 	JdbcPayments(JdbcClient jdbc) {
@@ -26,13 +29,13 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public void record(NewPayment payment) {
+	public void register(NewPayment payment) {
 		jdbc.sql("""
 				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status)
 				VALUES (:ref, :intent, :amount, :currency, :status)
 				""")
 				.param("ref", payment.bookingRef().value())
-				.param("intent", payment.paymentIntentId())
+				.param(PARAM_INTENT, payment.paymentIntentId())
 				.param("amount", payment.amountMinor())
 				.param("currency", payment.currency())
 				.param("status", PaymentStatus.REQUIRES_PAYMENT.name())
@@ -42,7 +45,7 @@ class JdbcPayments implements Payments {
 	@Override
 	public Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
 		return jdbc.sql("SELECT booking_ref FROM payment WHERE payment_intent_id = :intent")
-				.param("intent", paymentIntentId)
+				.param(PARAM_INTENT, paymentIntentId)
 				.query(Long.class)
 				.optional()
 				.map(BookingRef::new);
@@ -56,7 +59,7 @@ class JdbcPayments implements Payments {
 				WHERE payment_intent_id = :intent
 				""")
 				.param("status", status.name())
-				.param("intent", paymentIntentId)
+				.param(PARAM_INTENT, paymentIntentId)
 				.update();
 	}
 }

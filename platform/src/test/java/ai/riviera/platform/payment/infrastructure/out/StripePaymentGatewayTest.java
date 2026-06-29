@@ -69,7 +69,7 @@ class StripePaymentGatewayTest {
 		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
 				"idempotency key is derived from the booking id (invariant #8)");
 
-		verify(payments).record(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR"));
+		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR"));
 	}
 
 	@Test

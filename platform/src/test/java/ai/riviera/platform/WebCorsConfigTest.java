@@ -98,7 +98,7 @@ class WebCorsConfigTest {
 		Payments payments() {
 			return new Payments() {
 				@Override
-				public void record(ai.riviera.platform.payment.application.out.NewPayment payment) {
+				public void register(ai.riviera.platform.payment.application.out.NewPayment payment) {
 				}
 
 				@Override
