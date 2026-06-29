@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 
-import { MoneyView } from '../venue/venue.model';
+import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
@@ -74,7 +74,7 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
           <dt>Date</dt>
           <dd>{{ booking!.bookingDate }}</dd>
           <dt>Total</dt>
-          <dd>{{ money(booking!.amount) }}</dd>
+          <dd>{{ formatMoney(booking!.amount) }}</dd>
         </dl>
 
         @if (state() === 'confirmed' || state() === 'awaiting') {
@@ -120,6 +120,10 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
           </a>
           <a routerLink="/" class="link">Back to home</a>
         }
+
+        @if (state() === 'error' && terminalError()) {
+          <a routerLink="/" class="link" data-testid="startover-link">Start a new booking</a>
+        }
       </section>
     }
   `,
@@ -134,6 +138,9 @@ export class BookingPay {
   protected readonly state = signal<PayState>('mounting');
   protected readonly errorMessage = signal<string | undefined>(undefined);
   protected readonly paying = signal(false);
+  /** A terminal failure (e.g. the payment was declined server-side and the booking cancelled):
+   *  retrying the same PaymentIntent is futile, so the page offers "start over" instead of "Pay". */
+  protected readonly terminalError = signal(false);
 
   /** The awaiting-payment summary handed off by the 202 POST; absent on a cold load. */
   protected readonly booking = this.bookings.lastAwaitingPayment();
@@ -143,14 +150,22 @@ export class BookingPay {
   private polls = 0;
 
   protected readonly showElement = computed(
-    () => this.state() === 'mounting' || this.state() === 'ready' || this.state() === 'error',
+    () =>
+      this.state() === 'mounting' ||
+      this.state() === 'ready' ||
+      (this.state() === 'error' && !this.terminalError()),
   );
   protected readonly showPayButton = computed(
-    () => this.state() === 'ready' || this.state() === 'error',
+    () => this.state() === 'ready' || (this.state() === 'error' && !this.terminalError()),
   );
   protected readonly payLabel = computed(() =>
-    this.state() === 'error' ? 'Try again' : `Pay ${this.booking ? this.money(this.booking.amount) : ''}`,
+    this.state() === 'error'
+      ? 'Try again'
+      : `Pay ${this.booking ? formatMoney(this.booking.amount) : ''}`,
   );
+
+  /** Exposed for the template (currency formatting helper). */
+  protected readonly formatMoney = formatMoney;
 
   protected get code(): string {
     return this.booking?.code ?? '';
@@ -179,7 +194,8 @@ export class BookingPay {
   }
 
   protected async pay(): Promise<void> {
-    if (!this.checkout) {
+    // Guard re-entrancy: ignore a second tap once the card step is under way or done.
+    if (!this.checkout || this.state() === 'processing' || this.terminalError()) {
       return;
     }
     this.errorMessage.set(undefined);
@@ -198,6 +214,7 @@ export class BookingPay {
   }
 
   private startPolling(): void {
+    this.pollSub?.unsubscribe(); // never run two polls at once
     const maxPolls = Math.ceil(POLL_WINDOW_MS / POLL_MS);
     this.polls = 0;
     this.pollSub = timer(0, POLL_MS)
@@ -209,6 +226,15 @@ export class BookingPay {
         if (detail?.status === 'CONFIRMED') {
           this.state.set('confirmed');
           this.pollSub?.unsubscribe();
+        } else if (detail?.status === 'CANCELLED') {
+          // The payment failed server-side (verified PaymentCanceled webhook → booking CANCELLED).
+          // Surface it honestly — do NOT let it fall through to the "payment received" message.
+          this.errorMessage.set(
+            'Your payment didn’t go through, so the booking was cancelled. Please try booking again.',
+          );
+          this.terminalError.set(true);
+          this.state.set('error');
+          this.pollSub?.unsubscribe();
         } else if (++this.polls >= maxPolls) {
           // The webhook hasn't landed in time. Never claim "confirmed" — the booking is saved and
           // the user can re-check it by code.
@@ -218,12 +244,4 @@ export class BookingPay {
       });
   }
 
-  /** Render integer minor units as a currency string (display only — no float stored). */
-  protected money(amount: MoneyView): string {
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency: amount.currency,
-      minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-    }).format(amount.minorUnits / 100);
-  }
 }

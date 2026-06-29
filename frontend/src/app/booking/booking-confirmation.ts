@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { MoneyView } from '../venue/venue.model';
+import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 
 /**
@@ -32,7 +32,7 @@ import { BookingService } from './booking.service';
           <dt>Date</dt>
           <dd>{{ c.bookingDate }}</dd>
           <dt>Paid</dt>
-          <dd>{{ money(c.amount) }}</dd>
+          <dd>{{ formatMoney(c.amount) }}</dd>
         </dl>
 
         <a [routerLink]="['/booking', c.code]" class="home-link" data-testid="manage-link">
@@ -61,11 +61,5 @@ export class BookingConfirmation {
     return c?.status === 'CONFIRMED' ? c : undefined;
   });
 
-  protected money(amount: MoneyView): string {
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency: amount.currency,
-      minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-    }).format(amount.minorUnits / 100);
-  }
+  protected readonly formatMoney = formatMoney;
 }

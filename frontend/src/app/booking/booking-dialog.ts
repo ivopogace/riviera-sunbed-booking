@@ -11,6 +11,7 @@ import {
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { formatMoney } from '../shared/money';
 import { SetView } from '../venue/venue.model';
 import { AwaitingPayment, BookingConfirmation, BookingErrorCode } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
@@ -145,12 +146,7 @@ export class BookingDialog implements OnInit {
   }
 
   protected price(): string {
-    const { minorUnits, currency } = this.set().price;
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: minorUnits % 100 === 0 ? 0 : 2,
-    }).format(minorUnits / 100);
+    return formatMoney(this.set().price);
   }
 
   protected requestClose(): void {

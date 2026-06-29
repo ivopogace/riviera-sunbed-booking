@@ -182,6 +182,7 @@ exists.
 | FE-8 | `app.routes.ts` / `app.config.ts` | modify | routing / DI | provide `StripePaymentGateway` | — |
 | FE-9 | `environments/environment*.ts` | modify | config | add `stripePublishableKey` | — |
 | FE-10 | `.github/workflows/deploy.yml` | modify | CD | emit the key from `STRIPE_PUBLISHABLE_KEY` | — |
+| FE-11 | `booking/shared/money.ts` | new (review fix R4) | helper | — | — | shared `formatMoney` (de-dupes invariant-#5 rendering) |
 
 **Standards:** standalone components (no `standalone: true`, no explicit `OnPush`), `inject()`,
 `@Service`, `@if`/`@for`, `input()`/`output()` signal APIs, `computed()` for derived state,
@@ -201,6 +202,31 @@ conveyed in **text** (not colour alone) for WCAG AA. No `as any` on the contract
   service reads the **HTTP status** via `observe: 'response'` to discriminate 201 vs 202. No
   `any`/`as any`.
 - **Money/date on the wire:** integer minor units + ISO currency; booking date ISO `LocalDate`.
+
+## Review gate note (SDD)
+
+Ran the SDD review gate — `riviera-review-overlay` + `/code-review origin/main...HEAD`
+(8 finder angles, recall-biased single-vote verify). Outcome:
+
+- **R1 (Major, fixed):** the awaiting-confirmation poll ignored a terminal **`CANCELLED`** status —
+  and the backend *does* flip `AWAITING_PAYMENT → CANCELLED` on a verified `PaymentCanceled` webhook
+  (`PaymentEventListener`). A server-side payment failure would have been misreported as "Payment
+  received — awaiting confirmation". Now surfaced as a terminal error with a *start a new booking*
+  link (no futile retry of a cancelled PaymentIntent). Pinned by `booking-pay.spec.ts`
+  (`CANCELLED → terminal error, never confirmed or awaiting`) + a11y case.
+- **R2 (Minor, fixed):** the gateway now refuses a secret key — `assertPublishableKey` throws on
+  `sk_…` (defense for invariant #8, "no secret in the bundle"). Pinned by `stripe-payment.gateway.spec.ts`.
+- **R3 (Minor, fixed):** `startPolling` unsubscribes any prior poll + `pay()` guards re-entrancy.
+- **R4 (Cleanup, fixed):** extracted `shared/money.ts#formatMoney` (was duplicated 5×).
+- **Refuted / accepted (no change):** timer(0) sync-leak (async scheduler), switchMap dropping a slow
+  CONFIRMED (self-corrects), `booking!` NPE (const, `@else`-guarded), maxPolls off-by-one, HTTP-status
+  discrimination, "No booking" on `/booking/confirmation` after a stripe pay (that route is never in the
+  stripe flow), `@Injectable` vs `@Service` (token-provided adapters), deploy.yml quoting (controlled
+  maintainer vars), shipped fake gateway (deliberate inert flag-gated test seam).
+- **RV-PROC-1:** fixes are frontend + Stripe only — `angular-developer` + angular-cli MCP and
+  `riviera-stripe-payments` already in *Skills consulted*; no new area pulled in.
+
+Suite after fixes: **105 unit tests + 2 Playwright e2e green; lint clean.**
 
 ## Execution status
 
@@ -693,6 +719,7 @@ test('stripe-profile payment flow is accessible (Stripe mocked)', async ({ page 
 |---|---|---|---|---|---|
 | 2026-06-29 | Phase 0 (createBooking return type changed to union) | callers of `createBooking` that consume the emitted value | `rg "createBooking\(" frontend/src` | `booking-dialog.ts` (only caller) | Updated the single caller to unwrap the union (confirmed → `booked`, awaiting → new `awaiting` output); `venue-map` routes the awaiting output to `/booking/pay`. No other callers. |
 | 2026-06-29 | Phase 2 (no-false-confirm property) | screens that render a booking as confirmed/paid from a status that isn't `CONFIRMED` | reviewed `booking-confirmation.ts`, `booking-view.ts` | `booking-confirmation` (rendered any lastConfirmation) | Added a `status === 'CONFIRMED'` guard to the confirmation screen. `booking-view` (U6) already renders the live server status via `getByCode`, so it shows `Awaiting payment` faithfully — no change needed. |
+| 2026-06-29 | Review fix R4 (money formatter duplication) | `new Intl.NumberFormat('en-IE'…)` currency formatting copies | `rg "Intl.NumberFormat" frontend/src` | `booking-pay`, `booking-confirmation`, `venue-map`, `booking-dialog` (4 copies, identical) | Extracted `shared/money.ts#formatMoney`; all four now delegate. Single source for invariant-#5 rendering. |
 
 ---
 

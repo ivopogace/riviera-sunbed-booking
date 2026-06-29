@@ -43,11 +43,16 @@ function stubService(booking: AwaitingPayment | undefined): Partial<BookingServi
 interface StateProbe {
   state: { set(value: string): void };
   errorMessage: { set(value: string | undefined): void };
+  terminalError: { set(value: boolean): void };
 }
 
 async function renderInState(
   state: string,
-  { booking = AWAITING, error }: { booking?: AwaitingPayment | undefined; error?: string } = {},
+  {
+    booking = AWAITING,
+    error,
+    terminal = false,
+  }: { booking?: AwaitingPayment | undefined; error?: string; terminal?: boolean } = {},
 ): Promise<HTMLElement> {
   await TestBed.configureTestingModule({
     imports: [BookingPay],
@@ -64,6 +69,9 @@ async function renderInState(
   probe.state.set(state);
   if (error !== undefined) {
     probe.errorMessage.set(error);
+  }
+  if (terminal) {
+    probe.terminalError.set(true);
   }
   await fixture.whenStable();
   return fixture.nativeElement as HTMLElement;
@@ -95,6 +103,16 @@ describe('BookingPay accessibility (axe)', () => {
   it('has no violations in the error (retry) state', async () => {
     const host = await renderInState('error', { error: 'Your card was declined. Please try again.' });
     expect(host.querySelector('[data-testid="pay-error"]')?.textContent).toContain('declined');
+    await expectNoAxeViolations(host);
+  });
+
+  it('has no violations in the terminal-error (payment cancelled) state', async () => {
+    const host = await renderInState('error', {
+      error: 'Your payment didn’t go through, so the booking was cancelled.',
+      terminal: true,
+    });
+    expect(host.querySelector('[data-testid="startover-link"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="pay-button"]')).toBeNull(); // no futile retry
     await expectNoAxeViolations(host);
   });
 

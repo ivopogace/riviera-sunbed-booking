@@ -68,6 +68,7 @@ class FakeGateway extends StripePaymentGateway {
 interface PayProbe {
   state(): string;
   errorMessage(): string | undefined;
+  terminalError(): boolean;
   pay(): Promise<void>;
 }
 
@@ -154,6 +155,28 @@ describe('BookingPay', () => {
     expect(comp.state()).toBe('error');
     expect(comp.errorMessage()).toContain('declined');
     httpMock.expectNone(STATUS_URL); // the Stripe.js failure never triggers a status poll
+  });
+
+  it('a server-side CANCELLED (failed payment) → terminal error, never confirmed or awaiting', async () => {
+    const gateway = new FakeGateway();
+    const { comp, httpMock } = await setup(gateway);
+    vi.useFakeTimers();
+    try {
+      await comp.pay();
+      // The verified PaymentCanceled webhook flipped the booking to CANCELLED.
+      await vi.advanceTimersByTimeAsync(0);
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+
+      expect(comp.state()).toBe('error');
+      expect(comp.terminalError()).toBe(true);
+      expect(comp.errorMessage()).toMatch(/cancelled/i);
+      // It must NOT be misreported as confirmed or "payment received".
+      expect(comp.state()).not.toBe('confirmed');
+      expect(comp.state()).not.toBe('awaiting');
+      httpMock.verify();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('webhook lag past the poll window → awaiting state, never confirmed', async () => {

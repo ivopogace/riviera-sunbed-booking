@@ -27,6 +27,22 @@ export abstract class StripePaymentGateway {
 }
 
 /**
+ * Validate the configured Stripe key before it reaches Stripe.js. An empty key fails loudly
+ * instead of rendering a broken element; a secret key (`sk_…`) is refused outright — it must never
+ * be shipped to the browser (invariant #8), and accepting one would only fail opaquely later.
+ */
+export function assertPublishableKey(key: string): void {
+  if (!key) {
+    throw new Error('Stripe publishable key is not configured (environment.stripePublishableKey).');
+  }
+  if (key.startsWith('sk_')) {
+    throw new Error(
+      'Refusing a Stripe secret key (sk_…) in the browser — configure a publishable key (pk_…).',
+    );
+  }
+}
+
+/**
  * Real adapter: loads Stripe.js from js.stripe.com (PCI — never bundled or self-hosted), mounts a
  * Payment Element bound to the booking's PaymentIntent `clientSecret`, and confirms the card with
  * `redirect: 'if_required'`. Uses the **publishable** key from {@link environment} (a `pk_…`,
@@ -39,11 +55,7 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
     clientSecret: string,
   ): Promise<StripeCheckout> {
     const key = environment.stripePublishableKey;
-    if (!key) {
-      throw new Error(
-        'Stripe publishable key is not configured (environment.stripePublishableKey).',
-      );
-    }
+    assertPublishableKey(key);
     const stripe: Stripe | null = await loadStripe(key);
     if (!stripe) {
       throw new Error('Stripe.js failed to load.');

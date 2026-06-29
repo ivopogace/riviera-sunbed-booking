@@ -1,4 +1,4 @@
-import { StripeJsPaymentGateway } from './stripe-payment.gateway';
+import { assertPublishableKey, StripeJsPaymentGateway } from './stripe-payment.gateway';
 
 /**
  * The real gateway loads Stripe.js from js.stripe.com, which cannot run under jsdom — so the
@@ -17,5 +17,19 @@ describe('StripeJsPaymentGateway', () => {
     await expect(gateway.mountPaymentElement(host, 'pi_1_secret_x')).rejects.toThrow(
       /publishable key/i,
     );
+  });
+});
+
+describe('assertPublishableKey', () => {
+  it('throws on an empty key', () => {
+    expect(() => assertPublishableKey('')).toThrow(/not configured/i);
+  });
+
+  it('refuses a secret key (sk_…) — never ship a secret to the browser (invariant #8)', () => {
+    expect(() => assertPublishableKey('sk_test_deadbeef')).toThrow(/secret key/i);
+  });
+
+  it('accepts a publishable key (pk_…)', () => {
+    expect(() => assertPublishableKey('pk_test_123')).not.toThrow();
   });
 });
