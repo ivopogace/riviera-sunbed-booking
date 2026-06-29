@@ -86,6 +86,10 @@ cleanly.
   (PK type, seam depth, v22 API/a11y, collect-only model) were never applied. Fix: load
   the missing skill, re-vet that section, update the line. (Trigger-map authority: the
   `riviera-sdd` Skill-routing gate.)
+  **Re-walk this on every re-review, including after review-fix commits.** Fixes change the diff,
+  so a finding patched in a new area without its skill (a migration fix with no `postgres`, an
+  Angular fix with no `angular-developer`/MCP) is caught here on the second pass — that is the
+  overlay's enforcement of the SDD rule that "review findings re-enter the loop at Implement."
 
 ## Hand-offs to other riviera skills
 
