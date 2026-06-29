@@ -45,8 +45,27 @@
   color: #94908a;
 }
 
+.date-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.2rem;
+}
+.date-label {
+  font-weight: 700;
+  color: #22302f; /* body text on white — AA */
+}
+.date-field input {
+  font: inherit;
+  color: #22302f;
+  background: #ffffff;
+  border: 1px solid #b9b4a9;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+}
+
 .availability {
-  margin: 1.1rem 0 0.4rem;
+  margin: 0.4rem 0 0.4rem;
   font-size: 1.05rem;
 }
 .availability strong {

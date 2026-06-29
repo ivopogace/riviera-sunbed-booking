@@ -46,7 +46,8 @@ async function expectNoSeriousAxeViolations(page: Page, context: string): Promis
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/venues/1', (route) =>
+  // Match with or without the `?date=` query the map now appends (issue #44).
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.fulfill({ json: VENUE }),
   );
   await page.route('**/api/bookings', (route) =>

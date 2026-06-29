@@ -1,4 +1,13 @@
-import { afterNextRender, Component, ElementRef, inject, input, output, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  OnInit,
+  output,
+  signal,
+} from '@angular/core';
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
@@ -12,6 +21,10 @@ import { BookingService, bookingErrorOf } from './booking.service';
  * {@link BookingService}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC
  * and backdrop close, and focus returns to the triggering tile (handled by the parent on
  * `dismissed`). The set, amount and date are server-validated — the client form is UX only.
+ *
+ * <p>The {@code date} input is the day the map is showing (issue #44): the form's date field is
+ * seeded from it so the map and the dialog always agree, while staying editable (the server
+ * remains authoritative for the cutoff).
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -84,8 +97,10 @@ import { BookingService, bookingErrorOf } from './booking.service';
   `,
   styleUrl: './booking-dialog.scss',
 })
-export class BookingDialog {
+export class BookingDialog implements OnInit {
   readonly set = input.required<SetView>();
+  /** The day the map is showing (ISO YYYY-MM-DD); seeds the form's date so the two agree. */
+  readonly date = input.required<string>();
 
   readonly dismissed = output<void>();
   readonly booked = output<BookingConfirmation>();
@@ -102,7 +117,7 @@ export class BookingDialog {
     fullName: '',
     email: '',
     phone: '',
-    date: BookingDialog.defaultDate(),
+    date: '',
   });
 
   protected readonly bookingForm = form(this.model, (path) => {
@@ -116,6 +131,11 @@ export class BookingDialog {
   constructor() {
     // Move focus into the dialog when it opens (modal a11y).
     afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
+  }
+
+  ngOnInit(): void {
+    // Seed the date field from the map's selected date (available once inputs are set).
+    this.model.update((m) => ({ ...m, date: this.date() }));
   }
 
   protected price(): string {
@@ -195,16 +215,5 @@ export class BookingDialog {
       event.preventDefault();
       first.focus();
     }
-  }
-
-  private static defaultDate(): string {
-    const date = new Date();
-    date.setDate(date.getDate() + 1); // default to tomorrow; server enforces the real cutoff
-    // Format from local date parts (NOT toISOString, which is UTC and can roll the day back
-    // for late-evening users in Europe/Tirane — invariant #6). The server is authoritative.
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   }
 }

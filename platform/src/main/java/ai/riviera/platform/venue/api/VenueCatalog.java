@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.api;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 /**
@@ -10,8 +11,17 @@ import java.util.Optional;
  */
 public interface VenueCatalog {
 
-	/** The venue and its beach map, or empty if no venue has that id. */
-	Optional<VenueMapView> findVenueMap(VenueId id);
+	/**
+	 * The venue and its beach map for a given day, or empty if no venue has that id. Each set's
+	 * {@code availability} reflects the authoritative {@code set_availability} state for
+	 * {@code date} (invariant #2) — a set booked for that date renders {@code TAKEN}, otherwise
+	 * {@code FREE} (issue #44).
+	 *
+	 * @param id   the venue
+	 * @param date the calendar day to render availability for, a {@code LocalDate} in
+	 *             {@code Europe/Tirane} (invariant #6)
+	 */
+	Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date);
 
 	/**
 	 * The pool token ({@code "ONLINE"} or {@code "WALK_IN"}) of the given set, or empty if no

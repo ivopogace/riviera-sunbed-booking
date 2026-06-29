@@ -41,14 +41,21 @@ class VenueSeedMigrationIT {
 				"SELECT count(DISTINCT pool) FROM set_position", Integer.class);
 		assertThat(distinctPools).isEqualTo(2); // ONLINE and WALK_IN both present (AC-1)
 
-		Integer taken = jdbc.queryForObject(
-				"SELECT count(*) FROM set_position WHERE seed_availability = 'TAKEN'", Integer.class);
-		assertThat(taken).isEqualTo(6); // 18 of 24 free, matching the design
-
 		Long fromPrice = jdbc.queryForObject(
 				"SELECT min(price_minor) FROM set_position sp JOIN venue v ON v.id = sp.venue_id "
 						+ "WHERE v.name = 'Miramar Beach Club'", Long.class);
 		assertThat(fromPrice).isEqualTo(2500L); // "from €25/set"
+	}
+
+	@Test
+	void dropsTheSeedAvailabilityPlaceholder() {
+		// Issue #44 / V6: the render-only placeholder column is gone — availability is now
+		// sourced per-(set, date) from set_availability, never from this dead column.
+		Integer column = jdbc.queryForObject(
+				"SELECT count(*) FROM information_schema.columns "
+						+ "WHERE table_name = 'set_position' AND column_name = 'seed_availability'",
+				Integer.class);
+		assertThat(column).isZero();
 	}
 
 	@Test

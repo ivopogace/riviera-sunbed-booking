@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -47,7 +49,7 @@ class WebCorsConfigTest {
 			return new VenueCatalog() {
 				@Override
 				public Optional<ai.riviera.platform.venue.api.VenueMapView> findVenueMap(
-						ai.riviera.platform.venue.api.VenueId id) {
+						ai.riviera.platform.venue.api.VenueId id, LocalDate date) {
 					return Optional.empty();
 				}
 
@@ -71,6 +73,16 @@ class WebCorsConfigTest {
 		@Bean
 		CreateBooking createBooking() {
 			return command -> BookingOutcome.Rejected.NO_SUCH_SET;
+		}
+
+		/**
+		 * {@code VenueReadController} computes the default booking date from a {@link Clock}
+		 * (issue #44). The web slice does not load {@code TimeConfig}, so the bean is supplied
+		 * here; the preflight tests never reach the controller, so the system clock is fine.
+		 */
+		@Bean
+		Clock clock() {
+			return Clock.systemUTC();
 		}
 	}
 

@@ -219,7 +219,7 @@ class CreateBookingServiceTest {
 	/** VenueCatalog fake returning a configured set (or empty for "no such set"). */
 	private record FakeCatalog(SetBookingInfo info) implements VenueCatalog {
 		@Override
-		public Optional<VenueMapView> findVenueMap(VenueId id) {
+		public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
 			return Optional.empty();
 		}
 
