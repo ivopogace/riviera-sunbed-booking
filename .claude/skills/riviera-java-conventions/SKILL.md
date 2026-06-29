@@ -126,8 +126,21 @@ these are the right way to use Spring Data JDBC from the start.)*
   exception. A lost claim race is normal flow, not a stack trace.
 - Reserve exceptions for genuinely exceptional conditions. **Never swallow** — no empty
   `catch`. Let Spring map truly-unexpected failures.
+- **Catch specific exception types, never a bare `catch (Exception)` / `Throwable`.** A
+  generic catch masks programming bugs (a `NullPointerException`, a wrong cast) as if they
+  were handled, defeats targeted recovery, and hides the real cause. Catch the narrowest type
+  you can act on; rethrow as a meaningful exception if you must translate.
 - Keep transactions small and explicit: `@Transactional` on the write method
   (`org.springframework.transaction.annotation.Transactional`), one short unit of work.
+
+### 6a. Name your literals — no magic numbers/strings
+
+- Replace meaning-carrying literals with a `private static final` constant or an `enum`. We
+  already do this: `ONLINE_POOL` in `JdbcAvailabilityClaim`, the `BOOKED_ONLINE` / `WALK_IN`
+  state tokens, the commission/price factors. A repeated or domain-significant literal that
+  isn't named is a silent-typo bug waiting to happen.
+- Status/pool/state tokens that the DB `CHECK` constraints also list are the highest-value
+  case — keep the Java constant and the SQL token in lockstep.
 
 ### 7. Money & time (invariants #5, #6 — details in CLAUDE.md)
 
@@ -170,6 +183,8 @@ these are the right way to use Spring Data JDBC from the start.)*
 | "Make the JDBC adapter `public`." | Package-private; only the `api/` port is public (Modulith seam). |
 | "Return `null` when not found." | Return `Optional<T>` from query ports. |
 | "Throw an exception when the set is taken." | Return a typed `ClaimOutcome`; a lost race is expected flow. |
+| "Wrap it in `catch (Exception)` to be safe." | Catch the specific type; a bare catch masks NPEs/programming bugs. |
+| "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (e.g. `ONLINE_POOL`); no magic literals. |
 | "Store the amount as a `BigDecimal` euro." | Integer minor units + currency (invariant #5). |
 | "`new Date()` / `LocalDateTime.now()` for the cutoff." | UTC `Instant`; reason in `Europe/Tirane` (invariant #6). |
 | "Call the other module's service class directly." | Via its `api/` port or a domain event only (invariant #11). |
