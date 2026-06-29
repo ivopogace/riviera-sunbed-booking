@@ -367,6 +367,12 @@ class BookingConfirmedPayoutListener {
   `stimulate(confirm)` → `andWaitForStateChange(() -> ledger.countFor(bookingId))` → `== 1`.
 - [ ] Commit `[U5] payout: BookingConfirmed listener + idempotent accrual (#9)`.
 
+**Follow-up (added after review):** `PayoutModuleTest` — the module-scoped counterpart using
+`@ApplicationModuleTest` (boots only `payout`, mocks `venue::api`'s `VenueCatalog` via `@MockitoBean`,
+`Scenario` enabled implicitly so **no** `@EnableScenarios`). It proves the listener's reaction in
+isolation and that the commission rate comes from the venue port (a 1000-bps mock yields net 4050),
+complementing the full-stack `PayoutAccrualIT`/`PayoutSpineScenarioIT` without replacing them.
+
 ## Phase 5 — verify + review gate
 
 - [x] `./gradlew test` (incl. `ModularityTests`, `JdbcOnlyArchitectureTests`) green — 119 tests, 0
