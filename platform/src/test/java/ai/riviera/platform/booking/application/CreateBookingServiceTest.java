@@ -23,7 +23,9 @@ import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.CreateBookingCommand;
 import ai.riviera.platform.booking.application.out.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.out.Bookings;
+import ai.riviera.platform.booking.application.out.ClaimRef;
 import ai.riviera.platform.booking.application.out.NewBooking;
+import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.api.CustomerId;
 import ai.riviera.platform.customer.api.GuestContact;
@@ -75,10 +77,25 @@ class CreateBookingServiceTest {
 		return new CreateBookingCommand(SET, DATE, GUEST);
 	}
 
+	/** A fake claim port (AvailabilityClaim is no longer single-method since U4's release). */
+	private static AvailabilityClaim claiming(ClaimOutcome outcome) {
+		return new AvailabilityClaim() {
+			@Override
+			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+				return outcome;
+			}
+
+			@Override
+			public void release(SetId setId, LocalDate bookingDate) {
+				// no-op for create-flow branch tests
+			}
+		};
+	}
+
 	@Test
 	void confirmsWhenClaimWinsAndPaymentSucceeds() {
 		CreateBookingService service = service(set("ONLINE"),
-				(id, date) -> ClaimOutcome.CLAIMED,
+				claiming(ClaimOutcome.CLAIMED),
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
@@ -113,10 +130,20 @@ class CreateBookingServiceTest {
 			public void confirm(long bookingId, java.time.Instant at) {
 				// no-op
 			}
+
+			@Override
+			public boolean confirmFromPayment(long bookingId, java.time.Instant at) {
+				return true;
+			}
+
+			@Override
+			public java.util.Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
+				return java.util.Optional.empty();
+			}
 		};
 		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
-		var service = new CreateBookingService(catalog, (id, date) -> ClaimOutcome.CLAIMED, customers,
+		var service = new CreateBookingService(catalog, claiming(ClaimOutcome.CLAIMED), customers,
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), collidingOnce,
 				() -> codes.removeFirst(), new BookingCutoff(CLOCK), CLOCK);
 
@@ -127,9 +154,29 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void pendingLeavesAwaitingPaymentWithClientSecret() {
+		// Real-Stripe path: the gateway returns Pending, so the booking is created but NOT
+		// confirmed synchronously — confirmation comes via the verified webhook (invariant #8).
+		CreateBookingService service = service(set("ONLINE"),
+				claiming(ClaimOutcome.CLAIMED),
+				(ref, money) -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
+				() -> "CODE999999");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.AwaitingPayment awaiting =
+				assertInstanceOf(BookingOutcome.AwaitingPayment.class, outcome);
+		assertEquals("cs_secret_xyz", awaiting.clientSecret());
+		assertEquals("pi_42", awaiting.paymentIntentId());
+		assertEquals(BookingStatus.AWAITING_PAYMENT, awaiting.confirmation().status());
+		assertEquals(1, bookings.inserted.size(), "the booking row is created (AWAITING_PAYMENT)");
+		assertEquals(0, bookings.confirmed.size(), "a pending payment confirms nothing synchronously");
+	}
+
+	@Test
 	void rejectsTakenSetWithoutPersisting() {
 		CreateBookingService service = service(set("ONLINE"),
-				(id, date) -> ClaimOutcome.ALREADY_TAKEN,
+				claiming(ClaimOutcome.ALREADY_TAKEN),
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		assertSame(BookingOutcome.Rejected.SET_TAKEN, service.create(command()));
@@ -141,7 +188,7 @@ class CreateBookingServiceTest {
 		// The stub never declines in U3; this proves the Failed branch aborts (throws) so the
 		// transaction — and the joined availability claim — rolls back rather than confirming.
 		CreateBookingService service = service(set("ONLINE"),
-				(id, date) -> ClaimOutcome.CLAIMED,
+				claiming(ClaimOutcome.CLAIMED),
 				(ref, money) -> new PaymentOutcome.Failed("card_declined"), () -> "CODEX12345");
 
 		assertThrows(PaymentDeclinedException.class, () -> service.create(command()));
@@ -151,7 +198,7 @@ class CreateBookingServiceTest {
 	@Test
 	void rejectsWalkInPool() {
 		CreateBookingService service = service(set("WALK_IN"),
-				(id, date) -> ClaimOutcome.CLAIMED,
+				claiming(ClaimOutcome.CLAIMED),
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NOT_ONLINE_POOL, service.create(command()));
 	}
@@ -159,7 +206,7 @@ class CreateBookingServiceTest {
 	@Test
 	void rejectsUnknownSet() {
 		CreateBookingService service = service(null,
-				(id, date) -> ClaimOutcome.CLAIMED,
+				claiming(ClaimOutcome.CLAIMED),
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 	}
@@ -168,7 +215,7 @@ class CreateBookingServiceTest {
 	void rejectsAfterCutoff() {
 		// now (2026-11-01) is fine for DATE; use a past date to trip the cutoff.
 		CreateBookingService service = service(set("ONLINE"),
-				(id, date) -> ClaimOutcome.CLAIMED,
+				claiming(ClaimOutcome.CLAIMED),
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 10, 1), GUEST));
@@ -184,7 +231,7 @@ class CreateBookingServiceTest {
 		try {
 			String code = "SECRETCODE";
 			CreateBookingService service = service(set("ONLINE"),
-					(id, date) -> ClaimOutcome.CLAIMED,
+					claiming(ClaimOutcome.CLAIMED),
 					(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> code);
 			service.create(command());
 
@@ -213,6 +260,17 @@ class CreateBookingServiceTest {
 		@Override
 		public void confirm(long bookingId, Instant confirmedAt) {
 			confirmed.add(bookingId);
+		}
+
+		@Override
+		public boolean confirmFromPayment(long bookingId, Instant confirmedAt) {
+			confirmed.add(bookingId);
+			return true;
+		}
+
+		@Override
+		public Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
+			return Optional.empty();
 		}
 	}
 

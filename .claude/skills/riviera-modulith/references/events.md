@@ -4,7 +4,11 @@ Events are how modules integrate on the write side and how would-be cycles are b
 originating module announces a fact; it does not know or care who listens. In this project the spine
 is: **`BookingConfirmed`** → `availability` marks the set `BOOKED_ONLINE` *and* `payout` accrues a
 ledger entry; **`BookingCancelled`** → `availability` frees the set + `payment` refunds (invariant
-#9/#10). U3 uses a synchronous `api/` port for the claim; the **event spine lands in U5**.
+#9/#10). U3 uses a synchronous `api/` port for the claim. **U4** (#8) introduced the *first* event
+seam — `payment` → `booking` (`PaymentConfirmed`/`PaymentCanceled`) — as a **synchronous,
+in-transaction** listener (no registry; see "Synchronous in-transaction events" below). The
+**asynchronous, registry-backed spine** (`@ApplicationModuleListener` + Event Publication Registry)
+**lands in U5**.
 
 ## Where events live and the id-only payload rule
 
@@ -64,6 +68,52 @@ class BookingConfirmedListener {
 Because delivery is async/`AFTER_COMMIT`, **listeners must be idempotent** — invariant #9 requires
 payout to accrue **exactly once** per booking even if an event is redelivered. Dedupe on the
 `BookingId` (e.g. an upsert / a unique ledger key), don't assume single delivery.
+
+## Synchronous in-transaction events (the U4 variant — no registry)
+
+Sometimes you want an event to **break a cycle** but still run **inside the publisher's transaction**,
+without the async machinery or the registry. That is what **U4** (#8) does: the Stripe webhook arrives
+in `payment`, which must tell `booking` to confirm — but `payment` cannot call `booking` (a direct
+call cycles: `booking` already depends on `payment::api`). So `payment` **publishes** and `booking`
+**listens with a plain `@EventListener`**:
+
+```java
+// publisher — ai.riviera.platform.payment.infrastructure.in.StripeWebhookController (inside @Transactional)
+publisher.publishEvent(new PaymentConfirmed(bookingRef, paymentIntentId));   // payment.api record
+
+// listener — ai.riviera.platform.booking.infrastructure.in.PaymentEventListener
+@Component
+class PaymentEventListener {
+    @EventListener                                  // SYNC: runs in the publisher's thread + transaction
+    void on(PaymentConfirmed event) {
+        bookings.confirmFromPayment(event.bookingRef().value(), clock.instant());  // idempotent (guarded UPDATE)
+    }
+}
+```
+
+`@EventListener` (plain) fires **synchronously** when `publishEvent` is called, on the same thread,
+joined to the publisher's `@Transactional` unit. So:
+
+- **It does not use the Event Publication Registry** — nothing is persisted, no Flyway registry table.
+- **Atomic with the publisher:** if the listener throws, the *whole* webhook transaction rolls back
+  (including the dedup-insert), so the caller sees a failure and **Stripe re-delivers** — at-least-once
+  via the webhook's own retry, not the registry.
+- Still **must be idempotent** (Stripe re-delivers): U4 dedupes on the Stripe event id **and** guards
+  the transition (`UPDATE … WHERE status = 'AWAITING_PAYMENT'`), so a re-delivery is a no-op.
+
+**Choose sync `@EventListener` vs async `@ApplicationModuleListener`:**
+
+| | `@EventListener` (sync, U4) | `@ApplicationModuleListener` (async, U5) |
+|---|---|---|
+| Runs | publisher's thread + transaction | own thread + own transaction, `AFTER_COMMIT` |
+| Failure | rolls back the publisher | does **not** roll back the publisher |
+| Reliability | caller retries (here: Stripe re-delivers) | Event Publication Registry re-submits on restart |
+| Needs registry / Flyway table | no | yes |
+| Use when | the producer *should* fail if the consumer can't apply, and an external retry exists | fan-out that must not block/aborting the producer (payout accrual, availability re-mark) |
+
+Default to **async `@ApplicationModuleListener`** for write-side fan-out (the spine). Reach for the
+**sync `@EventListener`** only to break a cycle where the producer and consumer genuinely belong in
+one transaction and an external retry (a re-delivered webhook) supplies the reliability.
 
 ## Event Publication Registry (reliability on JDBC, no broker)
 

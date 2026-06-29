@@ -17,10 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StubPaymentGatewayTest {
 
 	@Test
-	void chargeAlwaysSucceeds() {
+	void initiateAlwaysSucceeds() {
 		StubPaymentGateway gateway = new StubPaymentGateway();
 
-		PaymentOutcome outcome = gateway.charge(new BookingRef(7L), new Money(3000L, "EUR"));
+		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
 
 		PaymentOutcome.Succeeded ok = assertInstanceOf(PaymentOutcome.Succeeded.class, outcome);
 		assertTrue(ok.reference().contains("7"), "reference correlates to the booking ref");

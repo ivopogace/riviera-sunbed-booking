@@ -32,11 +32,17 @@ class SecurityConfig {
 				// requests — does not apply. The matcher is the EXACT path "/api/bookings", so it
 				// covers only this endpoint (a later sub-path like "/api/bookings/{code}" is not
 				// matched). Only POST is mapped/permitted here; other methods 401 regardless.
-				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings"))
+				// The Stripe webhook (U4) is a server-to-server POST authenticated by its own
+				// signature header (invariant #8), not a session/cookie — so CSRF does not apply
+				// and it must be reachable without auth. Its security IS the signature check in
+				// StripeWebhookController; an unverified call is rejected there with 400.
+				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
+						"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.anyRequest().authenticated())
 				.httpBasic(Customizer.withDefaults());
 		return http.build();

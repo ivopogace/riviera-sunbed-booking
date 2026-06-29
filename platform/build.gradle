@@ -32,6 +32,9 @@ dependencies {
 	implementation 'org.springframework.modulith:spring-modulith-observability-api'
 	implementation 'org.springframework.modulith:spring-modulith-starter-core'
 	implementation 'org.springframework.modulith:spring-modulith-starter-jdbc'
+	// Stripe collection only (PaymentIntents + webhook signature verification) — NO Connect
+	// (ADR-0002 / invariant #8). Lives behind the payment module's outbound PaymentGateway.
+	implementation 'com.stripe:stripe-java:33.1.0'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	runtimeOnly 'org.postgresql:postgresql'

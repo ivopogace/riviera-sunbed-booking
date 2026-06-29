@@ -102,17 +102,29 @@ class CreateBookingService implements CreateBooking {
 
 		PaymentOutcome payment = checkout.pay(new BookingRef(inserted.id()),
 				new Money(set.price().minorUnits(), set.price().currency()));
-		if (payment instanceof PaymentOutcome.Failed failed) {
-			throw new PaymentDeclinedException(failed.reason()); // rolls back the claim too
-		}
-
-		bookings.confirm(inserted.id(), clock.instant());
 		// Log ids/date only — never the booking code (invariant #7) or the guest's PII.
-		log.info("confirmed booking {} for set {} on {}", inserted.id(), set.setId().value(),
-				command.bookingDate());
-
-		return new BookingOutcome.Confirmed(new BookingConfirmation(
-				inserted.code(), BookingStatus.CONFIRMED, set, command.bookingDate()));
+		return switch (payment) {
+			case PaymentOutcome.Succeeded ignored -> {
+				// Synchronous stub path: collected in-process, confirm now in this transaction.
+				bookings.confirm(inserted.id(), clock.instant());
+				log.info("confirmed booking {} for set {} on {}", inserted.id(),
+						set.setId().value(), command.bookingDate());
+				yield new BookingOutcome.Confirmed(new BookingConfirmation(
+						inserted.code(), BookingStatus.CONFIRMED, set, command.bookingDate()));
+			}
+			case PaymentOutcome.Pending pending -> {
+				// Real Stripe: a PaymentIntent exists; the booking stays AWAITING_PAYMENT and is
+				// confirmed only by the signature-verified webhook (invariant #8), never here.
+				log.info("awaiting payment for booking {} (set {} on {})", inserted.id(),
+						set.setId().value(), command.bookingDate());
+				yield new BookingOutcome.AwaitingPayment(
+						new BookingConfirmation(inserted.code(), BookingStatus.AWAITING_PAYMENT, set,
+								command.bookingDate()),
+						pending.clientSecret(), pending.paymentIntentId());
+			}
+			// Decline at initiation aborts and rolls back the whole transaction (claim included).
+			case PaymentOutcome.Failed failed -> throw new PaymentDeclinedException(failed.reason());
+		};
 	}
 
 	/**

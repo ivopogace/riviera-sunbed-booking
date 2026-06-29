@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.out;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 /**
@@ -23,6 +24,28 @@ public interface Bookings {
 	 */
 	OptionalLong insertAwaitingPayment(NewBooking booking);
 
-	/** Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}. */
+	/**
+	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}. Strict: a
+	 * non-{@code AWAITING_PAYMENT} row is an error (the synchronous stub path, where exactly-once
+	 * is guaranteed within the create transaction).
+	 */
 	void confirm(long bookingId, Instant confirmedAt);
+
+	/**
+	 * Confirm from a signature-verified Stripe webhook (U4): transition
+	 * {@code AWAITING_PAYMENT → CONFIRMED}. <strong>Idempotent</strong> — a 0-row update (already
+	 * confirmed/cancelled, or a re-delivered event) is a benign no-op returning {@code false},
+	 * never an error (the redelivery-safe sibling of {@link #confirm}). Returns {@code true} iff
+	 * it transitioned.
+	 */
+	boolean confirmFromPayment(long bookingId, Instant confirmedAt);
+
+	/**
+	 * Cancel from a verified {@code payment_intent.canceled} webhook (U4): transition
+	 * {@code AWAITING_PAYMENT → CANCELLED}. Returns the {@link ClaimRef} of the booking's
+	 * {@code (set, date)} <strong>iff</strong> it actually transitioned, so the caller releases
+	 * the availability claim exactly once (invariant #2); empty if the booking was no longer
+	 * {@code AWAITING_PAYMENT} (already confirmed/cancelled) — then nothing is released.
+	 */
+	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
 }

@@ -26,6 +26,6 @@ class PaymentService implements CheckoutPort {
 
 	@Override
 	public PaymentOutcome pay(BookingRef booking, Money amount) {
-		return gateway.charge(booking, amount);
+		return gateway.initiate(booking, amount);
 	}
 }

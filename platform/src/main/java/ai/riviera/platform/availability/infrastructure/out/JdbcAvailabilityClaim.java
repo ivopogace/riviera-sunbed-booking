@@ -65,4 +65,18 @@ class JdbcAvailabilityClaim implements AvailabilityClaim {
 
 		return inserted == 1 ? ClaimOutcome.CLAIMED : ClaimOutcome.ALREADY_TAKEN;
 	}
+
+	@Override
+	@Transactional
+	public void release(SetId setId, LocalDate bookingDate) {
+		// Delete only an online claim — never a staff-marked row. Frees the (set, date) so it is
+		// re-claimable (invariant #2). A no-op (0 rows) if nothing online holds it.
+		jdbc.sql("""
+				DELETE FROM set_availability
+				WHERE set_id = :setId AND booking_date = :bookingDate AND state = 'BOOKED_ONLINE'
+				""")
+				.param("setId", setId.value())
+				.param("bookingDate", bookingDate)
+				.update();
+	}
 }

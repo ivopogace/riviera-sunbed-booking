@@ -15,6 +15,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
+import ai.riviera.platform.payment.application.out.Payments;
+import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
+import ai.riviera.platform.payment.infrastructure.StripeProperties;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 
@@ -83,6 +86,42 @@ class WebCorsConfigTest {
 		@Bean
 		Clock clock() {
 			return Clock.systemUTC();
+		}
+
+		/**
+		 * {@code StripeWebhookController} (U4) is loaded by {@code @WebMvcTest}, so its
+		 * collaborators must be satisfied. The preflight tests never reach it, so trivial stubs
+		 * are enough; the {@code @Repository}-backed {@code Payments}/{@code StripeWebhookEvents}
+		 * and the profile-gated {@code StripeProperties} are not in the web slice.
+		 */
+		@Bean
+		Payments payments() {
+			return new Payments() {
+				@Override
+				public void register(ai.riviera.platform.payment.application.out.NewPayment payment) {
+				}
+
+				@Override
+				public Optional<ai.riviera.platform.payment.api.BookingRef> findBookingRefByIntent(
+						String paymentIntentId) {
+					return Optional.empty();
+				}
+
+				@Override
+				public void markStatus(String paymentIntentId,
+						ai.riviera.platform.payment.domain.PaymentStatus status) {
+				}
+			};
+		}
+
+		@Bean
+		StripeWebhookEvents stripeWebhookEvents() {
+			return (eventId, eventType) -> true;
+		}
+
+		@Bean
+		StripeProperties stripeProperties() {
+			return new StripeProperties("", "whsec_test");
 		}
 	}
 

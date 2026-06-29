@@ -6,10 +6,21 @@ package ai.riviera.platform.booking.application.in;
  * race or an out-of-bounds request is normal, expected flow, returned as a value rather than
  * thrown (riviera-java-conventions: typed outcomes for expected flows).
  */
-public sealed interface BookingOutcome permits BookingOutcome.Confirmed, BookingOutcome.Rejected {
+public sealed interface BookingOutcome
+		permits BookingOutcome.Confirmed, BookingOutcome.AwaitingPayment, BookingOutcome.Rejected {
 
-	/** The booking was created and confirmed. */
+	/** The booking was created and confirmed (the synchronous stub path → {@code 201}). */
 	record Confirmed(BookingConfirmation confirmation) implements BookingOutcome {
+	}
+
+	/**
+	 * The booking was created and a Stripe PaymentIntent initiated, but it stays
+	 * {@code AWAITING_PAYMENT} until a signature-verified webhook confirms it (invariant #8) —
+	 * the controller maps this to {@code 202} and returns the {@code clientSecret} so the browser
+	 * can complete the card payment with Stripe.js. {@code paymentIntentId} is the gateway handle.
+	 */
+	record AwaitingPayment(BookingConfirmation confirmation, String clientSecret,
+			String paymentIntentId) implements BookingOutcome {
 	}
 
 	/**
