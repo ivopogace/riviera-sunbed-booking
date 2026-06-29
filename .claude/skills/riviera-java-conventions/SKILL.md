@@ -118,6 +118,12 @@ these are the right way to use Spring Data JDBC from the start.)*
   `poolOf`) — **never return `null`** from a port. Don't use `Optional` for fields or
   parameters.
 - `var` for obvious local types; spell the type out when it aids reading.
+- **Streams & lambdas — modern idioms, used judiciously.** Prefer **`.toList()`** (Java 16+)
+  over the stale `.collect(Collectors.toList())`, and **method references** (`SetView::price`)
+  over trivial lambdas (`s -> s.price()`); `.sorted()` for natural order. Reach for a stream
+  for a transform / filter / aggregate (as `JdbcVenueCatalog`'s from-price `min` does) — but
+  if a chain turns intricate or needs side effects, a plain `for` loop is clearer; don't force
+  it. (Multi-row SQL aggregation usually belongs in the query, not a stream over rows.)
 
 ### 6. Errors: typed outcomes for expected flows, exceptions for the exceptional
 
@@ -185,6 +191,7 @@ these are the right way to use Spring Data JDBC from the start.)*
 | "Throw an exception when the set is taken." | Return a typed `ClaimOutcome`; a lost race is expected flow. |
 | "Wrap it in `catch (Exception)` to be safe." | Catch the specific type; a bare catch masks NPEs/programming bugs. |
 | "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (e.g. `ONLINE_POOL`); no magic literals. |
+| "`.collect(Collectors.toList())`." | Stale — use `.toList()` (Java 16+); method refs over trivial lambdas. |
 | "Store the amount as a `BigDecimal` euro." | Integer minor units + currency (invariant #5). |
 | "`new Date()` / `LocalDateTime.now()` for the cutoff." | UTC `Instant`; reason in `Europe/Tirane` (invariant #6). |
 | "Call the other module's service class directly." | Via its `api/` port or a domain event only (invariant #11). |
