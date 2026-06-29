@@ -62,4 +62,28 @@ class JdbcPayments implements Payments {
 				.param(PARAM_INTENT, paymentIntentId)
 				.update();
 	}
+
+	@Override
+	public Optional<String> findIntentByBookingRef(BookingRef booking) {
+		return jdbc.sql("SELECT payment_intent_id FROM payment WHERE booking_ref = :ref")
+				.param("ref", booking.value())
+				.query(String.class)
+				.optional();
+	}
+
+	@Override
+	public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+		// Status is decided from the collected amount: a refund covering the whole amount is REFUNDED,
+		// otherwise PARTIALLY_REFUNDED. A 0-row no-op if no payment row exists (stub profile).
+		jdbc.sql("""
+				UPDATE payment
+				SET refunded_minor = :refunded, refund_id = :refundId, updated_at = NOW(),
+				    status = CASE WHEN :refunded >= amount_minor THEN 'REFUNDED' ELSE 'PARTIALLY_REFUNDED' END
+				WHERE booking_ref = :ref
+				""")
+				.param("refunded", refundedMinor)
+				.param("refundId", refundId)
+				.param("ref", booking.value())
+				.update();
+	}
 }

@@ -7,11 +7,15 @@ package ai.riviera.platform.payment.domain;
  * <p>{@link #REQUIRES_PAYMENT} is the state at PaymentIntent creation; the signature-verified
  * webhook (invariant #8) moves it to {@link #SUCCEEDED} (booking confirms), {@link #FAILED} (a
  * non-terminal attempt failure — the PI may be retried), or {@link #CANCELED} (terminal — the
- * booking is cancelled and its availability claim released).
+ * booking is cancelled and its availability claim released). A cancellation refund (U6) moves a
+ * {@code SUCCEEDED} collection to {@link #REFUNDED} (full) or {@link #PARTIALLY_REFUNDED} (the
+ * configurable after-cutoff share, invariant #10).
  */
 public enum PaymentStatus {
 	REQUIRES_PAYMENT,
 	SUCCEEDED,
 	FAILED,
-	CANCELED
+	CANCELED,
+	REFUNDED,
+	PARTIALLY_REFUNDED
 }

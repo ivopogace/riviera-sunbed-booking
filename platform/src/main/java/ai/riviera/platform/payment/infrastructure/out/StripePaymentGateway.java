@@ -2,11 +2,15 @@ package ai.riviera.platform.payment.infrastructure.out;
 
 import java.util.Locale;
 
+import java.util.Optional;
+
 import com.stripe.StripeClient;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.Refund;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.RefundCreateParams;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +20,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.NewPayment;
 import ai.riviera.platform.payment.application.out.Payments;
 import ai.riviera.platform.payment.application.out.PaymentGateway;
@@ -74,8 +79,39 @@ class StripePaymentGateway implements PaymentGateway {
 		}
 	}
 
+	@Override
+	public RefundResult refund(BookingRef booking, Money amount) {
+		Optional<String> intentId = payments.findIntentByBookingRef(booking);
+		if (intentId.isEmpty()) {
+			log.warn("no PaymentIntent on record for booking {} — cannot refund", booking.value());
+			return new RefundResult.Failed("no_collection");
+		}
+		RefundCreateParams params = RefundCreateParams.builder()
+				.setPaymentIntent(intentId.get())
+				.setAmount(amount.minor())                                   // integer minor units (#5)
+				.build();
+		RequestOptions options = RequestOptions.builder()
+				.setIdempotencyKey(refundIdempotencyKey(booking))            // derived from booking id (#8)
+				.build();
+		try {
+			Refund refund = stripe.v1().refunds().create(params, options);
+			payments.markRefunded(booking, amount.minor(), refund.getId());
+			return new RefundResult.Refunded(refund.getId());
+		}
+		catch (StripeException e) {
+			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
+			log.warn("Stripe refund failed for booking {}: code={}", booking.value(), e.getCode());
+			return new RefundResult.Failed(e.getCode() == null ? "stripe_error" : e.getCode());
+		}
+	}
+
 	/** One PaymentIntent per booking: a stable key so a retried create reuses the same intent (#8). */
 	private static String idempotencyKey(BookingRef booking) {
 		return "booking-" + booking.value() + "-pi";
+	}
+
+	/** One refund per booking: a stable key so a retried cancel never double-refunds (#8/#10). */
+	private static String refundIdempotencyKey(BookingRef booking) {
+		return "booking-" + booking.value() + "-refund";
 	}
 }

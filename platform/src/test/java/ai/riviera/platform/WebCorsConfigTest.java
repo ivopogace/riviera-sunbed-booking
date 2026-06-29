@@ -128,6 +128,17 @@ class WebCorsConfigTest {
 				public void markStatus(String paymentIntentId,
 						ai.riviera.platform.payment.domain.PaymentStatus status) {
 				}
+
+				@Override
+				public Optional<String> findIntentByBookingRef(
+						ai.riviera.platform.payment.api.BookingRef booking) {
+					return Optional.empty();
+				}
+
+				@Override
+				public void markRefunded(ai.riviera.platform.payment.api.BookingRef booking,
+						long refundedMinor, String refundId) {
+				}
 			};
 		}
 

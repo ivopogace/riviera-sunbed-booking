@@ -1,11 +1,16 @@
 package ai.riviera.platform.payment.infrastructure.out;
 
+import java.util.Optional;
+
 import com.stripe.StripeClient;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.Refund;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.service.PaymentIntentService;
+import com.stripe.service.RefundService;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -13,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.NewPayment;
 import ai.riviera.platform.payment.application.out.Payments;
 
@@ -92,5 +98,49 @@ class StripePaymentGatewayTest {
 		PaymentOutcome.Failed failed = assertInstanceOf(PaymentOutcome.Failed.class, outcome,
 				"a Stripe error is a typed Failed outcome, never a thrown exception to the caller");
 		assertEquals("card_declined", failed.reason());
+	}
+
+	@Test
+	void refundUsesIdempotencyKeyAndRecordsTheRefund() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		RefundService refunds = mock(RefundService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.refunds()).thenReturn(refunds);
+		when(payments.findIntentByBookingRef(new BookingRef(42L))).thenReturn(Optional.of("pi_abc"));
+
+		Refund created = mock(Refund.class);
+		when(created.getId()).thenReturn("re_xyz");
+		when(refunds.create(any(RefundCreateParams.class), any(RequestOptions.class))).thenReturn(created);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		RefundResult result = gateway.refund(new BookingRef(42L), new Money(2250L, "EUR"));
+
+		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
+		assertEquals("re_xyz", refunded.refundId());
+
+		ArgumentCaptor<RefundCreateParams> params = ArgumentCaptor.forClass(RefundCreateParams.class);
+		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+		verify(refunds).create(params.capture(), options.capture());
+		assertEquals("pi_abc", params.getValue().getPaymentIntent(), "refund targets the booking's PaymentIntent");
+		assertEquals(2250L, params.getValue().getAmount(), "amount is integer minor units (invariant #5)");
+		assertEquals("booking-42-refund", options.getValue().getIdempotencyKey(),
+				"refund idempotency key is derived from the booking id (invariant #8/#10)");
+		verify(payments).markRefunded(new BookingRef(42L), 2250L, "re_xyz");
+	}
+
+	@Test
+	void refundWithoutAKnownCollectionFails() {
+		StripeClient stripe = mock(StripeClient.class);
+		Payments payments = mock(Payments.class);
+		when(payments.findIntentByBookingRef(new BookingRef(99L))).thenReturn(Optional.empty());
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		RefundResult result = gateway.refund(new BookingRef(99L), new Money(1000L, "EUR"));
+
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"with no recorded PaymentIntent there is nothing to refund");
+		assertEquals("no_collection", failed.reason());
 	}
 }

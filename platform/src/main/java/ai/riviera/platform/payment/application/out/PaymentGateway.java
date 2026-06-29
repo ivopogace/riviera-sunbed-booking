@@ -3,6 +3,7 @@ package ai.riviera.platform.payment.application.out;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.api.RefundResult;
 
 /**
  * The module-internal <strong>outbound</strong> port for the actual payment provider — the
@@ -24,4 +25,12 @@ public interface PaymentGateway {
 	 * will complete it (Stripe, invariant #8), or {@code Failed}.
 	 */
 	PaymentOutcome initiate(BookingRef booking, Money amount);
+
+	/**
+	 * Refund {@code amount} for the booking (U6). Server-initiated with an idempotency key derived
+	 * from the booking id (invariant #8/#10): the stub succeeds in-process; the Stripe adapter
+	 * creates a {@code Refund} against the booking's PaymentIntent and records it. Returns a typed
+	 * outcome (never throws on an expected gateway failure / a missing collection).
+	 */
+	RefundResult refund(BookingRef booking, Money amount);
 }
