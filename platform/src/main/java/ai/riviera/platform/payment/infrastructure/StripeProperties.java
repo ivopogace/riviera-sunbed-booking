@@ -14,9 +14,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * when unset, which is correct for the default (stub) profile where Stripe is dormant.
  */
 @ConfigurationProperties("stripe")
-record StripeProperties(String apiKey, String webhookSecret) {
+public record StripeProperties(String apiKey, String webhookSecret) {
 
-	StripeProperties {
+	public StripeProperties {
 		apiKey = apiKey == null ? "" : apiKey;
 		webhookSecret = webhookSecret == null ? "" : webhookSecret;
 	}

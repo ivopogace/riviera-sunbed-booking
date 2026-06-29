@@ -297,7 +297,7 @@ asserted in adapter-level tests.
 | 1 — Stripe dep + config/secrets; `PaymentOutcome.Pending`; gateway `initiate` | ✅ | |
 | 2 — payment persistence (`Payments` port + `JdbcPayments` + `PaymentStatus`) | ✅ | |
 | 3 — `StripePaymentGateway` (`@Profile stripe`): PI + idempotency + metadata | ✅ | |
-| 4 — payment events + `StripeWebhookController` (verify, dedup, publish) | | |
+| 4 — payment events + `StripeWebhookController` (verify, dedup, publish) | ✅ | (webhook SecurityConfig permit folded in here so the IT exercises the real filter chain) |
 | 5 — booking: `AwaitingPayment` outcome, create switch, sync listener, confirm/cancel, `availability.release` | | |
 | 6 — controller mapping (202 + clientSecret) + webhook security/raw-body | | |
 | 7 — verify + ModularityTests/JdbcOnly/Connect-scan + follow-ups + PR + review gate | | |

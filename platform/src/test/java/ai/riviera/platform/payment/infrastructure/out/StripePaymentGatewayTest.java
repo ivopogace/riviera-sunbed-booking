@@ -39,8 +39,10 @@ class StripePaymentGatewayTest {
 	void createsIntentWithIdempotencyKeyAndMinorUnits() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
 		Payments payments = mock(Payments.class);
-		when(stripe.paymentIntents()).thenReturn(intents);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
 
 		PaymentIntent created = mock(PaymentIntent.class);
 		when(created.getId()).thenReturn("pi_abc");
@@ -74,8 +76,10 @@ class StripePaymentGatewayTest {
 	void stripeFailureMapsToFailed() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
 		Payments payments = mock(Payments.class);
-		when(stripe.paymentIntents()).thenReturn(intents);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
 
 		StripeException boom = mock(StripeException.class);
 		when(boom.getCode()).thenReturn("card_declined");
