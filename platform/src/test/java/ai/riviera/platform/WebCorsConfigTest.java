@@ -53,6 +53,11 @@ class WebCorsConfigTest {
 				public Optional<String> poolOf(SetId setId) {
 					return Optional.empty();
 				}
+
+				@Override
+				public Optional<ai.riviera.platform.venue.api.SetBookingInfo> setBookingInfo(SetId setId) {
+					return Optional.empty();
+				}
 			};
 		}
 	}
