@@ -21,16 +21,19 @@ The full product design lives in
 
 ## 2. Current state & setup
 
-The repo is **pre-code**: the Angular app and the Spring Boot backend aren't
-scaffolded yet, so there's nothing to `npm install` or `./gradlew` against today.
-Scaffolding is the next milestone — if you're picking that up, the
-`angular-new-app` skill drives the frontend and a Spring Modulith starter drives
-the backend.
+Both apps are scaffolded and building. The backend lives in `platform/` (Spring
+Boot, Spring Modulith) and the frontend in `frontend/` (Angular). To work locally:
 
-When code lands, you'll want locally: **JDK 25** (the project's Gradle toolchain), **Node LTS**,
-**Docker** (for Postgres), and later a **Stripe test account**. A
-`riviera-local-debug` skill with exact run recipes is deliberately deferred until
-there's a stack to run.
+```bash
+cd platform && ./gradlew build      # backend: compile + test
+cd frontend && npm ci && npm start   # frontend: install + dev server
+```
+
+You'll need locally: **JDK 25** (the project's Gradle toolchain), **Node 26.0.0**
+(pinned in [`.nvmrc`](.nvmrc)), **Docker** (for the backend Testcontainers ITs against
+Postgres), and later a **Stripe test account**. A `riviera-local-debug` skill with the
+full set of run recipes is still pending; until it lands, the commands above plus the
+per-slice plan docs in `docs/plans/` are the source of truth.
 
 ## 3. How we work (spec-driven, vertical slices)
 
@@ -86,11 +89,19 @@ These are the rules a reviewer will block on. Canonical text + rationale in
 This repo ships **repo-scoped skills** (under `.claude/skills/`, tracked in
 `skills-lock.json`) that load automatically when you work here with Claude Code:
 
+- **`riviera-sdd`** — the spec-driven-development orchestrator; routes each stage
+  (refine → issue → plan → implement → CI → review → merge) to the right skill.
 - **`riviera-plan-doc`** — plan-doc discipline (load alongside the planning flow).
 - **`riviera-review-overlay`** — turns the invariants into review gates.
 - **`riviera-stripe-payments`** — the locked payment model; load it for any
   `payment`/`payout` or Stripe work.
+- **`riviera-java-conventions`** — backend Java idioms (JDBC-only, records, typed
+  outcomes, Java 25); load before writing/refactoring any Java.
+- **`riviera-modulith`** — the Spring Modulith structure authority (module layout,
+  `api/` boundaries, events vs ports); load before any backend structural change.
 - **`angular-new-app` / `angular-developer`** — scaffolding and Angular standards.
+
+`CLAUDE.md` is the canonical, always-current list of project skills.
 
 Invoke a skill by typing `/<skill-name>`. When in doubt on payments or
 availability, load the matching skill first — it carries the context that keeps the

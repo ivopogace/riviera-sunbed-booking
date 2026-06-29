@@ -8,8 +8,8 @@ name: CD
 # the CI workflow has already concluded.
 #
 # Each deploy job is opt-in via a repository VARIABLE so the workflow stays green as a
-# no-op until the maintainer has wired the accounts/secrets (mirrors CI's "skip until
-# SONAR_TOKEN is set" pattern). See docs/deploy/cd-pipeline.md.
+# no-op until the maintainer has wired the accounts/secrets (the same opt-in-via-config
+# no-op pattern CI uses for its secret-guarded steps). See docs/deploy/cd-pipeline.md.
 
 on:
   # Automatic, production path: deploy only after CI succeeds on `main`.

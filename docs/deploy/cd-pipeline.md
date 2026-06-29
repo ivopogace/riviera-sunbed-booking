@@ -79,7 +79,8 @@ After wiring, the next green CI on `main` deploys both apps. Verify:
 
 - **Cold starts:** Render free instances sleep after idle and the first Docker build is
   slow; the health poll waits up to ~15 min before failing.
-- **Flyway today:** only the empty `V1__baseline.sql` exists, so "migrations apply on boot"
-  currently just creates `flyway_schema_history`. Feature tables arrive in later slices.
+- **Flyway today:** migrations `V1`–`V5` exist (baseline, venue + beach-map, demo seed,
+  availability, booking + customer), so "migrations apply on boot" creates the real feature
+  tables. Later slices (payout ledger, event registry) add further versioned migrations.
 - **DSGVO:** Render/Neon are US-incorporated — fine for dummy data only. EU-sovereign PROD
   hosting is a separate, deferred issue (ADR-0004).

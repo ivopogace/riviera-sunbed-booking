@@ -10,13 +10,15 @@
 # checked out, so it cannot do repo-dependent provisioning. This hook runs
 # AFTER checkout (with $CLAUDE_PROJECT_DIR available), the supported place for it.
 #
-# Two idempotent, cloud-only steps:
+# Four idempotent, cloud-only steps:
 #   1. Frontend deps — `npm ci` so the Angular CLI MCP build/test targets
 #      (@angular/build:application, @angular/build:unit-test via run_target)
 #      resolve their builder packages.
 #   2. Backend JDK 25 — platform/build.gradle targets JavaLanguageVersion.of(25),
 #      but the image ships only JDK 21 and no foojay resolver is configured, so
 #      ./gradlew can't otherwise provision the toolchain.
+#   3. JDK trusts the agent-proxy CA so ./gradlew's HTTPS works.
+#   4. Docker daemon for the backend Testcontainers ITs.
 #
 # Local sessions are skipped (CLAUDE_CODE_REMOTE != true) — developers manage
 # their own toolchain.
