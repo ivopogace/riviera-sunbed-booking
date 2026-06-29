@@ -64,6 +64,33 @@ void publishesBookingConfirmed(AssertablePublishedEvents events) {
 }
 ```
 
+### Synchronous events — plain Spring `@RecordApplicationEvents` (the U4 variant)
+
+`PublishedEvents`/`Scenario` are Spring Modulith helpers oriented at the **async** registry path. For
+a **synchronous `@EventListener`** seam (U4's `payment` → `booking`), the event is published on the
+test thread inside the request, so plain-Spring `@RecordApplicationEvents` + `ApplicationEvents` is the
+simplest assertion — no Modulith wiring needed. This is what `StripeWebhookIT` does:
+
+```java
+@SpringBootTest
+@AutoConfigureMockMvc
+@RecordApplicationEvents
+class StripeWebhookIT {
+    @Autowired ApplicationEvents events;
+
+    @Test
+    void verifiedSucceededPublishesConfirmation() throws Exception {
+        // ... POST a signed payment_intent.succeeded ...
+        assertEquals(1, events.stream(PaymentConfirmed.class)
+                .filter(e -> e.bookingRef().equals(new BookingRef(7001L))).count());
+    }
+}
+```
+
+To prove the listener's **effect** end-to-end (not just that the event fired), publish the event
+directly and assert the DB transition — see `PaymentEventListenerIT` (`publisher.publishEvent(new
+PaymentConfirmed(...))` → booking row `CONFIRMED`; `PaymentCanceled` → `CANCELLED` + claim released).
+
 ## Scenario DSL (async flows — the event spine)
 
 `Scenario` is a fluent stimulus → async-outcome DSL; inject it as a test-method parameter. Ideal for
