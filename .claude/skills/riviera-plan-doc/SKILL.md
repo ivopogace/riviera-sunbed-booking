@@ -88,7 +88,17 @@ When planning a riviera feature, also do:
 1. **Convert the spec's user stories (or the GitHub issue) into testable
    acceptance criteria before phase 0.** Every story becomes one or more "Given X,
    when Y, then Z" rows naming the target test class. If a stakeholder can't read
-   an AC and tell pass from fail, rewrite it.
+   an AC and tell pass from fail, rewrite it. **Write each AC against the
+   application boundary — the inner hexagon — not the outside technology.** Cockburn's
+   2005 ports-and-adapters article: *"use cases should generally be written at the
+   application boundary (the inner hexagon), to specify the functions and events
+   supported by the application, regardless of external technology."* So phrase the AC
+   in domain terms (`AvailabilityClaim` succeeds / `BookingConfirmed` is published /
+   the ledger accrues once) rather than in terms of the Angular button, the Stripe
+   redirect, or the HTTP status alone. Tech-specific assertions belong in an
+   adapter-level test, not in the core AC — this keeps the criteria shorter, stable
+   across UI/payment-adapter churn, and reusable from any driving adapter (test
+   harness, GUI, future app-to-app).
 
 2. **Fill the Risk register and Open Questions sections before phase 0.** Use the
    `grilling` skill if risks aren't yet visible. Categories that already
@@ -165,6 +175,10 @@ When executing a riviera plan, also do:
   "Given two clients reserving set 12 on 2026-07-01 concurrently, when both submit,
   then exactly one booking is `CONFIRMED` and the other gets `409 SET_TAKEN`,
   pinned by `ConcurrentReservationIT`" is.
+- **Don't anchor an AC to the outside technology.** "When the user taps *Pay* and
+  Stripe redirects back" couples the criterion to one driving adapter; write it at
+  the inner hexagon ("when checkout is confirmed, `BookingConfirmed` is published")
+  and assert the Stripe/Angular specifics in an adapter-level test.
 - **Don't resolve an Open Question by deleting it.** Move it under `### Resolved`
   with the outcome and commit SHA.
 - **Don't design an area from first principles "to verify with the skill later."**

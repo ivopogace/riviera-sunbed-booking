@@ -8,5 +8,8 @@
  * slices land. Cross-module access is via this module's {@code api/} port or a
  * domain event only.
  */
-@org.springframework.modulith.ApplicationModule(displayName = "Venue")
+@org.springframework.modulith.ApplicationModule(
+    displayName = "Venue",
+    allowedDependencies = {}
+)
 package ai.riviera.platform.venue;

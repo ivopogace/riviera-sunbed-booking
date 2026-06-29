@@ -5,5 +5,8 @@
  * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
  * {@code domain}, {@code infrastructure.in/out}.
  */
-@org.springframework.modulith.ApplicationModule(displayName = "Customer")
+@org.springframework.modulith.ApplicationModule(
+    displayName = "Customer",
+    allowedDependencies = {}
+)
 package ai.riviera.platform.customer;
