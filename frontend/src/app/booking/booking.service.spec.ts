@@ -3,7 +3,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { BookingConfirmation, CreateBookingRequest } from './booking.model';
+import {
+  BookingConfirmation,
+  BookingDetail,
+  Cancellation,
+  CreateBookingRequest,
+} from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
 const REQUEST: CreateBookingRequest = {
@@ -56,6 +61,47 @@ describe('BookingService', () => {
     httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`).flush(CONFIRMATION);
     service.clear();
     expect(service.lastConfirmation()).toBeUndefined();
+  });
+
+  it('getByCode GETs the booking by code', () => {
+    const detail: BookingDetail = {
+      code: 'ABCD234567',
+      status: 'CONFIRMED',
+      venueId: 1,
+      venueName: 'Miramar Beach Club',
+      rowLabel: 'A',
+      positionNo: 2,
+      bookingDate: '2026-12-01',
+      amount: { minorUnits: 4500, currency: 'EUR' },
+      cancellable: true,
+      beforeCutoff: true,
+      refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
+      refundedAmount: null,
+    };
+    let received: BookingDetail | undefined;
+    service.getByCode('ABCD234567').subscribe((d) => (received = d));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings/ABCD234567`);
+    expect(req.request.method).toBe('GET');
+    req.flush(detail);
+    expect(received).toEqual(detail);
+  });
+
+  it('cancel POSTs to the cancel endpoint with no body-supplied amount', () => {
+    const cancellation: Cancellation = {
+      code: 'ABCD234567',
+      status: 'CANCELLED',
+      refund: { minorUnits: 4500, currency: 'EUR' },
+      tier: 'FULL',
+    };
+    let received: Cancellation | undefined;
+    service.cancel('ABCD234567').subscribe((c) => (received = c));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings/ABCD234567/cancel`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({}); // amount is server-computed (invariant #10)
+    req.flush(cancellation);
+    expect(received).toEqual(cancellation);
   });
 });
 

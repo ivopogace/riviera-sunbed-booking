@@ -3,7 +3,13 @@ import { Service, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { BookingConfirmation, BookingErrorCode, CreateBookingRequest } from './booking.model';
+import {
+  BookingConfirmation,
+  BookingDetail,
+  BookingErrorCode,
+  Cancellation,
+  CreateBookingRequest,
+} from './booking.model';
 
 /**
  * Creates bookings against the U3 API (`POST /api/bookings`) and holds the most recent
@@ -27,6 +33,24 @@ export class BookingService {
 
   clear(): void {
     this.confirmation.set(undefined);
+  }
+
+  /** Fetch a booking and its server-computed cancellation terms by code (U6, `GET /api/bookings/{code}`). */
+  getByCode(code: string): Observable<BookingDetail> {
+    return this.http.get<BookingDetail>(
+      `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}`,
+    );
+  }
+
+  /**
+   * Cancel a booking by code (U6, `POST /api/bookings/{code}/cancel`). The refund is computed
+   * server-side (invariant #10) — no body is sent.
+   */
+  cancel(code: string): Observable<Cancellation> {
+    return this.http.post<Cancellation>(
+      `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/cancel`,
+      {},
+    );
   }
 }
 

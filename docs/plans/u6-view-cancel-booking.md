@@ -263,7 +263,7 @@ the existing SCSS). No `as any` on the contract.
 | 2 — `payment` RefundPort + gateway refund + record | ✅ | `[U6] payment: RefundPort …` |
 | 3 — `booking` cancel orchestration + `BookingCancelled` + POST /{code}/cancel | ✅ | `[U6] booking: cancel …` |
 | 4 — `payout` proportional REVERSAL listener | ✅ | `[U6] payout: proportional REVERSAL …` |
-| 5 — Frontend booking view + cancel | | |
+| 5 — Frontend booking view + cancel | ✅ | `[U6] frontend: booking view + cancel …` |
 | 6 — verify + review gate | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as the code.
