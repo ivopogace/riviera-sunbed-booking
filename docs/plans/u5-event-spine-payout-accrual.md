@@ -3,6 +3,22 @@
 > **For agentic workers:** implement with `implement` + `tdd`. Steps use checkbox syntax.
 > **Status: PLAN ONLY** (designed during U3; not yet implemented). Issue **#9**, blocked by #6 (U3, merged-quality).
 
+> **⚠️ Drift recorded by U4 (#8, branch `claude/riviera-sdd-issue-8-szoljn`):** U4 landed first and
+> changed two assumptions this plan makes — reconcile before implementing U5:
+> 1. **U4 introduced the first cross-module event seam** (`payment` → `booking`:
+>    `PaymentConfirmed`/`PaymentCanceled`), but as a **synchronous in-transaction `@EventListener`**
+>    with **no** Event Publication Registry. So U5 is still the first **asynchronous** /
+>    registry-backed seam (`@ApplicationModuleListener`) — keep that framing, but it is no longer the
+>    first *event* seam, and **Phase 0 (the `event_publication` registry migration) is genuinely new
+>    in U5** (U4 did not add it). The next migration version is **V8** (U4 took V7).
+> 2. **The confirmation point moved.** In U3 the booking was confirmed inside
+>    `CreateBookingService.create`; after U4 it is confirmed in
+>    `booking.infrastructure.in.PaymentEventListener.on(PaymentConfirmed)` (and the synchronous stub
+>    path still confirms in `CreateBookingService`). So U5's "publish `BookingConfirmed` on confirm"
+>    must hook **wherever the booking actually transitions to CONFIRMED** — i.e. a single internal
+>    confirm seam used by both paths — not only `CreateBookingService`. Plan Phase 1 should be
+>    re-pointed accordingly.
+
 **Goal:** On booking confirmation, `booking` publishes a `BookingConfirmed` domain event
 (id-based payload); the `payout` module consumes it via `@ApplicationModuleListener` and accrues
 **exactly one** ledger entry (`net = gross − commission`, integer minor units), idempotent under the

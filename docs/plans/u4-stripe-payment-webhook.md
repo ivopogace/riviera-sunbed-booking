@@ -300,7 +300,7 @@ asserted in adapter-level tests.
 | 4 — payment events + `StripeWebhookController` (verify, dedup, publish) | ✅ | (webhook SecurityConfig permit folded in here so the IT exercises the real filter chain) |
 | 5 — booking: `AwaitingPayment` outcome, create switch, sync listener, confirm/cancel, `availability.release` | ✅ | (controller `202` mapping folded in here so the sealed switch stays exhaustive) |
 | 6 — controller mapping (202 + clientSecret) + webhook security/raw-body | ✅ | (mapping + security landed in Phases 4–5; this phase adds the stripe-profile create IT) |
-| 7 — verify + ModularityTests/JdbcOnly/Connect-scan + follow-ups + PR + review gate | | |
+| 7 — verify + ModularityTests/JdbcOnly/Connect-scan + follow-ups + PR + review gate | ⏳ | full suite green (96+ tests, both profiles); U5 drift note appended; review gate + PR/follow-ups pending |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
