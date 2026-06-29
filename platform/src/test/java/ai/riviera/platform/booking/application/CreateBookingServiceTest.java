@@ -143,6 +143,18 @@ class CreateBookingServiceTest {
 			public java.util.Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
 				return java.util.Optional.empty();
 			}
+
+			@Override
+			public java.util.Optional<ai.riviera.platform.booking.application.out.BookingRecord> findByCode(
+					String code) {
+				return java.util.Optional.empty();
+			}
+
+			@Override
+			public java.util.Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
+					long bookingId, java.time.Instant cancelledAt, long refundMinor) {
+				return java.util.Optional.empty();
+			}
 		};
 		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
@@ -273,6 +285,17 @@ class CreateBookingServiceTest {
 		public Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
 			return Optional.empty();
 		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.out.BookingRecord> findByCode(String code) {
+			return Optional.empty();
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
+				long bookingId, Instant cancelledAt, long refundMinor) {
+			return Optional.empty();
+		}
 	}
 
 	/** Captures confirmations driven through the {@link ConfirmBooking} seam (the stub path). */
@@ -310,6 +333,11 @@ class CreateBookingServiceTest {
 
 		@Override
 		public java.util.OptionalInt commissionBps(VenueId id) {
+			return java.util.OptionalInt.empty();
+		}
+
+		@Override
+		public java.util.OptionalInt lateCancelRefundBps(VenueId id) {
 			return java.util.OptionalInt.empty();
 		}
 	}

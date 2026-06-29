@@ -65,4 +65,35 @@ class JdbcPaymentsIT {
 		assertTrue(payments.findBookingRefByIntent("pi_does_not_exist").isEmpty(),
 				"an unknown PaymentIntent id yields no booking ref (webhook then ignores it)");
 	}
+
+	@Test
+	void findIntentByBookingRefCorrelates() {
+		payments.register(new NewPayment(new BookingRef(9101L), "pi_by_booking", 4500L, "EUR"));
+
+		Optional<String> intent = payments.findIntentByBookingRef(new BookingRef(9101L));
+
+		assertTrue(intent.isPresent(), "the refund path must find the PaymentIntent for a booking");
+		assertEquals("pi_by_booking", intent.get());
+	}
+
+	@Test
+	void markRefundedFullMovesToRefunded() {
+		payments.register(new NewPayment(new BookingRef(9201L), "pi_refund_full", 4500L, "EUR"));
+
+		payments.markRefunded(new BookingRef(9201L), 4500L, "re_full");
+
+		assertEquals("REFUNDED", statusOf("pi_refund_full"), "a full refund moves the payment to REFUNDED");
+		assertEquals(4500L, jdbc.sql("SELECT refunded_minor FROM payment WHERE payment_intent_id = :i")
+				.param("i", "pi_refund_full").query(Long.class).single());
+	}
+
+	@Test
+	void markRefundedPartialMovesToPartiallyRefunded() {
+		payments.register(new NewPayment(new BookingRef(9202L), "pi_refund_part", 4500L, "EUR"));
+
+		payments.markRefunded(new BookingRef(9202L), 2250L, "re_part");
+
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_refund_part"),
+				"a partial refund moves the payment to PARTIALLY_REFUNDED");
+	}
 }

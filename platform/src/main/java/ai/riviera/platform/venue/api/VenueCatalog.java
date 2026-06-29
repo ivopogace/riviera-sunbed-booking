@@ -51,4 +51,15 @@ public interface VenueCatalog {
 	 * booking (invariant #11).
 	 */
 	OptionalInt commissionBps(VenueId id);
+
+	/**
+	 * The venue's <strong>after-cutoff</strong> refund share in <strong>basis points</strong>
+	 * (5000 = 50.00%, 0 = non-refundable, 10000 = full), or empty if no venue has that id. Read by
+	 * the {@code booking} module to compute a late cancellation's refund server-side (invariant
+	 * #10): {@code refund = floorDiv(gross × bps, 10000)}, integer-exact (invariant #5). Cancelling
+	 * <em>before</em> the cutoff is always a full refund and does not consult this rate. Like
+	 * {@link #commissionBps}, it is mutable venue configuration read at decision time, never carried
+	 * on an event.
+	 */
+	OptionalInt lateCancelRefundBps(VenueId id);
 }

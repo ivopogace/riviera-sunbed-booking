@@ -37,11 +37,17 @@ class SecurityConfig {
 				// and it must be reachable without auth. Its security IS the signature check in
 				// StripeWebhookController; an unverified call is rejected there with 400.
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
-						"/api/payments/stripe/webhook"))
+						"/api/bookings/*/cancel", "/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+						// View a booking by its code (U6) — the code is the bearer credential
+						// (invariant #7), so knowing it authorizes the read. One path segment only.
+						.requestMatchers(HttpMethod.GET, "/api/bookings/*").permitAll()
+						// Cancel a booking by its code (U6) — authorized by the code (invariant #7),
+						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
+						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.anyRequest().authenticated())
 				.httpBasic(Customizer.withDefaults());

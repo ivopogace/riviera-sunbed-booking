@@ -14,7 +14,10 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.booking.application.in.BookingOutcome;
+import ai.riviera.platform.booking.application.in.CancelBooking;
+import ai.riviera.platform.booking.application.in.CancelOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
+import ai.riviera.platform.booking.application.in.ViewBooking;
 import ai.riviera.platform.payment.application.out.Payments;
 import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
 import ai.riviera.platform.payment.infrastructure.StripeProperties;
@@ -70,6 +73,11 @@ class WebCorsConfigTest {
 				public java.util.OptionalInt commissionBps(ai.riviera.platform.venue.api.VenueId id) {
 					return java.util.OptionalInt.empty();
 				}
+
+				@Override
+				public java.util.OptionalInt lateCancelRefundBps(ai.riviera.platform.venue.api.VenueId id) {
+					return java.util.OptionalInt.empty();
+				}
 			};
 		}
 
@@ -81,6 +89,18 @@ class WebCorsConfigTest {
 		@Bean
 		CreateBooking createBooking() {
 			return command -> BookingOutcome.Rejected.NO_SUCH_SET;
+		}
+
+		/** {@code BookingController}'s {@link ViewBooking} dependency (U6); never reached on preflight. */
+		@Bean
+		ViewBooking viewBooking() {
+			return code -> Optional.empty();
+		}
+
+		/** {@code BookingController}'s {@link CancelBooking} dependency (U6); never reached on preflight. */
+		@Bean
+		CancelBooking cancelBooking() {
+			return code -> new CancelOutcome.NotFound();
 		}
 
 		/**
@@ -115,6 +135,17 @@ class WebCorsConfigTest {
 				@Override
 				public void markStatus(String paymentIntentId,
 						ai.riviera.platform.payment.domain.PaymentStatus status) {
+				}
+
+				@Override
+				public Optional<String> findIntentByBookingRef(
+						ai.riviera.platform.payment.api.BookingRef booking) {
+					return Optional.empty();
+				}
+
+				@Override
+				public void markRefunded(ai.riviera.platform.payment.api.BookingRef booking,
+						long refundedMinor, String refundId) {
 				}
 			};
 		}

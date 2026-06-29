@@ -17,4 +17,9 @@ export const routes: Routes = [
       import('./booking/booking-confirmation').then((m) => m.BookingConfirmation),
     title: 'Booking confirmed — Riviera',
   },
+  {
+    path: 'booking/:code',
+    loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
+    title: 'Your booking — Riviera',
+  },
 ];

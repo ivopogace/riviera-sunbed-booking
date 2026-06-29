@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.PaymentGateway;
 
 /**
@@ -24,9 +25,16 @@ import ai.riviera.platform.payment.application.out.PaymentGateway;
 class StubPaymentGateway implements PaymentGateway {
 
 	private static final String REFERENCE_PREFIX = "stub-pi-";
+	private static final String REFUND_PREFIX = "stub-re-";
 
 	@Override
 	public PaymentOutcome initiate(BookingRef booking, Money amount) {
 		return new PaymentOutcome.Succeeded(REFERENCE_PREFIX + booking.value());
+	}
+
+	@Override
+	public RefundResult refund(BookingRef booking, Money amount) {
+		// In-process success — the stub collected nothing real, so there is nothing to record.
+		return new RefundResult.Refunded(REFUND_PREFIX + booking.value());
 	}
 }

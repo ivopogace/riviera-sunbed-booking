@@ -35,6 +35,9 @@ import { BookingService } from './booking.service';
           <dd>{{ money(c.amount) }}</dd>
         </dl>
 
+        <a [routerLink]="['/booking', c.code]" class="home-link" data-testid="manage-link">
+          View or cancel this booking
+        </a>
         <a routerLink="/" class="home-link">Back to home</a>
       </section>
     } @else {

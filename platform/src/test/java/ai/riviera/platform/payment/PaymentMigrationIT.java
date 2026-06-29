@@ -94,4 +94,30 @@ class PaymentMigrationIT {
 			insertWebhookEvent("evt_ok_2");
 		}, "distinct payments and webhook events must insert cleanly.");
 	}
+
+	@Test
+	void refundStatesAccepted() {
+		// U6 (V11): the refund terminal states + refund record columns.
+		assertDoesNotThrow(() -> {
+			insertPayment(6001L, "pi_refunded", "SUCCEEDED");
+			jdbc.sql("""
+					UPDATE payment SET status = 'REFUNDED', refunded_minor = 4500, refund_id = 're_full'
+					WHERE payment_intent_id = 'pi_refunded'
+					""").update();
+			insertPayment(6002L, "pi_partial", "SUCCEEDED");
+			jdbc.sql("""
+					UPDATE payment SET status = 'PARTIALLY_REFUNDED', refunded_minor = 2250, refund_id = 're_part'
+					WHERE payment_intent_id = 'pi_partial'
+					""").update();
+		}, "REFUNDED / PARTIALLY_REFUNDED + refund columns must be accepted (V11).");
+	}
+
+	@Test
+	void refundExceedingAmountRejected() {
+		insertPayment(7001L, "pi_over_refund", "SUCCEEDED"); // amount_minor = 4500
+		assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.sql("UPDATE payment SET refunded_minor = 9999 "
+						+ "WHERE payment_intent_id = 'pi_over_refund'").update(),
+				"payment_refunded_check must reject a refund greater than the collected amount (V11).");
+	}
 }

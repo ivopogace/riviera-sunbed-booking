@@ -8,7 +8,9 @@ import java.util.OptionalLong;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.booking.application.out.BookingRecord;
 import ai.riviera.platform.booking.application.out.Bookings;
+import ai.riviera.platform.booking.application.out.CancelledBooking;
 import ai.riviera.platform.booking.application.out.ClaimRef;
 import ai.riviera.platform.booking.application.out.ConfirmedBooking;
 import ai.riviera.platform.booking.application.out.NewBooking;
@@ -28,6 +30,14 @@ class JdbcBookings implements Bookings {
 	// Named-parameter keys reused across the lifecycle SQL (keep them in lockstep, no typos).
 	private static final String PARAM_STATUS = "status";
 	private static final String PARAM_AWAITING = "awaiting";
+	private static final String PARAM_CONFIRMED = "confirmed";
+
+	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
+	private static final String COL_VENUE_ID = "venue_id";
+	private static final String COL_SET_ID = "set_id";
+	private static final String COL_BOOKING_DATE = "booking_date";
+	private static final String COL_AMOUNT_MINOR = "amount_minor";
+	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
 
 	private final JdbcClient jdbc;
 
@@ -60,6 +70,29 @@ class JdbcBookings implements Bookings {
 				.optional()
 				.map(OptionalLong::of)
 				.orElseGet(OptionalLong::empty);
+	}
+
+	@Override
+	public Optional<BookingRecord> findByCode(String code) {
+		return jdbc.sql("""
+				SELECT id, code, status, venue_id, set_id, booking_date,
+				       amount_minor, amount_currency, cancelled_at, refund_minor
+				FROM booking
+				WHERE code = :code
+				""")
+				.param("code", code)
+				.query((rs, rowNum) -> {
+					java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
+					Long refundMinor = rs.getObject("refund_minor", Long.class);
+					return new BookingRecord(
+							rs.getLong("id"), rs.getString("code"),
+							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+							new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
+							rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+							rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor);
+				})
+				.optional();
 	}
 
 	@Override
@@ -96,9 +129,33 @@ class JdbcBookings implements Bookings {
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.query((rs, rowNum) -> new ConfirmedBooking(
-						rs.getLong("id"), new VenueId(rs.getLong("venue_id")),
-						new SetId(rs.getLong("set_id")), rs.getObject("booking_date", LocalDate.class),
-						rs.getLong("amount_minor"), rs.getString("amount_currency")))
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+				.optional();
+	}
+
+	@Override
+	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
+			long refundMinor) {
+		// Guarded CONFIRMED -> CANCELLED. RETURNING yields the facts only on a real transition, so a
+		// double-cancel (already CANCELLED) is a 0-row empty no-op — the caller then releases the set,
+		// refunds, and publishes BookingCancelled exactly once.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund
+				WHERE id = :id AND status = :confirmed
+				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
+				""")
+				.param("cancelled", BookingStatus.CANCELLED.name())
+				.param("at", java.sql.Timestamp.from(cancelledAt))
+				.param("refund", refundMinor)
+				.param("id", bookingId)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.query((rs, rowNum) -> new CancelledBooking(
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}
 
@@ -116,8 +173,8 @@ class JdbcBookings implements Bookings {
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong("set_id")),
-						rs.getObject("booking_date", LocalDate.class)))
+				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
 	}
 }

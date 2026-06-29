@@ -25,6 +25,14 @@ public interface Bookings {
 	OptionalLong insertAwaitingPayment(NewBooking booking);
 
 	/**
+	 * Load a booking by its {@code code} (the bearer credential, invariant #7) for the view and
+	 * cancel use cases (U6), or {@code empty} if no booking has that code. Read-only — carries the
+	 * full row the caller needs (status, ids, amount, the cancellation audit) without exposing the
+	 * aggregate.
+	 */
+	Optional<BookingRecord> findByCode(String code);
+
+	/**
 	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}, and return the
 	 * confirmed booking's facts (for the {@code BookingConfirmed} payload, built atomically with
 	 * the transition via SQL {@code RETURNING}). Strict: a non-{@code AWAITING_PAYMENT} row is an
@@ -51,4 +59,14 @@ public interface Bookings {
 	 * {@code AWAITING_PAYMENT} (already confirmed/cancelled) — then nothing is released.
 	 */
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
+
+	/**
+	 * Cancel a tourist-confirmed booking (U6): transition {@code CONFIRMED → CANCELLED}, stamping
+	 * {@code cancelled_at} and the server-computed {@code refundMinor}, and return the booking's facts
+	 * (for the refund + {@code BookingCancelled} payload, built atomically via SQL {@code RETURNING}).
+	 * The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row {@code empty} no-op
+	 * (so the release/refund/event fire exactly once); a non-{@code CONFIRMED} booking yields empty.
+	 */
+	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
+			long refundMinor);
 }
