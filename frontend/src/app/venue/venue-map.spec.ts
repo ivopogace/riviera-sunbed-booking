@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { SetView, VenueMapView } from './venue.model';
@@ -60,6 +61,7 @@ describe('VenueMap', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '1' }) } } },
       ],
     }).compileComponents();
@@ -115,5 +117,36 @@ describe('VenueMap', () => {
     const firstTile = el().querySelector('[data-testid="set-tile"]');
     expect(firstTile?.getAttribute('aria-label')).toContain('Set Front row · Sea view 1');
     expect(firstTile?.getAttribute('aria-label')).toContain('taken');
+  });
+
+  it('exposes a booking button only for free online sets', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // Free ONLINE sets are bookable buttons; taken and walk-in sets are not interactive.
+    expect(el().querySelectorAll('.set-button').length).toBeGreaterThan(0);
+    expect(el().querySelector('.set-tile.taken')?.querySelector('button')).toBeNull();
+  });
+
+  it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    el().querySelector<HTMLButtonElement>('.set-button')!.click();
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).not.toBeNull();
+
+    (fixture.componentInstance as unknown as { onDialogClose(): void }).onDialogClose();
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).toBeNull();
+  });
+
+  it('navigates to the confirmation when the dialog reports a booking', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (fixture.componentInstance as unknown as { onBooked(): void }).onBooked();
+
+    expect(navigate).toHaveBeenCalledWith(['/booking/confirmation']);
   });
 });

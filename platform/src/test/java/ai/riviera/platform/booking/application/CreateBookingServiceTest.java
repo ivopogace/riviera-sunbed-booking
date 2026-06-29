@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Branch coverage for the Instant-Book orchestration (issue #6) with in-memory fakes — no
@@ -133,6 +134,18 @@ class CreateBookingServiceTest {
 
 		assertSame(BookingOutcome.Rejected.SET_TAKEN, service.create(command()));
 		assertFalse(bookings.inserted.size() > 0, "a lost claim must create no booking row");
+	}
+
+	@Test
+	void paymentDeclineThrowsToRollBackTheClaim() {
+		// The stub never declines in U3; this proves the Failed branch aborts (throws) so the
+		// transaction — and the joined availability claim — rolls back rather than confirming.
+		CreateBookingService service = service(set("ONLINE"),
+				(id, date) -> ClaimOutcome.CLAIMED,
+				(ref, money) -> new PaymentOutcome.Failed("card_declined"), () -> "CODEX12345");
+
+		assertThrows(PaymentDeclinedException.class, () -> service.create(command()));
+		assertFalse(bookings.confirmed.size() > 0, "a declined payment confirms nothing");
 	}
 
 	@Test

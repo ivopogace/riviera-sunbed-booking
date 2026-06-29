@@ -174,11 +174,14 @@ export class BookingDialog {
 
   /** Keep keyboard focus inside the dialog (a focus trap, modal a11y). */
   protected trapFocus(event: Event, backwards: boolean): void {
+    // Selector excludes disabled controls; we deliberately do NOT filter on offsetParent —
+    // it is null for position:fixed subtrees (our backdrop) and unavailable under jsdom, which
+    // would silently disable the trap. The dialog has no hidden focusables, so the selector is enough.
     const focusable = Array.from(
       this.hostRef.nativeElement.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
       ),
-    ).filter((el) => el.offsetParent !== null);
+    );
     if (focusable.length === 0) {
       return;
     }
