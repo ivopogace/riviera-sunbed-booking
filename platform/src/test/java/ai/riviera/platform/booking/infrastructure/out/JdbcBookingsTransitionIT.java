@@ -14,9 +14,9 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.booking.application.out.ClaimRef;
+import ai.riviera.platform.booking.application.out.ConfirmedBooking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -66,12 +66,22 @@ class JdbcBookingsTransitionIT {
 
 	@Test
 	void confirmFromPaymentIsIdempotent() {
-		long booking = insertAwaiting("GUARDCONF01", onlineSet(), LocalDate.of(2027, 8, 1));
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2027, 8, 1);
+		long booking = insertAwaiting("GUARDCONF01", set, date);
 
-		assertTrue(bookings.confirmFromPayment(booking, Instant.parse("2027-07-01T10:00:00Z")),
-				"first delivery transitions AWAITING_PAYMENT -> CONFIRMED");
-		assertFalse(bookings.confirmFromPayment(booking, Instant.parse("2027-07-01T10:05:00Z")),
-				"a re-delivery is a benign no-op (not an error)");
+		Optional<ConfirmedBooking> first =
+				bookings.confirmFromPayment(booking, Instant.parse("2027-07-01T10:00:00Z"));
+		assertTrue(first.isPresent(), "first delivery transitions AWAITING_PAYMENT -> CONFIRMED");
+		// RETURNING yields the facts the BookingConfirmed payload is built from (invariant #11).
+		assertEquals(set.setId(), first.get().setId().value());
+		assertEquals(set.venueId(), first.get().venueId().value());
+		assertEquals(date, first.get().bookingDate());
+		assertEquals(4500L, first.get().amountMinor());
+		assertEquals("EUR", first.get().currency());
+
+		assertTrue(bookings.confirmFromPayment(booking, Instant.parse("2027-07-01T10:05:00Z")).isEmpty(),
+				"a re-delivery is a benign no-op (empty), not an error");
 		assertEquals("CONFIRMED", statusOf(booking));
 	}
 
@@ -97,8 +107,8 @@ class JdbcBookingsTransitionIT {
 		long booking = insertAwaiting("GUARDRACE01", onlineSet(), LocalDate.of(2027, 8, 3));
 		bookings.cancelAwaitingPayment(booking);
 
-		assertFalse(bookings.confirmFromPayment(booking, Instant.parse("2027-07-01T10:00:00Z")),
-				"confirm on a non-AWAITING_PAYMENT booking is a no-op");
+		assertTrue(bookings.confirmFromPayment(booking, Instant.parse("2027-07-01T10:00:00Z")).isEmpty(),
+				"confirm on a non-AWAITING_PAYMENT booking is a no-op (empty)");
 		assertEquals("CANCELLED", statusOf(booking));
 	}
 }

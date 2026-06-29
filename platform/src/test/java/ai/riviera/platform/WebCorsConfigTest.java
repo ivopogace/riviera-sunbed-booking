@@ -65,6 +65,11 @@ class WebCorsConfigTest {
 				public Optional<ai.riviera.platform.venue.api.SetBookingInfo> setBookingInfo(SetId setId) {
 					return Optional.empty();
 				}
+
+				@Override
+				public java.util.OptionalInt commissionBps(ai.riviera.platform.venue.api.VenueId id) {
+					return java.util.OptionalInt.empty();
+				}
 			};
 		}
 

@@ -10,9 +10,11 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.booking.application.out.ClaimRef;
+import ai.riviera.platform.booking.application.out.ConfirmedBooking;
 import ai.riviera.platform.booking.application.out.NewBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.api.VenueId;
 
 /**
  * JDBC adapter for {@link Bookings} — explicit SQL via {@link JdbcClient}, no JPA (invariant
@@ -61,42 +63,43 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public void confirm(long bookingId, Instant confirmedAt) {
-		int updated = jdbc.sql("""
-				UPDATE booking
-				SET status = :status, confirmed_at = :at
-				WHERE id = :id AND status = :awaiting
-				""")
-				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
-				.param("at", java.sql.Timestamp.from(confirmedAt))
-				.param("id", bookingId)
-				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.update();
-		// Guard against a silent no-op: a 0-row update means the booking was not AWAITING_PAYMENT
-		// (already confirmed/cancelled, or a replayed confirm — relevant once U4 confirms via the
-		// webhook). Surfacing it prevents returning a false confirmation.
-		if (updated != 1) {
-			throw new IllegalStateException(
-					"expected to confirm exactly one AWAITING_PAYMENT booking, updated " + updated);
-		}
+	public ConfirmedBooking confirm(long bookingId, Instant confirmedAt) {
+		// Strict stub-path confirm. RETURNING yields the confirmed facts only on a real transition,
+		// so the empty case (booking not AWAITING_PAYMENT) is a guard, not a false confirmation.
+		return confirmReturningFacts(bookingId, confirmedAt).orElseThrow(() -> new IllegalStateException(
+				"expected to confirm exactly one AWAITING_PAYMENT booking, updated 0"));
 	}
 
 	@Override
-	public boolean confirmFromPayment(long bookingId, Instant confirmedAt) {
-		// Idempotent webhook confirm: the guarded WHERE makes a re-delivery (already CONFIRMED) or
-		// a cancelled booking a 0-row no-op rather than an error. Two-layer idempotency with the
-		// stripe_webhook_event dedup (invariant #8).
-		int updated = jdbc.sql("""
+	public Optional<ConfirmedBooking> confirmFromPayment(long bookingId, Instant confirmedAt) {
+		// Idempotent webhook confirm: the guarded WHERE makes a re-delivery (already CONFIRMED) or a
+		// cancelled booking a 0-row no-op (empty) rather than an error. Two-layer idempotency with
+		// the stripe_webhook_event dedup (invariant #8). A present result == it actually transitioned,
+		// so the caller publishes exactly one BookingConfirmed.
+		return confirmReturningFacts(bookingId, confirmedAt);
+	}
+
+	/**
+	 * The shared {@code AWAITING_PAYMENT → CONFIRMED} update, {@code RETURNING} the facts the
+	 * {@code BookingConfirmed} payload needs. Empty iff no row transitioned (the guard both confirm
+	 * paths build their semantics on). Built atomically with the transition — no second read race.
+	 */
+	private Optional<ConfirmedBooking> confirmReturningFacts(long bookingId, Instant confirmedAt) {
+		return jdbc.sql("""
 				UPDATE booking
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
+				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
 				""")
 				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
 				.param("at", java.sql.Timestamp.from(confirmedAt))
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.update();
-		return updated == 1;
+				.query((rs, rowNum) -> new ConfirmedBooking(
+						rs.getLong("id"), new VenueId(rs.getLong("venue_id")),
+						new SetId(rs.getLong("set_id")), rs.getObject("booking_date", LocalDate.class),
+						rs.getLong("amount_minor"), rs.getString("amount_currency")))
+				.optional();
 	}
 
 	@Override
