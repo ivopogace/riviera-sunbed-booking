@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
+import { BookingDialog } from '../booking/booking-dialog';
+import { BookingConfirmation } from '../booking/booking.model';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
 
@@ -17,16 +19,22 @@ interface MapRow {
  */
 @Component({
   selector: 'app-venue-map',
-  imports: [],
+  imports: [BookingDialog],
   templateUrl: './venue-map.html',
   styleUrl: './venue-map.scss',
 })
 export class VenueMap {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
+  private readonly router = inject(Router);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
+
+  /** The set whose booking dialog is open, or undefined when closed. */
+  protected readonly selectedSet = signal<SetView | undefined>(undefined);
+  /** Id of the tile that opened the dialog, so focus can return to it on close. */
+  private lastTriggerId: number | undefined;
 
   protected readonly freeCount = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
@@ -83,5 +91,44 @@ export class VenueMap {
     const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
     const state = set.availability === 'TAKEN' ? 'taken' : 'available';
     return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${state}`;
+  }
+
+  /** A set is bookable online iff it is free and in the online pool (invariant #3). */
+  protected isBookable(set: SetView): boolean {
+    return set.availability === 'FREE' && set.pool === 'ONLINE';
+  }
+
+  /** Accessible name for the booking button. */
+  protected bookLabel(set: SetView): string {
+    return `${this.setLabel(set)}. Select to book.`;
+  }
+
+  /** aria-label for the tile itself — only when non-interactive (the button carries it otherwise). */
+  protected tileAriaLabel(set: SetView): string | null {
+    return this.isBookable(set) ? null : this.setLabel(set);
+  }
+
+  protected select(set: SetView): void {
+    this.lastTriggerId = set.id;
+    this.selectedSet.set(set);
+  }
+
+  protected onDialogClose(): void {
+    this.selectedSet.set(undefined);
+    // Return focus to the tile that opened the dialog (modal a11y).
+    const trigger = this.lastTriggerId;
+    if (trigger !== undefined) {
+      queueMicrotask(() => {
+        const el = document.querySelector<HTMLElement>(`[data-set-id="${trigger}"]`);
+        el?.focus();
+      });
+    }
+  }
+
+  protected onBooked(confirmation: BookingConfirmation): void {
+    this.selectedSet.set(undefined);
+    void this.router.navigate(['/booking/confirmation'], {
+      state: { code: confirmation.code },
+    });
   }
 }

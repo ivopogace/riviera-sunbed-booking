@@ -11,4 +11,10 @@ export const routes: Routes = [
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
     title: 'Beach map — Riviera',
   },
+  {
+    path: 'booking/confirmation',
+    loadComponent: () =>
+      import('./booking/booking-confirmation').then((m) => m.BookingConfirmation),
+    title: 'Booking confirmed — Riviera',
+  },
 ];
