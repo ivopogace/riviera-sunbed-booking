@@ -184,6 +184,12 @@ these are the right way to use Spring Data JDBC from the start.)*
 - SLF4J with parameterized logging (`log.info("claimed set {}", id)`), never string
   concatenation.
 - **Never log a booking code in clear** (invariant #7) or any secret/PII.
+- **Guard against log injection.** Parameterized logging stops *format* abuse but does **not**
+  sanitize the value — a user-controlled string (email, free-text name, header) can carry
+  `\r\n` and forge fake log lines or break log parsers (CRLF / log forging). When logging
+  untrusted input, neutralize newlines (e.g. replace `\r\n`/`\n`) or rely on a structured
+  (JSON) appender that encodes field values. Logging an `id`/enum is safe; logging raw
+  free-text is the risk.
 
 ## Red flags
 
@@ -199,6 +205,7 @@ these are the right way to use Spring Data JDBC from the start.)*
 | "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (e.g. `ONLINE_POOL`); no magic literals. |
 | "`.collect(Collectors.toList())`." | Stale — use `.toList()` (Java 16+); method refs over trivial lambdas. |
 | "`if (x instanceof T) { T t = (T) x; … }`." | Bind in the pattern: `if (x instanceof T t)` — test + extract in one. |
+| "`log.info("user " + email + " booked")` — it's parameterized-ish." | Untrusted text can carry `\r\n` (log forging). Sanitize newlines or use a structured appender. |
 | "Store the amount as a `BigDecimal` euro." | Integer minor units + currency (invariant #5). |
 | "`new Date()` / `LocalDateTime.now()` for the cutoff." | UTC `Instant`; reason in `Europe/Tirane` (invariant #6). |
 | "Call the other module's service class directly." | Via its `api/` port or a domain event only (invariant #11). |
