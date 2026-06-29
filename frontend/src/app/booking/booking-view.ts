@@ -1,6 +1,5 @@
 import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { MoneyView } from '../venue/venue.model';
 import { BookingDetail, Cancellation } from './booking.model';
@@ -122,10 +121,10 @@ export class BookingView {
 
   constructor() {
     this.code = this.route.snapshot.paramMap.get('code') ?? '';
-    if (!this.code) {
-      this.notFound.set(true);
-    } else {
+    if (this.code) {
       this.load();
+    } else {
+      this.notFound.set(true);
     }
     // Move focus to the destructive confirm button when the prompt appears (a11y).
     effect(() => {
@@ -174,7 +173,7 @@ export class BookingView {
   }
 
   protected statusLabel(status: string): string {
-    return status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ');
+    return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');
   }
 
   /** Refund-terms copy for a still-cancellable booking. */

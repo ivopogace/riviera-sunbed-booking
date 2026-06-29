@@ -32,6 +32,13 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_AWAITING = "awaiting";
 	private static final String PARAM_CONFIRMED = "confirmed";
 
+	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
+	private static final String COL_VENUE_ID = "venue_id";
+	private static final String COL_SET_ID = "set_id";
+	private static final String COL_BOOKING_DATE = "booking_date";
+	private static final String COL_AMOUNT_MINOR = "amount_minor";
+	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
+
 	private final JdbcClient jdbc;
 
 	JdbcBookings(JdbcClient jdbc) {
@@ -79,10 +86,10 @@ class JdbcBookings implements Bookings {
 					Long refundMinor = rs.getObject("refund_minor", Long.class);
 					return new BookingRecord(
 							rs.getLong("id"), rs.getString("code"),
-							BookingStatus.valueOf(rs.getString("status")),
-							new VenueId(rs.getLong("venue_id")), new SetId(rs.getLong("set_id")),
-							rs.getObject("booking_date", LocalDate.class),
-							rs.getLong("amount_minor"), rs.getString("amount_currency"),
+							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+							new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
+							rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+							rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor);
 				})
 				.optional();
@@ -122,9 +129,9 @@ class JdbcBookings implements Bookings {
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.query((rs, rowNum) -> new ConfirmedBooking(
-						rs.getLong("id"), new VenueId(rs.getLong("venue_id")),
-						new SetId(rs.getLong("set_id")), rs.getObject("booking_date", LocalDate.class),
-						rs.getLong("amount_minor"), rs.getString("amount_currency")))
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}
 
@@ -146,9 +153,9 @@ class JdbcBookings implements Bookings {
 				.param("id", bookingId)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new CancelledBooking(
-						rs.getLong("id"), new VenueId(rs.getLong("venue_id")),
-						new SetId(rs.getLong("set_id")), rs.getObject("booking_date", LocalDate.class),
-						rs.getLong("amount_minor"), rs.getString("amount_currency")))
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}
 
@@ -166,8 +173,8 @@ class JdbcBookings implements Bookings {
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong("set_id")),
-						rs.getObject("booking_date", LocalDate.class)))
+				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
 	}
 }

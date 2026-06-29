@@ -87,8 +87,15 @@ class CancelBookingService implements CancelBooking {
 		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
 
-		CancelOutcome.Tier tier = quote.beforeCutoff() ? CancelOutcome.Tier.FULL
-				: (refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE);
+		CancelOutcome.Tier tier = tierFor(quote.beforeCutoff(), refundMinor);
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
+	}
+
+	/** Full before the cutoff; after it, partial when something is refunded, else none (ADR-0005). */
+	private static CancelOutcome.Tier tierFor(boolean beforeCutoff, long refundMinor) {
+		if (beforeCutoff) {
+			return CancelOutcome.Tier.FULL;
+		}
+		return refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
 	}
 }
