@@ -1,13 +1,16 @@
 package ai.riviera.platform.venue.infrastructure.out;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.api.SetAvailabilityLookup;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.SetView;
@@ -24,14 +27,19 @@ import ai.riviera.platform.venue.api.VenueMapView;
 @Repository
 class JdbcVenueCatalog implements VenueCatalog {
 
-	private final JdbcClient jdbc;
+	private static final String AVAILABILITY_FREE = "FREE";
+	private static final String AVAILABILITY_TAKEN = "TAKEN";
 
-	JdbcVenueCatalog(JdbcClient jdbc) {
+	private final JdbcClient jdbc;
+	private final SetAvailabilityLookup availability;
+
+	JdbcVenueCatalog(JdbcClient jdbc, SetAvailabilityLookup availability) {
 		this.jdbc = jdbc;
+		this.availability = availability;
 	}
 
 	@Override
-	public Optional<VenueMapView> findVenueMap(VenueId id) {
+	public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode
 				FROM venue
@@ -50,20 +58,30 @@ class JdbcVenueCatalog implements VenueCatalog {
 		}
 		VenueRow v = venue.get();
 
-		List<SetView> sets = jdbc.sql("""
+		// The static layout (venue's own table) — availability is NOT read here; it is the one
+		// fact venue lacks and overlays from the source of truth below (issue #44, invariant #2).
+		List<SetRow> rows = jdbc.sql("""
 				SELECT id, row_label, position_no, tier, pool, price_minor, price_currency,
-				       grid_x, grid_y, seed_availability
+				       grid_x, grid_y
 				FROM set_position
 				WHERE venue_id = :id
 				ORDER BY grid_y, grid_x
 				""")
 				.param("id", id.value())
-				.query((rs, rowNum) -> new SetView(
+				.query((rs, rowNum) -> new SetRow(
 						rs.getLong("id"), rs.getString("row_label"), rs.getInt("position_no"),
 						rs.getString("tier"), rs.getString("pool"),
 						new MoneyView(rs.getLong("price_minor"), rs.getString("price_currency")),
-						rs.getInt("grid_x"), rs.getInt("grid_y"), rs.getString("seed_availability")))
+						rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.list();
+
+		Set<SetId> taken = availability.takenOn(rows.stream().map(r -> new SetId(r.id())).toList(), date);
+
+		List<SetView> sets = rows.stream()
+				.map(r -> new SetView(r.id(), r.rowLabel(), r.positionNo(), r.tier(), r.pool(),
+						r.price(), r.gridX(), r.gridY(),
+						taken.contains(new SetId(r.id())) ? AVAILABILITY_TAKEN : AVAILABILITY_FREE))
+				.toList();
 
 		MoneyView fromPrice = sets.stream()
 				.map(SetView::price)
@@ -104,5 +122,10 @@ class JdbcVenueCatalog implements VenueCatalog {
 
 	private record VenueRow(long id, String name, String beach, String region,
 			String description, int ratingTenths, int reviewsCount, String bookingMode) {
+	}
+
+	/** The static set-position layout, before availability is overlaid for the chosen date. */
+	private record SetRow(long id, String rowLabel, int positionNo, String tier, String pool,
+			MoneyView price, int gridX, int gridY) {
 	}
 }

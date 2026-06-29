@@ -1,0 +1,34 @@
+/**
+ * The default booking date the beach map and booking dialog open on: **tomorrow in
+ * Europe/Tirane** (invariant #6), as an ISO `YYYY-MM-DD` string. The server is authoritative for
+ * the real cutoff (invariant #4); this is a display default only.
+ *
+ * Computed from the given `now` so it is pure and unit-testable (no ambient `new Date()` — the
+ * caller injects the clock). Tirane's civil "today" is derived via `Intl` with an explicit time
+ * zone, then advanced one day — never via `toISOString()`, which is UTC and can roll the day for
+ * late-evening users.
+ */
+const TIRANE = 'Europe/Tirane';
+
+export function defaultBookingDate(now: Date): string {
+  // en-CA renders ISO `YYYY-MM-DD`; the timeZone option pins it to Tirane's civil day.
+  const tiraneToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIRANE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  return addOneDay(tiraneToday);
+}
+
+/** Add one calendar day to an ISO `YYYY-MM-DD` string, returning the same format. */
+function addOneDay(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  // Anchor in UTC so the +1 day arithmetic can't be shifted by a local-zone DST transition.
+  const next = new Date(Date.UTC(year, month - 1, day));
+  next.setUTCDate(next.getUTCDate() + 1);
+  const y = next.getUTCFullYear();
+  const m = String(next.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(next.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}

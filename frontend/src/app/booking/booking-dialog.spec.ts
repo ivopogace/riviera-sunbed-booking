@@ -48,6 +48,7 @@ describe('BookingDialog', () => {
 
     fixture = TestBed.createComponent(BookingDialog);
     fixture.componentRef.setInput('set', SET);
+    fixture.componentRef.setInput('date', '2026-12-01');
     dialog = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
     await fixture.whenStable();
@@ -77,6 +78,11 @@ describe('BookingDialog', () => {
   it('renders the set summary and the formatted price', () => {
     expect(host().querySelector('.panel-summary')?.textContent).toContain('spot 2');
     expect(host().querySelector('.panel-summary')?.textContent).toContain('€45');
+  });
+
+  it('seeds the date field from the date input (issue #44)', () => {
+    const dateInput = host().querySelector<HTMLInputElement>('input[type="date"]');
+    expect(dateInput?.value).toBe('2026-12-01');
   });
 
   it('posts the booking and emits booked on success', async () => {

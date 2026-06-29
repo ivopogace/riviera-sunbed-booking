@@ -1,10 +1,15 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  TestRequest,
+} from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { defaultBookingDate } from './booking-date';
 import { SetView, VenueMapView } from './venue.model';
 import { VenueMap } from './venue-map';
 
@@ -72,8 +77,13 @@ describe('VenueMap', () => {
 
   afterEach(() => httpMock.verify());
 
+  /** Match the venue request on path only (a `?date=` param is appended — issue #44). */
+  function venueRequest(): TestRequest {
+    return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
+  }
+
   function flushVenue(): void {
-    httpMock.expectOne(`${environment.apiBaseUrl}/api/venues/1`).flush(miramar());
+    venueRequest().flush(miramar());
   }
 
   function el(): HTMLElement {
@@ -148,5 +158,43 @@ describe('VenueMap', () => {
     (fixture.componentInstance as unknown as { onBooked(): void }).onBooked();
 
     expect(navigate).toHaveBeenCalledWith(['/booking/confirmation']);
+  });
+
+  it('requests the venue for tomorrow in Europe/Tirane by default', () => {
+    const req = venueRequest();
+    expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+    req.flush(miramar());
+  });
+
+  it('re-fetches availability for a newly chosen date', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
+    input.value = '2026-07-15';
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    const req = venueRequest();
+    expect(req.request.params.get('date')).toBe('2026-07-15');
+    req.flush(miramar());
+  });
+
+  it('opens the booking dialog pre-set to the map’s selected date', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
+    input.value = '2026-07-20';
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    venueRequest().flush(miramar()); // settle the re-fetch
+
+    await fixture.whenStable();
+    el().querySelector<HTMLButtonElement>('.set-button')!.click();
+    await fixture.whenStable();
+
+    const dialogDate = el().querySelector<HTMLInputElement>('app-booking-dialog input[type="date"]');
+    expect(dialogDate?.value).toBe('2026-07-20');
   });
 });

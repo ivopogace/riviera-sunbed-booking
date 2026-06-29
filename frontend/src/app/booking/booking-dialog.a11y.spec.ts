@@ -34,6 +34,7 @@ describe('BookingDialog accessibility (axe)', () => {
 
     fixture = TestBed.createComponent(BookingDialog);
     fixture.componentRef.setInput('set', SET);
+    fixture.componentRef.setInput('date', '2026-12-01');
     await fixture.whenStable();
   });
 

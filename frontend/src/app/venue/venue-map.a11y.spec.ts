@@ -77,7 +77,8 @@ describe('VenueMap accessibility (axe)', () => {
   afterEach(() => httpMock.verify());
 
   function expectVenueRequest() {
-    return httpMock.expectOne(`${environment.apiBaseUrl}/api/venues/1`);
+    // The map appends a `?date=` param (issue #44); match on the path, ignoring the query.
+    return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
   }
 
   function host(): HTMLElement {

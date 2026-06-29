@@ -14,8 +14,19 @@
       }
     </p>
 
+    <p class="date-field">
+      <label class="date-label" for="map-date">Date</label>
+      <input
+        id="map-date"
+        type="date"
+        data-testid="map-date"
+        [value]="selectedDate()"
+        (change)="onDateChange($event)"
+      />
+    </p>
+
     <p class="availability" data-testid="availability">
-      <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free today
+      <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free on {{ dateLabel() }}
     </p>
     <!-- Decorative: the "{free} of {total}" count above already conveys this to AT. -->
     <div class="progress" aria-hidden="true">
@@ -71,7 +82,12 @@
   </article>
 
   @if (selectedSet(); as set) {
-    <app-booking-dialog [set]="set" (dismissed)="onDialogClose()" (booked)="onBooked()" />
+    <app-booking-dialog
+      [set]="set"
+      [date]="selectedDate()"
+      (dismissed)="onDialogClose()"
+      (booked)="onBooked()"
+    />
   }
 } @else if (failed()) {
   <p class="state" role="alert">Sorry — we couldn’t load this venue. Please try again.</p>
