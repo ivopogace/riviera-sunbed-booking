@@ -73,15 +73,17 @@ The size flexes; the gate does not.
 > code for an area, you **MUST load that area's skill(s) first** and **announce which
 > you loaded**. The `area:*` label (see `docs/agents/triage-labels.md`) is only the
 > starting hint — the real trigger is **what the change actually touches**, and one
-> slice usually trips several rows below. A migration written without `postgres`, a new
-> module seam without `codebase-design`, or an Angular component without
-> `angular-developer` + the Angular MCP is a **process miss** the review gate will flag.
+> slice usually trips several rows below. A migration written without `postgres`, **any
+> backend Java created or modified without `riviera-modulith` loaded** (so the class lands
+> in the right module/package and the `api/` boundary holds), a new module seam without
+> `codebase-design`, or an Angular component without `angular-developer` + the Angular MCP
+> is a **process miss** the review gate will flag.
 
 | If the change touches… | Load BEFORE writing it (MUST) | Why |
 |---|---|---|
 | **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
-| **Any backend module** (Spring Modulith: new `api/` port, service, event, seam) | **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | deep modules, real-vs-hypothetical seams; ubiquitous language |
-| **Writing/refactoring any Java** (class, record, port, JDBC adapter, event, test) | **`riviera-java-conventions`** | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — not Spring-tutorial defaults |
+| **Any backend module / structure** (Spring Modulith: new module, `api/` port, application service, domain event, JDBC adapter, controller, or moving a class between packages) | **`riviera-modulith`** (module layout, `api/` named-interface boundaries, port-vs-event, `verify()` contract) + **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | hexagonal package shape + invariant #11 boundaries enforced by `ModularityTests`, not first-principles structure |
+| **Writing/refactoring any backend Java** (class, record, port, JDBC adapter, event, controller, test) | **`riviera-java-conventions`** (Java idioms) + **`riviera-modulith`** (which package it belongs in) | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — **and** the right module/package per the hexagon. Both fire on any backend Java create/modify. |
 | **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
 | **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
 | **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
@@ -173,7 +175,9 @@ the slice is still in flight — say so rather than reporting it done.
 ## Integration
 
 - **Riviera skills:** `riviera-plan-doc` (plan), `riviera-review-overlay` (review),
-  `riviera-stripe-payments` (money), `angular-new-app`/`angular-developer` (frontend).
+  `riviera-modulith` (backend module structure / boundaries), `riviera-java-conventions`
+  (backend Java idioms), `riviera-stripe-payments` (money),
+  `angular-new-app`/`angular-developer` (frontend).
 - **Vendored craft skills (Matt Pocock, MIT):** `grilling`/`grill-me`, `to-issues`,
   `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
   `triage`, `improve-codebase-architecture` (use the last one once there is code to
