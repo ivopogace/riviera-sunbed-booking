@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "spring.security.user.password=test-operator-pw")
+@SpringBootTest(properties = "riviera.operator.password=test-operator-pw")
 @AutoConfigureMockMvc
 class VenueAdminControllerIT {
 
