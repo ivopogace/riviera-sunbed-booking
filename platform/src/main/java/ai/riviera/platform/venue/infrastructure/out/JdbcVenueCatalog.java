@@ -105,6 +105,16 @@ class JdbcVenueCatalog implements VenueCatalog {
 	}
 
 	@Override
+	public OptionalInt lateCancelRefundBps(VenueId id) {
+		return jdbc.sql("SELECT late_cancel_refund_bps FROM venue WHERE id = :id")
+				.param("id", id.value())
+				.query(Integer.class)
+				.optional()
+				.map(OptionalInt::of)
+				.orElseGet(OptionalInt::empty);
+	}
+
+	@Override
 	public Optional<String> poolOf(SetId setId) {
 		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id")
 				.param("id", setId.value())

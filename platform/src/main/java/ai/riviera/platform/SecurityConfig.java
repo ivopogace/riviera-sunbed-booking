@@ -42,6 +42,9 @@ class SecurityConfig {
 						.requestMatchers("/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+						// View a booking by its code (U6) — the code is the bearer credential
+						// (invariant #7), so knowing it authorizes the read. One path segment only.
+						.requestMatchers(HttpMethod.GET, "/api/bookings/*").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.anyRequest().authenticated())
 				.httpBasic(Customizer.withDefaults());

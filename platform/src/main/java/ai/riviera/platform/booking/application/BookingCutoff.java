@@ -30,6 +30,19 @@ class BookingCutoff {
 	}
 
 	boolean isBookable(LocalTime cutoff, LocalDate bookingDate) {
+		return isBeforeCutoff(cutoff, bookingDate);
+	}
+
+	/**
+	 * Whether free cancellation is still open for {@code bookingDate} — the same evening-before
+	 * boundary as {@link #isBookable} (invariant #4: one rule, two jobs). Before it, a cancellation
+	 * is fully refundable (invariant #10); after it, the venue's late-cancel policy applies.
+	 */
+	boolean freeCancellationOpen(LocalTime cutoff, LocalDate bookingDate) {
+		return isBeforeCutoff(cutoff, bookingDate);
+	}
+
+	private boolean isBeforeCutoff(LocalTime cutoff, LocalDate bookingDate) {
 		ZonedDateTime closesAt = bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE);
 		return clock.instant().isBefore(closesAt.toInstant());
 	}

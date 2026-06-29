@@ -5,6 +5,8 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
+import ai.riviera.platform.booking.application.in.ViewBooking;
 
 /**
  * Public tourist booking endpoint (U3, issue #6). Driving adapter — depends only on the
@@ -25,9 +28,23 @@ import ai.riviera.platform.booking.application.in.CreateBooking;
 class BookingController {
 
 	private final CreateBooking createBooking;
+	private final ViewBooking viewBooking;
 
-	BookingController(CreateBooking createBooking) {
+	BookingController(CreateBooking createBooking, ViewBooking viewBooking) {
 		this.createBooking = createBooking;
+		this.viewBooking = viewBooking;
+	}
+
+	/**
+	 * View a booking by its code (U6). The code is the bearer credential (invariant #7) — knowing it
+	 * authorizes the view; it is never logged. Returns the summary + server-computed refund terms, or
+	 * {@code 404} for an unknown code. (#50 builds on this endpoint.)
+	 */
+	@GetMapping("/{code}")
+	ResponseEntity<?> view(@PathVariable String code) {
+		return viewBooking.byCode(code)
+				.<ResponseEntity<?>>map(detail -> ResponseEntity.ok(BookingDetailView.of(detail)))
+				.orElseGet(() -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING"));
 	}
 
 	@PostMapping

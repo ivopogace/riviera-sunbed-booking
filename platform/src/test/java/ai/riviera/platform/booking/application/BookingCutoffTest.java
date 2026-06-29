@@ -53,4 +53,16 @@ class BookingCutoffTest {
 		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 20, 9, 0, 0, 0, TIRANE));
 		assertFalse(cutoff.isBookable(CUTOFF, BOOKING_DATE));
 	}
+
+	@Test
+	void freeCancellationOpenSharesTheEveningBeforeBoundary() {
+		// U6 (invariant #4: one rule, two jobs) — free cancellation closes at the same instant
+		// booking closes. Open at 17:59 the evening before; closed at 18:00 and on the day.
+		assertTrue(at(ZonedDateTime.of(2026, 7, 14, 17, 59, 0, 0, TIRANE))
+				.freeCancellationOpen(CUTOFF, BOOKING_DATE));
+		assertFalse(at(ZonedDateTime.of(2026, 7, 14, 18, 0, 0, 0, TIRANE))
+				.freeCancellationOpen(CUTOFF, BOOKING_DATE));
+		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 9, 0, 0, 0, TIRANE))
+				.freeCancellationOpen(CUTOFF, BOOKING_DATE));
+	}
 }

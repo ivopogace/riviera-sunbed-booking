@@ -25,6 +25,14 @@ public interface Bookings {
 	OptionalLong insertAwaitingPayment(NewBooking booking);
 
 	/**
+	 * Load a booking by its {@code code} (the bearer credential, invariant #7) for the view and
+	 * cancel use cases (U6), or {@code empty} if no booking has that code. Read-only — carries the
+	 * full row the caller needs (status, ids, amount, the cancellation audit) without exposing the
+	 * aggregate.
+	 */
+	Optional<BookingRecord> findByCode(String code);
+
+	/**
 	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}, and return the
 	 * confirmed booking's facts (for the {@code BookingConfirmed} payload, built atomically with
 	 * the transition via SQL {@code RETURNING}). Strict: a non-{@code AWAITING_PAYMENT} row is an

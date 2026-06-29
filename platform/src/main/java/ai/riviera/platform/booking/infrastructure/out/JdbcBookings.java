@@ -8,6 +8,7 @@ import java.util.OptionalLong;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.booking.application.out.BookingRecord;
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.booking.application.out.ClaimRef;
 import ai.riviera.platform.booking.application.out.ConfirmedBooking;
@@ -60,6 +61,29 @@ class JdbcBookings implements Bookings {
 				.optional()
 				.map(OptionalLong::of)
 				.orElseGet(OptionalLong::empty);
+	}
+
+	@Override
+	public Optional<BookingRecord> findByCode(String code) {
+		return jdbc.sql("""
+				SELECT id, code, status, venue_id, set_id, booking_date,
+				       amount_minor, amount_currency, cancelled_at, refund_minor
+				FROM booking
+				WHERE code = :code
+				""")
+				.param("code", code)
+				.query((rs, rowNum) -> {
+					java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
+					Long refundMinor = rs.getObject("refund_minor", Long.class);
+					return new BookingRecord(
+							rs.getLong("id"), rs.getString("code"),
+							BookingStatus.valueOf(rs.getString("status")),
+							new VenueId(rs.getLong("venue_id")), new SetId(rs.getLong("set_id")),
+							rs.getObject("booking_date", LocalDate.class),
+							rs.getLong("amount_minor"), rs.getString("amount_currency"),
+							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor);
+				})
+				.optional();
 	}
 
 	@Override
