@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.booking.application.in.BookingOutcome;
+import ai.riviera.platform.booking.application.in.CreateBooking;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 
@@ -59,6 +61,16 @@ class WebCorsConfigTest {
 					return Optional.empty();
 				}
 			};
+		}
+
+		/**
+		 * {@code BookingController} is loaded by {@code @WebMvcTest}, so its {@link CreateBooking}
+		 * dependency must be satisfied. The preflight tests never reach the controller, so a
+		 * trivial stub is enough.
+		 */
+		@Bean
+		CreateBooking createBooking() {
+			return command -> BookingOutcome.Rejected.NO_SUCH_SET;
 		}
 	}
 
