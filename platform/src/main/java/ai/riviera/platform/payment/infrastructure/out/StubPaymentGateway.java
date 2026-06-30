@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.PaymentGateway;
@@ -36,5 +37,13 @@ class StubPaymentGateway implements PaymentGateway {
 	public RefundResult refund(BookingRef booking, Money amount) {
 		// In-process success — the stub collected nothing real, so there is nothing to record.
 		return new RefundResult.Refunded(REFUND_PREFIX + booking.value());
+	}
+
+	@Override
+	public PaymentCancellation cancel(BookingRef booking) {
+		// In-process void — the stub holds no real PaymentIntent. The abandoned-payment sweep runs
+		// only under the stripe profile (synchronous stub bookings never linger AWAITING_PAYMENT), so
+		// this is here only to satisfy the port.
+		return new PaymentCancellation.Canceled();
 	}
 }

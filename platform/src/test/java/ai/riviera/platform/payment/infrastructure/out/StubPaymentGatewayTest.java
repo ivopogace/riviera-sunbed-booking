@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
 
@@ -35,5 +36,15 @@ class StubPaymentGatewayTest {
 
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
 		assertTrue(refunded.refundId().contains("7"), "refund id correlates to the booking ref");
+	}
+
+	@Test
+	void cancelAlwaysSucceedsInProcess() {
+		StubPaymentGateway gateway = new StubPaymentGateway();
+
+		PaymentCancellation outcome = gateway.cancel(new BookingRef(7L));
+
+		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
+				"the stub voids in-process — the sweep runs only under the stripe profile");
 	}
 }

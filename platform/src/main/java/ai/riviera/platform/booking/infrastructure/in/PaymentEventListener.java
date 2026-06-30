@@ -7,9 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.in.ConfirmBooking;
-import ai.riviera.platform.booking.application.out.Bookings;
+import ai.riviera.platform.booking.application.in.ReleaseAbandonedBooking;
 import ai.riviera.platform.payment.api.PaymentCanceled;
 import ai.riviera.platform.payment.api.PaymentConfirmed;
 
@@ -42,15 +42,13 @@ class PaymentEventListener {
 	private static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);
 
 	private final ConfirmBooking confirmBooking;
-	private final Bookings bookings;
-	private final AvailabilityClaim availability;
+	private final ReleaseAbandonedBooking releaseAbandonedBooking;
 	private final Clock clock;
 
-	PaymentEventListener(ConfirmBooking confirmBooking, Bookings bookings,
-			AvailabilityClaim availability, Clock clock) {
+	PaymentEventListener(ConfirmBooking confirmBooking, ReleaseAbandonedBooking releaseAbandonedBooking,
+			Clock clock) {
 		this.confirmBooking = confirmBooking;
-		this.bookings = bookings;
-		this.availability = availability;
+		this.releaseAbandonedBooking = releaseAbandonedBooking;
 		this.clock = clock;
 	}
 
@@ -72,10 +70,10 @@ class PaymentEventListener {
 	@ApplicationModuleListener
 	void on(PaymentCanceled event) {
 		long bookingId = event.bookingRef().value();
-		bookings.cancelAwaitingPayment(bookingId).ifPresent(claim -> {
-			availability.release(claim.setId(), claim.bookingDate());
-			log.info("cancelled booking {} and released set {} on {} after payment cancellation",
-					bookingId, claim.setId().value(), claim.bookingDate());
-		});
+		// Shared guarded transition + release (also driven by the abandoned-payment sweep, issue #51):
+		// a re-delivery or a booking the sweep already expired is a benign no-op, never a double release.
+		if (releaseAbandonedBooking.release(new BookingId(bookingId))) {
+			log.info("cancelled booking {} and released its set after payment cancellation", bookingId);
+		}
 	}
 }

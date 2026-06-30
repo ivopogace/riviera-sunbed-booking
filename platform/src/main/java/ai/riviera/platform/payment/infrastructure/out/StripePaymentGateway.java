@@ -19,11 +19,13 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.NewPayment;
 import ai.riviera.platform.payment.application.out.Payments;
 import ai.riviera.platform.payment.application.out.PaymentGateway;
+import ai.riviera.platform.payment.domain.PaymentStatus;
 
 /**
  * The real Stripe collection adapter ({@code stripe} profile) for the outbound
@@ -44,6 +46,10 @@ class StripePaymentGateway implements PaymentGateway {
 
 	private static final Logger log = LoggerFactory.getLogger(StripePaymentGateway.class);
 	private static final String METADATA_BOOKING_REF = "bookingRef";
+
+	// Stripe PaymentIntent statuses we branch on when cancelling (issue #51).
+	private static final String STATUS_SUCCEEDED = "succeeded";
+	private static final String STATUS_CANCELED = "canceled";
 
 	private final StripeClient stripe;
 	private final Payments payments;
@@ -102,6 +108,40 @@ class StripePaymentGateway implements PaymentGateway {
 			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
 			log.warn("Stripe refund failed for booking {}: code={}", booking.value(), e.getCode());
 			return new RefundResult.Failed(e.getCode() == null ? "stripe_error" : e.getCode());
+		}
+	}
+
+	@Override
+	public PaymentCancellation cancel(BookingRef booking) {
+		Optional<String> intentId = payments.findIntentByBookingRef(booking);
+		if (intentId.isEmpty()) {
+			// No PaymentIntent on record (e.g. the stub created the booking) — nothing to cancel at
+			// Stripe; the caller must not release on our say-so.
+			log.warn("no PaymentIntent on record for booking {} — cannot cancel", booking.value());
+			return new PaymentCancellation.NotCancellable("no_collection");
+		}
+		String id = intentId.get();
+		try {
+			// Read the authoritative state from Stripe (never the client) before acting (invariant #8).
+			PaymentIntent intent = stripe.v1().paymentIntents().retrieve(id);
+			String status = intent.getStatus();
+			if (STATUS_SUCCEEDED.equals(status)) {
+				// The payment went through; the confirm webhook will/has confirmed the booking. Leave it.
+				return new PaymentCancellation.NotCancellable(STATUS_SUCCEEDED);
+			}
+			if (!STATUS_CANCELED.equals(status)) {
+				// Cancelable state (requires_payment_method / _confirmation / _action / processing) — void it.
+				intent.cancel();
+			}
+			// Canceled now, or already canceled: either way the payment can no longer succeed.
+			payments.markStatus(id, PaymentStatus.CANCELED);
+			return new PaymentCancellation.Canceled();
+		}
+		catch (StripeException e) {
+			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
+			log.warn("Stripe PaymentIntent cancel failed for booking {}: code={}",
+					booking.value(), e.getCode());
+			return new PaymentCancellation.Failed(e.getCode() == null ? "stripe_error" : e.getCode());
 		}
 	}
 

@@ -9,6 +9,7 @@ import java.util.OptionalLong;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.in.DailyBooking;
 import ai.riviera.platform.booking.application.out.BookingRecord;
 import ai.riviera.platform.booking.application.out.Bookings;
@@ -178,6 +179,23 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new DailyBooking(
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code")))
+				.list();
+	}
+
+	@Override
+	public List<BookingId> findExpirableAwaitingPayment(Instant olderThan) {
+		// Abandoned-payment TTL sweep candidates (issue #51): AWAITING_PAYMENT rows created before the
+		// cutoff. Served by booking_awaiting_created_idx (V13), a partial index on the AWAITING_PAYMENT
+		// subset. Ids only — the sweep cancels each PaymentIntent then transitions via the guarded UPDATE.
+		return jdbc.sql("""
+				SELECT id
+				FROM booking
+				WHERE status = :awaiting AND created_at < :cutoff
+				ORDER BY id
+				""")
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
+				.param("cutoff", java.sql.Timestamp.from(olderThan))
+				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
 				.list();
 	}
 

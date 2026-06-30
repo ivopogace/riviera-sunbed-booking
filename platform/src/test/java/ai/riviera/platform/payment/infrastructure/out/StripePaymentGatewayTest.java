@@ -17,15 +17,18 @@ import org.mockito.ArgumentCaptor;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.NewPayment;
 import ai.riviera.platform.payment.application.out.Payments;
+import ai.riviera.platform.payment.domain.PaymentStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -142,5 +145,111 @@ class StripePaymentGatewayTest {
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
 				"with no recorded PaymentIntent there is nothing to refund");
 		assertEquals("no_collection", failed.reason());
+	}
+
+	@Test
+	void cancelVoidsACancelableIntentAndMarksItCanceled() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+		when(payments.findIntentByBookingRef(new BookingRef(42L))).thenReturn(Optional.of("pi_abc"));
+
+		PaymentIntent intent = mock(PaymentIntent.class);
+		when(intent.getStatus()).thenReturn("requires_payment_method");
+		when(intents.retrieve("pi_abc")).thenReturn(intent);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentCancellation outcome = gateway.cancel(new BookingRef(42L));
+
+		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
+				"a cancelable PaymentIntent is voided so it can no longer succeed");
+		verify(intent).cancel();
+		verify(payments).markStatus("pi_abc", PaymentStatus.CANCELED);
+	}
+
+	@Test
+	void cancelOfAnAlreadyCanceledIntentIsIdempotent() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+		when(payments.findIntentByBookingRef(new BookingRef(42L))).thenReturn(Optional.of("pi_abc"));
+
+		PaymentIntent intent = mock(PaymentIntent.class);
+		when(intent.getStatus()).thenReturn("canceled");
+		when(intents.retrieve("pi_abc")).thenReturn(intent);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentCancellation outcome = gateway.cancel(new BookingRef(42L));
+
+		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
+				"an already-canceled PaymentIntent is a benign success (idempotent)");
+		verify(intent, never()).cancel();
+		verify(payments).markStatus("pi_abc", PaymentStatus.CANCELED);
+	}
+
+	@Test
+	void cancelOfASucceededIntentIsNotCancellable() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+		when(payments.findIntentByBookingRef(new BookingRef(42L))).thenReturn(Optional.of("pi_abc"));
+
+		PaymentIntent intent = mock(PaymentIntent.class);
+		when(intent.getStatus()).thenReturn("succeeded");
+		when(intents.retrieve("pi_abc")).thenReturn(intent);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentCancellation outcome = gateway.cancel(new BookingRef(42L));
+
+		PaymentCancellation.NotCancellable nc = assertInstanceOf(PaymentCancellation.NotCancellable.class,
+				outcome, "a succeeded payment must not be cancelled — the confirm webhook wins (invariant #8)");
+		assertEquals("succeeded", nc.reason());
+		verify(intent, never()).cancel();
+		verify(payments, never()).markStatus(any(), any());
+	}
+
+	@Test
+	void cancelWithoutAKnownCollectionIsNotCancellable() {
+		StripeClient stripe = mock(StripeClient.class);
+		Payments payments = mock(Payments.class);
+		when(payments.findIntentByBookingRef(new BookingRef(99L))).thenReturn(Optional.empty());
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentCancellation outcome = gateway.cancel(new BookingRef(99L));
+
+		PaymentCancellation.NotCancellable nc = assertInstanceOf(PaymentCancellation.NotCancellable.class,
+				outcome, "with no recorded PaymentIntent there is nothing to cancel at Stripe");
+		assertEquals("no_collection", nc.reason());
+	}
+
+	@Test
+	void cancelStripeFailureMapsToFailed() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+		when(payments.findIntentByBookingRef(new BookingRef(7L))).thenReturn(Optional.of("pi_boom"));
+
+		StripeException boom = mock(StripeException.class);
+		when(boom.getCode()).thenReturn("lock_timeout");
+		when(intents.retrieve("pi_boom")).thenThrow(boom);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentCancellation outcome = gateway.cancel(new BookingRef(7L));
+
+		PaymentCancellation.Failed failed = assertInstanceOf(PaymentCancellation.Failed.class, outcome,
+				"a transient Stripe error is a typed Failed outcome — the sweep retries next round");
+		assertEquals("lock_timeout", failed.reason());
 	}
 }
