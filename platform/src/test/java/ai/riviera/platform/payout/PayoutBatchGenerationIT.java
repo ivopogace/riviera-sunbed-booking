@@ -39,8 +39,6 @@ class PayoutBatchGenerationIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private int seq; // unique set cell/position per booking (set_position has per-venue UNIQUE cells)
-
 	private long newVenue() {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
@@ -49,14 +47,13 @@ class PayoutBatchGenerationIT {
 				""").query(Long.class).single();
 	}
 
+	/** Reuse a seeded set as the booking's set FK (independent from venue_id) — avoids inserting
+	 *  set_position rows that would pollute other tests' global set queries. */
+	private long anySeededSet() {
+		return jdbc.sql("SELECT id FROM set_position ORDER BY id LIMIT 1").query(Long.class).single();
+	}
+
 	private long newBooking(long venueId, String code) {
-		int n = ++seq; // unique position_no + (grid_x, grid_y) cell within the venue
-		long setId = jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
-				                         price_currency, grid_x, grid_y)
-				VALUES (:v, 'Row 1', :n, 'PREMIUM', 'ONLINE', 10000, 'EUR', :n, 1)
-				RETURNING id
-				""").param("v", venueId).param("n", n).query(Long.class).single();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
@@ -66,7 +63,7 @@ class PayoutBatchGenerationIT {
 				VALUES (:code, :venue, :set, :cust, :date, 10000, 'EUR', 'CONFIRMED')
 				RETURNING id
 				""")
-				.param("code", code).param("venue", venueId).param("set", setId)
+				.param("code", code).param("venue", venueId).param("set", anySeededSet())
 				.param("cust", customer).param("date", LocalDate.of(2031, 1, 1))
 				.query(Long.class).single();
 	}

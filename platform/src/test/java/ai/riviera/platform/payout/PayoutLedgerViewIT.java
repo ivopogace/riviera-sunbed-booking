@@ -45,13 +45,10 @@ class PayoutLedgerViewIT {
 				""").query(Long.class).single();
 	}
 
-	private long newSet(long venueId) {
-		return jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
-				                         price_currency, grid_x, grid_y)
-				VALUES (:v, 'Row 1', 1, 'PREMIUM', 'ONLINE', 10000, 'EUR', 1, 1)
-				RETURNING id
-				""").param("v", venueId).query(Long.class).single();
+	/** Reuse an existing seeded set as the booking's set FK — booking.set_id and booking.venue_id are
+	 *  independent FKs, so this avoids inserting set_position rows that would pollute global queries. */
+	private long anySeededSet() {
+		return jdbc.sql("SELECT id FROM set_position ORDER BY id LIMIT 1").query(Long.class).single();
 	}
 
 	private long newBooking(long venueId, long setId, String code) {
@@ -72,8 +69,7 @@ class PayoutLedgerViewIT {
 	@Test
 	void runningNetOwed() {
 		long venueId = newVenue();
-		long setId = newSet(venueId);
-		long bookingId = newBooking(venueId, setId, "LEDGERVIEW1");
+		long bookingId = newBooking(venueId, anySeededSet(), "LEDGERVIEW1");
 		// Accrual net 8500 (gross 10000, commission 1500), then a partial reversal net 4250.
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
