@@ -195,8 +195,8 @@ AwaitingPayment` (Stripe) with the same body; the failure path still surfaces as
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — Explicit Stripe client timeouts | ✅ | (this commit) |
-| 2 — Two-phase create + compensating release | ⏳ | |
+| 1 — Explicit Stripe client timeouts | ✅ | `a9df3d6` |
+| 2 — Two-phase create + compensating release | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -247,15 +247,16 @@ compensation IT. End with `./gradlew build` (incl. `ModularityTests`, `JdbcOnlyA
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-06-30 | Phase 2 — extracting the reserve phase | other callers of the validate→claim→insert / `insertAwaitingPayment` flow | grep `insertAwaitingPayment`, `availability.claim` | only `CreateBookingService` (the create path); the webhook/sweep paths use `confirmFromPayment`/`cancelAwaitingPayment`, not the create flow | Moved the whole validate→claim→insert unit into `ReserveSetService` (single owner); no other site to generalize. The compensating-release used the **existing** shared `ReleaseAbandonedBooking` (#51), so no new release path was forked. |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*StripeConfigTest*"` → PASS.
-- [ ] **AC-2/AC-3:** `./gradlew test --tests "*CreateBookingServiceTest*" --tests "*CreateBookingPaymentFailureIT*"` → PASS.
-- [ ] **AC-4:** `./gradlew test --tests "*ConcurrentReservationIT*"` → PASS.
-- [ ] **AC-5:** `./gradlew build` green incl. `ModularityTests` + `JdbcOnlyArchitectureTests`.
+- [x] **AC-1:** `./gradlew test --tests "*StripeConfigTest*"` → PASS (4/4). Verified at `a9df3d6`.
+- [x] **AC-2/AC-3:** `./gradlew test --tests "*CreateBookingServiceTest*" --tests "*CreateBookingPaymentFailureIT*"` → PASS (unit branch coverage + the stripe-profile compensation IT).
+- [x] **AC-4:** `./gradlew test --tests "*ConcurrentReservationIT*"` → PASS (exactly-one-wins, unchanged).
+- [x] **AC-5:** `./gradlew build` → BUILD SUCCESSFUL incl. `ModularityTests` + `JdbcOnlyArchitectureTests`.
 
 ## Self-review checklist (before merge / PR)
 

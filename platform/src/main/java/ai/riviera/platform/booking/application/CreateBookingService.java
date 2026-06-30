@@ -1,158 +1,119 @@
 package ai.riviera.platform.booking.application;
 
 import java.time.Clock;
-import java.util.Optional;
-import java.util.OptionalLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.availability.api.ClaimOutcome;
+import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.in.BookingConfirmation;
 import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.ConfirmBooking;
 import ai.riviera.platform.booking.application.in.CreateBooking;
 import ai.riviera.platform.booking.application.in.CreateBookingCommand;
-import ai.riviera.platform.booking.application.out.BookingCodeGenerator;
-import ai.riviera.platform.booking.application.out.Bookings;
-import ai.riviera.platform.booking.application.out.NewBooking;
+import ai.riviera.platform.booking.application.in.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.customer.api.CustomerId;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.venue.api.SetBookingInfo;
-import ai.riviera.platform.venue.api.VenueCatalog;
 
 /**
- * The Instant-Book use case (issue #6). Orchestrates four sibling modules <em>only through
- * their {@code api/} ports</em> (invariant #11): reads the set's pool/price/cutoff from
- * {@link VenueCatalog}, enforces the pool (invariant #3) and evening-before cutoff (invariant
- * #4), claims the {@code (set, date)} via {@link AvailabilityClaim} (the double-booking guard,
- * invariant #2), resolves the guest via {@link ai.riviera.platform.customer.api.CustomerDirectory},
- * collects via {@link CheckoutPort} (stub in U3), and persists/confirms the booking.
+ * The Instant-Book use case (issue #6), now <strong>two-phase</strong> to keep the Stripe network
+ * call out of the locked availability transaction (issue #52, risk R-3):
  *
- * <p><strong>Transaction:</strong> the method is {@code @Transactional}, and the availability
- * claim (propagation {@code REQUIRED}) <em>joins</em> this transaction — so any failure after
- * the claim (a payment decline, a persistence error) rolls the claim back too: a set is never
- * left held for a booking that didn't complete (risk R-2). The stub gateway is in-process, so
- * holding the transaction across it is safe; U4 moves confirmation onto the verified webhook.
+ * <ol>
+ * <li><strong>Reserve (committed):</strong> {@link ReserveSetService#reserve} validates, claims the
+ *     {@code (set, date)} (invariant #2), and inserts the {@code AWAITING_PAYMENT} booking in one
+ *     transaction that <em>commits</em> — releasing the claim row lock.</li>
+ * <li><strong>Collect (no transaction):</strong> {@link CheckoutPort#pay} is called here, after the
+ *     commit, so a slow/failing Stripe never holds the lock (or a pooled connection) for its
+ *     timeout.</li>
+ * </ol>
  *
- * <p>Package-private — the public seam is the {@link CreateBooking} port (invariant #11). One
- * implementation, but the port gives the web adapter a clean, mockable entry point.
+ * <p>Outcome mapping (invariant #8 unchanged — the webhook stays the source of truth):
+ * <ul>
+ * <li>{@code Succeeded} (in-process stub): confirm now via the {@link ConfirmBooking} seam (its own
+ *     transaction; publishes {@code BookingConfirmed}) → {@code Confirmed}.</li>
+ * <li>{@code Pending} (real Stripe): the booking stays {@code AWAITING_PAYMENT}; the verified
+ *     webhook confirms it later, never the client → {@code AwaitingPayment}.</li>
+ * <li>{@code Failed} (PI creation failed after commit): <strong>compensate</strong> — reuse the
+ *     #51 {@link ReleaseAbandonedBooking} (guarded {@code AWAITING_PAYMENT → CANCELLED} + claim
+ *     release) so the booking isn't left orphaned holding the set, then surface the failure. The
+ *     #51 TTL sweep is the backstop if this process dies before compensating.</li>
+ * </ul>
+ *
+ * <p>Package-private — the public seam is the {@link CreateBooking} port (invariant #11).
  */
 @Service
 class CreateBookingService implements CreateBooking {
 
-	private static final String ONLINE_POOL = "ONLINE";
-	private static final int MAX_CODE_ATTEMPTS = 5;
-
 	private static final Logger log = LoggerFactory.getLogger(CreateBookingService.class);
 
-	private final VenueCatalog venueCatalog;
-	private final AvailabilityClaim availability;
-	private final ai.riviera.platform.customer.api.CustomerDirectory customers;
+	private final ReserveSetService reservation;
 	private final CheckoutPort checkout;
-	private final Bookings bookings;
 	private final ConfirmBooking confirmBooking;
-	private final BookingCodeGenerator codeGenerator;
-	private final BookingCutoff cutoff;
+	private final ReleaseAbandonedBooking releaseAbandoned;
 	private final Clock clock;
 
-	CreateBookingService(VenueCatalog venueCatalog, AvailabilityClaim availability,
-			ai.riviera.platform.customer.api.CustomerDirectory customers, CheckoutPort checkout,
-			Bookings bookings, ConfirmBooking confirmBooking, BookingCodeGenerator codeGenerator,
-			BookingCutoff cutoff, Clock clock) {
-		this.venueCatalog = venueCatalog;
-		this.availability = availability;
-		this.customers = customers;
+	CreateBookingService(ReserveSetService reservation, CheckoutPort checkout,
+			ConfirmBooking confirmBooking, ReleaseAbandonedBooking releaseAbandoned, Clock clock) {
+		this.reservation = reservation;
 		this.checkout = checkout;
-		this.bookings = bookings;
 		this.confirmBooking = confirmBooking;
-		this.codeGenerator = codeGenerator;
-		this.cutoff = cutoff;
+		this.releaseAbandoned = releaseAbandoned;
 		this.clock = clock;
 	}
 
 	@Override
-	@Transactional
 	public BookingOutcome create(CreateBookingCommand command) {
-		Optional<SetBookingInfo> found = venueCatalog.setBookingInfo(command.setId());
-		if (found.isEmpty()) {
-			return BookingOutcome.Rejected.NO_SUCH_SET;
-		}
-		SetBookingInfo set = found.get();
-		if (!ONLINE_POOL.equals(set.pool())) {
-			return BookingOutcome.Rejected.NOT_ONLINE_POOL;
-		}
-		if (!cutoff.isBookable(set.bookingCutoff(), command.bookingDate())) {
-			return BookingOutcome.Rejected.BOOKING_CLOSED;
-		}
-
-		ClaimOutcome claim = availability.claim(command.setId(), command.bookingDate());
-		switch (claim) {
-			case ALREADY_TAKEN -> { return BookingOutcome.Rejected.SET_TAKEN; }
-			case NOT_ONLINE_POOL -> { return BookingOutcome.Rejected.NOT_ONLINE_POOL; }
-			case NO_SUCH_SET -> { return BookingOutcome.Rejected.NO_SUCH_SET; }
-			case CLAIMED -> { /* won the claim — proceed */ }
-		}
-
-		CustomerId customerId = customers.findOrCreate(command.contact());
-		Inserted inserted = insertWithUniqueCode(set, customerId, command);
-
-		PaymentOutcome payment = checkout.pay(new BookingRef(inserted.id()),
-				new Money(set.price().minorUnits(), set.price().currency()));
-		// Log ids/date only — never the booking code (invariant #7) or the guest's PII.
-		return switch (payment) {
-			case PaymentOutcome.Succeeded ignored -> {
-				// Synchronous stub path: collected in-process, confirm now in this transaction. The
-				// confirm seam transitions and publishes BookingConfirmed (one place, both paths).
-				confirmBooking.confirm(inserted.id(), clock.instant());
-				log.info("confirmed booking {} for set {} on {}", inserted.id(),
-						set.setId().value(), command.bookingDate());
-				yield new BookingOutcome.Confirmed(new BookingConfirmation(
-						inserted.code(), BookingStatus.CONFIRMED, set, command.bookingDate()));
-			}
-			case PaymentOutcome.Pending pending -> {
-				// Real Stripe: a PaymentIntent exists; the booking stays AWAITING_PAYMENT and is
-				// confirmed only by the signature-verified webhook (invariant #8), never here.
-				log.info("awaiting payment for booking {} (set {} on {})", inserted.id(),
-						set.setId().value(), command.bookingDate());
-				yield new BookingOutcome.AwaitingPayment(
-						new BookingConfirmation(inserted.code(), BookingStatus.AWAITING_PAYMENT, set,
-								command.bookingDate()),
-						pending.clientSecret(), pending.paymentIntentId());
-			}
-			// Decline at initiation aborts and rolls back the whole transaction (claim included).
-			case PaymentOutcome.Failed failed -> throw new PaymentDeclinedException(failed.reason());
+		ReserveOutcome reserved = reservation.reserve(command);
+		return switch (reserved) {
+			case ReserveOutcome.Rejected rejected -> rejected.reason();
+			case ReserveOutcome.Reserved r -> collect(r, command);
 		};
 	}
 
 	/**
-	 * Insert the booking, regenerating the code on the astronomically-unlikely
-	 * {@code UNIQUE(code)} collision (invariant #7). The insert is an atomic
-	 * {@code ON CONFLICT (code) DO NOTHING}, so a collision returns empty (a normal retry
-	 * signal) rather than throwing and poisoning the transaction. Bounded retries.
+	 * Collect for an already-committed booking. Runs <strong>outside</strong> any transaction (R-3):
+	 * the {@code (set, date)} claim is committed, so the Stripe PaymentIntent creation holds no row
+	 * lock. Logs ids/date only — never the booking code (invariant #7) or guest PII.
 	 */
-	private Inserted insertWithUniqueCode(SetBookingInfo set, CustomerId customerId,
-			CreateBookingCommand command) {
-		for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
-			String code = codeGenerator.next();
-			OptionalLong id = bookings.insertAwaitingPayment(new NewBooking(code, set.venueId(),
-					set.setId(), customerId, command.bookingDate(), set.price().minorUnits(),
-					set.price().currency()));
-			if (id.isPresent()) {
-				return new Inserted(id.getAsLong(), code);
+	private BookingOutcome collect(ReserveOutcome.Reserved reserved, CreateBookingCommand command) {
+		SetBookingInfo set = reserved.set();
+		PaymentOutcome payment = checkout.pay(new BookingRef(reserved.bookingId()),
+				new Money(set.price().minorUnits(), set.price().currency()));
+		return switch (payment) {
+			case PaymentOutcome.Succeeded ignored -> {
+				// In-process stub: collected synchronously, confirm now (own transaction). The confirm
+				// seam transitions and publishes BookingConfirmed (one place, both paths).
+				confirmBooking.confirm(reserved.bookingId(), clock.instant());
+				log.info("confirmed booking {} for set {} on {}", reserved.bookingId(),
+						set.setId().value(), command.bookingDate());
+				yield new BookingOutcome.Confirmed(new BookingConfirmation(
+						reserved.code(), BookingStatus.CONFIRMED, set, command.bookingDate()));
 			}
-		}
-		throw new IllegalStateException(
-				"could not generate a unique booking code after " + MAX_CODE_ATTEMPTS + " attempts");
-	}
-
-	private record Inserted(long id, String code) {
+			case PaymentOutcome.Pending pending -> {
+				// Real Stripe: a PaymentIntent exists; the booking stays AWAITING_PAYMENT and is
+				// confirmed only by the signature-verified webhook (invariant #8), never here.
+				log.info("awaiting payment for booking {} (set {} on {})", reserved.bookingId(),
+						set.setId().value(), command.bookingDate());
+				yield new BookingOutcome.AwaitingPayment(
+						new BookingConfirmation(reserved.code(), BookingStatus.AWAITING_PAYMENT, set,
+								command.bookingDate()),
+						pending.clientSecret(), pending.paymentIntentId());
+			}
+			case PaymentOutcome.Failed failed -> {
+				// PI creation failed after the booking + claim committed — compensate so the set isn't
+				// left held by an unpaid booking (the same #51 guarded cancel + release the webhook and
+				// the TTL sweep use; the sweep backstops a crash before this runs).
+				releaseAbandoned.release(new BookingId(reserved.bookingId()));
+				log.info("released claim for booking {} after payment initiation failed (set {} on {})",
+						reserved.bookingId(), set.setId().value(), command.bookingDate());
+				throw new PaymentDeclinedException(failed.reason());
+			}
+		};
 	}
 }
