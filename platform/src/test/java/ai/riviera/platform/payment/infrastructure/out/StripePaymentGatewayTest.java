@@ -3,6 +3,7 @@ package ai.riviera.platform.payment.infrastructure.out;
 import java.util.Optional;
 
 import com.stripe.StripeClient;
+import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,6 +103,68 @@ class StripePaymentGatewayTest {
 		PaymentOutcome.Failed failed = assertInstanceOf(PaymentOutcome.Failed.class, outcome,
 				"a Stripe error is a typed Failed outcome, never a thrown exception to the caller");
 		assertEquals("card_declined", failed.reason());
+		verify(intents, times(1)).create(any(PaymentIntentCreateParams.class), any(RequestOptions.class));
+	}
+
+	@Test
+	void recoversAndRegistersWhenCreateTimesOutAfterStripeCreated() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+
+		PaymentIntent created = mock(PaymentIntent.class);
+		when(created.getId()).thenReturn("pi_recovered");
+		when(created.getClientSecret()).thenReturn("pi_recovered_secret");
+		// First attempt: Stripe created the PI but the response was lost to a read timeout
+		// (ApiConnectionException). The idempotent replay returns the SAME PI Stripe already created.
+		when(intents.create(any(PaymentIntentCreateParams.class), any(RequestOptions.class)))
+				.thenThrow(new ApiConnectionException("simulated read timeout"))
+				.thenReturn(created);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentOutcome outcome = gateway.initiate(new BookingRef(42L), new Money(4500L, "EUR"));
+
+		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
+				"a recovered PaymentIntent yields Pending — the booking still confirms only on the webhook");
+		assertEquals("pi_recovered_secret", pending.clientSecret());
+		assertEquals("pi_recovered", pending.paymentIntentId());
+
+		// Replayed exactly once, with the SAME idempotency key so Stripe returns the original PI
+		// (one PaymentIntent per booking — never a second, no double-charge).
+		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+		verify(intents, times(2)).create(any(PaymentIntentCreateParams.class), options.capture());
+		options.getAllValues().forEach(o -> assertEquals("booking-42-pi", o.getIdempotencyKey(),
+				"both attempts carry the booking-derived idempotency key (issue #66 recovery, invariant #8)"));
+
+		// The recovered intent is now recorded — never left orphaned-and-untracked at Stripe.
+		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_recovered", 4500L, "EUR"));
+	}
+
+	@Test
+	void failsWhenBothCreateAttemptsTimeOut() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+
+		// Both the first call and the idempotent replay time out — the documented residual.
+		when(intents.create(any(PaymentIntentCreateParams.class), any(RequestOptions.class)))
+				.thenThrow(new ApiConnectionException("timeout 1"))
+				.thenThrow(new ApiConnectionException("timeout 2"));
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
+
+		assertInstanceOf(PaymentOutcome.Failed.class, outcome,
+				"a double timeout falls through to Failed — Stripe auto-expires the unconfirmed PI (no charge)");
+		// Exactly one replay (two attempts total), and nothing registered on the double failure.
+		verify(intents, times(2)).create(any(PaymentIntentCreateParams.class), any(RequestOptions.class));
+		verify(payments, never()).register(any());
 	}
 
 	@Test
