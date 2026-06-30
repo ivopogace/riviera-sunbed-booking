@@ -1,0 +1,301 @@
+/* U8 staff daily view. Reuses the U1 beach-map tokens (venue-map.scss); colour pairs are mirrored
+   and AA-verified in staff-daily.contrast.spec.ts. Fonts are wired in index.html. */
+:host {
+  display: block;
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: #22302f;
+}
+
+.display-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.25rem;
+  line-height: 1.05;
+  margin: 0.25rem 0 0.15rem;
+}
+
+.location {
+  color: #54514b; /* AA on white */
+  margin: 0;
+}
+
+.hint {
+  color: #54514b; /* AA on white */
+}
+
+/* --- Sign-in --- */
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+}
+.field label {
+  font-weight: 700;
+  color: #22302f; /* AA on white */
+}
+.field input {
+  font: inherit;
+  color: #22302f;
+  background: #ffffff;
+  border: 1px solid #b9b4a9;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.primary {
+  align-self: flex-start;
+  background: #0e7a89;
+  color: #ffffff; /* white on dark teal — AA (mirrors the map banner) */
+  font: inherit;
+  font-weight: 700;
+  border: 0;
+  border-radius: 0.6rem;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+}
+.primary:focus-visible {
+  outline: 3px solid #0c6675;
+  outline-offset: 2px;
+}
+
+/* --- Daily view header --- */
+.daily-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.link {
+  background: none;
+  border: 0;
+  color: #0c6675; /* AA on white */
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  text-decoration: underline;
+}
+.link:focus-visible {
+  outline: 3px solid #0c6675;
+  outline-offset: 2px;
+}
+
+.date-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.2rem;
+}
+.date-label {
+  font-weight: 700;
+  color: #22302f;
+}
+.date-field input {
+  font: inherit;
+  color: #22302f;
+  background: #ffffff;
+  border: 1px solid #b9b4a9;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.availability {
+  margin: 0.4rem 0;
+  font-size: 1.05rem;
+}
+.availability strong {
+  color: #0e7a89; /* AA on white */
+}
+
+.notice {
+  margin: 0.4rem 0;
+  color: #875911; /* warm amber — AA on white (same token as premium text) */
+  font-weight: 700;
+}
+
+/* --- Map --- */
+.map {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #f6ecd6, #efe0c2);
+  padding: 0 0.85rem 0.85rem;
+  border: 1px solid #e8e1d2;
+}
+.sea-banner,
+.promenade {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: #ffffff;
+  background: linear-gradient(180deg, #0e7a89, #0c6675);
+  margin: 0 -0.85rem 0.85rem;
+  padding: 0.6rem;
+  border-radius: 1rem 1rem 0 0;
+}
+.promenade {
+  background: none;
+  color: #6f5f2c; /* AA on the sandy map background */
+  margin: 0.85rem -0.85rem 0;
+  border-radius: 0;
+}
+.map-row {
+  margin-bottom: 0.85rem;
+}
+.row-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #6f5f2c; /* AA on the sandy map background */
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.set-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.45rem;
+}
+.set-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid #bfe3df;
+  background: #ffffff;
+  color: #0f7d8c; /* free (default) — AA on white */
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0;
+}
+.set-tile.premium {
+  background: #fbf1d9;
+  border-color: #e6c483;
+  color: #875911; /* AA on cream */
+}
+/* State classes win over premium so the tested colour pair is deterministic. */
+.set-tile.marked {
+  background: #e7f5ec;
+  border: 1.5px solid #8fcfa6;
+  color: #14622f; /* dark green — AA on the light-green marked background */
+}
+.set-tile.online {
+  background: #ece8e0;
+  border: 1.5px dashed #d2ccbf;
+  color: #696459; /* AA on the muted background */
+}
+.set-tile.pending {
+  opacity: 0.6;
+}
+
+.set-button,
+.set-static {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.set-button {
+  cursor: pointer;
+}
+.set-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+.set-button:disabled {
+  cursor: default;
+}
+.set-button:focus-visible {
+  outline: 3px solid #0f7d8c;
+  outline-offset: 2px;
+}
+
+.legend {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0;
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  color: #54514b; /* AA on white */
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.25rem;
+  border: 1.5px solid #bfe3df;
+  background: #fff;
+}
+.swatch.marked {
+  background: #e7f5ec;
+  border-color: #8fcfa6;
+}
+.swatch.online {
+  background: #ece8e0;
+  border: 1.5px dashed #d2ccbf;
+}
+
+/* --- Bookings table --- */
+.bookings {
+  margin-top: 1.6rem;
+}
+.bookings-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.5rem;
+  margin: 0 0 0.6rem;
+}
+.bookings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.bookings-table th,
+.bookings-table td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid #e8e1d2;
+  color: #22302f; /* AA on white */
+}
+.bookings-table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #54514b; /* AA on white */
+}
+.code {
+  font-family: 'SFMono-Regular', ui-monospace, monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #22302f;
+}
+.empty {
+  color: #54514b; /* AA on white */
+}
+
+.state {
+  text-align: center;
+  color: #54514b;
+  padding: 3rem 1rem;
+}

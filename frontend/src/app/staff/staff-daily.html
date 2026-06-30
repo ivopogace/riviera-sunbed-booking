@@ -1,0 +1,125 @@
+@if (!operator.signedIn()) {
+  <section class="signin mx-auto max-w-md px-5 py-8" aria-labelledby="signin-title">
+    <h1 id="signin-title" class="display-title">Staff daily view</h1>
+    <p class="hint">Sign in as the venue operator to see today’s bookings and mark walk-ins.</p>
+
+    <form class="signin-form" (submit)="$event.preventDefault(); onSignIn()">
+      <p class="field">
+        <label for="op-user">Operator</label>
+        <input id="op-user" name="username" autocomplete="username"
+          [value]="username()" (input)="username.set($any($event.target).value)" />
+      </p>
+      <p class="field">
+        <label for="op-pass">Password</label>
+        <input id="op-pass" name="password" type="password" autocomplete="current-password"
+          [value]="password()" (input)="password.set($any($event.target).value)" />
+      </p>
+      <button type="submit" class="primary">Sign in</button>
+    </form>
+
+    @if (notice(); as msg) {
+      <p class="notice" role="status" aria-live="polite">{{ msg }}</p>
+    }
+  </section>
+} @else if (failed()) {
+  <p class="state" role="alert">Sorry — we couldn’t load this venue. Please try again.</p>
+} @else if (venue(); as v) {
+  <article class="daily mx-auto max-w-3xl px-5 py-6" aria-labelledby="daily-title">
+    <header class="daily-head">
+      <div>
+        <h1 id="daily-title" class="display-title">{{ v.name }}</h1>
+        <p class="location">{{ v.beach }} · {{ v.region }}</p>
+      </div>
+      <button type="button" class="link" (click)="onSignOut()">Sign out</button>
+    </header>
+
+    <p class="date-field">
+      <label class="date-label" for="daily-date">Date</label>
+      <input id="daily-date" type="date" data-testid="daily-date"
+        [value]="selectedDate()" (change)="onDateChange($event)" />
+    </p>
+
+    <p class="availability" data-testid="availability" aria-live="polite">
+      <strong>{{ markedCount() }}</strong> walk-in marked ·
+      <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free on {{ dateLabel() }}
+    </p>
+
+    @if (notice(); as msg) {
+      <p class="notice" role="status" aria-live="polite" data-testid="notice">{{ msg }}</p>
+    }
+
+    <section class="map" aria-label="Beach map — {{ v.name }}">
+      <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
+
+      @for (row of rows(); track row.label) {
+        <div class="map-row">
+          <div class="row-head">
+            <span class="row-label">{{ row.label }}</span>
+            <span class="row-price">{{ money(row.sets[0].price) }} / set</span>
+          </div>
+          <ul class="set-grid">
+            @for (set of row.sets; track set.id) {
+              <li
+                class="set-tile"
+                data-testid="set-tile"
+                [class.premium]="set.tier === 'PREMIUM'"
+                [class.free]="stateOf(set) === 'FREE'"
+                [class.marked]="stateOf(set) === 'STAFF_MARKED'"
+                [class.online]="stateOf(set) === 'BOOKED_ONLINE'"
+                [class.pending]="isPending(set)"
+                [attr.aria-label]="isActionable(set) ? null : tileLabel(set)"
+              >
+                @if (isActionable(set)) {
+                  <button
+                    type="button"
+                    class="set-button"
+                    [attr.data-set-id]="set.id"
+                    [attr.data-state]="stateOf(set)"
+                    [attr.aria-label]="tileLabel(set)"
+                    [disabled]="isPending(set)"
+                    (click)="onTile(set)"
+                  >
+                    <span aria-hidden="true">{{ stateOf(set) === 'STAFF_MARKED' ? '✓' : money(set.price) }}</span>
+                  </button>
+                } @else {
+                  <span class="set-static" aria-hidden="true">●</span>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      <p class="promenade"><span aria-hidden="true">▼</span> Promenade · Entrance</p>
+    </section>
+
+    <ul class="legend" aria-label="Legend">
+      <li><span class="swatch free" aria-hidden="true"></span> Free (tap to mark)</li>
+      <li><span class="swatch marked" aria-hidden="true"></span> Walk-in marked</li>
+      <li><span class="swatch online" aria-hidden="true"></span> Booked online</li>
+    </ul>
+
+    <section class="bookings" aria-labelledby="bookings-title">
+      <h2 id="bookings-title" class="bookings-title">Today’s bookings</h2>
+      @if (bookingRows().length) {
+        <table class="bookings-table">
+          <thead>
+            <tr><th scope="col">Set</th><th scope="col">Booking code</th></tr>
+          </thead>
+          <tbody>
+            @for (b of bookingRows(); track b.setId) {
+              <tr data-testid="booking-row">
+                <td>{{ b.label }}</td>
+                <td><code class="code">{{ b.code }}</code></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="empty" data-testid="bookings-empty">No online bookings for {{ dateLabel() }}.</p>
+      }
+    </section>
+  </article>
+} @else {
+  <p class="state" aria-live="polite">Loading the daily view…</p>
+}

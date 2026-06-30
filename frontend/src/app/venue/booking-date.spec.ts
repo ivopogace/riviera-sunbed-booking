@@ -1,4 +1,4 @@
-import { defaultBookingDate } from './booking-date';
+import { defaultBookingDate, todayBookingDate } from './booking-date';
 
 /**
  * Pins the map/dialog default date (issue #44): tomorrow in Europe/Tirane, as ISO YYYY-MM-DD,
@@ -23,5 +23,21 @@ describe('defaultBookingDate', () => {
     // 23:30 UTC on 2026-06-29 is already 01:30 on 2026-06-30 in Tirane (UTC+2 in summer),
     // so "tomorrow in Tirane" is 2026-07-01 — a naive UTC reading would wrongly give 2026-06-30.
     expect(defaultBookingDate(new Date('2026-06-29T23:30:00Z'))).toBe('2026-07-01');
+  });
+});
+
+/**
+ * Pins the U8 staff daily-view default date: TODAY in Europe/Tirane, as ISO YYYY-MM-DD, computed
+ * purely from an injected `now`. The civil-day boundary is the late-evening case where a naive UTC
+ * reading would show the wrong day.
+ */
+describe('todayBookingDate', () => {
+  it('returns the current civil day in Europe/Tirane', () => {
+    expect(todayBookingDate(new Date('2026-06-30T12:00:00Z'))).toBe('2026-06-30');
+  });
+
+  it('uses the Tirane civil day, not UTC, late in the evening', () => {
+    // 23:30 UTC on 2026-06-30 is already 01:30 on 2026-07-01 in Tirane (UTC+2 in summer).
+    expect(todayBookingDate(new Date('2026-06-30T23:30:00Z'))).toBe('2026-07-01');
   });
 });

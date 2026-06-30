@@ -196,11 +196,11 @@ signals; tile state announced via accessible name (WCAG AA). Money via `formatMo
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — availability staff mark/release (port, service, ITs) | | |
-| 1 — availability staff REST adapter + security gate | | |
-| 2 — booking today's-bookings read (port, JDBC, controller) | | |
-| 3 — frontend daily view (service, component, a11y, e2e) | | |
-| 4 — CI green + review gate | | |
+| 0 — availability staff mark/release (port, service, ITs) | ✅ | backend commit |
+| 1 — availability staff REST adapter + security gate | ✅ | backend commit |
+| 2 — booking today's-bookings read (port, JDBC, controller) | ✅ | backend commit |
+| 3 — frontend daily view (service, component, a11y, e2e) | ✅ | frontend commit |
+| 4 — CI green + review gate | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
