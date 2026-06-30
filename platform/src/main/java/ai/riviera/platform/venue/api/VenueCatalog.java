@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.api;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -23,6 +24,22 @@ public interface VenueCatalog {
 	 *             {@code Europe/Tirane} (invariant #6)
 	 */
 	Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date);
+
+	/**
+	 * The venues matching {@code filter}, as discovery summaries, for the tourist browse screen
+	 * (issue #61, design §4.1 steps 1–2). Each summary carries the venue's "from" price (cheapest
+	 * set, integer minor units, invariant #5) and its free/total set count for {@code date},
+	 * sourced per-{@code (set, date)} from the authoritative availability table (invariant #2) —
+	 * the same overlay {@link #findVenueMap} uses, so the count never disagrees with the map.
+	 *
+	 * <p>Results are ordered <strong>rating descending, then name ascending</strong> (best first,
+	 * stable tie-break). A filter matching nothing yields an empty list, never {@code null}.
+	 *
+	 * @param filter the optional beach/region narrowing ({@link VenueFilter#of}); both-null lists all
+	 * @param date   the calendar day to count availability for, a {@code LocalDate} in
+	 *               {@code Europe/Tirane} (invariant #6)
+	 */
+	List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date);
 
 	/**
 	 * The pool token ({@code "ONLINE"} or {@code "WALK_IN"}) of the given set, or empty if no

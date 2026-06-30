@@ -37,3 +37,29 @@ export interface VenueMapView {
   readonly fromPrice: MoneyView | null;
   readonly sets: readonly SetView[];
 }
+
+/**
+ * A venue's set availability on a chosen day, as a count (mirrors the backend
+ * `AvailabilitySummary`): `free` of `total` sets are not yet taken for the date.
+ */
+export interface AvailabilitySummary {
+  readonly free: number;
+  readonly total: number;
+}
+
+/**
+ * Typed view of the discovery list API (`GET /api/venues`, issue #61). Mirrors the backend
+ * `VenueSummaryView` exactly — money as integer minor units + currency (invariant #5), rating as
+ * tenths (no float on the wire). `fromPrice` is `null` for a venue with no sets.
+ */
+export interface VenueSummary {
+  readonly id: number;
+  readonly name: string;
+  readonly beach: string;
+  readonly region: string;
+  readonly ratingTenths: number;
+  readonly reviewsCount: number;
+  readonly bookingMode: BookingMode;
+  readonly fromPrice: MoneyView | null;
+  readonly availability: AvailabilitySummary;
+}

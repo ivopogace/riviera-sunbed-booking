@@ -1,18 +1,91 @@
-<section class="mx-auto max-w-3xl px-6 py-16 text-center">
-  <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-    Riviera — coming soon
-  </h1>
-  <p class="mt-4 text-base text-slate-600">
-    Pre-book your sunbed on the Albanian riviera. The booking experience is on its way.
-  </p>
-  <a
-    routerLink="/venues/1"
-    data-testid="demo-venue-link"
-    class="mt-8 inline-block rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
-  >
-    View demo venue
-  </a>
-  <p class="mt-8 text-sm text-slate-500" data-testid="backend-status">
-    Backend status: <span class="font-medium">{{ backendStatus() }}</span>
-  </p>
+<section class="discover mx-auto max-w-5xl px-5 py-8" aria-labelledby="discover-title">
+  <h1 id="discover-title" class="page-title">Find your spot on the Riviera</h1>
+  <p class="page-intro">Pick a beach and a date, then choose your sunbed set from the venue’s map.</p>
+
+  <form class="filters" (submit)="$event.preventDefault()">
+    <p class="field">
+      <label class="field-label" for="filter-beach">Beach</label>
+      <select id="filter-beach" data-testid="filter-beach" [value]="beach()" (change)="onBeachChange($event)">
+        <option value="">All beaches</option>
+        @for (b of beaches(); track b) {
+          <option [value]="b">{{ b }}</option>
+        }
+      </select>
+    </p>
+
+    <p class="field">
+      <label class="field-label" for="filter-region">Region</label>
+      <select id="filter-region" data-testid="filter-region" [value]="region()" (change)="onRegionChange($event)">
+        <option value="">All regions</option>
+        @for (r of regions(); track r) {
+          <option [value]="r">{{ r }}</option>
+        }
+      </select>
+    </p>
+
+    <p class="field">
+      <label class="field-label" for="filter-date">Date</label>
+      <input
+        id="filter-date"
+        type="date"
+        data-testid="filter-date"
+        [value]="selectedDate()"
+        (change)="onDateChange($event)"
+      />
+    </p>
+  </form>
+
+  @if (failed()) {
+    <p class="state" role="alert" data-testid="error">
+      Sorry — we couldn’t load venues right now. Please try again.
+    </p>
+  } @else if (venues(); as list) {
+    @if (isEmpty()) {
+      <p class="state" data-testid="empty" aria-live="polite">
+        No venues match these filters for {{ dateLabel() }}. Try another beach, region, or date.
+      </p>
+    } @else {
+      <!-- aria-live: changing a filter swaps the grid silently, so announce the new count to AT. -->
+      <p class="results" data-testid="results" aria-live="polite">
+        <strong>{{ list.length }}</strong> {{ list.length === 1 ? 'venue' : 'venues' }} on {{ dateLabel() }}
+      </p>
+      <ul class="venue-grid">
+        @for (venue of list; track venue.id) {
+          <li>
+            <a
+              class="card"
+              data-testid="venue-card"
+              [routerLink]="['/venues', venue.id]"
+              [attr.aria-label]="cardLabel(venue)"
+            >
+              <!-- The <a> carries the full accessible name via aria-label, so its visible content
+                   is decorative to AT — every inner span is aria-hidden. -->
+              <span class="mode-pill" aria-hidden="true">{{ bookingModeLabel(venue.bookingMode) }}</span>
+              <span class="card-name" aria-hidden="true">{{ venue.name }}</span>
+              <span class="card-location" aria-hidden="true">{{ venue.beach }} · {{ venue.region }}</span>
+
+              <span class="card-meta" aria-hidden="true">
+                <span class="star">★</span>
+                <span class="rating">{{ rating(venue) }}</span>
+                <span class="dot">·</span> {{ venue.reviewsCount }} reviews
+              </span>
+
+              <span class="card-footer" aria-hidden="true">
+                @if (venue.fromPrice; as from) {
+                  <span class="price">from <strong>{{ money(from) }}</strong> / set</span>
+                } @else {
+                  <span class="price">No sets yet</span>
+                }
+                <span class="availability" data-testid="card-availability">
+                  <strong>{{ venue.availability.free }}</strong> of {{ venue.availability.total }} free
+                </span>
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <p class="state" data-testid="loading" aria-live="polite">Loading venues…</p>
+  }
 </section>
