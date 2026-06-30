@@ -34,8 +34,9 @@ async function createVenue(page: Page, name: string): Promise<number> {
   await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
   await page.getByRole('button', { name: 'Create venue' }).click();
 
-  // The real 201 flips the editor to Step 2 with a "Venue #{id} created" status — capture the id.
-  const created = page.getByText(/Venue #\d+ created/);
+  // The real 201 flips the editor to Step 2 with a "Venue #{id} created" status — capture the id
+  // from the status test-id (sturdier than scraping page prose).
+  const created = page.getByTestId('venue-created');
   await expect(created).toBeVisible();
   const id = Number((await created.textContent())?.match(/#(\d+)/)?.[1]);
   expect(Number.isInteger(id)).toBe(true);
@@ -108,14 +109,14 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
 
     await expect(page.getByRole('alert')).toContainText('sign-in was rejected');
     // The 401 left us on the create step — no venue was created.
-    await expect(page.getByText(/Venue #\d+ created/)).toHaveCount(0);
+    await expect(page.getByTestId('venue-created')).toHaveCount(0);
   });
 
   test('creates a venue (real 201) and reads it back through the public API', async ({ page }) => {
     await signIn(page);
     const id = await createVenue(page, venueName('create'));
 
-    await expect(page.getByText(`Venue #${id} created`)).toBeVisible();
+    await expect(page.getByTestId('venue-created')).toContainText(`#${id}`);
     // The empty layout is the read-back of a just-created, set-less venue.
     await expect(page.getByRole('heading', { name: /Layout \(0\)/ })).toBeVisible();
     await expect(page.getByText('No sets yet. Add one above.')).toBeVisible();
@@ -147,13 +148,16 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
     });
 
     await expect(page.getByRole('heading', { name: /Layout \(2\)/ })).toBeVisible();
-    // setLabel() is built from the re-read SetView — assert the persisted fields, incl. the cell.
-    await expect(
-      page.getByText(/Front row · Sea view position 1, premium, online pool, .*, cell 1×1/),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/Back row position 1, standard, walk-in pool, .*, cell 1×2/),
-    ).toBeVisible();
+    // setLabel() is built from the re-read SetView — scope to each row's test-id, then assert the
+    // persisted fields (tier/pool + cell) as focused substrings rather than one brittle whole-name regex.
+    const frontRow = page
+      .getByTestId('layout-row')
+      .filter({ hasText: 'Front row · Sea view position 1' });
+    await expect(frontRow).toContainText('premium, online pool');
+    await expect(frontRow).toContainText('cell 1×1');
+    const backRow = page.getByTestId('layout-row').filter({ hasText: 'Back row position 1' });
+    await expect(backRow).toContainText('standard, walk-in pool');
+    await expect(backRow).toContainText('cell 1×2');
   });
 
   test('moves a set between pools (real PATCH) and reads back the new pool', async ({ page }) => {
