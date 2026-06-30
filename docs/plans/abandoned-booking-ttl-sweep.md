@@ -271,8 +271,8 @@ would add more staleness risk than the rare wasted call is worth.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..5:** `./gradlew test --tests "*AbandonedBookingSweepIT*"` → PASS.
-- [ ] **AC-6:** `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*"` → PASS; `./gradlew build` green.
+- [x] **AC-1..5:** `./gradlew test --tests "*AbandonedBookingSweepIT*"` → PASS (5/5). Verified at `6ac5a44`.
+- [x] **AC-6:** `ModularityTests` + `JdbcOnlyArchitectureTests` PASS; `./gradlew build` green; CI run #303 Backend ✅ Frontend ✅ (Sonar gated to PR/main — runs at PR time).
 
 ## Self-review checklist (before merge / PR)
 
