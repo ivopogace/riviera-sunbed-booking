@@ -36,6 +36,13 @@ class JdbcVenueCatalog implements VenueCatalog {
 	private static final String AVAILABILITY_FREE = "FREE";
 	private static final String AVAILABILITY_TAKEN = "TAKEN";
 
+	// Column / bind-parameter names shared across the read queries below (named so the same SQL
+	// identifier is written once — invariant-style "name your literals", and silences Sonar S1192).
+	private static final String COL_BEACH = "beach";
+	private static final String COL_REGION = "region";
+	private static final String COL_PRICE_MINOR = "price_minor";
+	private static final String COL_PRICE_CURRENCY = "price_currency";
+
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
 
@@ -53,8 +60,8 @@ class JdbcVenueCatalog implements VenueCatalog {
 				""")
 				.param("id", id.value())
 				.query((rs, rowNum) -> new VenueRow(
-						rs.getLong("id"), rs.getString("name"), rs.getString("beach"),
-						rs.getString("region"), rs.getString("description"),
+						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
+						rs.getString(COL_REGION), rs.getString("description"),
 						rs.getInt("rating_tenths"), rs.getInt("reviews_count"),
 						rs.getString("booking_mode")))
 				.optional();
@@ -77,7 +84,7 @@ class JdbcVenueCatalog implements VenueCatalog {
 				.query((rs, rowNum) -> new SetRow(
 						rs.getLong("id"), rs.getString("row_label"), rs.getInt("position_no"),
 						rs.getString("tier"), rs.getString("pool"),
-						new MoneyView(rs.getLong("price_minor"), rs.getString("price_currency")),
+						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 						rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.list();
 
@@ -110,11 +117,11 @@ class JdbcVenueCatalog implements VenueCatalog {
 				  AND (CAST(:region AS TEXT) IS NULL OR region = :region)
 				ORDER BY rating_tenths DESC, name ASC
 				""")
-				.param("beach", filter.beach())
-				.param("region", filter.region())
+				.param(COL_BEACH, filter.beach())
+				.param(COL_REGION, filter.region())
 				.query((rs, rowNum) -> new SummaryRow(
-						rs.getLong("id"), rs.getString("name"), rs.getString("beach"),
-						rs.getString("region"), rs.getInt("rating_tenths"),
+						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
+						rs.getString(COL_REGION), rs.getInt("rating_tenths"),
 						rs.getInt("reviews_count"), rs.getString("booking_mode")))
 				.list();
 
@@ -133,7 +140,7 @@ class JdbcVenueCatalog implements VenueCatalog {
 				.param("venueIds", venueIds)
 				.query((rs, rowNum) -> new SetPriceRow(
 						rs.getLong("id"), rs.getLong("venue_id"),
-						rs.getLong("price_minor"), rs.getString("price_currency")))
+						rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)))
 				.list();
 
 		// One availability read for ALL sets across all matched venues (reuses the U2 source of
@@ -202,7 +209,7 @@ class JdbcVenueCatalog implements VenueCatalog {
 						new SetId(rs.getLong("set_id")), new VenueId(rs.getLong("venue_id")),
 						rs.getString("venue_name"), rs.getString("row_label"),
 						rs.getInt("position_no"), rs.getString("pool"),
-						new MoneyView(rs.getLong("price_minor"), rs.getString("price_currency")),
+						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 						rs.getObject("booking_cutoff", java.time.LocalTime.class)))
 				.optional();
 	}
