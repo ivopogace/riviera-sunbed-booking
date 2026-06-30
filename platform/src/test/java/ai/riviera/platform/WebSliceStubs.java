@@ -20,7 +20,13 @@ import ai.riviera.platform.booking.application.in.CancelBooking;
 import ai.riviera.platform.booking.application.in.CancelOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
 import ai.riviera.platform.booking.application.in.ListDailyBookings;
+import ai.riviera.platform.booking.application.in.RefundForWeather;
 import ai.riviera.platform.booking.application.in.ViewBooking;
+import ai.riviera.platform.booking.application.in.WeatherRefundOutcome;
+import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
+import ai.riviera.platform.payout.application.in.PayoutReport;
+import ai.riviera.platform.payout.application.in.VenueLedger;
+import ai.riviera.platform.payout.application.in.ViewPayoutLedger;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.application.out.NewPayment;
 import ai.riviera.platform.payment.application.out.Payments;
@@ -84,6 +90,39 @@ class WebSliceStubs {
 	@Bean
 	ListDailyBookings listDailyBookings() {
 		return (venueId, date) -> List.of();
+	}
+
+	@Bean
+	RefundForWeather refundForWeather() {
+		return (venueId, date) -> new WeatherRefundOutcome(0, 0, "EUR");
+	}
+
+	@Bean
+	ViewPayoutLedger viewPayoutLedger() {
+		return venueId -> new VenueLedger(venueId, "EUR", 0, List.of());
+	}
+
+	@Bean
+	PayoutReport payoutReport() {
+		return new PayoutReport() {
+			@Override
+			public List<ai.riviera.platform.payout.domain.PayoutBatch> generate(
+					ai.riviera.platform.payout.domain.PeriodKey period) {
+				return List.of();
+			}
+
+			@Override
+			public List<ai.riviera.platform.payout.domain.PayoutBatch> forPeriod(
+					ai.riviera.platform.payout.domain.PeriodKey period) {
+				return List.of();
+			}
+
+			@Override
+			public BatchStatusOutcome mark(long batchId,
+					ai.riviera.platform.payout.domain.BatchStatus target) {
+				return new BatchStatusOutcome.NotFound();
+			}
+		};
 	}
 
 	@Bean

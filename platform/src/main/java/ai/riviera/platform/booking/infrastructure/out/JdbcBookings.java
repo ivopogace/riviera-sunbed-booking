@@ -17,6 +17,7 @@ import ai.riviera.platform.booking.application.out.CancelledBooking;
 import ai.riviera.platform.booking.application.out.ClaimRef;
 import ai.riviera.platform.booking.application.out.ConfirmedBooking;
 import ai.riviera.platform.booking.application.out.NewBooking;
+import ai.riviera.platform.booking.application.out.RefundableBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
@@ -34,6 +35,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_STATUS = "status";
 	private static final String PARAM_AWAITING = "awaiting";
 	private static final String PARAM_CONFIRMED = "confirmed";
+	private static final String PARAM_VENUE = "venue";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -62,7 +64,7 @@ class JdbcBookings implements Bookings {
 				RETURNING id
 				""")
 				.param("code", b.code())
-				.param("venue", b.venueId().value())
+				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
 				.param("date", b.bookingDate())
@@ -140,19 +142,21 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor) {
+			long refundMinor, ai.riviera.platform.booking.api.RefundReason reason) {
 		// Guarded CONFIRMED -> CANCELLED. RETURNING yields the facts only on a real transition, so a
 		// double-cancel (already CANCELLED) is a 0-row empty no-op — the caller then releases the set,
-		// refunds, and publishes BookingCancelled exactly once.
+		// refunds, and publishes BookingCancelled exactly once. The reason (POLICY/WEATHER, U9) is the
+		// audit of why the cancellation happened (invariant #10).
 		return jdbc.sql("""
 				UPDATE booking
-				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund
+				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
 				WHERE id = :id AND status = :confirmed
 				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("at", java.sql.Timestamp.from(cancelledAt))
 				.param("refund", refundMinor)
+				.param("reason", reason.name())
 				.param("id", bookingId)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new CancelledBooking(
@@ -174,11 +178,30 @@ class JdbcBookings implements Bookings {
 				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
 				ORDER BY set_id
 				""")
-				.param("venue", venueId.value())
+				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new DailyBooking(
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code")))
+				.list();
+	}
+
+	@Override
+	public List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date) {
+		// Admin weather refund (U9): a venue's CONFIRMED bookings for one washed-out day, id + amount.
+		// Served by booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's
+		// rows. The amount is the FULL refund the caller stamps via the guarded cancelConfirmed.
+		return jdbc.sql("""
+				SELECT id, amount_minor
+				FROM booking
+				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				ORDER BY id
+				""")
+				.param(PARAM_VENUE, venueId.value())
+				.param("date", date)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.query((rs, rowNum) -> new RefundableBooking(
+						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR)))
 				.list();
 	}
 

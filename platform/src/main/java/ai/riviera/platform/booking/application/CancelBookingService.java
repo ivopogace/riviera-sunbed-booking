@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.api.BookingCancelled;
 import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.api.RefundReason;
 import ai.riviera.platform.booking.application.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.in.CancelBooking;
 import ai.riviera.platform.booking.application.in.CancelOutcome;
@@ -69,8 +70,8 @@ class CancelBookingService implements CancelBooking {
 		RefundQuote quote = cancellationPolicy.quote(booking);
 		long refundMinor = quote.refundMinor();
 
-		Optional<CancelledBooking> transitioned =
-				bookings.cancelConfirmed(booking.id(), clock.instant(), refundMinor);
+		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
+				booking.id(), clock.instant(), refundMinor, RefundReason.POLICY);
 		if (transitioned.isEmpty()) {
 			// Lost a concurrent cancel race — the other cancel already released and published.
 			return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
@@ -83,7 +84,8 @@ class CancelBookingService implements CancelBooking {
 		// Announce the cancellation. After commit: BookingRefundListener issues the refund (booking
 		// module) and the payout listener reverses the accrual proportionally (invariant #9).
 		events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
-				cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency()));
+				cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
+				RefundReason.POLICY));
 		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
 

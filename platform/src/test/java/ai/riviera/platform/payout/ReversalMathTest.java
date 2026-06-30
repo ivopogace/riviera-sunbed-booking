@@ -2,6 +2,7 @@ package ai.riviera.platform.payout;
 
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.booking.api.RefundReason;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.api.VenueId;
@@ -20,17 +21,19 @@ class ReversalMathTest {
 
 	@Test
 	void fullRefundReversesTheWholeAccrual() {
-		PayoutLedgerEntry reversal = PayoutLedgerEntry.reversalOf(ACCRUAL, 4500L);
+		PayoutLedgerEntry reversal = PayoutLedgerEntry.reversalOf(ACCRUAL, 4500L, RefundReason.POLICY);
 
 		assertEquals(EntryType.REVERSAL, reversal.entryType());
 		assertEquals(4500L, reversal.grossMinor());
 		assertEquals(675L, reversal.commissionMinor(), "full reversal mirrors the accrual commission");
 		assertEquals(3825L, reversal.netMinor(), "full reversal nets out the accrual");
+		assertEquals(RefundReason.POLICY, reversal.reason(), "the reversal records the refund reason");
 	}
 
 	@Test
 	void partialRefundReversesProportionally() {
-		PayoutLedgerEntry reversal = PayoutLedgerEntry.reversalOf(ACCRUAL, 2250L); // 50%
+		PayoutLedgerEntry reversal =
+				PayoutLedgerEntry.reversalOf(ACCRUAL, 2250L, RefundReason.WEATHER); // 50%
 
 		assertEquals(2250L, reversal.grossMinor());
 		// floorDiv(675 × 2250, 4500) = floorDiv(1_518_750, 4500) = 337 (337.5 → 337, rounds down)
@@ -41,7 +44,7 @@ class ReversalMathTest {
 	@Test
 	void positiveMagnitudesSatisfyTheLedgerInvariant() {
 		// net = gross - commission must hold (the canonical constructor enforces it, and the V9 CHECK).
-		PayoutLedgerEntry reversal = PayoutLedgerEntry.reversalOf(ACCRUAL, 1L);
+		PayoutLedgerEntry reversal = PayoutLedgerEntry.reversalOf(ACCRUAL, 1L, RefundReason.POLICY);
 		assertEquals(reversal.grossMinor() - reversal.commissionMinor(), reversal.netMinor());
 	}
 }

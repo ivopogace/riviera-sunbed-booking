@@ -1,13 +1,19 @@
 package ai.riviera.platform.payout.infrastructure.out;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.payout.application.out.LedgerEntryRow;
 import ai.riviera.platform.payout.application.out.PayoutLedger;
+import ai.riviera.platform.payout.application.out.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**
@@ -22,6 +28,10 @@ import ai.riviera.platform.venue.api.VenueId;
  */
 @Repository
 class JdbcPayoutLedger implements PayoutLedger {
+
+	// Result-column / param names reused across the row mappers (kept in lockstep with the SQL).
+	private static final String COL_NET_MINOR = "net_minor";
+	private static final String COL_CURRENCY = "currency";
 
 	private final JdbcClient jdbc;
 
@@ -51,17 +61,65 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.param("booking", bookingId)
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
 						new VenueId(rs.getLong("venue_id")), rs.getLong("booking_id"), EntryType.ACCRUAL,
-						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
-						rs.getString("currency")))
+						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
+						rs.getString(COL_CURRENCY), null))
 				.optional();
+	}
+
+	@Override
+	public List<LedgerEntryRow> entriesForVenue(VenueId venueId) {
+		// Per-venue ledger read (U9): all entries oldest-first; the caller folds the running net owed.
+		// Served by payout_ledger_venue_idx (V9). reason is NULL on ACCRUAL rows.
+		return jdbc.sql("""
+				SELECT entry_type, booking_id, gross_minor, commission_minor, net_minor, currency,
+				       reason, created_at
+				FROM payout_ledger_entry
+				WHERE venue_id = :venue
+				ORDER BY created_at, id
+				""")
+				.param("venue", venueId.value())
+				.query((rs, rowNum) -> {
+					String reasonToken = rs.getString("reason");
+					return new LedgerEntryRow(
+							EntryType.valueOf(rs.getString("entry_type")), rs.getLong("booking_id"),
+							rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
+							rs.getString(COL_CURRENCY),
+							reasonToken == null ? null : RefundReason.valueOf(reasonToken),
+							toInstant(rs.getTimestamp("created_at")));
+				})
+				.list();
+	}
+
+	private static Instant toInstant(java.sql.Timestamp ts) {
+		return ts == null ? null : ts.toInstant();
+	}
+
+	@Override
+	public List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period) {
+		// Signed net owed per venue for the period: ACCRUAL adds net, REVERSAL subtracts it (invariant
+		// #9). Served by payout_ledger_period_idx (V15). MAX(currency) is a single-value pick (EUR-only
+		// in v1, invariant #5). Total may be negative when a period's reversals exceed its accruals.
+		return jdbc.sql("""
+				SELECT venue_id,
+				       SUM(CASE WHEN entry_type = 'ACCRUAL' THEN net_minor ELSE -net_minor END) AS net_minor,
+				       MAX(currency) AS currency
+				FROM payout_ledger_entry
+				WHERE period_key = :period
+				GROUP BY venue_id
+				ORDER BY venue_id
+				""")
+				.param("period", period.value())
+				.query((rs, rowNum) -> new VenuePeriodTotal(
+						new VenueId(rs.getLong("venue_id")), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
+				.list();
 	}
 
 	/** Conflict-free insert shared by accrual and reversal — {@code ON CONFLICT (booking_id, entry_type)}. */
 	private void insertIdempotently(PayoutLedgerEntry entry) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
-				                                 commission_minor, net_minor, currency)
-				VALUES (:venue, :booking, :type, :gross, :commission, :net, :currency)
+				                                 commission_minor, net_minor, currency, reason)
+				VALUES (:venue, :booking, :type, :gross, :commission, :net, :currency, :reason)
 				ON CONFLICT (booking_id, entry_type) DO NOTHING
 				""")
 				.param("venue", entry.venueId().value())
@@ -70,7 +128,8 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.param("gross", entry.grossMinor())
 				.param("commission", entry.commissionMinor())
 				.param("net", entry.netMinor())
-				.param("currency", entry.currency())
+				.param(COL_CURRENCY, entry.currency())
+				.param("reason", entry.reason() == null ? null : entry.reason().name())
 				.update();
 	}
 }

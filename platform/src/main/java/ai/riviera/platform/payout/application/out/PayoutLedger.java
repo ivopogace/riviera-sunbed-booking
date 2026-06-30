@@ -1,8 +1,11 @@
 package ai.riviera.platform.payout.application.out;
 
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.payout.domain.PeriodKey;
+import ai.riviera.platform.venue.api.VenueId;
 
 /**
  * The {@code payout} module's outbound persistence port (driven seam) for the payout ledger.
@@ -34,4 +37,21 @@ public interface PayoutLedger {
 	 * {@code INSERT … ON CONFLICT DO NOTHING}.
 	 */
 	void reverse(PayoutLedgerEntry entry);
+
+	/**
+	 * Every ledger entry for {@code venueId} — accruals and reversals — ordered by {@code created_at}
+	 * then {@code id} (oldest first), for the per-venue ledger read (U9, issue #12). Read-only; the
+	 * running net owed is computed by the caller from this ordered list. Empty when the venue has no
+	 * entries yet.
+	 */
+	List<LedgerEntryRow> entriesForVenue(VenueId venueId);
+
+	/**
+	 * The signed net owed per venue for {@code period} — {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net)}
+	 * grouped by venue over the entries whose {@code period_key} matches (U9 BKT report, issue #12).
+	 * One {@link VenuePeriodTotal} per venue that has any entry in the period; a venue whose accruals
+	 * and reversals net to zero still appears (it had activity). Empty when no entry falls in the
+	 * period. Money is integer minor units (invariant #5); the total may be negative.
+	 */
+	List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period);
 }

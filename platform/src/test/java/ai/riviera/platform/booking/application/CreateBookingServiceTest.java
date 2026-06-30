@@ -160,12 +160,19 @@ class CreateBookingServiceTest {
 
 			@Override
 			public java.util.Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
-					long bookingId, java.time.Instant cancelledAt, long refundMinor) {
+					long bookingId, java.time.Instant cancelledAt, long refundMinor,
+					ai.riviera.platform.booking.api.RefundReason reason) {
 				return java.util.Optional.empty();
 			}
 
 			@Override
 			public List<ai.riviera.platform.booking.application.in.DailyBooking> findConfirmedForVenueOn(
+					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+				return List.of();
+			}
+
+			@Override
+			public List<ai.riviera.platform.booking.application.out.RefundableBooking> findConfirmedForWeatherRefund(
 					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
 				return List.of();
 			}
@@ -368,12 +375,19 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
-				long bookingId, Instant cancelledAt, long refundMinor) {
+				long bookingId, Instant cancelledAt, long refundMinor,
+				ai.riviera.platform.booking.api.RefundReason reason) {
 			return Optional.empty();
 		}
 
 		@Override
 		public List<ai.riviera.platform.booking.application.in.DailyBooking> findConfirmedForVenueOn(
+				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+			return List.of();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.out.RefundableBooking> findConfirmedForWeatherRefund(
 				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}

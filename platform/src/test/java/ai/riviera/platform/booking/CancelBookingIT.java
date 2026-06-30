@@ -89,6 +89,9 @@ class CancelBookingIT {
 				.param("id", booking.id()).query(String.class).single());
 		assertEquals(booking.amountMinor(), jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id")
 				.param("id", booking.id()).query(Long.class).single(), "refund is stamped on the booking");
+		assertEquals("POLICY", jdbc.sql("SELECT cancel_reason FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(String.class).single(),
+				"a tourist cancel records reason POLICY (U9)");
 		assertEquals(0, availabilityRows(booking.setId(), date), "cancel releases the (set, date)");
 
 		List<BookingCancelled> published = events.stream(BookingCancelled.class).toList();

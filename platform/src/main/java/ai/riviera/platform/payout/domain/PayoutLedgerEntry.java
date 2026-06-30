@@ -1,5 +1,6 @@
 package ai.riviera.platform.payout.domain;
 
+import ai.riviera.platform.booking.api.RefundReason;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**
@@ -9,10 +10,12 @@ import ai.riviera.platform.venue.api.VenueId;
  *
  * <p>Money is integer minor units + ISO currency (invariant #5); {@code net = gross − commission}.
  * The canonical constructor guards the amount invariants the DB also enforces (defence in depth) so
- * a malformed entry can never be constructed in the first place.
+ * a malformed entry can never be constructed in the first place. {@code reason} is {@code null} on an
+ * {@code ACCRUAL} and carries the {@link RefundReason} (POLICY/WEATHER) on a {@code REVERSAL} (U9) so
+ * the ledger stays auditable.
  */
 public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType,
-		long grossMinor, long commissionMinor, long netMinor, String currency) {
+		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason) {
 
 	private static final long BPS_DENOMINATOR = 10_000L;
 
@@ -39,7 +42,7 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 			int commissionBps, String currency) {
 		long commission = Math.floorDiv(grossMinor * commissionBps, BPS_DENOMINATOR);
 		return new PayoutLedgerEntry(venueId, bookingId, EntryType.ACCRUAL, grossMinor, commission,
-				grossMinor - commission, currency);
+				grossMinor - commission, currency, null);
 	}
 
 	/**
@@ -51,12 +54,14 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	 * the matching share. Stored as <strong>positive</strong> magnitudes (the V9 CHECK forbids
 	 * negatives); the sign is carried by {@link EntryType#REVERSAL} for the payout sum (invariant #9).
 	 * Rounds <strong>down</strong> like the accrual (invariant #5). Caller must not reverse a zero
-	 * refund (ADR-0005: no refund ⇒ no reversal).
+	 * refund (ADR-0005: no refund ⇒ no reversal). {@code reason} (POLICY/WEATHER, U9) is recorded on
+	 * the reversal for audit; it does not affect the arithmetic.
 	 */
-	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor) {
+	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor,
+			RefundReason reason) {
 		long commission = accrual.grossMinor() == 0 ? 0
 				: Math.floorDiv(accrual.commissionMinor() * refundMinor, accrual.grossMinor());
 		return new PayoutLedgerEntry(accrual.venueId(), accrual.bookingId(), EntryType.REVERSAL,
-				refundMinor, commission, refundMinor - commission, accrual.currency());
+				refundMinor, commission, refundMinor - commission, accrual.currency(), reason);
 	}
 }
