@@ -51,10 +51,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	private static final String RATE_LIMITED_BODY = "{\"error\":\"RATE_LIMITED\"}";
 
-	/** Mirrors the {@link SecurityConfig} matchers for the three public booking endpoints. */
+	// Mirrors the SecurityConfig matchers for the three public booking endpoints: CREATE_PATH is the
+	// exact create POST; VIEW_TEMPLATE the view-by-code GET; CANCEL_TEMPLATE the cancel POST.
 	private static final String CREATE_PATH = "/api/bookings";
-	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";          // GET {code}
-	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel"; // POST {code}/cancel
+	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
+	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String CODE_VAR = "code";
 
 	private final RateLimitProperties props;
