@@ -20,10 +20,15 @@ public record PeriodKey(String value) {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final Pattern FORMAT = Pattern.compile("\\d{4}-W\\d{2}");
+	private static final int MAX_ISO_WEEK = 53; // ISO long years have 53 weeks; 54+ and 00 never exist
 
 	public PeriodKey {
 		if (value == null || !FORMAT.matcher(value).matches()) {
 			throw new IllegalArgumentException("period must be ISO week 'IYYY-Www' (e.g. 2026-W27): " + value);
+		}
+		int week = Integer.parseInt(value.substring(value.indexOf('W') + 1));
+		if (week < 1 || week > MAX_ISO_WEEK) {
+			throw new IllegalArgumentException("ISO week must be 01..53: " + value);
 		}
 	}
 

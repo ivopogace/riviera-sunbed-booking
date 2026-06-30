@@ -29,6 +29,13 @@ class PeriodKeyTest {
 	}
 
 	@Test
+	void rejectsNonExistentIsoWeeks() {
+		assertThrows(IllegalArgumentException.class, () -> PeriodKey.of("2026-W00"), "week 00 never exists");
+		assertThrows(IllegalArgumentException.class, () -> PeriodKey.of("2026-W54"), "max ISO week is 53");
+		assertThrows(IllegalArgumentException.class, () -> PeriodKey.of("2026-W99"));
+	}
+
+	@Test
 	void formatsIsoWeek() {
 		// 2026-06-29 is a Monday — the first day of ISO week 2026-W27.
 		assertEquals("2026-W27", PeriodKey.ofDate(LocalDate.of(2026, 6, 29)).value());

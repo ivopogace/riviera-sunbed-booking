@@ -1,6 +1,9 @@
 package ai.riviera.platform.payout.application;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,12 +42,30 @@ class PayoutReportService implements PayoutReport {
 	@Override
 	@Transactional
 	public List<PayoutBatch> generate(PeriodKey period) {
+		Map<Long, PayoutBatch> existing = batches.forPeriod(period).stream()
+				.collect(Collectors.toMap(b -> b.venueId().value(), Function.identity()));
 		List<VenuePeriodTotal> totals = ledger.netTotalsForPeriod(period);
 		for (VenuePeriodTotal total : totals) {
+			warnIfFrozenAndStale(existing.get(total.venueId().value()), total, period);
 			batches.upsertDraft(total, period);
 		}
 		log.info("generated/refreshed {} payout batch(es) for period {}", totals.size(), period.value());
 		return batches.forPeriod(period);
+	}
+
+	/**
+	 * A batch already advanced past {@code DRAFT} is frozen — {@code upsertDraft} will not refresh it
+	 * (invariant #9). If later ledger activity has changed what the period nets, the operator gets no
+	 * signal from a no-op refresh, so warn explicitly: the reported/settled total now diverges from the
+	 * ledger and must be reconciled manually (plan R-5).
+	 */
+	private void warnIfFrozenAndStale(PayoutBatch existing, VenuePeriodTotal total, PeriodKey period) {
+		if (existing != null && existing.status() != BatchStatus.DRAFT
+				&& existing.totalNetMinor() != total.netMinor()) {
+			log.warn("payout batch for venue {} period {} is {} (frozen at {}) but the ledger now nets {}"
+					+ " — re-generation cannot refresh it; reconcile manually", total.venueId().value(),
+					period.value(), existing.status(), existing.totalNetMinor(), total.netMinor());
+		}
 	}
 
 	@Override

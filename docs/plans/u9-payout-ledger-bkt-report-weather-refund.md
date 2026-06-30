@@ -220,7 +220,8 @@ Money on the wire = integer minor units + ISO currency; dates = ISO `LocalDate`;
 | 0 — Cancellation reason through the spine (V14) | ✅ | b7ae0dd |
 | 1 — Admin weather refund (booking) | ✅ | 5372a20 |
 | 2 — Payout ledger read surface | ✅ | c0961ff |
-| 3 — PayoutBatch + weekly BKT report (V15) | ✅ | (this commit) |
+| 3 — PayoutBatch + weekly BKT report (V15) | ✅ | 9e25c9d |
+| Review-gate fixes (warn / PeriodKey / PATCH test) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -355,6 +356,29 @@ generate/list batches per ISO week and transition status.
 - [ ] **Step 6:** commit `[#12] PayoutBatch aggregate + weekly BKT report (period_key, V15)`; update status.
 
 ---
+
+## Review gate note (SDD)
+
+Ran the SDD Review gate (`riviera-review-overlay` + `/code-review origin/main...HEAD`, 4 finder
+angles). **No Blocker/correctness bugs.** Overlay items pass: JDBC-only, money in minor units,
+Europe/Tirane time, invariant #2 (set freed on weather refund), #9 (idempotent ledger/batch), #10
+(server-computed full refund), #11 (payout depends only on `booking::api`/`venue::api`; new controllers
+internal), #12 (V14/V15 forward migrations, constraints tested). RV-PROC-1 satisfied — *Skills consulted*
+covers every touched area.
+
+**Findings resolved through the loop (re-entered at Implement, `tdd`, CI re-run):**
+- *generate() missing stale-batch warning* (plan R-5) → `PayoutReportService.warnIfFrozenAndStale` warns
+  when a frozen REPORTED/SETTLED batch diverges from the ledger; pinned by
+  `PayoutBatchGenerationIT.lifecycleAdvancesAndFreezesReported` (log assertion).
+- *PeriodKey accepted non-existent ISO weeks* → validation tightened to weeks 01–53; pinned by
+  `PeriodKeyTest.rejectsNonExistentIsoWeeks`.
+- *PATCH batch-status path untested for auth* → `AdminPayoutSecurityIT.batchStatusPatchRequiresOperator`.
+
+**Accepted / deferred (documented):** negative per-period `total_net_minor` is intended (signed net,
+R-4, nets exactly-once across periods); `currency` single-value is safe under invariant #5 (EUR-only
+v1); `generate()` per-venue upsert loop is fine at v1 scale (5–15 venues); the `error()`-helper and
+nullable-`toInstant` duplications follow the existing repo convention (repo-wide refactor out of scope);
+`mark()` is a forward-only idempotent transition (no row lock needed in v1).
 
 ## Generalization-audit log
 

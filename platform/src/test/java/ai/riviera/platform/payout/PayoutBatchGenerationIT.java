@@ -9,6 +9,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
@@ -19,6 +23,7 @@ import ai.riviera.platform.payout.domain.PeriodKey;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * AC-2/AC-3/AC-7 (issue #12): the weekly BKT report generates one persisted {@link PayoutBatch} per
@@ -139,11 +144,25 @@ class PayoutBatchGenerationIT {
 		assertEquals(BatchStatus.REPORTED,
 				assertInstanceOf(BatchStatusOutcome.Marked.class, reported).batch().status());
 
-		// A reported batch is frozen against re-generation.
+		// A reported batch is frozen against re-generation — and re-generating after later ledger
+		// activity warns the operator that the frozen total now diverges (plan R-5).
 		accrual(venue, newBooking(venue, "BATCHLC2"), 1000L, period.value());
-		payoutReport.generate(period);
+		ch.qos.logback.classic.Logger reportLog = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory
+				.getLogger("ai.riviera.platform.payout.application.PayoutReportService");
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		reportLog.addAppender(appender);
+		try {
+			payoutReport.generate(period);
+		}
+		finally {
+			reportLog.detachAppender(appender);
+		}
 		assertEquals(4000L, batchFor(payoutReport.forPeriod(period), venue).totalNetMinor(),
 				"a REPORTED batch is not overwritten by a re-generate (frozen)");
+		assertTrue(appender.list.stream()
+						.anyMatch(e -> e.getLevel() == Level.WARN && e.getFormattedMessage().contains("frozen")),
+				"re-generating a stale frozen batch warns the operator to reconcile manually");
 
 		// REPORTED -> SETTLED
 		assertInstanceOf(BatchStatusOutcome.Marked.class, payoutReport.mark(batchId, BatchStatus.SETTLED));

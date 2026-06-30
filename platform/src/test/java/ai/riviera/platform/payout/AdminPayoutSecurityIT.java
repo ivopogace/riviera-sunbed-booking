@@ -10,8 +10,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
+import org.springframework.http.MediaType;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +63,15 @@ class AdminPayoutSecurityIT {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30")
 						.with(httpBasic(OPERATOR, PASSWORD)))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void batchStatusPatchRequiresOperator() throws Exception {
+		// The PATCH item path is a distinct matcher (PAYOUT_BATCH_ITEM_PATH); it advances a batch toward
+		// SETTLED, so it must also be operator-gated — unauthenticated is 401.
+		mvc.perform(patch("/api/admin/payout-batches/{id}", 1L)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"REPORTED\"}"))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
