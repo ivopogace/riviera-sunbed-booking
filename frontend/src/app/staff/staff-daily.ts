@@ -6,7 +6,7 @@ import { formatMoney } from '../shared/money';
 import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView, VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
-import { DailyBookingItem, StaffTileState } from './staff.model';
+import { DailyBookingItem, StaffMarkError, StaffReleaseError, StaffTileState } from './staff.model';
 import { StaffService, staffMarkErrorOf, staffReleaseErrorOf } from './staff.service';
 
 interface MapRow {
@@ -191,17 +191,7 @@ export class StaffDaily {
       next: () => this.reconcile(),
       error: (e) => {
         const reason = staffMarkErrorOf(e);
-        this.notice.set(
-          reason === 'ALREADY_TAKEN'
-            ? 'That set was just taken — the map has been refreshed.'
-            : reason === 'UNAUTHORIZED'
-              ? 'Your operator session has expired. Please sign in again.'
-              : 'Could not mark that set. The map has been refreshed.',
-        );
-        if (reason === 'UNAUTHORIZED') {
-          this.operator.signOut();
-        }
-        this.reconcile();
+        this.onWriteError(markFailureNotice(reason), reason === 'UNAUTHORIZED');
       },
     });
   }
@@ -212,19 +202,18 @@ export class StaffDaily {
       next: () => this.reconcile(),
       error: (e) => {
         const reason = staffReleaseErrorOf(e);
-        this.notice.set(
-          reason === 'NOT_MARKED'
-            ? 'That set was not a walk-in mark — the map has been refreshed.'
-            : reason === 'UNAUTHORIZED'
-              ? 'Your operator session has expired. Please sign in again.'
-              : 'Could not release that set. The map has been refreshed.',
-        );
-        if (reason === 'UNAUTHORIZED') {
-          this.operator.signOut();
-        }
-        this.reconcile();
+        this.onWriteError(releaseFailureNotice(reason), reason === 'UNAUTHORIZED');
       },
     });
+  }
+
+  /** Shared mark/release failure path: surface the notice, sign out on 401, and reconcile. */
+  private onWriteError(message: string, unauthorized: boolean): void {
+    this.notice.set(message);
+    if (unauthorized) {
+      this.operator.signOut();
+    }
+    this.reconcile();
   }
 
   /** Optimistically flip a tile and mark it pending. */
@@ -305,13 +294,45 @@ export class StaffDaily {
   /** Accessible name so tile state is not conveyed by colour alone (WCAG AA). */
   protected tileLabel(set: SetView): string {
     const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
-    const state = this.stateOf(set);
-    const action =
-      state === 'FREE'
-        ? 'free — tap to mark a walk-in'
-        : state === 'STAFF_MARKED'
-          ? 'walk-in marked — tap to release'
-          : 'booked online';
-    return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${action}`;
+    return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
+  }
+}
+
+/** The session-expired notice, shared by the mark and release failure paths. */
+const SESSION_EXPIRED = 'Your operator session has expired. Please sign in again.';
+
+/** Map a mark failure to its operator-facing notice (no nested ternaries). */
+function markFailureNotice(reason: StaffMarkError): string {
+  switch (reason) {
+    case 'ALREADY_TAKEN':
+      return 'That set was just taken — the map has been refreshed.';
+    case 'UNAUTHORIZED':
+      return SESSION_EXPIRED;
+    default:
+      return 'Could not mark that set. The map has been refreshed.';
+  }
+}
+
+/** Map a release failure to its operator-facing notice. */
+function releaseFailureNotice(reason: StaffReleaseError): string {
+  switch (reason) {
+    case 'NOT_MARKED':
+      return 'That set was not a walk-in mark — the map has been refreshed.';
+    case 'UNAUTHORIZED':
+      return SESSION_EXPIRED;
+    default:
+      return 'Could not release that set. The map has been refreshed.';
+  }
+}
+
+/** The accessibility action phrase for a tile's state. */
+function tileAction(state: StaffTileState): string {
+  switch (state) {
+    case 'FREE':
+      return 'free — tap to mark a walk-in';
+    case 'STAFF_MARKED':
+      return 'walk-in marked — tap to release';
+    default:
+      return 'booked online';
   }
 }

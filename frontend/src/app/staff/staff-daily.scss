@@ -114,6 +114,7 @@
 }
 
 .notice {
+  display: block; /* <output> is inline by default; render it as a block line like the others */
   margin: 0.4rem 0;
   color: #875911; /* warm amber — AA on white (same token as premium text) */
   font-weight: 700;

@@ -18,7 +18,7 @@
     </form>
 
     @if (notice(); as msg) {
-      <p class="notice" role="status" aria-live="polite">{{ msg }}</p>
+      <output class="notice" aria-live="polite">{{ msg }}</output>
     }
   </section>
 } @else if (failed()) {
@@ -45,7 +45,7 @@
     </p>
 
     @if (notice(); as msg) {
-      <p class="notice" role="status" aria-live="polite" data-testid="notice">{{ msg }}</p>
+      <output class="notice" aria-live="polite" data-testid="notice">{{ msg }}</output>
     }
 
     <section class="map" aria-label="Beach map — {{ v.name }}">
