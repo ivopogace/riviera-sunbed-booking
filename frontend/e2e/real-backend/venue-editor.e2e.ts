@@ -191,7 +191,8 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
       pool: 'ONLINE',
     });
 
-    // Same (gridX, gridY), different row/position → the V12 grid-cell UNIQUE fires → 409 CELL_TAKEN.
+    // Same (gridX, gridY), different row/position → the grid-cell uniqueness rule (the server's
+    // pre-check, backed by the V12 UNIQUE constraint) rejects it → 409 CELL_TAKEN.
     await fillSet(page, {
       rowLabel: 'Back row',
       positionNo: 2,
@@ -204,7 +205,8 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
     // The rejected add did not persist — still one row.
     await expect(page.getByTestId('layout-row')).toHaveCount(1);
 
-    // Same (rowLabel, positionNo) as the first set, different cell → V2 UNIQUE → 409 DUPLICATE_POSITION.
+    // Same (rowLabel, positionNo) as the first set, different cell → the (row_label, position_no)
+    // uniqueness rule (the server's pre-check, backed by the V2 UNIQUE constraint) → 409 DUPLICATE_POSITION.
     await fillSet(page, {
       rowLabel: 'Front row',
       positionNo: 1,
