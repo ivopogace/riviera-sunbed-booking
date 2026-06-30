@@ -13,10 +13,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.availability.application.in.MarkOutcome;
+import ai.riviera.platform.availability.application.in.ReleaseOutcome;
+import ai.riviera.platform.availability.application.in.StaffAvailability;
 import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.CancelBooking;
 import ai.riviera.platform.booking.application.in.CancelOutcome;
 import ai.riviera.platform.booking.application.in.CreateBooking;
+import ai.riviera.platform.booking.application.in.ListDailyBookings;
 import ai.riviera.platform.booking.application.in.ViewBooking;
 import ai.riviera.platform.payment.application.out.Payments;
 import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
@@ -107,6 +111,28 @@ class WebCorsConfigTest {
 		@Bean
 		ViewBooking viewBooking() {
 			return code -> Optional.empty();
+		}
+
+		/** {@code StaffBookingController}'s {@link ListDailyBookings} dependency (U8); never reached. */
+		@Bean
+		ListDailyBookings listDailyBookings() {
+			return (venueId, date) -> java.util.List.of();
+		}
+
+		/** {@code StaffAvailabilityController}'s {@link StaffAvailability} dependency (U8); never reached. */
+		@Bean
+		StaffAvailability staffAvailability() {
+			return new StaffAvailability() {
+				@Override
+				public MarkOutcome mark(SetId setId, LocalDate date) {
+					return MarkOutcome.NO_SUCH_SET;
+				}
+
+				@Override
+				public ReleaseOutcome release(SetId setId, LocalDate date) {
+					return ReleaseOutcome.NOT_MARKED;
+				}
+			};
 		}
 
 		/** {@code BookingController}'s {@link CancelBooking} dependency (U6); never reached on preflight. */
