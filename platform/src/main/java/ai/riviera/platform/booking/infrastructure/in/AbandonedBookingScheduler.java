@@ -38,8 +38,8 @@ class AbandonedBookingScheduler {
 		this.properties = properties;
 	}
 
-	@Scheduled(fixedDelayString = "${booking.awaiting-payment.sweep-interval}",
-			initialDelayString = "${booking.awaiting-payment.initial-delay}")
+	@Scheduled(fixedDelayString = "${booking.awaiting-payment.sweep-interval:PT5M}",
+			initialDelayString = "${booking.awaiting-payment.initial-delay:PT1M}")
 	void sweep() {
 		int expired = expireAbandonedBookings.sweep(properties.ttl());
 		if (expired > 0) {

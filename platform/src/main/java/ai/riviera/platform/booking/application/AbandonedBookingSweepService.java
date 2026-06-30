@@ -63,8 +63,18 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 		List<BookingId> stale = bookings.findExpirableAwaitingPayment(cutoff);
 		int expired = 0;
 		for (BookingId id : stale) {
-			if (expire(id)) {
-				expired++;
+			try {
+				if (expire(id)) {
+					expired++;
+				}
+			}
+			catch (RuntimeException ex) {
+				// Isolate each booking: a transient failure (e.g. a DataAccessException in the release
+				// transaction) must not abort the whole batch and starve the bookings ordered after it
+				// (the read is ORDER BY id). Logged with the cause and retried on the next run — the
+				// guarded transition makes the retry safe.
+				log.warn("sweep failed to expire booking {} — continuing, will retry next run",
+						id.value(), ex);
 			}
 		}
 		return expired;

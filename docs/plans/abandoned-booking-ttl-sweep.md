@@ -247,6 +247,28 @@ and the property defaults.
 
 ---
 
+## Review note (SDD Review gate)
+
+Ran the Review gate (`riviera-review-overlay` + `/code-review` on `main...HEAD`, high effort,
+8 finder angles). The two headline overlay checks passed: **RV-BE-1** (availability release goes
+only through the shared guarded `UPDATE … RETURNING` + `availability.api.release`, no new
+`set_availability` writer) and **RV-CT-3/RV-BE-7** (a `succeeded` PI yields `NotCancellable` and is
+left for the confirm webhook — webhook stays the source of truth, collect-only/no Connect). JDBC-only
+(#1), Modulith boundaries (#11), money/time (#5/#6) and booking-code-as-secret logging (#7) all clean.
+
+Findings fixed (re-entered Implement; skills already loaded — `riviera-modulith` +
+`riviera-java-conventions`):
+- **Resilience (Major):** `sweep()` now isolates each booking in a `try/catch (RuntimeException)` so a
+  transient DB error on one release can't abort the batch and starve later bookings.
+- **Dead config (Major):** dropped the unread `sweepInterval` component from `AbandonedPaymentProperties`
+  (record is now `{ttl}` only); the cadence stays as `@Scheduled` placeholder properties.
+- **Brittle placeholders (Minor):** added inline defaults to the `@Scheduled` placeholders
+  (`:PT5M` / `:PT1M`) so a missing key can't fail context startup.
+
+Accepted as-is: a PI in Stripe `processing` state is retried each run until it settles — self-healing
+(the webhook resolves it), v1 is card-based (synchronous), and enumerating Stripe's cancelable states
+would add more staleness risk than the rare wasted call is worth.
+
 ## Acceptance-criteria verification (final)
 
 - [ ] **AC-1..5:** `./gradlew test --tests "*AbandonedBookingSweepIT*"` → PASS.
