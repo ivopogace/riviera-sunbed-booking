@@ -26,6 +26,19 @@ class StripeConfig {
 	@Bean
 	@Profile("stripe")
 	StripeClient stripeClient(StripeProperties properties) {
-		return new StripeClient(properties.apiKey());
+		return clientBuilder(properties).build();
+	}
+
+	/**
+	 * The configured Stripe client builder — package-private so the timeout wiring is unit-testable
+	 * (the builder exposes {@code getConnectTimeout()}/{@code getReadTimeout()}). Sets explicit short
+	 * connect/read timeouts (issue #52, risk R-3) so a hung Stripe call fails fast instead of pinning
+	 * a request thread / pooled connection for the SDK's 30s/80s defaults.
+	 */
+	static StripeClient.StripeClientBuilder clientBuilder(StripeProperties properties) {
+		return StripeClient.builder()
+				.setApiKey(properties.apiKey())
+				.setConnectTimeout((int) properties.connectTimeout().toMillis())
+				.setReadTimeout((int) properties.readTimeout().toMillis());
 	}
 }
