@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.filter.CorsFilter;
 
 /**
  * Application-level security for the scaffold. The {@code spring-boot-starter-security}
@@ -36,7 +38,7 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(RivieraOperatorProperties.class)
+@EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class})
 class SecurityConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
@@ -51,9 +53,15 @@ class SecurityConfig {
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
+			Clock clock) throws Exception {
 		http
 				.cors(Customizer.withDefaults())
+				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56): runs
+				// just after CORS so a preflight is handled first (and is skipped by the filter anyway),
+				// and before authorization — the booking endpoints are permitAll, so the code IS the
+				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
+				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock), CorsFilter.class)
 				// Public guest checkout (U3): the booking POST is token-less and stateless (no
 				// session, no auth), so CSRF — which protects cookie/session-authenticated
 				// requests — does not apply. The matcher is the EXACT path "/api/bookings", so it

@@ -1,38 +1,11 @@
 package ai.riviera.platform;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-
-import ai.riviera.platform.availability.application.in.MarkOutcome;
-import ai.riviera.platform.availability.application.in.ReleaseOutcome;
-import ai.riviera.platform.availability.application.in.StaffAvailability;
-import ai.riviera.platform.booking.application.in.BookingOutcome;
-import ai.riviera.platform.booking.application.in.CancelBooking;
-import ai.riviera.platform.booking.application.in.CancelOutcome;
-import ai.riviera.platform.booking.application.in.CreateBooking;
-import ai.riviera.platform.booking.application.in.ListDailyBookings;
-import ai.riviera.platform.booking.application.in.ViewBooking;
-import ai.riviera.platform.payment.application.out.Payments;
-import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
-import ai.riviera.platform.payment.infrastructure.StripeProperties;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueCatalog;
-import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.application.in.AddSetOutcome;
-import ai.riviera.platform.venue.application.in.ChangeOutcome;
-import ai.riviera.platform.venue.application.in.EditBeachMap;
-import ai.riviera.platform.venue.application.in.OnboardVenue;
-import ai.riviera.platform.venue.application.in.SetRejection;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -42,193 +15,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Pins the CORS contract for the deployed frontend (invariant: FE↔BE works across
  * origins). A browser preflight from the configured Pages origin must be answered
  * with a matching {@code Access-Control-Allow-Origin}; an unknown origin must not be.
+ *
+ * <p>The web slice registers every {@code @RestController} but no {@code @Repository} beans, so the
+ * controllers' ports are supplied by the shared {@link WebSliceStubs}. These tests only exercise the
+ * CORS/security filter chain on a preflight, which never reaches a controller.
  */
 @WebMvcTest
-@Import({SecurityConfig.class, WebCorsConfig.class, WebCorsConfigTest.StubVenueCatalog.class})
+@Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 @TestPropertySource(properties = "app.web.cors.allowed-origins=https://ivopogace.github.io")
 class WebCorsConfigTest {
 
 	@Autowired
 	MockMvc mockMvc;
-
-	/**
-	 * The web slice registers every {@code @RestController} (including the venue read
-	 * controller) but not {@code @Repository} beans, so its {@link VenueCatalog} port is
-	 * stubbed here. This test only exercises the CORS/security filter chain on a preflight,
-	 * which never reaches the controller — an empty result is enough.
-	 */
-	@TestConfiguration(proxyBeanMethods = false)
-	static class StubVenueCatalog {
-
-		@Bean
-		VenueCatalog venueCatalog() {
-			return new VenueCatalog() {
-				@Override
-				public Optional<ai.riviera.platform.venue.api.VenueMapView> findVenueMap(
-						ai.riviera.platform.venue.api.VenueId id, LocalDate date) {
-					return Optional.empty();
-				}
-
-				@Override
-				public java.util.List<ai.riviera.platform.venue.api.VenueSummaryView> listVenues(
-						ai.riviera.platform.venue.api.VenueFilter filter, LocalDate date) {
-					return java.util.List.of();
-				}
-
-				@Override
-				public Optional<String> poolOf(SetId setId) {
-					return Optional.empty();
-				}
-
-				@Override
-				public Optional<ai.riviera.platform.venue.api.SetBookingInfo> setBookingInfo(SetId setId) {
-					return Optional.empty();
-				}
-
-				@Override
-				public java.util.OptionalInt commissionBps(ai.riviera.platform.venue.api.VenueId id) {
-					return java.util.OptionalInt.empty();
-				}
-
-				@Override
-				public java.util.OptionalInt lateCancelRefundBps(ai.riviera.platform.venue.api.VenueId id) {
-					return java.util.OptionalInt.empty();
-				}
-			};
-		}
-
-		/**
-		 * {@code BookingController} is loaded by {@code @WebMvcTest}, so its {@link CreateBooking}
-		 * dependency must be satisfied. The preflight tests never reach the controller, so a
-		 * trivial stub is enough.
-		 */
-		@Bean
-		CreateBooking createBooking() {
-			return command -> BookingOutcome.Rejected.NO_SUCH_SET;
-		}
-
-		/** {@code BookingController}'s {@link ViewBooking} dependency (U6); never reached on preflight. */
-		@Bean
-		ViewBooking viewBooking() {
-			return code -> Optional.empty();
-		}
-
-		/** {@code StaffBookingController}'s {@link ListDailyBookings} dependency (U8); never reached. */
-		@Bean
-		ListDailyBookings listDailyBookings() {
-			return (venueId, date) -> java.util.List.of();
-		}
-
-		/** {@code StaffAvailabilityController}'s {@link StaffAvailability} dependency (U8); never reached. */
-		@Bean
-		StaffAvailability staffAvailability() {
-			return new StaffAvailability() {
-				@Override
-				public MarkOutcome mark(SetId setId, LocalDate date) {
-					return MarkOutcome.NO_SUCH_SET;
-				}
-
-				@Override
-				public ReleaseOutcome release(SetId setId, LocalDate date) {
-					return ReleaseOutcome.NOT_MARKED;
-				}
-			};
-		}
-
-		/** {@code BookingController}'s {@link CancelBooking} dependency (U6); never reached on preflight. */
-		@Bean
-		CancelBooking cancelBooking() {
-			return code -> new CancelOutcome.NotFound();
-		}
-
-		/**
-		 * {@code VenueReadController} computes the default booking date from a {@link Clock}
-		 * (issue #44). The web slice does not load {@code TimeConfig}, so the bean is supplied
-		 * here; the preflight tests never reach the controller, so the system clock is fine.
-		 */
-		@Bean
-		Clock clock() {
-			return Clock.systemUTC();
-		}
-
-		/**
-		 * {@code StripeWebhookController} (U4) is loaded by {@code @WebMvcTest}, so its
-		 * collaborators must be satisfied. The preflight tests never reach it, so trivial stubs
-		 * are enough; the {@code @Repository}-backed {@code Payments}/{@code StripeWebhookEvents}
-		 * and the profile-gated {@code StripeProperties} are not in the web slice.
-		 */
-		@Bean
-		Payments payments() {
-			return new Payments() {
-				@Override
-				public void register(ai.riviera.platform.payment.application.out.NewPayment payment) {
-				}
-
-				@Override
-				public Optional<ai.riviera.platform.payment.api.BookingRef> findBookingRefByIntent(
-						String paymentIntentId) {
-					return Optional.empty();
-				}
-
-				@Override
-				public void markStatus(String paymentIntentId,
-						ai.riviera.platform.payment.domain.PaymentStatus status) {
-				}
-
-				@Override
-				public Optional<String> findIntentByBookingRef(
-						ai.riviera.platform.payment.api.BookingRef booking) {
-					return Optional.empty();
-				}
-
-				@Override
-				public void markRefunded(ai.riviera.platform.payment.api.BookingRef booking,
-						long refundedMinor, String refundId) {
-				}
-			};
-		}
-
-		@Bean
-		StripeWebhookEvents stripeWebhookEvents() {
-			return (eventId, eventType) -> true;
-		}
-
-		@Bean
-		StripeProperties stripeProperties() {
-			return new StripeProperties("", "whsec_test", null, null);
-		}
-
-		/**
-		 * {@code VenueAdminController} (U7) is loaded by {@code @WebMvcTest}, so its
-		 * {@link OnboardVenue} / {@link EditBeachMap} ports must be satisfied. The preflight tests
-		 * never reach the controller, so trivial stubs are enough.
-		 */
-		@Bean
-		OnboardVenue onboardVenue() {
-			return command -> new VenueId(0);
-		}
-
-		@Bean
-		EditBeachMap editBeachMap() {
-			return new EditBeachMap() {
-				@Override
-				public AddSetOutcome addSet(VenueId venueId, ai.riviera.platform.venue.application.in.SetCommand command) {
-					return new AddSetOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
-				}
-
-				@Override
-				public ChangeOutcome editSet(VenueId venueId, SetId setId,
-						ai.riviera.platform.venue.application.in.SetCommand command) {
-					return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
-				}
-
-				@Override
-				public ChangeOutcome removeSet(VenueId venueId, SetId setId) {
-					return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
-				}
-			};
-		}
-	}
 
 	@Test
 	void preflightFromPagesOriginIsAllowed() throws Exception {
