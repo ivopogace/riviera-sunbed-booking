@@ -1,8 +1,13 @@
 package ai.riviera.platform.booking.application.out;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+
+import ai.riviera.platform.booking.application.in.DailyBooking;
+import ai.riviera.platform.venue.api.VenueId;
 
 /**
  * The {@code booking} module's outbound persistence port (driven seam). Two narrow writes
@@ -69,4 +74,12 @@ public interface Bookings {
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
 			long refundMinor);
+
+	/**
+	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date}, as {@code (setId, code)}
+	 * rows ordered by set, for the U8 staff daily view (issue #10). Read-only; excludes
+	 * awaiting-payment and cancelled bookings. The {@code code} is the bearer credential (invariant
+	 * #7) — carried to the operator-gated caller, never logged. Empty list when there are none.
+	 */
+	List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date);
 }

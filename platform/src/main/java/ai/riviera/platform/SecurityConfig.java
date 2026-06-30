@@ -45,6 +45,10 @@ class SecurityConfig {
 	private static final String OPERATOR_ROLE = "OPERATOR";
 	/** A single laid-out set (PATCH/DELETE target); also CSRF-exempt as a token-less write path. */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
+	/** A set's per-day staff availability (U8 mark POST / release DELETE); CSRF-exempt token-less write. */
+	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
+	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
+	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -64,10 +68,17 @@ class SecurityConfig {
 				// requests — does not apply; ignore it on those paths like the other token-less APIs.
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
 						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
-						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH))
+						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
+						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
+						// or codes would leak to anyone (first match wins in Spring Security).
+						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
+						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
+						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.DELETE, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						// Venue onboarding + beach-map editing (U7) — an operator-only write surface.
 						// The real staff/admin identity model is deferred; for now a single configured
 						// operator credential (role OPERATOR) gates every write. GET stays public above.
