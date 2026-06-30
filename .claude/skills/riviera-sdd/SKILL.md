@@ -12,6 +12,34 @@ here every change flows through the loop below.
 
 **Announce at start:** "Using riviera-sdd to drive the workflow."
 
+## Staying in touch (notifications)
+
+The user typically triggers SDD runs from the **Claude iOS app** and then walks
+away with the phone locked in a pocket. So when the workflow reaches a point that
+needs them, **reach out — don't go silent and wait.**
+
+- **Primary channel — push to the phone.** Use `PushNotification` so it lands on
+  the iOS lock screen via the app (Remote Control). Fire it at the two moments
+  they'd want to be pulled back:
+  - **Blocking question** — *before* you call `AskUserQuestion` (a question prompt
+    alone does **not** buzz the phone), send a one-line push so they know a
+    decision is waiting. Then ask via `AskUserQuestion`.
+  - **Nothing left to do / slice done** — when you finish the work and are waiting
+    on the next command, push a one-line "ready for next command" with what you
+    finished.
+- **Backstop / written record — email.** Also send an email to
+  **`ivopogace@gmail.com`** (via the Gmail tools) for the "done, your move" case
+  and whenever a push may not get through (Remote Control not connected). This is
+  the durable trail; the push is the buzz. Note: this is **not** the account email
+  (`ivo.pogace@lyth.de`) — send to the gmail address above.
+- **Don't ping during live back-and-forth.** If they're clearly present and
+  replying within seconds, no push/email — they're already here. The trigger is
+  *"there's a real chance they've walked away and something is waiting."* Err
+  toward sending for blocking questions and completions; stay quiet otherwise.
+
+(One-time check to mention if pushes don't seem to arrive: iOS → Settings →
+Notifications → Claude → Allow Notifications must be ON.)
+
 ## The loop
 
 ```
