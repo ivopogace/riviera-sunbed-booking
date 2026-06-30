@@ -218,19 +218,37 @@ single-call assertions. End with `./gradlew test --tests "*StripePaymentGatewayT
 
 ## Review note (SDD Review gate)
 
-_To be filled at the review gate._
+Ran the Review gate (`riviera-review-overlay` + `/code-review` on `origin/main...HEAD`, high effort —
+3 correctness + Stripe-semantics + conventions/process finder angles → verify). **No findings
+survived.**
+
+- **Correctness:** no bugs. `ApiConnectionException` is caught *before* its parent `StripeException`
+  (correct hierarchy); the replay uses the same `params`+`options` (same idempotency key) so Stripe
+  returns the original intent — no double-create; `register` runs exactly once on success and never on
+  a double timeout; `e.getCode()`-null is already guarded in the `Failed` mapping.
+- **Overlay invariants:** RV-CT-3/RV-BE-7 (webhook stays the source of truth — the replay returns
+  `Pending`, never confirms) ✅; no double-charge (idempotency replay) ✅; money minor-units (#5) and
+  code-only logging (#7/#8) unchanged ✅; Modulith boundary (#11) intact — `StripePaymentGateway`
+  stays package-private in `payment.infrastructure.out`, no new port/import/`allowedDependencies` ✅.
+  RV-BE-1 (availability) N/A — no `(set, date)` writer touched.
+- **RV-PROC-1 (Skill-routing):** *Skills consulted* line matches the diff exactly —
+  `riviera-stripe-payments` + `riviera-modulith` + `riviera-java-conventions` listed for the
+  backend/Stripe change; `postgres`/`angular-developer`/`playwright-cli` correctly absent (no
+  SQL/migration, no frontend).
+
+No fixes required; nothing deferred. CI gate green locally (`./gradlew build`).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] **No JPA**; no SQL change at all this slice (invariant #1).
-- [ ] Availability section justified `N/A` — no `(set, date)` writer touched (invariant #2).
-- [ ] Pool + cutoff rules unchanged (invariants #3, #4).
-- [ ] **Modulith** section filled; adapter stays package-private in-module, no new port/`allowedDependencies`;
+- [x] Every AC has an implementing task and a verifying test.
+- [x] **No JPA**; no SQL change at all this slice (invariant #1).
+- [x] Availability section justified `N/A` — no `(set, date)` writer touched (invariant #2).
+- [x] Pool + cutoff rules unchanged (invariants #3, #4).
+- [x] **Modulith** section filled; adapter stays package-private in-module, no new port/`allowedDependencies`;
       `ModularityTests` green (invariant #11).
-- [ ] **Payment** section filled; webhook stays the source of truth; PI idempotency relied upon, not
+- [x] **Payment** section filled; webhook stays the source of truth; PI idempotency relied upon, not
       changed; no money moved on the create path (invariants #5, #8).
-- [ ] Timezone unchanged (invariant #6). Booking codes never logged (invariant #7).
-- [ ] No Flyway migration needed (no schema change) — verified (invariant #12).
-- [ ] `catch` is narrow (`ApiConnectionException`), never a bare `catch (Exception)`.
-- [ ] Execution-status table matches reality; Open Questions empty (all Resolved).
+- [x] Timezone unchanged (invariant #6). Booking codes never logged (invariant #7).
+- [x] No Flyway migration needed (no schema change) — verified (invariant #12).
+- [x] `catch` is narrow (`ApiConnectionException`), never a bare `catch (Exception)`.
+- [x] Execution-status table matches reality; Open Questions empty (all Resolved).
