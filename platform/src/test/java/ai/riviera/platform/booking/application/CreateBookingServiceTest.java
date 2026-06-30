@@ -19,9 +19,11 @@ import ch.qos.logback.core.read.ListAppender;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
+import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.ConfirmBooking;
 import ai.riviera.platform.booking.application.in.CreateBookingCommand;
+import ai.riviera.platform.booking.application.in.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.out.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.booking.application.out.ClaimRef;
@@ -47,9 +49,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Branch coverage for the Instant-Book orchestration (issue #6) with in-memory fakes — no
- * Spring, no DB. Proves outcome mapping (AC-1/2/4/5), that the amount is the set price
- * (AC-8), and that the booking code is never logged (AC-7, invariant #7).
+ * Branch coverage for the Instant-Book orchestration (issue #6, now two-phase per issue #52) with
+ * in-memory fakes — no Spring, no DB. Proves outcome mapping, that the amount is the set price,
+ * that the booking row is persisted <em>before</em> payment is attempted (R-3 ordering), that a
+ * failed payment compensates by releasing the claim, and that the booking code is never logged
+ * (invariant #7). The {@code @Transactional} on {@link ReserveSetService#reserve} is inert when
+ * called directly (no proxy), so wiring the real {@code ReserveSetService} here exercises the full
+ * orchestration end-to-end with fakes.
  */
 class CreateBookingServiceTest {
 
@@ -62,6 +68,7 @@ class CreateBookingServiceTest {
 
 	private final RecordingBookings bookings = new RecordingBookings();
 	private final RecordingConfirm confirmer = new RecordingConfirm();
+	private final RecordingRelease release = new RecordingRelease();
 
 	private SetBookingInfo set(String pool) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
@@ -72,8 +79,9 @@ class CreateBookingServiceTest {
 			CheckoutPort checkout, BookingCodeGenerator codes) {
 		VenueCatalog catalog = new FakeCatalog(info);
 		CustomerDirectory customers = contact -> new CustomerId(99);
-		return new CreateBookingService(catalog, claim, customers, checkout, bookings, confirmer,
-				codes, new BookingCutoff(CLOCK), CLOCK);
+		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
+				codes, new BookingCutoff(CLOCK));
+		return new CreateBookingService(reservation, checkout, confirmer, release, CLOCK);
 	}
 
 	private CreateBookingCommand command() {
@@ -170,9 +178,10 @@ class CreateBookingServiceTest {
 		};
 		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
-		var service = new CreateBookingService(catalog, claiming(ClaimOutcome.CLAIMED), customers,
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), collidingOnce, confirmer,
-				() -> codes.removeFirst(), new BookingCutoff(CLOCK), CLOCK);
+		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
+				customers, collidingOnce, () -> codes.removeFirst(), new BookingCutoff(CLOCK));
+		var service = new CreateBookingService(reservation,
+				(ref, money) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, CLOCK);
 
 		BookingOutcome outcome = service.create(command());
 
@@ -201,6 +210,57 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void persistsBeforePayingThenAwaits() {
+		// AC-2 / R-3: the booking + claim are committed BEFORE checkout.pay is called, so the Stripe
+		// PaymentIntent creation holds no (set, date) row lock. Capture the persisted-row count at the
+		// moment pay() is invoked to prove the ordering.
+		int[] insertedAtPayTime = {-1};
+		CheckoutPort capturingCheckout = (ref, money) -> {
+			insertedAtPayTime[0] = bookings.inserted.size();
+			return new PaymentOutcome.Pending("cs_secret_xyz", "pi_42");
+		};
+		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+				capturingCheckout, () -> "CODE12345A");
+
+		BookingOutcome outcome = service.create(command());
+
+		assertInstanceOf(BookingOutcome.AwaitingPayment.class, outcome);
+		assertEquals(1, insertedAtPayTime[0],
+				"the booking row is inserted before checkout.pay runs (the network call is last)");
+		// NB: this unit proves the insert→pay ORDERING; that the reserve transaction actually COMMITS
+		// (releasing the lock) before pay is proven structurally (ReserveSetService is a separate
+		// @Transactional bean) and end-to-end by CreateBookingStripeProfileIT.
+	}
+
+	@Test
+	void compensatesWhenConfirmFailsAfterCommit() {
+		// The Succeeded (stub) path confirms AFTER the reserve commit, so a confirm failure would
+		// otherwise strand the booking AWAITING_PAYMENT holding the set (the default profile has no TTL
+		// sweep). The collect phase must compensate symmetrically with the Failed branch.
+		ConfirmBooking failingConfirm = new ConfirmBooking() {
+			@Override
+			public void confirm(long bookingId, Instant confirmedAt) {
+				throw new IllegalStateException("confirm blew up after commit");
+			}
+
+			@Override
+			public boolean confirmFromPayment(long bookingId, Instant confirmedAt) {
+				return false;
+			}
+		};
+		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
+		CustomerDirectory customers = contact -> new CustomerId(7);
+		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
+				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK));
+		CreateBookingService service = new CreateBookingService(reservation,
+				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release, CLOCK);
+
+		assertThrows(IllegalStateException.class, () -> service.create(command()));
+		assertEquals(1, release.released.size(),
+				"a confirm failure after commit compensates by releasing the claim");
+	}
+
+	@Test
 	void rejectsTakenSetWithoutPersisting() {
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.ALREADY_TAKEN),
@@ -211,15 +271,18 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void paymentDeclineThrowsToRollBackTheClaim() {
-		// The stub never declines in U3; this proves the Failed branch aborts (throws) so the
-		// transaction — and the joined availability claim — rolls back rather than confirming.
+	void compensatesByReleasingWhenPaymentFails() {
+		// AC-3: the booking + claim are already committed when PI creation fails (the gateway returns
+		// Failed). The Failed branch must compensate — release the claim (the #51 ReleaseAbandonedBooking
+		// guarded cancel + free) — and surface the failure, never leaving an orphaned AWAITING_PAYMENT.
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Failed("card_declined"), () -> "CODEX12345");
+				(ref, money) -> new PaymentOutcome.Failed("stripe_error"), () -> "CODEX12345");
 
 		assertThrows(PaymentDeclinedException.class, () -> service.create(command()));
-		assertFalse(confirmer.confirmed.size() > 0, "a declined payment confirms nothing");
+		assertEquals(1, bookings.inserted.size(), "the booking was persisted before the failed payment");
+		assertEquals(1, release.released.size(), "a failed payment triggers exactly one compensating release");
+		assertFalse(confirmer.confirmed.size() > 0, "a failed payment confirms nothing");
 	}
 
 	@Test
@@ -334,6 +397,17 @@ class CreateBookingServiceTest {
 		@Override
 		public boolean confirmFromPayment(long bookingId, Instant confirmedAt) {
 			confirmed.add(bookingId);
+			return true;
+		}
+	}
+
+	/** Captures compensating releases (the #51 seam reused on the payment-failure path). */
+	private static final class RecordingRelease implements ReleaseAbandonedBooking {
+		final List<BookingId> released = new ArrayList<>();
+
+		@Override
+		public boolean release(BookingId bookingId) {
+			released.add(bookingId);
 			return true;
 		}
 	}

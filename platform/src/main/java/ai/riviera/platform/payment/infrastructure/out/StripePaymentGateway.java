@@ -47,6 +47,9 @@ class StripePaymentGateway implements PaymentGateway {
 	private static final Logger log = LoggerFactory.getLogger(StripePaymentGateway.class);
 	private static final String METADATA_BOOKING_REF = "bookingRef";
 
+	/** Non-PII fallback reason when a Stripe error carries no code (logged + returned to the caller). */
+	private static final String STRIPE_ERROR = "stripe_error";
+
 	// Stripe PaymentIntent statuses we branch on when cancelling (issue #51).
 	private static final String STATUS_SUCCEEDED = "succeeded";
 	private static final String STATUS_CANCELED = "canceled";
@@ -81,7 +84,7 @@ class StripePaymentGateway implements PaymentGateway {
 			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
 			log.warn("Stripe PaymentIntent creation failed for booking {}: code={}",
 					booking.value(), e.getCode());
-			return new PaymentOutcome.Failed(e.getCode() == null ? "stripe_error" : e.getCode());
+			return new PaymentOutcome.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
 	}
 
@@ -107,7 +110,7 @@ class StripePaymentGateway implements PaymentGateway {
 		catch (StripeException e) {
 			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
 			log.warn("Stripe refund failed for booking {}: code={}", booking.value(), e.getCode());
-			return new RefundResult.Failed(e.getCode() == null ? "stripe_error" : e.getCode());
+			return new RefundResult.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
 	}
 
@@ -141,7 +144,7 @@ class StripePaymentGateway implements PaymentGateway {
 			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
 			log.warn("Stripe PaymentIntent cancel failed for booking {}: code={}",
 					booking.value(), e.getCode());
-			return new PaymentCancellation.Failed(e.getCode() == null ? "stripe_error" : e.getCode());
+			return new PaymentCancellation.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
 	}
 

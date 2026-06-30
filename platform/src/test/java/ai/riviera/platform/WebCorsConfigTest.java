@@ -195,7 +195,7 @@ class WebCorsConfigTest {
 
 		@Bean
 		StripeProperties stripeProperties() {
-			return new StripeProperties("", "whsec_test");
+			return new StripeProperties("", "whsec_test", null, null);
 		}
 
 		/**
