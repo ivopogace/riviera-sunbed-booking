@@ -55,6 +55,10 @@ class SecurityConfig {
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
+	/** The operator-only weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
+	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
+	/** A single payout batch (U9): status transition (PATCH). CSRF-exempt token-less write. */
+	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
@@ -81,7 +85,7 @@ class SecurityConfig {
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
 						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
 						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH,
-						WEATHER_REFUND_PATH))
+						WEATHER_REFUND_PATH, PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
@@ -94,6 +98,9 @@ class SecurityConfig {
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)
+						// Weekly BKT payout-batch report (U9) — operator-only across all methods
+						// (generate/list/transition). A new /api/admin namespace, gated explicitly.
+						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

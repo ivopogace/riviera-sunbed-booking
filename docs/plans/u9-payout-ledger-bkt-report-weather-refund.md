@@ -219,8 +219,8 @@ Money on the wire = integer minor units + ISO currency; dates = ISO `LocalDate`;
 |-------|--------|---------|
 | 0 — Cancellation reason through the spine (V14) | ✅ | b7ae0dd |
 | 1 — Admin weather refund (booking) | ✅ | 5372a20 |
-| 2 — Payout ledger read surface | ✅ | (this commit) |
-| 3 — PayoutBatch + weekly BKT report (V15) | ⏳ | |
+| 2 — Payout ledger read surface | ✅ | c0961ff |
+| 3 — PayoutBatch + weekly BKT report (V15) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

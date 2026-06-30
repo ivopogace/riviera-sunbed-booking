@@ -12,6 +12,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,5 +45,27 @@ class AdminPayoutSecurityIT {
 		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.venueId").value((int) MIRAMAR));
+	}
+
+	@Test
+	void batchReportRequiresOperator() throws Exception {
+		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30"))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/admin/payout-batches").param("period", "2099-W30"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void operatorReadsTheBatchReport() throws Exception {
+		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30")
+						.with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void malformedPeriodIsBadRequest() throws Exception {
+		mvc.perform(get("/api/admin/payout-batches").param("period", "not-a-week")
+						.with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isBadRequest());
 	}
 }

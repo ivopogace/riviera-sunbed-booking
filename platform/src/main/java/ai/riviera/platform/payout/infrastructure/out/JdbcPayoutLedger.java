@@ -10,8 +10,10 @@ import org.springframework.stereotype.Repository;
 import ai.riviera.platform.booking.api.RefundReason;
 import ai.riviera.platform.payout.application.out.LedgerEntryRow;
 import ai.riviera.platform.payout.application.out.PayoutLedger;
+import ai.riviera.platform.payout.application.out.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**
@@ -86,6 +88,26 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	private static Instant toInstant(java.sql.Timestamp ts) {
 		return ts == null ? null : ts.toInstant();
+	}
+
+	@Override
+	public List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period) {
+		// Signed net owed per venue for the period: ACCRUAL adds net, REVERSAL subtracts it (invariant
+		// #9). Served by payout_ledger_period_idx (V15). MAX(currency) is a single-value pick (EUR-only
+		// in v1, invariant #5). Total may be negative when a period's reversals exceed its accruals.
+		return jdbc.sql("""
+				SELECT venue_id,
+				       SUM(CASE WHEN entry_type = 'ACCRUAL' THEN net_minor ELSE -net_minor END) AS net_minor,
+				       MAX(currency) AS currency
+				FROM payout_ledger_entry
+				WHERE period_key = :period
+				GROUP BY venue_id
+				ORDER BY venue_id
+				""")
+				.param("period", period.value())
+				.query((rs, rowNum) -> new VenuePeriodTotal(
+						new VenueId(rs.getLong("venue_id")), rs.getLong("net_minor"), rs.getString("currency")))
+				.list();
 	}
 
 	/** Conflict-free insert shared by accrual and reversal — {@code ON CONFLICT (booking_id, entry_type)}. */

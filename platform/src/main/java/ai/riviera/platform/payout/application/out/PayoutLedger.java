@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**
@@ -44,4 +45,13 @@ public interface PayoutLedger {
 	 * entries yet.
 	 */
 	List<LedgerEntryRow> entriesForVenue(VenueId venueId);
+
+	/**
+	 * The signed net owed per venue for {@code period} — {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net)}
+	 * grouped by venue over the entries whose {@code period_key} matches (U9 BKT report, issue #12).
+	 * One {@link VenuePeriodTotal} per venue that has any entry in the period; a venue whose accruals
+	 * and reversals net to zero still appears (it had activity). Empty when no entry falls in the
+	 * period. Money is integer minor units (invariant #5); the total may be negative.
+	 */
+	List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period);
 }
