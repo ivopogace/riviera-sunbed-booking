@@ -322,6 +322,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public java.util.List<ai.riviera.platform.venue.api.VenueSummaryView> listVenues(
+				ai.riviera.platform.venue.api.VenueFilter filter, LocalDate date) {
+			return java.util.List.of();
+		}
+
+		@Override
 		public Optional<String> poolOf(SetId setId) {
 			return Optional.ofNullable(info).map(SetBookingInfo::pool);
 		}

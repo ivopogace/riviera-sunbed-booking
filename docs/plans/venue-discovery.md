@@ -173,8 +173,8 @@ bindings (no `ngClass`/`ngStyle`), no `as any` on the contract, reuse `formatMon
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: list read port + controller | ⏳ | |
-| 1 — Frontend: discovery page + service + e2e | | |
+| 0 — Backend: list read port + controller | ✅ | VenueListControllerIT 10/0/0; venue+modularity+jdbc-only green |
+| 1 — Frontend: discovery page + service + e2e | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

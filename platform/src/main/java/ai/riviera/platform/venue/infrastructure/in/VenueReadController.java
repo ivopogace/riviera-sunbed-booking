@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.infrastructure.in;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -13,13 +14,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueFilter;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.api.VenueMapView;
+import ai.riviera.platform.venue.api.VenueSummaryView;
 
 /**
- * Public tourist read endpoint for a venue and its beach map (U1, issue #4; date-aware since
- * issue #44). Driving adapter — depends only on the {@code venue.api} port (invariant #11).
- * Returns 200 with the map for the requested day, or 404 if no venue has that id.
+ * Public tourist read endpoints for venues (invariant #11 — depends only on the {@code venue.api}
+ * port). Two reads: the discovery <strong>list</strong> ({@code GET /api/venues?beach=&region=&date=},
+ * issue #61) and a single venue + its beach <strong>map</strong> ({@code GET /api/venues/{id}},
+ * U1/#4, date-aware since #44 — 200 with the map, or 404 for an unknown id).
  *
  * <p>The optional {@code date} query param selects the day whose availability the map reflects.
  * When omitted it defaults to <strong>tomorrow in {@code Europe/Tirane}</strong> (invariant #6) —
@@ -39,6 +43,21 @@ class VenueReadController {
 	VenueReadController(VenueCatalog catalog, Clock clock) {
 		this.catalog = catalog;
 		this.clock = clock;
+	}
+
+	/**
+	 * Discovery list (issue #61): the venues matching the optional {@code beach}/{@code region}
+	 * filters, as summaries with each venue's free/total set count for {@code date}. Always 200 with
+	 * a JSON array (empty when nothing matches) — a filter that hits no venue is not a 404. {@code date}
+	 * defaults to tomorrow in {@code Europe/Tirane} like the map read above.
+	 */
+	@GetMapping
+	List<VenueSummaryView> listVenues(
+			@RequestParam(required = false) String beach,
+			@RequestParam(required = false) String region,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+		LocalDate effectiveDate = date != null ? date : tomorrowInTirane();
+		return catalog.listVenues(VenueFilter.of(beach, region), effectiveDate);
 	}
 
 	@GetMapping("/{venueId}")

@@ -3,20 +3,25 @@ package ai.riviera.platform.venue.infrastructure.out;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.venue.api.AvailabilitySummary;
 import ai.riviera.platform.venue.api.MoneyView;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueFilter;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.api.VenueMapView;
+import ai.riviera.platform.venue.api.VenueSummaryView;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
@@ -95,6 +100,67 @@ class JdbcVenueCatalog implements VenueCatalog {
 	}
 
 	@Override
+	public List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date) {
+		// Optional filters: a null dimension drops its predicate. CAST(:p AS TEXT) lets Postgres
+		// type the bound NULL so "(:p IS NULL OR col = :p)" plans without an undetermined-type error.
+		List<SummaryRow> venues = jdbc.sql("""
+				SELECT id, name, beach, region, rating_tenths, reviews_count, booking_mode
+				FROM venue
+				WHERE (CAST(:beach AS TEXT) IS NULL OR beach = :beach)
+				  AND (CAST(:region AS TEXT) IS NULL OR region = :region)
+				ORDER BY rating_tenths DESC, name ASC
+				""")
+				.param("beach", filter.beach())
+				.param("region", filter.region())
+				.query((rs, rowNum) -> new SummaryRow(
+						rs.getLong("id"), rs.getString("name"), rs.getString("beach"),
+						rs.getString("region"), rs.getInt("rating_tenths"),
+						rs.getInt("reviews_count"), rs.getString("booking_mode")))
+				.list();
+
+		if (venues.isEmpty()) {
+			return List.of();
+		}
+
+		// Load every matched venue's sets in one query, then bucket in memory — one round-trip,
+		// no per-venue N+1. A LEFT-join shape in Java: a venue with no sets simply gets an empty list.
+		List<Long> venueIds = venues.stream().map(SummaryRow::id).toList();
+		List<SetPriceRow> sets = jdbc.sql("""
+				SELECT id, venue_id, price_minor, price_currency
+				FROM set_position
+				WHERE venue_id IN (:venueIds)
+				""")
+				.param("venueIds", venueIds)
+				.query((rs, rowNum) -> new SetPriceRow(
+						rs.getLong("id"), rs.getLong("venue_id"),
+						rs.getLong("price_minor"), rs.getString("price_currency")))
+				.list();
+
+		// One availability read for ALL sets across all matched venues (reuses the U2 source of
+		// truth via the spi — invariant #2), then free = total − taken per venue.
+		Set<SetId> taken = availability.takenOn(
+				sets.stream().map(s -> new SetId(s.id())).toList(), date);
+		Map<Long, List<SetPriceRow>> setsByVenue = sets.stream()
+				.collect(Collectors.groupingBy(SetPriceRow::venueId));
+
+		return venues.stream()
+				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken))
+				.toList();
+	}
+
+	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken) {
+		int total = sets.size();
+		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
+		MoneyView fromPrice = sets.stream()
+				.min(Comparator.comparingLong(SetPriceRow::priceMinor))
+				.map(s -> new MoneyView(s.priceMinor(), s.priceCurrency()))
+				.orElse(null);
+		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
+				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
+				fromPrice, new AvailabilitySummary(free, total));
+	}
+
+	@Override
 	public OptionalInt commissionBps(VenueId id) {
 		return jdbc.sql("SELECT commission_bps FROM venue WHERE id = :id")
 				.param("id", id.value())
@@ -148,5 +214,14 @@ class JdbcVenueCatalog implements VenueCatalog {
 	/** The static set-position layout, before availability is overlaid for the chosen date. */
 	private record SetRow(long id, String rowLabel, int positionNo, String tier, String pool,
 			MoneyView price, int gridX, int gridY) {
+	}
+
+	/** A venue's discovery-list row, before its sets' price/availability are folded in. */
+	private record SummaryRow(long id, String name, String beach, String region,
+			int ratingTenths, int reviewsCount, String bookingMode) {
+	}
+
+	/** A set's id, owning venue, and price — all the list view needs to count and price a venue. */
+	private record SetPriceRow(long id, long venueId, long priceMinor, String priceCurrency) {
 	}
 }
