@@ -6,13 +6,13 @@
     <form class="signin-form" (submit)="$event.preventDefault(); onSignIn()">
       <p class="field">
         <label for="op-user">Operator</label>
-        <input id="op-user" name="username" autocomplete="username"
-          [value]="username()" (input)="username.set($any($event.target).value)" />
+        <input id="op-user" #user name="username" autocomplete="username"
+          [value]="username()" (input)="username.set(user.value)" />
       </p>
       <p class="field">
         <label for="op-pass">Password</label>
-        <input id="op-pass" name="password" type="password" autocomplete="current-password"
-          [value]="password()" (input)="password.set($any($event.target).value)" />
+        <input id="op-pass" #pass name="password" type="password" autocomplete="current-password"
+          [value]="password()" (input)="password.set(pass.value)" />
       </p>
       <button type="submit" class="primary">Sign in</button>
     </form>

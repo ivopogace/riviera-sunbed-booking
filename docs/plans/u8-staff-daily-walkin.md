@@ -200,7 +200,20 @@ signals; tile state announced via accessible name (WCAG AA). Money via `formatMo
 | 1 — availability staff REST adapter + security gate | ✅ | backend commit |
 | 2 — booking today's-bookings read (port, JDBC, controller) | ✅ | backend commit |
 | 3 — frontend daily view (service, component, a11y, e2e) | ✅ | frontend commit |
-| 4 — CI green + review gate | ⏳ | |
+| 4 — CI green + review gate | ✅ | review-fix commit |
+
+### Review note (SDD review gate)
+
+Ran `/code-review origin/main...HEAD` + `riviera-review-overlay` (8 finder angles → verify).
+RV-BE-1 (availability single-source-of-truth) confirmed upheld; backend, tests, and conventions
+banks returned clean. One frontend finding raised — the operator interceptor's
+`endsWith('/bookings')` check would skip auth if `HttpRequest.url` carried the query string.
+**Verdict: REFUTED** — in Angular, `HttpRequest.url` excludes serialized params inside an
+interceptor (they live in `req.params`, serialized at the XHR backend after interceptors), so auth
+attaches correctly. The reviewer's coverage-gap point stood: added two interceptor regression tests
+(bookings GET with a `date` param → authed; public map GET with `date` → unauthed) and removed a
+`$any()` cast from the sign-in inputs (type-safe template refs). Re-ran the routing gate (frontend
+fix → `angular-developer`, already loaded); lint + vitest (185) + build green.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
