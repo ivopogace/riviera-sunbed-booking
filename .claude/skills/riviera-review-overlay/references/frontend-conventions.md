@@ -128,3 +128,34 @@ interaction?
 (it is the core flow, so lean Major for keyboard inaccessibility).
 **Skill framing:**
 - Peer-review: "Can the seat picker be operated by keyboard? Is status color-only?"
+
+---
+
+### RV-FE-E2E. A user-facing frontend change carries the right Playwright e2e coverage
+**Gate:** Does the diff add/adjust an e2e spec that (a) is authored to Playwright best
+practice — **load the `playwright-cli` skill and judge the spec against it** — and (b) lives
+in the **suite that will actually run it**?
+- [ ] coverage exists for the changed flow (not just a unit spec)  [ ] the spec follows `playwright-cli` best practice — role/label/test-id locators over CSS/text, web-first `expect` auto-waiting (no fixed sleeps), per-test isolation, no brittle selectors  [ ] it is in the **correct** suite — mocked-a11y (`frontend/e2e/`, `npm run test:e2e:a11y`, **CI-run**) for render/a11y/interaction; real-backend (`frontend/e2e/real-backend/`, `npm run test:e2e`, **local-only**) for wiring / DB constraints / round-trip  [ ] no strict-mode/timing flakiness (exact-vs-non-exact `getByLabel` under Signal Forms; `getByTestId` for option-folding selects)  [ ] per-test unique data, no reliance on seeded rows  [ ] asserts the read-back round-trip  [ ] a backend-dependent spec is NOT parked where CI can't run it (leaving CI green-but-blind)
+
+> **Project facts the generic skill can't know (apply on top of it):** there are **two
+> suites** — the CI-run mocked-a11y suite (`frontend/e2e/`, API mocked via `page.route`,
+> `playwright.a11y.config.ts` with `testIgnore: '**/real-backend/**'`) and the local-only
+> real-backend suite (`frontend/e2e/real-backend/`, boots Spring Boot + Flyway Postgres,
+> `playwright.config.ts`). Render/a11y/interaction → mocked suite (so CI covers it);
+> wiring / real HTTP status / DB UNIQUE constraint / cross-feature round-trip → real-backend
+> suite. A spec must live in exactly one tree. Browser is pinned at `/opt/pw-browsers/chromium`
+> (`--no-sandbox`); don't `playwright install`.
+
+**Follow-up:**
+- A frontend flow change with **no** e2e consideration, or a backend-only spec dropped into
+  the a11y dir / CI, is the common miss — pair this with the RV-PROC-1 routing check
+  (`playwright-cli` must appear in *Skills consulted* for a frontend slice).
+- New specs must pass `npm run lint` (lint now covers `e2e/**/*.ts`) and stay out of vitest
+  (`*.e2e.ts`, not `*.spec.ts`).
+
+**Default severity:** **Major** (Blocker if the change removes existing coverage or makes the
+CI-run a11y suite green-but-blind to a real regression; Minor for a cosmetic-only tweak).
+**Skill framing:**
+- Peer-review: "Load `playwright-cli` and check the new/changed spec against its best
+  practices. Which suite covers this change, and will CI run it? Are the locators and data
+  per-test-safe, with no fixed sleeps?"

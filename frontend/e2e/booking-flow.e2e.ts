@@ -90,7 +90,7 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'beach map');
 
   // Keyboard-select the free online set (the seat-picker must be operable by keyboard).
-  const bookable = page.locator('.set-button').first();
+  const bookable = page.getByRole('button', { name: /Select to book/ }).first();
   await bookable.focus();
   await expect(bookable).toBeFocused();
   await page.keyboard.press('Enter');
@@ -127,7 +127,7 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
   );
 
   await page.goto('/venues/1');
-  await page.locator('.set-button').first().click();
+  await page.getByRole('button', { name: /Select to book/ }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Full name').fill('Holiday Guest');
   await dialog.getByLabel('Email').fill('guest@example.com');

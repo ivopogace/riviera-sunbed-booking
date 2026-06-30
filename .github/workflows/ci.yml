@@ -79,7 +79,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: A11y e2e (real-render axe over the booking flow)
-        run: npm run test:e2e
+        # The API-mocked a11y suite — no backend needed. The real-backend U7 editor suite
+        # (`npm run test:e2e`) boots Spring Boot + Postgres and is intentionally NOT run here
+        # (this job has no JDK/Docker); see frontend/playwright.config.ts.
+        run: npm run test:e2e:a11y
 
       - name: Build (production)
         run: npm run build
@@ -95,6 +98,12 @@ jobs:
   sonar:
     name: SonarCloud scan
     needs: [backend, frontend]
+    # SonarCloud's plan analyzes the main branch and pull requests only; a push to a
+    # feature branch triggers a (disallowed) branch analysis that fails with "Organization
+    # is not allowed to access data from non main branches", leaving a spurious red check.
+    # A PR branch fires BOTH push and pull_request, so scope Sonar to the PR analysis (and
+    # main pushes) to avoid that failure and the push-vs-PR analysis race on the same commit.
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     # One combined scan for the single SonarCloud project. SONAR_TOKEN is configured,
     # so the scan runs and reports the quality gate on every PR. The `SONAR_TOKEN != ''`
