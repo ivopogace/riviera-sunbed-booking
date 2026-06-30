@@ -2,12 +2,14 @@ package ai.riviera.platform.booking.infrastructure.out;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.booking.application.in.DailyBooking;
 import ai.riviera.platform.booking.application.out.BookingRecord;
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.booking.application.out.CancelledBooking;
@@ -157,6 +159,26 @@ class JdbcBookings implements Bookings {
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
+	}
+
+	@Override
+	public List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date) {
+		// Staff daily view (U8): a venue's CONFIRMED bookings for one day, ordered by set. Served by
+		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows. The
+		// code is selected for staff verification (invariant #7) — returned to the operator-gated
+		// caller, never logged here.
+		return jdbc.sql("""
+				SELECT set_id, code
+				FROM booking
+				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				ORDER BY set_id
+				""")
+				.param("venue", venueId.value())
+				.param("date", date)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.query((rs, rowNum) -> new DailyBooking(
+						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code")))
+				.list();
 	}
 
 	@Override
