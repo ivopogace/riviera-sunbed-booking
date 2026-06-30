@@ -145,7 +145,7 @@
 
         <label class="field">
           <span>Tier</span>
-          <select [formField]="setForm.tier">
+          <select [formField]="setForm.tier" data-testid="set-tier">
             <option value="PREMIUM">Premium</option>
             <option value="STANDARD">Standard</option>
           </select>
@@ -153,7 +153,7 @@
 
         <label class="field">
           <span>Pool</span>
-          <select [formField]="setForm.pool">
+          <select [formField]="setForm.pool" data-testid="set-pool">
             <option value="ONLINE">Online</option>
             <option value="WALK_IN">Walk-in</option>
           </select>
@@ -203,7 +203,7 @@
         } @else {
           <ul class="set-list">
             @for (set of sets(); track set.id) {
-              <li class="set-row">
+              <li class="set-row" data-testid="layout-row">
                 <span class="set-name">{{ setLabel(set) }}</span>
                 <span class="set-actions">
                   <button

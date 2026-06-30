@@ -79,7 +79,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: A11y e2e (real-render axe over the booking flow)
-        run: npm run test:e2e
+        # The API-mocked a11y suite — no backend needed. The real-backend U7 editor suite
+        # (`npm run test:e2e`) boots Spring Boot + Postgres and is intentionally NOT run here
+        # (this job has no JDK/Docker); see frontend/playwright.config.ts.
+        run: npm run test:e2e:a11y
 
       - name: Build (production)
         run: npm run build
