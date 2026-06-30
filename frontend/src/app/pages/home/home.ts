@@ -58,8 +58,11 @@ export class Home {
         if (this.lastRequest !== token) {
           return;
         }
-        this.beaches.set([...new Set(list.map((v) => v.beach))].sort());
-        this.regions.set([...new Set(list.map((v) => v.region))].sort());
+        // Explicit locale comparator: sorts accented place names (e.g. "Dhërmi") correctly and
+        // avoids the default coerce-to-string sort (Sonar S2871).
+        const byLocale = (a: string, b: string): number => a.localeCompare(b);
+        this.beaches.set([...new Set(list.map((v) => v.beach))].sort(byLocale));
+        this.regions.set([...new Set(list.map((v) => v.region))].sort(byLocale));
         this.venues.set(list);
       },
       error: () => {
