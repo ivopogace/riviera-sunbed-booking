@@ -35,6 +35,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_STATUS = "status";
 	private static final String PARAM_AWAITING = "awaiting";
 	private static final String PARAM_CONFIRMED = "confirmed";
+	private static final String PARAM_VENUE = "venue";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -63,7 +64,7 @@ class JdbcBookings implements Bookings {
 				RETURNING id
 				""")
 				.param("code", b.code())
-				.param("venue", b.venueId().value())
+				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
 				.param("date", b.bookingDate())
@@ -177,7 +178,7 @@ class JdbcBookings implements Bookings {
 				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
 				ORDER BY set_id
 				""")
-				.param("venue", venueId.value())
+				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new DailyBooking(
@@ -196,7 +197,7 @@ class JdbcBookings implements Bookings {
 				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
 				ORDER BY id
 				""")
-				.param("venue", venueId.value())
+				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new RefundableBooking(

@@ -29,6 +29,10 @@ import ai.riviera.platform.venue.api.VenueId;
 @Repository
 class JdbcPayoutLedger implements PayoutLedger {
 
+	// Result-column / param names reused across the row mappers (kept in lockstep with the SQL).
+	private static final String COL_NET_MINOR = "net_minor";
+	private static final String COL_CURRENCY = "currency";
+
 	private final JdbcClient jdbc;
 
 	JdbcPayoutLedger(JdbcClient jdbc) {
@@ -57,8 +61,8 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.param("booking", bookingId)
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
 						new VenueId(rs.getLong("venue_id")), rs.getLong("booking_id"), EntryType.ACCRUAL,
-						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
-						rs.getString("currency"), null))
+						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
+						rs.getString(COL_CURRENCY), null))
 				.optional();
 	}
 
@@ -78,8 +82,8 @@ class JdbcPayoutLedger implements PayoutLedger {
 					String reasonToken = rs.getString("reason");
 					return new LedgerEntryRow(
 							EntryType.valueOf(rs.getString("entry_type")), rs.getLong("booking_id"),
-							rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
-							rs.getString("currency"),
+							rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
+							rs.getString(COL_CURRENCY),
 							reasonToken == null ? null : RefundReason.valueOf(reasonToken),
 							toInstant(rs.getTimestamp("created_at")));
 				})
@@ -106,7 +110,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				""")
 				.param("period", period.value())
 				.query((rs, rowNum) -> new VenuePeriodTotal(
-						new VenueId(rs.getLong("venue_id")), rs.getLong("net_minor"), rs.getString("currency")))
+						new VenueId(rs.getLong("venue_id")), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
 				.list();
 	}
 
@@ -124,7 +128,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.param("gross", entry.grossMinor())
 				.param("commission", entry.commissionMinor())
 				.param("net", entry.netMinor())
-				.param("currency", entry.currency())
+				.param(COL_CURRENCY, entry.currency())
 				.param("reason", entry.reason() == null ? null : entry.reason().name())
 				.update();
 	}

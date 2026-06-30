@@ -380,6 +380,18 @@ v1); `generate()` per-venue upsert loop is fine at v1 scale (5–15 venues); the
 nullable-`toInstant` duplications follow the existing repo convention (repo-wide refactor out of scope);
 `mark()` is a forward-only idempotent transition (no row lock needed in v1).
 
+## Sonar gate note (SDD)
+
+SonarCloud PR analysis on #70: **quality gate passed** — 89.2% new-code coverage (≥80%), 0 security
+hotspots, 0% duplication. 4 new issues triaged:
+- 3× **S1192** (duplicated string literals `"net_minor"`/`"currency"`/`"venue"`) → **fixed** by
+  extracting `private static final` constants (`JdbcPayoutLedger`, `JdbcBookings`), matching
+  `riviera-java-conventions` §6a. Pure refactor; existing ITs re-run green.
+- 1× **S1075** (hardcoded URI on a `SecurityConfig` route-matcher constant) → **accepted**: Spring
+  security matcher paths are route patterns, not externalizable config, and the entire existing
+  `SecurityConfig` uses the same `private static final String` path constants. Known S1075 false
+  positive for security matchers; consistent with the established convention.
+
 ## Generalization-audit log
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
