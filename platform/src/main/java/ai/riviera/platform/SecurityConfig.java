@@ -53,6 +53,8 @@ class SecurityConfig {
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
 	/** The admin weather-refund write (U9); token-less operator POST, CSRF-exempt like the other writes. */
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
+	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
+	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
@@ -86,6 +88,9 @@ class SecurityConfig {
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).
 						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
+						// Per-venue payout ledger read (U9) — operator-only venue financial data. MUST
+						// precede the public "GET /api/venues/**" below (first match wins).
+						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)

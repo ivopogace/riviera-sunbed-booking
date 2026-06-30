@@ -1,10 +1,14 @@
 package ai.riviera.platform.payout.infrastructure.out;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.payout.application.out.LedgerEntryRow;
 import ai.riviera.platform.payout.application.out.PayoutLedger;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
@@ -54,6 +58,34 @@ class JdbcPayoutLedger implements PayoutLedger {
 						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
 						rs.getString("currency"), null))
 				.optional();
+	}
+
+	@Override
+	public List<LedgerEntryRow> entriesForVenue(VenueId venueId) {
+		// Per-venue ledger read (U9): all entries oldest-first; the caller folds the running net owed.
+		// Served by payout_ledger_venue_idx (V9). reason is NULL on ACCRUAL rows.
+		return jdbc.sql("""
+				SELECT entry_type, booking_id, gross_minor, commission_minor, net_minor, currency,
+				       reason, created_at
+				FROM payout_ledger_entry
+				WHERE venue_id = :venue
+				ORDER BY created_at, id
+				""")
+				.param("venue", venueId.value())
+				.query((rs, rowNum) -> {
+					String reasonToken = rs.getString("reason");
+					return new LedgerEntryRow(
+							EntryType.valueOf(rs.getString("entry_type")), rs.getLong("booking_id"),
+							rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
+							rs.getString("currency"),
+							reasonToken == null ? null : RefundReason.valueOf(reasonToken),
+							toInstant(rs.getTimestamp("created_at")));
+				})
+				.list();
+	}
+
+	private static Instant toInstant(java.sql.Timestamp ts) {
+		return ts == null ? null : ts.toInstant();
 	}
 
 	/** Conflict-free insert shared by accrual and reversal — {@code ON CONFLICT (booking_id, entry_type)}. */
