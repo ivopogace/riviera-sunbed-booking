@@ -73,9 +73,13 @@ class PayoutReversalIT {
 	}
 
 	private BookingCancelled cancelled(Ref b, long refundMinor) {
+		return cancelled(b, refundMinor, ai.riviera.platform.booking.api.RefundReason.POLICY);
+	}
+
+	private BookingCancelled cancelled(Ref b, long refundMinor,
+			ai.riviera.platform.booking.api.RefundReason reason) {
 		return new BookingCancelled(new BookingId(b.bookingId()), new VenueId(b.venueId()),
-				new SetId(b.setId()), LocalDate.of(2030, 7, 1), refundMinor, "EUR",
-				ai.riviera.platform.booking.api.RefundReason.POLICY);
+				new SetId(b.setId()), LocalDate.of(2030, 7, 1), refundMinor, "EUR", reason);
 	}
 
 	private void publishInTransaction(BookingCancelled event) {
@@ -119,6 +123,19 @@ class PayoutReversalIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, reversalRows(b.bookingId())));
 		assertEquals(3825L, reversalNet(b.bookingId()), "full reversal nets out the accrual (3825)");
 		assertEquals("POLICY", reversalReason(b.bookingId()), "the reversal records the refund reason (U9)");
+	}
+
+	@Test
+	void weatherReversalCarriesWeatherReason() {
+		// AC-5 (U9, issue #12): an admin weather refund cancels with reason WEATHER → the proportional
+		// REVERSAL (here full) records reason WEATHER so the ledger distinguishes it from a policy refund.
+		Ref b = bookingWithAccrual("REVWX001");
+
+		publishInTransaction(cancelled(b, 4500L, ai.riviera.platform.booking.api.RefundReason.WEATHER));
+
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, reversalRows(b.bookingId())));
+		assertEquals(3825L, reversalNet(b.bookingId()), "full weather reversal nets out the accrual");
+		assertEquals("WEATHER", reversalReason(b.bookingId()), "the reversal records reason WEATHER");
 	}
 
 	@Test

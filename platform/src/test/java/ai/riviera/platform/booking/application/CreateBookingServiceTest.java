@@ -172,6 +172,12 @@ class CreateBookingServiceTest {
 			}
 
 			@Override
+			public List<ai.riviera.platform.booking.application.out.RefundableBooking> findConfirmedForWeatherRefund(
+					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+				return List.of();
+			}
+
+			@Override
 			public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
 					java.time.Instant olderThan) {
 				return List.of();
@@ -376,6 +382,12 @@ class CreateBookingServiceTest {
 
 		@Override
 		public List<ai.riviera.platform.booking.application.in.DailyBooking> findConfirmedForVenueOn(
+				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+			return List.of();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.out.RefundableBooking> findConfirmedForWeatherRefund(
 				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}

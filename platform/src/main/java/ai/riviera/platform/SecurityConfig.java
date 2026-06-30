@@ -51,6 +51,8 @@ class SecurityConfig {
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
+	/** The admin weather-refund write (U9); token-less operator POST, CSRF-exempt like the other writes. */
+	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
@@ -76,13 +78,17 @@ class SecurityConfig {
 				// requests — does not apply; ignore it on those paths like the other token-less APIs.
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
 						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
-						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH))
+						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH,
+						WEATHER_REFUND_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).
 						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
+						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
+						// reversals for a washed-out venue+date (invariant #10).
+						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

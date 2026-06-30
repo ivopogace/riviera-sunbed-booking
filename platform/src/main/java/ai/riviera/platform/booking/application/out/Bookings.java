@@ -86,6 +86,15 @@ public interface Bookings {
 	List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
+	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date} as {@code (id, amountMinor)}
+	 * rows — the candidate set for the admin weather refund (U9, issue #12). Read-only; excludes
+	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each with a full
+	 * refund via the guarded {@link #cancelConfirmed} (so a concurrent cancel makes the matching row a
+	 * no-op). Ordered by id for stable iteration; empty when there are none.
+	 */
+	List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date);
+
+	/**
 	 * The ids of bookings still {@code AWAITING_PAYMENT} that were created strictly before
 	 * {@code olderThan} — the abandoned-payment TTL sweep's candidate set (issue #51). A closed tab
 	 * produces no terminating webhook, so such a booking lingers and keeps its {@code (set, date)}

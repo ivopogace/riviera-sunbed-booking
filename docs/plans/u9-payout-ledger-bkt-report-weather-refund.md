@@ -65,7 +65,7 @@ table). No JPA.
   published per booking. *Pinned by:* `WeatherRefundServiceIT.fullRefundRegardlessOfCutoff`
 - [ ] **AC-5 (weather reversal recorded with reason):** Given AC-4, when the payout listener processes each
   `BookingCancelled{reason=WEATHER}`, then a `REVERSAL` mirroring the full accrual is posted with
-  `reason = WEATHER`. *Pinned by:* `PayoutWeatherReversalIT.reversalCarriesWeatherReason`
+  `reason = WEATHER`. *Pinned by:* `PayoutReversalIT.weatherReversalCarriesWeatherReason`
 - [ ] **AC-6 (tourist cancel keeps POLICY reason):** Given a tourist cancellation (U6), when it completes,
   then `booking.cancel_reason = POLICY` and any reversal's `reason = POLICY` — the new column does not change
   U6 behaviour. *Pinned by:* `CancelBookingServiceTest.recordsPolicyReason`
@@ -217,9 +217,9 @@ Money on the wire = integer minor units + ISO currency; dates = ISO `LocalDate`;
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Cancellation reason through the spine (V14) | ✅ | (this commit) |
-| 1 — Admin weather refund (booking) | ⏳ | |
-| 2 — Payout ledger read surface | | |
+| 0 — Cancellation reason through the spine (V14) | ✅ | b7ae0dd |
+| 1 — Admin weather refund (booking) | ✅ | (this commit) |
+| 2 — Payout ledger read surface | ⏳ | |
 | 3 — PayoutBatch + weekly BKT report (V15) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

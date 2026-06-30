@@ -17,6 +17,7 @@ import ai.riviera.platform.booking.application.out.CancelledBooking;
 import ai.riviera.platform.booking.application.out.ClaimRef;
 import ai.riviera.platform.booking.application.out.ConfirmedBooking;
 import ai.riviera.platform.booking.application.out.NewBooking;
+import ai.riviera.platform.booking.application.out.RefundableBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
@@ -181,6 +182,25 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new DailyBooking(
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code")))
+				.list();
+	}
+
+	@Override
+	public List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date) {
+		// Admin weather refund (U9): a venue's CONFIRMED bookings for one washed-out day, id + amount.
+		// Served by booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's
+		// rows. The amount is the FULL refund the caller stamps via the guarded cancelConfirmed.
+		return jdbc.sql("""
+				SELECT id, amount_minor
+				FROM booking
+				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				ORDER BY id
+				""")
+				.param("venue", venueId.value())
+				.param("date", date)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.query((rs, rowNum) -> new RefundableBooking(
+						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR)))
 				.list();
 	}
 
