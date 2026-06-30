@@ -74,8 +74,9 @@ class CreateBookingPaymentFailureIT {
 	}
 
 	private String bookingStatus(SetId set, LocalDate date) {
-		return jdbc.sql("SELECT status FROM booking WHERE set_id = :id AND booking_date = :date "
-						+ "ORDER BY id DESC LIMIT 1")
+		// .single() asserts EXACTLY one booking row for this (set, date) — also proving the failed
+		// attempt created no duplicate; the date is unique to this test so no other row can match.
+		return jdbc.sql("SELECT status FROM booking WHERE set_id = :id AND booking_date = :date")
 				.param("id", set.value()).param("date", date).query(String.class).single();
 	}
 

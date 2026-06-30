@@ -38,7 +38,9 @@ class StripeConfig {
 	static StripeClient.StripeClientBuilder clientBuilder(StripeProperties properties) {
 		return StripeClient.builder()
 				.setApiKey(properties.apiKey())
-				.setConnectTimeout((int) properties.connectTimeout().toMillis())
-				.setReadTimeout((int) properties.readTimeout().toMillis());
+				// toIntExact fails fast on a misconfigured > ~24.8-day timeout rather than silently
+				// wrapping to a negative millisecond value.
+				.setConnectTimeout(Math.toIntExact(properties.connectTimeout().toMillis()))
+				.setReadTimeout(Math.toIntExact(properties.readTimeout().toMillis()));
 	}
 }

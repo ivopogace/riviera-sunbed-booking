@@ -36,7 +36,9 @@ import ai.riviera.platform.venue.api.SetBookingInfo;
  * <p>Outcome mapping (invariant #8 unchanged — the webhook stays the source of truth):
  * <ul>
  * <li>{@code Succeeded} (in-process stub): confirm now via the {@link ConfirmBooking} seam (its own
- *     transaction; publishes {@code BookingConfirmed}) → {@code Confirmed}.</li>
+ *     transaction; publishes {@code BookingConfirmed}) → {@code Confirmed}. A confirm failure here is
+ *     compensated the same way as {@code Failed} (release the claim, then rethrow), since confirm runs
+ *     after the reserve commit.</li>
  * <li>{@code Pending} (real Stripe): the booking stays {@code AWAITING_PAYMENT}; the verified
  *     webhook confirms it later, never the client → {@code AwaitingPayment}.</li>
  * <li>{@code Failed} (PI creation failed after commit): <strong>compensate</strong> — reuse the
@@ -88,8 +90,18 @@ class CreateBookingService implements CreateBooking {
 		return switch (payment) {
 			case PaymentOutcome.Succeeded ignored -> {
 				// In-process stub: collected synchronously, confirm now (own transaction). The confirm
-				// seam transitions and publishes BookingConfirmed (one place, both paths).
-				confirmBooking.confirm(reserved.bookingId(), clock.instant());
+				// seam transitions and publishes BookingConfirmed (one place, both paths). Because confirm
+				// runs AFTER the reserve commit, a failure here would otherwise strand the booking
+				// AWAITING_PAYMENT holding the set (the default profile has no TTL sweep) — so compensate
+				// symmetrically with the Failed branch before rethrowing (release is a no-op if confirm
+				// actually committed, since its guard matches only AWAITING_PAYMENT).
+				try {
+					confirmBooking.confirm(reserved.bookingId(), clock.instant());
+				}
+				catch (RuntimeException confirmFailed) {
+					releaseAbandoned.release(new BookingId(reserved.bookingId()));
+					throw confirmFailed;
+				}
 				log.info("confirmed booking {} for set {} on {}", reserved.bookingId(),
 						set.setId().value(), command.bookingDate());
 				yield new BookingOutcome.Confirmed(new BookingConfirmation(

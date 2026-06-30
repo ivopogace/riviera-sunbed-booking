@@ -88,7 +88,7 @@ truth — the two-phase split changes *when* the PI is created, never *how* a bo
 |---|---|---|---|---|---|---|
 | R-1 | Splitting the txn lets the booking commit `AWAITING_PAYMENT`, then PI creation fails → orphaned booking holding a set | med | high | Compensating `ReleaseAbandonedBooking.release` on `Failed` (guarded `UPDATE … RETURNING` + `availability.release`), exactly the #51 seam; #51 TTL sweep is the backstop if the process crashes between commit and compensation (AC-3) | claude | open |
 | R-2 | Moving `pay()` out of the locked txn weakens the double-booking guard (invariant #2) | low | high | Claim atomicity is the DB `UNIQUE(set_id, booking_date)` + `INSERT … ON CONFLICT` in the **committed** reserve txn — independent of lock-hold duration; `ConcurrentReservationIT` proves exactly-one-wins (AC-4) | claude | open |
-| R-3 | Stub-path confirm now runs in a separate post-commit txn; if it throws, the booking is stuck `AWAITING_PAYMENT` (default profile has no TTL sweep) | low | low | Stub `confirm` is an in-process DB `UPDATE` + event publish (no network) — only fails if the DB is down, where `reserve` would have failed too; default/dev-CI only (real Stripe never returns `Succeeded` synchronously). Accepted; documented | claude | accepted |
+| R-3 | Stub-path confirm now runs in a separate post-commit txn; if it throws, the booking would be stuck `AWAITING_PAYMENT` (default profile has no TTL sweep) | low | low | **Mitigated in code** (review finding): the `Succeeded` branch wraps `confirm` and compensates symmetrically with the `Failed` branch (release the claim, then rethrow) — no asymmetry, no stranded set on any profile. Pinned by `CreateBookingServiceTest.compensatesWhenConfirmFailsAfterCommit` | claude | mitigated |
 | R-4 | Compensating release itself fails (transient DB error) after the `Failed` branch | low | med | `release` is its own `@Transactional` guarded unit; on failure the booking is left `AWAITING_PAYMENT` and the **#51 TTL sweep** cancels the (already-failed) PI and frees the set within the TTL — the documented backstop | claude | open |
 | R-5 | Too-short Stripe timeouts cause false failures under normal latency | low | med | Defaults connect 5s / read 20s ≫ a normal sub-second PI create; **configurable** via `stripe.connect-timeout` / `stripe.read-timeout` so ops can tune per environment | claude | open |
 | R-6 | A `Failed` after commit double-charges if the same booking is retried (new PI) | low | med | The PI idempotency key is `booking-<id>-pi` (per booking id); a compensated+cancelled booking is `CANCELLED` and not retried in place — a re-submit is a **new** booking id ⇒ new key. No double-charge | claude | open |
@@ -257,6 +257,41 @@ compensation IT. End with `./gradlew build` (incl. `ModularityTests`, `JdbcOnlyA
 - [x] **AC-2/AC-3:** `./gradlew test --tests "*CreateBookingServiceTest*" --tests "*CreateBookingPaymentFailureIT*"` → PASS (unit branch coverage + the stripe-profile compensation IT).
 - [x] **AC-4:** `./gradlew test --tests "*ConcurrentReservationIT*"` → PASS (exactly-one-wins, unchanged).
 - [x] **AC-5:** `./gradlew build` → BUILD SUCCESSFUL incl. `ModularityTests` + `JdbcOnlyArchitectureTests`.
+
+## Review note (SDD Review gate)
+
+Ran the Review gate (`riviera-review-overlay` + `/code-review` on `origin/main...HEAD`, high effort,
+8 finder angles → verify). The two headline overlay checks passed: **RV-BE-1** (the atomic claim
+moved intact into the committed `reserve` txn; no new `set_availability` writer; compensation goes
+only through the shared `availability.api.release`) and **RV-CT-3/RV-BE-7** (the real Stripe path
+still returns `AwaitingPayment` and confirms only via the verified webhook — only the in-process stub
+confirms synchronously). JDBC-only (#1), Modulith boundaries (#11), money/time (#5/#6), booking-code
+logging (#7), and **RV-PROC-1** (Skills consulted matches the diff) all clean.
+
+Findings fixed (re-entered Implement; skills already loaded — `riviera-modulith` +
+`riviera-java-conventions` + `riviera-stripe-payments`):
+- **Confirm-after-commit asymmetry (the load-bearing finding):** the `Succeeded`/stub path confirmed
+  post-commit with no compensation, so a confirm failure would strand the set `AWAITING_PAYMENT`
+  (no TTL sweep on the default profile). Now compensates symmetrically with the `Failed` branch
+  (release + rethrow). Pinned by `CreateBookingServiceTest.compensatesWhenConfirmFailsAfterCommit`.
+- **Timeout int-overflow (Minor):** `(int) Duration.toMillis()` → `Math.toIntExact(...)` so a
+  misconfigured > ~24.8-day timeout fails fast at startup instead of wrapping negative.
+- **Test honesty/precision (Minor):** corrected `persistsBeforePayingThenAwaits` to claim only the
+  insert→pay ordering it proves (the commit boundary is proven structurally + by the IT); strengthened
+  `CreateBookingPaymentFailureIT` to assert exactly one booking row for the `(set, date)`.
+
+Deferred to a follow-up issue (out of scope, no money/double-sell risk):
+- **Orphaned PaymentIntent on a created-but-read-timed-out PI:** `StripePaymentGateway.initiate`
+  registers the intent id *after* `create()`, so a PI that Stripe creates but whose response exceeds
+  the (now shorter) read timeout is returned as `Failed` with no DB record; the compensation frees the
+  set correctly but cannot later `cancel` that PI (no id on record). Harmless (PI unconfirmed → no
+  charge, Stripe auto-expires it, set is freed), but worth hardening in the gateway. Filed as a
+  follow-up. *Rationale:* needs a gateway change (register-before-create / idempotency-key lookup),
+  distinct from this slice's reserve/collect split.
+
+Accepted as-is: the ignored `release()` boolean on the `Failed` path — `false` (booking no longer
+`AWAITING_PAYMENT`) is unreachable there, since the booking was just committed and nothing else can
+have transitioned it before the code is handed to anyone.
 
 ## Self-review checklist (before merge / PR)
 

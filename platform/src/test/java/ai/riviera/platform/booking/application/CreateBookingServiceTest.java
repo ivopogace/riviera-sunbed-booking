@@ -226,7 +226,38 @@ class CreateBookingServiceTest {
 
 		assertInstanceOf(BookingOutcome.AwaitingPayment.class, outcome);
 		assertEquals(1, insertedAtPayTime[0],
-				"the booking row is persisted before checkout.pay runs (claim committed, no lock held)");
+				"the booking row is inserted before checkout.pay runs (the network call is last)");
+		// NB: this unit proves the insert→pay ORDERING; that the reserve transaction actually COMMITS
+		// (releasing the lock) before pay is proven structurally (ReserveSetService is a separate
+		// @Transactional bean) and end-to-end by CreateBookingStripeProfileIT.
+	}
+
+	@Test
+	void compensatesWhenConfirmFailsAfterCommit() {
+		// The Succeeded (stub) path confirms AFTER the reserve commit, so a confirm failure would
+		// otherwise strand the booking AWAITING_PAYMENT holding the set (the default profile has no TTL
+		// sweep). The collect phase must compensate symmetrically with the Failed branch.
+		ConfirmBooking failingConfirm = new ConfirmBooking() {
+			@Override
+			public void confirm(long bookingId, Instant confirmedAt) {
+				throw new IllegalStateException("confirm blew up after commit");
+			}
+
+			@Override
+			public boolean confirmFromPayment(long bookingId, Instant confirmedAt) {
+				return false;
+			}
+		};
+		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
+		CustomerDirectory customers = contact -> new CustomerId(7);
+		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
+				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK));
+		CreateBookingService service = new CreateBookingService(reservation,
+				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release, CLOCK);
+
+		assertThrows(IllegalStateException.class, () -> service.create(command()));
+		assertEquals(1, release.released.size(),
+				"a confirm failure after commit compensates by releasing the claim");
 	}
 
 	@Test
