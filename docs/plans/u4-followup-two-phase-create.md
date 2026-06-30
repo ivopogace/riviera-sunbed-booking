@@ -285,8 +285,8 @@ Deferred to a follow-up issue (out of scope, no money/double-sell risk):
   registers the intent id *after* `create()`, so a PI that Stripe creates but whose response exceeds
   the (now shorter) read timeout is returned as `Failed` with no DB record; the compensation frees the
   set correctly but cannot later `cancel` that PI (no id on record). Harmless (PI unconfirmed → no
-  charge, Stripe auto-expires it, set is freed), but worth hardening in the gateway. Filed as a
-  follow-up. *Rationale:* needs a gateway change (register-before-create / idempotency-key lookup),
+  charge, Stripe auto-expires it, set is freed), but worth hardening in the gateway. Filed as
+  **#66**. *Rationale:* needs a gateway change (register-before-create / idempotency-key lookup),
   distinct from this slice's reserve/collect split.
 
 Accepted as-is: the ignored `release()` boolean on the `Failed` path — `false` (booking no longer
