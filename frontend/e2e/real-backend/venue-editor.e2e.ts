@@ -21,17 +21,17 @@ function venueName(label: string): string {
 
 /** Capture the operator credential (the InMemoryUserDetailsManager only accepts this exact login). */
 async function signIn(page: Page, password: string = OPERATOR_PASSWORD): Promise<void> {
-  await page.getByLabel('Username').fill(OPERATOR_USERNAME);
-  await page.getByLabel('Password').fill(password);
+  await page.getByLabel('Username', { exact: true }).fill(OPERATOR_USERNAME);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 
 /** Fill the "1 · Create venue" form (defaults stand for commission/currency/cutoff) and submit. */
 async function createVenue(page: Page, name: string): Promise<number> {
   await expect(page.getByRole('heading', { name: '1 · Create venue' })).toBeVisible();
-  await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Beach').fill('Ksamil');
-  await page.getByLabel('Region').fill('Albanian Riviera');
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
+  await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
   await page.getByRole('button', { name: 'Create venue' }).click();
 
   // The real 201 flips the editor to Step 2 with a "Venue #{id} created" status — capture the id.
@@ -101,9 +101,9 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
   }) => {
     await signIn(page, 'definitely-not-the-password');
     // Sign-in is local; the credential is only tested when the create POST hits the real backend.
-    await page.getByLabel('Name').fill(venueName('unauthorized'));
-    await page.getByLabel('Beach').fill('Ksamil');
-    await page.getByLabel('Region').fill('Albanian Riviera');
+    await page.getByLabel('Name', { exact: true }).fill(venueName('unauthorized'));
+    await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
+    await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
     await page.getByRole('button', { name: 'Create venue' }).click();
 
     await expect(page.getByRole('alert')).toContainText('sign-in was rejected');
