@@ -5,10 +5,15 @@ import { AA_NORMAL, contrastRatio } from '../../../testing/contrast';
  * axe-core's `color-contrast` rule can't run under jsdom, so the colour pairs the page actually
  * uses are verified here by relative-luminance maths instead.
  *
- * This table MIRRORS the `color` / `background` declarations in `home.scss`. When a token changes
- * there, update it here too — a colour edit must re-pass AA. Page-level text sits on the app
- * shell's slate-50 (#f8fafc); card/filter text sits on the white surfaces declared in the scss.
- * All pairs are normal-size text, so AA_NORMAL (4.5:1) applies throughout.
+ * This table mirrors every <em>text-bearing</em> `color` / `background` declaration in `home.scss`.
+ * When a token changes there, update it here too — a colour edit must re-pass AA. Page-level text
+ * sits on the app shell's slate-50 (#f8fafc); card/filter text sits on the white surfaces declared
+ * in the scss. All pairs are normal-size text, so AA_NORMAL (4.5:1) applies throughout.
+ *
+ * Deliberately excluded: the decorative `.card-meta .star` (★) and `.card-meta .dot` (·) glyphs.
+ * Both are `aria-hidden` and purely incidental — the numeric rating and the literal "·" carry no
+ * information the surrounding text doesn't — so WCAG 1.4.3's incidental-text exception applies and
+ * they are not held to AA (matching the venue-map contrast spec's treatment of the same glyphs).
  */
 interface TokenPair {
   readonly fg: string;

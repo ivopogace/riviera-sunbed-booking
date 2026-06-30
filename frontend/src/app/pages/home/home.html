@@ -58,8 +58,10 @@
               [routerLink]="['/venues', venue.id]"
               [attr.aria-label]="cardLabel(venue)"
             >
+              <!-- The <a> carries the full accessible name via aria-label, so its visible content
+                   is decorative to AT — every inner span is aria-hidden. -->
               <span class="mode-pill" aria-hidden="true">{{ bookingModeLabel(venue.bookingMode) }}</span>
-              <span class="card-name">{{ venue.name }}</span>
+              <span class="card-name" aria-hidden="true">{{ venue.name }}</span>
               <span class="card-location" aria-hidden="true">{{ venue.beach }} · {{ venue.region }}</span>
 
               <span class="card-meta" aria-hidden="true">

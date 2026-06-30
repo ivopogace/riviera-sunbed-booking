@@ -228,6 +228,23 @@ Create `home.contrast.spec.ts`, `e2e/discovery-flow.e2e.ts`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-06-30 | Review F2: `dateLabel()` formats a UTC-anchored date in the local zone (off-by-one west of UTC, invariant #6) | `Intl.DateTimeFormat(...).format(parseIsoDate(...))` without `timeZone` | grep `DateTimeFormat` in `frontend/src/app` | `pages/home/home.ts`, `venue/venue-map.ts` | Fixed BOTH — added `timeZone: 'UTC'` so the displayed civil day matches the ISO date for every viewer |
+
+## Review note (SDD review gate)
+
+Ran the review gate on `origin/main...HEAD` (riviera-review-overlay + /code-review, high effort: 8
+finder angles + verify). **Invariants/conventions: clean** — #1 JDBC-only, #2 availability reuses
+the `venue.spi` source of truth (read-only), #5 minor units, #6 Tirane/Clock, #11 boundaries
+(`listVenues` on the existing `VenueCatalog` api port, no new event), RV-PROC-1 *Skills consulted*
+covers every touched area. **Backend correctness: no production defects** (3 low/test-only notes,
+not actioned: Java `compareTo` vs PG collation in a *supplementary* sort assertion — the exact order
+is independently pinned by `filtersByRegionAndAppliesSort`; shared-container coupling; a pre-existing
+midnight-boundary flake mirrored from the map controller). **Frontend:** one real bug fixed (F2
+above) + two tidies (contrast-spec docstring now states the decorative ★/· are excluded per WCAG
+1.4.3; `card-name` made `aria-hidden` for symmetry). **Deferred:** F3 (error state has no retry
+button) — the state is accessible (`role="alert"`) and recovers on reload, matching every other
+error state in the app; not worth a one-off pattern. Fix round re-ran the routing gate (frontend →
+`angular-developer`); lint + 152 vitest + build + 4 e2e all green.
 
 ---
 

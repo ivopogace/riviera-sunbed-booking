@@ -107,6 +107,9 @@ export class VenueMap {
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
     return new Intl.DateTimeFormat('en-IE', {
+      // parseIsoDate anchors the civil day at midnight UTC, so format in UTC too — otherwise a
+      // viewer west of UTC sees the previous day (invariant #6: never rely on the default zone).
+      timeZone: 'UTC',
       weekday: 'short',
       day: 'numeric',
       month: 'short',
