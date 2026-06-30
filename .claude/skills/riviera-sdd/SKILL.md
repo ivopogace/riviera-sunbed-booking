@@ -43,17 +43,19 @@ Notifications → Claude → Allow Notifications must be ON.)
 ## The loop
 
 ```
-refine → issue → plan → implement → CI gate → PR → review → merge
-                          ▲                               │
-                          └──── findings re-enter ────────┘
+refine → issue → plan → implement → CI gate → PR → review → sonar gate → merge
+                          ▲                                              │
+                          └──── findings re-enter (review AND sonar) ────┘
                           (fix = implement: Skill-routing gate + tdd + CI + re-review)
 ```
 
 **The loop is a loop, not a line.** Review is not the last stop before merge — its findings
-**flow back to Implement** and run the same gates again. The single most common process miss is
-treating a post-review fix as exempt: a migration patched without `postgres`, an Angular tweak
-without `angular-developer` + the MCP, a backend edit without `riviera-modulith`. A fix is a change;
-a change re-enters the loop.
+**flow back to Implement** and run the same gates again. **The SonarCloud quality gate (below) is the
+same shape: a Sonar finding that changes implemented logic re-enters at Implement** (decide BE/FE,
+load that area's skill, `tdd`, CI, re-review) exactly like a review finding. The single most common
+process miss is treating a post-review (or post-Sonar) fix as exempt: a migration patched without
+`postgres`, an Angular tweak without `angular-developer` + the MCP, a backend edit without
+`riviera-modulith`. A fix is a change; a change re-enters the loop.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
@@ -64,7 +66,8 @@ a change re-enters the loop.
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
 | **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
 | **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. **Each fix re-enters at Implement** (Skill-routing gate + `tdd` + CI gate), then the touched surface is re-reviewed. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
-| **Merge** | Only after **green CI + Review gate done + findings resolved _through the loop_** → merge; close the issue. | — |
+| **Sonar gate** | **Mandatory gate (PR-time).** SonarCloud's quality gate runs on the PR (it analyzes PRs + `main`, never a feature-branch push). Wait for it; it must pass with **no new issues** (new-code coverage ≥ 80%). **A new issue that changes implemented logic re-enters at Implement** through the Skill-routing gate (decide BE/FE, load that area's skill, `tdd`, CI, re-review) — exactly like a review finding. **Run the Sonar gate (below).** | SonarCloud (issue #3) + **the Sonar gate (below)** + `diagnosing-bugs` for a genuine defect it flags |
+| **Merge** | Only after **green CI + Review gate done + Sonar quality gate green (no new issues) + findings resolved _through the loop_** → merge; close the issue. | — |
 
 ## Issue-intake grill gate (mandatory when entering at an existing issue)
 
@@ -193,9 +196,49 @@ doubt, load it.
    gate loaded per fix, CI green again, changed surface re-reviewed). "Green + reviewed (incl. the
    fixes)," never "green."
 
-**Definition of done for a slice:** green CI **and** review gate run **and** findings
-resolved/deferred **and** the issue's acceptance criteria verified. Missing any one means
-the slice is still in flight — say so rather than reporting it done.
+**Definition of done for a slice:** green CI **and** review gate run **and** Sonar quality gate
+green (no new issues) **and** findings resolved/deferred **and** the issue's acceptance criteria
+verified. Missing any one means the slice is still in flight — say so rather than reporting it done.
+
+## SonarCloud quality gate (mandatory — on the PR, before merge)
+
+> SonarCloud's quality gate is **not** a feature-branch check — by design (`ci.yml`) Sonar analyzes
+> **pull requests and `main` only**, because SonarCloud's plan cannot read non-`main` branches and a
+> branch-push Sonar job would go spuriously red. So the Sonar gate is **due when the PR exists**, runs
+> on the PR's check suite, and is a **distinct gate from CI** (a green CI build does **not** mean Sonar
+> passed — the SonarCloud check is separate). A slice is **not** mergeable until this gate is green.
+
+**How the gate runs — every PR, after CI + the Review gate, before merge:**
+
+1. **Trigger.** The moment the PR is open, the SonarCloud analysis runs on the PR head. Wait for the
+   **SonarCloud Code Analysis** check (and the PR's quality-gate status) to complete — do not merge on
+   "CI green" alone. The quality gate must **pass** with **no new issues** on new code and **new-code
+   coverage ≥ 80%**.
+2. **Read the findings.** Pull the PR's check runs / Sonar quality-gate status (e.g.
+   `pull_request_read get_check_runs`, or the SonarCloud PR decoration). Triage each **new** issue Sonar
+   raises — bug, vulnerability, code smell, security hotspot, or a coverage shortfall on new code.
+3. **Resolve — back through the loop, not around it.** This is the crux of the gate, and the reason it
+   exists as a first-class stage:
+   - **A Sonar finding that changes implemented logic is a code change, so it re-enters at Implement** —
+     run the **Skill-routing gate** for the fix: **decide whether the issue is backend or frontend**, load
+     that area's skill(s) *before* editing (DB → `postgres`; backend → `riviera-modulith` +
+     `riviera-java-conventions`; frontend → `angular-developer` + the angular-cli MCP + `playwright-cli`;
+     money → `riviera-stripe-payments`), build the fix test-first (`tdd`), re-run the **CI gate**, and
+     **re-review** the changed surface (`riviera-review-overlay`) — **exactly like a review-findings fix**.
+     Update the plan's *Skills consulted* line for any new area a fix pulled in.
+   - **A coverage gap** on new code → add the missing tests (still test-first; the new test is itself the fix).
+   - **A genuine defect** Sonar surfaced (real bug/vuln) → drive it with `diagnosing-bugs`, then the fix
+     re-enters the loop as above.
+   - **A false positive / won't-fix / out-of-scope smell** → mark it resolved in SonarCloud with an explicit
+     rationale (or open a follow-up issue), and record the decision in the plan's review/Sonar note. Don't
+     silently ignore the gate — an unaddressed new issue blocks merge.
+   - **No "post-Sonar exemption":** a Sonar fix being small or arriving after a green CI does **not** excuse
+     it from the Skill-routing gate, `tdd`, CI, and re-review. Each fix push re-triggers CI **and** the Sonar
+     analysis — re-check both before merging.
+4. **Only then merge.** Merge is reached **only** when CI is green **and** the Review gate has run **and**
+   the **Sonar quality gate is green (no new issues, new-code coverage ≥ 80%)** **and** every finding is
+   resolved/deferred **and** any fix round itself cleared the loop. "Green CI + reviewed + Sonar-clean,"
+   never just "green CI."
 
 ## The substrate these skills read
 
@@ -235,6 +278,12 @@ the slice is still in flight — say so rather than reporting it done.
    the review" is the most common way the routing gate gets skipped — treat a fix like any other
    change. (Generalize the same way for a red-CI fix or a reviewer's later comment: any new edit
    re-runs the gate for what it touches.)
+9. **The Sonar gate is non-negotiable, and its findings re-enter the loop too.** SonarCloud runs on
+   the **PR** (not branch pushes); green CI is **not** the Sonar gate. Don't merge until the quality
+   gate passes with **no new issues** (new-code coverage ≥ 80%). A Sonar finding that **changes
+   implemented logic** re-enters at Implement exactly like a review finding: **decide BE or FE**, load
+   that area's skill, fix test-first, re-run CI **and** Sonar, re-review. A false positive / out-of-scope
+   smell is resolved-with-rationale in SonarCloud (or a follow-up issue), never silently ignored.
 
 ## When NOT to use
 
