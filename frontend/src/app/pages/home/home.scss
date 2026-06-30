@@ -1,0 +1,164 @@
+/* Venue-discovery design tokens (issue #61). Reuses the U1 beach-map palette for visual
+ * continuity. Colour pairs are mirrored in home.contrast.spec.ts and must clear WCAG AA. */
+:host {
+  display: block;
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: #22302f;
+}
+
+.page-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.25rem;
+  line-height: 1.05;
+  margin: 0 0 0.25rem;
+  color: #22302f; /* on the slate-50 app background — AA */
+}
+
+.page-intro {
+  color: #54514b; /* muted, on the slate-50 app background — AA */
+  margin: 0 0 1.5rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: #ffffff;
+  border: 1px solid #e8e1d2;
+  border-radius: 0.9rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+}
+.field-label {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #22302f; /* on white filter panel — AA */
+}
+.field select,
+.field input {
+  font: inherit;
+  color: #22302f;
+  background: #ffffff;
+  border: 1px solid #6b675f; /* 3:1+ against white for a UI-component boundary (WCAG 1.4.11) */
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  min-width: 12rem;
+}
+.field select:focus-visible,
+.field input:focus-visible {
+  outline: 3px solid #0f7d8c;
+  outline-offset: 2px;
+}
+
+.results {
+  margin: 0 0 1rem;
+  color: #54514b; /* on slate-50 — AA */
+}
+.results strong {
+  color: #0e7a89; /* teal count on slate-50/white — AA */
+}
+
+.venue-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid #e8e1d2;
+  border-radius: 0.9rem;
+  padding: 1rem 1.1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+.card:hover {
+  border-color: #bfe3df;
+  box-shadow: 0 4px 16px rgb(14 122 137 / 12%);
+}
+.card:focus-visible {
+  outline: 3px solid #0f7d8c;
+  outline-offset: 2px;
+}
+
+.mode-pill {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: #e6f4f3;
+  color: #0c6675; /* AA on #e6f4f3 (matches venue-map .mode-pill) */
+  font-weight: 700;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+  margin-bottom: 0.2rem;
+}
+
+.card-name {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #22302f; /* on white card — AA */
+}
+.card-location {
+  color: #54514b; /* on white card — AA */
+  font-size: 0.9rem;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #54514b; /* "reviews" text on white card — AA */
+  font-size: 0.9rem;
+}
+.card-meta .star {
+  color: #e2a32b; /* decorative; the numeric rating carries the value */
+}
+.card-meta .rating {
+  font-weight: 700;
+  color: #22302f; /* on white card — AA */
+}
+.card-meta .dot {
+  color: #94908a;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  flex-wrap: wrap;
+}
+.price {
+  color: #54514b; /* on white card — AA */
+  font-size: 0.9rem;
+}
+.price strong {
+  color: #0e7a89; /* teal "from" price on white — AA */
+  font-size: 1.05rem;
+}
+.availability {
+  color: #54514b; /* on white card — AA */
+  font-size: 0.9rem;
+}
+.availability strong {
+  color: #0e7a89; /* teal free count on white — AA */
+}
+
+.state {
+  color: #54514b; /* loading/empty/error copy on slate-50 — AA */
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
