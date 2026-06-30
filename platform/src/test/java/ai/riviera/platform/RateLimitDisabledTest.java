@@ -6,8 +6,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * rate-limited, even with capacity set to 1 — far past which an enabled limiter would 429.
  */
 @WebMvcTest
-@Import({SecurityConfig.class, WebCorsConfig.class, RateLimitTestStubs.class})
+@Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 @TestPropertySource(properties = {
 		"riviera.ratelimit.enabled=false",
 		"riviera.ratelimit.per-ip.capacity=1",
@@ -28,13 +28,6 @@ class RateLimitDisabledTest {
 
 	@Autowired
 	MockMvc mvc;
-
-	private static RequestPostProcessor fromIp(String ip) {
-		return request -> {
-			request.setRemoteAddr(ip);
-			return request;
-		};
-	}
 
 	@Test
 	void disabledNeverLimits() throws Exception {

@@ -10,10 +10,10 @@ import java.time.Instant;
  * injected {@link java.time.Clock}'s instant), so the class is pure and tests advance time
  * deterministically — no {@code Instant.now()} (invariant #6 posture).
  *
- * <p>Thread-safe: a single bucket may be hit by many request threads at once, so every state read
- * and mutation is {@code synchronized}. Over-admission under contention is impossible (the spend is
- * atomic with the refill); the failure mode, if any, is fail-open, never wrongly rejecting a
- * legitimate caller.
+ * <p>Thread-safe per bucket: a single bucket may be hit by many request threads at once, so every
+ * state read and mutation is {@code synchronized}, making each spend atomic with its refill. (The
+ * filter's separate, best-effort map pruning is outside this lock, so a bucket evicted mid-use can in
+ * a rare race admit one extra request — fail-open, never wrongly rejecting a legitimate caller.)
  */
 final class TokenBucket {
 

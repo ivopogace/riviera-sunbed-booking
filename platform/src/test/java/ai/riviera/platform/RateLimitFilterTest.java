@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -8,8 +9,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
+import static ai.riviera.platform.WebSliceStubs.fromIp;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code 429} is unambiguously the limiter.
  */
 @WebMvcTest
-@Import({SecurityConfig.class, WebCorsConfig.class, RateLimitTestStubs.class})
+@Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 @TestPropertySource(properties = {
 		"riviera.ratelimit.enabled=true",
 		"riviera.ratelimit.per-ip.capacity=2",
@@ -44,13 +51,6 @@ class RateLimitFilterTest {
 
 	@Autowired
 	MockMvc mvc;
-
-	private static RequestPostProcessor fromIp(String ip) {
-		return request -> {
-			request.setRemoteAddr(ip);
-			return request;
-		};
-	}
 
 	private ResultActions viewFromIp(String ip, String code) throws Exception {
 		return mvc.perform(get("/api/bookings/{code}", code).with(fromIp(ip)));
@@ -129,6 +129,34 @@ class RateLimitFilterTest {
 		mvc.perform(get("/api/bookings/{code}", "xff-D")
 				.header("X-Forwarded-For", "203.0.113.99").with(fromIp("10.6.0.4")))
 				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void bookingCodeIsNeverLogged() throws Exception {
+		// Capture everything the filter logs at DEBUG while a per-code 429 fires, and assert the code
+		// (the bearer credential, invariant #7) never appears — it is only ever a map key (AC-10).
+		Logger filterLogger = (Logger) LoggerFactory.getLogger(RateLimitFilter.class);
+		Level original = filterLogger.getLevel();
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		filterLogger.setLevel(Level.DEBUG);
+		filterLogger.addAppender(appender);
+		try {
+			String code = "SECRETCODE9";
+			// Exhaust the per-code bucket (cap 2) from distinct IPs so the 429 is the code dimension.
+			viewFromIp("10.8.0.1", code).andExpect(status().isNotFound());
+			viewFromIp("10.8.0.2", code).andExpect(status().isNotFound());
+			viewFromIp("10.8.0.3", code).andExpect(status().isTooManyRequests());
+
+			boolean codeLeaked = appender.list.stream()
+					.map(ILoggingEvent::getFormattedMessage)
+					.anyMatch(message -> message.contains(code));
+			assertFalse(codeLeaked, "the booking code must never appear in logs (invariant #7)");
+		}
+		finally {
+			filterLogger.detachAppender(appender);
+			filterLogger.setLevel(original);
+		}
 	}
 
 	@Test

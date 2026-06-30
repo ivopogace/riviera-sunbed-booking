@@ -35,7 +35,8 @@ for the path templates/headers, injected `Clock` (not `Instant.now()`), no Lombo
 guard on the user-controlled IP, never log the code (invariant #7). `domain-modeling` — ADR-0006
 (keep code in path) meets all three ADR criteria (hard-to-reverse URL contract, surprising
 credential-in-path, real trade-off vs logging exposure); no new glossary term (rate limiting is
-implementation, not domain vocabulary). `postgres` — **N/A**, no SQL/migration. `riviera-plan-doc`
+implementation, not domain vocabulary). `postgres` — **N/A**, no SQL/migration.
+`riviera-stripe-payments` — **N/A**, no money/Stripe/charge/refund/payout path touched. `riviera-plan-doc`
 (this doc), `tdd` (red→green per behaviour). `angular-developer` / `playwright-cli` — **N/A**, no
 frontend change (the code stays in the path, so the merged FE is untouched).
 
@@ -120,8 +121,10 @@ existing issue). Findings:
 - [ ] **AC-9 (boundaries intact):** `ApplicationModules.verify()` passes; no JPA introduced; the
   filter imports no module internals. *Pinned by:* `ModularityTests`, `JdbcOnlyArchitectureTests`.
 - [ ] **AC-10 (code never logged):** The filter logs at most the resolved IP (newline-sanitised) and
-  the matched path template — **never** the booking code (invariant #7). *Pinned by:* code review
-  (RV-BE booking-code) + a unit assertion that the per-code key is not passed to any log call.
+  a fixed dimension label — **never** the booking code (invariant #7). *Pinned by:*
+  `RateLimitFilterTest.bookingCodeIsNeverLogged` (a Logback `ListAppender` captures the filter's
+  DEBUG output while a per-code 429 fires and asserts the code never appears) + code review (RV-BE
+  booking-code).
 
 ## Non-goals
 
@@ -144,7 +147,7 @@ existing issue). Findings:
 |---|---|---|---|---|---|---|
 | R-1 | Limit too strict → throttles the legitimate 20/30s payment poll (the drift in grill #2) | med | high | Default per-code/per-IP capacities set comfortably above 20/30s; pinned by `RateLimitDefaultsTest` (AC-5); limits configurable per env | impl | open |
 | R-2 | `X-Forwarded-For` spoofing — a client forges the header to dodge/poison the per-IP limit | med | med | Use the first XFF hop with `getRemoteAddr()` fallback; documented v1 limitation (no trusted-proxy allowlist yet). Per-code bucket + base32 entropy back it up; the real fix is a proxy-trust config with the auth model. ADR-0006 notes it | impl | accepted (v1) |
-| R-3 | Per-code map is a memory-DoS vector — an attacker rotating codes creates a bucket per code | med | med | `ConcurrentHashMap` bounded by `max-tracked-keys`; opportunistic prune of full (idle) buckets when the cap is exceeded — a full bucket carries no state, so eviction is lossless; per-bucket footprint is tiny | impl | open |
+| R-3 | Per-code map is a memory-DoS vector — an attacker rotating codes creates a bucket per code | med | med | `ConcurrentHashMap` **hard-bounded** by `max-tracked-keys`: at the cap, prune full (idle) buckets (lossless), and if that frees nothing, reset the map (backstop, fail-open one window, only reachable under a flood the per-IP limit gates). Pinned indirectly by the bounded-map logic | impl | resolved (review-gate fix) |
 | R-4 | Booking code logged via the limiter (breaks #7) | low | high | The code is only a map key; never passed to a logger. Log only the IP (newline-sanitised) + path template. AC-10 + review gate | impl | open |
 | R-5 | Filter ordering wrong — runs after auth so a 401 path is counted, or before CORS so preflight 429s | low | med | Registered in the security chain after CORS; `OPTIONS` excluded; endpoints are `permitAll` so no auth interaction. AC-8 | impl | open |
 | R-6 | Concurrency bug in the bucket (lost decrement under load → over-admits, or NPE) | low | med | `TokenBucket` mutations guarded (`synchronized`/atomic); `computeIfAbsent` for bucket creation; pure `TokenBucketTest`. Over-admission is fail-open (acceptable), never fail-closed on a legit user | impl | open |
@@ -216,12 +219,53 @@ other error responses). No request shape changes; the booking code stays a path 
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `TokenBucket` + `ClientIpResolver` (pure, test-first) | | |
-| 1 — `RateLimitProperties` + `RateLimitFilter` + `SecurityConfig` wiring + properties | | |
-| 2 — HTTP integration tests (per-IP/per-code/create/poll-regression/preflight/disabled) | | |
-| 3 — ADR-0006 + verify + review gate | | |
+| 0 — `TokenBucket` + `ClientIpResolver` (pure, test-first) | ✅ | `[#56] Token-bucket + client-IP resolver (pure…)` |
+| 1 — `RateLimitProperties` + `RateLimitFilter` + `SecurityConfig` wiring + properties | ✅ | `[#56] Per-IP + per-code rate-limit filter…` |
+| 2 — HTTP integration tests (per-IP/per-code/create/poll-regression/preflight/disabled) | ✅ | `[#56] HTTP tests…` |
+| 3 — ADR-0006 + verify + review gate | ✅ | `[#56] Plan doc + ADR-0006…`, `[#56] Review-gate fixes…` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as the code.
+
+### Review-gate note (2026-06-30)
+
+Ran the SDD review gate: `/code-review origin/main...HEAD` (high effort, 8 finder angles) +
+`riviera-review-overlay`. Full backend suite green at the gate (incl. `ModularityTests`,
+`JdbcOnlyArchitectureTests`). Highest-stakes overlay items: **RV-BE-1 availability** — N/A (no
+availability write path); **payment-confirmation (#8)** — N/A (no money moves); **booking-code #7** —
+PASS (the code is only a map key, never logged; now pinned by `bookingCodeIsNeverLogged`).
+**RV-PROC-1** — PASS (every touched area has its skill on the *Skills consulted* line; DB/FE/money N/A).
+
+**Confirmed findings — fixed through the loop** (re-ran the routing gate per fix: `riviera-modulith`
++ `riviera-java-conventions`; area stayed backend Java + config + tests, no new area):
+
+- **[Major] Soft cap did not actually bound the tracked-key maps** (2 angles). `computeIfAbsent` always
+  added a bucket even when the prune (which only reclaims *full* buckets) freed nothing, so a sustained
+  key-rotation flood could grow memory past `maxTrackedKeys`. **Fix:** `bucketFor` now prunes full
+  buckets at the cap and, if that frees nothing, resets the map as a hard backstop — memory is bounded.
+- **[Medium] Per-IP limit could throttle multiple legitimate payers behind one shared public IP**
+  (carrier-grade NAT / venue WiFi: same `X-Forwarded-For` client). **Fix:** raised the per-IP default
+  60→**120 / min** (tolerates ~3 concurrent payment polls of ~40/min) and documented the shared-IP
+  tuning in `application.properties`.
+- **[Minor] Hot-path redundancy** — the path was parsed and the `AntPathMatcher` run 3–4× per request
+  (`isBookingEndpoint` + `bookingCode`) and `bucketFor` did a double map lookup. **Fix:** a single
+  `targetOf(request)` classifies once (matched? + code); `bucketFor` does one `get` then create.
+- **[Minor] AC-10 claimed a "code never logged" test that didn't exist.** **Fix:** added
+  `RateLimitFilterTest.bookingCodeIsNeverLogged` (Logback `ListAppender`) so #7 is now genuinely pinned.
+- **[Minor] `ClientIpResolver` stripped only CR/LF.** **Fix:** broadened to all control chars
+  (`\p{Cntrl}`) + Unicode line/paragraph separators (defends terminal-escape injection too); new test.
+- **[Minor] Test-stub duplication** between the rate-limit tests and `WebCorsConfigTest`, plus a
+  triplicated `fromIp` helper. **Fix:** extracted a shared `WebSliceStubs` (`@TestConfiguration` + static
+  `fromIp`); both suites use it, removing ~150 lines of drift-prone duplication.
+
+**Accepted / documented (no change):**
+
+- **`X-Forwarded-For` is trusted without a proxy-allowlist** — accepted for v1 (R-2 / ADR-0006); a forged
+  header can dodge the per-IP limit, backed up by the per-code cap + base32 entropy; proxy-trust travels
+  with the auth model.
+- **The prune's reset backstop is fail-open for one window under an extreme flood** — only reachable at a
+  request rate the per-IP limit gates first; a scheduled/LRU/Caffeine eviction is the future hardening if
+  the backend is ever horizontally scaled (also where in-memory state would need revisiting).
+- **AC-3 (revisit endpoints with the real auth model)** — out of scope here; tracked by the auth-model work.
 
 ---
 

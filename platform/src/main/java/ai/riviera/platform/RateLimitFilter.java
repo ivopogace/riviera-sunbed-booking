@@ -34,9 +34,11 @@ import jakarta.servlet.http.HttpServletResponse;
  * payment poll so a real payer is never throttled (ADR-0006).
  *
  * <p><strong>State.</strong> In-memory token buckets in bounded {@link ConcurrentHashMap}s — correct
- * for the single Render instance (ADR-0004); no Redis. Maps are pruned of full (idle) buckets when a
- * soft cap is hit so an attacker rotating codes cannot grow memory without bound (a full bucket
- * carries no state, so eviction is lossless). Time comes from the injected {@link Clock} (testable).
+ * for the single Render instance (ADR-0004); no Redis. Each map is hard-bounded by
+ * {@code maxTrackedKeys}: when the cap is reached we first prune <em>full</em> (idle) buckets
+ * (lossless — a full bucket is indistinguishable from a fresh one), and only if that frees nothing
+ * (an extreme key-rotation flood, itself gated by the per-IP limit) do we reset the map as a backstop,
+ * so memory cannot grow without bound. Time comes from the injected {@link Clock} (testable).
  *
  * <p>App-level web concern in the root package (like {@link SecurityConfig}/{@link WebCorsConfig}),
  * not a Modulith module; it matches endpoints by URL path only and imports nothing from the booking
@@ -69,7 +71,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-		if (!props.enabled() || isPreflight(request) || !isBookingEndpoint(request)) {
+		// Classify the request once: skip non-booking endpoints, preflights, and (when disabled) all.
+		Target target = props.enabled() ? targetOf(request) : null;
+		if (target == null) {
 			chain.doFilter(request, response);
 			return;
 		}
@@ -85,9 +89,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 
 		// Per-code: only the two code-keyed endpoints carry a code.
-		String code = bookingCode(request);
-		if (code != null) {
-			TokenBucket codeBucket = bucketFor(codeBuckets, code, props.perCode(), now);
+		if (target.code() != null) {
+			TokenBucket codeBucket = bucketFor(codeBuckets, target.code(), props.perCode(), now);
 			if (!codeBucket.tryAcquire(now)) {
 				reject(response, codeBucket.retryAfterSeconds(now), ip, "code");
 				return;
@@ -97,31 +100,31 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		chain.doFilter(request, response);
 	}
 
-	private boolean isPreflight(HttpServletRequest request) {
-		return HttpMethod.OPTIONS.matches(request.getMethod());
+	/** A matched booking endpoint and its booking code ({@code null} for the code-less create). */
+	private record Target(String code) {
 	}
 
-	private boolean isBookingEndpoint(HttpServletRequest request) {
+	/**
+	 * Classify the request in a single pass: {@code null} if it is a CORS preflight or not one of the
+	 * three booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
+	 * for create). Computes the path and runs the matcher once, not per check.
+	 */
+	private Target targetOf(HttpServletRequest request) {
 		String method = request.getMethod();
-		String path = pathWithinApplication(request);
-		if (HttpMethod.GET.matches(method)) {
-			return paths.match(VIEW_TEMPLATE, path);
+		if (HttpMethod.OPTIONS.matches(method)) {
+			return null; // CORS preflight — never counted
 		}
-		if (HttpMethod.POST.matches(method)) {
-			return path.equals(CREATE_PATH) || paths.match(CANCEL_TEMPLATE, path);
-		}
-		return false;
-	}
-
-	/** The booking code for the two code-keyed endpoints, or {@code null} for create (no code). */
-	private String bookingCode(HttpServletRequest request) {
-		String method = request.getMethod();
 		String path = pathWithinApplication(request);
 		if (HttpMethod.GET.matches(method) && paths.match(VIEW_TEMPLATE, path)) {
-			return paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR);
+			return new Target(paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
 		}
-		if (HttpMethod.POST.matches(method) && paths.match(CANCEL_TEMPLATE, path)) {
-			return paths.extractUriTemplateVariables(CANCEL_TEMPLATE, path).get(CODE_VAR);
+		if (HttpMethod.POST.matches(method)) {
+			if (paths.match(CANCEL_TEMPLATE, path)) {
+				return new Target(paths.extractUriTemplateVariables(CANCEL_TEMPLATE, path).get(CODE_VAR));
+			}
+			if (path.equals(CREATE_PATH)) {
+				return new Target(null); // create carries no code → per-IP only
+			}
 		}
 		return null;
 	}
@@ -134,10 +137,24 @@ final class RateLimitFilter extends OncePerRequestFilter {
 				: uri;
 	}
 
+	/**
+	 * Fetch (or create) the bucket for {@code key}, keeping the map hard-bounded by
+	 * {@code maxTrackedKeys}: an existing key is a single lookup; a new key past the cap first prunes
+	 * full (idle) buckets — lossless — and, only if that frees nothing under an extreme key-rotation
+	 * flood, resets the map as a backstop so memory cannot grow without bound.
+	 */
 	private TokenBucket bucketFor(Map<String, TokenBucket> buckets, String key,
 			RateLimitProperties.Limit limit, Instant now) {
-		if (buckets.size() >= props.maxTrackedKeys() && !buckets.containsKey(key)) {
+		TokenBucket existing = buckets.get(key);
+		if (existing != null) {
+			return existing;
+		}
+		if (buckets.size() >= props.maxTrackedKeys()) {
 			buckets.values().removeIf(bucket -> bucket.isFull(now)); // lossless: full == fresh
+			if (buckets.size() >= props.maxTrackedKeys()) {
+				log.debug("Rate-limit key map hit the {} cap under heavy churn — resetting", props.maxTrackedKeys());
+				buckets.clear(); // backstop: bounds memory; only reachable under a flood the per-IP limit gates
+			}
 		}
 		return buckets.computeIfAbsent(key,
 				ignored -> new TokenBucket(limit.capacity(), limit.refillPeriod(), now));

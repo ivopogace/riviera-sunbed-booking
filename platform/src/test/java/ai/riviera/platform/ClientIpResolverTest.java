@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Pins client-IP resolution for per-IP rate-limit keying (issue #56, AC-6): the first
  * {@code X-Forwarded-For} hop is the client behind the Render proxy (ADR-0004); absence falls back to
- * the socket address; CR/LF in the (user-controlled) header is neutralised so it can never forge a
- * log line.
+ * the socket address; control characters in the (user-controlled) header are neutralised so it can
+ * never forge a log line or inject terminal escapes.
  */
 class ClientIpResolverTest {
 
@@ -44,8 +44,18 @@ class ClientIpResolverTest {
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.addHeader("X-Forwarded-For", "203.0.113.7\r\nFAKE LOG LINE");
 
-		String resolved = ClientIpResolver.resolve(request);
-		assertEquals("203.0.113.7__FAKE LOG LINE", resolved);
+		assertEquals("203.0.113.7__FAKE LOG LINE", ClientIpResolver.resolve(request));
+	}
+
+	@Test
+	void sanitisesOtherControlCharsAndSeparators() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		// A tab, an ANSI ESC (0x1B) and a Unicode line separator (U+2028) must all be neutralised; an
+		// ordinary space is preserved. Built via casts so the source carries no raw control bytes.
+		String forged = "1.2.3.4" + ((char) 0x09) + ((char) 0x1b) + ((char) 0x2028) + " x";
+		request.addHeader("X-Forwarded-For", forged);
+
+		assertEquals("1.2.3.4___ x", ClientIpResolver.resolve(request));
 	}
 
 	@Test

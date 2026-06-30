@@ -10,6 +10,7 @@ import java.util.OptionalInt;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import ai.riviera.platform.availability.application.in.MarkOutcome;
 import ai.riviera.platform.availability.application.in.ReleaseOutcome;
@@ -41,15 +42,24 @@ import ai.riviera.platform.venue.application.in.SetCommand;
 import ai.riviera.platform.venue.application.in.SetRejection;
 
 /**
- * Collaborators for the {@code @WebMvcTest} rate-limit slices (issue #56). The web slice registers
- * every {@code @RestController} but no {@code @Repository}/{@code @Service} beans, so each controller's
- * ports are stubbed here (mirroring {@code WebCorsConfigTest}). The rate-limit tests only ever hit the
- * booking endpoints, where an allowed request resolves to a {@code 404} (unknown set/code) — so a
- * {@code 429} is unambiguously the limiter. The {@link Clock} is fixed: the filter tests exercise
- * capacity, not refill (refill is pinned purely by {@code TokenBucketTest}).
+ * Shared collaborators for {@code @WebMvcTest} slices that load the whole web layer (the CORS/security
+ * filter-chain test and the rate-limit tests). The web slice registers every {@code @RestController}
+ * but no {@code @Repository}/{@code @Service} beans, so each controller's ports are stubbed here once
+ * instead of being copied into every test. The booking ports resolve an allowed request to a
+ * {@code 404} (unknown set/code) — so in the rate-limit tests a {@code 429} is unambiguously the
+ * limiter. The {@link Clock} is fixed: the filter tests exercise capacity, not refill (refill is
+ * pinned purely by {@code TokenBucketTest}).
  */
 @TestConfiguration(proxyBeanMethods = false)
-class RateLimitTestStubs {
+class WebSliceStubs {
+
+	/** Stamp a client IP onto a MockMvc request (shared by the rate-limit slices). */
+	static RequestPostProcessor fromIp(String ip) {
+		return request -> {
+			request.setRemoteAddr(ip);
+			return request;
+		};
+	}
 
 	@Bean
 	CreateBooking createBooking() {

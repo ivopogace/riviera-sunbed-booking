@@ -8,10 +8,11 @@ import jakarta.servlet.http.HttpServletRequest;
  * direct socket address; we take the first (left-most) hop — the original client — when present and
  * well-formed, and otherwise fall back to {@link HttpServletRequest#getRemoteAddr()}.
  *
- * <p>The header is partly user-controlled, so the returned value is stripped of CR/LF before it can
- * reach a logger — neutralising log-forging (the riviera-java-conventions log-injection guard). The
- * value is only ever used as a map key and, at most, a {@code debug} log field; the booking code is
- * never involved here (invariant #7).
+ * <p>The header is partly user-controlled, so the returned value is stripped of control characters
+ * (ASCII C0/C1 including CR/LF/TAB/ESC) and the Unicode line/paragraph separators before it can reach
+ * a logger — neutralising log-forging and terminal-escape injection (the riviera-java-conventions
+ * log-injection guard). The value is only ever used as a map key and, at most, a {@code debug} log
+ * field; the booking code is never involved here (invariant #7).
  *
  * <p>Trusting {@code X-Forwarded-For} without a trusted-proxy allowlist means a forged header can
  * dodge the per-IP limit (ADR-0006, risk R-2); the per-code bucket and code entropy back it up, and a
@@ -40,6 +41,8 @@ final class ClientIpResolver {
 		if (value == null || value.isBlank()) {
 			return UNKNOWN;
 		}
-		return value.replaceAll("[\\r\\n]", "_");
+		// Strip ASCII control chars (C0/C1: CR, LF, TAB, ESC, …) + Unicode line/paragraph separators,
+		// so a forged header can neither inject a fake log line nor smuggle terminal escapes.
+		return value.replaceAll("[\\p{Cntrl}\\u0085\\u2028\\u2029]", "_");
 	}
 }

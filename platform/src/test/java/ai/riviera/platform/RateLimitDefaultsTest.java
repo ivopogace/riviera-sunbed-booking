@@ -5,8 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,18 +19,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * missed; pinning it stops a future tightening from silently breaking a real payer.
  */
 @WebMvcTest
-@Import({SecurityConfig.class, WebCorsConfig.class, RateLimitTestStubs.class})
+@Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 class RateLimitDefaultsTest {
 
 	@Autowired
 	MockMvc mvc;
-
-	private static RequestPostProcessor fromIp(String ip) {
-		return request -> {
-			request.setRemoteAddr(ip);
-			return request;
-		};
-	}
 
 	@Test
 	void paymentPollingWithinDefaultsIsNotLimited() throws Exception {
