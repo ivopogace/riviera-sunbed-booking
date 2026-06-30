@@ -12,6 +12,11 @@ export const routes: Routes = [
     title: 'Venue editor — Riviera',
   },
   {
+    path: 'venue-admin/daily/:venueId',
+    loadComponent: () => import('./staff/staff-daily').then((m) => m.StaffDaily),
+    title: 'Daily view — Riviera',
+  },
+  {
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
     title: 'Beach map — Riviera',

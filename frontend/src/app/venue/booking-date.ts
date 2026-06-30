@@ -11,14 +11,22 @@
 const TIRANE = 'Europe/Tirane';
 
 export function defaultBookingDate(now: Date): string {
+  return addOneDay(todayBookingDate(now));
+}
+
+/**
+ * **Today** in Europe/Tirane (invariant #6), as an ISO `YYYY-MM-DD` string — the day staff are
+ * working in the U8 daily view. Pure (computed from the injected `now`); derived via `Intl` with an
+ * explicit time zone, never `toISOString()` (which is UTC and can roll the day late in the evening).
+ */
+export function todayBookingDate(now: Date): string {
   // en-CA renders ISO `YYYY-MM-DD`; the timeZone option pins it to Tirane's civil day.
-  const tiraneToday = new Intl.DateTimeFormat('en-CA', {
+  return new Intl.DateTimeFormat('en-CA', {
     timeZone: TIRANE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }).format(now);
-  return addOneDay(tiraneToday);
 }
 
 /**

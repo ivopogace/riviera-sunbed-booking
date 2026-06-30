@@ -1,4 +1,4 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpParams, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
@@ -68,6 +68,24 @@ describe('operatorAuthInterceptor', () => {
     auth.signIn('operator', 'pw');
     http.get(`${api}/api/venues/1`).subscribe();
     const req = httpMock.expectOne(`${api}/api/venues/1`);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('attaches Basic auth to the operator bookings GET, even with a query param (U8)', () => {
+    // The staff daily-bookings read carries a `date` param; auth must still attach (codes are
+    // operator-only, invariant #7). Pins that the request-vs-query distinction is handled.
+    auth.signIn('operator', 'pw');
+    http.get(`${api}/api/venues/1/bookings`, { params: new HttpParams().set('date', '2026-06-30') }).subscribe();
+    const req = httpMock.expectOne((r) => r.url === `${api}/api/venues/1/bookings`);
+    expect(req.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
+    req.flush([]);
+  });
+
+  it('leaves the public map GET untouched even with a date query param', () => {
+    auth.signIn('operator', 'pw');
+    http.get(`${api}/api/venues/1`, { params: new HttpParams().set('date', '2026-06-30') }).subscribe();
+    const req = httpMock.expectOne((r) => r.url === `${api}/api/venues/1`);
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
