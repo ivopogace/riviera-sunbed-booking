@@ -40,7 +40,8 @@ export class OperatorAuth {
     const bytes = new TextEncoder().encode(`${c.username}:${c.password}`);
     let binary = '';
     for (const byte of bytes) {
-      binary += String.fromCharCode(byte);
+      // Each `byte` is 0–255, so it is its own code point — one Latin-1 char `btoa` accepts.
+      binary += String.fromCodePoint(byte);
     }
     return `Basic ${btoa(binary)}`;
   }

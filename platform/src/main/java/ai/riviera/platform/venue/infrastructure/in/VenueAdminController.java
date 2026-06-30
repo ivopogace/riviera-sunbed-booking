@@ -35,6 +35,9 @@ import ai.riviera.platform.venue.application.in.SetRejection;
 @RequestMapping("/api/venues")
 class VenueAdminController {
 
+	/** JSON body key for an error-code payload ({@code {"error": CODE}}). */
+	private static final String ERROR_KEY = "error";
+
 	private final OnboardVenue onboardVenue;
 	private final EditBeachMap editBeachMap;
 
@@ -84,13 +87,13 @@ class VenueAdminController {
 			case NO_SUCH_VENUE, NO_SUCH_SET -> HttpStatus.NOT_FOUND;
 			case CELL_TAKEN, DUPLICATE_POSITION -> HttpStatus.CONFLICT;
 		};
-		return ResponseEntity.status(status).body(Map.of("error", reason.name()));
+		return ResponseEntity.status(status).body(Map.of(ERROR_KEY, reason.name()));
 	}
 
 	/** Malformed request body (missing/invalid fields, bad time, non-ISO currency) → 400. */
 	@ExceptionHandler(IllegalArgumentException.class)
 	ResponseEntity<Map<String, String>> onInvalidRequest(IllegalArgumentException e) {
-		return ResponseEntity.badRequest().body(Map.of("error", "INVALID_REQUEST"));
+		return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "INVALID_REQUEST"));
 	}
 
 	/**
@@ -100,6 +103,6 @@ class VenueAdminController {
 	 */
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ResponseEntity<Map<String, String>> onConstraintViolation(DataIntegrityViolationException e) {
-		return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "LAYOUT_CONFLICT"));
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(ERROR_KEY, "LAYOUT_CONFLICT"));
 	}
 }

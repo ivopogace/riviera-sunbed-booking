@@ -40,9 +40,9 @@
   }
 
   @if (reloadFailed()) {
-    <p class="form-notice" role="status">
+    <output class="form-notice">
       Saved — but the layout preview couldn’t be refreshed. Reload the page to see the current map.
-    </p>
+    </output>
   }
 
   @if (operator.signedIn()) {
@@ -119,10 +119,10 @@
       </form>
     } @else {
       <!-- Step 2: lay out the beach map -->
-      <div class="card created" role="status" data-testid="venue-created">
+      <output class="card created" data-testid="venue-created">
         Venue <strong>#{{ venueId() }}</strong> created. Add set positions below; the layout shown
         is re-read from the public beach-map API.
-      </div>
+      </output>
 
       <form class="card" (submit)="onAddSet(); $event.preventDefault()" novalidate>
         <h2>2 · Add a set position</h2>

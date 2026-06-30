@@ -41,6 +41,11 @@ class SecurityConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
+	/** The single role that gates the U7 operator write surface. */
+	private static final String OPERATOR_ROLE = "OPERATOR";
+	/** A single laid-out set (PATCH/DELETE target); also CSRF-exempt as a token-less write path. */
+	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
+
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
@@ -59,17 +64,17 @@ class SecurityConfig {
 				// requests — does not apply; ignore it on those paths like the other token-less APIs.
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
 						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
-						"/api/venues", "/api/venues/*/sets", "/api/venues/*/sets/*"))
+						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Venue onboarding + beach-map editing (U7) — an operator-only write surface.
 						// The real staff/admin identity model is deferred; for now a single configured
 						// operator credential (role OPERATOR) gates every write. GET stays public above.
-						.requestMatchers(HttpMethod.POST, "/api/venues").hasRole("OPERATOR")
-						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole("OPERATOR")
-						.requestMatchers(HttpMethod.PATCH, "/api/venues/*/sets/*").hasRole("OPERATOR")
-						.requestMatchers(HttpMethod.DELETE, "/api/venues/*/sets/*").hasRole("OPERATOR")
+						.requestMatchers(HttpMethod.POST, "/api/venues").hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
 						// View a booking by its code (U6) — the code is the bearer credential
 						// (invariant #7), so knowing it authorizes the read. One path segment only.
@@ -108,7 +113,7 @@ class SecurityConfig {
 		}
 		UserDetails user = User.withUsername(operator.username())
 				.password(encoder.encode(password))
-				.roles("OPERATOR")
+				.roles(OPERATOR_ROLE)
 				.build();
 		return new InMemoryUserDetailsManager(user);
 	}

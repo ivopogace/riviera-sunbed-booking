@@ -262,9 +262,10 @@ describe('VenueEditor', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The operator is told the preview is stale (a status), NOT shown a write error inviting a retry.
+    // The operator is told the preview is stale via the `<output>` status region (implicit
+    // role="status"), NOT shown a write error inviting a retry.
     expect(host().textContent).toContain('Venue #5 created');
-    expect(host().querySelector('[role="status"].form-notice')?.textContent).toContain(
+    expect(host().querySelector('output.form-notice')?.textContent).toContain(
       'couldn’t be refreshed',
     );
     expect(host().querySelector('.form-error')).toBeNull();

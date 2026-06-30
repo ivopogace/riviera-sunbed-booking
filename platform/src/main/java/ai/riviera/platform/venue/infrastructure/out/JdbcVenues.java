@@ -23,6 +23,10 @@ import ai.riviera.platform.venue.application.out.Venues;
 @Repository
 class JdbcVenues implements Venues {
 
+	/** Named-parameter keys reused across the set queries (must match the {@code :name} SQL refs). */
+	private static final String P_SET_ID = "setId";
+	private static final String P_VENUE = "venue";
+
 	private final JdbcClient jdbc;
 
 	JdbcVenues(JdbcClient jdbc) {
@@ -62,8 +66,8 @@ class JdbcVenues implements Venues {
 		return jdbc.sql("""
 				SELECT EXISTS(SELECT 1 FROM set_position WHERE id = :setId AND venue_id = :venue)
 				""")
-				.param("setId", setId.value())
-				.param("venue", venueId.value())
+				.param(P_SET_ID, setId.value())
+				.param(P_VENUE, venueId.value())
 				.query(Boolean.class)
 				.single();
 	}
@@ -82,7 +86,7 @@ class JdbcVenues implements Venues {
 				         WHERE venue_id = :venue AND grid_x = :gridX AND grid_y = :gridY
 				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS cell_taken
 				""")
-				.param("venue", venueId.value())
+				.param(P_VENUE, venueId.value())
 				.param("rowLabel", c.rowLabel())
 				.param("positionNo", c.positionNo())
 				.param("gridX", c.gridX())
@@ -103,7 +107,7 @@ class JdbcVenues implements Venues {
 	@Override
 	public long insertSet(VenueId venueId, SetCommand c) {
 		Map<String, Object> params = new HashMap<>(setParams(c));
-		params.put("venue", venueId.value());
+		params.put(P_VENUE, venueId.value());
 		return jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
 				                          price_minor, price_currency, grid_x, grid_y)
@@ -119,8 +123,8 @@ class JdbcVenues implements Venues {
 	@Override
 	public int updateSet(VenueId venueId, SetId setId, SetCommand c) {
 		Map<String, Object> params = new HashMap<>(setParams(c));
-		params.put("venue", venueId.value());
-		params.put("setId", setId.value());
+		params.put(P_VENUE, venueId.value());
+		params.put(P_SET_ID, setId.value());
 		return jdbc.sql("""
 				UPDATE set_position
 				SET row_label = :rowLabel, position_no = :positionNo, tier = :tier, pool = :pool,
@@ -135,8 +139,8 @@ class JdbcVenues implements Venues {
 	@Override
 	public int deleteSet(VenueId venueId, SetId setId) {
 		return jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
-				.param("setId", setId.value())
-				.param("venue", venueId.value())
+				.param(P_SET_ID, setId.value())
+				.param(P_VENUE, venueId.value())
 				.update();
 	}
 
