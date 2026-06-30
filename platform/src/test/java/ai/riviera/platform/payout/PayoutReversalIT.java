@@ -74,7 +74,8 @@ class PayoutReversalIT {
 
 	private BookingCancelled cancelled(Ref b, long refundMinor) {
 		return new BookingCancelled(new BookingId(b.bookingId()), new VenueId(b.venueId()),
-				new SetId(b.setId()), LocalDate.of(2030, 7, 1), refundMinor, "EUR");
+				new SetId(b.setId()), LocalDate.of(2030, 7, 1), refundMinor, "EUR",
+				ai.riviera.platform.booking.api.RefundReason.POLICY);
 	}
 
 	private void publishInTransaction(BookingCancelled event) {
@@ -91,6 +92,12 @@ class PayoutReversalIT {
 		return jdbc.sql("SELECT net_minor FROM payout_ledger_entry "
 						+ "WHERE booking_id = :id AND entry_type = 'REVERSAL'")
 				.param("id", bookingId).query(Long.class).single();
+	}
+
+	private String reversalReason(long bookingId) {
+		return jdbc.sql("SELECT reason FROM payout_ledger_entry "
+						+ "WHERE booking_id = :id AND entry_type = 'REVERSAL'")
+				.param("id", bookingId).query(String.class).single();
 	}
 
 	@Test
@@ -111,6 +118,7 @@ class PayoutReversalIT {
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, reversalRows(b.bookingId())));
 		assertEquals(3825L, reversalNet(b.bookingId()), "full reversal nets out the accrual (3825)");
+		assertEquals("POLICY", reversalReason(b.bookingId()), "the reversal records the refund reason (U9)");
 	}
 
 	@Test

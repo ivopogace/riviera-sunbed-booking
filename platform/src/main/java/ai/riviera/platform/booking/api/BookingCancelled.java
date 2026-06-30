@@ -15,10 +15,11 @@ import ai.riviera.platform.venue.api.VenueId;
  *
  * <p>Id-based, immutable payload (invariant #11): technical ids ({@link BookingId}, {@link VenueId},
  * {@link SetId}) plus the cancellation facts — the {@code bookingDate} ({@code Europe/Tirane},
- * invariant #6) and the server-computed {@code refundMinor} in integer minor units + ISO
- * {@code currency} (invariants #5/#10). {@code refundMinor} drives the proportional reversal; the
- * original accrual is re-read by {@code payout}, not carried here.
+ * invariant #6), the server-computed {@code refundMinor} in integer minor units + ISO
+ * {@code currency} (invariants #5/#10), and the {@link RefundReason} (U9). {@code refundMinor} drives
+ * the proportional reversal; {@code reason} is stamped on that reversal so the ledger stays auditable
+ * (policy vs weather). The original accrual is re-read by {@code payout}, not carried here.
  */
 public record BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId,
-		LocalDate bookingDate, long refundMinor, String currency) {
+		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason) {
 }

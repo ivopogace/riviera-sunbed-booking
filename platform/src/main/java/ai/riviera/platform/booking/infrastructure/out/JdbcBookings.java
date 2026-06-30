@@ -140,19 +140,21 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor) {
+			long refundMinor, ai.riviera.platform.booking.api.RefundReason reason) {
 		// Guarded CONFIRMED -> CANCELLED. RETURNING yields the facts only on a real transition, so a
 		// double-cancel (already CANCELLED) is a 0-row empty no-op — the caller then releases the set,
-		// refunds, and publishes BookingCancelled exactly once.
+		// refunds, and publishes BookingCancelled exactly once. The reason (POLICY/WEATHER, U9) is the
+		// audit of why the cancellation happened (invariant #10).
 		return jdbc.sql("""
 				UPDATE booking
-				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund
+				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
 				WHERE id = :id AND status = :confirmed
 				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("at", java.sql.Timestamp.from(cancelledAt))
 				.param("refund", refundMinor)
+				.param("reason", reason.name())
 				.param("id", bookingId)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.query((rs, rowNum) -> new CancelledBooking(

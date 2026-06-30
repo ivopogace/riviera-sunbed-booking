@@ -67,14 +67,15 @@ public interface Bookings {
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
 
 	/**
-	 * Cancel a tourist-confirmed booking (U6): transition {@code CONFIRMED → CANCELLED}, stamping
-	 * {@code cancelled_at} and the server-computed {@code refundMinor}, and return the booking's facts
-	 * (for the refund + {@code BookingCancelled} payload, built atomically via SQL {@code RETURNING}).
-	 * The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row {@code empty} no-op
-	 * (so the release/refund/event fire exactly once); a non-{@code CONFIRMED} booking yields empty.
+	 * Cancel a confirmed booking: transition {@code CONFIRMED → CANCELLED}, stamping
+	 * {@code cancelled_at}, the server-computed {@code refundMinor}, and the {@code reason} (U6 tourist
+	 * {@code POLICY} / U9 admin {@code WEATHER}), and return the booking's facts (for the refund +
+	 * {@code BookingCancelled} payload, built atomically via SQL {@code RETURNING}). The guarded
+	 * {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row {@code empty} no-op (so the
+	 * release/refund/event fire exactly once); a non-{@code CONFIRMED} booking yields empty.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor);
+			long refundMinor, ai.riviera.platform.booking.api.RefundReason reason);
 
 	/**
 	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date}, as {@code (setId, code)}

@@ -44,9 +44,10 @@ class BookingCancelledPayoutListener {
 		}
 		ledger.findAccrual(bookingId).ifPresentOrElse(
 				accrual -> {
-					ledger.reverse(PayoutLedgerEntry.reversalOf(accrual, event.refundMinor()));
-					log.info("reversed payout for cancelled booking {} (refund {} {})", bookingId,
-							event.refundMinor(), event.currency());
+					ledger.reverse(PayoutLedgerEntry.reversalOf(accrual, event.refundMinor(),
+							event.reason()));
+					log.info("reversed payout for cancelled booking {} (refund {} {}, reason {})", bookingId,
+							event.refundMinor(), event.currency(), event.reason());
 				},
 				() -> log.warn("no ACCRUAL found for cancelled booking {} — nothing to reverse", bookingId));
 	}

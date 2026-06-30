@@ -31,7 +31,8 @@ class BookingRefundListenerTest {
 
 	private static BookingCancelled event(long bookingId, long refundMinor, String currency) {
 		return new BookingCancelled(new BookingId(bookingId), new VenueId(1L), new SetId(2L),
-				LocalDate.of(2030, 7, 1), refundMinor, currency);
+				LocalDate.of(2030, 7, 1), refundMinor, currency,
+				ai.riviera.platform.booking.api.RefundReason.POLICY);
 	}
 
 	@Test

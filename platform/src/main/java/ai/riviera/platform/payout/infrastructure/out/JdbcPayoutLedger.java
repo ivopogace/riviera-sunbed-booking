@@ -52,7 +52,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
 						new VenueId(rs.getLong("venue_id")), rs.getLong("booking_id"), EntryType.ACCRUAL,
 						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong("net_minor"),
-						rs.getString("currency")))
+						rs.getString("currency"), null))
 				.optional();
 	}
 
@@ -60,8 +60,8 @@ class JdbcPayoutLedger implements PayoutLedger {
 	private void insertIdempotently(PayoutLedgerEntry entry) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
-				                                 commission_minor, net_minor, currency)
-				VALUES (:venue, :booking, :type, :gross, :commission, :net, :currency)
+				                                 commission_minor, net_minor, currency, reason)
+				VALUES (:venue, :booking, :type, :gross, :commission, :net, :currency, :reason)
 				ON CONFLICT (booking_id, entry_type) DO NOTHING
 				""")
 				.param("venue", entry.venueId().value())
@@ -71,6 +71,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.param("commission", entry.commissionMinor())
 				.param("net", entry.netMinor())
 				.param("currency", entry.currency())
+				.param("reason", entry.reason() == null ? null : entry.reason().name())
 				.update();
 	}
 }

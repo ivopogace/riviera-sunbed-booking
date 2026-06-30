@@ -160,7 +160,8 @@ class CreateBookingServiceTest {
 
 			@Override
 			public java.util.Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
-					long bookingId, java.time.Instant cancelledAt, long refundMinor) {
+					long bookingId, java.time.Instant cancelledAt, long refundMinor,
+					ai.riviera.platform.booking.api.RefundReason reason) {
 				return java.util.Optional.empty();
 			}
 
@@ -368,7 +369,8 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.out.CancelledBooking> cancelConfirmed(
-				long bookingId, Instant cancelledAt, long refundMinor) {
+				long bookingId, Instant cancelledAt, long refundMinor,
+				ai.riviera.platform.booking.api.RefundReason reason) {
 			return Optional.empty();
 		}
 
