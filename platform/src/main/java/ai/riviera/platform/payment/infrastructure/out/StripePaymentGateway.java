@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import com.stripe.StripeClient;
+import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
@@ -76,7 +77,7 @@ class StripePaymentGateway implements PaymentGateway {
 				.setIdempotencyKey(idempotencyKey(booking))                  // derived from booking id (#8)
 				.build();
 		try {
-			PaymentIntent intent = stripe.v1().paymentIntents().create(params, options);
+			PaymentIntent intent = createWithRecovery(params, options, booking);
 			payments.register(new NewPayment(booking, intent.getId(), amount.minor(), amount.currency()));
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
 		}
@@ -85,6 +86,33 @@ class StripePaymentGateway implements PaymentGateway {
 			log.warn("Stripe PaymentIntent creation failed for booking {}: code={}",
 					booking.value(), e.getCode());
 			return new PaymentOutcome.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
+		}
+	}
+
+	/**
+	 * Create the PaymentIntent, recovering from a create whose response was lost to a timeout
+	 * (issue #66). A read/connect timeout throws {@link ApiConnectionException} <em>after</em> Stripe
+	 * may already have created the intent — leaving it orphaned-and-untracked, because
+	 * {@code register} (which runs only on a successful return) never executed. Since the idempotency
+	 * key is deterministic ({@code booking-<id>-pi}), replaying the create <strong>once</strong> with
+	 * the same key returns the <strong>same</strong> intent Stripe created (or creates it fresh if the
+	 * first request never landed) — so the id is recovered and recorded by the caller, never lost. A
+	 * non-connection {@link StripeException} (a decline, an invalid request) is a definitive Stripe
+	 * response, carries no orphan risk, and is <strong>not</strong> replayed — it propagates to the
+	 * caller's {@code Failed} mapping. A second consecutive timeout also propagates: Stripe
+	 * auto-expires the unconfirmed intent (no charge), the documented low-impact residual.
+	 */
+	private PaymentIntent createWithRecovery(PaymentIntentCreateParams params, RequestOptions options,
+			BookingRef booking) throws StripeException {
+		try {
+			return stripe.v1().paymentIntents().create(params, options);
+		}
+		catch (ApiConnectionException e) {
+			// The response was lost to a timeout; the intent may exist at Stripe. Replay once with the
+			// same idempotency key to recover it (never double-create). Code-only log (invariant #8).
+			log.warn("Stripe PaymentIntent create timed out for booking {} — replaying with the same "
+					+ "idempotency key to recover any created intent (code={})", booking.value(), e.getCode());
+			return stripe.v1().paymentIntents().create(params, options);
 		}
 	}
 
