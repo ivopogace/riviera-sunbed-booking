@@ -164,6 +164,18 @@ These are repo-scoped — they load when working in this repository.
   (A copy also exists in the global skills for other projects; in this repo the
   in-repo copy is authoritative.)
 
+**Frontend e2e skill:**
+
+- **`playwright-cli`** (official `@playwright/cli`, installed via `playwright-cli install
+  --skills` → `.claude/skills/playwright-cli/`) — the **Playwright e2e authority**: browser
+  automation, best-practice spec authoring, request-mocking, and spec generation, driven from
+  the `playwright-cli` binary. The SDD routing gate makes it **mandatory for any user-facing
+  frontend slice** — used to **author** best-practice e2e tests, and in the review gate to
+  **judge** whether the tests written are accurate against it (review overlay item `RV-FE-E2E`).
+  The project-specific facts the generic skill can't know — the two-suite split (CI-safe
+  mocked-a11y vs local-only real-backend) and which suite a spec belongs in — live in the
+  review overlay's `RV-FE-E2E` item, not in a separate skill.
+
 A `riviera-local-debug` skill (how to run the stack locally) is **deliberately
 deferred** until the apps are scaffolded — there is nothing to run yet.
 

@@ -85,8 +85,9 @@ The size flexes; the gate does not.
 > slice usually trips several rows below. A migration written without `postgres`, **any
 > backend Java created or modified without `riviera-modulith` loaded** (so the class lands
 > in the right module/package and the `api/` boundary holds), a new module seam without
-> `codebase-design`, or an Angular component without `angular-developer` + the Angular MCP
-> is a **process miss** the review gate will flag.
+> `codebase-design`, an Angular component without `angular-developer` + the Angular MCP,
+> or a **user-facing frontend flow shipped without `playwright-cli` (the e2e coverage it
+> drives)** is a **process miss** the review gate will flag.
 
 | If the change touches… | Load BEFORE writing it (MUST) | Why |
 |---|---|---|
@@ -95,6 +96,7 @@ The size flexes; the gate does not.
 | **Writing/refactoring any backend Java** (class, record, port, JDBC adapter, event, controller, test) | **`riviera-java-conventions`** (Java idioms) + **`riviera-modulith`** (which package it belongs in) | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — **and** the right module/package per the hexagon. Both fire on any backend Java create/modify. |
 | **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
 | **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
+| **A user-facing frontend flow / behaviour** (any component / route / form / service change a user can observe, or anything under `frontend/e2e/`) | **`playwright-cli`** (official `@playwright/cli` skill — drive the flow, scaffold a best-practice spec, mock requests, generate from actions) | every frontend slice ships e2e coverage authored to Playwright best practice — not an afterthought; checked by RV-FE-E2E. **Project facts the generic skill can't know** — the two-suite split (CI-safe mocked-a11y `frontend/e2e/` vs local-only real-backend `frontend/e2e/real-backend/`) and which suite a spec belongs in — live in the review overlay's RV-FE-E2E item; consult it when placing the spec |
 | **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
 | **Anything, always** | **`riviera-plan-doc`** (plan) · **`tdd`** (build) · **`riviera-review-overlay`** (review) | the always-on spine |
 
@@ -106,7 +108,9 @@ The size flexes; the gate does not.
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
    so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
    `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
-   migration before loading `postgres`, the gate already failed — redo it.
+   migration before loading `postgres`, the gate already failed — redo it. A frontend slice
+   loads `angular-developer` + the angular-cli MCP **and** `playwright-cli` — the latter so
+   the slice ships best-practice e2e coverage, not just a component.
 3. **Record.** Name each loaded skill and what it changed in the plan doc's **Skills
    consulted** line (one phrase each). `riviera-review-overlay` checks that line against
    the diff: a migration in the diff with no `postgres` in *Skills consulted* is a finding.
@@ -115,7 +119,8 @@ This gate fires at the plan stage (vet the design), the implement stage (vet the
 **and the review-fix stage** (vet each finding fix). Fixing a finding is implementation:
 **re-detect what the fix touches and load that area's skill before you edit it** — a migration
 fix needs `postgres`, a backend fix needs `riviera-modulith` + `riviera-java-conventions`, a
-frontend fix needs `angular-developer` + the angular-cli MCP, a money fix needs
+frontend fix needs `angular-developer` + the angular-cli MCP **+ `playwright-cli`**
+(re-cover or adjust the e2e), a money fix needs
 `riviera-stripe-payments`. "It's only a review fix / it's small / CI is already green" is **not**
 an exemption — that mindset is precisely how the gate gets skipped on the last mile. Loading a
 skill earlier does **not** exempt you when a new area appears, and re-loading is cheap — when in
@@ -143,8 +148,8 @@ doubt, load it.
    it gets the **same gates the original code got**:
    - **Re-run the Skill-routing gate for each fix** — detect what the fix touches and load that
      area's skill *before* editing (DB → `postgres`; backend → `riviera-modulith` +
-     `riviera-java-conventions`; frontend → `angular-developer` + angular-cli MCP; money →
-     `riviera-stripe-payments`). Build it test-first (`tdd`).
+     `riviera-java-conventions`; frontend → `angular-developer` + angular-cli MCP +
+     `playwright-cli`; money → `riviera-stripe-payments`). Build it test-first (`tdd`).
    - **Update the plan's _Skills consulted_ line** with any new area a fix pulled in, so RV-PROC-1
      stays truthful.
    - **Re-run the CI gate** (push → green again) **and re-review the changed surface** — re-run
