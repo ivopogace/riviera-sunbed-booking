@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
 import ai.riviera.platform.payment.application.out.PaymentGateway;
@@ -29,6 +30,11 @@ class RefundServiceTest {
 			@Override
 			public RefundResult refund(BookingRef booking, Money amount) {
 				return new RefundResult.Refunded("re-" + booking.value() + "-" + amount.minor());
+			}
+
+			@Override
+			public PaymentCancellation cancel(BookingRef booking) {
+				throw new UnsupportedOperationException("not exercised by the refund seam");
 			}
 		};
 		RefundService service = new RefundService(fake);

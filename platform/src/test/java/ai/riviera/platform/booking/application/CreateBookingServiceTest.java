@@ -161,6 +161,12 @@ class CreateBookingServiceTest {
 					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
 				return List.of();
 			}
+
+			@Override
+			public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
+					java.time.Instant olderThan) {
+				return List.of();
+			}
 		};
 		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
@@ -306,6 +312,12 @@ class CreateBookingServiceTest {
 		@Override
 		public List<ai.riviera.platform.booking.application.in.DailyBooking> findConfirmedForVenueOn(
 				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+			return List.of();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
+				Instant olderThan) {
 			return List.of();
 		}
 	}

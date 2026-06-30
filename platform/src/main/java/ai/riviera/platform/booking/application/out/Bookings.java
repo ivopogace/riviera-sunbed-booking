@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.in.DailyBooking;
 import ai.riviera.platform.venue.api.VenueId;
 
@@ -82,4 +83,14 @@ public interface Bookings {
 	 * #7) — carried to the operator-gated caller, never logged. Empty list when there are none.
 	 */
 	List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date);
+
+	/**
+	 * The ids of bookings still {@code AWAITING_PAYMENT} that were created strictly before
+	 * {@code olderThan} — the abandoned-payment TTL sweep's candidate set (issue #51). A closed tab
+	 * produces no terminating webhook, so such a booking lingers and keeps its {@code (set, date)}
+	 * claimed; the sweep cancels the PaymentIntent and releases the claim. Read-only; ordered by id
+	 * for stable iteration. Empty when none are stale. Served by the partial index on
+	 * {@code (created_at) WHERE status = 'AWAITING_PAYMENT'} (V13).
+	 */
+	List<BookingId> findExpirableAwaitingPayment(Instant olderThan);
 }

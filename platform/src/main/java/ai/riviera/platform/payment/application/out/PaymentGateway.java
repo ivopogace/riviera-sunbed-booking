@@ -2,6 +2,7 @@ package ai.riviera.platform.payment.application.out;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
 
@@ -33,4 +34,15 @@ public interface PaymentGateway {
 	 * outcome (never throws on an expected gateway failure / a missing collection).
 	 */
 	RefundResult refund(BookingRef booking, Money amount);
+
+	/**
+	 * Cancel the booking's PaymentIntent (issue #51) so Stripe stops retrying and the payment can no
+	 * longer succeed. Reads the PaymentIntent's state first: a cancelable intent is canceled
+	 * ({@code Canceled}), an already-canceled one is also {@code Canceled} (idempotent), a
+	 * {@code succeeded} intent — or a booking with no collection on record — is
+	 * {@code NotCancellable} (the caller must not cancel the booking), and a transient gateway error
+	 * is {@code Failed}. Returns a typed outcome (never throws on an expected gateway failure). The
+	 * stub voids in-process. No money moves — collect-only (invariant #8).
+	 */
+	PaymentCancellation cancel(BookingRef booking);
 }
