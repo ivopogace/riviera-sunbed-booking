@@ -67,6 +67,72 @@ describe('VenueEditor', () => {
     button!.click();
   }
 
+  /** A venue (id 5) carrying a single ONLINE/WALK_IN set — the post-add read-back shape. */
+  function oneSet(pool: 'ONLINE' | 'WALK_IN' = 'ONLINE'): VenueMapView {
+    return venueView(5, [
+      {
+        id: 9,
+        rowLabel: 'Front row',
+        positionNo: 1,
+        tier: 'PREMIUM',
+        pool,
+        price: { minorUnits: 4500, currency: 'EUR' },
+        gridX: 1,
+        gridY: 1,
+        availability: 'FREE',
+      },
+    ]);
+  }
+
+  /** Sign in, create venue 5, and settle its first read-back so the layout step is showing. */
+  async function createVenue(): Promise<void> {
+    auth.signIn('operator', 'pw');
+    fixture.detectChanges();
+    setField('Name', 'Sunset Bar');
+    setField('Beach', 'Ksamil');
+    setField('Region', 'Riviera');
+    fixture.detectChanges();
+    clickButton('Create venue');
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush({ id: 5 }, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
+      .flush(venueView(5, []));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  /** Fill the add-set form with a valid front-row set and submit it. */
+  function fillAndSubmitSet(price = '4500'): void {
+    setField('Row label', 'Front row');
+    setField('Position number', '1');
+    setField('Price (minor units)', price);
+    setField('Grid column', '1');
+    setField('Grid row', '1');
+    fixture.detectChanges();
+    clickButton('Add set');
+  }
+
+  /** Add a set to venue 5 and settle the read-back so one row is laid out. */
+  async function addSet(): Promise<void> {
+    fillAndSubmitSet();
+    await fixture.whenStable();
+    httpMock
+      .expectOne(
+        (r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets`,
+      )
+      .flush({ id: 9 }, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
+      .flush(oneSet());
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
   it('shows the operator sign-in until signed in', () => {
     expect(host().textContent).toContain('Operator sign-in');
     expect(host().textContent).not.toContain('Create venue');
@@ -222,4 +288,121 @@ describe('VenueEditor', () => {
 
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('operator sign-in');
   });
+
+  it('signs the operator in and out through the form', () => {
+    setField('Username', 'operator');
+    setField('Password', 'pw');
+    fixture.detectChanges();
+    clickButton('Sign in');
+    fixture.detectChanges();
+
+    expect(auth.signedIn()).toBe(true);
+    expect(host().textContent).toContain('Signed in as');
+    expect(host().textContent).toContain('Create venue');
+
+    clickButton('Sign out');
+    fixture.detectChanges();
+    expect(auth.signedIn()).toBe(false);
+    expect(host().textContent).toContain('Operator sign-in');
+
+    // Submitting with an empty password is a no-op (the guard short-circuits).
+    clickButton('Sign in');
+    fixture.detectChanges();
+    expect(auth.signedIn()).toBe(false);
+  });
+
+  it('moves a set between the online and walk-in pools', async () => {
+    await createVenue();
+    await addSet();
+
+    clickButton('Move to walk-in');
+    await fixture.whenStable();
+    const patch = httpMock.expectOne(
+      (r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
+    );
+    expect(patch.request.body).toMatchObject({ pool: 'WALK_IN', gridX: 1, gridY: 1 });
+    patch.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
+      .flush(oneSet('WALK_IN'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().textContent).toContain('walk-in pool');
+    expect(host().textContent).toContain('Move to online');
+  });
+
+  it('removes a set from the layout', async () => {
+    await createVenue();
+    await addSet();
+
+    clickButton('Remove');
+    await fixture.whenStable();
+    httpMock
+      .expectOne(
+        (r) => r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
+      )
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
+      .flush(venueView(5, []));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().textContent).toContain('Layout (0)');
+    expect(host().textContent).toContain('No sets yet');
+  });
+
+  it('surfaces a failed pool move as an error without losing the existing layout', async () => {
+    await createVenue();
+    await addSet();
+
+    clickButton('Move to walk-in');
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`)
+      .flush({ error: 'CELL_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('[role="alert"]')?.textContent).toContain('grid cell');
+    // The write failed, so no read-back is issued and the original set stays rendered.
+    expect(host().textContent).toContain('online pool');
+  });
+
+  it('rejects a non-integer set price client-side without calling the server', async () => {
+    await createVenue();
+    fillAndSubmitSet('45.5'); // not clean digits → must not be truncated and sent
+    await fixture.whenStable();
+
+    httpMock.expectNone(`${environment.apiBaseUrl}/api/venues/5/sets`);
+    fixture.detectChanges();
+    expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
+  });
+
+  const addSetErrors: readonly (readonly [string, number, string])[] = [
+    ['CELL_TAKEN', 409, 'already occupies that grid cell'],
+    ['DUPLICATE_POSITION', 409, 'row label and position number'],
+    ['NO_SUCH_VENUE', 404, 'venue no longer exists'],
+    ['NO_SUCH_SET', 404, 'set no longer exists'],
+    ['BOOM', 500, 'Something went wrong'], // unrecognized code → generic UNKNOWN message
+  ];
+  for (const [code, status, expected] of addSetErrors) {
+    it(`maps an add-set ${code} failure to its operator message`, async () => {
+      await createVenue();
+      fillAndSubmitSet();
+      await fixture.whenStable();
+      httpMock
+        .expectOne(
+          (r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets`,
+        )
+        .flush({ error: code }, { status, statusText: code });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host().querySelector('[role="alert"]')?.textContent).toContain(expected);
+    });
+  }
 });
