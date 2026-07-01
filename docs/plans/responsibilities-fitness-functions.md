@@ -182,9 +182,9 @@ N/A — no contract change.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Extract `ArchitectureTestSupport`, refactor 4 existing arch-test classes | ✅ | (this commit) |
-| 1 — Rule 1: availability sole-writer (bytecode scan + fixture red run) | | |
-| 2 — Rule 2: Stripe SDK only in `payment` (+ fixture red run) | | |
-| 3 — Rule 3: id-based event payloads (+ fixture red run) | | |
+| 1 — Rule 1: availability sole-writer (bytecode scan + fixture red run) | ✅ | (this commit) |
+| 2 — Rule 2: Stripe SDK only in `payment` (+ fixture red run) | ✅ | (this commit) |
+| 3 — Rule 3: id-based event payloads (+ fixture red run) | ✅ | (this commit) |
 | 4 — RESPONSIBILITIES.md cross-reference + necessary-not-sufficient statement | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
