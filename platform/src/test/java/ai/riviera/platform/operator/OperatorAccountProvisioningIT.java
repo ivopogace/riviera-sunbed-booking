@@ -10,8 +10,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorAccounts;
-import ai.riviera.platform.operator.api.OperatorCredential;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

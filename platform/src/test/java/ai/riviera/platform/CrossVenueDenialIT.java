@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;

@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import ai.riviera.platform.operator.api.OperatorAccounts;
-import ai.riviera.platform.operator.api.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
  * The platform edge's Spring Security {@link UserDetailsService} (#74): resolves an httpBasic login
@@ -17,7 +17,7 @@ import ai.riviera.platform.operator.api.OperatorCredential;
  * delegating {@code PasswordEncoder}) and hands a {@link UserDetails} to {@code DaoAuthenticationProvider}.
  *
  * <p>Every operator carries the single {@code OPERATOR} role (the per-<em>venue</em> authorization is
- * object-level — resolved from the principal to an {@link ai.riviera.platform.operator.api.OperatorId}
+ * object-level — resolved from the principal to an {@link ai.riviera.platform.operator.vocabulary.OperatorId}
  * and enforced in the application services, invariant #13 — not role-level). A {@code SUSPENDED}
  * account is built {@code disabled}, so the provider rejects it in its pre-authentication check
  * <em>before</em> the password is examined (no existence/timing oracle); an account with no

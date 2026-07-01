@@ -11,6 +11,6 @@
 @org.springframework.modulith.ApplicationModule(
     displayName = "Booking",
     // operator::api: the staff daily view + weather refund assert per-venue ownership (invariant #13).
-    allowedDependencies = { "venue::api", "venue::vocabulary", "availability::api", "payment::api", "customer::api", "operator::api" }
+    allowedDependencies = { "venue::api", "venue::vocabulary", "availability::api", "payment::api", "customer::api", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.booking;

@@ -1,6 +1,6 @@
 package ai.riviera.platform.venue.application;
 
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 

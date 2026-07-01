@@ -1,4 +1,4 @@
-package ai.riviera.platform.operator.api;
+package ai.riviera.platform.operator.vocabulary;
 
 /**
  * Thrown by {@link VenueOwnership#assertOwns} when the authenticated operator does not own the

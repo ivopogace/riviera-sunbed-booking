@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.operator.api.VenueRef;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 

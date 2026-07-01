@@ -2,6 +2,8 @@ package ai.riviera.platform.operator.api;
 
 import java.util.Optional;
 
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+
 /**
  * Published read port for an operator account's stored credential (issue #74). The platform edge's
  * {@code UserDetailsService} calls this to build a Spring Security principal from the DB — replacing

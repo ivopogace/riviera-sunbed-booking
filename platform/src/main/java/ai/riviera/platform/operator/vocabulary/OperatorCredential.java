@@ -1,4 +1,4 @@
-package ai.riviera.platform.operator.api;
+package ai.riviera.platform.operator.vocabulary;
 
 /**
  * The edge's authentication view of an operator account (invariant #11 — a value record on the

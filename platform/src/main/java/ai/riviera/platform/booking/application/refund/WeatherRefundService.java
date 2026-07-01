@@ -15,9 +15,9 @@ import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.api.RefundReason;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.operator.api.VenueRef;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**

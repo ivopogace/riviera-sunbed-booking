@@ -3,9 +3,9 @@ package ai.riviera.platform.operator.application;
 import java.util.Optional;
 import java.util.Set;
 
-import ai.riviera.platform.operator.api.OperatorCredential;
-import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.operator.api.VenueRef;
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
  * Driven (outbound) persistence port for the {@code operator} module — the operator accounts (incl.

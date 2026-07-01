@@ -16,7 +16,7 @@ import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.api.OperatorDirectory;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

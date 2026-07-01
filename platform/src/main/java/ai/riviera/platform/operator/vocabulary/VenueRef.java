@@ -1,4 +1,4 @@
-package ai.riviera.platform.operator.api;
+package ai.riviera.platform.operator.vocabulary;
 
 /**
  * The {@code operator} module's own reference to a venue (invariant #11 — a typed id at the seam,

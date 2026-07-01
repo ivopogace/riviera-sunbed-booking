@@ -1,4 +1,4 @@
-package ai.riviera.platform.operator.api;
+package ai.riviera.platform.operator.vocabulary;
 
 /**
  * Technical id of an {@code Operator} (invariant #11 — cross-module references carry typed ids,

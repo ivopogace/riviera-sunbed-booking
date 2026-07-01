@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.application.refund;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**

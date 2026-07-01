@@ -9,10 +9,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import ai.riviera.platform.operator.api.NotVenueOwnerException;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.operator.api.VenueRef;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;

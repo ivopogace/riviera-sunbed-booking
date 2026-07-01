@@ -25,7 +25,7 @@ import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.application.VenueLedger;

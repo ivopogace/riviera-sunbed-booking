@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.view;
 import java.time.LocalDate;
 import java.util.List;
 
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
