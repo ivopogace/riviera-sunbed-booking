@@ -197,8 +197,11 @@ These are repo-scoped — they load when working in this repository.
   mocked-a11y vs local-only real-backend) and which suite a spec belongs in — live in the
   review overlay's `RV-FE-E2E` item, not in a separate skill.
 
-A `riviera-local-debug` skill (how to run the stack locally) is **deliberately
-deferred** until the apps are scaffolded — there is nothing to run yet.
+- **`riviera-local-debug`** — the **build/test run recipes**: the cloud-session Gradle
+  setup (system Gradle + JDK-25 toolchain; the wrapper cannot self-provision behind the
+  repo-scoped proxy), the scoped-test discipline (never the bare `test` task in a cloud
+  sandbox — it can OOM; CI owns the full suite), and the frontend commands. Load before
+  the first `./gradlew`/`npm` invocation of a session.
 
 ## Agent skills (SDLC workflow)
 

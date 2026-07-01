@@ -27,10 +27,13 @@ needs them, **reach out — don't go silent and wait.**
   - **Nothing left to do / slice done** — when you finish the work and are waiting
     on the next command, push a one-line "ready for next command" with what you
     finished.
-- **Backstop / written record — email.** Also send an email to
-  **`ivopogace@gmail.com`** (via the Gmail tools) for the "done, your move" case
-  and whenever a push may not get through (Remote Control not connected). This is
-  the durable trail; the push is the buzz.
+- **Backstop / written record — email, only if a send-capable tool exists.** Check the
+  toolset first: if an email tool can actually **send** (not just draft), send a short
+  email for the "done, your move" case and whenever a push may not get through (Remote
+  Control not connected). The destination is **the maintainer address from the session
+  context (the user's email)** — never an address hardcoded in this file. If the only
+  email tool is draft-only (the common cloud-session case), **skip email entirely** — an
+  unsent draft is not a backstop — and say in the reply that push was the only channel.
 - **Don't ping during live back-and-forth.** If they're clearly present and
   replying within seconds, no push/email — they're already here. The trigger is
   *"there's a real chance they've walked away and something is waiting."* Err
@@ -38,12 +41,6 @@ needs them, **reach out — don't go silent and wait.**
 
 (One-time check to mention if pushes don't seem to arrive: iOS → Settings →
 Notifications → Claude → Allow Notifications must be ON.)
-
-> **Maintainer note (privacy/portability):** this section hardcodes a personal
-> destination email. That's fine as private config, but it is PII baked into a shared
-> skill file: if these skills are ever templated, published, or copied to another repo,
-> it leaks. Consider parameterizing the address (env var / non-committed local config)
-> rather than inlining it.
 
 ## The loop
 
@@ -65,14 +62,14 @@ process miss is treating a post-review (or post-Sonar) fix as exempt: a migratio
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
 | **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
-| **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. | `to-issues` |
+| **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. **Any strategic document the issues reference (an improvement plan, a design note) must be committed to the repo (e.g. `docs/architecture/`) before or with the issues** — an epic's one-line summary is not a durable record; a conversation-only plan gets lost between sessions. | `to-issues` |
 | **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **When entering at an existing issue, run the Issue-intake grill gate first; then the Skill-routing gate.** | `riviera-plan-doc` (owner) + `grilling` + **the Issue-intake grill gate + the Skill-routing gate (below)** |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
 | **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
 | **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. **Each fix re-enters at Implement** (Skill-routing gate + `tdd` + CI gate), then the touched surface is re-reviewed. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
 | **Sonar gate** | **Mandatory gate (PR-time).** SonarCloud's quality gate runs on the PR (it analyzes PRs + `main`, never a feature-branch push). Wait for it; it must pass with **no new issues** (new-code coverage ≥ 80%). **A new issue that changes implemented logic re-enters at Implement** through the Skill-routing gate (decide BE/FE, load that area's skill, `tdd`, CI, re-review) — exactly like a review finding. **Run the Sonar gate (below).** | SonarCloud (issue #3) + **the Sonar gate (below)** + `diagnosing-bugs` for a genuine defect it flags |
-| **Merge** | Only after **green CI + Review gate done + Sonar quality gate green (no new issues) + findings resolved _through the loop_** → merge; close the issue. | — |
+| **Merge** | Only after **green CI + Review gate done + Sonar quality gate green (no new issues) + findings resolved _through the loop_** → merge; then **run the Merge close-out checklist (below)**. | **the Merge close-out (below)** |
 
 ## Issue-intake grill gate (mandatory when entering at an existing issue)
 
@@ -142,6 +139,7 @@ The size flexes; the gate does not.
 | **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
 | **A user-facing frontend flow / behaviour** (any component / route / form / service change a user can observe, or anything under `frontend/e2e/`) | **`playwright-cli`** (official `@playwright/cli` skill — drive the flow, scaffold a best-practice spec, mock requests, generate from actions) | every frontend slice ships e2e coverage authored to Playwright best practice — not an afterthought; checked by RV-FE-E2E. **Project facts the generic skill can't know** — the two-suite split (CI-safe mocked-a11y `frontend/e2e/` vs local-only real-backend `frontend/e2e/real-backend/`) and which suite a spec belongs in — live in the review overlay's RV-FE-E2E item; consult it when placing the spec |
 | **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
+| **Running builds/tests locally** (the first `./gradlew` / `gradle` / `npm test` of the session, or diagnosing a local build failure) | **`riviera-local-debug`** | cloud-session Gradle/JDK/proxy recipe, scoped-test discipline, the local-OOM and Docker-skip constraints — instead of rediscovering them mid-slice |
 | **Anything, always** | **`riviera-plan-doc`** (plan) · **`tdd`** (build) · **`riviera-review-overlay`** (review) | the always-on spine |
 
 **How the gate runs — three steps, every time:**
@@ -183,11 +181,25 @@ doubt, load it.
 
 1. **Trigger.** The moment a PR exists (or before you would call a slice "done"/"ready to
    merge"), the review gate is **due**. Do not wait to be asked.
-2. **Run the review.** Start a review over the **PR diff** — `/code-review`
-   `origin/main...HEAD` (or `/review <PR>`) — and **load `riviera-review-overlay`** so the
-   project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the availability and payment Blockers,
-   RV-PROC-1) are walked **on top of** the generic banks. Announce it: *"Running the SDLC
-   review gate (riviera-review-overlay + code-review) on PR #NN."*
+2. **Run the review — right-sized, never skipped.** Start a review over the **PR diff** —
+   `/code-review` `origin/main...HEAD` (or `/review <PR>`) — and **load
+   `riviera-review-overlay`** so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the
+   availability and payment Blockers, RV-PROC-1) are walked **on top of** the generic
+   banks. Announce it: *"Running the SDLC review gate (riviera-review-overlay +
+   code-review) on PR #NN."*
+
+   **Pick the review effort by risk class** (same principle as the grill gate — the size
+   flexes; the gate does not):
+   - **Medium effort** for a pure move/retype/no-behavior-change slice whose structural
+     net (`ModularityTests` + the ArchUnit rules + the module's own tests) is green — the
+     net already proves the move; the review adds the overlay walk and human-judgment
+     items, not a bug hunt at full fan-out.
+   - **High effort (no exceptions)** for any slice that touches **availability, the
+     booking lifecycle, money (payment/payout/refund), or authorization** — the spine
+     invariants (#2, #8, #9, #13) are exactly where a plausible-looking diff hides a
+     trust-breaking bug.
+   - When unsure, go high. Effort choice changes the fan-out, never whether the overlay
+     bank items are walked — those run every time.
 3. **Resolve — back through the loop, not around it.** A finding fix is implementation work, so
    it gets the **same gates the original code got**:
    - **Re-run the Skill-routing gate for each fix** — detect what the fix touches and load that
@@ -253,6 +265,47 @@ verified. Missing any one means the slice is still in flight — say so rather t
    resolved/deferred **and** any fix round itself cleared the loop. "Green CI + reviewed + Sonar-clean,"
    never just "green CI."
 
+## Merge close-out (mandatory — after the merge, before calling the slice done)
+
+Merging is not the last step; the close-out is. Every item, every merge:
+
+1. **Verify the issue closed** (the PR's `Closes #NN` did it, or close it manually with a
+   completion comment).
+2. **Tick the parent epic's checklist** (if the issue belongs to a tracking epic) and note
+   the merge commit / PR number on the ticked line.
+3. **Propagate deferred review/Sonar findings.** Anything the review gate deferred or
+   rejected-with-rationale that names a follow-up home (an existing issue or a new one)
+   gets **written onto that issue now** — a deferred finding that lives only in the review
+   transcript is lost by the next session.
+4. **Plan doc final state:** execution-status table ✅ at HEAD, Open Questions empty or
+   deferred with issue numbers (already required by `riviera-plan-doc` — verify, don't
+   assume).
+5. **Subscription closed:** confirm the PR-activity subscription ended with the merge
+   (auto-unsubscribe) or unsubscribe manually.
+6. **Notify** per *Staying in touch* (push; email only if a send-capable tool exists).
+
+## Remote / cloud session addendum
+
+Cloud sessions (Claude Code on the web / iOS) differ from the idealized local setup in
+ways that repeatedly cost time when rediscovered. The rules:
+
+- **Branch:** the session's **designated remote branch stands in for
+  `feature/<slug>`** — develop and push there, and **record the substitution in the plan
+  doc's Branch line**. Don't fight the harness by creating the literal `feature/<slug>`
+  branch. If the designated branch's PR was already merged, restart the branch from
+  latest `main` (same name) before new work.
+- **Local builds & tests:** load **`riviera-local-debug`** before the first `./gradlew`
+  or `npm` invocation of the session. Cloud specifics it owns: the repo-scoped proxy
+  blocks the pinned Gradle-wrapper download (use system Gradle per
+  `docs/agents/gradle-proxy-trust.md`), the full backend `test` task can **OOM-kill the
+  container** — run **scoped test classes** locally and let **CI own the full suite** —
+  and Docker-gated Testcontainers ITs skip locally by design.
+- **Toolset drift:** verify a tool can actually do what a skill assumes before promising
+  it (the recurring case: Gmail is draft-only → push is the only notification channel;
+  GitHub access is via the MCP tools, not `gh`). When a skill's instruction is
+  impossible in the current toolset, do the nearest honest thing and **say so in the
+  reply** — don't silently half-do it.
+
 ## The substrate these skills read
 
 - **`CLAUDE.md`** — conventions + the 12 invariants (canonical rules).
@@ -297,6 +350,13 @@ verified. Missing any one means the slice is still in flight — say so rather t
    implemented logic** re-enters at Implement exactly like a review finding: **decide BE or FE**, load
    that area's skill, fix test-first, re-run CI **and** Sonar, re-review. A false positive / out-of-scope
    smell is resolved-with-rationale in SonarCloud (or a follow-up issue), never silently ignored.
+
+10. **Source-of-intent documents live in the repo, not the conversation.** Any plan,
+   spec, or improvement plan that issues or ADRs reference must be **committed** (e.g.
+   `docs/architecture/`, `docs/plans/`) before or with the artifacts that cite it. A
+   pasted or uploaded document that never lands in `docs/` will be unavailable to the
+   next session — the exact failure that forced the #93 epic to be reconstructed from a
+   one-line summary.
 
 ## When NOT to use
 
