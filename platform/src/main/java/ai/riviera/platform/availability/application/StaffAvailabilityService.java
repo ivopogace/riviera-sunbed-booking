@@ -14,7 +14,7 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
  * The staff tap-to-mark write path (U8) — the second writer onto {@code set_availability}
@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.api.VenueCatalog;
  * {@link JdbcClient}, no JPA (invariant #1).
  *
  * <p><strong>Per-venue authorization (invariant #13, issue #73):</strong> a set id is globally
- * unique, so the owning venue is resolved from {@code setId} via {@link VenueCatalog#setBookingInfo}
+ * unique, so the owning venue is resolved from {@code setId} via {@link SetBookingFacts#setBookingInfo}
  * (venue's {@code api/} port, not its tables — invariant #11) and the operator is checked against
  * <em>that</em> venue via {@link VenueOwnership#assertOwns} — never the decorative path
  * {@code venueId}, which an operator could otherwise spoof to reach a set they don't own. A set that
@@ -52,14 +52,14 @@ class StaffAvailabilityService implements StaffAvailability {
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	private final JdbcClient jdbc;
-	private final VenueCatalog venueCatalog;
+	private final SetBookingFacts setFacts;
 	private final VenueOwnership ownership;
 	private final Clock clock;
 
-	StaffAvailabilityService(JdbcClient jdbc, VenueCatalog venueCatalog, VenueOwnership ownership,
+	StaffAvailabilityService(JdbcClient jdbc, SetBookingFacts setFacts, VenueOwnership ownership,
 			Clock clock) {
 		this.jdbc = jdbc;
-		this.venueCatalog = venueCatalog;
+		this.setFacts = setFacts;
 		this.ownership = ownership;
 		this.clock = clock;
 	}
@@ -67,7 +67,7 @@ class StaffAvailabilityService implements StaffAvailability {
 	@Override
 	@Transactional
 	public MarkOutcome mark(OperatorId operator, SetId setId, LocalDate date) {
-		Optional<SetBookingInfo> set = venueCatalog.setBookingInfo(setId);
+		Optional<SetBookingInfo> set = setFacts.setBookingInfo(setId);
 		if (set.isEmpty()) {
 			return MarkOutcome.NO_SUCH_SET;
 		}
@@ -89,7 +89,7 @@ class StaffAvailabilityService implements StaffAvailability {
 	@Override
 	@Transactional
 	public ReleaseOutcome release(OperatorId operator, SetId setId, LocalDate date) {
-		Optional<SetBookingInfo> set = venueCatalog.setBookingInfo(setId);
+		Optional<SetBookingInfo> set = setFacts.setBookingInfo(setId);
 		if (set.isEmpty()) {
 			return ReleaseOutcome.NOT_MARKED; // nothing (and no venue) to act on — a safe no-op
 		}

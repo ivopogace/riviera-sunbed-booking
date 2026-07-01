@@ -19,7 +19,7 @@ import ai.riviera.platform.venue.api.SetId;
  * race or a guarded release is normal, expected flow.
  *
  * <p><strong>Per-venue authorization (invariant #13):</strong> a set is globally unique, so the
- * owning venue is derived from the {@code setId} (via {@code venue.api.VenueCatalog}), never the
+ * owning venue is derived from the {@code setId} (via {@code venue.api.SetBookingFacts}), never the
  * decorative path {@code venueId} — an operator cannot spoof the URL to reach another venue's set.
  * The implementation asserts {@code operator} owns that venue and returns {@code 403} on a mismatch.
  */

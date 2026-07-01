@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.api.BookingConfirmed;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueRates;
 
 /**
  * The {@code payout} module's reaction to a confirmed booking (U5, issue #9) — a driving adapter
@@ -35,9 +35,9 @@ class BookingConfirmedPayoutListener {
 	private static final Logger log = LoggerFactory.getLogger(BookingConfirmedPayoutListener.class);
 
 	private final PayoutLedger ledger;
-	private final VenueCatalog venues;
+	private final VenueRates venues;
 
-	BookingConfirmedPayoutListener(PayoutLedger ledger, VenueCatalog venues) {
+	BookingConfirmedPayoutListener(PayoutLedger ledger, VenueRates venues) {
 		this.ledger = ledger;
 		this.venues = venues;
 	}
