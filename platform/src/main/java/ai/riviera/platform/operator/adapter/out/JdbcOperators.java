@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.application.Operators;
+import ai.riviera.platform.operator.api.OperatorCredential;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.operator.domain.OperatorStatus;
@@ -36,6 +37,41 @@ class JdbcOperators implements Operators {
 				.query(Long.class)
 				.optional()
 				.map(OperatorId::new);
+	}
+
+	@Override
+	public Optional<OperatorCredential> credentialByUsername(String username) {
+		// Any status — the edge builds a disabled principal for a non-ACTIVE account so the framework
+		// rejects it before the password check. active is derived from the status token (invariant #6a).
+		return jdbc.sql("SELECT username, password_hash, status FROM operator WHERE username = :username")
+				.param("username", username)
+				.query((rs, rowNum) -> new OperatorCredential(
+						rs.getString("username"),
+						rs.getString("password_hash"),
+						OperatorStatus.ACTIVE.name().equals(rs.getString("status"))))
+				.optional();
+	}
+
+	@Override
+	public OperatorId insert(String username, String passwordHash) {
+		long id = jdbc.sql("""
+				INSERT INTO operator (username, status, owns_all_venues, password_hash)
+				VALUES (:username, :active, FALSE, :hash) RETURNING id
+				""")
+				.param("username", username)
+				.param("active", OperatorStatus.ACTIVE.name())
+				.param("hash", passwordHash)
+				.query(Long.class)
+				.single();
+		return new OperatorId(id);
+	}
+
+	@Override
+	public int updatePassword(String username, String passwordHash) {
+		return jdbc.sql("UPDATE operator SET password_hash = :hash WHERE username = :username")
+				.param("hash", passwordHash)
+				.param("username", username)
+				.update();
 	}
 
 	@Override

@@ -23,6 +23,7 @@ import ai.riviera.platform.booking.application.in.ListDailyBookings;
 import ai.riviera.platform.booking.application.in.RefundForWeather;
 import ai.riviera.platform.booking.application.in.ViewBooking;
 import ai.riviera.platform.booking.application.in.WeatherRefundOutcome;
+import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
@@ -93,6 +94,16 @@ class WebSliceStubs {
 	@Bean
 	OperatorDirectory operatorDirectory() {
 		return username -> Optional.of(new OperatorId(1));
+	}
+
+	/**
+	 * Credential store for the edge {@code UserDetailsService} imported via {@code SecurityConfig}
+	 * (#74). The web slices only hit permit-all endpoints / preflights, never an authenticated login,
+	 * so an empty store is enough — no operator can be authenticated here.
+	 */
+	@Bean
+	OperatorAccounts operatorAccounts() {
+		return username -> Optional.empty();
 	}
 
 	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */

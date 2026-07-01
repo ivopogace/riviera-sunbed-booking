@@ -173,6 +173,11 @@ one question for the rest of the system: *does this operator own this venue?*
 
 ---
 
-> **Until `operator` ships**, authorization is a single shared `OPERATOR` role with
-> **no ownership check** — a known launch blocker, not the target. The Job above is
-> the intended boundary; the current code does not yet meet it.
+> **Status:** the `operator` module has shipped (#73) — per-venue ownership is enforced in each
+> venue-scoped application service (`assertOwns` → `403`), and authentication is **per-operator and
+> DB-backed** (#74): each operator has its own hashed credential, verified by a Spring Security
+> `UserDetailsService` at the edge (no shared password). The **login/credential machinery stays at
+> the platform edge**, not in this module — `operator` owns the account identity + ownership mapping
+> and stores an opaque credential hash, but never encodes/verifies it (RV-BE-11). See
+> `docs/runbooks/operator-credential-provisioning.md`. Remaining follow-up: fully retiring the
+> owns-all bootstrap operator (every operator strictly per-venue) + creator-owns-on-create.

@@ -17,6 +17,8 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.BookingConfirmed;
 import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -51,14 +53,22 @@ class PayoutModuleTest {
 	VenueCatalog venues;
 
 	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
-	// and the root CurrentOperator edge resolver depends on operator::api's OperatorDirectory. In
-	// module isolation both are supplied as mocks so the payout context loads; the accrual listener
-	// under test uses neither.
+	// and the root edge (SecurityConfig + its beans) depends on operator::api too — CurrentOperator on
+	// OperatorDirectory, the DB-backed UserDetailsService on OperatorAccounts, and the #74 boot
+	// provisioner on OperatorProvisioning. In module isolation the operator module isn't bootstrapped,
+	// so these operator::api ports are supplied as mocks to let the payout context load; the accrual
+	// listener under test uses none of them.
 	@MockitoBean
 	VenueOwnership ownership;
 
 	@MockitoBean
 	CurrentOperator currentOperator;
+
+	@MockitoBean
+	OperatorAccounts accounts;
+
+	@MockitoBean
+	OperatorProvisioning provisioning;
 
 	@Autowired
 	JdbcClient jdbc;
