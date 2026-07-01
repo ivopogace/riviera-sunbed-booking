@@ -206,6 +206,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
+## Review-gate record (SDLC)
+
+Ran `/code-review origin/main...HEAD` with `riviera-review-overlay` loaded (8 angles via
+6 finder agents, 1-vote verify). Sonar quality gate on PR #103: **passed** — 0 new
+issues, 100% coverage on new code, 0 duplication.
+
+- **Fixed (75a4bf5):** two stale javadoc `{@link VenueCatalog#…}` references to methods
+  that moved to `SetBookingFacts` (`venue/api/package-info.java`, `SetBookingInfo.java`).
+- **Deferred → #96:** shared `ClassFileImporter` support across the arch-test classes
+  (house idiom today is per-class importers; #96 adds more fitness functions and is the
+  natural home for consolidating).
+- **Rejected with rationale:** generalizing the C2 rule into consumer-allowlists for
+  `SetBookingFacts`/`VenueRates` — would freeze legitimate consumer evolution (risk R-2's
+  brittleness, deliberately avoided). `VenueCatalog` is the special case whose
+  sibling-consumer set is intentionally empty.
+- Overlay walk: RV-BE-1 ✅ (no write-path change), RV-BE-3b/3c ✅ (split matches the
+  intended shape; rule exists and passes), RV-BE-9 ➖ (no venue-scoped endpoint change),
+  RV-BE-11 ✅ (no behavior moved), RV-BE-12 ✅ (no new packages), RV-PROC-1 ✅ (Skills
+  consulted covers the diff). Angle A / conventions finders: no findings.
+
 ## Generalization-audit log
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
