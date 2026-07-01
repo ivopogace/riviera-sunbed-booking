@@ -163,6 +163,19 @@ class CrossVenueDenialIT {
 				.andExpect(status().isOk());
 	}
 
+	@Test
+	void ownerCanMarkItsOwnSet_venueResolvedFromTheSet() throws Exception {
+		// The positive counterpart to the spoof denial: B owns Miramar (via an explicit operator_venue
+		// mapping, not owns-all), so marking a Miramar set — whose owning venue is resolved from the
+		// setId, not the path — succeeds. Proves the venue-from-set happy path lets the real owner
+		// through, so the spoof denial's 403 is genuinely from ownership, not an always-deny bug.
+		actingAs(operatorB);
+		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", MIRAMAR, miramarSetId)
+						.with(httpBasic(OPERATOR, PASSWORD))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
+				.andExpect(status().isOk());
+	}
+
 	// ---- Exemptions: platform-wide admin + venue creation are role-gated only (no ownership) ----
 
 	@Test

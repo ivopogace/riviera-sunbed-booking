@@ -24,10 +24,13 @@ CLAUDE.md invariants #13, #11, #1.
 shape; api-vs-spi decision → api port, no cycle; `allowedDependencies` deny-list),
 `riviera-java-conventions` (records for ids/VenueRef, package-private `@Service`/adapter,
 constructor injection, typed outcome + `assertOwns` guard exception, no JPA/Lombok),
-`postgres` (V16: `BIGINT IDENTITY` PK, `TEXT`+`CHECK` status, FK to `venue(id)` indexed,
-one-owner-per-venue via `venue_id` PK), `riviera-plan-doc` (this doc + §4a table),
-`riviera-review-overlay` (RV-BE-9 BOLA Blocker, RV-BE-3b api/spi, RV-BE-11 placement,
-RV-BE-12 ADR-0007 package shape — walked at the review gate).
+`codebase-design` (the ownership port as a deep module — one purposeful `VenueOwnership`
+conversation hiding the mapping + owns-all short-circuit; the one-uniform-port seam shape was the
+maintainer's grill decision), `domain-modeling` (added the `operator` / venue-ownership / bootstrap
+operator terms to `CONTEXT.md`), `postgres` (V16: `BIGINT IDENTITY` PK, `TEXT`+`CHECK` status, FK to
+`venue(id)` indexed, one-owner-per-venue via `venue_id` PK), `riviera-plan-doc` (this doc + §4a
+table), `riviera-review-overlay` (RV-BE-9 BOLA Blocker, RV-BE-3b api/spi, RV-BE-11 placement,
+RV-BE-12 ADR-0007 package shape, RV-PROC-1 — walked at the review gate).
 
 **Branch:** `claude/riviera-sdd-73-98mzpd` (exists).
 
@@ -96,7 +99,37 @@ RV-BE-12 ADR-0007 package shape — walked at the review gate).
   aligns it. — *Owner:* agent · *Resolves by:* #74.
 
 _All phases green: full suite 298 tests, 0 failures (ModularityTests + JdbcOnlyArchitectureTests +
-OperatorOwnershipIT + CrossVenueDenialIT + all pre-existing). Awaiting CI + review + Sonar gates._
+OperatorOwnershipIT + CrossVenueDenialIT + all pre-existing). Awaiting CI + Sonar gates._
+
+## Review-gate note (riviera-review-overlay + /code-review on `c76f234..HEAD`)
+
+Ran a high-effort review (correctness + conventions + test-validity finders → verify). **No
+Blockers** — RV-BE-9 (ownership in all 5 application services), RV-BE-3b (api port, no
+`venue↔operator` cycle), RV-BE-12 (ADR-0007 shape), RV-BE-11 (placement), and the JDBC/money/time
+invariants all passed. Findings resolved through the loop:
+
+- **Config-username coupling (Major, CONFIRMED).** Overriding `riviera.operator.username` without a
+  matching operator row 403s every venue-scoped endpoint (login passes the role gate but resolves to
+  no operator). Interim by design (#74 replaces username-resolution); **documented** the coupling in
+  `application.properties`, `V16__operator.sql`, and left the default `operator` matching the seed.
+- **Test gap — owner-passes on the venue-from-setId write path (fixed).** Added
+  `CrossVenueDenialIT.ownerCanMarkItsOwnSet_venueResolvedFromTheSet`: B (non-bootstrap, explicit
+  mapping) marks its Miramar set → 200, proving the spoof denial's 403 is genuinely ownership.
+- **`OperatorOwnershipIT` unscoped `DELETE FROM operator_venue` (fixed).** Scoped the cleanup to
+  non-bootstrap operators so it can't wipe seeded/other rows on the shared container.
+- **RV-PROC-1 (fixed).** Added `codebase-design` + `domain-modeling` to *Skills consulted*; added the
+  operator/ownership terms to `CONTEXT.md`.
+- **Existence oracle on staff availability (accepted, R-6).** A non-owner can tell a set exists (404
+  `NO_SUCH_SET`/409 `NOT_MARKED`) vs is-owned-elsewhere (403), because the owning venue must be
+  resolved from the set before ownership can be checked. Low-value (set ids aren't secrets, no data
+  is exposed); documented on the service + R-6.
+- **Global `AccessDeniedException`→403 advice (accepted).** Intentional: auth denials get one uniform
+  403 `ProblemDetail`; no method security exists, so filter-chain 401/403 never reach the advice.
+  Scope documented on the handler.
+
+Deferred (out of scope, follow-up): `AdminWeatherRefundController` is named `Admin…` but is a
+venue-scoped `/api/venues/{venueId}/**` surface (pre-existing name from #12) — ownership is correctly
+enforced; a rename to avoid the `/api/admin/**`-exemption naming hazard is a cosmetic follow-up.
 
 ### Resolved
 - **Module-graph cycle** (venue↔operator): **one uniform `operator::api` port; operator defines its
@@ -258,7 +291,7 @@ test at a time (availability derives venue from `setId`). Update the touched ser
 ## Self-review checklist (before PR)
 
 - [ ] No JPA/Lombok; `JdbcClient` + explicit SQL; records for ids/`VenueRef`; package-private `@Service`/adapter.
-- [ ] `assertOwns` is in each **application service**, first statement; controllers only resolve identity.
+- [ ] `assertOwns` is in each **application service** before any read/write; controllers only resolve identity. (For `availability` the set must first be resolved to its venue — existence necessarily precedes the ownership check; a non-existent set is `NO_SUCH_SET`/`NOT_MARKED`, an accepted low-value existence oracle — R-6.)
 - [ ] Availability check uses the **resolved** venue (from `setId`), not the path `venueId`.
 - [ ] `operator` has **no** `venue::api` dependency; `allowedDependencies` updated per module; `ModularityTests` green.
 - [ ] `/api/admin/**` + `POST /api/venues` not ownership-checked; existing ITs green (bootstrap owns-all).

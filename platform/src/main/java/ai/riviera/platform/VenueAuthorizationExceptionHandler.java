@@ -21,6 +21,12 @@ import ai.riviera.platform.operator.api.NotVenueOwnerException;
  * The body deliberately does not echo operator/venue ids. Role-gate denials from the Spring Security
  * filter chain are handled by the framework (they never reach this advice), so this does not affect
  * the existing 401/403 role behavior.
+ *
+ * <p>Mapping {@link AccessDeniedException} is intentionally broad: any authorization denial that
+ * reaches MVC dispatch should return one uniform {@code 403} shape. There is no method security
+ * ({@code @EnableMethodSecurity}) today, so the only such exception in dispatch is {@link
+ * CurrentOperator}'s "principal is not an active operator"; if method security is added later, its
+ * denials will correctly land here as {@code 403} too.
  */
 @RestControllerAdvice
 class VenueAuthorizationExceptionHandler {

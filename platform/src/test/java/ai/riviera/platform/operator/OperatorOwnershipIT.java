@@ -43,7 +43,10 @@ class OperatorOwnershipIT {
 
 	@BeforeEach
 	void clearNonBootstrapOperators() {
-		jdbc.sql("DELETE FROM operator_venue").update();
+		// Scope the cleanup to the non-bootstrap operators this test creates — don't truncate the
+		// whole mapping table (which would wipe any seeded/other-test rows on the shared container).
+		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
+				+ "(SELECT id FROM operator WHERE username <> 'operator')").update();
 		jdbc.sql("DELETE FROM operator WHERE username <> 'operator'").update();
 	}
 

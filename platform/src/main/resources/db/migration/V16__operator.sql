@@ -25,8 +25,10 @@ CREATE TABLE operator_venue (
 );
 CREATE INDEX operator_venue_operator_idx ON operator_venue (operator_id);
 
--- The interim bootstrap operator. Username 'operator' matches the RivieraOperatorProperties
--- default, so the shared HTTP-Basic login resolves here. owns_all_venues = TRUE — NOT a
--- production posture without per-operator credentials (#74); it is the honest model of "one
--- shared identity legitimately reaches everything until operators are split".
+-- The interim bootstrap operator. Username 'operator' MUST match riviera.operator.username
+-- (its default), because per-venue authorization resolves the login to an operator by username;
+-- overriding that property without seeding a matching row 403s every venue-scoped endpoint (see
+-- application.properties). owns_all_venues = TRUE — NOT a production posture without per-operator
+-- credentials (#74); it is the honest model of "one shared identity legitimately reaches
+-- everything until operators are split".
 INSERT INTO operator (username, status, owns_all_venues) VALUES ('operator', 'ACTIVE', TRUE);
