@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.application.out.Bookings;
+import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;

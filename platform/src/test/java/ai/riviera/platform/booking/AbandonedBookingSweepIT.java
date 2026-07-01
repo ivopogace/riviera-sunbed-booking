@@ -23,8 +23,8 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
 import ai.riviera.platform.booking.api.BookingId;
-import ai.riviera.platform.booking.application.in.ExpireAbandonedBookings;
-import ai.riviera.platform.booking.application.in.ReleaseAbandonedBooking;
+import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
+import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.venue.api.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
