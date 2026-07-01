@@ -1,10 +1,7 @@
 package ai.riviera.platform;
 
 import java.time.Clock;
-import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,36 +9,34 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.CorsFilter;
 
+import ai.riviera.platform.operator.api.OperatorAccounts;
+
 /**
- * Application-level security for the scaffold. The {@code spring-boot-starter-security}
- * dependency locks every endpoint by default, which would stop the app booting a
- * usable health check — so this permits the actuator health endpoint and requires
- * authentication for everything else.
+ * Application-level security. The {@code spring-boot-starter-security} dependency locks every
+ * endpoint by default, which would stop the app booting a usable health check — so this permits the
+ * actuator health endpoint and requires authentication for everything else.
  *
- * <p>This is an intentionally minimal placeholder. The real authentication model
- * (staff, admin, booking-code verification) is a later concern and will replace this.
- * Public tourist reads (the venue/beach-map catalogue, U1) are permitted; the venue
- * onboarding + beach-map write API (U7) is gated behind a single explicit operator
- * credential (httpBasic, role {@code OPERATOR}) defined by {@link #operatorDetailsService}.
- * The operator's password is supplied per environment via {@code RIVIERA_OPERATOR_PASSWORD}
- * ({@link RivieraOperatorProperties}) and is never committed; everything else still requires
- * authentication.
+ * <p>Public tourist reads (the venue/beach-map catalogue, U1) are permitted; the venue write +
+ * staff/admin surfaces are gated behind {@code httpBasic} with role {@code OPERATOR}. Credentials are
+ * <strong>per-operator and DB-backed</strong> (#74): {@link #operatorDetailsService} loads each
+ * operator's stored hash from the {@code operator} module ({@link OperatorAccounts}) and Spring
+ * Security's {@code DaoAuthenticationProvider} verifies it against the delegating
+ * {@link #passwordEncoder()} — no shared password, no JWT, no custom token filter. The bootstrap
+ * operator's credential is provisioned from {@code RIVIERA_OPERATOR_PASSWORD} at startup
+ * ({@link OperatorCredentialInitializer}); additional operators are provisioned via the
+ * {@code operator} module's provisioning port. The per-<em>venue</em> authorization (invariant #13)
+ * is object-level and enforced in the application services, not here.
  */
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class})
 class SecurityConfig {
-
-	private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
 	/** The single role that gates the U7 operator write surface. */
 	private static final String OPERATOR_ROLE = "OPERATOR";
@@ -125,33 +120,23 @@ class SecurityConfig {
 		return http.build();
 	}
 
-	/** Delegating encoder so the in-memory operator password is stored hashed, never in clear. */
+	/** Delegating encoder ({@code {bcrypt}} by default) — used to verify the stored per-operator hash. */
 	@Bean
 	PasswordEncoder passwordEncoder() {
 		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
 	}
 
 	/**
-	 * The single operator account for the U7 write API. Defining this {@link UserDetailsService}
-	 * replaces Spring Boot's auto-generated default user. The password comes from
-	 * {@code RIVIERA_OPERATOR_PASSWORD} (never committed); when it is blank — local dev, or a test
-	 * that doesn't set it — a random one is generated so the context still boots, leaving the write
-	 * API effectively locked until a real password is configured. The generated value is NOT logged
-	 * (credentials are secrets, invariant #7 posture); set the env var to obtain a known login.
+	 * The per-operator {@link UserDetailsService} (#74): each login is resolved to a DB-backed operator
+	 * account via the {@code operator} module's {@link OperatorAccounts} port and verified against the
+	 * stored hash by {@code DaoAuthenticationProvider} + {@link #passwordEncoder()}. Defining it here
+	 * replaces both Spring Boot's auto-generated default user and the old single shared in-memory
+	 * operator. Credentials are provisioned into the DB (bootstrap operator at startup via
+	 * {@link OperatorCredentialInitializer}; others via the provisioning port) — nothing is held in
+	 * memory here.
 	 */
 	@Bean
-	UserDetailsService operatorDetailsService(RivieraOperatorProperties operator, PasswordEncoder encoder) {
-		String password = operator.password();
-		if (password == null || password.isBlank()) {
-			password = UUID.randomUUID().toString();
-			log.warn("No RIVIERA_OPERATOR_PASSWORD set — generated a random operator password for this "
-					+ "run; the venue write API is locked until you configure one. Set RIVIERA_OPERATOR_PASSWORD "
-					+ "to log in as operator '{}'.", operator.username());
-		}
-		UserDetails user = User.withUsername(operator.username())
-				.password(encoder.encode(password))
-				.roles(OPERATOR_ROLE)
-				.build();
-		return new InMemoryUserDetailsManager(user);
+	UserDetailsService operatorDetailsService(OperatorAccounts accounts) {
+		return new OperatorUserDetailsService(accounts);
 	}
 }

@@ -1,0 +1,13 @@
+-- #74 (epic #72, item 02): per-operator credentials replace the shared OPERATOR password.
+-- Each operator carries its own hashed credential; login is now verified by a DB-backed
+-- Spring Security UserDetailsService at the edge, not by a single in-memory user whose password
+-- was an env var. JDBC-only stack (invariant #1) — the hash is an opaque TEXT blob the operator
+-- module stores; the edge encodes/verifies it (never Stripe-Connect-style crypto in the domain).
+--
+-- Nullable on purpose: an operator with a NULL password_hash has no login yet (cannot authenticate)
+-- until a credential is provisioned. No credential is seeded here — the bootstrap 'operator' row
+-- (V16) gets its hash at runtime from RIVIERA_OPERATOR_PASSWORD via the boot provisioner, so no
+-- password/hash is ever committed (invariant #7). Additional operators are provisioned via
+-- operator.api.OperatorProvisioning. No index needed: username is already UNIQUE (V16) and is the
+-- only lookup key.
+ALTER TABLE operator ADD COLUMN password_hash TEXT;
