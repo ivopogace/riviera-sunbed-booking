@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.application.out;
+package ai.riviera.platform.payout.application;
 
 import java.time.Instant;
 

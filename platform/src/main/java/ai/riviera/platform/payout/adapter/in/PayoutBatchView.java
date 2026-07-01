@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.infrastructure.in;
+package ai.riviera.platform.payout.adapter.in;
 
 import ai.riviera.platform.payout.domain.PayoutBatch;
 

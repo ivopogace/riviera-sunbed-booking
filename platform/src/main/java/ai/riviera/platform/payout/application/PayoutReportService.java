@@ -10,11 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
-import ai.riviera.platform.payout.application.in.PayoutReport;
-import ai.riviera.platform.payout.application.out.PayoutBatches;
-import ai.riviera.platform.payout.application.out.PayoutLedger;
-import ai.riviera.platform.payout.application.out.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;

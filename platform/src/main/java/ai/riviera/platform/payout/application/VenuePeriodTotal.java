@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.application.out;
+package ai.riviera.platform.payout.application;
 
 import ai.riviera.platform.venue.api.VenueId;
 

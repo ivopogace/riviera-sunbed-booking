@@ -3,8 +3,9 @@
  * and manual BKT batch reporting (invariant #9: a booking contributes exactly once;
  * refunds reverse it). Aggregate roots: {@code PayoutLedgerEntry}, {@code PayoutBatch}.
  *
- * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
- * {@code domain}, {@code infrastructure.in/out}.
+ * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code application},
+ * {@code domain}, {@code adapter.in/out}. Pure event subscriber — no {@code api}/{@code spi}
+ * (it consumes {@code booking}/{@code venue} events and ports, exposing nothing).
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payout",

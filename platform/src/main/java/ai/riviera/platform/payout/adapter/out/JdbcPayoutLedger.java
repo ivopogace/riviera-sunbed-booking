@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.infrastructure.out;
+package ai.riviera.platform.payout.adapter.out;
 
 import java.time.Instant;
 import java.util.List;
@@ -8,9 +8,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.api.RefundReason;
-import ai.riviera.platform.payout.application.out.LedgerEntryRow;
-import ai.riviera.platform.payout.application.out.PayoutLedger;
-import ai.riviera.platform.payout.application.out.VenuePeriodTotal;
+import ai.riviera.platform.payout.application.LedgerEntryRow;
+import ai.riviera.platform.payout.application.PayoutLedger;
+import ai.riviera.platform.payout.application.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.payout.domain.PeriodKey;

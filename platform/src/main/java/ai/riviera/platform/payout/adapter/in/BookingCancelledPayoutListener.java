@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.infrastructure.in;
+package ai.riviera.platform.payout.adapter.in;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -6,7 +6,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.payout.application.out.PayoutLedger;
+import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 
 /**

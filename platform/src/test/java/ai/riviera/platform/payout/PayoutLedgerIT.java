@@ -10,7 +10,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.payout.application.out.PayoutLedger;
+import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.api.VenueId;
 
