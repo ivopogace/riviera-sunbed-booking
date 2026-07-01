@@ -14,11 +14,11 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.application.in.BookingOutcome;
-import ai.riviera.platform.booking.application.in.CancelBooking;
-import ai.riviera.platform.booking.application.in.CancelOutcome;
-import ai.riviera.platform.booking.application.in.CreateBooking;
-import ai.riviera.platform.booking.application.in.CreateBookingCommand;
+import ai.riviera.platform.booking.application.reserve.BookingOutcome;
+import ai.riviera.platform.booking.application.cancel.CancelBooking;
+import ai.riviera.platform.booking.application.cancel.CancelOutcome;
+import ai.riviera.platform.booking.application.reserve.CreateBooking;
+import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
 import ai.riviera.platform.customer.api.GuestContact;
 import ai.riviera.platform.venue.api.SetId;
 

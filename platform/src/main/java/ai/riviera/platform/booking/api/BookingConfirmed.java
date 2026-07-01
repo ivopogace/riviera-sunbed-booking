@@ -9,7 +9,7 @@ import ai.riviera.platform.venue.api.VenueId;
  * Published when a booking transitions to {@code CONFIRMED} — the write-side spine fact other
  * modules react to (U5, issue #9): {@code payout} accrues a ledger entry. Both confirm paths (the
  * synchronous stub and the async Stripe-webhook path) publish it from one internal seam
- * ({@code booking.application.in.ConfirmBooking}).
+ * ({@code booking.application.reserve.ConfirmBooking}).
  *
  * <p>Id-based, immutable payload (invariant #11): technical ids ({@link BookingId}, {@link VenueId},
  * {@link SetId}) plus the booking facts fixed at confirmation — the {@code bookingDate} (a

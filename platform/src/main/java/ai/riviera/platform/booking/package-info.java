@@ -3,8 +3,10 @@
  * (confirmed / cancelled / completed / no-show) and cancellation-policy enforcement.
  * Aggregate root: {@code Booking}.
  *
- * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
- * {@code domain}, {@code infrastructure.in/out}.
+ * <p>Hexagonal layout (invariant #11, ADR-0007 full template, sliced by use-case):
+ * {@code api}, {@code application} (shared {@code Bookings}/{@code BookingCodeGenerator} at root
+ * + {@code reserve/}, {@code cancel/}, {@code refund/}, {@code view/} slices), flat {@code domain},
+ * {@code adapter.in/out}.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Booking",
