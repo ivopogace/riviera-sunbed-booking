@@ -24,18 +24,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * ModularityTests} — no Spring context, no DB, runs anywhere), added once all six modules were
  * migrated to the new shape (#72, item 10/10).
  *
- * <p>Each bounded-context module under {@code ai.riviera.platform} uses one of two templates:
+ * <p>Each bounded-context module under {@code ai.riviera.platform} uses one of two templates
+ * (published surfaces optional per kind — ADR-0007 Amendment 1 / issue #95):
  * <ul>
- *   <li><strong>full</strong> — {@code api?} / {@code spi?} / {@code application} / {@code domain} /
- *       {@code adapter/{in,out}} (today: booking, venue, payment, payout, availability, operator);</li>
- *   <li><strong>thin</strong> — {@code api} / {@code adapter/out} only (today: customer).</li>
+ *   <li><strong>full</strong> — {@code api?} / {@code spi?} / {@code vocabulary?} / {@code events?} /
+ *       {@code application} / {@code domain} / {@code adapter/{in,out}} (today: booking, venue,
+ *       payment, payout, availability, operator);</li>
+ *   <li><strong>thin</strong> — {@code api} / {@code vocabulary?} / {@code adapter/out} only
+ *       (today: customer).</li>
  * </ul>
  * The four assertions below are the structural rules ADR-0007's "Enforcement" section calls out.
  * The <em>thin-vs-full judgment</em> (whether a serviceless module should stay thin or graduate)
  * and the <em>use-case-slicing</em> call (booking's {@code application/{reserve,cancel,refund,view}})
  * are deliberately <strong>review-only</strong> — so this rule keys on the module-agnostic
- * <strong>union</strong> allowed-set {@code {api, spi, application, domain, adapter}} (a thin module
- * merely uses the subset {@code {api, adapter}}), never on a per-module classification.
+ * <strong>union</strong> allowed-set {@code {api, spi, vocabulary, events, application, domain,
+ * adapter}}, never on a per-module classification. Which <em>kind</em> of type may live in which
+ * published surface is {@link PublishedSurfacePlacementArchitectureTests}' job.
  *
  * <p>Root-level platform config ({@code PlatformApplication}, {@code SecurityConfig},
  * {@code WebCorsConfig}, {@code TimeConfig}, …) sits directly under {@code ai.riviera.platform} and is
@@ -46,7 +50,8 @@ class PackageShapeArchitectureTests {
 	private static final String BASE = "ai.riviera.platform";
 
 	/**
-	 * The top-level package set any module may use; a thin module uses the subset {@code {api, adapter}}.
+	 * The top-level package set any module may use; a thin module uses the subset
+	 * {@code {api, vocabulary, adapter}}.
 	 * {@code vocabulary} and {@code events} joined the set with issue #95 (improvement-plan B2): the
 	 * published surface is split by kind — {@code api} = ports only, {@code vocabulary} = published typed
 	 * ids / value types, {@code events} = published domain events — each its own top-level
@@ -137,12 +142,14 @@ class PackageShapeArchitectureTests {
 	}
 
 	/**
-	 * Assertion 3 — {@code api} / {@code spi} are top-level (ADR-0007). The {@code @NamedInterface}
-	 * packages must be a direct child of the module, never nested (no {@code application.api},
-	 * {@code adapter.in.spi}, …) — nesting would hide the published surface from Spring Modulith.
+	 * Assertion 3 — the {@code @NamedInterface} packages ({@code api} / {@code spi} /
+	 * {@code vocabulary} / {@code events}, the last two since issue #95) are top-level (ADR-0007).
+	 * Each must be a direct child of the module, never nested (no {@code application.api},
+	 * {@code adapter.in.events}, …) — nesting would hide the published surface from Spring Modulith,
+	 * and the four names are reserved for published surfaces even as internal package names.
 	 */
 	@Test
-	void apiAndSpiPackagesAreTopLevel() {
+	void namedInterfacePackagesAreTopLevel() {
 		List<String> violations = new ArrayList<>();
 		Set<String> modules = new TreeSet<>();
 
@@ -155,7 +162,8 @@ class PackageShapeArchitectureTests {
 			for (int i = 1; i < sub.length; i++) { // i == 0 is the legitimate top-level position
 				if (NAMED_INTERFACE_PACKAGES.contains(sub[i])) {
 					violations.add(type.getName() + " nests a '" + sub[i] + "' package below the module root — "
-							+ "api/spi are top-level @NamedInterface packages, never nested (ADR-0007)");
+							+ "api/spi/vocabulary/events are reserved top-level @NamedInterface package names, "
+							+ "never nested (ADR-0007 + issue #95)");
 				}
 			}
 		}

@@ -13,7 +13,6 @@ import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -38,6 +37,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * (ADR-0007 + issue #95) and the class <em>kind</em>. Like its siblings
  * ({@link PackageShapeArchitectureTests}, {@link JdbcOnlyArchitectureTests}) this is fast,
  * context-free ArchUnit — no Spring, no DB.
+ *
+ * <p><strong>Deliberately stricter than {@code @NamedInterface} semantics:</strong> a named
+ * interface covers only the annotated package, but these rules police the surface's whole
+ * <em>subtree</em> ({@code surfaceOf} keys on the first segment below the module). A published
+ * surface may not grow unpublished sub-packages of a different kind ({@code booking.events.support}
+ * holding helpers would pass Modulith yet fail here) — if a type isn't the surface's kind, it
+ * doesn't belong under that package at all.
  *
  * <p>The violation collectors are parameterized by base package so the negative cases (AC-4/AC-5)
  * are proven against the deliberately mis-shaped fixtures under
@@ -109,14 +115,18 @@ class PublishedSurfacePlacementArchitectureTests {
 	@Test
 	void recordInPortsSurfaceIsRejected() {
 		List<String> violations = portsSurfaceViolations(FIXTURE_CLASSES, FIXTURE_BASE);
-		assertTrue(violations.stream().anyMatch(v -> v.contains("EventRecordInPorts")),
+		assertTrue(violations.stream()
+						.anyMatch(v -> v.contains("EventRecordInPorts") && v.contains("is not an interface")),
 				"Expected the ports-surface rule to reject a record placed in api/, but got: " + violations);
 	}
 
 	@Test
 	void sealedInterfaceInPortsSurfaceIsRejected() {
+		// Matches the sealed-specific message so the nested fixture record (SealedOutcomeInPorts.Ok,
+		// caught by the not-an-interface branch) cannot make this negative proof vacuously green.
 		List<String> violations = portsSurfaceViolations(FIXTURE_CLASSES, FIXTURE_BASE);
-		assertTrue(violations.stream().anyMatch(v -> v.contains("SealedOutcomeInPorts")),
+		assertTrue(violations.stream()
+						.anyMatch(v -> v.contains("SealedOutcomeInPorts") && v.contains("is a sealed interface")),
 				"Expected the ports-surface rule to reject a sealed outcome hierarchy in api/, but got: "
 						+ violations);
 	}
@@ -248,7 +258,7 @@ class PublishedSurfacePlacementArchitectureTests {
 	}
 
 	private static void assertNoViolations(String ruleName, List<String> violations) {
-		assertFalse(!violations.isEmpty(),
+		assertTrue(violations.isEmpty(),
 				"Published-surface placement violations (" + ruleName + "):\n  "
 						+ String.join("\n  ", violations));
 	}

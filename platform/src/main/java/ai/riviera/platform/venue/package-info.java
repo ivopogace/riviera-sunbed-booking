@@ -5,7 +5,7 @@
  *
  * <p>Full-module layout (ADR-0007): it owns an application service
  * ({@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
- * + {@code application} + {@code adapter.in} + {@code adapter.out} (no {@code domain}
+ * + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out} (no {@code domain}
  * today). It is the one module that owns a <strong>cross-module dependency inversion</strong>:
  * {@code venue.spi.SetAvailabilityLookup} is declared here and implemented by
  * {@code availability} (which lists {@code venue::api} + {@code venue::spi}), so the beach-map

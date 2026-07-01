@@ -46,12 +46,13 @@ definition of "correct structure," not intuition.** It already runs as
    `references/persistence-jdbc.md`). `JdbcOnlyArchitectureTests` enforces this.
 2. **Cross-module references are by typed id, never by object** (invariant #11). A `Booking` holds a
    `SetId`/`VenueId`/`CustomerId`, not a `Set`/`Customer`. Same for event payloads. The typed ids
-   live in the owning module's `api/` (e.g. `venue.api.SetId`, `customer.api.CustomerId`).
+   live in the owning module's `vocabulary/` (e.g. `venue.vocabulary.SetId`,
+   `customer.vocabulary.CustomerId` — issue #95).
 3. **Cross-module collaboration goes through the other module's `api/` port OR a domain event —
    never a reach into its `application.*` / `adapter.*` / `domain`.** The only packages
    another module may import are the module's `@NamedInterface` packages: `api` (inbound ports
-   others call) and, when present, `spi` (driven ports another module implements — see
-   *`api` vs `spi`* below).
+   others call), `vocabulary` (published ids/value types), `events` (published event records) and,
+   when present, `spi` (driven ports another module implements — see *`api` vs `spi`* below).
 4. **`ModularityTests.verifiesModularStructure()` stays green** after any structural change. A
    failure is the design being wrong, not the test.
 
@@ -225,7 +226,8 @@ provider lists `<provider>::api` only — never `::spi`.
 these sets are taken on date D?" but must not depend on `availability` (that would cycle —
 `availability` already depends on `venue::api` for the claim's pool check). So `venue` declares the
 driven port `SetAvailabilityLookup` in **`venue.spi`**; `availability` **implements** it (its
-`allowedDependencies` are `{ "venue::api", "venue::spi" }` — `api` for `SetId`, `spi` for the port);
+grants include `venue::spi` to implement the port, plus `venue::api`/`venue::vocabulary` for the
+ports and ids it uses — see the module's package-info for the full least-privilege list);
 `venue`'s `JdbcVenueCatalog` calls it. The compile-time edge stays `availability → venue`
 (acyclic); the runtime call goes `venue → availability`. `booking`, which only *calls* venue, is
 granted `venue::api` only — never `venue::spi`. (`SetId` and the other shared vocabulary live in

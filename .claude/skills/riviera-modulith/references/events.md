@@ -12,15 +12,25 @@ in-transaction** listener (no registry; see "Synchronous in-transaction events" 
 
 ## Where events live and the id-only payload rule
 
-Published event records are part of the module's **published surface → put them in `<module>.api`**
-(the `@NamedInterface("api")` package), so subscribers depend on `<module>::api` like any other api
-type. **Payloads carry typed ids and value data only — never aggregate objects** (invariant #11):
+Published event records are part of the module's published surface → **put them in
+`<module>.events`** (a top-level `@NamedInterface("events")` package — issue #95), so a
+listener-only subscriber depends on `<module>::events` (+ `<module>::vocabulary` for the ids the
+payload carries) and never on the module's command ports. Placement is enforced by
+`PublishedSurfacePlacementArchitectureTests` (events surfaces hold records only; a cross-module
+`@ApplicationModuleListener` parameter must live in its owner's events surface). **Payloads carry
+typed ids and value data only — never aggregate objects** (invariant #11):
 
 ```java
-// ai.riviera.platform.booking.api  (already @NamedInterface("api"))
+// ai.riviera.platform.booking.events  (@NamedInterface("events"))
 public record BookingConfirmed(BookingId bookingId, SetId setId, VenueId venueId,
                                LocalDate bookingDate) {}
 ```
+
+> **Moving/renaming a published event changes its persisted FQCN** in the Event Publication
+> Registry — BOTH `event_type` and the default `listener_id` (which embeds the parameter type)
+> in `event_publication` *and* `event_publication_archive`. Ship a Flyway rewrite like
+> `V18__event_publication_event_type_moves.sql` with any such move, or outstanding publications
+> dead-letter on the post-deploy republish.
 
 Why ids, not aggregates:
 - The listener is in another module and must not depend on `booking`'s internal aggregate.
@@ -79,7 +89,7 @@ call cycles: `booking` already depends on `payment::api`). So `payment` **publis
 
 ```java
 // publisher — ai.riviera.platform.payment.infrastructure.in.StripeWebhookController (inside @Transactional)
-publisher.publishEvent(new PaymentConfirmed(bookingRef, paymentIntentId));   // payment.api record
+publisher.publishEvent(new PaymentConfirmed(bookingRef, paymentIntentId));   // payment.events record
 
 // listener — ai.riviera.platform.booking.infrastructure.in.PaymentEventListener
 @Component

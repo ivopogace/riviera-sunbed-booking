@@ -165,7 +165,7 @@ Per-grant justification (the narrowest set each consumer's code needs):
 | R-3 | A bytecode-only dependency (accessor chain, `throws`, caught exception) missed by import scanning → `verify()` red or, worse, an over-wide grant left in place | med | med | `ModularityTests` run per phase is the arbiter; any correction is recorded in the grant matrix above with a note — never silenced by widening without explanation | agent | resolved — verify() green at every phase; zero matrix corrections needed |
 | R-4 | C1 rule "api = interfaces only" leaves a loophole: sealed outcome hierarchies are interfaces — the drift re-enters through outcome types in `api` | med | med | Rule additionally rejects `sealed` interfaces in `api`/`spi` (outcome hierarchies are vocabulary by convention); fixture test proves it | agent | resolved — commit 6b9f4e3 (sealedInterfaceInPortsSurfaceIsRejected) |
 | R-5 | ~87 main + ~38 test files change packages/imports; a stray reference to a moved type via FQCN string (reflection, SQL, config) survives compile but breaks runtime | low | med | Grep for the old FQCNs (`\.api\.BookingConfirmed`, etc.) across `src/`, `application*.properties`, and `db/migration` at Phase 5; the registry rows are the one known case (R-1) | agent | resolved — sweep clean at commit f43ab7d |
-| R-6 | SonarCloud counts moved files as new code → new-code coverage < 80% on lines that were never covered | low | med | Moves preserve git history where possible (same-commit rename detection); if the gate still trips, cover or resolve-with-rationale in SonarCloud per the Sonar gate | agent | open |
+| R-6 | SonarCloud counts moved files as new code → new-code coverage < 80% on lines that were never covered | low | med | Moves preserve git history where possible (same-commit rename detection); if the gate still trips, cover or resolve-with-rationale in SonarCloud per the Sonar gate | agent | resolved — Sonar quality gate PASSED on PR #105 (0 new issues, 80.0% new-code coverage) |
 
 ## Open questions / Assumptions
 
@@ -345,6 +345,40 @@ move) → **Sonar gate** → merge + close-out checklist.
 - [x] **AC-4/AC-5:** `gradle test --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS, 10/10 incl. the five fixture-fed negatives. Verified at commit 6b9f4e3.
 - [x] **AC-6:** V18 rewrites all four FQCNs in both registry tables; `PayoutSpineScenarioIT` (boots context, applies V18) green locally at commit 3940239; CI ITs re-verify on the PR.
 - [ ] **AC-7:** CI full suite green at PR head. Verified at the PR's check run (pending — the one AC CI owns).
+
+## Review-gate record (PR #105)
+
+High-effort review run (8 finder angles + adversarial verify, `riviera-review-overlay` walked on
+top — RV-BE-1/3b/3c/9/11/12, payment items, RV-PROC-1 all checked). Sonar quality gate: **passed**
+(0 new issues, 80.0% new-code coverage). Findings and outcomes (all fixes re-entered the loop —
+skills re-checked, tests re-run, changed surface re-reviewed):
+
+1. **V18 missed `listener_id` (Blocker, invariants #8/#9).** The registry's default
+   `@TransactionalEventListener` id embeds the event parameter FQCN; republish matches string-equal
+   and marks unmatched rows FAILED — pre-deploy incomplete refunds/accruals/confirmations would
+   dead-letter. Confirmed against spring-context 7.0.8 + spring-modulith-events 2.1.0 bytecode.
+   **Fixed:** V18 now rewrites `listener_id` (REPLACE on the parenthesized FQCN) in both tables.
+2. **V14 edited in place (Blocker, invariant #12).** The repo-wide FQCN sed touched a comment in
+   the already-applied `V14__cancellation_reason.sql` → Flyway checksum mismatch on every migrated
+   DB. **Fixed:** V14 restored byte-identical to `main`; V18's header documents why the stale
+   comment stays.
+3. **Vacuous negative proof (Major).** `sealedInterfaceInPortsSurfaceIsRejected` passed via the
+   nested fixture record's not-an-interface violation. **Fixed:** both ports-surface negative tests
+   now match the discriminating message text.
+4. **Doc drift (Major/Minor, several):** `references/events.md` still taught events-in-api (now
+   teaches `<module>.events` + the registry-FQCN/Flyway rule); `riviera-modulith` SKILL.md hard
+   constraints #2/#3 + spi example grants; `PackageShapeArchitectureTests` javadoc/assertion-3
+   naming and message; module-root package-infos (payment/customer/venue/availability/payout
+   comment); `PaymentConfirmed` javadoc grant; dangling `{@link}`s in moved vocabulary types.
+   **All fixed.**
+5. **Roll-forward-only constraint (documented):** after V18 runs, rolling the app back to pre-#95
+   code leaves registry rows naming `events.*` classes the old artifact cannot load — pending
+   publications stall until hand-reversed. Documented in V18's header and here; acceptable for the
+   current single-instance non-prod deployment.
+6. **Deferred (rationale):** extracting the shared package-arithmetic helper from the two shape
+   tests — deliberate test isolation, no third consumer yet; double-negative assertion fixed
+   instead. The placement rule's subtree policing (stricter than `@NamedInterface` semantics) is
+   deliberate and now documented in the test's javadoc.
 
 ## Self-review checklist (before merge / PR)
 

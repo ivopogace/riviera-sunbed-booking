@@ -11,7 +11,9 @@
     displayName = "Payout",
     // U5: payout reacts to booking::events (BookingConfirmed/BookingCancelled) and re-reads the commission rate
     // from venue::api at accrual time (invariant #11). operator::api (#73): the ledger read asserts
-    // per-venue ownership (invariant #13). Deny-by-default: these are the only three.
+    // per-venue ownership (invariant #13). Deny-by-default: three providers, each granted per
+    // surface at least privilege (issue #95) — events+vocabulary from booking, api+vocabulary
+    // from venue and operator.
     allowedDependencies = { "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.payout;
