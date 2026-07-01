@@ -76,10 +76,10 @@ for `feature/venuecatalog-role-split`; PR targets `main`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A retype silently rewires a consumer to the wrong method | low | high | Pure signature moves — method bodies untouched; full suite must stay green with unweakened assertions | Claude | open |
-| R-2 | C2 rule is brittle and fights legitimate future change | med | low | Rule is dependency-direction only (who may import `VenueCatalog`), never a method list | Claude | open |
-| R-3 | Bean wiring: `JdbcVenueCatalog` implements 3 interfaces; test stubs must satisfy all injection points | med | med | One `@Repository` bean satisfies all 3 by-type injections; `WebSliceStubs` exposes one stub object bound to all three interfaces | Claude | open |
-| R-4 | Hidden `VenueCatalog` usages beyond the 5 mapped consumers | low | med | Grep-verified consumer map (below); compiler enforces completeness | Claude | open |
+| R-1 | A retype silently rewires a consumer to the wrong method | low | high | Pure signature moves — method bodies untouched; full suite must stay green with unweakened assertions | Claude | 53ccabe (CI confirms) |
+| R-2 | C2 rule is brittle and fights legitimate future change | med | low | Rule is dependency-direction only (who may import `VenueCatalog`), never a method list | Claude | resolved in `VenueApiRoleSplitTests` |
+| R-3 | Bean wiring: `JdbcVenueCatalog` implements 3 interfaces; test stubs must satisfy all injection points | med | med | One `@Repository` bean satisfies all 3 by-type injections; `WebSliceStubs` exposes three role-port stub beans | Claude | 53ccabe (web-slice tests green) |
+| R-4 | Hidden `VenueCatalog` usages beyond the 5 mapped consumers | low | med | Grep-verified consumer map (below); compiler enforces completeness | Claude | 53ccabe (compile green) |
 
 ## Open questions / Assumptions
 
@@ -144,10 +144,10 @@ N/A — no endpoint or DTO changes.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + improvement-plan doc committed | ⏳ | |
-| 1 — Role split + consumer retype (suite green) | | |
-| 2 — C2 rule (`VenueApiRoleSplitTests`), red-verified then green | | |
-| 3 — PR + CI + review gate + Sonar gate + merge | | |
+| 0 — Plan doc + improvement-plan doc committed | ✅ | 5274aa3 |
+| 1 — Role split + consumer retype (suite green) | ✅ | 53ccabe |
+| 2 — C2 rule (`VenueApiRoleSplitTests`), red-verified then green | ✅ | (this commit) |
+| 3 — PR + CI + review gate + Sonar gate + merge | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -213,11 +213,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-3:** `./gradlew test --tests "*VenueApiRoleSplitTests*"` green at HEAD; red
-  run with scratch violation recorded in Phase 2.
-- [ ] **AC-2:** `./gradlew test` full-suite green; `git diff` on test files shows type
-  changes only.
-- [ ] **AC-4:** `git diff` shows no `allowedDependencies` change; `ModularityTests` green.
+- [x] **AC-1/AC-3:** `VenueApiRoleSplitTests` green at HEAD; red run verified with a scratch
+  `booking.application.ScratchViolation` importing `VenueCatalog` → rule FAILED → violation
+  removed (local run, Phase 2; Gradle 8.14/JDK25 toolchain per `gradle-proxy-trust.md`).
+- [x] **AC-2 (local scope):** structural net (`ModularityTests`, `JdbcOnlyArchitectureTests`,
+  `PackageShapeArchitectureTests`, `OperatorAuthPlacementTests`) + `CreateBookingServiceTest` +
+  web-slice tests green locally; Docker-gated ITs (`SetBookingInfoIT`, `PayoutModuleTest`,
+  concurrency ITs) run in CI — CI green is the full AC-2 verification.
+- [x] **AC-4:** no `package-info.java` touched anywhere in the diff; `ModularityTests` green
+  without edits.
 
 ## Self-review checklist (before merge / PR)
 
