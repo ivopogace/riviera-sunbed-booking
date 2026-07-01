@@ -9,9 +9,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import ai.riviera.platform.availability.application.in.MarkOutcome;
-import ai.riviera.platform.availability.application.in.ReleaseOutcome;
-import ai.riviera.platform.availability.application.in.StaffAvailability;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.api.VenueRef;

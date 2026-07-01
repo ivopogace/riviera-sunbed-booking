@@ -12,9 +12,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-import ai.riviera.platform.availability.application.in.MarkOutcome;
-import ai.riviera.platform.availability.application.in.ReleaseOutcome;
-import ai.riviera.platform.availability.application.in.StaffAvailability;
+import ai.riviera.platform.availability.application.MarkOutcome;
+import ai.riviera.platform.availability.application.ReleaseOutcome;
+import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.booking.application.in.BookingOutcome;
 import ai.riviera.platform.booking.application.in.CancelBooking;
 import ai.riviera.platform.booking.application.in.CancelOutcome;

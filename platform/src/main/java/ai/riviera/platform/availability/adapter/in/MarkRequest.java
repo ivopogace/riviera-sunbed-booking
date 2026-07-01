@@ -1,4 +1,4 @@
-package ai.riviera.platform.availability.infrastructure.in;
+package ai.riviera.platform.availability.adapter.in;
 
 import java.time.LocalDate;
 

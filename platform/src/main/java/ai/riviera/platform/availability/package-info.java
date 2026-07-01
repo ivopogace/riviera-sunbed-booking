@@ -5,8 +5,11 @@
  * unique constraint plus a row-lock / {@code INSERT ... ON CONFLICT} claim.
  * Aggregate root: {@code SetAvailability}.
  *
- * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
- * {@code domain}, {@code infrastructure.in/out}.
+ * <p>Full-module layout (ADR-0007): it owns an application service (the synchronous
+ * claim port with real concurrency semantics), so it takes the full template —
+ * {@code api} + {@code application} + {@code adapter.in} + {@code adapter.out}
+ * (no {@code domain} today). It implements {@code venue::spi}
+ * ({@code SetAvailabilityLookup}); it owns no {@code spi} of its own.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Availability",
