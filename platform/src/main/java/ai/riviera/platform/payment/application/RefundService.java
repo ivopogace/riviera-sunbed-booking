@@ -6,7 +6,6 @@ import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.RefundPort;
 import ai.riviera.platform.payment.api.RefundResult;
-import ai.riviera.platform.payment.application.out.PaymentGateway;
 
 /**
  * Implements the inbound {@link RefundPort} by delegating to the outbound {@link PaymentGateway} —

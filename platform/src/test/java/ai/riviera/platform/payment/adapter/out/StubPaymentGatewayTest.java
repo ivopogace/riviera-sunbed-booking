@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.infrastructure.out;
+package ai.riviera.platform.payment.adapter.out;
 
 import org.junit.jupiter.api.Test;
 

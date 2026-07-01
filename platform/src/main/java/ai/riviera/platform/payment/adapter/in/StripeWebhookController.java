@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.infrastructure.in;
+package ai.riviera.platform.payment.adapter.in;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -25,10 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.PaymentCanceled;
 import ai.riviera.platform.payment.api.PaymentConfirmed;
-import ai.riviera.platform.payment.application.out.Payments;
-import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
+import ai.riviera.platform.payment.application.Payments;
+import ai.riviera.platform.payment.application.StripeWebhookEvents;
 import ai.riviera.platform.payment.domain.PaymentStatus;
-import ai.riviera.platform.payment.infrastructure.StripeProperties;
+import ai.riviera.platform.payment.adapter.out.StripeProperties;
 
 /**
  * Stripe webhook endpoint — the <strong>source of truth</strong> for payment state (invariant

@@ -6,7 +6,6 @@ import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.payment.application.out.PaymentGateway;
 
 /**
  * Implements the inbound {@link CheckoutPort} by delegating to the outbound

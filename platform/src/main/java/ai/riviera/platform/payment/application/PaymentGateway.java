@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.application.out;
+package ai.riviera.platform.payment.application;
 
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;

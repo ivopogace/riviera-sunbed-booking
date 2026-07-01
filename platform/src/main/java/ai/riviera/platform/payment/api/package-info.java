@@ -7,7 +7,7 @@
  * published domain events {@link ai.riviera.platform.payment.api.PaymentConfirmed} and
  * {@link ai.riviera.platform.payment.api.PaymentCanceled} the {@code booking} module listens
  * for (id-based payloads, invariant #11). The Stripe SDK lives behind the module's
- * <em>outbound</em> {@code PaymentGateway} in {@code application.out}, never here. Collect-only,
+ * <em>outbound</em> {@code PaymentGateway} in {@code application}, never here. Collect-only,
  * no Connect (invariant #8).
  */
 @org.springframework.modulith.NamedInterface("api")

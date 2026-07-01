@@ -1,9 +1,9 @@
-package ai.riviera.platform.payment.infrastructure.out;
+package ai.riviera.platform.payment.adapter.out;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.payment.application.out.StripeWebhookEvents;
+import ai.riviera.platform.payment.application.StripeWebhookEvents;
 
 /**
  * JDBC adapter for {@link StripeWebhookEvents} — explicit SQL via {@link JdbcClient}, no JPA

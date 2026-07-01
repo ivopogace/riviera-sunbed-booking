@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.api.PaymentCancellation;
-import ai.riviera.platform.payment.application.out.PaymentGateway;
 
 /**
  * Implements the inbound {@link CancelPaymentPort} by delegating to the outbound
