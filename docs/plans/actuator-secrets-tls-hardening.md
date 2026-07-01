@@ -189,6 +189,15 @@ allowlist against regression). After adding the `management.*` block all 4 pass,
 - [ ] **AC-5:** grep audit shows no literal secret; env placeholders only.
 - [ ] **AC-6:** `production-hardening.md` §TLS present.
 
+## Review gate note
+
+`/code-review origin/main...HEAD` (scoped to this slice's commit) + `riviera-review-overlay`
+run at high effort — **no findings**. Overlay: RV-BE-1 / payment-webhook / RV-BE-9 ➖ (no
+booking/availability/money/venue-scoped surface); RV-BE-11/12 ✅ (app-level config in the root
+package, no module/package move); RV-PROC-1 ✅ (`riviera-java-conventions` + `riviera-plan-doc`
+listed; no migration/frontend/module-structure). Role matching (`when-authorized` + role
+OPERATOR) and 401-vs-404 exposure semantics are verified green by `ActuatorHardeningIT` itself.
+
 ## Self-review checklist (before merge / PR)
 
 - [ ] Every AC has a verifying test/check.
