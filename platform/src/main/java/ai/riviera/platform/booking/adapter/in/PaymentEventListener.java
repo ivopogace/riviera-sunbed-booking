@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.payment.events.PaymentCanceled;

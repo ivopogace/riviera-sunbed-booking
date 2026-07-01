@@ -7,7 +7,7 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.LedgerEntryRow;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.application.VenuePeriodTotal;

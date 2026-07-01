@@ -21,7 +21,7 @@ import ch.qos.logback.core.read.ListAppender;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
@@ -156,7 +156,7 @@ class CreateBookingServiceTest {
 			@Override
 			public java.util.Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
 					long bookingId, java.time.Instant cancelledAt, long refundMinor,
-					ai.riviera.platform.booking.api.RefundReason reason) {
+					ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 				return java.util.Optional.empty();
 			}
 
@@ -173,7 +173,7 @@ class CreateBookingServiceTest {
 			}
 
 			@Override
-			public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
+			public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
 					java.time.Instant olderThan) {
 				return List.of();
 			}
@@ -371,7 +371,7 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
 				long bookingId, Instant cancelledAt, long refundMinor,
-				ai.riviera.platform.booking.api.RefundReason reason) {
+				ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 			return Optional.empty();
 		}
 
@@ -388,7 +388,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
+		public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
 				Instant olderThan) {
 			return List.of();
 		}

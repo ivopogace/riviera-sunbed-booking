@@ -1,9 +1,11 @@
-package ai.riviera.platform.booking.api;
+package ai.riviera.platform.booking.events;
 
 import java.time.LocalDate;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+
+import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
  * Published when a booking transitions to {@code CONFIRMED} — the write-side spine fact other

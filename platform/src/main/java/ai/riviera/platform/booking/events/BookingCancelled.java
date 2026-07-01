@@ -1,9 +1,12 @@
-package ai.riviera.platform.booking.api;
+package ai.riviera.platform.booking.events;
 
 import java.time.LocalDate;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
  * Published when a booking transitions to {@code CANCELLED} (U6, issue #11) — the cancellation spine

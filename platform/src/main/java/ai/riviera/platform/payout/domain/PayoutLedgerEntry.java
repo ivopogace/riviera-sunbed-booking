@@ -1,6 +1,6 @@
 package ai.riviera.platform.payout.domain;
 
-import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**

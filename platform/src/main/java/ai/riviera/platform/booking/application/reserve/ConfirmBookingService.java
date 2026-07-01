@@ -7,8 +7,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import ai.riviera.platform.booking.api.BookingConfirmed;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 
 /**

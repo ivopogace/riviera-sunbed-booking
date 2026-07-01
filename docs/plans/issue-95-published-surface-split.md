@@ -21,7 +21,7 @@ AC writes them: `booking::events`, `venue::vocabulary`. The cost — widening th
 package-shape rule's allowed top-level set — is deliberate and covered by AC-3.
 
 **Persistence:** JDBC only (invariant #1). No table/behavior change. One migration,
-`V10__event_publication_event_type_moves.sql`: the Event Publication Registry persists
+`V18__event_publication_event_type_moves.sql`: the Event Publication Registry persists
 event **class FQCNs** (`event_publication.event_type`, plus `event_publication_archive`
 under `completion-mode=archive`), and `republish-outstanding-events-on-restart=true`
 deserializes outstanding rows by that name — so the four moved event classes get their
@@ -37,7 +37,7 @@ records/sealed types, javadoc style), `codebase-design` (ports = the module's in
 vocabulary/events are published *types*, not seams — the split narrows what each consumer
 must learn), `grilling` (issue-intake gate — surfaced R-1/R-4/R-5 below), `riviera-plan-doc`
 (this doc), `tdd` (rule-red → move → green per phase), `riviera-local-debug` (loaded before
-the first Gradle run), `postgres` (loaded at Phase 4 for the V10 registry migration),
+the first Gradle run), `postgres` (loaded at Phase 4 for the V18 registry migration),
 `riviera-stripe-payments` (loaded at Phases 3–4: `payment`/`payout` files move packages;
 the collect-only/no-Connect model is untouched).
 
@@ -139,10 +139,10 @@ Per-grant justification (the narrowest set each consumer's code needs):
   module, when the placement rule runs, then each resides in its owner's `events` surface
   (an event published from `api`/`vocabulary` is a violation). *Pinned by:*
   `PublishedSurfacePlacementArchitectureTests`
-- [ ] **AC-6:** Given persisted registry rows naming the four old event FQCNs, when V10
+- [ ] **AC-6:** Given persisted registry rows naming the four old event FQCNs, when V18
   runs, then `event_type` is rewritten to the new FQCNs in **both** `event_publication`
   and `event_publication_archive`. *Pinned by:* migration content review + the
-  Testcontainers ITs that boot the context (Flyway applies V10) in CI
+  Testcontainers ITs that boot the context (Flyway applies V18) in CI
 - [ ] **AC-7:** No behavior change: the full suite (unit + IT + `ModularityTests` +
   `JdbcOnlyArchitectureTests` + `PackageShapeArchitectureTests` + new placement rule) is
   green in CI at the PR head. *Pinned by:* CI gate
@@ -152,7 +152,7 @@ Per-grant justification (the narrowest set each consumer's code needs):
 - **C2** (role-split honesty rule) — shipped with #94.
 - **C4** (id-based-event-components rule, sole-writer rule) — separate improvement-plan item.
 - **B3/B4** (booking module split; read-model module) — standing triggers, not scheduled.
-- Any behavior, endpoint, SQL (beyond V10), or event-payload change; any port renaming or
+- Any behavior, endpoint, SQL (beyond V18), or event-payload change; any port renaming or
   port-shape change; retiring the bootstrap operator (separate follow-up).
 - Frontend — untouched.
 
@@ -160,7 +160,7 @@ Per-grant justification (the narrowest set each consumer's code needs):
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Event Publication Registry rows persist event FQCNs (`archive` mode + republish-on-restart); moving the 4 event classes strands outstanding/archived rows under the old name → republish deserialization failures after deploy | med | high | `V10__event_publication_event_type_moves.sql` rewrites both tables' `event_type`; authored under `postgres`; deployed atomically with the code (Flyway runs before the app serves) | agent | open |
+| R-1 | Event Publication Registry rows persist event FQCNs (`archive` mode + republish-on-restart); moving the 4 event classes strands outstanding/archived rows under the old name → republish deserialization failures after deploy | med | high | `V18__event_publication_event_type_moves.sql` rewrites both tables' `event_type`; authored under `postgres`; deployed atomically with the code (Flyway runs before the app serves) | agent | open |
 | R-2 | `PackageShapeArchitectureTests` assertion 1 fails the moment the first top-level `vocabulary/` appears — a red intermediate state | high | low | Phase 1 widens `ALLOWED_TOP_LEVEL` + `NAMED_INTERFACE_PACKAGES` in the same commit as the first move (rule-red → widen+move → green; each phase ends green) | agent | open |
 | R-3 | A bytecode-only dependency (accessor chain, `throws`, caught exception) missed by import scanning → `verify()` red or, worse, an over-wide grant left in place | med | med | `ModularityTests` run per phase is the arbiter; any correction is recorded in the grant matrix above with a note — never silenced by widening without explanation | agent | open |
 | R-4 | C1 rule "api = interfaces only" leaves a loophole: sealed outcome hierarchies are interfaces — the drift re-enters through outcome types in `api` | med | med | Rule additionally rejects `sealed` interfaces in `api`/`spi` (outcome hierarchies are vocabulary by convention); fixture test proves it | agent | open |
@@ -181,7 +181,7 @@ Per-grant justification (the narrowest set each consumer's code needs):
 **No availability write-path change.** `AvailabilityClaim` (port) keeps its package;
 `ClaimOutcome` moves to `availability/vocabulary` — a package move only. The
 `(set_id, booking_date)` unique constraint, the `INSERT … ON CONFLICT` claim, the pool
-rule, and the cutoff rule are untouched (no SQL beyond V10, which touches only the
+rule, and the cutoff rule are untouched (no SQL beyond V18, which touches only the
 registry tables). *Pinning:* the existing availability/booking module tests +
 `ConcurrentReservationIT` in CI, unchanged and green (AC-7).
 
@@ -201,7 +201,7 @@ and `@NamedInterface("events")` packages per that table; `venue/spi` unchanged.
 **Domain events:** payloads, publishers, subscribers, and async semantics all unchanged —
 `BookingConfirmed`/`BookingCancelled` (publisher `booking`; subscriber `payout`) and
 `PaymentConfirmed`/`PaymentCanceled` (publisher `payment`; subscriber `booking`) move to
-their modules' `events` surface, FQCN-only change (see R-1/V10).
+their modules' `events` surface, FQCN-only change (see R-1/V18).
 
 ## Payment & payout (invariants #5, #8, #9, #10)
 
@@ -227,7 +227,7 @@ N/A — no contract change (no endpoint, DTO, or wire shape changes).
 | 1 — Shape-rule widening + `venue` vocabulary split | ✅ | (this commit) |
 | 2 — `operator` vocabulary split | ✅ | (this commit) |
 | 3 — `payment` vocabulary + events split | ✅ | (this commit) |
-| 4 — `booking` events + vocabulary split (drop `booking.api`) + V10 registry migration | | |
+| 4 — `booking` events + vocabulary split (drop `booking.api`) + V18 registry migration | ✅ | (this commit) |
 | 5 — `availability` + `customer` vocabulary splits + old-FQCN sweep | | |
 | 6 — C1 placement rule (`PublishedSurfacePlacementArchitectureTests`) | | |
 | 7 — Substrate docs (ADR-0007 amendment, CLAUDE.md #11, `riviera-modulith` skill) | | |
@@ -249,7 +249,7 @@ window as each phase's code.
   widened `ALLOWED_TOP_LEVEL` / `NAMED_INTERFACE_PACKAGES` + javadoc rationale.
 - `platform/src/test/java/ai/riviera/platform/PublishedSurfacePlacementArchitectureTests.java`
   — the C1 rule + fixture-fed negative tests (fixture package under `src/test/java`).
-- `platform/src/main/resources/db/migration/V10__event_publication_event_type_moves.sql`
+- `platform/src/main/resources/db/migration/V18__event_publication_event_type_moves.sql`
   — registry FQCN rewrite (both tables).
 - `docs/adr/ADR-0007-package-structure.md` — amendment: the two new named-interface
   kinds + placement rule. `CLAUDE.md` invariant #11 + module table note;
@@ -288,16 +288,16 @@ per-phase so each phase stands alone green).
 `PaymentConfirmed`, `PaymentCanceled`. Consumer: `booking` (gains `payment::vocabulary`,
 `payment::events`). Load `riviera-stripe-payments` before touching the module.
 
-**Phase 4 — `booking` split + V10.** `booking/events` ← `BookingConfirmed`,
+**Phase 4 — `booking` split + V18.** `booking/events` ← `BookingConfirmed`,
 `BookingCancelled`; `booking/vocabulary` ← `BookingId`, `RefundReason`; **delete
 `booking/api`**. Consumer: `payout` (grants per matrix). Load `postgres`; author
-`V10__event_publication_event_type_moves.sql` — four `UPDATE … SET event_type = … WHERE
+`V18__event_publication_event_type_moves.sql` — four `UPDATE … SET event_type = … WHERE
 event_type = …` statements × 2 tables (idempotent, no-op on rows that don't exist).
 
 **Phase 5 — `availability` + `customer` splits + sweep.** `availability/vocabulary` ←
 `ClaimOutcome`; `customer/vocabulary` ← `CustomerId`, `GuestContact`. Consumer: `booking`.
 Then the R-5 sweep: grep the old FQCNs across `src/`, properties, and migrations — the
-only expected hits are V10 itself.
+only expected hits are V18 itself.
 
 **Phase 6 — C1 placement rule.** New `PublishedSurfacePlacementArchitectureTests`
 (sibling of `PackageShapeArchitectureTests`, same violation-collector style, no Spring/DB):
@@ -338,7 +338,7 @@ move) → **Sonar gate** → merge + close-out checklist.
 - [ ] **AC-1/AC-3:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-2:** `grep -rn "booking::api" platform/src/main/java` → empty; `ls platform/src/main/java/ai/riviera/platform/booking/api` → does not exist. Verified at commit `<sha>`.
 - [ ] **AC-4/AC-5:** `gradle test --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS (incl. fixture-fed negatives). Verified at commit `<sha>`.
-- [ ] **AC-6:** V10 content review + CI Testcontainers ITs green. Verified at commit `<sha>`.
+- [ ] **AC-6:** V18 content review + CI Testcontainers ITs green. Verified at commit `<sha>`.
 - [ ] **AC-7:** CI full suite green at PR head. Verified at run `<link>`.
 
 ## Self-review checklist (before merge / PR)
@@ -350,10 +350,10 @@ move) → **Sonar gate** → merge + close-out checklist.
 - [ ] **Availability** section filled — no write-path change; suite green (invariant #2).
 - [ ] Pool + cutoff rules honored — untouched (invariants #3, #4).
 - [ ] **Modulith** section filled; grants narrowed, no cross-module internals imports; event payloads unchanged and id-based (invariant #11).
-- [ ] **Payment/payout** — no money behavior change; V10 only touches registry FQCNs (invariants #5, #8, #9).
+- [ ] **Payment/payout** — no money behavior change; V18 only touches registry FQCNs (invariants #5, #8, #9).
 - [ ] Refund policy untouched (invariant #10).
 - [ ] Timezone untouched (invariant #6). Booking codes untouched (invariant #7).
-- [ ] Flyway migration V10 present for the registry FQCN rewrite (invariant #12).
+- [ ] Flyway migration V18 present for the registry FQCN rewrite (invariant #12).
 - [ ] Frontend N/A.
 - [ ] Execution-status table at HEAD matches reality.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).

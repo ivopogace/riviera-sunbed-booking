@@ -13,8 +13,8 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;

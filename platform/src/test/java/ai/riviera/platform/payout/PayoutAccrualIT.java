@@ -15,8 +15,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.api.BookingConfirmed;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 

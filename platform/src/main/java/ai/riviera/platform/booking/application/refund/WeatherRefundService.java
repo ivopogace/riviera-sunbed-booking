@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.api.BookingId;
-import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.operator.vocabulary.OperatorId;

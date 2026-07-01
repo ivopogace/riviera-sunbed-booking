@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.refund;
 
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
  * The single, shared "cancel an unpaid booking and free its set" seam (issue #51) — the guarded

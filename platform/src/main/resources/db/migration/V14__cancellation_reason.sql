@@ -5,7 +5,7 @@
 -- value set is closed and stable from the start (same posture as booking.status in V5). The reason is
 -- the audit of the decision — invariant #10 keeps refund eligibility server-side; this column never
 -- carries client input. Stored as TEXT + CHECK (postgres skill), kept in lockstep with
--- ai.riviera.platform.booking.api.RefundReason.
+-- ai.riviera.platform.booking.vocabulary.RefundReason.
 
 -- On `booking`: NULL for a live (non-cancelled) booking; set when status -> CANCELLED.
 ALTER TABLE booking ADD COLUMN cancel_reason TEXT

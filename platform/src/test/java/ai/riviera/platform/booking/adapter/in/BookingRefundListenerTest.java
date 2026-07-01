@@ -6,8 +6,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
@@ -32,7 +32,7 @@ class BookingRefundListenerTest {
 	private static BookingCancelled event(long bookingId, long refundMinor, String currency) {
 		return new BookingCancelled(new BookingId(bookingId), new VenueId(1L), new SetId(2L),
 				LocalDate.of(2030, 7, 1), refundMinor, currency,
-				ai.riviera.platform.booking.api.RefundReason.POLICY);
+				ai.riviera.platform.booking.vocabulary.RefundReason.POLICY);
 	}
 
 	@Test

@@ -1,4 +1,4 @@
-package ai.riviera.platform.booking.api;
+package ai.riviera.platform.booking.vocabulary;
 
 /**
  * The {@code booking} module's technical id, carried in cross-module event payloads (invariant

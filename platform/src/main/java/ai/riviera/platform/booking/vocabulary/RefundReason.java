@@ -1,4 +1,4 @@
-package ai.riviera.platform.booking.api;
+package ai.riviera.platform.booking.vocabulary;
 
 /**
  * Why a booking was cancelled and (when money is returned) a refund issued — carried on
