@@ -228,9 +228,42 @@ response DTOs move package only; `@RequestMapping` paths and request handling ar
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Move + slice + import rewrite + safety-net verify | ⏳ | |
+| 0 — Move + slice + import rewrite + safety-net verify | ✅ | `3978652` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Safety net (GitHub Actions CI, run 28536321864 — green):** `ModularityTests` ✅,
+`JdbcOnlyArchitectureTests` ✅, full `ai.riviera.platform.booking.*` suite ✅ (reserve→pay→confirm +
+cancel/refund/webhook ITs, Testcontainers not skipped). Local Gradle build is unavailable in this
+environment (JDK 25 + Gradle 9.6.1 downloads blocked by egress policy), so CI is the authoritative
+build — as for the prior five modules in the series. The **first** CI run caught a real gap static
+analysis alone missed: `BookingCutoff`/`CancellationPolicy` (+`RefundQuote`) were package-private and
+are consumed across the new slices; widened to `public` (module-internal) and re-verified green.
+
+## Review-gate note (SDLC review gate)
+
+Ran the SDLC review gate (`riviera-review-overlay` + `/code-review` on `origin/main...HEAD`) — two
+independent finder passes (correctness + overlay conventions). **No findings.** The content diff is
+exclusively package declarations, imports, javadoc, and the two documented visibility widenings; all
+59 `src/main` moves are git renames. Items walked:
+
+- **RV-BE-12** (ADR-0007 package shape) ✅ — final top-level set `{api, application, domain, adapter}`
+  ⊆ allowed; `application/` sliced into `{reserve,cancel,refund,view}` with `Bookings`/
+  `BookingCodeGenerator` at root; `domain/` flat; adapters by direction; no `.in/.out` at the
+  application layer; no lingering `infrastructure/`; `api/` top-level `@NamedInterface`; no
+  `application`/`domain` → `adapter.*` import.
+- **RV-BE-11** (responsibility placement) ✅ — every changed file stays in `booking`; no policy/calc
+  moved between modules; `JdbcBookings` SQL unchanged (no new writer to another module's table); no
+  forbidden cross-module reach (siblings used only via `api/`). Slice sub-packages are within-module.
+- **RV-BE-3b/3c** (spi/api placement) ✅ — no `spi/` invented; nothing added to `api/` (only javadoc
+  accuracy fixes).
+- **RV-PROC-1** ✅ — *Skills consulted* (`riviera-modulith`, `riviera-java-conventions`,
+  `riviera-stripe-payments`) matches the backend-only diff (no migration/SQL/FE).
+- **Invariants** ✅ — #2 availability (claim/release calls moved package only), #8 webhook confirm
+  (`PaymentEventListener` moved package only), #4 cutoff / #10 refund (`BookingCutoff`/
+  `CancellationPolicy` logic byte-identical, only visibility widened), #1 JDBC-only — all green in CI.
+- Correctness (removed-behavior + cross-file FQN) ✅ — every dropped import is genuinely same-package;
+  every rewritten FQN resolves to the real landing file; the two visibility widenings are sufficient.
 
 ---
 
