@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.availability.api.ClaimOutcome;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;

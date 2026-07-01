@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**

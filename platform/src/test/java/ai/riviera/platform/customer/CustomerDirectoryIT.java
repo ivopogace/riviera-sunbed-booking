@@ -9,8 +9,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.customer.api.CustomerDirectory;
-import ai.riviera.platform.customer.api.CustomerId;
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

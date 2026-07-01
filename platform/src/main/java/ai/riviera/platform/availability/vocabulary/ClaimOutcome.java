@@ -1,4 +1,4 @@
-package ai.riviera.platform.availability.api;
+package ai.riviera.platform.availability.vocabulary;
 
 /**
  * The result of attempting to {@link AvailabilityClaim#claim claim} a {@code (set, date)}.

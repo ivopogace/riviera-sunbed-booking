@@ -228,7 +228,7 @@ N/A — no contract change (no endpoint, DTO, or wire shape changes).
 | 2 — `operator` vocabulary split | ✅ | (this commit) |
 | 3 — `payment` vocabulary + events split | ✅ | (this commit) |
 | 4 — `booking` events + vocabulary split (drop `booking.api`) + V18 registry migration | ✅ | (this commit) |
-| 5 — `availability` + `customer` vocabulary splits + old-FQCN sweep | | |
+| 5 — `availability` + `customer` vocabulary splits + old-FQCN sweep | ✅ | (this commit) |
 | 6 — C1 placement rule (`PublishedSurfacePlacementArchitectureTests`) | | |
 | 7 — Substrate docs (ADR-0007 amendment, CLAUDE.md #11, `riviera-modulith` skill) | | |
 

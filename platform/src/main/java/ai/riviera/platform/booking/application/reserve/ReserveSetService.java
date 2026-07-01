@@ -9,11 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.availability.api.ClaimOutcome;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
-import ai.riviera.platform.customer.api.CustomerId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 

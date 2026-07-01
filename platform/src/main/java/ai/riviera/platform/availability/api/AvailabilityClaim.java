@@ -4,6 +4,8 @@ import java.time.LocalDate;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
 
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+
 /**
  * The {@code availability} module's published command port (invariant #11) — the single
  * write seam onto the {@code (set, date)} source of truth. A deep module: this one method

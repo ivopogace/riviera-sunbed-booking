@@ -1,4 +1,4 @@
-package ai.riviera.platform.customer.api;
+package ai.riviera.platform.customer.vocabulary;
 
 /**
  * The contact a tourist supplies at guest checkout (v1 has no accounts/auth). Email is the

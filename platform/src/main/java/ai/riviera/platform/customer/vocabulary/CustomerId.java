@@ -1,4 +1,4 @@
-package ai.riviera.platform.customer.api;
+package ai.riviera.platform.customer.vocabulary;
 
 /**
  * Technical id of a {@code Customer} (invariant #11 — cross-module references and event

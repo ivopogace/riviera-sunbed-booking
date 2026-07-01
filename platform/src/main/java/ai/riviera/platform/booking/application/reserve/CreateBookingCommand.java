@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.application.reserve;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**

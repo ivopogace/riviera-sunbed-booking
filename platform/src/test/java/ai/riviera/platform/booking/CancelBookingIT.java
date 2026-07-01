@@ -19,7 +19,7 @@ import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

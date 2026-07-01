@@ -20,15 +20,15 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.availability.api.ClaimOutcome;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.customer.api.CustomerDirectory;
-import ai.riviera.platform.customer.api.CustomerId;
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
