@@ -160,21 +160,26 @@ Per-grant justification (the narrowest set each consumer's code needs):
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Event Publication Registry rows persist event FQCNs (`archive` mode + republish-on-restart); moving the 4 event classes strands outstanding/archived rows under the old name → republish deserialization failures after deploy | med | high | `V18__event_publication_event_type_moves.sql` rewrites both tables' `event_type`; authored under `postgres`; deployed atomically with the code (Flyway runs before the app serves) | agent | open |
-| R-2 | `PackageShapeArchitectureTests` assertion 1 fails the moment the first top-level `vocabulary/` appears — a red intermediate state | high | low | Phase 1 widens `ALLOWED_TOP_LEVEL` + `NAMED_INTERFACE_PACKAGES` in the same commit as the first move (rule-red → widen+move → green; each phase ends green) | agent | open |
-| R-3 | A bytecode-only dependency (accessor chain, `throws`, caught exception) missed by import scanning → `verify()` red or, worse, an over-wide grant left in place | med | med | `ModularityTests` run per phase is the arbiter; any correction is recorded in the grant matrix above with a note — never silenced by widening without explanation | agent | open |
-| R-4 | C1 rule "api = interfaces only" leaves a loophole: sealed outcome hierarchies are interfaces — the drift re-enters through outcome types in `api` | med | med | Rule additionally rejects `sealed` interfaces in `api`/`spi` (outcome hierarchies are vocabulary by convention); fixture test proves it | agent | open |
-| R-5 | ~87 main + ~38 test files change packages/imports; a stray reference to a moved type via FQCN string (reflection, SQL, config) survives compile but breaks runtime | low | med | Grep for the old FQCNs (`\.api\.BookingConfirmed`, etc.) across `src/`, `application*.properties`, and `db/migration` at Phase 5; the registry rows are the one known case (R-1) | agent | open |
+| R-1 | Event Publication Registry rows persist event FQCNs (`archive` mode + republish-on-restart); moving the 4 event classes strands outstanding/archived rows under the old name → republish deserialization failures after deploy | med | high | `V18__event_publication_event_type_moves.sql` rewrites both tables' `event_type`; authored under `postgres`; deployed atomically with the code (Flyway runs before the app serves) | agent | resolved — V18, commit 3940239 (PayoutSpineScenarioIT green) |
+| R-2 | `PackageShapeArchitectureTests` assertion 1 fails the moment the first top-level `vocabulary/` appears — a red intermediate state | high | low | Phase 1 widens `ALLOWED_TOP_LEVEL` + `NAMED_INTERFACE_PACKAGES` in the same commit as the first move (rule-red → widen+move → green; each phase ends green) | agent | resolved — commit 5a4544b (rule-red observed, then widened) |
+| R-3 | A bytecode-only dependency (accessor chain, `throws`, caught exception) missed by import scanning → `verify()` red or, worse, an over-wide grant left in place | med | med | `ModularityTests` run per phase is the arbiter; any correction is recorded in the grant matrix above with a note — never silenced by widening without explanation | agent | resolved — verify() green at every phase; zero matrix corrections needed |
+| R-4 | C1 rule "api = interfaces only" leaves a loophole: sealed outcome hierarchies are interfaces — the drift re-enters through outcome types in `api` | med | med | Rule additionally rejects `sealed` interfaces in `api`/`spi` (outcome hierarchies are vocabulary by convention); fixture test proves it | agent | resolved — commit 6b9f4e3 (sealedInterfaceInPortsSurfaceIsRejected) |
+| R-5 | ~87 main + ~38 test files change packages/imports; a stray reference to a moved type via FQCN string (reflection, SQL, config) survives compile but breaks runtime | low | med | Grep for the old FQCNs (`\.api\.BookingConfirmed`, etc.) across `src/`, `application*.properties`, and `db/migration` at Phase 5; the registry rows are the one known case (R-1) | agent | resolved — sweep clean at commit f43ab7d |
 | R-6 | SonarCloud counts moved files as new code → new-code coverage < 80% on lines that were never covered | low | med | Moves preserve git history where possible (same-commit rename detection); if the gate still trips, cover or resolve-with-rationale in SonarCloud per the Sonar gate | agent | open |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Spring Modulith 2.1 named interfaces cover the annotated package only
-  (no sub-package inclusion), so each new package needs its own `package-info.java` —
-  matches how `venue/spi` was done. — *Owner:* agent · *Resolves by:* Phase 1
-  (`ModularityTests` proves it).
-- **Assumption:** no `@Externalized` events (grep clean), so only the registry tables
-  carry FQCNs. — *Owner:* agent · *Resolves by:* Phase 4 grep.
+None open.
+
+### Resolved
+
+- **Assumption:** Spring Modulith 2.1 named interfaces cover the annotated package only,
+  so each new package needs its own `package-info.java`. — **Confirmed** at commit
+  5a4544b: every `vocabulary`/`events` package carries its own `@NamedInterface`
+  `package-info.java` and `ModularityTests` is green with per-surface grants.
+- **Assumption:** no `@Externalized` events, so only the registry tables carry FQCNs. —
+  **Confirmed** at commit 3940239 (grep clean; V18 covers both registry tables; the R-5
+  sweep at f43ab7d found no other FQCN carriers).
 
 ## Availability & concurrency (invariant #2)
 
@@ -230,7 +235,7 @@ N/A — no contract change (no endpoint, DTO, or wire shape changes).
 | 4 — `booking` events + vocabulary split (drop `booking.api`) + V18 registry migration | ✅ | (this commit) |
 | 5 — `availability` + `customer` vocabulary splits + old-FQCN sweep | ✅ | (this commit) |
 | 6 — C1 placement rule (`PublishedSurfacePlacementArchitectureTests`) | ✅ | (this commit) |
-| 7 — Substrate docs (ADR-0007 amendment, CLAUDE.md #11, `riviera-modulith` skill) | | |
+| 7 — Substrate docs (ADR-0007 amendment, CLAUDE.md #11, `riviera-modulith` skill) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit
 window as each phase's code.
@@ -335,11 +340,11 @@ move) → **Sonar gate** → merge + close-out checklist.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-3:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `grep -rn "booking::api" platform/src/main/java` → empty; `ls platform/src/main/java/ai/riviera/platform/booking/api` → does not exist. Verified at commit `<sha>`.
-- [ ] **AC-4/AC-5:** `gradle test --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS (incl. fixture-fed negatives). Verified at commit `<sha>`.
-- [ ] **AC-6:** V18 content review + CI Testcontainers ITs green. Verified at commit `<sha>`.
-- [ ] **AC-7:** CI full suite green at PR head. Verified at run `<link>`.
+- [x] **AC-1/AC-3:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"` → PASS. Verified at commit 6b9f4e3.
+- [x] **AC-2:** `grep -rn "booking::api" platform/src/main/java` → empty; `platform/src/main/java/ai/riviera/platform/booking/api` does not exist. Verified at commit 3940239.
+- [x] **AC-4/AC-5:** `gradle test --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS, 10/10 incl. the five fixture-fed negatives. Verified at commit 6b9f4e3.
+- [x] **AC-6:** V18 rewrites all four FQCNs in both registry tables; `PayoutSpineScenarioIT` (boots context, applies V18) green locally at commit 3940239; CI ITs re-verify on the PR.
+- [ ] **AC-7:** CI full suite green at PR head. Verified at the PR's check run (pending — the one AC CI owns).
 
 ## Self-review checklist (before merge / PR)
 

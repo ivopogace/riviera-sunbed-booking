@@ -103,18 +103,24 @@ The skills reference them by number.
     automation). Refund decisions and amounts are computed on the server, then
     actioned via Stripe.
 11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout is the
-    **ADR-0007 graduated two-template shape**: a full module is
-    `ai.riviera.platform.<module>.{api?, spi?, application, domain, adapter/in,
-    adapter/out}` (`api`/`spi` top-level, present only if the module publishes/owns one);
-    a thin (serviceless) module is `{api, adapter/out}` only. There is **no**
-    `application/in`|`out` split and **no** `infrastructure/*` — direction lives at the
-    adapter layer, and the shape is machine-locked by `PackageShapeArchitectureTests`.
-    Cross-module access is via the other module's `api/` port **or** a domain event —
-    never by importing its `application.*`/`adapter.*`/`domain.*`. **`api/` holds inbound
-    ports other modules *call*; a cross-module *driven* port — one a module needs
-    *another* module to *implement* (dependency inversion, used to keep the graph
+    **ADR-0007 graduated two-template shape** (as amended by issue #95): a full module is
+    `ai.riviera.platform.<module>.{api?, spi?, vocabulary?, events?, application, domain,
+    adapter/in, adapter/out}` — the published surfaces are top-level named interfaces,
+    present only for the kinds the module actually publishes; a thin (serviceless) module
+    is `{api, vocabulary?, adapter/out}` only. There is **no** `application/in`|`out`
+    split and **no** `infrastructure/*` — direction lives at the adapter layer, and the
+    shape is machine-locked by `PackageShapeArchitectureTests`. **The published surface is
+    split by kind (issue #95): `api/` holds ports only** — "call-me" interfaces, plain and
+    never sealed — **`vocabulary/` the published typed ids/value/outcome types, `events/`
+    the published domain-event records**; placement is machine-locked by
+    `PublishedSurfacePlacementArchitectureTests`, and `allowedDependencies` grants name
+    the narrowest surfaces each consumer needs (a listener-only module depends on
+    `<module>::events` + `::vocabulary`, never a command surface). Cross-module access is
+    via the other module's `api/` port **or** a domain event — never by importing its
+    `application.*`/`adapter.*`/`domain.*`. A cross-module *driven* port — one a module
+    needs *another* module to *implement* (dependency inversion, used to keep the graph
     acyclic) — lives in a separate `spi/` named interface, and `<module>::spi` is granted
-    only to the implementing module** (a driven port implemented by the module's own
+    only to the implementing module (a driven port implemented by the module's own
     adapters stays internal in `application/`). Event payloads carry **technical ids**
     (`BookingId`, `SetId`, `VenueId`), not mutable business fields or foreign aggregates.
     Details: `docs/adr/ADR-0007-package-structure.md` + `riviera-modulith`.

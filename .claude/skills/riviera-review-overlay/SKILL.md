@@ -88,9 +88,13 @@ cleanly.
   must not be added to a ports `api/` surface; events belong in the events named
   interface, vocabulary in the vocabulary surface. A new method piled onto the
   `VenueCatalog` god-port (instead of the role-named `SetBookingFacts`/`VenueRates`
-  split) is a finding. Default **Major**. This is enforced by a hand-written
-  ArchUnit rule (alongside `JdbcOnlyArchitectureTests`, keyed off the
-  package/naming convention) — verify that rule exists and passes.
+  split) is a finding. Default **Major**. This is enforced by
+  `PublishedSurfacePlacementArchitectureTests` (landed with issue #95: api/spi =
+  non-sealed interfaces only, events = records only, vocabulary = no plain
+  interfaces, cross-module listener params in the owner's events surface) —
+  verify that rule passes and judge the cases it can't (is a new type genuinely
+  vocabulary?). An event class move must ship an `event_type` Flyway rewrite
+  (Event Publication Registry) — see V18.
 - **RV-BE-10 Error contract.** A controller introducing a bespoke `{"error": …}`
   body or a per-controller `@ExceptionHandler` instead of the centralized
   `@RestControllerAdvice` / `ProblemDetail` contract is a finding once the contract
