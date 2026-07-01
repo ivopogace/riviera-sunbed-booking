@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.infrastructure.out;
+package ai.riviera.platform.venue.adapter.out;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,9 +9,9 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.application.in.NewVenueCommand;
-import ai.riviera.platform.venue.application.in.SetCommand;
-import ai.riviera.platform.venue.application.out.Venues;
+import ai.riviera.platform.venue.application.NewVenueCommand;
+import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.application.Venues;
 
 /**
  * JDBC adapter implementing the {@link Venues} write port (invariant #1 — no JPA). Explicit

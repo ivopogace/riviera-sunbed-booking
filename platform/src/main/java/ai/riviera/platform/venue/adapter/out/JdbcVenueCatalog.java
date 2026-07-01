@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.infrastructure.out;
+package ai.riviera.platform.venue.adapter.out;
 
 import java.time.LocalDate;
 import java.util.Comparator;

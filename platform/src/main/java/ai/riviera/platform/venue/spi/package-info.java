@@ -6,8 +6,8 @@
  * <p>This is the cross-module form of dependency inversion: a driven port whose adapter lives
  * in a sibling module is promoted to its own named interface so the implementor can depend on
  * it without reaching into venue's internals — and so the boundary stays acyclic. (A driven
- * port implemented by venue's <em>own</em> infrastructure would stay internal in
- * {@code application.out}, not here.)
+ * port implemented by venue's <em>own</em> adapter would stay internal in
+ * {@code application}, not here.)
  *
  * <p>Currently holds {@link SetAvailabilityLookup}, implemented by the {@code availability}
  * module so the venue beach-map read can overlay live per-{@code (set, date)} availability

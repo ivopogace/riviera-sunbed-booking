@@ -12,7 +12,7 @@ import ai.riviera.platform.operator.api.VenueRef;
  * their stored credential, #74) and the operator↔venue ownership mapping. Internal to the module (not
  * a published named interface); implemented by {@code adapter/out}'s {@code JdbcOperators} (invariant
  * #1 — JDBC only). A single purposeful port for the whole module's storage, mirroring
- * {@code venue.application.out.Venues}.
+ * {@code venue.application.Venues}.
  */
 public interface Operators {
 

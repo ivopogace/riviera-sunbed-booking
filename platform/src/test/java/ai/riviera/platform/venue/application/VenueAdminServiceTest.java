@@ -15,12 +15,12 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.application.in.AddSetOutcome;
-import ai.riviera.platform.venue.application.in.ChangeOutcome;
-import ai.riviera.platform.venue.application.in.NewVenueCommand;
-import ai.riviera.platform.venue.application.in.SetCommand;
-import ai.riviera.platform.venue.application.in.SetRejection;
-import ai.riviera.platform.venue.application.out.Venues;
+import ai.riviera.platform.venue.application.AddSetOutcome;
+import ai.riviera.platform.venue.application.ChangeOutcome;
+import ai.riviera.platform.venue.application.NewVenueCommand;
+import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.Venues;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;

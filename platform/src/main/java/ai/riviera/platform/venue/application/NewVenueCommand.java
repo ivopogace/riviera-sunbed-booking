@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.application.in;
+package ai.riviera.platform.venue.application;
 
 import java.time.LocalTime;
 import java.util.Currency;

@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.application.in;
+package ai.riviera.platform.venue.application;
 
 /**
  * The closed set of outcomes of {@link EditBeachMap#editSet} and {@link EditBeachMap#removeSet}

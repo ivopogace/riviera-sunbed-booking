@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.application.in;
+package ai.riviera.platform.venue.application;
 
 /**
  * Why a beach-map write was rejected (U7) — the closed set of expected, caller-handled
