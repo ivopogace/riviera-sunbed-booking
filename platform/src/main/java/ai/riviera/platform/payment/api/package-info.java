@@ -1,14 +1,12 @@
 /**
- * Published surface of the {@code payment} module (invariant #11) — the inbound
- * {@link ai.riviera.platform.payment.api.CheckoutPort} the {@code booking} module calls,
- * plus the {@link ai.riviera.platform.payment.api.Money},
- * {@link ai.riviera.platform.payment.api.BookingRef} and
- * {@link ai.riviera.platform.payment.api.PaymentOutcome} value types it speaks, and the
- * published domain events {@link ai.riviera.platform.payment.api.PaymentConfirmed} and
- * {@link ai.riviera.platform.payment.api.PaymentCanceled} the {@code booking} module listens
- * for (id-based payloads, invariant #11). The Stripe SDK lives behind the module's
- * <em>outbound</em> {@code PaymentGateway} in {@code application}, never here. Collect-only,
- * no Connect (invariant #8).
+ * Published <strong>ports</strong> surface of the {@code payment} module (invariant #11) —
+ * "call-me" interfaces only: {@link CheckoutPort}, {@link CancelPaymentPort} and
+ * {@link RefundPort}, all called by the {@code booking} module. The value types they speak
+ * ({@code Money}, {@code BookingRef}, the sealed outcome hierarchies) live in the sibling
+ * {@code vocabulary} named interface, the published domain events in {@code events}
+ * (issue #95). The Stripe SDK lives behind the module's <em>outbound</em>
+ * {@code PaymentGateway} in {@code application}, never here. Collect-only, no Connect
+ * (invariant #8).
  */
 @org.springframework.modulith.NamedInterface("api")
 package ai.riviera.platform.payment.api;

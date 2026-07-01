@@ -1,10 +1,10 @@
 package ai.riviera.platform.payment.application;
 
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.Money;
-import ai.riviera.platform.payment.api.PaymentCancellation;
-import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.payment.api.RefundResult;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 /**
  * The module-internal <strong>outbound</strong> port for the actual payment provider — the

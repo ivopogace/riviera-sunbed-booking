@@ -30,7 +30,7 @@ import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.api.CustomerId;
 import ai.riviera.platform.customer.api.GuestContact;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;

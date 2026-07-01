@@ -6,10 +6,10 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
-import ai.riviera.platform.payment.api.RefundResult;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 /**
  * Issues the cancellation refund <strong>after</strong> the cancel transaction commits (U6) — a

@@ -8,10 +8,10 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.api.BookingCancelled;
 import ai.riviera.platform.booking.api.BookingId;
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
-import ai.riviera.platform.payment.api.RefundResult;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 

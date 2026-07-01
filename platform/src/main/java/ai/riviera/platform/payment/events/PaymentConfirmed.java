@@ -1,4 +1,6 @@
-package ai.riviera.platform.payment.api;
+package ai.riviera.platform.payment.events;
+
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 
 /**
  * Published when a Stripe {@code payment_intent.succeeded} webhook is received and its

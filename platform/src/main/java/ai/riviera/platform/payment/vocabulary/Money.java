@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.api;
+package ai.riviera.platform.payment.vocabulary;
 
 /**
  * An amount to collect, in integer minor units + ISO 4217 currency (invariant #5 — never

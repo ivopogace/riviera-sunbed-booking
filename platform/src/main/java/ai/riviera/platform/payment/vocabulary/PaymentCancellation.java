@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.api;
+package ai.riviera.platform.payment.vocabulary;
 
 /**
  * The result of cancelling a booking's PaymentIntent — a closed, caller-mappable set (typed

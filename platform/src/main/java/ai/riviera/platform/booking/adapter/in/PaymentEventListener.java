@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
-import ai.riviera.platform.payment.api.PaymentCanceled;
-import ai.riviera.platform.payment.api.PaymentConfirmed;
+import ai.riviera.platform.payment.events.PaymentCanceled;
+import ai.riviera.platform.payment.events.PaymentConfirmed;
 
 /**
  * The {@code booking} module's reaction to verified Stripe payment events (U4) — a driving

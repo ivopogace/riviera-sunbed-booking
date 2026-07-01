@@ -9,10 +9,10 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.payment.api.BookingRef;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.Money;
-import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**

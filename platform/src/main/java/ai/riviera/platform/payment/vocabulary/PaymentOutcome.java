@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.api;
+package ai.riviera.platform.payment.vocabulary;
 
 /**
  * The result of collecting a payment — a closed, caller-mappable set (invariant: typed

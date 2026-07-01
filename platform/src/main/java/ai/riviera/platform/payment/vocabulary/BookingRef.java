@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.api;
+package ai.riviera.platform.payment.vocabulary;
 
 /**
  * An opaque reference to the booking a payment is for, carried as a technical id (invariant

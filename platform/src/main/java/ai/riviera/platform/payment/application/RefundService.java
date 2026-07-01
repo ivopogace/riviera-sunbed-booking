@@ -2,10 +2,10 @@ package ai.riviera.platform.payment.application;
 
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
-import ai.riviera.platform.payment.api.RefundResult;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 /**
  * Implements the inbound {@link RefundPort} by delegating to the outbound {@link PaymentGateway} —

@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.api;
+package ai.riviera.platform.payment.vocabulary;
 
 /**
  * The result of issuing a refund — a closed, caller-mappable set (typed outcomes for expected

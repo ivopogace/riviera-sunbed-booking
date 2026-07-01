@@ -13,9 +13,9 @@ import org.springframework.modulith.test.Scenario;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.PaymentCanceled;
-import ai.riviera.platform.payment.api.PaymentConfirmed;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.events.PaymentCanceled;
+import ai.riviera.platform.payment.events.PaymentConfirmed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

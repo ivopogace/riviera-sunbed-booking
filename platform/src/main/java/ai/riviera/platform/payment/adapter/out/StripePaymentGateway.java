@@ -18,11 +18,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.Money;
-import ai.riviera.platform.payment.api.PaymentCancellation;
-import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.payment.api.RefundResult;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.PaymentGateway;

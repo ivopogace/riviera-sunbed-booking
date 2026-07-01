@@ -1,5 +1,9 @@
 package ai.riviera.platform.payment.api;
 
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+
 /**
  * The {@code payment} module's <strong>inbound</strong> published port (invariant #11) — the
  * one seam the {@code booking} module calls to collect for a booking. Deliberately distinct
