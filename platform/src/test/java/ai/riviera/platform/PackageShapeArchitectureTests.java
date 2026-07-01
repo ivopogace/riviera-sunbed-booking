@@ -9,10 +9,9 @@ import org.junit.jupiter.api.Test;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PackageShapeArchitectureTests {
 
-	private static final String BASE = "ai.riviera.platform";
+	private static final String BASE = PRODUCTION_BASE;
 
 	/**
 	 * The top-level package set any module may use; a thin module uses the subset
@@ -68,9 +67,7 @@ class PackageShapeArchitectureTests {
 	/** The {@code @NamedInterface} packages, which must appear only as a direct child of a module. */
 	private static final Set<String> NAMED_INTERFACE_PACKAGES = Set.of("api", "spi", "vocabulary", "events");
 
-	private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-			.withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-			.importPackages(BASE);
+	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
 
 	/**
 	 * Assertion 1 — allowed top-level package set (ADR-0007). Each module's top-level packages (the
@@ -194,21 +191,11 @@ class PackageShapeArchitectureTests {
 	 * class sits in the module root package itself.
 	 */
 	private static String[] moduleRelativeSegments(JavaClass type) {
-		String pkg = type.getPackageName();
-		if (!pkg.startsWith(BASE + ".")) {
-			return null; // the root package (== BASE) or anything outside it
-		}
-		String[] all = pkg.substring(BASE.length() + 1).split("\\.");
-		String[] sub = new String[all.length - 1];
-		System.arraycopy(all, 1, sub, 0, sub.length);
-		return sub;
+		return ArchitectureTestSupport.moduleRelativeSegments(type, BASE);
 	}
 
 	private static String moduleOf(JavaClass type) {
-		String pkg = type.getPackageName();
-		String rest = pkg.substring(BASE.length() + 1);
-		int dot = rest.indexOf('.');
-		return dot < 0 ? rest : rest.substring(0, dot);
+		return ArchitectureTestSupport.moduleOf(type, BASE);
 	}
 
 	/** Guards against a vacuously-green rule: prove the import actually saw the modules. */
