@@ -28,8 +28,10 @@ adapters (`JdbcAvailabilityClaim`, `JdbcSetAvailabilityLookup`) moved package on
 **Skills consulted:** `riviera-modulith` (confirmed the "small but full" shape: fold
 `application/in` → `application/`, `infrastructure/{in,out}` → `adapter/{in,out}`, keep
 `api/` top-level, add no `spi/` since availability implements venue's spi rather than owning
-one, leave `allowedDependencies = { venue::api, venue::spi }` untouched). No `postgres`
-(no SQL/schema change); backend-only (no frontend skills); no `riviera-stripe-payments`.
+one, leave `allowedDependencies = { venue::api, venue::spi }` untouched);
+`riviera-java-conventions` (verified the move preserves the Java idioms — JDBC-only/no-JPA,
+records, package-private adapters, no Lombok). No `postgres` (no SQL/schema change);
+backend-only (no frontend skills); no `riviera-stripe-payments`.
 
 **Branch:** `feature/availability-adr-0007` (merged to `main` via PR #87).
 

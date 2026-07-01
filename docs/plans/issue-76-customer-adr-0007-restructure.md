@@ -30,7 +30,9 @@ PR #86.
 
 **Skills consulted:** `riviera-modulith` (confirmed the thin template for a serviceless
 module: `api/` + `adapter/out/`, no `application/`/`domain/`; settled the `adapter/out/`
-bucket convention; `allowedDependencies` references `::api`, which didn't move). No `postgres`
+bucket convention; `allowedDependencies` references `::api`, which didn't move);
+`riviera-java-conventions` (verified the move preserves the Java idioms — JDBC-only/no-JPA,
+package-private adapter kept package-private, no Lombok, no `public` widening). No `postgres`
 (no SQL/schema change); backend-only; no `riviera-stripe-payments`.
 
 **Branch:** `feature/customer-adr-0007` (merged to `main` via PR #86).

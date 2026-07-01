@@ -26,9 +26,11 @@ repositories moved package only (`infrastructure/out` → `adapter/out`), SQL un
 **Skills consulted:** `riviera-modulith` (confirmed the full-template shape for a
 serviceless-surface subscriber: fold `application/in`+`out` → `application/`,
 `infrastructure/{in,out}` → `adapter/{in,out}`, keep `domain/`, add no `api/`/`spi/`, leave
-`allowedDependencies` untouched). No `postgres` (no SQL/schema change), no
-`riviera-stripe-payments` (no money logic changed — pure package move), no frontend skills
-(backend-only).
+`allowedDependencies` untouched); `riviera-java-conventions` (verified the move preserves the
+Java idioms — JDBC-only/no-JPA, records, package-private adapters kept package-private, no
+Lombok; the dropped imports were redundant same-package ones). No `postgres` (no SQL/schema
+change), no `riviera-stripe-payments` (no money logic changed — pure package move), no
+frontend skills (backend-only).
 
 **Branch:** `claude/riviera-sdd-78-4uiemq` (exists; work committed + pushed).
 
