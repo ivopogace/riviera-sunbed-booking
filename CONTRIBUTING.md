@@ -89,7 +89,7 @@ These are the rules a reviewer will block on. Canonical text + rationale in
 This repo ships **repo-scoped skills** (under `.claude/skills/`, tracked in
 `skills-lock.json`) that load automatically when you work here with Claude Code:
 
-- **`riviera-sdd`** — the spec-driven-development orchestrator; routes each stage
+- **`riviera-sdlc`** — the spec-driven-development orchestrator; routes each stage
   (refine → issue → plan → implement → CI → review → merge) to the right skill.
 - **`riviera-plan-doc`** — plan-doc discipline (load alongside the planning flow).
 - **`riviera-review-overlay`** — turns the invariants into review gates.

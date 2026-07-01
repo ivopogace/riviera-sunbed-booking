@@ -196,7 +196,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ### Review gate note (riviera-review-overlay + /code-review on origin/main...HEAD)
 
-Ran the SDD review gate (4 parallel finder angles: backend correctness, frontend correctness,
+Ran the SDLC review gate (4 parallel finder angles: backend correctness, frontend correctness,
 removed-behavior/cross-file tracer, cleanup/altitude/conventions). RV-PROC-1 ✅ (Skills-consulted
 covers DB+BE+FE). Module boundaries clean (no cross-module imports; `ModularityTests` green).
 **Fixed through the loop** (re-ran the routing gate per fix — backend via riviera-modulith +

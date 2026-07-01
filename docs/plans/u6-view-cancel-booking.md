@@ -270,7 +270,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 ### Review-gate note (2026-06-29)
 
-Ran the SDD review gate: `/code-review origin/main...HEAD` (high effort, 8 finder angles) +
+Ran the SDLC review gate: `/code-review origin/main...HEAD` (high effort, 8 finder angles) +
 `riviera-review-overlay`. Full suite green at the gate — **backend 156 tests / 47 classes**, frontend
 **71 tests**, `ModularityTests` + `JdbcOnlyArchitectureTests` pass.
 

@@ -37,7 +37,7 @@ with a `StubPaymentGateway` U4 swaps for Stripe — no Connect), `angular-develo
 angular-cli MCP `get_best_practices` (v22 signals, Signal Forms, modal focus management,
 `@if`/`@for`, no `as any`).
 
-**Branch:** `claude/riviera-sdd-u3-issues-i011pw` (exists).
+**Branch:** `claude/riviera-sdlc-u3-issues-i011pw` (exists).
 
 ---
 
@@ -209,7 +209,7 @@ focus trap, focus returns to the invoking tile on close (a11y).
 - **Money/date on the wire:** amounts as integer minor units + currency; `bookingDate` as
   ISO `LocalDate`.
 
-## Review gate outcome (SDD)
+## Review gate outcome (SDLC)
 
 Ran `riviera-review-overlay` + `/code-review origin/main...HEAD` (3 parallel finder passes:
 backend correctness, riviera invariants, frontend+contract). **No Blockers, no Majors** —

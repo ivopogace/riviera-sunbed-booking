@@ -41,7 +41,7 @@ table). No JPA.
 - `domain-modeling` — `RefundReason` / `Payout batch` vocabulary already in `CONTEXT.md`; no new ADR
   (the choices here are either already locked by ADR-0005/domain-model or low-cost/reversible).
 
-**Branch:** `claude/riviera-sdd-issue-12-s0mvn5` (exists).
+**Branch:** `claude/riviera-sdlc-issue-12-s0mvn5` (exists).
 
 ---
 
@@ -357,9 +357,9 @@ generate/list batches per ISO week and transition status.
 
 ---
 
-## Review gate note (SDD)
+## Review gate note (SDLC)
 
-Ran the SDD Review gate (`riviera-review-overlay` + `/code-review origin/main...HEAD`, 4 finder
+Ran the SDLC Review gate (`riviera-review-overlay` + `/code-review origin/main...HEAD`, 4 finder
 angles). **No Blocker/correctness bugs.** Overlay items pass: JDBC-only, money in minor units,
 Europe/Tirane time, invariant #2 (set freed on weather refund), #9 (idempotent ledger/batch), #10
 (server-computed full refund), #11 (payout depends only on `booking::api`/`venue::api`; new controllers
@@ -380,7 +380,7 @@ v1); `generate()` per-venue upsert loop is fine at v1 scale (5–15 venues); the
 nullable-`toInstant` duplications follow the existing repo convention (repo-wide refactor out of scope);
 `mark()` is a forward-only idempotent transition (no row lock needed in v1).
 
-## Sonar gate note (SDD)
+## Sonar gate note (SDLC)
 
 SonarCloud PR analysis on #70: **quality gate passed** — 89.2% new-code coverage (≥80%), 0 security
 hotspots, 0% duplication. 4 new issues triaged:

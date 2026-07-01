@@ -28,7 +28,7 @@ the existing `insertAwaitingPayment`, the #51 `cancelAwaitingPayment … RETURNI
 Stripe timeout" note). Builds directly on **#51** (`abandoned-booking-ttl-sweep.md`), whose
 `ReleaseAbandonedBooking` is the compensating-release seam. ADR-0002 (collect-only, no Connect).
 
-**Skills consulted:** `riviera-sdd` (Issue-intake grill — validated #51's `ReleaseAbandonedBooking`
+**Skills consulted:** `riviera-sdlc` (Issue-intake grill — validated #51's `ReleaseAbandonedBooking`
 exists to reuse, that moving `pay()` out of the txn doesn't weaken invariant #2, and that no
 migration is needed; + the routing gate), `riviera-plan-doc` (this doc), `riviera-modulith`
 (the new `ReserveSetService` is package-private `booking.application`, no interface — single
@@ -40,7 +40,7 @@ package-private `@Service`; constructor injection; `Duration` config), `riviera-
 (collect-only `StripeClient` timeout config at the Stripe edge; webhook stays the source of
 truth — the two-phase split changes *when* the PI is created, never *how* a booking confirms).
 
-**Branch:** `claude/riviera-sdd-issue-52-7rn4ph` (exists, checked out).
+**Branch:** `claude/riviera-sdlc-issue-52-7rn4ph` (exists, checked out).
 
 ---
 
@@ -258,7 +258,7 @@ compensation IT. End with `./gradlew build` (incl. `ModularityTests`, `JdbcOnlyA
 - [x] **AC-4:** `./gradlew test --tests "*ConcurrentReservationIT*"` → PASS (exactly-one-wins, unchanged).
 - [x] **AC-5:** `./gradlew build` → BUILD SUCCESSFUL incl. `ModularityTests` + `JdbcOnlyArchitectureTests`.
 
-## Review note (SDD Review gate)
+## Review note (SDLC Review gate)
 
 Ran the Review gate (`riviera-review-overlay` + `/code-review` on `origin/main...HEAD`, high effort,
 8 finder angles → verify). The two headline overlay checks passed: **RV-BE-1** (the atomic claim

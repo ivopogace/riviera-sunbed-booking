@@ -230,7 +230,7 @@ Create `home.contrast.spec.ts`, `e2e/discovery-flow.e2e.ts`
 |---|---|---|---|---|---|
 | 2026-06-30 | Review F2: `dateLabel()` formats a UTC-anchored date in the local zone (off-by-one west of UTC, invariant #6) | `Intl.DateTimeFormat(...).format(parseIsoDate(...))` without `timeZone` | grep `DateTimeFormat` in `frontend/src/app` | `pages/home/home.ts`, `venue/venue-map.ts` | Fixed BOTH — added `timeZone: 'UTC'` so the displayed civil day matches the ISO date for every viewer |
 
-## Review note (SDD review gate)
+## Review note (SDLC review gate)
 
 Ran the review gate on `origin/main...HEAD` (riviera-review-overlay + /code-review, high effort: 8
 finder angles + verify). **Invariants/conventions: clean** — #1 JDBC-only, #2 availability reuses

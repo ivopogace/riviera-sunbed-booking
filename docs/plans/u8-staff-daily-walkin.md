@@ -202,7 +202,7 @@ signals; tile state announced via accessible name (WCAG AA). Money via `formatMo
 | 3 — frontend daily view (service, component, a11y, e2e) | ✅ | frontend commit |
 | 4 — CI green + review gate | ✅ | review-fix commit |
 
-### Review note (SDD review gate)
+### Review note (SDLC review gate)
 
 Ran `/code-review origin/main...HEAD` + `riviera-review-overlay` (8 finder angles → verify).
 RV-BE-1 (availability single-source-of-truth) confirmed upheld; backend, tests, and conventions

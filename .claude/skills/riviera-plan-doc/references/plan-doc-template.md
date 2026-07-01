@@ -17,7 +17,7 @@
 
 **Source of intent:** <spec path in docs/superpowers/specs/ and/or GitHub issue #NN>
 
-**Skills consulted:** <the `riviera-sdd` Skill-routing gate output — every craft skill
+**Skills consulted:** <the `riviera-sdlc` Skill-routing gate output — every craft skill
 loaded at plan time + one phrase on what each changed. e.g. `postgres` (BIGINT identity
 PKs, not UUIDv4), `codebase-design` (collapsed the hypothetical out-port seam),
 `angular-developer` + angular-cli MCP (v22 APIs + mandatory a11y). Must cover every area

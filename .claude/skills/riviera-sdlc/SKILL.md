@@ -1,20 +1,20 @@
 ---
-name: riviera-sdd
-description: The spec-driven development loop for riviera-sunbed-booking. Load it when starting or continuing feature work in this repo — it routes each stage of the pipeline (refine → issue → plan → implement → CI → review → merge) to the right skill, including frontend/backend skill routing, and points to the domain substrate (CONTEXT.md, docs/adr, docs/agents). Use when the user says "let's build/work on <use case>", picks up a GitHub issue, or asks how we work here.
+name: riviera-sdlc
+description: The software development life cycle loop for riviera-sunbed-booking. Load it when starting or continuing feature work in this repo — it routes each stage of the pipeline (refine → issue → plan → implement → CI → review → merge) to the right skill, including frontend/backend skill routing, and points to the domain substrate (CONTEXT.md, docs/adr, docs/agents). Use when the user says "let's build/work on <use case>", picks up a GitHub issue, or asks how we work here.
 ---
 
-# Riviera SDD (spec-driven development) workflow
+# Riviera SDLC (software development life cycle) workflow
 
 This is the **orchestrator** for how we build riviera-sunbed-booking. It does not
 do the work itself — it tells you which skill drives each stage and how the stages
 connect. The product idea is already captured (design spec + domain model); from
 here every change flows through the loop below.
 
-**Announce at start:** "Using riviera-sdd to drive the workflow."
+**Announce at start:** "Using riviera-sdlc to drive the workflow."
 
 ## Staying in touch (notifications)
 
-The user typically triggers SDD runs from the **Claude iOS app** and then walks
+The user typically triggers SDLC runs from the **Claude iOS app** and then walks
 away with the phone locked in a pocket. So when the workflow reaches a point that
 needs them, **reach out — don't go silent and wait.**
 
@@ -186,7 +186,7 @@ doubt, load it.
 2. **Run the review.** Start a review over the **PR diff** — `/code-review`
    `origin/main...HEAD` (or `/review <PR>`) — and **load `riviera-review-overlay`** so the
    project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the availability and payment Blockers,
-   RV-PROC-1) are walked **on top of** the generic banks. Announce it: *"Running the SDD
+   RV-PROC-1) are walked **on top of** the generic banks. Announce it: *"Running the SDLC
    review gate (riviera-review-overlay + code-review) on PR #NN."*
 3. **Resolve — back through the loop, not around it.** A finding fix is implementation work, so
    it gets the **same gates the original code got**:

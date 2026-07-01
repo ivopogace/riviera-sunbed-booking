@@ -1,6 +1,6 @@
 # U2 — Availability source-of-truth + concurrency-safe claim Implementation Plan
 
-> **For agentic workers:** implement with `implement` + `tdd`, routed via `riviera-sdd`.
+> **For agentic workers:** implement with `implement` + `tdd`, routed via `riviera-sdlc`.
 > Backend-only slice; phases pull `postgres` (migration) + `codebase-design` (the claim
 > seam). Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -44,7 +44,7 @@ glossary — `claim`, `FREE`/`BOOKED_ONLINE`, `(set, date)`; no new ADR — row-
 mechanism choice, not a hard-to-reverse surprising decision). `riviera-plan-doc` (this
 template). `tdd` (red→green, concurrency IT is the teeth).
 
-**Branch:** `claude/riviera-sdd-u2-fpvwts` (harness-designated; exists).
+**Branch:** `claude/riviera-sdlc-u2-fpvwts` (harness-designated; exists).
 
 ---
 
@@ -277,7 +277,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-7:** `./gradlew test --tests "*ModularityTests*"` → green.
 - [ ] **AC-8:** CI green on the PR (pending push).
 
-## Review gate outcome (SDD)
+## Review gate outcome (SDLC)
 
 Ran `riviera-review-overlay` + `/code-review origin/main...HEAD` (high effort, 8 finder
 angles). **No Blocker/Major findings.** RV-BE-1 (availability single-source-of-truth,

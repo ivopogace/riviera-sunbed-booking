@@ -1,6 +1,6 @@
 # FE — Automated AXE + WCAG-AA Contrast Audit in CI Implementation Plan
 
-> **For agentic workers:** implement with `implement` + `tdd`, routed via `riviera-sdd`.
+> **For agentic workers:** implement with `implement` + `tdd`, routed via `riviera-sdlc`.
 > The frontend phase pulls `angular-developer` + the angular-cli MCP. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
@@ -25,14 +25,14 @@ AC-8 of U1 (#4), which was implemented-and-unit-asserted but never machine-verif
 (§4.1 visual map) and **GitHub issue #38** (deferred from U1 #4, AC-8). See
 `docs/plans/u1-venue-beach-map.md` → AC-8 + Open Questions (the tracked AXE follow-up).
 
-**Skills consulted:** `riviera-sdd` (routing — `area:frontend`), `to-issues` (confirmed
+**Skills consulted:** `riviera-sdlc` (routing — `area:frontend`), `to-issues` (confirmed
 #38 is the slice; no new issue needed), `riviera-plan-doc` (this doc), **`angular-developer`**
 + **angular-cli MCP** (`get_best_practices`, `list_projects` — confirmed Vitest/jsdom
 builder, zoneless Act-Wait-Assert test pattern, v22 a11y rules), `tdd` (red→green per
 spec), `riviera-review-overlay` (review gate — RV-FE-* a11y bank + RV-PROC-1).
 
-**Branch:** SDD convention would be `feature/fe-axe-contrast-audit`; **this environment
-mandates `claude/riviera-sdd-fe-issue-jz3a45`** — develop and push there.
+**Branch:** SDLC convention would be `feature/fe-axe-contrast-audit`; **this environment
+mandates `claude/riviera-sdlc-fe-issue-jz3a45`** — develop and push there.
 
 ---
 
@@ -116,14 +116,14 @@ N/A — no money, Stripe, commission, or ledger.
   short "Accessibility audit" section in `frontend/README.md`. Confirm CI already runs the
   specs via `test:coverage`.
 - **Phase 4 — Gate.** `npm run lint && npm run test:coverage && npm run build` green;
-  commit; push; run the SDD review gate (`riviera-review-overlay` + `/code-review`).
+  commit; push; run the SDLC review gate (`riviera-review-overlay` + `/code-review`).
 
 ## Definition of done
 
 Green CI (lint + Vitest + build) **and** review gate run with findings resolved/deferred
 **and** AC-1…AC-6 verified. #38's five acceptance checkboxes each map to an AC above.
 
-### Review note (SDD review gate)
+### Review note (SDLC review gate)
 
 Review gate run on `origin/main...HEAD` (`riviera-review-overlay` + `/code-review`),
 right-sized to the small frontend-test diff. **No Blocker/Major/Minor findings.**

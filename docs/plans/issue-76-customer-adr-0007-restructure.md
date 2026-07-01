@@ -3,7 +3,7 @@
 > **Retroactive, right-sized doc.** `customer` (#76) was the **first** ADR-0007 migration PR
 > (item **04/10** of #72) — a **pure move-class refactor** (~1 move, no behavior change) that
 > also **settled the thin-template convention** for the series. It was implemented and merged
-> (PR #86, commit `f73013c`) **without** a plan doc — per `riviera-sdd` Rule 6 this class of
+> (PR #86, commit `f73013c`) **without** a plan doc — per `riviera-sdlc` Rule 6 this class of
 > change normally skips it. This doc is written after the fact for series consistency with the
 > #77/#78 records. Sections that cannot bite on a mechanical move are `N/A` with a reason.
 > Invariant numbers refer to `CLAUDE.md`.

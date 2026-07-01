@@ -1,6 +1,6 @@
 ---
 name: riviera-plan-doc
-description: Use at the plan stage of riviera-sdd, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is Pocock implement + tdd (installed); the superpowers writing-plans/executing-plans plugin also works if present.
+description: Use at the plan stage of riviera-sdlc, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is Pocock implement + tdd (installed); the superpowers writing-plans/executing-plans plugin also works if present.
 ---
 
 # Riviera Plan Doc
@@ -8,7 +8,7 @@ description: Use at the plan stage of riviera-sdd, or whenever writing or execut
 ## Overview
 
 This skill is a project-local **plan-doc discipline** layered on whatever
-planning/execution engine is active. In this repo that engine is **`riviera-sdd`**,
+planning/execution engine is active. In this repo that engine is **`riviera-sdlc`**,
 which drives the build with Pocock's `implement` + `tdd`; the superpowers
 `writing-plans`/`executing-plans` plugin also works if you have it installed. This
 skill does NOT replace the engine — it adds the structure this specific marketplace
@@ -56,7 +56,7 @@ Every riviera feature large enough to need a plan doc gets:
   `references/plan-doc-template.md` in this skill directory exactly. Empty
   sections are filled with `N/A — <reason>`, not deleted.
 - **A `Skills consulted` line** in the plan doc naming every craft skill the
-  `riviera-sdd` Skill-routing gate triggered (`postgres` for migrations,
+  `riviera-sdlc` Skill-routing gate triggered (`postgres` for migrations,
   `codebase-design` + `domain-modeling` for backend modules, `angular-developer` +
   the angular-cli MCP for frontend, `riviera-stripe-payments` for money) **and one
   phrase on what each changed**. If the slice touches a DB table, a backend module, or
@@ -76,7 +76,7 @@ involved.
 
 When planning a riviera feature, also do:
 
-0. **Run the `riviera-sdd` Skill-routing gate FIRST — before authoring any design.**
+0. **Run the `riviera-sdlc` Skill-routing gate FIRST — before authoring any design.**
    Detect what the slice touches (DB table/migration → `postgres`; backend module/seam →
    `codebase-design` + `domain-modeling`; frontend → `angular-developer` + the angular-cli
    MCP; money → `riviera-stripe-payments`), **load those skills**, and design each section
@@ -225,7 +225,7 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 ## Integration
 
 **Execution engine (one of):**
-- `riviera-sdd` → Pocock `implement` + `tdd` (installed — the default here).
+- `riviera-sdlc` → Pocock `implement` + `tdd` (installed — the default here).
 - `superpowers:writing-plans` / `superpowers:executing-plans` if that plugin is installed.
 
 **Upstream feeder skills (before planning):**
@@ -253,7 +253,7 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 - `tdd`, `diagnosing-bugs` — standard execution discipline (installed).
 
 **Orchestration & vendored craft skills:**
-- `riviera-sdd` — the workflow orchestrator; it loads this skill at the plan stage.
+- `riviera-sdlc` — the workflow orchestrator; it loads this skill at the plan stage.
 - `to-issues` (slice the plan into issues), `tdd` / `diagnosing-bugs` (build/debug),
   `codebase-design` / `domain-modeling` (module-interface & vocabulary craft),
   `triage` (issue/PR lifecycle). These are the generic engine; this skill supplies

@@ -203,9 +203,9 @@ conveyed in **text** (not colour alone) for WCAG AA. No `as any` on the contract
   `any`/`as any`.
 - **Money/date on the wire:** integer minor units + ISO currency; booking date ISO `LocalDate`.
 
-## Review gate note (SDD)
+## Review gate note (SDLC)
 
-Ran the SDD review gate — `riviera-review-overlay` + `/code-review origin/main...HEAD`
+Ran the SDLC review gate — `riviera-review-overlay` + `/code-review origin/main...HEAD`
 (8 finder angles, recall-biased single-vote verify). Outcome:
 
 - **R1 (Major, fixed):** the awaiting-confirmation poll ignored a terminal **`CANCELLED`** status —

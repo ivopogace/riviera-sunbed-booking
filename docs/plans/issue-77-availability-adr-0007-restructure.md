@@ -3,7 +3,7 @@
 > **Retroactive, right-sized doc.** `availability` (#77) was a **pure move-class refactor**
 > (package/import renames, no behavior change), item **05/10** of the ADR-0007 series (#72).
 > It was implemented and merged (PR #87, commit `6827cc8`) **without** a plan doc — per
-> `riviera-sdd` Rule 6 this class of change normally skips it. This doc is written after the
+> `riviera-sdlc` Rule 6 this class of change normally skips it. This doc is written after the
 > fact for series consistency with the #78 record. Sections that cannot bite on a mechanical
 > move are `N/A` with a reason. Invariant numbers refer to `CLAUDE.md`.
 

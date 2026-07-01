@@ -2,7 +2,7 @@
 
 > **Right-sized doc.** This is a **pure move-class refactor** (package/import renames,
 > no behavior change) — part of the ADR-0007 restructure series (#76 customer, #77
-> availability, this is 06/10 of #72). Per `riviera-sdd` Rule 6 this class of change
+> availability, this is 06/10 of #72). Per `riviera-sdlc` Rule 6 this class of change
 > normally skips the plan doc; this one is written after the fact at the user's request
 > as a durable record. Sections that cannot bite on a mechanical move are `N/A` with a
 > reason. Invariant numbers refer to `CLAUDE.md`.

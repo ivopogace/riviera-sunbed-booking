@@ -190,7 +190,7 @@ These are repo-scoped — they load when working in this repository.
 - **`playwright-cli`** (official `@playwright/cli`, installed via `playwright-cli install
   --skills` → `.claude/skills/playwright-cli/`) — the **Playwright e2e authority**: browser
   automation, best-practice spec authoring, request-mocking, and spec generation, driven from
-  the `playwright-cli` binary. The SDD routing gate makes it **mandatory for any user-facing
+  the `playwright-cli` binary. The SDLC routing gate makes it **mandatory for any user-facing
   frontend slice** — used to **author** best-practice e2e tests, and in the review gate to
   **judge** whether the tests written are accurate against it (review overlay item `RV-FE-E2E`).
   The project-specific facts the generic skill can't know — the two-suite split (CI-safe
@@ -200,9 +200,9 @@ These are repo-scoped — they load when working in this repository.
 A `riviera-local-debug` skill (how to run the stack locally) is **deliberately
 deferred** until the apps are scaffolded — there is nothing to run yet.
 
-## Agent skills (SDD workflow)
+## Agent skills (SDLC workflow)
 
-This repo runs a spec-driven development loop. The **`riviera-sdd`** skill is the
+This repo runs a software development life cycle loop. The **`riviera-sdlc`** skill is the
 orchestrator — load it when starting or continuing feature work; it routes each
 stage (refine → issue → plan → implement → CI → review → merge) to the right skill.
 

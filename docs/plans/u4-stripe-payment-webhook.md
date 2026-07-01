@@ -51,13 +51,13 @@ types, sealed `PaymentOutcome`/`BookingOutcome` + exhaustive switch, package-pri
 `codebase-design` (kept the inbound/outbound `payment` port split from U3; `Pending` extends
 the existing `PaymentOutcome` seam rather than a new port).
 
-**Branch:** `claude/riviera-sdd-issue-8-szoljn` (current).
+**Branch:** `claude/riviera-sdlc-issue-8-szoljn` (current).
 
 ---
 
 ## Issue-intake grill outcome (drift vs #8, recorded before planning)
 
-The Issue-intake grill gate (riviera-sdd) was run against current `main`. Findings:
+The Issue-intake grill gate (riviera-sdlc) was run against current `main`. Findings:
 
 1. **U3 confirms synchronously in one transaction; U4 must split confirmation onto the
    webhook** — so `POST /api/bookings` can **no longer always return `CONFIRMED`**. Under the
@@ -289,7 +289,7 @@ asserted in adapter-level tests.
   facing.
 - **Money/date on the wire:** integer minor units + currency; `bookingDate` ISO `LocalDate`.
 
-## Review gate outcome (SDD)
+## Review gate outcome (SDLC)
 
 Ran the Review gate on `origin/main...HEAD`: `riviera-review-overlay` + `/code-review`
 (3 parallel finder passes — backend correctness, riviera invariants, cleanup/altitude/contract),

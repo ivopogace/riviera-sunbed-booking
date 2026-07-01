@@ -32,7 +32,7 @@ SQL, no JPA.
 module, V16); `RESPONSIBILITIES.md` (`operator` Job/Not-My-Job + the auth-is-edge note); CLAUDE.md
 invariants #13, #11, #1, #7 (credentials-as-secrets).
 
-**Skills consulted:** `riviera-sdd` (loop/gates + the two scope decisions escalated at the
+**Skills consulted:** `riviera-sdlc` (loop/gates + the two scope decisions escalated at the
 Issue-intake grill gate), `riviera-modulith` (edge-vs-module placement: `UserDetailsService`/boot
 provisioner live at the root, `operator` publishes credential read + provisioning ports in `api/`;
 no `allowedDependencies` change — the root is not a module; api-vs-spi → inbound `api` ports called
@@ -44,7 +44,7 @@ module; `@Transactional` on the provisioning writes; no JPA/Lombok; secrets neve
 (RV-BE-11 auth-placement boundary, RV-BE-9 the #13 principal→id chain, RV-PROC-1 — walked at the
 review gate).
 
-**Branch:** `claude/riviera-sdd-74-6wzkrh` (exists).
+**Branch:** `claude/riviera-sdlc-74-6wzkrh` (exists).
 
 ---
 

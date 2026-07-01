@@ -379,7 +379,7 @@ complementing the full-stack `PayoutAccrualIT`/`PayoutSpineScenarioIT` without r
   failures, 0 skipped (39 classes; Docker ITs ran).
 - [x] Issue #9 wording re: availability — already reconciled in the issue body (updated 2026-06-29);
   no further edit needed. **PR deferred** — not opening one (per instruction: no PR/merge unless asked).
-- [x] **Review gate run:** SDD review gate (`code-review` over `origin/main...HEAD` + `riviera-review-overlay`)
+- [x] **Review gate run:** SDLC review gate (`code-review` over `origin/main...HEAD` + `riviera-review-overlay`)
   across correctness / cleanup / invariant-overlay angles. See the review note below.
 - [ ] Merge — **deferred to the user** (no PR/merge requested).
 
