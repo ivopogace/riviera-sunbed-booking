@@ -1,12 +1,9 @@
 package ai.riviera.platform;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +12,13 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.core.domain.Source;
 
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
+import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
+import static ai.riviera.platform.ArchitectureTestSupport.bytecode;
+import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
+import static ai.riviera.platform.ArchitectureTestSupport.surfaceOf;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,19 +29,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <ol>
  *   <li><strong>Sole-writer:</strong> no class outside the {@code availability} module touches
  *       the {@code set_availability} table — the mechanical form of "availability is the only
- *       writer of that table" (invariant #2). Detected by scanning compiled bytecode for the
- *       table name (the {@code NoStripeConnectArchitectureTest} mechanism), because a
- *       class-location convention cannot see SQL. Deliberately stronger than "writer": ANY
- *       reference (read or write) outside the module fails — cross-module reads go through
- *       availability's published ports too (invariant #11), never straight at its table.</li>
+ *       writer of that table" (invariant #2). Detected by scanning each class's compiled
+ *       bytecode (via its ArchUnit source URI) for the whole-word table name — the
+ *       {@code NoStripeConnectArchitectureTest} mechanism, because a class-location convention
+ *       cannot see SQL. Deliberately stronger than "writer": ANY reference (read or write)
+ *       outside the module fails — cross-module reads go through availability's published
+ *       ports too (invariant #11), never straight at its table.</li>
  *   <li><strong>No forbidden reach:</strong> the Stripe SDK ({@code com.stripe..}) is importable
  *       only inside {@code payment}. {@code ApplicationModules.verify()} polices module-internal
  *       package reach; this adds the third-party-SDK boundary it cannot see. (Which Stripe APIs
  *       payment itself may use — no Connect — stays {@code NoStripeConnectArchitectureTest}'s job.)</li>
  *   <li><strong>Id-based events:</strong> every record in an {@code events} named interface
- *       carries only id/value payloads — each non-static field is a primitive, a {@code java.*}
- *       type, or a published {@code vocabulary} type; never an aggregate from any {@code domain}
- *       package (the Need-To-Know half of invariant #11).</li>
+ *       carries only id/value payloads — every raw type involved in a component's declared type
+ *       (generics and arrays unwrapped) is a primitive, a {@code java.*} type, or a published
+ *       {@code vocabulary} type; never an aggregate from any {@code domain} package (the
+ *       Need-To-Know half of invariant #11).</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -46,12 +51,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * reimplemented inside {@code payment}, commission <em>math</em> inside {@code venue} — needs no
  * illegal import or stray table name and <em>cannot</em> be machine-checked; it remains the job
  * of the plan-time Module-ownership table and review item RV-BE-11. A green run here must never
- * be read as "boundaries fully enforced." (Known scan limitation, same trade-off as
- * {@code NoStripeConnectArchitectureTest}: rule 1 keys on the contiguous table name in the
- * constant pool — SQL assembled by concatenation that splits the name would evade it; the
- * project's text-block-SQL idiom keeps names contiguous.)
+ * be read as "boundaries fully enforced." (Known scan limits, same trade-off as
+ * {@code NoStripeConnectArchitectureTest}: rule 1 keys on the contiguous whole-word table name in
+ * the constant pool — SQL assembled by concatenation that splits the name would evade it (the
+ * project's text-block-SQL idiom keeps names contiguous), and a match at the very start of a pool
+ * string can hide behind an alphanumeric length byte. The word-boundary check means a
+ * <em>different</em> identifier merely containing the name ({@code reset_availability}) does not
+ * false-positive; a class that inlines availability's table-name constant still matches — that
+ * coupling is exactly what the rule exists to surface.)
  *
- * <p>The violation collectors are parameterized by class-tree root / base package so the negative
+ * <p>The violation collectors are parameterized by {@code (JavaClasses, base)} so the negative
  * cases are proven against the deliberately-violating fixtures under
  * {@code ai.riviera.responsibilityfixture} — never by breaking production code. Fast and
  * context-free like its siblings ({@link PackageShapeArchitectureTests},
@@ -62,25 +71,20 @@ class ResponsibilitiesArchitectureTests {
 	/** The per-(set, date) source-of-truth table owned by {@code availability} (invariant #2). */
 	private static final String AVAILABILITY_TABLE = "set_availability";
 
-	/** The module directory that owns {@link #AVAILABILITY_TABLE} within a scanned class tree. */
-	private static final String AVAILABILITY_MODULE_DIR = "availability";
-
-	private static final Path PRODUCTION_CLASS_ROOT =
-			Path.of("build/classes/java/main/ai/riviera/platform");
-
-	private static final Path FIXTURE_CLASS_ROOT =
-			Path.of("build/classes/java/test/ai/riviera/responsibilityfixture");
-
-	private static final String FIXTURE_BASE = "ai.riviera.responsibilityfixture";
+	/** The one module that may reference {@link #AVAILABILITY_TABLE} (invariant #2). */
+	private static final String AVAILABILITY_MODULE = "availability";
 
 	/** The one module that may touch the Stripe SDK (RESPONSIBILITIES.md / ADR-0002). */
 	private static final String PAYMENT_MODULE = "payment";
 
-	private static final String STRIPE_SDK_PACKAGE_PREFIX = "com.stripe";
+	/** The Stripe SDK's root package — matched with a package boundary, so {@code com.stripefoo} is not it. */
+	private static final String STRIPE_SDK_ROOT = "com.stripe";
 
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
 	private static final String JDK_PACKAGE_PREFIX = "java.";
+
+	private static final String FIXTURE_BASE = "ai.riviera.responsibilityfixture";
 
 	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
 
@@ -90,29 +94,33 @@ class ResponsibilitiesArchitectureTests {
 	// ---- rule 1: availability is the sole writer (sole toucher) of set_availability ---------
 
 	@Test
-	void availabilityTableIsTouchedOnlyInsideTheAvailabilityModule() throws IOException {
-		List<String> violations = availabilityTableReferencesOutsideOwner(PRODUCTION_CLASS_ROOT);
-		assertNoViolations("availability sole-writer (invariant #2)", violations);
+	void availabilityTableIsTouchedOnlyInsideTheAvailabilityModule() {
+		List<String> violations = availabilityTableViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (availability sole-writer, invariant #2)",
+				violations);
 	}
 
 	/** Guards against a vacuously-green scan: availability's own classes DO carry the table name. */
 	@Test
-	void theAvailabilityModuleItselfWritesTheTable() throws IOException {
-		Path owner = PRODUCTION_CLASS_ROOT.resolve(AVAILABILITY_MODULE_DIR);
-		assertTrue(Files.isDirectory(owner), "availability module classes not found at "
-				+ owner.toAbsolutePath() + " — run the test task so compileJava runs first");
-		try (Stream<Path> classes = Files.walk(owner)) {
-			assertTrue(classes.filter(p -> p.toString().endsWith(".class"))
-							.anyMatch(p -> bytecode(p).contains(AVAILABILITY_TABLE)),
-					"expected at least one availability class to reference '" + AVAILABILITY_TABLE
-							+ "' — otherwise the sole-writer scan proves nothing");
+	void theAvailabilityModuleItselfWritesTheTable() {
+		boolean availabilityReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (AVAILABILITY_MODULE.equals(moduleOf(type, PRODUCTION_BASE))
+					&& referencesAvailabilityTable(type)) {
+				availabilityReferencesTable = true;
+				break;
+			}
 		}
+		assertTrue(availabilityReferencesTable,
+				"expected at least one availability class to reference '" + AVAILABILITY_TABLE
+						+ "' — otherwise the sole-writer scan proves nothing");
 	}
 
 	/** The negative proof (red run): an outside class carrying the table's SQL is rejected. */
 	@Test
-	void outsideWriterFixtureIsRejected() throws IOException {
-		List<String> violations = availabilityTableReferencesOutsideOwner(FIXTURE_CLASS_ROOT);
+	void outsideWriterFixtureIsRejected() {
+		List<String> violations = availabilityTableViolations(FIXTURE_CLASSES, FIXTURE_BASE);
 		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueAvailabilityWriter")),
 				"Expected the sole-writer scan to reject the fixture outside writer, but got: "
 						+ violations);
@@ -122,9 +130,10 @@ class ResponsibilitiesArchitectureTests {
 
 	@Test
 	void stripeSdkIsReachableOnlyInsideThePaymentModule() {
-		List<String> violations =
-				stripeReachViolations(PRODUCTION_CLASSES, ArchitectureTestSupport.PRODUCTION_BASE);
-		assertNoViolations("Stripe SDK only inside payment (RESPONSIBILITIES.md)", violations);
+		List<String> violations = stripeReachViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (Stripe SDK only inside payment)",
+				violations);
 	}
 
 	/** Guards against a vacuously-green rule: payment's own adapters DO depend on Stripe. */
@@ -132,9 +141,7 @@ class ResponsibilitiesArchitectureTests {
 	void thePaymentModuleItselfUsesStripe() {
 		boolean paymentUsesStripe = false;
 		for (JavaClass type : PRODUCTION_CLASSES) {
-			if (PAYMENT_MODULE.equals(
-					ArchitectureTestSupport.moduleOf(type, ArchitectureTestSupport.PRODUCTION_BASE))
-					&& dependsOnStripe(type)) {
+			if (PAYMENT_MODULE.equals(moduleOf(type, PRODUCTION_BASE)) && dependsOnStripe(type)) {
 				paymentUsesStripe = true;
 				break;
 			}
@@ -160,46 +167,50 @@ class ResponsibilitiesArchitectureTests {
 
 	@Test
 	void eventRecordsCarryOnlyIdsAndValues() {
-		List<String> violations =
-				eventPayloadViolations(PRODUCTION_CLASSES, ArchitectureTestSupport.PRODUCTION_BASE);
-		assertNoViolations("id-based event payloads (invariant #11)", violations);
+		List<String> violations = eventPayloadViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (id-based event payloads, invariant #11)",
+				violations);
 	}
 
-	/** Guards against a vacuously-green rule: the import must see event records exercising
-	 * every allowed payload kind (primitive, {@code java.*}, vocabulary). */
+	/** Guards against a vacuously-green rule: the import must see event records, and at least
+	 * one id/value payload the classifier recognizes as vocabulary. (Deliberately no stronger:
+	 * requiring e.g. a primitive component would couple this guard to the incidental payload
+	 * mix of today's events.) */
 	@Test
 	void eventSurfacesWereInspected() {
-		boolean sawEventRecord = false, sawPrimitive = false, sawJdkType = false, sawVocabulary = false;
+		boolean sawEventRecord = false, sawVocabulary = false;
 		for (JavaClass type : PRODUCTION_CLASSES) {
-			if (!EVENTS_SURFACE.equals(
-					ArchitectureTestSupport.surfaceOf(type, ArchitectureTestSupport.PRODUCTION_BASE))
-					|| !type.isRecord()) {
+			if (!EVENTS_SURFACE.equals(surfaceOf(type, PRODUCTION_BASE)) || !type.isRecord()) {
 				continue;
 			}
 			sawEventRecord = true;
 			for (JavaField field : payloadFields(type)) {
-				JavaClass raw = field.getRawType();
-				sawPrimitive |= raw.isPrimitive();
-				sawJdkType |= raw.getPackageName().startsWith(JDK_PACKAGE_PREFIX);
-				sawVocabulary |= VOCABULARY_SURFACE.equals(ArchitectureTestSupport.surfaceOf(
-						raw, ArchitectureTestSupport.PRODUCTION_BASE));
+				for (JavaClass involved : field.getType().getAllInvolvedRawTypes()) {
+					sawVocabulary |= VOCABULARY_SURFACE.equals(surfaceOf(involved, PRODUCTION_BASE));
+				}
 			}
 		}
-		assertTrue(sawEventRecord && sawPrimitive && sawJdkType && sawVocabulary,
-				"Expected the production import to contain event records with primitive, java.* "
-						+ "and vocabulary payload components — otherwise the id-based-events rule "
-						+ "is vacuously green.");
+		assertTrue(sawEventRecord && sawVocabulary,
+				"Expected the production import to contain event records carrying at least one "
+						+ "vocabulary-typed component — otherwise the id-based-events rule is "
+						+ "vacuously green.");
 	}
 
-	/** The negative proof (red run): an event record carrying a domain aggregate is rejected —
-	 * and its legitimate id/primitive components are NOT (the allow path works). */
+	/** The negative proof (red run): an event record carrying a domain aggregate — bare or
+	 * wrapped in a generic container — is rejected, and its legitimate id/primitive components
+	 * are NOT (the allow path works). */
 	@Test
 	void aggregateCarryingEventFixtureIsRejected() {
 		List<String> violations = eventPayloadViolations(FIXTURE_CLASSES, FIXTURE_BASE);
 		assertTrue(violations.stream()
-						.anyMatch(v -> v.contains("AggregateCarryingEvent") && v.contains("FakeAggregate")),
-				"Expected the id-based-events rule to reject the aggregate-carrying fixture event, "
-						+ "but got: " + violations);
+						.anyMatch(v -> v.contains(".aggregate ") && v.contains("FakeAggregate")),
+				"Expected the id-based-events rule to reject the bare aggregate component, but got: "
+						+ violations);
+		assertTrue(violations.stream()
+						.anyMatch(v -> v.contains(".aggregates ") && v.contains("FakeAggregate")),
+				"Expected the id-based-events rule to reject the aggregate hidden in List<...> "
+						+ "(generics unwrapped), but got: " + violations);
 		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureId")),
 				"The fixture event's legitimate vocabulary-typed id must not be flagged, but got: "
 						+ violations);
@@ -207,27 +218,60 @@ class ResponsibilitiesArchitectureTests {
 
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
 
-	private static List<String> availabilityTableReferencesOutsideOwner(Path classRoot) throws IOException {
-		assertTrue(Files.isDirectory(classRoot), "compiled classes not found at "
-				+ classRoot.toAbsolutePath() + " — run the test task so compilation runs first");
-		Path owner = classRoot.resolve(AVAILABILITY_MODULE_DIR);
+	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();
-		try (Stream<Path> classes = Files.walk(classRoot)) {
-			classes.filter(p -> p.toString().endsWith(".class"))
-					.filter(p -> !p.startsWith(owner))
-					.filter(p -> bytecode(p).contains(AVAILABILITY_TABLE))
-					.forEach(p -> violations.add(classRoot.relativize(p) + " references the '"
-							+ AVAILABILITY_TABLE + "' table — the availability module is its only "
-							+ "writer AND reader (invariant #2 / RESPONSIBILITIES.md); other modules "
-							+ "go through availability's published ports (api/spi), never at the table"));
+		for (JavaClass type : classes) {
+			if (AVAILABILITY_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesAvailabilityTable(type)) {
+				violations.add(type.getName() + " references the '" + AVAILABILITY_TABLE
+						+ "' table — the availability module is its only writer AND reader "
+						+ "(invariant #2 / RESPONSIBILITIES.md); other modules go through "
+						+ "availability's published ports (api/spi), never at the table");
+			}
 		}
 		return violations;
+	}
+
+	private static boolean referencesAvailabilityTable(JavaClass type) {
+		return compiledBytecodeOf(type).map(ResponsibilitiesArchitectureTests::containsTableName)
+				.orElse(false);
+	}
+
+	/** The class's compiled bytes via its ArchUnit source URI — no hardcoded build paths; the
+	 * same class set the other rules iterate. Empty for a class without a file source. */
+	private static Optional<String> compiledBytecodeOf(JavaClass type) {
+		return type.getSource()
+				.map(Source::getUri)
+				.filter(uri -> "file".equals(uri.getScheme()))
+				.map(uri -> bytecode(Path.of(uri)));
+	}
+
+	/** Whole-word match: the table name bounded by non-identifier characters, so a different
+	 * identifier merely containing it (reset_availability, set_availability_audit) is not hit. */
+	private static boolean containsTableName(String bytecode) {
+		int index = bytecode.indexOf(AVAILABILITY_TABLE);
+		while (index >= 0) {
+			char before = index == 0 ? '\0' : bytecode.charAt(index - 1);
+			int end = index + AVAILABILITY_TABLE.length();
+			char after = end >= bytecode.length() ? '\0' : bytecode.charAt(end);
+			if (!isIdentifierChar(before) && !isIdentifierChar(after)) {
+				return true;
+			}
+			index = bytecode.indexOf(AVAILABILITY_TABLE, index + 1);
+		}
+		return false;
+	}
+
+	private static boolean isIdentifierChar(char c) {
+		return c == '_' || Character.isLetterOrDigit(c);
 	}
 
 	private static List<String> stripeReachViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();
 		for (JavaClass type : classes) {
-			if (PAYMENT_MODULE.equals(ArchitectureTestSupport.moduleOf(type, base))) {
+			if (PAYMENT_MODULE.equals(moduleOf(type, base))) {
 				continue; // payment's own Stripe use is the point; NoStripeConnect fences its shape
 			}
 			if (dependsOnStripe(type)) {
@@ -241,7 +285,8 @@ class ResponsibilitiesArchitectureTests {
 
 	private static boolean dependsOnStripe(JavaClass type) {
 		for (Dependency dependency : type.getDirectDependenciesFromSelf()) {
-			if (dependency.getTargetClass().getPackageName().startsWith(STRIPE_SDK_PACKAGE_PREFIX)) {
+			String pkg = dependency.getTargetClass().getPackageName();
+			if (pkg.equals(STRIPE_SDK_ROOT) || pkg.startsWith(STRIPE_SDK_ROOT + ".")) {
 				return true;
 			}
 		}
@@ -251,18 +296,19 @@ class ResponsibilitiesArchitectureTests {
 	private static List<String> eventPayloadViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();
 		for (JavaClass type : classes) {
-			if (!EVENTS_SURFACE.equals(ArchitectureTestSupport.surfaceOf(type, base))
-					|| !type.isRecord()) {
+			if (!EVENTS_SURFACE.equals(surfaceOf(type, base)) || !type.isRecord()) {
 				continue; // non-records in events/ are PublishedSurfacePlacement's concern
 			}
 			for (JavaField field : payloadFields(type)) {
-				JavaClass raw = field.getRawType();
-				if (!isIdOrValuePayload(raw, base)) {
-					violations.add(type.getName() + "." + field.getName() + " is a " + raw.getName()
-							+ " — an event payload carries only technical ids and values (a primitive, "
-							+ "a java.* type, or a published vocabulary type), never an aggregate or "
-							+ "other internal type from domain/application/adapter (Need-To-Know, "
-							+ "invariant #11 / RESPONSIBILITIES.md)");
+				for (JavaClass involved : field.getType().getAllInvolvedRawTypes()) {
+					if (!isIdOrValuePayload(involved, base)) {
+						violations.add(type.getName() + "." + field.getName() + " involves "
+								+ involved.getName() + " — an event payload carries only technical "
+								+ "ids and values (primitives, java.* types, published vocabulary "
+								+ "types — generics and arrays are unwrapped), never an aggregate or "
+								+ "other internal type from domain/application/adapter (Need-To-Know, "
+								+ "invariant #11 / RESPONSIBILITIES.md)");
+					}
 				}
 			}
 		}
@@ -276,26 +322,10 @@ class ResponsibilitiesArchitectureTests {
 				.toList();
 	}
 
-	private static boolean isIdOrValuePayload(JavaClass raw, String base) {
-		if (raw.isPrimitive() || raw.getPackageName().startsWith(JDK_PACKAGE_PREFIX)) {
+	private static boolean isIdOrValuePayload(JavaClass involved, String base) {
+		if (involved.isPrimitive() || involved.getPackageName().startsWith(JDK_PACKAGE_PREFIX)) {
 			return true;
 		}
-		return VOCABULARY_SURFACE.equals(ArchitectureTestSupport.surfaceOf(raw, base));
-	}
-
-	/** ISO-8859-1: read raw bytes 1:1 so constant-pool UTF-8 symbols match as substrings. */
-	private static String bytecode(Path classFile) {
-		try {
-			return new String(Files.readAllBytes(classFile), StandardCharsets.ISO_8859_1);
-		}
-		catch (IOException e) {
-			throw new IllegalStateException("could not read " + classFile, e);
-		}
-	}
-
-	private static void assertNoViolations(String ruleName, List<String> violations) {
-		assertTrue(violations.isEmpty(),
-				"RESPONSIBILITIES.md fitness-function violations (" + ruleName + "):\n  "
-						+ String.join("\n  ", violations));
+		return VOCABULARY_SURFACE.equals(surfaceOf(involved, base));
 	}
 }

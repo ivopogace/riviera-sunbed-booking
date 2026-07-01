@@ -2,8 +2,7 @@ package ai.riviera.platform;
 
 import org.junit.jupiter.api.Test;
 
-import com.tngtech.archunit.core.domain.JavaClasses;
-
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_CLASSES;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -20,8 +19,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * fails here — while legitimate evolution of the tourist reads stays free.
  */
 class VenueApiRoleSplitTests {
-
-	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
 
 	@Test
 	void venueCatalogIsConsumedOnlyInsideTheVenueModule() {

@@ -1,31 +1,38 @@
 package ai.riviera.platform;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Shared support for the architecture (fitness-function) tests — extracted per the #94/#95
  * review-gate notes on epic #93 once a fifth arch-test class arrived (issue #96): one
- * production classpath scan instead of one per test class, and one copy of the
- * module/surface package arithmetic instead of a copy per class.
+ * production classpath scan instead of one per test class, and one copy each of the
+ * module/surface package arithmetic, the constant-pool bytecode reader, and the
+ * violation-report assertion, instead of a copy per class.
  *
- * <p>Two things live here and nothing else:
- * <ul>
- *   <li><strong>The importers.</strong> {@link #PRODUCTION_CLASSES} is the single
- *       production-code import every rule checks against (tests excluded);
- *       {@link #fixtureClasses(String)} imports a deliberately mis-shaped fixture tree
- *       (test scope included) so negative cases are proven without breaking production
- *       code — the {@code ai.riviera.placementfixture} mechanism from issue #95.</li>
- *   <li><strong>The package arithmetic</strong> of the ADR-0007 layout,
- *       {@code <base>.<module>.<surface>...}: {@link #moduleOf(JavaClass, String)},
- *       {@link #surfaceOf(JavaClass, String)}, {@link #segmentsBelow(JavaClass, String)},
- *       {@link #moduleRelativeSegments(JavaClass, String)}. All take the base package as a
- *       parameter so the same arithmetic runs against production and fixture trees.</li>
- * </ul>
+ * <p>{@link #PRODUCTION_CLASSES} is the single production-code import every rule checks
+ * against (tests excluded); {@link #fixtureClasses(String)} imports a deliberately
+ * mis-shaped fixture tree (test scope included) so negative cases are proven without
+ * breaking production code — the {@code ai.riviera.placementfixture} mechanism from
+ * issue #95. The package arithmetic follows the ADR-0007 layout,
+ * {@code <base>.<module>.<surface>...}, and takes the base package as a parameter so the
+ * same arithmetic runs against production and fixture trees.
+ *
+ * <p>Public (not package-private) only because {@code payment}'s
+ * {@code NoStripeConnectArchitectureTest} shares {@link #bytecode(Path)} from its own
+ * package; this is a test-scope utility, not a published surface.
  */
-final class ArchitectureTestSupport {
+public final class ArchitectureTestSupport {
 
 	/** The Modulith base package — every module is a direct sub-package of this. */
 	static final String PRODUCTION_BASE = "ai.riviera.platform";
@@ -92,5 +99,25 @@ final class ArchitectureTestSupport {
 
 	static boolean isPackageInfo(JavaClass type) {
 		return "package-info".equals(type.getSimpleName());
+	}
+
+	/**
+	 * A compiled class file read as ISO-8859-1 — raw bytes 1:1, so constant-pool UTF-8 symbols
+	 * (SQL strings, type/method names) match as plain substrings. The shared primitive behind
+	 * the bytecode-scanning rules ({@code ResponsibilitiesArchitectureTests}' sole-writer scan,
+	 * {@code NoStripeConnectArchitectureTest}).
+	 */
+	public static String bytecode(Path classFile) {
+		try {
+			return new String(Files.readAllBytes(classFile), StandardCharsets.ISO_8859_1);
+		}
+		catch (IOException e) {
+			throw new IllegalStateException("could not read " + classFile, e);
+		}
+	}
+
+	/** The one violation-report shape all architecture rules fail with. */
+	static void assertNoViolations(String header, List<String> violations) {
+		assertTrue(violations.isEmpty(), header + ":\n  " + String.join("\n  ", violations));
 	}
 }

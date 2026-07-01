@@ -224,6 +224,7 @@ review item RV-BE-11):
   crossing a package boundary.
 
 Known scan limits (documented on the tests): the sole-writer rule keys on the contiguous
-table name in compiled constant pools — SQL assembled by string concatenation could evade
-it (the text-block-SQL idiom keeps names contiguous); the id-based-events rule checks raw
-component types (not generic type arguments).
+whole-word table name in compiled constant pools — SQL assembled by string concatenation
+could evade it (the text-block-SQL idiom keeps names contiguous). The id-based-events rule
+unwraps generics and arrays (a `List<Aggregate>` component is caught), but only for the
+component's declared type.

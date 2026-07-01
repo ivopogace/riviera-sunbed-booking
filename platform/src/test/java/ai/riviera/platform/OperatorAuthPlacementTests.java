@@ -2,9 +2,10 @@ package ai.riviera.platform;
 
 import org.junit.jupiter.api.Test;
 
-import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_CLASSES;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -21,13 +22,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  */
 class OperatorAuthPlacementTests {
 
-	/** The shared production import, narrowed to the operator module in the rule's that()-clause. */
-	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
-
 	@Test
 	void operatorModuleDependsOnNoSpringSecurityType() {
 		ArchRule rule = noClasses()
-				.that().resideInAPackage(ArchitectureTestSupport.PRODUCTION_BASE + ".operator..")
+				.that().resideInAPackage(PRODUCTION_BASE + ".operator..")
 				.should().dependOnClassesThat().resideInAnyPackage("org.springframework.security..")
 				.because("authentication/login is a platform/edge concern (#74, RV-BE-11); the operator "
 						+ "module stores an opaque credential hash but never encodes/verifies it, so it must "

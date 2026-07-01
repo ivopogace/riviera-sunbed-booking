@@ -11,6 +11,7 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 
+import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
 import static ai.riviera.platform.ArchitectureTestSupport.isPackageInfo;
 import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
 import static ai.riviera.platform.ArchitectureTestSupport.surfaceOf;
@@ -69,25 +70,25 @@ class PublishedSurfacePlacementArchitectureTests {
 	@Test
 	void portsSurfacesHoldOnlyNonSealedInterfaces() {
 		List<String> violations = portsSurfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("ports surfaces (api/spi) hold only non-sealed interfaces", violations);
+		assertNoViolations("Published-surface placement violations (ports surfaces (api/spi) hold only non-sealed interfaces)", violations);
 	}
 
 	@Test
 	void eventsSurfacesHoldOnlyRecords() {
 		List<String> violations = eventsSurfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("events surfaces hold only records", violations);
+		assertNoViolations("Published-surface placement violations (events surfaces hold only records)", violations);
 	}
 
 	@Test
 	void vocabularySurfacesHoldNoPorts() {
 		List<String> violations = vocabularySurfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("vocabulary surfaces hold no ports", violations);
+		assertNoViolations("Published-surface placement violations (vocabulary surfaces hold no ports)", violations);
 	}
 
 	@Test
 	void crossModuleListenedEventsResideInEventsSurfaces() {
 		List<String> violations = listenerPlacementViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("cross-module listened events reside in events surfaces", violations);
+		assertNoViolations("Published-surface placement violations (cross-module listened events reside in events surfaces)", violations);
 	}
 
 	/** Guards against a vacuously-green rule: the import must actually see all three surface kinds. */
@@ -226,11 +227,4 @@ class PublishedSurfacePlacementArchitectureTests {
 		return violations;
 	}
 
-	// package arithmetic (moduleOf / surfaceOf / isPackageInfo): ArchitectureTestSupport
-
-	private static void assertNoViolations(String ruleName, List<String> violations) {
-		assertTrue(violations.isEmpty(),
-				"Published-surface placement violations (" + ruleName + "):\n  "
-						+ String.join("\n  ", violations));
-	}
 }

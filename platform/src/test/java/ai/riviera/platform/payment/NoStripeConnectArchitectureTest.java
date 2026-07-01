@@ -1,13 +1,14 @@
 package ai.riviera.platform.payment;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+
+import ai.riviera.platform.ArchitectureTestSupport;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,14 +52,7 @@ class NoStripeConnectArchitectureTest {
 	}
 
 	private static void assertNoConnect(Path classFile) {
-		String bytecode;
-		try {
-			// ISO-8859-1: read raw bytes 1:1 so constant-pool UTF-8 symbols match as substrings.
-			bytecode = new String(Files.readAllBytes(classFile), StandardCharsets.ISO_8859_1);
-		}
-		catch (IOException e) {
-			throw new IllegalStateException("could not read " + classFile, e);
-		}
+		String bytecode = ArchitectureTestSupport.bytecode(classFile);
 		for (String symbol : FORBIDDEN_CONNECT_SYMBOLS) {
 			assertFalse(bytecode.contains(symbol),
 					() -> classFile.getFileName() + " references the Stripe Connect symbol '" + symbol
@@ -72,10 +66,10 @@ class NoStripeConnectArchitectureTest {
 	 * real bytecode and distinguishes a present symbol from an absent one.
 	 */
 	@Test
-	void theCollectionPathIsPresent() throws IOException {
+	void theCollectionPathIsPresent() {
 		Path gateway = PAYMENT_CLASSES.resolve("adapter/out/StripePaymentGateway.class");
 		assertTrue(Files.exists(gateway), "StripePaymentGateway should be compiled");
-		String bytecode = new String(Files.readAllBytes(gateway), StandardCharsets.ISO_8859_1);
+		String bytecode = ArchitectureTestSupport.bytecode(gateway);
 		assertTrue(bytecode.contains("com/stripe/param/PaymentIntentCreateParams"),
 				"the gateway collects via PaymentIntents — the non-Connect collection path");
 	}
