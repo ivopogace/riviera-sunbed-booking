@@ -18,6 +18,9 @@ import ai.riviera.platform.booking.application.in.WeatherRefundOutcome;
 import ai.riviera.platform.booking.application.out.Bookings;
 import ai.riviera.platform.booking.application.out.CancelledBooking;
 import ai.riviera.platform.booking.application.out.RefundableBooking;
+import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**
@@ -45,18 +48,22 @@ class WeatherRefundService implements RefundForWeather {
 	private final AvailabilityClaim availability;
 	private final ApplicationEventPublisher events;
 	private final Clock clock;
+	private final VenueOwnership ownership;
 
 	WeatherRefundService(Bookings bookings, AvailabilityClaim availability,
-			ApplicationEventPublisher events, Clock clock) {
+			ApplicationEventPublisher events, Clock clock, VenueOwnership ownership) {
 		this.bookings = bookings;
 		this.availability = availability;
 		this.events = events;
 		this.clock = clock;
+		this.ownership = ownership;
 	}
 
 	@Override
 	@Transactional
-	public WeatherRefundOutcome refundForWeather(VenueId venueId, java.time.LocalDate date) {
+	public WeatherRefundOutcome refundForWeather(OperatorId operator, VenueId venueId,
+			java.time.LocalDate date) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		List<RefundableBooking> candidates = bookings.findConfirmedForWeatherRefund(venueId, date);
 
 		int refundedCount = 0;

@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application.in;
 
 import java.time.LocalDate;
 
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**
@@ -19,6 +20,9 @@ public interface RefundForWeather {
 	 * Cancel and fully refund every {@code CONFIRMED} booking for {@code venueId} on {@code date};
 	 * returns the {@link WeatherRefundOutcome} (count + total). Idempotent at the booking level — a
 	 * re-run refunds nothing already cancelled (the guarded transition is a no-op).
+	 *
+	 * <p>Moves real money, so it is venue-scoped: the implementation asserts {@code operator} owns
+	 * {@code venueId} first (invariant #13) and returns {@code 403} on a mismatch, before any refund.
 	 */
-	WeatherRefundOutcome refundForWeather(VenueId venueId, LocalDate date);
+	WeatherRefundOutcome refundForWeather(OperatorId operator, VenueId venueId, LocalDate date);
 }

@@ -10,6 +10,8 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Availability",
-    allowedDependencies = { "venue::api", "venue::spi" }
+    // Depends on the operator module's api port (issue #73) so staff tap-to-mark verifies the
+    // operator owns the set's venue (invariant #13), resolving that venue from the set id.
+    allowedDependencies = { "venue::api", "venue::spi", "operator::api" }
 )
 package ai.riviera.platform.availability;

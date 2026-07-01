@@ -9,6 +9,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.operator.api.NotVenueOwnerException;
+import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.application.in.AddSetOutcome;
@@ -20,22 +24,28 @@ import ai.riviera.platform.venue.application.out.Venues;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Branch coverage for the venue write orchestration (U7, issue #7) with an in-memory fake
  * {@link Venues} — no Spring, no DB. Proves the existence checks and conflict→{@link SetRejection}
  * mapping (AC-1/2/3/5) without paying Testcontainers startup; the round-trip and DB constraints
- * are pinned by {@code VenueAdminControllerIT} and {@code BeachMapLayoutMigrationIT}.
+ * are pinned by {@code VenueAdminControllerIT} and {@code BeachMapLayoutMigrationIT}. The per-venue
+ * ownership guard (issue #73) is stubbed by {@link FakeOwnership} — {@link #OWNER} owns
+ * {@link #VENUE}, anyone else is denied; the end-to-end 403 path is pinned by {@code CrossVenueDenialIT}.
  */
 class VenueAdminServiceTest {
 
 	private static final VenueId VENUE = new VenueId(7);
 	private static final SetId SET = new SetId(42);
+	private static final OperatorId OWNER = new OperatorId(100);
+	private static final OperatorId STRANGER = new OperatorId(200);
 	private static final SetCommand SET_CMD =
 			new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 4500, "EUR", 2, 1);
 
 	private final FakeVenues venues = new FakeVenues();
-	private final VenueAdminService service = new VenueAdminService(venues);
+	private final VenueAdminService service =
+			new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE));
 
 	@Test
 	void onboardReturnsTheInsertedVenueId() {
@@ -49,7 +59,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void addSetToUnknownVenueIsRejectedAndNotInserted() {
-		AddSetOutcome outcome = service.addSet(VENUE, SET_CMD);
+		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((AddSetOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.insertedSets);
@@ -60,7 +70,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.conflict = Optional.of(Venues.Conflict.CELL_TAKEN);
 
-		AddSetOutcome outcome = service.addSet(VENUE, SET_CMD);
+		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
 
 		assertEquals(SetRejection.CELL_TAKEN, ((AddSetOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.insertedSets);
@@ -71,7 +81,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.nextSetId = 123;
 
-		AddSetOutcome outcome = service.addSet(VENUE, SET_CMD);
+		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
 
 		assertEquals(new SetId(123), ((AddSetOutcome.Added) outcome).setId());
 		assertEquals(1, venues.insertedSets);
@@ -81,7 +91,7 @@ class VenueAdminServiceTest {
 	void editUnknownSetIsRejected() {
 		venues.venues.add(VENUE.value());
 
-		ChangeOutcome outcome = service.editSet(VENUE, SET, SET_CMD);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.updatedSets);
@@ -92,7 +102,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		ChangeOutcome outcome = service.editSet(VENUE, SET, SET_CMD);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.updatedSets);
@@ -104,7 +114,7 @@ class VenueAdminServiceTest {
 
 		// removeSet relies on the DELETE's rows-affected (0 ⇒ no such set), so it attempts the
 		// delete and maps the 0-row result to NO_SUCH_SET — no separate existence pre-check.
-		ChangeOutcome outcome = service.removeSet(VENUE, SET);
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
 	}
@@ -117,7 +127,7 @@ class VenueAdminServiceTest {
 		venues.forceSetExists = true; // pre-check passes
 		venues.forceUpdateRows = 0; // ...but the UPDATE finds nothing
 
-		ChangeOutcome outcome = service.editSet(VENUE, SET, SET_CMD);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
 	}
@@ -127,10 +137,48 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		ChangeOutcome outcome = service.removeSet(VENUE, SET);
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.deletedSets);
+	}
+
+	@Test
+	void addSetByANonOwnerIsDeniedBeforeAnyWrite() {
+		venues.venues.add(VENUE.value());
+
+		// The ownership guard runs first: a stranger is rejected before any existence check or insert.
+		assertThrows(NotVenueOwnerException.class, () -> service.addSet(STRANGER, VENUE, SET_CMD));
+		assertEquals(0, venues.insertedSets);
+	}
+
+	@Test
+	void editAndRemoveByANonOwnerAreDenied() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+
+		assertThrows(NotVenueOwnerException.class, () -> service.editSet(STRANGER, VENUE, SET, SET_CMD));
+		assertThrows(NotVenueOwnerException.class, () -> service.removeSet(STRANGER, VENUE, SET));
+		assertEquals(0, venues.updatedSets);
+		assertEquals(0, venues.deletedSets);
+	}
+
+	/**
+	 * Stub {@link VenueOwnership}: one operator owns one venue; {@code assertOwns} throws for anyone
+	 * else. {@code ownedVenues} is unused here.
+	 */
+	private record FakeOwnership(OperatorId owner, VenueId venue) implements VenueOwnership {
+		@Override
+		public void assertOwns(OperatorId operator, VenueRef target) {
+			if (!operator.equals(owner) || target.value() != venue.value()) {
+				throw new NotVenueOwnerException(operator, target);
+			}
+		}
+
+		@Override
+		public Set<VenueRef> ownedVenues(OperatorId operator) {
+			return operator.equals(owner) ? Set.of(new VenueRef(venue.value())) : Set.of();
+		}
 	}
 
 	/** Programmable in-memory {@link Venues}: seed {@code venues}/{@code sets}/{@code conflict}. */

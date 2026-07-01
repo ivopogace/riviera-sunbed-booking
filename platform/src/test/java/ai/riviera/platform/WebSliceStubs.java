@@ -23,6 +23,8 @@ import ai.riviera.platform.booking.application.in.ListDailyBookings;
 import ai.riviera.platform.booking.application.in.RefundForWeather;
 import ai.riviera.platform.booking.application.in.ViewBooking;
 import ai.riviera.platform.booking.application.in.WeatherRefundOutcome;
+import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.in.PayoutReport;
 import ai.riviera.platform.payout.application.in.VenueLedger;
@@ -87,19 +89,31 @@ class WebSliceStubs {
 		return Clock.fixed(Instant.parse("2026-06-30T12:00:00Z"), ZoneOffset.UTC);
 	}
 
+	/** Resolve any principal to a fixed operator id — the web slices don't exercise ownership. */
+	@Bean
+	OperatorDirectory operatorDirectory() {
+		return username -> Optional.of(new OperatorId(1));
+	}
+
+	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */
+	@Bean
+	CurrentOperator currentOperator(OperatorDirectory operatorDirectory) {
+		return new CurrentOperator(operatorDirectory);
+	}
+
 	@Bean
 	ListDailyBookings listDailyBookings() {
-		return (venueId, date) -> List.of();
+		return (operator, venueId, date) -> List.of();
 	}
 
 	@Bean
 	RefundForWeather refundForWeather() {
-		return (venueId, date) -> new WeatherRefundOutcome(0, 0, "EUR");
+		return (operator, venueId, date) -> new WeatherRefundOutcome(0, 0, "EUR");
 	}
 
 	@Bean
 	ViewPayoutLedger viewPayoutLedger() {
-		return venueId -> new VenueLedger(venueId, "EUR", 0, List.of());
+		return (operator, venueId) -> new VenueLedger(venueId, "EUR", 0, List.of());
 	}
 
 	@Bean
@@ -129,12 +143,12 @@ class WebSliceStubs {
 	StaffAvailability staffAvailability() {
 		return new StaffAvailability() {
 			@Override
-			public MarkOutcome mark(SetId setId, LocalDate date) {
+			public MarkOutcome mark(OperatorId operator, SetId setId, LocalDate date) {
 				return MarkOutcome.NO_SUCH_SET;
 			}
 
 			@Override
-			public ReleaseOutcome release(SetId setId, LocalDate date) {
+			public ReleaseOutcome release(OperatorId operator, SetId setId, LocalDate date) {
 				return ReleaseOutcome.NOT_MARKED;
 			}
 		};
@@ -221,17 +235,17 @@ class WebSliceStubs {
 	EditBeachMap editBeachMap() {
 		return new EditBeachMap() {
 			@Override
-			public AddSetOutcome addSet(VenueId venueId, SetCommand command) {
+			public AddSetOutcome addSet(OperatorId operator, VenueId venueId, SetCommand command) {
 				return new AddSetOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}
 
 			@Override
-			public ChangeOutcome editSet(VenueId venueId, SetId setId, SetCommand command) {
+			public ChangeOutcome editSet(OperatorId operator, VenueId venueId, SetId setId, SetCommand command) {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}
 
 			@Override
-			public ChangeOutcome removeSet(VenueId venueId, SetId setId) {
+			public ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId) {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}
 		};

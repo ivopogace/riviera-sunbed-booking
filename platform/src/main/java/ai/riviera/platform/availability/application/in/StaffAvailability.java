@@ -2,6 +2,7 @@ package ai.riviera.platform.availability.application.in;
 
 import java.time.LocalDate;
 
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.SetId;
 
 /**
@@ -16,6 +17,11 @@ import ai.riviera.platform.venue.api.SetId;
  * {@code api/} (invariant #11): the only caller is this module's own REST adapter
  * ({@code StaffAvailabilityController}). Returns typed outcomes rather than throwing — a lost
  * race or a guarded release is normal, expected flow.
+ *
+ * <p><strong>Per-venue authorization (invariant #13):</strong> a set is globally unique, so the
+ * owning venue is derived from the {@code setId} (via {@code venue.api.VenueCatalog}), never the
+ * decorative path {@code venueId} — an operator cannot spoof the URL to reach another venue's set.
+ * The implementation asserts {@code operator} owns that venue and returns {@code 403} on a mismatch.
  */
 public interface StaffAvailability {
 
@@ -24,22 +30,25 @@ public interface StaffAvailability {
 	 * (issue #10) — any <em>free</em> set may be marked, including an online-pool one, which is
 	 * precisely the collision-relevant case: once marked it is removed from online availability.
 	 * The date must not be before today in {@code Europe/Tirane} (invariant #6); a set already
-	 * held by either channel loses the claim.
+	 * held by either channel loses the claim. Rejects a set the {@code operator} does not own (403).
 	 *
-	 * @param setId the set to mark
-	 * @param date  the calendar day (a {@code LocalDate} in {@code Europe/Tirane})
+	 * @param operator the authenticated operator (must own the set's venue)
+	 * @param setId    the set to mark
+	 * @param date     the calendar day (a {@code LocalDate} in {@code Europe/Tirane})
 	 * @return why the mark succeeded or failed
 	 */
-	MarkOutcome mark(SetId setId, LocalDate date);
+	MarkOutcome mark(OperatorId operator, SetId setId, LocalDate date);
 
 	/**
 	 * Release a previously staff-marked {@code (setId, date)} — deletes <strong>only</strong> a
 	 * {@code STAFF_MARKED} row, never an online booking's {@code BOOKED_ONLINE} row (invariant #2).
-	 * Tapping a set that is free or online-held yields {@code NOT_MARKED}, a safe no-op.
+	 * Tapping a set that is free or online-held yields {@code NOT_MARKED}, a safe no-op. Rejects a
+	 * set the {@code operator} does not own (403).
 	 *
-	 * @param setId the set to release
-	 * @param date  the calendar day (a {@code LocalDate} in {@code Europe/Tirane})
+	 * @param operator the authenticated operator (must own the set's venue)
+	 * @param setId    the set to release
+	 * @param date     the calendar day (a {@code LocalDate} in {@code Europe/Tirane})
 	 * @return whether a staff mark was released
 	 */
-	ReleaseOutcome release(SetId setId, LocalDate date);
+	ReleaseOutcome release(OperatorId operator, SetId setId, LocalDate date);
 }

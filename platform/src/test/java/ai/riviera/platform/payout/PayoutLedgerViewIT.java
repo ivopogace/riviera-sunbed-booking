@@ -11,6 +11,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.payout.application.in.LedgerEntryView;
 import ai.riviera.platform.payout.application.in.VenueLedger;
 import ai.riviera.platform.payout.application.in.ViewPayoutLedger;
@@ -36,6 +38,14 @@ class PayoutLedgerViewIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	OperatorDirectory operators;
+
+	/** The interim bootstrap operator (owns every venue) — resolves the ownership guard (#73). */
+	private OperatorId bootstrap() {
+		return operators.operatorFor("operator").orElseThrow();
+	}
 
 	private long newVenue() {
 		return jdbc.sql("""
@@ -82,7 +92,7 @@ class PayoutLedgerViewIT {
 				VALUES (:v, :b, 'REVERSAL', 5000, 750, 4250, 'EUR', 'POLICY')
 				""").param("v", venueId).param("b", bookingId).update();
 
-		VenueLedger ledger = viewPayoutLedger.forVenue(new VenueId(venueId));
+		VenueLedger ledger = viewPayoutLedger.forVenue(bootstrap(), new VenueId(venueId));
 
 		assertEquals(4250L, ledger.netOwedMinor(), "net owed = 8500 accrued - 4250 reversed");
 		assertEquals("EUR", ledger.currency());
@@ -105,7 +115,7 @@ class PayoutLedgerViewIT {
 	void emptyLedgerOwesNothing() {
 		long venueId = newVenue();
 
-		VenueLedger ledger = viewPayoutLedger.forVenue(new VenueId(venueId));
+		VenueLedger ledger = viewPayoutLedger.forVenue(bootstrap(), new VenueId(venueId));
 
 		assertEquals(0L, ledger.netOwedMinor(), "a venue with no entries is owed nothing");
 		assertEquals(0, ledger.entries().size());

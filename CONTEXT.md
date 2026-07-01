@@ -57,3 +57,15 @@ model in `docs/architecture/domain-model.md`.
 
 - **Tourist / Customer** — the person booking a set. Guest checkout (email only) is
   allowed; identity is intentionally light.
+
+## Operators (venue management side)
+
+- **Operator** — an account that manages one or more venues (the venue's people, not the
+  tourist). Owns the venues mapped to it; may act only on those. Distinct from the
+  platform-wide admin surface.
+- **Venue ownership** — the operator↔venue mapping that answers *"does this operator own
+  this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
+  availability, weather refund, payout ledger) verifies it in the application service and
+  returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
+- **Bootstrap operator** — the interim single account the shared login resolves to, flagged
+  *owns-all-venues* until per-operator credentials land. A launch bridge, not the target.

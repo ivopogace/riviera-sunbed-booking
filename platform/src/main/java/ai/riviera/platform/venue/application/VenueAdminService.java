@@ -5,6 +5,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.application.in.AddSetOutcome;
@@ -24,14 +27,23 @@ import ai.riviera.platform.venue.application.out.Venues;
  * this service owns the orchestration: existence checks, conflict→{@link SetRejection} mapping,
  * and the transactional write through {@link Venues}. The DB UNIQUE constraints (V2/V12) are the
  * race-safe backstop behind the pre-checks.
+ *
+ * <p>Each beach-map edit is venue-scoped: the first act of {@code addSet}/{@code editSet}/
+ * {@code removeSet} is {@link VenueOwnership#assertOwns} on the acting {@link OperatorId}, so an
+ * operator cannot touch another operator's venue (invariant #13, BOLA) — the check is here in the
+ * application service, not the controller, so no driving adapter can bypass it. {@code onboard}
+ * (venue creation) has no path {@code venueId} and stays role-gated only (creator-owns-on-create is
+ * deferred to #74).
  */
 @Service
 class VenueAdminService implements OnboardVenue, EditBeachMap {
 
 	private final Venues venues;
+	private final VenueOwnership ownership;
 
-	VenueAdminService(Venues venues) {
+	VenueAdminService(Venues venues, VenueOwnership ownership) {
 		this.venues = venues;
+		this.ownership = ownership;
 	}
 
 	@Override
@@ -42,7 +54,8 @@ class VenueAdminService implements OnboardVenue, EditBeachMap {
 
 	@Override
 	@Transactional
-	public AddSetOutcome addSet(VenueId venueId, SetCommand command) {
+	public AddSetOutcome addSet(OperatorId operator, VenueId venueId, SetCommand command) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (!venues.venueExists(venueId)) {
 			return new AddSetOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
@@ -55,7 +68,8 @@ class VenueAdminService implements OnboardVenue, EditBeachMap {
 
 	@Override
 	@Transactional
-	public ChangeOutcome editSet(VenueId venueId, SetId setId, SetCommand command) {
+	public ChangeOutcome editSet(OperatorId operator, VenueId venueId, SetId setId, SetCommand command) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
@@ -76,7 +90,8 @@ class VenueAdminService implements OnboardVenue, EditBeachMap {
 
 	@Override
 	@Transactional
-	public ChangeOutcome removeSet(VenueId venueId, SetId setId) {
+	public ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}

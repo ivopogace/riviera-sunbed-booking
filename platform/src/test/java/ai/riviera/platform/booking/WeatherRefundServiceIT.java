@@ -17,6 +17,8 @@ import ai.riviera.platform.booking.api.BookingCancelled;
 import ai.riviera.platform.booking.api.RefundReason;
 import ai.riviera.platform.booking.application.in.RefundForWeather;
 import ai.riviera.platform.booking.application.in.WeatherRefundOutcome;
+import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,6 +46,14 @@ class WeatherRefundServiceIT {
 
 	@Autowired
 	ApplicationEvents events;
+
+	@Autowired
+	OperatorDirectory operators;
+
+	/** The interim bootstrap operator (owns every venue) — resolves the ownership guard (#73). */
+	private OperatorId bootstrap() {
+		return operators.operatorFor("operator").orElseThrow();
+	}
 
 	private record Seeded(long bookingId, long setId, long amountMinor) {
 	}
@@ -105,7 +115,7 @@ class WeatherRefundServiceIT {
 		assertEquals(1, availabilityRows(a.setId(), day), "set A is held before the weather refund");
 		assertEquals(1, availabilityRows(b.setId(), day), "set B is held before the weather refund");
 
-		WeatherRefundOutcome outcome = refundForWeather.refundForWeather(new VenueId(venueId), day);
+		WeatherRefundOutcome outcome = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), day);
 
 		assertEquals(2, outcome.refundedCount(), "both confirmed bookings are refunded");
 		assertEquals(8000L, outcome.totalRefundedMinor(), "full refund of 4500 + 3500");
@@ -134,9 +144,9 @@ class WeatherRefundServiceIT {
 		List<Long> sets = onlineSets(venueId, 1);
 		confirmedBooking(venueId, sets.get(0), day, "WX00000003", 4500L);
 
-		assertEquals(1, refundForWeather.refundForWeather(new VenueId(venueId), day).refundedCount(),
+		assertEquals(1, refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), day).refundedCount(),
 				"first run refunds the confirmed booking");
-		assertEquals(0, refundForWeather.refundForWeather(new VenueId(venueId), day).refundedCount(),
+		assertEquals(0, refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), day).refundedCount(),
 				"a re-run refunds nothing already cancelled (idempotent at booking level)");
 	}
 
@@ -145,7 +155,7 @@ class WeatherRefundServiceIT {
 		long venueId = venueWithOnlineSets();
 
 		WeatherRefundOutcome outcome =
-				refundForWeather.refundForWeather(new VenueId(venueId), LocalDate.of(2019, 1, 1));
+				refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), LocalDate.of(2019, 1, 1));
 
 		assertEquals(0, outcome.refundedCount(), "no confirmed bookings → nothing refunded");
 		assertEquals(0L, outcome.totalRefundedMinor());

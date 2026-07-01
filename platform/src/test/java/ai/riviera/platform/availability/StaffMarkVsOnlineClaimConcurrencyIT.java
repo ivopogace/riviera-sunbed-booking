@@ -24,6 +24,8 @@ import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
 import ai.riviera.platform.availability.application.in.MarkOutcome;
 import ai.riviera.platform.availability.application.in.StaffAvailability;
+import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,6 +55,9 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	OperatorDirectory operators;
+
 	private SetId anyOnlineSet() {
 		// An ONLINE-pool set so the online claim is even possible (a WALK_IN set would 422 before the
 		// race). Staff marking is pool-agnostic, so it contends on this same set.
@@ -71,10 +76,13 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	 * together. Returns {@code [markWon, claimWon]}. Bounded waits so a lock-wait hang fails fast.
 	 */
 	private boolean[] race(SetId set, LocalDate date) throws Exception {
+		// Resolve the owns-all bootstrap operator once, outside the race (#73): the ownership guard is
+		// not what's under test here — the atomic INSERT ... ON CONFLICT is.
+		OperatorId operator = operators.operatorFor("operator").orElseThrow();
 		CountDownLatch startGate = new CountDownLatch(1);
 		Callable<Boolean> markAttempt = () -> {
 			startGate.await();
-			return staff.mark(set, date) == MarkOutcome.MARKED;
+			return staff.mark(operator, set, date) == MarkOutcome.MARKED;
 		};
 		Callable<Boolean> claimAttempt = () -> {
 			startGate.await();
