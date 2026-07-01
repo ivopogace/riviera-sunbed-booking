@@ -61,6 +61,21 @@ Two **independent** blockers:
 2. **JDK 25** — the setup hook fetches **Temurin via `api.github.com` + GitHub release assets**,
    which hit the same repo-scope 403. `api.foojay.io`/Azul/OpenJDK are also blocked. **But
    `download.oracle.com` (Oracle JDK 25) is allowlisted and reachable** — the hook just doesn't use it.
+   The image does **not** ship JDK 25 (`/opt/jdk-25` is absent; `JAVA_HOME` = JDK 21); `/opt/jdk-25`
+   only exists when the hook's GitHub download succeeds.
+
+### Confirmed by a working session (decisive)
+
+A parallel session on this repo built fine with **no manual installs** — `./gradlew` self-provisioned
+Gradle 9.6.1 and `/opt/jdk-25` was present. The **only** difference is that session's **GitHub proxy
+was broadly scoped** (could read public repos), so the wrapper's github.com redirect and the hook's
+adoptium download both succeeded. Per the docs, "a cloud session can access any repository the
+connecting GitHub account can see" — a normally-connected session reads public repos like
+`gradle/gradle-distributions` and `adoptium/temurin25-binaries`; **this session is pinned to only the
+project repo, which is why both 403.** So the root cause is confirmed: **session GitHub scope**, not the
+domain allowlist, not a CA/TLS issue (proxy status is clean; failures are 403 authorization bodies).
+The working session's "JDK 25 is pre-installed in the image" was a misattribution — it was the hook's
+`/opt/jdk-25` install, which only succeeds under broad GitHub scope.
 
 ## Existing provisioning to build on (already in the repo)
 
