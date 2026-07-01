@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.infrastructure.out;
+package ai.riviera.platform.payment.adapter.out;
 
 import java.util.Locale;
 
@@ -23,9 +23,9 @@ import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
-import ai.riviera.platform.payment.application.out.NewPayment;
-import ai.riviera.platform.payment.application.out.Payments;
-import ai.riviera.platform.payment.application.out.PaymentGateway;
+import ai.riviera.platform.payment.application.NewPayment;
+import ai.riviera.platform.payment.application.Payments;
+import ai.riviera.platform.payment.application.PaymentGateway;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 
 /**

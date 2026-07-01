@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.infrastructure;
+package ai.riviera.platform.payment.adapter.out;
 
 import com.stripe.StripeClient;
 

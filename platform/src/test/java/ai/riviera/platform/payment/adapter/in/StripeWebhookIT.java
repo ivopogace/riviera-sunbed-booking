@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.infrastructure.in;
+package ai.riviera.platform.payment.adapter.in;
 
 import com.stripe.Stripe;
 import com.stripe.net.Webhook;
@@ -19,8 +19,8 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.PaymentCanceled;
 import ai.riviera.platform.payment.api.PaymentConfirmed;
-import ai.riviera.platform.payment.application.out.NewPayment;
-import ai.riviera.platform.payment.application.out.Payments;
+import ai.riviera.platform.payment.application.NewPayment;
+import ai.riviera.platform.payment.application.Payments;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;

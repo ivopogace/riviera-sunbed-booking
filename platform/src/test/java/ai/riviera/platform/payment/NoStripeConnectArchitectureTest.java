@@ -73,7 +73,7 @@ class NoStripeConnectArchitectureTest {
 	 */
 	@Test
 	void theCollectionPathIsPresent() throws IOException {
-		Path gateway = PAYMENT_CLASSES.resolve("infrastructure/out/StripePaymentGateway.class");
+		Path gateway = PAYMENT_CLASSES.resolve("adapter/out/StripePaymentGateway.class");
 		assertTrue(Files.exists(gateway), "StripePaymentGateway should be compiled");
 		String bytecode = new String(Files.readAllBytes(gateway), StandardCharsets.ISO_8859_1);
 		assertTrue(bytecode.contains("com/stripe/param/PaymentIntentCreateParams"),

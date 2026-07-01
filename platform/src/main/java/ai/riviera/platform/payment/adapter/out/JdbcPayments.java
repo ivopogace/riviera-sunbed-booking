@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.infrastructure.out;
+package ai.riviera.platform.payment.adapter.out;
 
 import java.util.Optional;
 
@@ -6,8 +6,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.application.out.NewPayment;
-import ai.riviera.platform.payment.application.out.Payments;
+import ai.riviera.platform.payment.application.NewPayment;
+import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 
 /**

@@ -1,4 +1,4 @@
-package ai.riviera.platform.payment.application.out;
+package ai.riviera.platform.payment.application;
 
 /**
  * The {@code payment} module's outbound port for Stripe webhook idempotency (invariant #8).

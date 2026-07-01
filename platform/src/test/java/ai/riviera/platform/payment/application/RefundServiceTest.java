@@ -7,7 +7,6 @@ import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentCancellation;
 import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.payment.api.RefundResult;
-import ai.riviera.platform.payment.application.out.PaymentGateway;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
