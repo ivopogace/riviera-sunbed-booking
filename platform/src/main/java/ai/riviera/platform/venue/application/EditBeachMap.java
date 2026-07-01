@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.application.in;
+package ai.riviera.platform.venue.application;
 
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.SetId;
@@ -7,7 +7,7 @@ import ai.riviera.platform.venue.api.VenueId;
 /**
  * Driving (inbound) port for editing a venue's beach-map layout (U7) — incremental per-set
  * CRUD. Internal to the {@code venue} module (REST-only caller), so it lives in
- * {@code application.in}, not {@code api/} (invariant #11). One purposeful conversation:
+ * {@code application}, not {@code api/} (invariant #11). One purposeful conversation:
  * place, re-place, and remove a set position; each method returns a typed outcome so the
  * adapter maps it to HTTP without exceptions for expected flows.
  *

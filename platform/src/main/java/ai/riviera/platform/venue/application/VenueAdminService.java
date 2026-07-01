@@ -10,14 +10,6 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.api.VenueRef;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.application.in.AddSetOutcome;
-import ai.riviera.platform.venue.application.in.ChangeOutcome;
-import ai.riviera.platform.venue.application.in.EditBeachMap;
-import ai.riviera.platform.venue.application.in.NewVenueCommand;
-import ai.riviera.platform.venue.application.in.OnboardVenue;
-import ai.riviera.platform.venue.application.in.SetCommand;
-import ai.riviera.platform.venue.application.in.SetRejection;
-import ai.riviera.platform.venue.application.out.Venues;
 
 /**
  * The venue write use cases (U7): onboard a venue and edit its beach-map layout. Package-private

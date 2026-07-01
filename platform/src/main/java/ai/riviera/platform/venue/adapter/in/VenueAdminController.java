@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.infrastructure.in;
+package ai.riviera.platform.venue.adapter.in;
 
 import java.net.URI;
 import java.util.Map;
@@ -20,11 +20,11 @@ import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.application.in.AddSetOutcome;
-import ai.riviera.platform.venue.application.in.ChangeOutcome;
-import ai.riviera.platform.venue.application.in.EditBeachMap;
-import ai.riviera.platform.venue.application.in.OnboardVenue;
-import ai.riviera.platform.venue.application.in.SetRejection;
+import ai.riviera.platform.venue.application.AddSetOutcome;
+import ai.riviera.platform.venue.application.ChangeOutcome;
+import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.SetRejection;
 
 /**
  * Operator write endpoints for venue onboarding + beach-map editing (U7, issue #7). Driving

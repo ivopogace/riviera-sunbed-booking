@@ -1,7 +1,7 @@
-package ai.riviera.platform.venue.infrastructure.in;
+package ai.riviera.platform.venue.adapter.in;
 
 import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.application.in.SetCommand;
+import ai.riviera.platform.venue.application.SetCommand;
 
 /**
  * The request body for placing/editing one set position ({@code POST}/{@code PATCH}

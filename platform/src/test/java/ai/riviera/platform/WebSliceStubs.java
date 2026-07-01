@@ -43,12 +43,12 @@ import ai.riviera.platform.venue.api.VenueFilter;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.api.VenueMapView;
 import ai.riviera.platform.venue.api.VenueSummaryView;
-import ai.riviera.platform.venue.application.in.AddSetOutcome;
-import ai.riviera.platform.venue.application.in.ChangeOutcome;
-import ai.riviera.platform.venue.application.in.EditBeachMap;
-import ai.riviera.platform.venue.application.in.OnboardVenue;
-import ai.riviera.platform.venue.application.in.SetCommand;
-import ai.riviera.platform.venue.application.in.SetRejection;
+import ai.riviera.platform.venue.application.AddSetOutcome;
+import ai.riviera.platform.venue.application.ChangeOutcome;
+import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.application.SetRejection;
 
 /**
  * Shared collaborators for {@code @WebMvcTest} slices that load the whole web layer (the CORS/security

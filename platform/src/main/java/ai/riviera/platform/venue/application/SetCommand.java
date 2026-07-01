@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.application.in;
+package ai.riviera.platform.venue.application;
 
 import java.util.Set;
 

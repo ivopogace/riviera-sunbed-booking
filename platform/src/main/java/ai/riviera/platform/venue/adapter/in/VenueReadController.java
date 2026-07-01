@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.infrastructure.in;
+package ai.riviera.platform.venue.adapter.in;
 
 import java.time.Clock;
 import java.time.LocalDate;

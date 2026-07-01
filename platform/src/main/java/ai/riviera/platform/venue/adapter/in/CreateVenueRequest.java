@@ -1,9 +1,9 @@
-package ai.riviera.platform.venue.infrastructure.in;
+package ai.riviera.platform.venue.adapter.in;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
-import ai.riviera.platform.venue.application.in.NewVenueCommand;
+import ai.riviera.platform.venue.application.NewVenueCommand;
 
 /**
  * The {@code POST /api/venues} request body (U7). A transport DTO of wire primitives;
