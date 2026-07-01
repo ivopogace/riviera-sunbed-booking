@@ -2,8 +2,10 @@
  * Customer bounded context — light tourist identity / guest-checkout contact.
  * Aggregate root: {@code Customer}.
  *
- * <p>Hexagonal layout (invariant #11): {@code api}, {@code application.in/out},
- * {@code domain}, {@code infrastructure.in/out}.
+ * <p>Thin-module layout (ADR-0007): the module has no application service — its
+ * {@code api} port is implemented directly by a JDBC adapter — so it takes the thin
+ * template: {@code api} + {@code adapter.out}, with no {@code application} and no
+ * {@code domain}.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Customer",
