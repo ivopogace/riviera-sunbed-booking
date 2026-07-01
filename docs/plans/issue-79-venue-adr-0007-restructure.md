@@ -44,17 +44,17 @@ dropped imports were redundant same-package ones). No `postgres` (no SQL/schema 
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the venue module in the ADR-0007 layout, when `ModularityTests` runs,
+- [x] **AC-1:** Given the venue module in the ADR-0007 layout, when `ModularityTests` runs,
   then `ApplicationModules.verify()` passes — specifically proving the `venue ↔ availability`
   inversion is intact (compile-time edge `availability → venue`, runtime call
   `venue → availability`, acyclic). *Pinned by:* `ModularityTests.verifiesModularStructure`.
-- [ ] **AC-2:** Given the moved JDBC repositories, when `JdbcOnlyArchitectureTests` runs,
+- [x] **AC-2:** Given the moved JDBC repositories, when `JdbcOnlyArchitectureTests` runs,
   then no JPA type is introduced. *Pinned by:* `JdbcOnlyArchitectureTests`.
-- [ ] **AC-3:** Given the moved controllers/adapters, when the `venue` suite runs, then all
+- [x] **AC-3:** Given the moved controllers/adapters, when the `venue` suite runs, then all
   venue tests are green, unchanged. *Pinned by:* `VenueAdminControllerIT`, `VenueReadControllerIT`,
   `VenueListControllerIT`, `SetBookingInfoIT`, `BeachMapLayoutMigrationIT`, `VenueSeedMigrationIT`,
   `VenueAdminServiceTest`.
-- [ ] **AC-4:** Given the final package tree, when inspected, then `api/` **and** `spi/` still
+- [x] **AC-4:** Given the final package tree, when inspected, then `api/` **and** `spi/` still
   exist top-level as `@NamedInterface` packages under `venue`; the final shape is
   `api/` + `spi/` + `application/` + `adapter/in` + `adapter/out` (no `domain/`); and
   `allowedDependencies` is unchanged on **both** `venue` (`{ operator::api }`) and
@@ -73,10 +73,10 @@ dropped imports were redundant same-package ones). No `postgres` (no SQL/schema 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The `venue ↔ availability` inversion breaks / cycles after the move | low | high | `spi/` + its `@NamedInterface` `package-info` deliberately **not** moved; `JdbcVenueCatalog` keeps its `venue.spi.SetAvailabilityLookup` import; AC-1 (`ModularityTests`) re-proves acyclicity | claude | pending |
-| R-2 | A stale import/package decl left behind → compile break | low | med | Post-move grep proves zero remaining `venue.application.in/out` / `venue.infrastructure` refs; full compile + tests green | claude | pending |
-| R-3 | An accidental edit to `allowedDependencies` on venue **or** availability | low | high | Explicit AC-4 check: `git diff` shows both deny-lists unchanged | claude | pending |
-| R-4 | Behavior drift hidden by the move | low | high | Pure rename only; three-test net + full venue IT suite green | claude | pending |
+| R-1 | The `venue ↔ availability` inversion breaks / cycles after the move | low | high | `spi/` + its `@NamedInterface` `package-info` deliberately **not** moved; `JdbcVenueCatalog` keeps its `venue.spi.SetAvailabilityLookup` import; AC-1 (`ModularityTests`) re-proves acyclicity | claude | resolved @ HEAD (`ModularityTests` green) |
+| R-2 | A stale import/package decl left behind → compile break | low | med | Post-move grep proves zero remaining `venue.application.in/out` / `venue.infrastructure` refs; full compile + tests green | claude | resolved @ HEAD (0 remaining refs; compile + tests green) |
+| R-3 | An accidental edit to `allowedDependencies` on venue **or** availability | low | high | Explicit AC-4 check: `git diff` shows both deny-lists unchanged | claude | resolved @ HEAD (`availability/package-info` not in diff; venue deny-list unchanged) |
+| R-4 | Behavior drift hidden by the move | low | high | Pure rename only; three-test net + full venue IT suite green | claude | resolved @ HEAD (zero non-package/import/javadoc content changes) |
 
 ## Open questions / Assumptions
 
@@ -145,9 +145,26 @@ moved package only; their `@RequestMapping` paths and request/response records a
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Move + import rewrite + safety-net verify |  | (this branch) |
+| 0 — Move + import rewrite + safety-net verify | ✅ | `a026df1` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+## Review-gate note (PR #89)
+
+Ran the SDLC review gate (`riviera-review-overlay` + `/code-review` on
+`origin/main...HEAD`). **No findings.** The content diff is exclusively package
+declarations, import statements, and javadoc — **zero** non-package/import/javadoc
+lines changed (verified by filtering the diff). Overlay items walked:
+
+- **RV-BE-12** (ADR-0007 package shape) ✅ — final shape `api/` + `spi/` + `application/`
+  + `adapter/{in,out}`; `api`/`spi` top-level `@NamedInterface`; adapter split by direction;
+  no lingering `infrastructure/`; top-level package set ⊆ `{api, spi, application, adapter}`.
+- **RV-BE-3b** (spi placement) ✅ — `SetAvailabilityLookup` stays in `venue.spi`, unmoved.
+- **RV-BE-3c / RV-BE-11** ✅ — no port/id/event added to `api`; no behavior moved between modules.
+- **RV-PROC-1** ✅ — *Skills consulted* (`riviera-modulith`, `riviera-java-conventions`)
+  matches the backend-only diff (no migration/FE/Stripe area touched).
+- Correctness (removed-behavior / cross-file) ✅ — dropped imports were redundant
+  same-package; no call-site breakage (full venue suite green).
 
 ---
 
