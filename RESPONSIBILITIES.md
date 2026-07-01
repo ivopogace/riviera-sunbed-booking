@@ -7,7 +7,7 @@ it owns and — more usefully — what it must **refuse to own**. When a boundar
 ambiguous in a plan or review, this is the tie-breaker.
 
 Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`, and
-`operator` (planned). Cross-module collaboration is **events for state changes,
+`operator`. Cross-module collaboration is **events for state changes,
 `api/` ports for queries** (invariant #11).
 
 ## Main Use Case — Book and manage one sunbed reservation (Instant Book)
@@ -37,7 +37,7 @@ Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`, an
    `BookingCancelled`, **`availability`** frees the set and **`payment`** refunds
    the amount `booking` decided.
 
-> **Variant — Request-to-Book** (per venue's booking mode; *not yet built*): between
+> **Variant — Request-to-Book** (per venue's booking mode; *not yet built — issue #98*): between
 > steps 2 and 3 the host accepts or declines; on accept, `payment` sends a payment
 > request rather than charging immediately. Same ownership boundaries apply.
 
@@ -157,7 +157,7 @@ refund reverses it.
 
 ---
 
-## `operator` *(planned — not yet shipped)*
+## `operator`
 **Job:** Own operator accounts and the **operator↔venue ownership mapping**. Answer
 one question for the rest of the system: *does this operator own this venue?*
 (invariant #13).
@@ -170,14 +170,12 @@ one question for the rest of the system: *does this operator own this venue?*
   **application service** performs it by asking me; I own the mapping and answer, I
   don't sit in everyone's request path
 - Bookings, payment, payout → their own modules
+- Encoding/verifying credentials → the **platform edge** (Spring Security
+  `UserDetailsService`); I own the account identity + ownership mapping and store an
+  opaque credential hash, never the login machinery (RV-BE-11)
 
----
-
-> **Status:** the `operator` module has shipped (#73) — per-venue ownership is enforced in each
-> venue-scoped application service (`assertOwns` → `403`), and authentication is **per-operator and
-> DB-backed** (#74): each operator has its own hashed credential, verified by a Spring Security
-> `UserDetailsService` at the edge (no shared password). The **login/credential machinery stays at
-> the platform edge**, not in this module — `operator` owns the account identity + ownership mapping
-> and stores an opaque credential hash, but never encodes/verifies it (RV-BE-11). See
-> `docs/runbooks/operator-credential-provisioning.md`. Remaining follow-up: fully retiring the
-> owns-all bootstrap operator (every operator strictly per-venue) + creator-owns-on-create.
+**Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
+application service; #74 per-operator DB-backed credentials — no shared password). See
+`docs/runbooks/operator-credential-provisioning.md`. Remaining follow-up: fully retiring
+the owns-all **bootstrap operator** (every operator strictly per-venue) +
+creator-owns-on-create.

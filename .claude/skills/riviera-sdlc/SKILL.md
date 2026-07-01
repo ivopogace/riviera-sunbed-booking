@@ -280,9 +280,15 @@ Merging is not the last step; the close-out is. Every item, every merge:
 4. **Plan doc final state:** execution-status table ✅ at HEAD, Open Questions empty or
    deferred with issue numbers (already required by `riviera-plan-doc` — verify, don't
    assume).
-5. **Subscription closed:** confirm the PR-activity subscription ended with the merge
+5. **Substrate-doc staleness check.** If the slice changed something `CLAUDE.md`,
+   `CONTEXT.md`, or `RESPONSIBILITIES.md` **states** — a module's shipped/planned status,
+   the package shape, a canonical value set (statuses, pools), an ownership rule — update
+   the doc in the same PR or immediately after the merge. The cautionary tale: epic #72
+   shipped ten slices and left all three docs describing the pre-epic world (invariant
+   #11's layout, "operator is planned") until a retro caught it.
+6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.
-6. **Notify** per *Staying in touch* (push; email only if a send-capable tool exists).
+7. **Notify** per *Staying in touch* (push; email only if a send-capable tool exists).
 
 ## Remote / cloud session addendum
 
