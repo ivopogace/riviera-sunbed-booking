@@ -29,7 +29,7 @@ the overlay merely because the CWD is the repo — without a parent review runni
 there is nothing for it to layer onto. If the user invokes the overlay explicitly,
 honor that.
 
-**In the `riviera-sdd` flow this is a duty, not just a passive trigger.** The SDD
+**In the `riviera-sdlc` flow this is a duty, not just a passive trigger.** The SDLC
 **Review gate** is mandatory: when a PR exists (or before a slice is called done), you
 must **start** a review yourself — `/code-review origin/main...HEAD` (or `/review <PR>`) —
 and load this overlay. Do not wait for the review to be "active" on its own, and do not
@@ -174,12 +174,12 @@ cleanly.
   because the design was likely anchored from first principles and the skill's corrections
   (PK type, seam depth, v22 API/a11y, collect-only model) were never applied. Fix: load
   the missing skill, re-vet that section, update the line. (Trigger-map authority: the
-  `riviera-sdd` Skill-routing gate.)
+  `riviera-sdlc` Skill-routing gate.)
   **Re-walk this on every re-review, including after review-fix commits.** Fixes change the diff,
   so a finding patched in a new area without its skill (a migration fix with no `postgres`, an
   Angular fix with no `angular-developer`/MCP, a frontend-flow fix with no `playwright-cli`)
   is caught here on the second pass — that is the
-  overlay's enforcement of the SDD rule that "review findings re-enter the loop at Implement."
+  overlay's enforcement of the SDLC rule that "review findings re-enter the loop at Implement."
 
 ## Hand-offs to other riviera skills
 
@@ -268,5 +268,5 @@ Frontend (run in `frontend/`):
   installed — the review surfaces this overlay layers onto; it never runs alone.
 - **`riviera-stripe-payments`, `riviera-plan-doc`, `codebase-design`** — hand-off
   targets.
-- **`riviera-sdd`** — the workflow orchestrator; it loads this overlay at the review
+- **`riviera-sdlc`** — the workflow orchestrator; it loads this overlay at the review
   gate. **`triage`** — manages the issue/PR lifecycle around the review.

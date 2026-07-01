@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.application.out;
+package ai.riviera.platform.payout.application;
 
 import java.util.List;
 import java.util.Optional;

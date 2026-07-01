@@ -1,5 +1,5 @@
 <!--
-Riviera SDD PR template. Fill what applies; mark the rest N/A — don't delete sections.
+Riviera SDLC PR template. Fill what applies; mark the rest N/A — don't delete sections.
 The invariant checklist mirrors the plan-doc self-review subset that the review gate
 checks. "Green CI" is necessary, not sufficient — the review gate must have run.
 -->
@@ -46,7 +46,7 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 
 - [ ] CI is green (build + tests + scans).
 - [ ] Tests run for real (Testcontainers ITs **not** skipped — `skipped=0`).
-- [ ] **SDD review gate run** (`riviera-review-overlay` + `/code-review` on the diff);
+- [ ] **SDLC review gate run** (`riviera-review-overlay` + `/code-review` on the diff);
   findings resolved or deferred with a follow-up issue.
 - [ ] **Skills consulted** line in the plan doc covers every area the diff touches
   (`postgres` for migrations, `codebase-design` for module seams, `angular-developer` +

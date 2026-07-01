@@ -13,7 +13,7 @@ behavior and should be chosen deliberately.
 
 - **Dependabot** is configured (`.github/dependabot.yml`) for Gradle (`/platform`), npm
   (`/frontend`), and github-actions, weekly. **There is no auto-merge workflow** — dep bumps
-  go through CI + the SDD review gate like any PR. Good: that is the recommended posture; do
+  go through CI + the SDLC review gate like any PR. Good: that is the recommended posture; do
   **not** add blind auto-merge for dependency PRs.
 - **`npm ci` runs with install scripts enabled** in `ci.yml`, `deploy.yml`,
   `scripts/web-setup.sh`, and `scripts/cloud-session-setup.sh`. A compromised frontend dep's

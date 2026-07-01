@@ -3,7 +3,7 @@
 > **For agentic workers:** implement with `implement` + `tdd` (installed). Steps use checkbox syntax.
 > **Status: PLANNED** — authored 2026-06-30 against current `main` (HEAD `8f5fcf1`) after the
 > Issue-intake grill gate. Issue **#56** (follow-up to the U6 review gate, #11).
-> Branch `claude/riviera-sdd-issue-56-2l4ziw`.
+> Branch `claude/riviera-sdlc-issue-56-2l4ziw`.
 
 **Goal:** Throttle the three public, unauthenticated booking endpoints (`GET /api/bookings/{code}`,
 `POST /api/bookings/{code}/cancel`, `POST /api/bookings`) with a configurable in-memory rate limiter
@@ -40,7 +40,7 @@ implementation, not domain vocabulary). `postgres` — **N/A**, no SQL/migration
 (this doc), `tdd` (red→green per behaviour). `angular-developer` / `playwright-cli` — **N/A**, no
 frontend change (the code stays in the path, so the merged FE is untouched).
 
-**Branch:** `claude/riviera-sdd-issue-56-2l4ziw` (exists, off `main` @ `8f5fcf1`).
+**Branch:** `claude/riviera-sdlc-issue-56-2l4ziw` (exists, off `main` @ `8f5fcf1`).
 
 ---
 
@@ -228,7 +228,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 ### Review-gate note (2026-06-30)
 
-Ran the SDD review gate: `/code-review origin/main...HEAD` (high effort, 8 finder angles) +
+Ran the SDLC review gate: `/code-review origin/main...HEAD` (high effort, 8 finder angles) +
 `riviera-review-overlay`. Full backend suite green at the gate (incl. `ModularityTests`,
 `JdbcOnlyArchitectureTests`). Highest-stakes overlay items: **RV-BE-1 availability** — N/A (no
 availability write path); **payment-confirmation (#8)** — N/A (no money moves); **booking-code #7** —

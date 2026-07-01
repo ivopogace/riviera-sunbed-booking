@@ -15,8 +15,8 @@ import ch.qos.logback.core.read.ListAppender;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
-import ai.riviera.platform.payout.application.in.PayoutReport;
+import ai.riviera.platform.payout.application.BatchStatusOutcome;
+import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;

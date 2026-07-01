@@ -134,7 +134,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - AC-6 ✅ `docs/agents/docker-testcontainers.md` present with the manual one-liner.
 - AC-7 ✅ no secrets in the diff (all proxy/CA values read from env at runtime).
 
-**SDD Review gate (riviera-review-overlay + /code-review on PR #40):**
+**SDLC Review gate (riviera-review-overlay + /code-review on PR #40):**
 - RV-BE-1 (availability), RV-CT-3/RV-BE-7 (payment), all RV-BE-*/RV-FE-* — **N/A**:
   no app/DB/module/FE/money code in the diff (scripts + docs only).
 - RV-PROC-1 (Skill-routing honored) — ✅: diff touches only the devops/session-setup

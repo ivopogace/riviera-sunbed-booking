@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.infrastructure.out;
+package ai.riviera.platform.payout.adapter.out;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.payout.application.out.PayoutBatches;
-import ai.riviera.platform.payout.application.out.VenuePeriodTotal;
+import ai.riviera.platform.payout.application.PayoutBatches;
+import ai.riviera.platform.payout.application.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;

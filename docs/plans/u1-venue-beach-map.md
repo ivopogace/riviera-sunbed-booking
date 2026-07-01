@@ -1,7 +1,7 @@
 # U1 — Venue + Beach-Map Read Model & Visual Map Implementation Plan
 
 > **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
-> routed via `riviera-sdd`. Backend phases pull `codebase-design` + `postgres`;
+> routed via `riviera-sdlc`. Backend phases pull `codebase-design` + `postgres`;
 > the frontend phase pulls `angular-developer` + the angular-cli MCP. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
@@ -32,12 +32,12 @@ in this system is the booking code, invariant #7, not the venue/set id).
 (§4.1, §8, §10) and **GitHub issue #4**. Design contract: `docs/design/u1-beach-map/`
 (on branch `claude/u1-issue-review-v2353h`).
 
-**Skills consulted at plan time:** `riviera-sdd` (routing), `riviera-plan-doc` (this
+**Skills consulted at plan time:** `riviera-sdlc` (routing), `riviera-plan-doc` (this
 template), **`postgres`** (table/index/PK design — informs Phase 0 DDL), **`codebase-design`**
 (module seams — informs the leaner `venue` layout below), **`angular-developer`** +
 **angular-cli MCP `get_best_practices`** (v22 FE standards + a11y — informs Phase 2).
 
-**Branch:** SDD convention is `feature/u1-venue-beach-map`. **This environment mandates
+**Branch:** SDLC convention is `feature/u1-venue-beach-map`. **This environment mandates
 work on `claude/general-conversation-ozsa32`**, so the plan doc and implementation land
 there; commits reference `#4`.
 
@@ -330,7 +330,7 @@ subset; document any deviation.
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit
 window as each phase's code.
 
-### SDD review gate (`riviera-review-overlay` + `/code-review`)
+### SDLC review gate (`riviera-review-overlay` + `/code-review`)
 
 Ran on PR #37 (3 finder angles + the riviera bank). Invariants all clean (#1, #2, #5,
 #6, #11, #12); FE↔BE contract matches; RV-PROC-1 (Skills consulted) passes. **4 real

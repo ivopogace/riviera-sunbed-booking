@@ -13,9 +13,9 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.payout.application.in.LedgerEntryView;
-import ai.riviera.platform.payout.application.in.VenueLedger;
-import ai.riviera.platform.payout.application.in.ViewPayoutLedger;
+import ai.riviera.platform.payout.application.LedgerEntryView;
+import ai.riviera.platform.payout.application.VenueLedger;
+import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.venue.api.VenueId;
 

@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.infrastructure.in;
+package ai.riviera.platform.payout.adapter.in;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.payout.application.in.ViewPayoutLedger;
+import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.venue.api.VenueId;
 
 /**

@@ -25,7 +25,7 @@ change (the existing `booking.created_at TIMESTAMPTZ` is the age column).
 **Source of intent:** GitHub issue **#51** (U4-followup); origin #8
 (`docs/plans/u4-stripe-payment-webhook.md`, D-3 / R-4). ADR-0002 (collect-only, no Connect).
 
-**Skills consulted:** `riviera-sdd` (Issue-intake grill + routing gate), `riviera-plan-doc` (this
+**Skills consulted:** `riviera-sdlc` (Issue-intake grill + routing gate), `riviera-plan-doc` (this
 doc), `riviera-modulith` (the cancel port goes in `payment.api`; the shared release + sweep are
 `booking.application`; the scheduler is a `booking.infrastructure.in` driving adapter; no new
 `allowedDependencies` — `booking` already has `payment::api`/`availability::api`, `payment` stays
@@ -247,7 +247,7 @@ and the property defaults.
 
 ---
 
-## Review note (SDD Review gate)
+## Review note (SDLC Review gate)
 
 Ran the Review gate (`riviera-review-overlay` + `/code-review` on `main...HEAD`, high effort,
 8 finder angles). The two headline overlay checks passed: **RV-BE-1** (availability release goes

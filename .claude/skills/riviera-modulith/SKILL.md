@@ -335,6 +335,6 @@ fix the **structure**, not the test. To debug the detected arrangement:
 - **`riviera-java-conventions`** — Java idioms behind the structure (records, sealed outcomes,
   package-private adapters, JdbcClient-vs-aggregate). **`codebase-design`** — whether a seam is real.
   **`postgres`** — the SQL/schema. **`riviera-stripe-payments`** — payment/payout module structure.
-- **`riviera-sdd`** — loads this at the Skill-routing gate for any backend create/modify;
+- **`riviera-sdlc`** — loads this at the Skill-routing gate for any backend create/modify;
   **`riviera-review-overlay`** — RV-BE checks boundaries on the diff; RV-PROC-1 checks this skill is
   in the plan's *Skills consulted* line when backend structure changed.

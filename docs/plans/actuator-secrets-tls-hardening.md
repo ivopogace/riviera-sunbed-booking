@@ -20,13 +20,13 @@ test only.
 
 **Source of intent:** GitHub issue **#75** (part of #72, item 03/10 — P0 launch blocker).
 
-**Skills consulted:** `riviera-sdd` (routing gate — backend config only, no module-structure
+**Skills consulted:** `riviera-sdlc` (routing gate — backend config only, no module-structure
 change so `riviera-modulith` not central per the issue), `riviera-plan-doc` (this plan),
 `riviera-java-conventions` (the IT: JUnit5 + Testcontainers, `@EnabledIfDockerAvailable`,
 plain asserts, no new libs), `riviera-review-overlay` (review gate). `postgres` — N/A (no
 schema change). `angular-developer`/`playwright-cli` — N/A (no frontend surface).
 
-**Branch:** `claude/riviera-sdd-75-6797zd` (exists).
+**Branch:** `claude/riviera-sdlc-75-6797zd` (exists).
 
 ---
 

@@ -1,6 +1,6 @@
 # Issue #44 — Beach map renders live per-`(set, date)` availability Implementation Plan
 
-> **For agentic workers:** implement with `implement` + `tdd`, routed via `riviera-sdd`.
+> **For agentic workers:** implement with `implement` + `tdd`, routed via `riviera-sdlc`.
 > Fullstack slice; phases pull `postgres` (V6 migration), `riviera-modulith` +
 > `riviera-java-conventions` + `codebase-design` (the read seam), `angular-developer` +
 > the angular-cli MCP (the map date control). Invariant numbers refer to `CLAUDE.md`.
@@ -65,7 +65,7 @@ index). `angular-developer` + angular-cli MCP (`get_best_practices`, v22: signal
 control, `input()` for the dialog date, `class`/`style` bindings, a11y for the date field, no
 `new Date()` in templates). `riviera-plan-doc` (this doc). `tdd` (red→green per phase).
 
-**Branch:** `claude/riviera-sdd-issue-44-molx4o` (harness-designated; checked out).
+**Branch:** `claude/riviera-sdlc-issue-44-molx4o` (harness-designated; checked out).
 
 ---
 
@@ -211,7 +211,7 @@ N/A — no money moves; read-only display change.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-## Review gate outcome (SDD)
+## Review gate outcome (SDLC)
 
 Ran `riviera-review-overlay` + `/code-review origin/main...HEAD` (high effort, 8 finder angles
 → verify). **No Blocker/Major findings; zero correctness bugs.** Gates verified PASS: RV-BE-1
@@ -260,7 +260,7 @@ clock — a theoretical midnight-boundary flake only.
   stubs → green.
 - **Phase 3 — frontend.** Update `venue-map.spec.ts` / `booking-dialog.spec.ts` for the date
   control + dialog date input (AC-4) → red → implement → green; extend a11y/contrast specs.
-- **Phase 4 — verify + review.** Full backend + frontend suites green; run the SDD review gate
+- **Phase 4 — verify + review.** Full backend + frontend suites green; run the SDLC review gate
   (`riviera-review-overlay` + `/code-review`) on the diff; resolve findings through the loop.
 
 ## Self-review checklist (before merge / PR)

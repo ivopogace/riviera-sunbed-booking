@@ -30,7 +30,7 @@ adapter only. (`postgres` skill therefore not triggered — no SQL/index/table w
 (`docs/plans/u4-followup-two-phase-create.md`, Review note — "Orphaned PaymentIntent on a
 created-but-read-timed-out PI", deferred to this follow-up). ADR-0002 (collect-only, no Connect).
 
-**Skills consulted:** `riviera-sdd` (Issue-intake grill — confirmed the gap in current code, that
+**Skills consulted:** `riviera-sdlc` (Issue-intake grill — confirmed the gap in current code, that
 the idempotency key is already deterministic, that no migration is needed, and that the recovery is
 gateway-level; + the routing gate), `riviera-plan-doc` (this doc), `riviera-stripe-payments`
 (idempotency-replay is the recovery mechanism; collect-only; webhook stays the source of truth — the
@@ -40,7 +40,7 @@ new module/`api`/`spi` port, no `allowedDependencies` change, no class moved), `
 (narrow `catch (ApiConnectionException)` — never a bare catch; package-private adapter unchanged; SLF4J
 code-only logging; no new types).
 
-**Branch:** `claude/riviera-sdd-issue-66-izkenl` (exists, checked out).
+**Branch:** `claude/riviera-sdlc-issue-66-izkenl` (exists, checked out).
 
 ---
 
@@ -216,7 +216,7 @@ single-call assertions. End with `./gradlew test --tests "*StripePaymentGatewayT
 - [x] **AC-4:** `failsWhenBothCreateAttemptsTimeOut` PASS — double timeout → `Failed`, nothing registered.
 - [x] **AC-5:** `./gradlew build` → BUILD SUCCESSFUL (incl. `ModularityTests` + `JdbcOnlyArchitectureTests` + all ITs).
 
-## Review note (SDD Review gate)
+## Review note (SDLC Review gate)
 
 Ran the Review gate (`riviera-review-overlay` + `/code-review` on `origin/main...HEAD`, high effort —
 3 correctness + Stripe-semantics + conventions/process finder angles → verify). **No findings

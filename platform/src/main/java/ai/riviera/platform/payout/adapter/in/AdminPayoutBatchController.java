@@ -1,4 +1,4 @@
-package ai.riviera.platform.payout.infrastructure.in;
+package ai.riviera.platform.payout.adapter.in;
 
 import java.util.List;
 import java.util.Map;
@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.payout.application.in.BatchStatusOutcome;
-import ai.riviera.platform.payout.application.in.PayoutReport;
+import ai.riviera.platform.payout.application.BatchStatusOutcome;
+import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PeriodKey;
 

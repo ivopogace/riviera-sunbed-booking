@@ -1,9 +1,9 @@
-package ai.riviera.platform.payout.infrastructure.in;
+package ai.riviera.platform.payout.adapter.in;
 
 import java.time.Instant;
 import java.util.List;
 
-import ai.riviera.platform.payout.application.in.VenueLedger;
+import ai.riviera.platform.payout.application.VenueLedger;
 
 /**
  * The HTTP response for the per-venue payout ledger (U9, issue #12): the venue id, currency, total net
