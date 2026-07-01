@@ -41,6 +41,11 @@ if [ ! -d "$FRONTEND_DIR/node_modules" ] && [ -f "$FRONTEND_DIR/package-lock.jso
 fi
 
 # ── 2. Backend JDK 25 (idempotent: skip when /opt/jdk-25 is already 25) ──
+# PRIMARY: Temurin via GitHub (works when the session's GitHub scope includes
+# adoptium/temurin25-binaries). FALLBACK (step 2b): Amazon Corretto via its own CDN
+# (corretto.aws) — used when the GitHub path is blocked by the session's repo-scope
+# proxy (403 "not enabled for this session"). Any JDK 25 satisfies build.gradle
+# (languageVersion=25, vendor=any).
 JDK_DIR=/opt/jdk-25
 if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
   echo "cloud-session-setup: installing Temurin JDK 25 (backend toolchain) ..." >&2
@@ -62,6 +67,25 @@ if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q
   else
     echo "cloud-session-setup: could not resolve a Temurin 25 asset URL" >&2
   fi
+fi
+
+# ── 2b. Fallback: if the GitHub-hosted Temurin install didn't land a JDK 25 (e.g. the
+#     session's GitHub scope blocks adoptium/temurin25-binaries with a 403 "not enabled
+#     for this session"), pull Amazon Corretto 25 from its own CDN. corretto.aws is subject
+#     only to the network allowlist, not the GitHub repo-scope proxy. Any JDK 25 satisfies
+#     build.gradle (languageVersion=25, vendor=any). Requires corretto.aws on the env
+#     network allowlist. See docs/agents/gradle-proxy-trust.md.
+if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
+  echo "cloud-session-setup: GitHub/Temurin JDK path unavailable; falling back to Amazon Corretto 25 (corretto.aws) ..." >&2
+  tmp=$(mktemp)
+  if curl -fsSL --retry 3 -o "$tmp" "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-linux-jdk.tar.gz"; then
+    rm -rf "$JDK_DIR" && mkdir -p "$JDK_DIR"
+    tar -xzf "$tmp" -C "$JDK_DIR" --strip-components=1
+    echo "cloud-session-setup: $("$JDK_DIR/bin/java" -version 2>&1 | grep -i version | head -1) installed (Corretto fallback)." >&2
+  else
+    echo "cloud-session-setup: Corretto fallback failed too — add 'corretto.aws' to the env network allowlist (backend ./gradlew build needs JDK 25)." >&2
+  fi
+  rm -f "$tmp"
 fi
 
 # Make JDK 25 the session default. Gradle auto-detects JDKs in /opt, but set
