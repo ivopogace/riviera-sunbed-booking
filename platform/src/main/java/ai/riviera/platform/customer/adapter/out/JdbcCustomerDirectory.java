@@ -1,4 +1,4 @@
-package ai.riviera.platform.customer.infrastructure.out;
+package ai.riviera.platform.customer.adapter.out;
 
 import java.util.Locale;
 
