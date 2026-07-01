@@ -62,10 +62,11 @@ standing in for `feature/responsibilities-fitness-functions` per the SDLC remote
 - [x] **AC-4 (Stripe red run):** Given a fixture class outside the fixture `payment` module
   importing the Stripe SDK, when the collector runs over the fixture import, then it reports
   that class. *Pinned by:* `ResponsibilitiesArchitectureTests.stripeOutsidePaymentFixtureIsRejected`.
-- [x] **AC-5 (id-based events):** Given every record in any `events` named interface, when a
-  non-static field's raw type is not (primitive | `java.*` | a `vocabulary`-surface type),
-  then the rule fails naming the record and field — in particular any type from a `domain`
-  package; on `main` it passes with all three checks seen (non-vacuous guard).
+- [x] **AC-5 (id-based events):** Given every record in any `events` named interface, when any
+  raw type involved in a non-static field's declared type (generics/arrays unwrapped) is not
+  (primitive | `java.*` | a `vocabulary`-surface type), then the rule fails naming the record
+  and field — in particular any type from a `domain` package, bare or wrapped in a container;
+  on `main` it passes (non-vacuous guard).
   *Pinned by:* `ResponsibilitiesArchitectureTests.eventRecordsCarryOnlyIdsAndValues` (+
   `eventSurfacesWereInspected`).
 - [x] **AC-6 (events red run):** Given a fixture event record carrying a fixture
@@ -185,7 +186,8 @@ N/A — no contract change.
 | 1 — Rule 1: availability sole-writer (bytecode scan + fixture red run) | ✅ | 21d28fc |
 | 2 — Rule 2: Stripe SDK only in `payment` (+ fixture red run) | ✅ | 21d28fc |
 | 3 — Rule 3: id-based event payloads (+ fixture red run) | ✅ | 21d28fc |
-| 4 — RESPONSIBILITIES.md cross-reference + necessary-not-sufficient statement | ✅ | (this commit) |
+| 4 — RESPONSIBILITIES.md cross-reference + necessary-not-sufficient statement | ✅ | 240e28d |
+| 5 — Review-gate fixes (precision + dedup: Stripe package boundary, whole-word table match, generics-unwrapped event rule, source-URI scan, shared bytecode()/assertNoViolations) | ✅ | 6b4161a |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -244,12 +246,13 @@ the non-vacuous guard → GREEN; (c) scoped run: `--tests "*ResponsibilitiesArch
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-01 | Phase 0 (importer dedup) | other `new ClassFileImporter` | `grep -rn "new ClassFileImporter" platform/src/test` | 5 sites in 4 classes | all migrated to the support class |
+| 2026-07-01 | Phase 5 (review fixes) | other ISO-8859-1 bytecode readers + `assertNoViolations` copies | `grep -rn "ISO_8859_1\|assertNoViolations" platform/src/test` | 2 readers, 3 assertion copies | all collapsed into `ArchitectureTestSupport.bytecode()` / `.assertNoViolations()` (incl. `NoStripeConnectArchitectureTest`) |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [x] AC-1..AC-7: `gradle … test --tests "*ResponsibilitiesArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*VenueApiRoleSplitTests*" --tests "*OperatorAuthPlacementTests*" --tests "*ModularityTests*"` → all green locally (JDK-25 toolchain recipe); verified at 21d28fc (structural net + ResponsibilitiesArchitectureTests, 9/9).
+- [x] AC-1..AC-7: `gradle … test --tests "*ResponsibilitiesArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*VenueApiRoleSplitTests*" --tests "*OperatorAuthPlacementTests*" --tests "*ModularityTests*"` → all green locally (JDK-25 toolchain recipe); verified at 21d28fc and re-verified after the review-fix round 6b4161a (structural net + ResponsibilitiesArchitectureTests, 9/9, skipped=0).
 - [x] AC-8: RESPONSIBILITIES.md section present; test-class javadoc states the split.
 - [ ] AC-9: full suite green in CI on the PR.
 
