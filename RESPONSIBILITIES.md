@@ -10,6 +10,11 @@ Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`, an
 `operator`. Cross-module collaboration is **events for state changes,
 `api/` ports for queries** (invariant #11).
 
+The **structural** subset of these boundaries is machine-enforced — see
+[Machine-checked vs review-checked](#machine-checked-vs-review-checked) at the end
+of this file for exactly which clauses the build verifies and which remain
+review-only.
+
 ## Main Use Case — Book and manage one sunbed reservation (Instant Book)
 
 1. A tourist browses venues and opens one; they see the beach map and which sets
@@ -179,3 +184,46 @@ application service; #74 per-operator DB-backed credentials — no shared passwo
 `docs/runbooks/operator-credential-provisioning.md`. Remaining follow-up: fully retiring
 the owns-all **bootstrap operator** (every operator strictly per-venue) +
 creator-owns-on-create.
+
+---
+
+## Machine-checked vs review-checked
+
+The boundaries above split into a **structural** half the build enforces as fitness
+functions, and a **semantic** half no import rule can see. **A green architecture-test
+run must never be read as "boundaries fully enforced"** — the tests are necessary, not
+sufficient.
+
+**Machine-checked** (fails the build; all under
+`platform/src/test/java/ai/riviera/platform/`):
+
+| Clause of this file | Fitness function |
+|---|---|
+| `availability` is the **only writer** (and direct reader) of `set_availability` — invariant #2 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
+| Only `payment` talks to Stripe — the SDK is unreachable elsewhere | `ResponsibilitiesArchitectureTests` (Stripe-reach rule) |
+| Events carry technical ids/values, never foreign aggregates — invariant #11 Need-To-Know | `ResponsibilitiesArchitectureTests` (id-based-events rule) |
+| `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
+| No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
+| The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
+| No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
+| No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
+
+Each rule is proven able to fail on every build, against deliberately-violating fixtures
+(`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking
+production code.
+
+**Review-checked only** (the semantic half — needs **no illegal import**, so it cannot
+be encoded; owned by the plan-time Module-ownership table, `riviera-plan-doc` §4a, and
+review item RV-BE-11):
+
+- A refund **policy** reimplemented inside `payment` (only `booking` decides
+  whether/how much to refund; `payment` executes).
+- Commission **math** inside `venue` (it stores the rate; only `payout` computes).
+- A booking-lifecycle decision creeping into `availability` (it holds state, not the
+  cutoff rule), or any other capability landing on a module's Not-My-Job list without
+  crossing a package boundary.
+
+Known scan limits (documented on the tests): the sole-writer rule keys on the contiguous
+table name in compiled constant pools — SQL assembled by string concatenation could evade
+it (the text-block-SQL idiom keeps names contiguous); the id-based-events rule checks raw
+component types (not generic type arguments).

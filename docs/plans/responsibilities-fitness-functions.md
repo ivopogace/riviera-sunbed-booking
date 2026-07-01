@@ -43,41 +43,41 @@ standing in for `feature/responsibilities-fitness-functions` per the SDLC remote
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (sole-writer):** Given the production classes, when any class outside
+- [x] **AC-1 (sole-writer):** Given the production classes, when any class outside
   `ai.riviera.platform.availability` references the `set_availability` table in its compiled
   bytecode, then the rule fails naming the class; on current `main` it passes and the
   scan is proven non-vacuous (availability's own writers DO contain the symbol).
   *Pinned by:* `ResponsibilitiesArchitectureTests.availabilityTableIsTouchedOnlyInsideTheAvailabilityModule`
   (+ non-vacuous guard `theAvailabilityModuleItselfWritesTheTable`).
-- [ ] **AC-2 (sole-writer red run):** Given the compiled fixture class outside the
+- [x] **AC-2 (sole-writer red run):** Given the compiled fixture class outside the
   availability "module" carrying `set_availability` SQL, when the same collector runs over
   the fixture tree, then it reports that class.
   *Pinned by:* `ResponsibilitiesArchitectureTests.outsideWriterFixtureIsRejected`.
-- [ ] **AC-3 (Stripe reach):** Given the production classes, when any class outside
+- [x] **AC-3 (Stripe reach):** Given the production classes, when any class outside
   `ai.riviera.platform.payment` depends on a `com.stripe..` type, then the rule fails; on
   `main` it passes, and a sanity check proves `payment` itself does depend on Stripe
   (non-vacuous). *Pinned by:*
   `ResponsibilitiesArchitectureTests.stripeSdkIsReachableOnlyInsideThePaymentModule` (+
   `thePaymentModuleItselfUsesStripe`).
-- [ ] **AC-4 (Stripe red run):** Given a fixture class outside the fixture `payment` module
+- [x] **AC-4 (Stripe red run):** Given a fixture class outside the fixture `payment` module
   importing the Stripe SDK, when the collector runs over the fixture import, then it reports
   that class. *Pinned by:* `ResponsibilitiesArchitectureTests.stripeOutsidePaymentFixtureIsRejected`.
-- [ ] **AC-5 (id-based events):** Given every record in any `events` named interface, when a
+- [x] **AC-5 (id-based events):** Given every record in any `events` named interface, when a
   non-static field's raw type is not (primitive | `java.*` | a `vocabulary`-surface type),
   then the rule fails naming the record and field — in particular any type from a `domain`
   package; on `main` it passes with all three checks seen (non-vacuous guard).
   *Pinned by:* `ResponsibilitiesArchitectureTests.eventRecordsCarryOnlyIdsAndValues` (+
   `eventSurfacesWereInspected`).
-- [ ] **AC-6 (events red run):** Given a fixture event record carrying a fixture
+- [x] **AC-6 (events red run):** Given a fixture event record carrying a fixture
   domain-aggregate component, when the collector runs over the fixtures, then it reports the
   record. *Pinned by:* `ResponsibilitiesArchitectureTests.aggregateCarryingEventFixtureIsRejected`.
-- [ ] **AC-7 (shared support):** Given the extraction of `ArchitectureTestSupport`, when
+- [x] **AC-7 (shared support):** Given the extraction of `ArchitectureTestSupport`, when
   `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
   `VenueApiRoleSplitTests`, `OperatorAuthPlacementTests` and the new class run, then they
   share ONE production `ClassFileImporter` scan and one copy of the module/surface package
   arithmetic, and all stay green. *Pinned by:* the five classes compiling against
   `ArchitectureTestSupport` + the structural-net run staying green.
-- [ ] **AC-8 (docs):** `RESPONSIBILITIES.md` cross-references the fitness tests and states
+- [x] **AC-8 (docs):** `RESPONSIBILITIES.md` cross-references the fitness tests and states
   the machine-checkable vs semantic (necessary-not-sufficient) split; the same statement
   heads the new test class's javadoc. *Verified by inspection at review.*
 - [ ] **AC-9:** No behavior change; full suite green in CI.
@@ -181,11 +181,11 @@ N/A — no contract change.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Extract `ArchitectureTestSupport`, refactor 4 existing arch-test classes | ✅ | (this commit) |
-| 1 — Rule 1: availability sole-writer (bytecode scan + fixture red run) | ✅ | (this commit) |
-| 2 — Rule 2: Stripe SDK only in `payment` (+ fixture red run) | ✅ | (this commit) |
-| 3 — Rule 3: id-based event payloads (+ fixture red run) | ✅ | (this commit) |
-| 4 — RESPONSIBILITIES.md cross-reference + necessary-not-sufficient statement | | |
+| 0 — Extract `ArchitectureTestSupport`, refactor 4 existing arch-test classes | ✅ | 3e78e27 |
+| 1 — Rule 1: availability sole-writer (bytecode scan + fixture red run) | ✅ | 21d28fc |
+| 2 — Rule 2: Stripe SDK only in `payment` (+ fixture red run) | ✅ | 21d28fc |
+| 3 — Rule 3: id-based event payloads (+ fixture red run) | ✅ | 21d28fc |
+| 4 — RESPONSIBILITIES.md cross-reference + necessary-not-sufficient statement | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -234,7 +234,7 @@ the non-vacuous guard → GREEN; (c) scoped run: `--tests "*ResponsibilitiesArch
 
 ## Phase 4 — docs
 
-- [ ] `RESPONSIBILITIES.md`: cross-reference table (which clause → which test) + the
+- [x] `RESPONSIBILITIES.md`: cross-reference table (which clause → which test) + the
   necessary-not-sufficient statement; commit.
 
 ---
@@ -249,21 +249,21 @@ the non-vacuous guard → GREEN; (c) scoped run: `--tests "*ResponsibilitiesArch
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1..AC-7: `gradle … test --tests "*ResponsibilitiesArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*VenueApiRoleSplitTests*" --tests "*OperatorAuthPlacementTests*" --tests "*ModularityTests*"` → all green locally (JDK-25 toolchain recipe); record the verifying commit here when run.
-- [ ] AC-8: RESPONSIBILITIES.md section present; test-class javadoc states the split.
+- [x] AC-1..AC-7: `gradle … test --tests "*ResponsibilitiesArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*VenueApiRoleSplitTests*" --tests "*OperatorAuthPlacementTests*" --tests "*ModularityTests*"` → all green locally (JDK-25 toolchain recipe); verified at 21d28fc (structural net + ResponsibilitiesArchitectureTests, 9/9).
+- [x] AC-8: RESPONSIBILITIES.md section present; test-class javadoc states the split.
 - [ ] AC-9: full suite green in CI on the PR.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test (AC-8 verified by inspection — docs).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — test-only slice.
-- [ ] **Availability** section filled — no write-path change; fitness function only (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*` imports; no event payload change (invariant #11).
-- [ ] **Payment/payout** N/A justified; no money movement (invariants #5, #8, #9, #10).
-- [ ] Timezone/booking-code/Flyway items untouched (invariants #6, #7, #12).
-- [ ] **Frontend** N/A — backend-test-only.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Every AC has an implementing task and a verifying test (AC-8 verified by inspection — docs).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — test-only slice.
+- [x] **Availability** section filled — no write-path change; fitness function only (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*` imports; no event payload change (invariant #11).
+- [x] **Payment/payout** N/A justified; no money movement (invariants #5, #8, #9, #10).
+- [x] Timezone/booking-code/Flyway items untouched (invariants #6, #7, #12).
+- [x] **Frontend** N/A — backend-test-only.
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
