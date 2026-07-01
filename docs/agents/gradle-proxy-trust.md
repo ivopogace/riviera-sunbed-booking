@@ -61,6 +61,9 @@ gradle --no-daemon --console=plain compileJava compileTestJava \
 # → BUILD SUCCESSFUL; the structural + JDBC-only rules run on JDK 25.
 ```
 
-The backend Testcontainers ITs are `@EnabledIfDockerAvailable` and **skip** locally
-(`dockerd` won't start here — see `docker-testcontainers.md`); CI runs the full IT suite.
-`compile*` + the structural test classes are the meaningful local check.
+The backend Testcontainers ITs are `@EnabledIfDockerAvailable`: in a cloud session a
+`dockerd` **is normally provided by the SessionStart hook** (see
+`docker-testcontainers.md`), so targeted ITs *can* run; without a daemon they skip
+cleanly. Either way, keep local runs **scoped** (the bare `test` task can OOM the
+sandbox — see `riviera-local-debug`); CI runs the full IT suite. `compile*` + the
+structural test classes are the minimum meaningful local check.

@@ -1,6 +1,6 @@
 ---
 name: riviera-local-debug
-description: How to build, test, and run riviera-sunbed-booking locally — especially in a Claude Code cloud session, where the Gradle wrapper cannot self-provision, the full backend test task can OOM-kill the container, and Docker-gated Testcontainers ITs skip by design. Load BEFORE the first ./gradlew, gradle, or npm invocation of a session, or when diagnosing a local build/test failure. It encodes the scoped-test discipline (smallest set that proves the change; CI owns the full suite) and points at the deeper runbooks (gradle-proxy-trust, docker-testcontainers).
+description: How to build, test, and run riviera-sunbed-booking locally — especially in a Claude Code cloud session, where the Gradle wrapper cannot self-provision, the full backend test task can OOM-kill the container, and Testcontainers ITs need the hook-provided dockerd (they skip cleanly without one). Load BEFORE the first ./gradlew, gradle, or npm invocation of a session, or when diagnosing a local build/test failure. It encodes the scoped-test discipline (smallest set that proves the change; CI owns the full suite) and points at the deeper runbooks (gradle-proxy-trust, docker-testcontainers).
 ---
 
 # Riviera local debug — build & test recipes
@@ -41,7 +41,7 @@ gradle --no-daemon --console=plain compileJava compileTestJava
 ### Scoped tests — the discipline (any environment)
 
 Run the **smallest set that proves the change**; never the bare `test` task in a cloud
-sandbox (OOM risk, and the Docker-gated ITs skip anyway so it proves less than it looks):
+sandbox (OOM risk — and broad IT sweeps are slow on the vfs storage driver):
 
 ```bash
 # the structural net (fast, context-free — run after any backend structure change)
@@ -53,12 +53,14 @@ gradle --no-daemon --console=plain test \
 gradle --no-daemon --console=plain test --tests "*<ClassName>*"
 ```
 
-- **CI owns the full suite** — including the Testcontainers ITs (`@EnabledIfDockerAvailable`
-  skips them locally; see `docs/agents/docker-testcontainers.md`). "Green locally" on
-  scoped classes + "green CI" on the PR is the complete verification, and the plan doc's
-  AC table should say which half proves what.
-- Local runs that need Docker ITs are the exception; don't fight the sandbox to get
-  `dockerd` running unless that runbook says the session type supports it.
+- **CI owns the full suite.** In a cloud session a `dockerd` is normally provided by the
+  SessionStart hook (`scripts/start-dockerd.sh`; see
+  `docs/agents/docker-testcontainers.md`), so a **targeted** IT class can run locally —
+  but run ITs scoped, one class at a time (vfs storage driver + container memory make
+  broad IT runs slow and OOM-prone). Without a daemon they skip cleanly
+  (`@EnabledIfDockerAvailable`). "Green locally" on scoped classes + "green CI" on the PR
+  is the complete verification, and the plan doc's AC table should say which half proves
+  what.
 
 ### Local machine (contributor laptop)
 
@@ -94,5 +96,5 @@ runbooks in `docs/runbooks/`.
 
 - `riviera-sdlc` — routes here at the first local build/test invocation of a session.
 - `docs/agents/gradle-proxy-trust.md` — proxy CA / wrapper-403 details (authoritative).
-- `docs/agents/docker-testcontainers.md` — why Docker ITs skip locally.
+- `docs/agents/docker-testcontainers.md` — how the session's dockerd is provided (and stopped safely).
 - `riviera-plan-doc` — the plan's per-phase test-scope rule defers to this skill's recipes.
