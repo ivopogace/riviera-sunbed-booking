@@ -95,6 +95,9 @@ RV-BE-12 ADR-0007 package shape — walked at the review gate).
   seed maps that username to the bootstrap operator. If a deployment overrides the username, #74
   aligns it. — *Owner:* agent · *Resolves by:* #74.
 
+_All phases green: full suite 298 tests, 0 failures (ModularityTests + JdbcOnlyArchitectureTests +
+OperatorOwnershipIT + CrossVenueDenialIT + all pre-existing). Awaiting CI + review + Sonar gates._
+
 ### Resolved
 - **Module-graph cycle** (venue↔operator): **one uniform `operator::api` port; operator defines its
   own `VenueRef`, no `venue::api` dependency** — maintainer decision at grill (2026-07-01).
@@ -178,7 +181,7 @@ authenticated operator does not own the venue. Existing 2xx/4xx shapes unchanged
 | 2 — Enforce in `booking` (daily view + weather refund) | ✅ | (enforcement commit) |
 | 3 — Enforce in `availability` (setId→venue) | ✅ | (enforcement commit) |
 | 4 — Enforce in `payout` (ledger read) | ✅ | (enforcement commit) |
-| 5 — `CrossVenueDenialIT` matrix + full regression | ⏳ | |
+| 5 — `CrossVenueDenialIT` matrix + full regression | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

@@ -12,10 +12,12 @@ import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.Scenario;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.BookingConfirmed;
 import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueId;
@@ -47,6 +49,16 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	VenueCatalog venues;
+
+	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
+	// and the root CurrentOperator edge resolver depends on operator::api's OperatorDirectory. In
+	// module isolation both are supplied as mocks so the payout context loads; the accrual listener
+	// under test uses neither.
+	@MockitoBean
+	VenueOwnership ownership;
+
+	@MockitoBean
+	CurrentOperator currentOperator;
 
 	@Autowired
 	JdbcClient jdbc;
