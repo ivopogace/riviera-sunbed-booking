@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;

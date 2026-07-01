@@ -2,8 +2,8 @@ package ai.riviera.platform.booking.application.cancel;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The facts a {@code CONFIRMED → CANCELLED} transition {@code RETURNING}s (U6) — built atomically

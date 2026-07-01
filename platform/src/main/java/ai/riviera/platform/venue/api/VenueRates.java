@@ -2,6 +2,8 @@ package ai.riviera.platform.venue.api;
 
 import java.util.OptionalInt;
 
+import ai.riviera.platform.venue.vocabulary.VenueId;
+
 /**
  * The {@code venue} module's published <strong>rate-configuration</strong> port
  * (invariant #11) — the per-venue basis-point rates, split out of {@code VenueCatalog} by

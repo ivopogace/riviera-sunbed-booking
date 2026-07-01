@@ -1,7 +1,7 @@
 package ai.riviera.platform.payout.domain;
 
 import ai.riviera.platform.booking.api.RefundReason;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * One payout-ledger entry — what the platform owes a venue for a booking (invariant #9). A value

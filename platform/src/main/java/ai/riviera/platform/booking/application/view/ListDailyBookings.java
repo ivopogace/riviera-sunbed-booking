@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The staff daily-bookings read (U8, issue #10) — the inbound port the booking module's operator

@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Set;
 
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The one live fact the static beach map lacks: which of a set of positions are <em>taken</em>

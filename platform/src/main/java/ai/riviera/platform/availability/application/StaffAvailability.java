@@ -3,7 +3,7 @@ package ai.riviera.platform.availability.application;
 import java.time.LocalDate;
 
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The staff tap-to-mark use case (U8, issue #10) — the second writer onto the

@@ -9,7 +9,7 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.api.VenueRef;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The staff daily-bookings use case (U8): list a venue's confirmed bookings for a day. A thin

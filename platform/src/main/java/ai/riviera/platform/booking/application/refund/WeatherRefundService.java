@@ -18,7 +18,7 @@ import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.api.VenueRef;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The admin weather-refund use case (U9, issue #12). In one transaction it loads every

@@ -1,8 +1,8 @@
 package ai.riviera.platform.venue.application;
 
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Driving (inbound) port for editing a venue's beach-map layout (U7) — incremental per-set

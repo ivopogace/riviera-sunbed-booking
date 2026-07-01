@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.refund;
 import java.time.LocalDate;
 
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The admin weather-refund use case (U9, issue #12) — the inbound port the operator-gated web adapter

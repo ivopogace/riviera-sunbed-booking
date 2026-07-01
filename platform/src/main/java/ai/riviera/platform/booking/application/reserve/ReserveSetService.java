@@ -14,7 +14,7 @@ import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.api.CustomerId;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**

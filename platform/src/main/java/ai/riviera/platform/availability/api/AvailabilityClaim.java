@@ -2,7 +2,7 @@ package ai.riviera.platform.availability.api;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The {@code availability} module's published command port (invariant #11) — the single

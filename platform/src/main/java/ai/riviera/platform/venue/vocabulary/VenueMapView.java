@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 import java.util.List;
 

@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The view-a-booking use case (U6): load the booking by code and assemble its display + the

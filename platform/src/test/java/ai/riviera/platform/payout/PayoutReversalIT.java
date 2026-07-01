@@ -19,8 +19,8 @@ import ai.riviera.platform.booking.api.BookingCancelled;
 import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

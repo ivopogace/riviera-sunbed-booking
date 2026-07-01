@@ -19,7 +19,7 @@ import ai.riviera.platform.booking.application.refund.RefundForWeather;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

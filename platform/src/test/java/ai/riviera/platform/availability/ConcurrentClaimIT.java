@@ -22,7 +22,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

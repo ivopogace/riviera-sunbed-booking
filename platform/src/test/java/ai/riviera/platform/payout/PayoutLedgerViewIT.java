@@ -17,7 +17,7 @@ import ai.riviera.platform.payout.application.LedgerEntryView;
 import ai.riviera.platform.payout.application.VenueLedger;
 import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.payout.domain.EntryType;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

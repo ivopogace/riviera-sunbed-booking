@@ -1,6 +1,6 @@
 package ai.riviera.platform.payout.domain;
 
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * A weekly BKT payout batch (U9, issue #12) — what the platform owes one venue for one settlement

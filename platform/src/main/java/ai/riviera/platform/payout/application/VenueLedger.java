@@ -2,7 +2,7 @@ package ai.riviera.platform.payout.application;
 
 import java.util.List;
 
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * A venue's payout ledger (U9, issue #12): its entries oldest-first (each carrying the running net

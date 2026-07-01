@@ -4,7 +4,7 @@ package ai.riviera.platform.operator.api;
  * The {@code operator} module's own reference to a venue (invariant #11 — a typed id at the seam,
  * not a raw {@code long}).
  *
- * <p><strong>Why not reuse {@code venue.api.VenueId}?</strong> One of the five venue-scoped
+ * <p><strong>Why not reuse {@code venue.vocabulary.VenueId}?</strong> One of the five venue-scoped
  * services that must ask the ownership question — {@code venue}'s own {@code VenueAdminService}
  * (beach-map edits) — lives inside the {@code venue} module. If {@code operator.api} depended on
  * {@code venue::api}, then {@code venue → operator} (to call {@link VenueOwnership}) plus

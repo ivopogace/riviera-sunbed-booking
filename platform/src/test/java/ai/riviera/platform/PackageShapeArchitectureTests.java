@@ -45,14 +45,23 @@ class PackageShapeArchitectureTests {
 
 	private static final String BASE = "ai.riviera.platform";
 
-	/** The top-level package set any module may use; a thin module uses the subset {@code {api, adapter}}. */
-	private static final Set<String> ALLOWED_TOP_LEVEL = Set.of("api", "spi", "application", "domain", "adapter");
+	/**
+	 * The top-level package set any module may use; a thin module uses the subset {@code {api, adapter}}.
+	 * {@code vocabulary} and {@code events} joined the set with issue #95 (improvement-plan B2): the
+	 * published surface is split by kind — {@code api} = ports only, {@code vocabulary} = published typed
+	 * ids / value types, {@code events} = published domain events — each its own top-level
+	 * {@code @NamedInterface}, following the {@code spi} precedent that published surfaces are top-level
+	 * siblings. Placement (which kind of type belongs in which surface) is enforced by
+	 * {@link PublishedSurfacePlacementArchitectureTests}.
+	 */
+	private static final Set<String> ALLOWED_TOP_LEVEL =
+			Set.of("api", "spi", "vocabulary", "events", "application", "domain", "adapter");
 
 	/** The immediate children the adapter layer may have — direction, never technology (ADR-0007 sub-decision 1). */
 	private static final Set<String> ALLOWED_ADAPTER_CHILDREN = Set.of("in", "out");
 
 	/** The {@code @NamedInterface} packages, which must appear only as a direct child of a module. */
-	private static final Set<String> NAMED_INTERFACE_PACKAGES = Set.of("api", "spi");
+	private static final Set<String> NAMED_INTERFACE_PACKAGES = Set.of("api", "spi", "vocabulary", "events");
 
 	private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
 			.withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)

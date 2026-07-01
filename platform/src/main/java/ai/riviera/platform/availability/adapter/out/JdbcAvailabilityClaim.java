@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**

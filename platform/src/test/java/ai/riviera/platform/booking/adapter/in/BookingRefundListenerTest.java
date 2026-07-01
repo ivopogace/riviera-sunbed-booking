@@ -12,8 +12,8 @@ import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.RefundPort;
 import ai.riviera.platform.payment.api.RefundResult;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

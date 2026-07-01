@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * A venue's set availability on a chosen day, as a count: {@code free} of {@code total} sets are

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * Operator write endpoints for staff tap-to-mark walk-ins (U8, issue #10) — the availability

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
 import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Admin endpoint for the weather refund (U9, issue #12): full refunds for a washed-out venue+date

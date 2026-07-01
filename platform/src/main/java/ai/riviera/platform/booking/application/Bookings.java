@@ -15,7 +15,7 @@ import java.util.OptionalLong;
 
 import ai.riviera.platform.booking.api.BookingId;
 import ai.riviera.platform.booking.application.view.DailyBooking;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The {@code booking} module's outbound persistence port (driven seam). Two narrow writes

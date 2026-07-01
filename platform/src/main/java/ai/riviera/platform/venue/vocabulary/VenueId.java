@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * Technical identifier of a {@code Venue}. A publishable id (invariant #11 — ids cross

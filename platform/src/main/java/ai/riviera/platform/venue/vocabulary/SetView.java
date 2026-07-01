@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * One set position on the read-only beach map. {@code tier} (PREMIUM/STANDARD),

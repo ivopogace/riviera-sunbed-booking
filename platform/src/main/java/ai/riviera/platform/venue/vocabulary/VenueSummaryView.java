@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * One venue as the tourist discovery list needs it (issue #61, design §4.1 steps 1–2). The

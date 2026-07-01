@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * The optional discovery filters a tourist narrows the venue list by (issue #61): an exact-match

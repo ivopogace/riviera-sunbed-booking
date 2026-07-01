@@ -13,7 +13,7 @@ import ai.riviera.platform.payment.api.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.api.Money;
 import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The Instant-Book use case (issue #6), now <strong>two-phase</strong> to keep the Stripe network

@@ -1,6 +1,6 @@
 package ai.riviera.platform.venue.application;
 
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Driving (inbound) port for onboarding a venue (U7). Internal to the {@code venue} module —

@@ -31,11 +31,11 @@ import ai.riviera.platform.customer.api.CustomerId;
 import ai.riviera.platform.customer.api.GuestContact;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.api.SetBookingInfo;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -162,13 +162,13 @@ class CreateBookingServiceTest {
 
 			@Override
 			public List<ai.riviera.platform.booking.application.view.DailyBooking> findConfirmedForVenueOn(
-					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+					ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 				return List.of();
 			}
 
 			@Override
 			public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findConfirmedForWeatherRefund(
-					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+					ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 				return List.of();
 			}
 
@@ -377,13 +377,13 @@ class CreateBookingServiceTest {
 
 		@Override
 		public List<ai.riviera.platform.booking.application.view.DailyBooking> findConfirmedForVenueOn(
-				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}
 
 		@Override
 		public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findConfirmedForWeatherRefund(
-				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}
 

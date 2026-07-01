@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking.adapter.in;
 
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
-import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * The {@code 200} response body for {@code POST /api/bookings/{code}/cancel} (U6) — the new status

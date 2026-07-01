@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * Money on the read API: integer minor units + ISO 4217 currency (invariant #5). Never a

@@ -1,4 +1,4 @@
-package ai.riviera.platform.venue.api;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * Technical identifier of a {@code SetPosition} — the bookable unit (2 loungers + umbrella)

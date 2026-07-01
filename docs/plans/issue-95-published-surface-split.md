@@ -223,8 +223,8 @@ N/A — no contract change (no endpoint, DTO, or wire shape changes).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc | ⏳ | |
-| 1 — Shape-rule widening + `venue` vocabulary split | | |
+| 0 — Plan doc | ✅ | ac2c3e2 |
+| 1 — Shape-rule widening + `venue` vocabulary split | ✅ | (this commit) |
 | 2 — `operator` vocabulary split | | |
 | 3 — `payment` vocabulary + events split | | |
 | 4 — `booking` events + vocabulary split (drop `booking.api`) + V10 registry migration | | |
