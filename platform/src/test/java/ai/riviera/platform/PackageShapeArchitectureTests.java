@@ -9,13 +9,14 @@ import org.junit.jupiter.api.Test;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
+import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
+import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
+import static ai.riviera.platform.ArchitectureTestSupport.moduleRelativeSegments;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Locks the <strong>ADR-0007 two-template package layout</strong> so the shape cannot regress —
@@ -47,8 +48,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PackageShapeArchitectureTests {
 
-	private static final String BASE = "ai.riviera.platform";
-
 	/**
 	 * The top-level package set any module may use; a thin module uses the subset
 	 * {@code {api, vocabulary, adapter}}.
@@ -68,9 +67,7 @@ class PackageShapeArchitectureTests {
 	/** The {@code @NamedInterface} packages, which must appear only as a direct child of a module. */
 	private static final Set<String> NAMED_INTERFACE_PACKAGES = Set.of("api", "spi", "vocabulary", "events");
 
-	private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-			.withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-			.importPackages(BASE);
+	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
 
 	/**
 	 * Assertion 1 — allowed top-level package set (ADR-0007). Each module's top-level packages (the
@@ -85,11 +82,11 @@ class PackageShapeArchitectureTests {
 		Set<String> modules = new TreeSet<>();
 
 		for (JavaClass type : PRODUCTION_CLASSES) {
-			String[] sub = moduleRelativeSegments(type);
+			String[] sub = moduleRelativeSegments(type, PRODUCTION_BASE);
 			if (sub == null) {
 				continue; // root-level platform config, not a module
 			}
-			modules.add(moduleOf(type));
+			modules.add(moduleOf(type, PRODUCTION_BASE));
 			if (sub.length == 0) {
 				continue; // the module root itself (e.g. package-info)
 			}
@@ -105,7 +102,7 @@ class PackageShapeArchitectureTests {
 		}
 
 		assertModulesWereInspected(modules);
-		assertNoViolations("allowed top-level package set", violations);
+		assertNoViolations("ADR-0007 package-shape violations (allowed top-level package set)", violations);
 	}
 
 	/**
@@ -121,11 +118,11 @@ class PackageShapeArchitectureTests {
 		Set<String> modules = new TreeSet<>();
 
 		for (JavaClass type : PRODUCTION_CLASSES) {
-			String[] sub = moduleRelativeSegments(type);
+			String[] sub = moduleRelativeSegments(type, PRODUCTION_BASE);
 			if (sub == null || sub.length == 0 || !"adapter".equals(sub[0])) {
 				continue;
 			}
-			modules.add(moduleOf(type));
+			modules.add(moduleOf(type, PRODUCTION_BASE));
 			if (sub.length < 2) {
 				violations.add(type.getName() + " sits directly in adapter/ — a driving/driven adapter "
 						+ "belongs in adapter/in or adapter/out (ADR-0007)");
@@ -138,7 +135,7 @@ class PackageShapeArchitectureTests {
 		}
 
 		assertModulesWereInspected(modules);
-		assertNoViolations("adapter direction split", violations);
+		assertNoViolations("ADR-0007 package-shape violations (adapter direction split)", violations);
 	}
 
 	/**
@@ -154,11 +151,11 @@ class PackageShapeArchitectureTests {
 		Set<String> modules = new TreeSet<>();
 
 		for (JavaClass type : PRODUCTION_CLASSES) {
-			String[] sub = moduleRelativeSegments(type);
+			String[] sub = moduleRelativeSegments(type, PRODUCTION_BASE);
 			if (sub == null) {
 				continue;
 			}
-			modules.add(moduleOf(type));
+			modules.add(moduleOf(type, PRODUCTION_BASE));
 			for (int i = 1; i < sub.length; i++) { // i == 0 is the legitimate top-level position
 				if (NAMED_INTERFACE_PACKAGES.contains(sub[i])) {
 					violations.add(type.getName() + " nests a '" + sub[i] + "' package below the module root — "
@@ -169,7 +166,7 @@ class PackageShapeArchitectureTests {
 		}
 
 		assertModulesWereInspected(modules);
-		assertNoViolations("api/spi are top-level", violations);
+		assertNoViolations("ADR-0007 package-shape violations (api/spi are top-level)", violations);
 	}
 
 	/**
@@ -180,46 +177,18 @@ class PackageShapeArchitectureTests {
 	@Test
 	void applicationAndDomainDoNotDependOnAdapters() {
 		ArchRule rule = noClasses()
-				.that().resideInAnyPackage(BASE + "..application..", BASE + "..domain..")
-				.should().dependOnClassesThat().resideInAnyPackage(BASE + "..adapter..")
+				.that().resideInAnyPackage(PRODUCTION_BASE + "..application..", PRODUCTION_BASE + "..domain..")
+				.should().dependOnClassesThat().resideInAnyPackage(PRODUCTION_BASE + "..adapter..")
 				.because("the hexagon runs adapter -> application/domain, never back: the inside "
 						+ "(application + domain) must not depend on the outside (adapter.*) (ADR-0007).");
 		rule.check(PRODUCTION_CLASSES);
 	}
 
-	/**
-	 * The module-relative package segments of a production type — the part after
-	 * {@code ai.riviera.platform.<module>}. Returns {@code null} for a root-level platform class (package
-	 * == {@code ai.riviera.platform}), which is app-wide config, not a module. An empty array means the
-	 * class sits in the module root package itself.
-	 */
-	private static String[] moduleRelativeSegments(JavaClass type) {
-		String pkg = type.getPackageName();
-		if (!pkg.startsWith(BASE + ".")) {
-			return null; // the root package (== BASE) or anything outside it
-		}
-		String[] all = pkg.substring(BASE.length() + 1).split("\\.");
-		String[] sub = new String[all.length - 1];
-		System.arraycopy(all, 1, sub, 0, sub.length);
-		return sub;
-	}
-
-	private static String moduleOf(JavaClass type) {
-		String pkg = type.getPackageName();
-		String rest = pkg.substring(BASE.length() + 1);
-		int dot = rest.indexOf('.');
-		return dot < 0 ? rest : rest.substring(0, dot);
-	}
-
 	/** Guards against a vacuously-green rule: prove the import actually saw the modules. */
 	private static void assertModulesWereInspected(Set<String> modules) {
 		assertFalse(modules.isEmpty(),
-				"No modules found under " + BASE + " — the rule would be vacuously green; "
+				"No modules found under " + PRODUCTION_BASE + " — the rule would be vacuously green; "
 						+ "check the ClassFileImporter package/import options.");
 	}
 
-	private static void assertNoViolations(String ruleName, List<String> violations) {
-		assertTrue(violations.isEmpty(),
-				"ADR-0007 package-shape violations (" + ruleName + "):\n  " + String.join("\n  ", violations));
-	}
 }

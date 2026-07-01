@@ -2,10 +2,7 @@ package ai.riviera.platform;
 
 import org.junit.jupiter.api.Test;
 
-import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-
+import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_CLASSES;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -22,10 +19,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * fails here — while legitimate evolution of the tourist reads stays free.
  */
 class VenueApiRoleSplitTests {
-
-	private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-			.withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-			.importPackages("ai.riviera.platform");
 
 	@Test
 	void venueCatalogIsConsumedOnlyInsideTheVenueModule() {

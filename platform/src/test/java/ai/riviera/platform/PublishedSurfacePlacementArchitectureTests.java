@@ -10,9 +10,11 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 
+import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
+import static ai.riviera.platform.ArchitectureTestSupport.isPackageInfo;
+import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
+import static ai.riviera.platform.ArchitectureTestSupport.surfaceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -51,45 +53,42 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PublishedSurfacePlacementArchitectureTests {
 
-	private static final String PRODUCTION_BASE = "ai.riviera.platform";
+	private static final String PRODUCTION_BASE = ArchitectureTestSupport.PRODUCTION_BASE;
 	private static final String FIXTURE_BASE = "ai.riviera.placementfixture";
 
 	private static final Set<String> PORT_SURFACES = Set.of("api", "spi");
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
 
-	private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-			.withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-			.importPackages(PRODUCTION_BASE);
+	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
 
-	/** The fixtures are test classes, so this importer deliberately includes test code. */
-	private static final JavaClasses FIXTURE_CLASSES = new ClassFileImporter()
-			.importPackages(FIXTURE_BASE);
+	/** The fixtures are test classes, so this import deliberately includes test code. */
+	private static final JavaClasses FIXTURE_CLASSES = ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE);
 
 	// ---- the production gates -------------------------------------------------------------
 
 	@Test
 	void portsSurfacesHoldOnlyNonSealedInterfaces() {
 		List<String> violations = portsSurfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("ports surfaces (api/spi) hold only non-sealed interfaces", violations);
+		assertNoViolations("Published-surface placement violations (ports surfaces (api/spi) hold only non-sealed interfaces)", violations);
 	}
 
 	@Test
 	void eventsSurfacesHoldOnlyRecords() {
 		List<String> violations = eventsSurfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("events surfaces hold only records", violations);
+		assertNoViolations("Published-surface placement violations (events surfaces hold only records)", violations);
 	}
 
 	@Test
 	void vocabularySurfacesHoldNoPorts() {
 		List<String> violations = vocabularySurfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("vocabulary surfaces hold no ports", violations);
+		assertNoViolations("Published-surface placement violations (vocabulary surfaces hold no ports)", violations);
 	}
 
 	@Test
 	void crossModuleListenedEventsResideInEventsSurfaces() {
 		List<String> violations = listenerPlacementViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
-		assertNoViolations("cross-module listened events reside in events surfaces", violations);
+		assertNoViolations("Published-surface placement violations (cross-module listened events reside in events surfaces)", violations);
 	}
 
 	/** Guards against a vacuously-green rule: the import must actually see all three surface kinds. */
@@ -228,38 +227,4 @@ class PublishedSurfacePlacementArchitectureTests {
 		return violations;
 	}
 
-	// ---- package arithmetic ----------------------------------------------------------------
-
-	/** The module segment (first below {@code base}) of a type, or {@code null} if outside/at root. */
-	private static String moduleOf(JavaClass type, String base) {
-		String[] segments = segmentsBelow(type, base);
-		return segments == null || segments.length == 0 ? null : segments[0];
-	}
-
-	/**
-	 * The surface segment (second below {@code base}) of a type, or {@code ""} for a type at the
-	 * module root / outside {@code base} (empty, not null, so {@code Set.of(...).contains} is safe).
-	 */
-	private static String surfaceOf(JavaClass type, String base) {
-		String[] segments = segmentsBelow(type, base);
-		return segments == null || segments.length < 2 ? "" : segments[1];
-	}
-
-	private static String[] segmentsBelow(JavaClass type, String base) {
-		String pkg = type.getPackageName();
-		if (!pkg.startsWith(base + ".")) {
-			return null;
-		}
-		return pkg.substring(base.length() + 1).split("\\.");
-	}
-
-	private static boolean isPackageInfo(JavaClass type) {
-		return "package-info".equals(type.getSimpleName());
-	}
-
-	private static void assertNoViolations(String ruleName, List<String> violations) {
-		assertTrue(violations.isEmpty(),
-				"Published-surface placement violations (" + ruleName + "):\n  "
-						+ String.join("\n  ", violations));
-	}
 }
