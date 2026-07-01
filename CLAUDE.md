@@ -43,11 +43,11 @@ layout in invariant #11.
 | `customer` | light tourist identity / guest-checkout contact | `Customer` |
 | `operator` | operator accounts and the operator↔venue ownership mapping (per-venue authorization, invariant #13) | `Operator` |
 
-> **`operator` is planned, not yet shipped.** Invariant #13 is canonical now, but the
-> module and the per-venue ownership check are an open build item (multi-operator launch
-> blocker). Until it lands, authorization is a single shared `OPERATOR` role with no
-> ownership check — a known gap, not the target. See `riviera-modulith` for the module
-> design.
+> **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed
+> credentials): every venue-scoped application service checks `assertOwns` → `403`
+> (pinned by `CrossVenueDenialIT`), and each operator authenticates with its own hashed
+> credential. Remaining follow-up: retire the owns-all **bootstrap operator** and add
+> creator-owns-on-create. See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The spine flow: `BookingConfirmed` → `availability`
@@ -102,17 +102,22 @@ The skills reference them by number.
     exception → **manual admin-triggered** full refund (v1, no forecast
     automation). Refund decisions and amounts are computed on the server, then
     actioned via Stripe.
-11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout:
-    `ai.riviera.platform.<module>.{api, spi, application.in, application.out, domain,
-    infrastructure.in, infrastructure.out}`. Cross-module access is via the other
-    module's `api/` port **or** a domain event — never by importing its
-    `application.*`/`infrastructure.*`/`domain.*`. **`api/` holds inbound ports other
-    modules *call*; a cross-module *driven* port — one a module needs *another* module to
-    *implement* (dependency inversion, used to keep the graph acyclic) — lives in a
-    separate `spi/` named interface, and `<module>::spi` is granted only to the
-    implementing module** (a driven port implemented by the module's own infrastructure
-    stays internal in `application.out`). Event payloads carry **technical ids**
+11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout is the
+    **ADR-0007 graduated two-template shape**: a full module is
+    `ai.riviera.platform.<module>.{api?, spi?, application, domain, adapter/in,
+    adapter/out}` (`api`/`spi` top-level, present only if the module publishes/owns one);
+    a thin (serviceless) module is `{api, adapter/out}` only. There is **no**
+    `application/in`|`out` split and **no** `infrastructure/*` — direction lives at the
+    adapter layer, and the shape is machine-locked by `PackageShapeArchitectureTests`.
+    Cross-module access is via the other module's `api/` port **or** a domain event —
+    never by importing its `application.*`/`adapter.*`/`domain.*`. **`api/` holds inbound
+    ports other modules *call*; a cross-module *driven* port — one a module needs
+    *another* module to *implement* (dependency inversion, used to keep the graph
+    acyclic) — lives in a separate `spi/` named interface, and `<module>::spi` is granted
+    only to the implementing module** (a driven port implemented by the module's own
+    adapters stays internal in `application/`). Event payloads carry **technical ids**
     (`BookingId`, `SetId`, `VenueId`), not mutable business fields or foreign aggregates.
+    Details: `docs/adr/ADR-0007-package-structure.md` + `riviera-modulith`.
 12. **Schema changes go through Flyway.** Versioned forward migrations under
     `src/main/resources/db/migration`. No hand-run DDL, no ORM schema generation
     (there's no ORM). Every constraint that enforces an invariant (especially #2)
@@ -132,18 +137,16 @@ The skills reference them by number.
     #11). Platform-wide admin surfaces (`/api/admin/**`) are role-gated and exempt.
     Reviewed by `riviera-review-overlay` RV-BE-9.
 
-## Provisional decisions (confirm at scaffolding)
+## Provisional decisions
 
-These are sensible defaults chosen so work can proceed; revisit when the repo is
-scaffolded. Each is a one-line change if reconsidered.
+Still open (each a one-line change if reconsidered):
 
-- **Base package:** **decided — `ai.riviera.platform`** (groupId `ai.riviera`,
-  artifactId `platform`), set via Spring Initializr. No longer provisional.
 - **Venue payout currency:** EUR vs ALL, set per venue and converted outside the
   app at BKT payout time. (The **collection** currency is not provisional — it is
   EUR, fixed by invariant #5.)
-- **Migration tool:** Flyway (vs Liquibase). Flyway chosen for plain-SQL fit with
-  the JDBC-only stack.
+
+Resolved, no longer provisional: base package `ai.riviera.platform` (shipped);
+Flyway over Liquibase (shipped — the plain-SQL migrations under `db/migration`).
 
 ## Project skills (`.claude/skills/`)
 
@@ -197,8 +200,11 @@ These are repo-scoped — they load when working in this repository.
   mocked-a11y vs local-only real-backend) and which suite a spec belongs in — live in the
   review overlay's `RV-FE-E2E` item, not in a separate skill.
 
-A `riviera-local-debug` skill (how to run the stack locally) is **deliberately
-deferred** until the apps are scaffolded — there is nothing to run yet.
+- **`riviera-local-debug`** — the **build/test run recipes**: the cloud-session Gradle
+  setup (system Gradle + JDK-25 toolchain; the wrapper cannot self-provision behind the
+  repo-scoped proxy), the scoped-test discipline (never the bare `test` task in a cloud
+  sandbox — it can OOM; CI owns the full suite), and the frontend commands. Load before
+  the first `./gradlew`/`npm` invocation of a session.
 
 ## Agent skills (SDLC workflow)
 
@@ -207,7 +213,8 @@ orchestrator — load it when starting or continuing feature work; it routes eac
 stage (refine → issue → plan → implement → CI → review → merge) to the right skill.
 
 - **Issue tracker / triage labels / domain-doc layout:** see `docs/agents/`.
-- **Domain glossary:** `CONTEXT.md`. **Decisions:** `docs/adr/`.
+- **Domain glossary:** `CONTEXT.md`. **Decisions:** `docs/adr/`. **Roadmap:**
+  `docs/architecture/improvement-plan.md` (tracked by epic #93).
 - **Vendored craft skills** (Matt Pocock, MIT — `grilling`/`grill-me`, `to-issues`,
   `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
   `triage`, `improve-codebase-architecture`) provide the generic engine; the

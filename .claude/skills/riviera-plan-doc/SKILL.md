@@ -175,9 +175,10 @@ When executing a riviera plan, also do:
 
 5. **Scope test runs to the smallest set that proves the change.** One test class
    for the red/green step; the touched module's package for the per-phase
-   regression; the full suite only at pre-merge. (When the local stack exists, a
-   `riviera-local-debug` skill will hold the exact run recipes; until then, prefer
-   `./gradlew test --tests "*ClassName*"`.)
+   regression; the full suite at pre-merge **via CI, not the local sandbox** — the
+   exact run recipes (cloud-session Gradle setup, the structural-net class list, the
+   never-run-bare-`test`-locally rule) live in `riviera-local-debug`; load it before
+   the session's first build/test invocation.
 
 6. **Re-run the Skill-routing gate when a phase enters a new area.** If a phase that
    the plan called backend-only turns out to add a migration, load `postgres` then —

@@ -36,6 +36,10 @@ cd platform && ./gradlew cleanTest test --tests "ai.riviera.platform.venue.*"
 # → the venue ITs run, 0 skipped, green (proves the daemon is reachable)
 ```
 
+> In a **repo-scoped** session `./gradlew` cannot download its distribution — use the
+> system-Gradle recipe from `riviera-local-debug` / `gradle-proxy-trust.md` with the
+> same `--tests` scope instead.
+
 ## Why it's set up this way (gotchas)
 
 - **Storage driver `vfs`.** The sandbox can't use `overlay2` (no overlay/privileged

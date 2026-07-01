@@ -35,7 +35,7 @@ behavior and should be chosen deliberately.
   injection **before** adding it, and record provenance + license (as the `postgres` skill's
   `LICENSE` and metadata do).
 - No secrets in the repo or in build artifacts; secrets come from env / the platform secret
-  store (invariant #8). Bytecode/config is readable (see `gradle-proxy-trust.md` neighbours and
+  store (the #75 actuator/secrets/TLS hardening posture). Bytecode/config is readable (see `gradle-proxy-trust.md` neighbours and
   the AI-reverse-engineering reality) — a committed secret is a leaked secret.
 
 ## Decisions for a human (behavior changes — choose deliberately)

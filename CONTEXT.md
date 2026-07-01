@@ -30,6 +30,10 @@ model in `docs/architecture/domain-model.md`.
   beach map renders. Keyed by `(set, date)`.
 - **Booking** — a tourist's reservation of a specific set for a specific date, with
   a status, a price paid, a booking code, and a cancellation deadline.
+- **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
+  by the `booking.status` CHECK constraint — keep enum and SQL in lockstep):
+  `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`. Request-to-Book
+  adds `PENDING_REQUEST` and `DECLINED` when it lands (#98) — they do **not** exist yet.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
 - **Cutoff** — the moment online bookings for a day close (default 18:00 the
   evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.
@@ -67,5 +71,7 @@ model in `docs/architecture/domain-model.md`.
   this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
   availability, weather refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
-- **Bootstrap operator** — the interim single account the shared login resolves to, flagged
-  *owns-all-venues* until per-operator credentials land. A launch bridge, not the target.
+- **Bootstrap operator** — the interim account flagged *owns-all-venues*. Per-operator
+  DB-backed credentials have landed (#74), so it is no longer a shared login — it remains
+  only as the owns-all bridge until every operator is strictly per-venue. A launch
+  bridge, not the target.

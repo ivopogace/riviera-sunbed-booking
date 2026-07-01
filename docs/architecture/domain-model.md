@@ -5,11 +5,13 @@
 > `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` and the
 > invariants in `/CLAUDE.md` (referenced below as "invariant #N").
 >
-> Implementation has begun: U1 (venue/beach-map), U2 (availability claim), and U3
-> (create-booking Instant, payment stubbed) are built; the **event spine** below
-> (`PaymentSucceeded → BookingConfirmed → availability + payout`) is the U4/U5
-> target and is **not yet wired** — U3 claims availability synchronously (see §4).
-> For as-built status per slice, see `docs/plans/`.
+> Implementation status: the **Instant-Book path is built end-to-end** (U1–U9 + the
+> launch-safe epic #72) — real Stripe with signature-verified webhooks, the event spine
+> (`PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/`BookingCancelled`
+> → `payout`) wired through the Modulith Event Publication Registry, the payout ledger,
+> and the `operator` module with per-venue authorization (invariant #13).
+> **Request-to-Book is NOT built** (issue #98) — parts below marked *target* show it
+> ahead of the code. For as-built status per slice, see `docs/plans/`.
 >
 > All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub.
 
@@ -17,7 +19,7 @@
 
 ## 1. Bounded context map
 
-The six Spring-Modulith modules and how they collaborate. **Solid arrows = domain
+The seven Spring-Modulith modules and how they collaborate. **Solid arrows = domain
 events** (state changes). **Dotted arrows = `api/` port queries** (reads). Modules
 never import each other's internals — only `api/` ports or events (invariant #11).
 
@@ -43,24 +45,33 @@ graph TB
         LEDG["PayoutLedgerEntry<br/>«aggregate root»"]
         BATCH["PayoutBatch<br/>«aggregate root»"]
     end
+    subgraph operator["operator — per-venue authorization (#13)"]
+        OP["Operator<br/>«aggregate root»"]
+    end
 
-    PAY -- "PaymentSucceeded" --> BOOK
-    BOOK -- "BookingConfirmed" --> AVAIL
+    PAY -- "PaymentConfirmed / PaymentCanceled" --> BOOK
     BOOK -- "BookingConfirmed" --> LEDG
-    BOOK -- "BookingCancelled" --> AVAIL
-    BOOK -- "BookingCancelled" --> PAY
-    PAY -- "PaymentRefunded" --> LEDG
+    BOOK -- "BookingCancelled (proportional reversal)" --> LEDG
 
-    BOOK -. "pricing, pool, mode, cutoff" .-> VEN
-    BOOK -. "set position" .-> MAP
+    BOOK -. "claim / release (set, date)" .-> AVAIL
+    BOOK -. "refund (RefundPort)" .-> PAY
+    BOOK -. "set facts (SetBookingFacts), rates (VenueRates)" .-> VEN
     BOOK -. "guest contact" .-> CUST
-    AVAIL -. "render map state" .-> MAP
+    AVAIL -. "pool check (SetBookingFacts)" .-> VEN
+    LEDG -. "commission rate (VenueRates)" .-> VEN
+    VEN -. "assertOwns(operator, venue)" .-> OP
+    BOOK -. "assertOwns" .-> OP
+    AVAIL -. "assertOwns" .-> OP
+    LEDG -. "assertOwns" .-> OP
     LEDG --> BATCH
 ```
 
-**The spine** (invariant #2, #9): `PaymentSucceeded → BookingConfirmed →`
-availability marks the set taken **and** payout accrues a ledger entry. On
-`BookingCancelled →` availability frees the set **and** payment refunds per policy.
+**The spine** (invariants #2, #8, #9): the `(set, date)` claim is taken
+**synchronously at reserve time**, before any money moves (invariant #2 lives in the
+claim, not an event). The verified webhook drives `PaymentConfirmed → booking
+CONFIRMED → BookingConfirmed → payout` accrues. On cancellation, `booking` releases
+the claim via the availability port, and `BookingCancelled` drives both the refund
+(executed through `payment`'s `RefundPort`) and the proportional ledger `REVERSAL`.
 
 ---
 
@@ -249,6 +260,12 @@ classDiagram
 > `BookingCode` is an unguessable bearer credential — ≥ 8 random base32 chars,
 > never sequential, treated as a secret in logs (invariant #7). `cancellationDeadline`
 > is the evening-before cutoff, computed in `Europe/Tirane`, stored UTC (invariant #4, #6).
+>
+> **Built vs target:** the shipped enum + `booking.status` CHECK (V5) hold exactly
+> `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`.
+> `PENDING_REQUEST`, `DECLINED` (and any expiry state) are the **Request-to-Book
+> target (#98)** — not in the enum or schema yet; an abandoned `AWAITING_PAYMENT`
+> booking is swept to `CANCELLED` today, there is no `EXPIRED`.
 
 ### 3.4 `payment`
 
@@ -277,6 +294,7 @@ classDiagram
         REQUIRES_PAYMENT
         SUCCEEDED
         FAILED
+        CANCELED
         REFUNDED
         PARTIALLY_REFUNDED
     }
@@ -385,19 +403,21 @@ sequenceDiagram
         S-->>FE: client secret
         T->>S: confirm card / wallet
         S-->>P: webhook payment_intent.succeeded (signed)
-        P-->>B: PaymentSucceeded
+        P-->>B: PaymentConfirmed
         B->>B: status = CONFIRMED, issue booking code
-        B-->>A: BookingConfirmed → state = BOOKED_ONLINE
-        B-->>L: BookingConfirmed → accrue ledger entry
+        B-->>L: BookingConfirmed → accrue ledger entry (idempotent)
         B-->>FE: confirmation + code + email
     end
 ```
 
-> **As-built (U3):** the implemented flow claims availability **synchronously** via
-> the `AvailabilityClaim` port *before* payment, and the payment gateway is stubbed —
-> there are no domain events yet. The `PaymentSucceeded`/`BookingConfirmed` events and
-> the payout-ledger fan-out shown above are the **U4/U5 target** (held→confirmed on a
-> verified webhook; payout accrual via an event listener), not the current code.
+> **As-built (U4/U5, shipped):** the claim is synchronous at reserve time and the row
+> is written as `BOOKED_ONLINE` immediately — the reserve transaction **commits before
+> the Stripe call**, so no row lock spans the network round-trip. `PaymentConfirmed`
+> (webhook-driven) moves the booking to `CONFIRMED`; `PaymentCanceled` moves it to
+> `CANCELLED` and releases the claim. Payout accrues on `BookingConfirmed` via the
+> Event Publication Registry (at-least-once, idempotent `ON CONFLICT` accrual). An
+> abandoned `AWAITING_PAYMENT` booking is swept after a TTL — PaymentIntent cancelled
+> first, claim released only on the authoritative `Canceled` outcome.
 
 ---
 
@@ -419,11 +439,12 @@ sequenceDiagram
     else after cutoff
         B->>B: CANCELLED — non-refundable / partial
     end
-    B-->>A: BookingCancelled → state = FREE
-    B-->>P: BookingCancelled (refund amount computed server-side)
-    P->>S: create Refund (idempotency key)
+    B->>A: release claim → state = FREE
+    B-->>B: BookingCancelled (refund amount computed server-side)
+    B->>P: execute refund via RefundPort (idempotency key)
+    P->>S: create Refund
     S-->>P: webhook refund updated (signed)
-    P-->>L: PaymentRefunded → REVERSAL entry
+    B-->>L: BookingCancelled → proportional REVERSAL entry
 ```
 
 > Refund amounts are computed **server-side** then actioned via Stripe (invariant
@@ -453,14 +474,19 @@ stateDiagram-v2
     NO_SHOW --> [*]
 ```
 
+> **Built vs target:** today only the Instant path exists — `[*] → AWAITING_PAYMENT`,
+> and an abandoned payment ends in `CANCELLED` (no `EXPIRED` state). The
+> `PENDING_REQUEST` / `DECLINED` legs (and the request-expiry release) are the
+> Request-to-Book target, tracked by #98.
+
 ### 6.2 Set availability per (set, date)
 
 ```mermaid
 stateDiagram-v2
     [*] --> FREE
-    FREE --> BOOKED_ONLINE: BookingConfirmed (ONLINE-pool set only)
+    FREE --> BOOKED_ONLINE: atomic claim at reserve (ONLINE-pool set only)
     FREE --> STAFF_MARKED: staff tap-to-mark walk-in
-    BOOKED_ONLINE --> FREE: BookingCancelled
+    BOOKED_ONLINE --> FREE: cancellation / abandoned-payment release
     STAFF_MARKED --> FREE: staff un-mark
 ```
 
