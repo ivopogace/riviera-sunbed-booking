@@ -1,4 +1,4 @@
-package ai.riviera.platform.availability.infrastructure.in;
+package ai.riviera.platform.availability.adapter.in;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.CurrentOperator;
-import ai.riviera.platform.availability.application.in.StaffAvailability;
+import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.SetId;
 

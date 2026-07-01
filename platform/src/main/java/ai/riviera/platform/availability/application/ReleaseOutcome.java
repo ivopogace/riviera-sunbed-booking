@@ -1,4 +1,4 @@
-package ai.riviera.platform.availability.application.in;
+package ai.riviera.platform.availability.application;
 
 /**
  * The result of a staff {@link StaffAvailability#release release}. The REST adapter maps
