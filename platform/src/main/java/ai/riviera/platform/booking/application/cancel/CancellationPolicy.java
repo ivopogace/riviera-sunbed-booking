@@ -5,7 +5,8 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.domain.RefundPolicy;
 import ai.riviera.platform.venue.api.SetBookingInfo;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.SetBookingFacts;
+import ai.riviera.platform.venue.api.VenueRates;
 
 /**
  * The one place the server-side cancellation refund is computed (invariant #10) — shared by the view
@@ -20,11 +21,13 @@ import ai.riviera.platform.venue.api.VenueCatalog;
 @Component
 public class CancellationPolicy {
 
-	private final VenueCatalog venueCatalog;
+	private final SetBookingFacts setFacts;
+	private final VenueRates rates;
 	private final BookingCutoff cutoff;
 
-	CancellationPolicy(VenueCatalog venueCatalog, BookingCutoff cutoff) {
-		this.venueCatalog = venueCatalog;
+	CancellationPolicy(SetBookingFacts setFacts, VenueRates rates, BookingCutoff cutoff) {
+		this.setFacts = setFacts;
+		this.rates = rates;
 		this.cutoff = cutoff;
 	}
 
@@ -34,10 +37,10 @@ public class CancellationPolicy {
 	 * to a missing set is a real invariant breach, not an expected flow).
 	 */
 	public RefundQuote quote(BookingRecord booking) {
-		SetBookingInfo set = venueCatalog.setBookingInfo(booking.setId()).orElseThrow(() ->
+		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
 				new IllegalStateException("no set info for set " + booking.setId().value()));
 		boolean beforeCutoff = cutoff.freeCancellationOpen(set.bookingCutoff(), booking.bookingDate());
-		int lateBps = beforeCutoff ? 0 : venueCatalog.lateCancelRefundBps(booking.venueId()).orElse(0);
+		int lateBps = beforeCutoff ? 0 : rates.lateCancelRefundBps(booking.venueId()).orElse(0);
 		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), beforeCutoff, lateBps);
 		return new RefundQuote(set, beforeCutoff, refundMinor);
 	}

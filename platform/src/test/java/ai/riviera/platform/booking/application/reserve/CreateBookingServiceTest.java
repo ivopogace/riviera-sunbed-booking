@@ -34,9 +34,8 @@ import ai.riviera.platform.payment.api.PaymentOutcome;
 import ai.riviera.platform.venue.api.MoneyView;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.api.VenueMapView;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -73,7 +72,7 @@ class CreateBookingServiceTest {
 
 	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
 			CheckoutPort checkout, BookingCodeGenerator codes) {
-		VenueCatalog catalog = new FakeCatalog(info);
+		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = contact -> new CustomerId(99);
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
 				codes, new BookingCutoff(CLOCK));
@@ -179,7 +178,7 @@ class CreateBookingServiceTest {
 				return List.of();
 			}
 		};
-		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
+		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
 				customers, collidingOnce, () -> codes.removeFirst(), new BookingCutoff(CLOCK));
@@ -251,7 +250,7 @@ class CreateBookingServiceTest {
 				return false;
 			}
 		};
-		VenueCatalog catalog = new FakeCatalog(set("ONLINE"));
+		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(7);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
 				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK));
@@ -422,19 +421,8 @@ class CreateBookingServiceTest {
 		}
 	}
 
-	/** VenueCatalog fake returning a configured set (or empty for "no such set"). */
-	private record FakeCatalog(SetBookingInfo info) implements VenueCatalog {
-		@Override
-		public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
-			return Optional.empty();
-		}
-
-		@Override
-		public java.util.List<ai.riviera.platform.venue.api.VenueSummaryView> listVenues(
-				ai.riviera.platform.venue.api.VenueFilter filter, LocalDate date) {
-			return java.util.List.of();
-		}
-
+	/** SetBookingFacts fake returning a configured set (or empty for "no such set"). */
+	private record FakeCatalog(SetBookingInfo info) implements SetBookingFacts {
 		@Override
 		public Optional<String> poolOf(SetId setId) {
 			return Optional.ofNullable(info).map(SetBookingInfo::pool);
@@ -443,16 +431,6 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 			return Optional.ofNullable(info);
-		}
-
-		@Override
-		public java.util.OptionalInt commissionBps(VenueId id) {
-			return java.util.OptionalInt.empty();
-		}
-
-		@Override
-		public java.util.OptionalInt lateCancelRefundBps(VenueId id) {
-			return java.util.OptionalInt.empty();
 		}
 	}
 }

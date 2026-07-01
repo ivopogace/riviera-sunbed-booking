@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.AvailabilitySummary;
 import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.SetView;
@@ -21,17 +22,20 @@ import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueFilter;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.api.VenueMapView;
+import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.api.VenueSummaryView;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
- * JDBC adapter implementing {@link VenueCatalog} directly (no intervening application
- * service / out-port — a single adapter is a hypothetical seam, not a real one). Explicit
- * SQL via {@link JdbcClient}, no JPA (invariant #1): one query loads the venue, a second
+ * JDBC adapter implementing the three role-split {@code venue::api} read ports —
+ * {@link VenueCatalog}, {@link SetBookingFacts}, {@link VenueRates} — directly (no
+ * intervening application service / out-port — a single adapter is a hypothetical seam,
+ * not a real one). One bean, three narrow surfaces (issue #94). Explicit SQL via
+ * {@link JdbcClient}, no JPA (invariant #1): one query loads the venue, a second
  * loads its sets ordered for rendering, and from-price is the minimum set price.
  */
 @Repository
-class JdbcVenueCatalog implements VenueCatalog {
+class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	private static final String AVAILABILITY_FREE = "FREE";
 	private static final String AVAILABILITY_TAKEN = "TAKEN";

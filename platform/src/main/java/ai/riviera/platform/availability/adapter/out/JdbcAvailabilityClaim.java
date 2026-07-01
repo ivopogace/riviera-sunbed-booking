@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.api.ClaimOutcome;
 import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
  * JDBC adapter implementing {@link AvailabilityClaim} directly (no intervening application
@@ -19,7 +19,7 @@ import ai.riviera.platform.venue.api.VenueCatalog;
  *
  * <p>The claim is two steps in one transaction:
  * <ol>
- *   <li>look up the set's pool through {@link VenueCatalog} (venue's {@code api/} port, not
+ *   <li>look up the set's pool through {@link SetBookingFacts} (venue's {@code api/} port, not
  *       its tables — invariant #11). Pool is immutable layout data, so check-then-claim has
  *       no meaningful race.</li>
  *   <li>an atomic {@code INSERT ... ON CONFLICT (set_id, booking_date) DO NOTHING} against
@@ -36,17 +36,17 @@ class JdbcAvailabilityClaim implements AvailabilityClaim {
 	private static final String ONLINE_POOL = "ONLINE";
 
 	private final JdbcClient jdbc;
-	private final VenueCatalog venueCatalog;
+	private final SetBookingFacts setFacts;
 
-	JdbcAvailabilityClaim(JdbcClient jdbc, VenueCatalog venueCatalog) {
+	JdbcAvailabilityClaim(JdbcClient jdbc, SetBookingFacts setFacts) {
 		this.jdbc = jdbc;
-		this.venueCatalog = venueCatalog;
+		this.setFacts = setFacts;
 	}
 
 	@Override
 	@Transactional
 	public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
-		Optional<String> pool = venueCatalog.poolOf(setId);
+		Optional<String> pool = setFacts.poolOf(setId);
 		if (pool.isEmpty()) {
 			return ClaimOutcome.NO_SUCH_SET;
 		}

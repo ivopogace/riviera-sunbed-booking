@@ -11,7 +11,7 @@ import java.time.LocalTime;
  * confirmation summary (venue name + set label).
  *
  * <p>{@code pool} is the same string token the database CHECK stores ({@code "ONLINE"} /
- * {@code "WALK_IN"}). Returned via {@link VenueCatalog#setBookingInfo} so booking never
+ * {@code "WALK_IN"}). Returned via {@link SetBookingFacts#setBookingInfo} so booking never
  * reads venue's tables (invariant #11).
  */
 public record SetBookingInfo(SetId setId, VenueId venueId, String venueName, String rowLabel,

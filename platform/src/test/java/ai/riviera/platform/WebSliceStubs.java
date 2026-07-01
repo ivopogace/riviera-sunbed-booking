@@ -38,7 +38,9 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.adapter.out.StripeProperties;
 import ai.riviera.platform.venue.api.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.api.VenueFilter;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.api.VenueMapView;
@@ -177,7 +179,12 @@ class WebSliceStubs {
 			public List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date) {
 				return List.of();
 			}
+		};
+	}
 
+	@Bean
+	SetBookingFacts setBookingFacts() {
+		return new SetBookingFacts() {
 			@Override
 			public Optional<String> poolOf(SetId setId) {
 				return Optional.empty();
@@ -187,7 +194,12 @@ class WebSliceStubs {
 			public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 				return Optional.empty();
 			}
+		};
+	}
 
+	@Bean
+	VenueRates venueRates() {
+		return new VenueRates() {
 			@Override
 			public OptionalInt commissionBps(VenueId id) {
 				return OptionalInt.empty();

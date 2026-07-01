@@ -15,7 +15,7 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.api.CustomerId;
 import ai.riviera.platform.venue.api.SetBookingInfo;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
  * The committed <em>reserve</em> phase of Instant-Book (issue #52): validate the set (online pool,
@@ -41,17 +41,17 @@ class ReserveSetService {
 	private static final String ONLINE_POOL = "ONLINE";
 	private static final int MAX_CODE_ATTEMPTS = 5;
 
-	private final VenueCatalog venueCatalog;
+	private final SetBookingFacts setFacts;
 	private final AvailabilityClaim availability;
 	private final CustomerDirectory customers;
 	private final Bookings bookings;
 	private final BookingCodeGenerator codeGenerator;
 	private final BookingCutoff cutoff;
 
-	ReserveSetService(VenueCatalog venueCatalog, AvailabilityClaim availability,
+	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability,
 			CustomerDirectory customers, Bookings bookings, BookingCodeGenerator codeGenerator,
 			BookingCutoff cutoff) {
-		this.venueCatalog = venueCatalog;
+		this.setFacts = setFacts;
 		this.availability = availability;
 		this.customers = customers;
 		this.bookings = bookings;
@@ -66,7 +66,7 @@ class ReserveSetService {
 	 */
 	@Transactional
 	ReserveOutcome reserve(CreateBookingCommand command) {
-		Optional<SetBookingInfo> found = venueCatalog.setBookingInfo(command.setId());
+		Optional<SetBookingInfo> found = setFacts.setBookingInfo(command.setId());
 		if (found.isEmpty()) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}

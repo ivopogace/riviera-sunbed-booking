@@ -21,7 +21,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.api.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
  * The {@code payout} module in <strong>isolation</strong> (issue #9) — the Spring Modulith
  * {@code @ApplicationModuleTest} counterpart to the full-stack {@code PayoutAccrualIT} /
  * {@code PayoutSpineScenarioIT}. Only {@code payout} (and its infrastructure) is bootstrapped; its
- * sole cross-module collaborator, {@code venue::api}'s {@link VenueCatalog}, is supplied as a
+ * sole cross-module collaborator, {@code venue::api}'s {@link VenueRates}, is supplied as a
  * {@code @MockitoBean} rather than the real adapter, so the test pins "given a
  * {@link BookingConfirmed}, the listener accrues correctly" without dragging in the {@code booking}
  * create flow. {@code @ApplicationModuleTest} enables the {@link Scenario} DSL implicitly — no
@@ -50,7 +50,7 @@ class PayoutModuleTest {
 	private static final Duration WAIT = Duration.ofSeconds(15);
 
 	@MockitoBean
-	VenueCatalog venues;
+	VenueRates venues;
 
 	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
 	// and the root edge (SecurityConfig + its beans) depends on operator::api too — CurrentOperator on
