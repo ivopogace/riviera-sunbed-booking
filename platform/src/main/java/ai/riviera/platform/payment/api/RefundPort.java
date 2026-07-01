@@ -1,5 +1,9 @@
 package ai.riviera.platform.payment.api;
 
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
+
 /**
  * The {@code payment} module's <strong>inbound</strong> published port for issuing a refund (U6) —
  * the seam the {@code booking} module calls when it cancels a booking. Distinct from

@@ -5,7 +5,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.operator.api.OperatorDirectory;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 /**
  * Edge glue that resolves the authenticated principal to its {@link OperatorId} (issue #73). This

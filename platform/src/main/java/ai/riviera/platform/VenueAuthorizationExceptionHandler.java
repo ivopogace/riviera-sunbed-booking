@@ -6,7 +6,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import ai.riviera.platform.operator.api.NotVenueOwnerException;
+import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 
 /**
  * Maps a failed per-venue authorization check (invariant #13) to {@code 403} for every venue-scoped

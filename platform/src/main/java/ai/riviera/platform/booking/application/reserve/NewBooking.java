@@ -2,9 +2,9 @@ package ai.riviera.platform.booking.application.reserve;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.customer.api.CustomerId;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The data needed to persist a brand-new booking row in {@code AWAITING_PAYMENT}. Cross-

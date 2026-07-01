@@ -2,7 +2,7 @@ package ai.riviera.platform.payment.application;
 
 import java.util.Optional;
 
-import ai.riviera.platform.payment.api.BookingRef;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 
 /**

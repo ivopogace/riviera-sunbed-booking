@@ -9,11 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
-import ai.riviera.platform.payment.api.BookingRef;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
-import ai.riviera.platform.payment.api.PaymentCancellation;
+import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
  * Expires abandoned {@code AWAITING_PAYMENT} bookings past their TTL and frees their sets (issue

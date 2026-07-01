@@ -4,7 +4,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.domain.RefundPolicy;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;
 

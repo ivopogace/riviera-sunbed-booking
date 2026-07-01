@@ -13,12 +13,12 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.api.BookingConfirmed;
+import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
-import ai.riviera.platform.customer.api.GuestContact;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;

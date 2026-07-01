@@ -2,10 +2,10 @@ package ai.riviera.platform.payment.application;
 
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.payment.api.BookingRef;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.Money;
-import ai.riviera.platform.payment.api.PaymentOutcome;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 
 /**
  * Implements the inbound {@link CheckoutPort} by delegating to the outbound

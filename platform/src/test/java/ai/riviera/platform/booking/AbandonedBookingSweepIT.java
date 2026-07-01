@@ -21,11 +21,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.availability.api.ClaimOutcome;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

@@ -1,6 +1,6 @@
 package ai.riviera.platform.payment.application;
 
-import ai.riviera.platform.payment.api.BookingRef;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 
 /**
  * The data needed to persist a brand-new {@code payment} row in {@code REQUIRES_PAYMENT}: the

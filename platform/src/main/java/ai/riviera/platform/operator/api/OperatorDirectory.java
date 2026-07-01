@@ -2,6 +2,8 @@ package ai.riviera.platform.operator.api;
 
 import java.util.Optional;
 
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+
 /**
  * Resolves an authenticated principal to its {@link OperatorId} (invariant #11 — a pure mapping
  * query owned by {@code operator}; it does <em>not</em> read the Spring Security context — that is

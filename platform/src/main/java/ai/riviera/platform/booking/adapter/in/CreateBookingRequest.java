@@ -4,8 +4,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
-import ai.riviera.platform.customer.api.GuestContact;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The {@code POST /api/bookings} request body. A transport DTO using primitives/strings on

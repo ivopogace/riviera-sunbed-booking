@@ -46,27 +46,29 @@ definition of "correct structure," not intuition.** It already runs as
    `references/persistence-jdbc.md`). `JdbcOnlyArchitectureTests` enforces this.
 2. **Cross-module references are by typed id, never by object** (invariant #11). A `Booking` holds a
    `SetId`/`VenueId`/`CustomerId`, not a `Set`/`Customer`. Same for event payloads. The typed ids
-   live in the owning module's `api/` (e.g. `venue.api.SetId`, `customer.api.CustomerId`).
+   live in the owning module's `vocabulary/` (e.g. `venue.vocabulary.SetId`,
+   `customer.vocabulary.CustomerId` — issue #95).
 3. **Cross-module collaboration goes through the other module's `api/` port OR a domain event —
    never a reach into its `application.*` / `adapter.*` / `domain`.** The only packages
    another module may import are the module's `@NamedInterface` packages: `api` (inbound ports
-   others call) and, when present, `spi` (driven ports another module implements — see
-   *`api` vs `spi`* below).
+   others call), `vocabulary` (published ids/value types), `events` (published event records) and,
+   when present, `spi` (driven ports another module implements — see *`api` vs `spi`* below).
 4. **`ModularityTests.verifiesModularStructure()` stays green** after any structural change. A
    failure is the design being wrong, not the test.
 
 ## Module layout — two templates by weight (ADR-0007)
 
 Each module is a direct sub-package of `ai.riviera.platform`. There is **no single fixed shape** — a
-module's structure tracks its weight. The **published surface is `api/`** (`@NamedInterface("api")`);
-`spi/` is the cross-module driven-port surface when present. Both stay **top-level and exposed** —
-never nested under `application`, which would hide them from Modulith.
+module's structure tracks its weight. The **published surface is split by kind** (ADR-0007 Amendment 1,
+issue #95) into up to four top-level named interfaces: **`api/`** (`@NamedInterface("api")` — ports
+only), **`vocabulary/`** (published typed ids / value / outcome types), **`events/`** (published
+domain-event records), and **`spi/`** (cross-module driven ports). All stay **top-level and exposed** —
+never nested under `application`, which would hide them from Modulith — and each is present **only if
+the module publishes that kind**.
 
-> **Migration in progress (ADR-0007).** This section describes the **target** shape. Existing modules
-> still use the older `application/in` + `application/out` + `infrastructure/in` + `infrastructure/out`
-> layout until their migration PR lands (one module per PR, `ModularityTests` green at each step).
-> **Write new modules — and `operator` — directly in the target shape below;** converge existing ones
-> as they're touched.
+> **Landed (ADR-0007 + Amendment 1).** All modules use this shape; it is machine-locked by
+> `PackageShapeArchitectureTests` (the package sets) and `PublishedSurfacePlacementArchitectureTests`
+> (which kind of type may live in which published surface). Write new modules directly in it.
 
 The asymmetry this enforces is **inside vs outside**, not left vs right. Cockburn: *"The asymmetry to
 exploit is not that between left and right sides of the application but between inside and outside...
@@ -85,7 +87,8 @@ make a module thin; **having no service** does.
 ```
 ai.riviera.platform.<module>/
 ├── package-info.java          # @ApplicationModule(allowedDependencies = {...})
-├── api/                       # @NamedInterface("api") — the published port(s) + typed ids + value records
+├── api/                       # @NamedInterface("api") — the published port(s), interfaces only
+├── vocabulary/                # @NamedInterface("vocabulary") — the published typed ids + value records
 └── adapter/out/               # the JDBC adapter implementing the api port DIRECTLY (package-private)
 ```
 No `application/`, no `domain/` — a single adapter is a *hypothetical* seam (`codebase-design`), so
@@ -98,8 +101,12 @@ bucket is `adapter/out/` to keep the adapter vocabulary uniform and the ArchUnit
 ```
 ai.riviera.platform.<module>/
 ├── package-info.java          # @ApplicationModule(allowedDependencies = {...})
-├── api/                       # @NamedInterface("api") — ONLY if a sibling consumes a port/event here
-│   └── package-info.java      #   inbound ports others CALL + typed ids + value records + published events
+├── api/                       # @NamedInterface("api") — ONLY if a sibling calls a port here; PORTS ONLY
+│   └── package-info.java      #   inbound "call-me" interfaces (plain, never sealed)
+├── vocabulary/                # @NamedInterface("vocabulary") — ONLY if the module publishes ids/values
+│   └── package-info.java      #   typed ids, value records, enums, sealed outcome types, exceptions
+├── events/                    # @NamedInterface("events") — ONLY if the module publishes domain events
+│   └── package-info.java      #   published event RECORDS only (id-based payloads)
 ├── spi/                       # @NamedInterface("spi") — ONLY if this module owns a cross-module inversion
 │   └── package-info.java      #   driven ports another module IMPLEMENTS for this one
 ├── application/               # services (package-private @Service/@Transactional) + their driving/driven
@@ -110,19 +117,22 @@ ai.riviera.platform.<module>/
     ├── in/                    # driving adapters: @RestController, @ApplicationModuleListener (+ request/response DTOs)
     └── out/                   # driven adapters: JdbcClient repos / port impls (package-private)
 ```
-`api/` and `spi/` are **both optional**: `payout` (pure event subscriber) has neither; only `venue`
-has `spi` today. **Don't force an empty `api/`** onto a module that only consumes events.
+All four published surfaces are **optional**: `payout` (pure event subscriber) has none; `booking`
+has `events/` + `vocabulary/` but **no `api/` at all** (it publishes no ports); only `venue` has
+`spi` today. **Don't force an empty surface** onto a module that doesn't publish that kind.
 
 How this maps to real code:
 
-- **`api/` is the module's public API and (with `spi/`) the only thing other modules may import.** It
-  holds the published **ports** (`venue.api.VenueCatalog`, `availability.api.AvailabilityClaim`,
-  `customer.api.CustomerDirectory`, `payment.api.CheckoutPort`), the **typed ids** (`venue.api.SetId`),
-  the **value records** (`payment.api.Money`), and **published event records**
-  (`booking.api.BookingConfirmed`). **Name ports by purpose, never technology** — the weather-system
-  lesson (*"architect the system's interfaces by purpose rather than by technology"*). `CheckoutPort`,
-  not `StripePort`; `AvailabilityClaim`, not `JdbcAvailabilityTable`. The technology is the adapter's
-  concern in `adapter/out`; the port name must survive swapping it.
+- **The published surfaces (`api/`, `vocabulary/`, `events/`, `spi/`) are the only thing other modules
+  may import — and each holds one kind.** `api/` holds the published **ports** (`venue.api.VenueCatalog`,
+  `availability.api.AvailabilityClaim`, `customer.api.CustomerDirectory`, `payment.api.CheckoutPort`);
+  `vocabulary/` the **typed ids** (`venue.vocabulary.SetId`), **value records**
+  (`payment.vocabulary.Money`) and **sealed outcome hierarchies** (`payment.vocabulary.RefundResult`);
+  `events/` the **published event records** (`booking.events.BookingConfirmed`).
+  `PublishedSurfacePlacementArchitectureTests` enforces the placement. **Name ports by purpose, never
+  technology** — the weather-system lesson (*"architect the system's interfaces by purpose rather than
+  by technology"*). `CheckoutPort`, not `StripePort`; `AvailabilityClaim`, not `JdbcAvailabilityTable`.
+  The technology is the adapter's concern in `adapter/out`; the port name must survive swapping it.
 - **`application/` holds the services AND their ports together** — the internal driving/use-case ports
   (e.g. `CreateBooking`, implemented by package-private `CreateBookingService`) and the outbound driven
   ports (e.g. `Bookings`, `BookingCodeGenerator`). **No `in`/`out` sub-split:** once the *adapter* layer
@@ -164,11 +174,17 @@ this is **already true of every module in `main`** (`booking`, `availability`, `
 
 ```java
 @org.springframework.modulith.ApplicationModule(
-    displayName = "Booking",
-    allowedDependencies = { "venue::api", "availability::api", "customer::api", "payment::api" }
+    displayName = "Payout",
+    allowedDependencies = { "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary",
+        "operator::api", "operator::vocabulary" }
 )
-package ai.riviera.platform.booking;
+package ai.riviera.platform.payout;
 ```
+
+Grants name the **narrowest named interfaces** the consumer's bytecode actually needs (issue #95's
+least-privilege matrix): a port caller lists `<provider>::api` + `::vocabulary` (the types the port
+speaks); a listener-only consumer lists `<provider>::events` + `::vocabulary` — never a command
+surface (`payout` above is the canonical example).
 
 and each module exposes its `api/` (and `spi/` where present):
 
@@ -210,40 +226,41 @@ provider lists `<provider>::api` only — never `::spi`.
 these sets are taken on date D?" but must not depend on `availability` (that would cycle —
 `availability` already depends on `venue::api` for the claim's pool check). So `venue` declares the
 driven port `SetAvailabilityLookup` in **`venue.spi`**; `availability` **implements** it (its
-`allowedDependencies` are `{ "venue::api", "venue::spi" }` — `api` for `SetId`, `spi` for the port);
+grants include `venue::spi` to implement the port, plus `venue::api`/`venue::vocabulary` for the
+ports and ids it uses — see the module's package-info for the full least-privilege list);
 `venue`'s `JdbcVenueCatalog` calls it. The compile-time edge stays `availability → venue`
 (acyclic); the runtime call goes `venue → availability`. `booking`, which only *calls* venue, is
-granted `venue::api` only — never `venue::spi`. (`SetId` and other shared vocabulary stay in `api/`;
-only the *driven port* lives in `spi/`.)
+granted `venue::api` only — never `venue::spi`. (`SetId` and the other shared vocabulary live in
+`venue.vocabulary` since issue #95; only the *driven port* lives in `spi/`.)
 
 **Decision rule.** Inbound port (others call) → `api`. Driven port implemented in-module →
 `application/` (internal, unpublished). Driven port implemented by **another** module → `spi`. If
 you're tempted to put an "implement-me" interface in `api/`, that is exactly the smell this rule
 fixes — `riviera-review-overlay` (RV-BE-3b) flags it at the review gate.
 
-## Splitting an overgrown `api/` (in progress): ports vs vocabulary vs events
+## The published-surface split (landed, issue #95): ports vs vocabulary vs events
 
-`api/` started as "the published surface" and tends to accumulate **three different kinds of
-thing**: (1) **ports** ("call-me" interfaces), (2) **published vocabulary** (typed ids, value
-records — `SetId`, `Money`), and (3) **published domain events** (`BookingConfirmed`). When one
-`api/` interface serves several consumers with different needs, segregate it:
+`api/` started as "the published surface" and was accumulating **three different kinds of thing**:
+(1) **ports** ("call-me" interfaces), (2) **published vocabulary** (typed ids, value records —
+`SetId`, `Money`), and (3) **published domain events** (`BookingConfirmed`). Issue #95 split them
+into the distinct named interfaces described in the layout above, and both halves of the drift-fix
+are now **build failures**, not review judgment calls:
 
-- **Split a wide port by consumer role.** `venue.api.VenueCatalog` has grown into a god-port (one
-  interface serving the tourist read model, `availability`'s pool check, `booking`'s reserve facts,
-  and `payout`'s rate config). The intended split keeps the implementations in place but narrows
-  what each consumer imports — e.g. `VenueCatalog` (tourist reads), `SetBookingFacts`
-  (`setBookingInfo`/`poolOf`), `VenueRates` (`commissionBps`/`lateCancelRefundBps`). This makes the
-  `verify()` dependency arrows honest. **Do not** keep adding methods to `VenueCatalog`; add to the
-  role-named interface instead.
-- **Separate events (and optionally vocabulary) into their own named interface.** A listener-only
-  module (`payout` consumes `booking`'s events but never its command ports) should be able to depend
-  on a `booking::events` named interface without importing `booking`'s command surface. The split is
-  a `@NamedInterface` decision; the *enforcement* that the right kind of type lands in the right
-  surface is a hand-written ArchUnit rule (alongside `JdbcOnlyArchitectureTests`, keyed off the
-  package/naming convention) and `riviera-review-overlay` RV-BE-3c.
+- **A wide port splits by consumer role** (issue #94): `VenueCatalog` (tourist reads),
+  `SetBookingFacts` (`setBookingInfo`/`poolOf`), `VenueRates`
+  (`commissionBps`/`lateCancelRefundBps`) — pinned by `VenueApiRoleSplitTests`. **Do not** pile new
+  methods onto `VenueCatalog`; add to the role-named interface instead.
+- **Kinds live in their surface** (issue #95): ports in `api/`/`spi/` (plain interfaces only),
+  ids/values/sealed outcomes in `vocabulary/`, event records in `events/` — pinned by
+  `PublishedSurfacePlacementArchitectureTests` (which also checks every cross-module
+  `@ApplicationModuleListener` parameter resides in its owner's `events` surface).
+  `riviera-review-overlay` RV-BE-3c verifies the rule stays green and judges the cases the
+  convention can't (e.g. whether a new type is genuinely vocabulary).
 
-When you do this split, update `allowedDependencies` grants to the narrower named interfaces
-(least privilege) and keep `ModularityTests` green.
+When adding to a published surface, grant consumers the narrower named interfaces (least privilege)
+and keep `ModularityTests` green. A moved **event class changes its persisted FQCN** in the Event
+Publication Registry (`event_publication[_archive].event_type`) — ship a Flyway rewrite like
+`V18__event_publication_event_type_moves.sql` with any future event move.
 
 ## The `operator` module (per-venue authorization)
 
@@ -316,17 +333,23 @@ fix the **structure**, not the test. To debug the detected arrangement:
 
 ## Quick checklist before finishing a backend structural change
 
-- [ ] New class is in the right package (`api/`/`spi/` published; `application/` = service + its
-      ports; `domain/` internal; `adapter/in`+`adapter/out` adapters, package-private). Thin module
-      (no service) = `api/` + `adapter/out/` only. No `.in`/`.out` at the application layer (ADR-0007).
-- [ ] Cross-module use goes through `<module>::api` (port or published event record) — no import of
-      another module's `application.*`/`adapter.*`/`domain`.
+- [ ] New class is in the right package (`api/`/`spi/`/`vocabulary/`/`events/` published;
+      `application/` = service + its ports; `domain/` internal; `adapter/in`+`adapter/out` adapters,
+      package-private). Thin module (no service) = `api/` + `vocabulary/` + `adapter/out/` only.
+      No `.in`/`.out` at the application layer (ADR-0007).
+- [ ] A published type is in the surface for its **kind** (issue #95): port → `api/`/`spi/` (plain
+      interface); typed id / value record / sealed outcome / exception → `vocabulary/`; event record
+      → `events/`. `PublishedSurfacePlacementArchitectureTests` passes.
+- [ ] Cross-module use goes through the provider's published surfaces (`::api` port, `::events`
+      record, `::vocabulary` types) — no import of another module's `application.*`/`adapter.*`/`domain`.
 - [ ] A cross-module **driven** port (implemented by *another* module) lives in `<module>.spi`
       (`@NamedInterface("spi")`), **not** `api/`; `<module>::spi` is granted only to the implementor.
 - [ ] Aggregates and event payloads reference other aggregates by **typed id**, not by object.
 - [ ] No JPA types introduced; persistence is `JdbcClient` + SQL (or a justified aggregate).
-- [ ] `allowedDependencies` updated if a genuinely new, non-cyclic dependency was added (if the
-      module declares them).
+- [ ] `allowedDependencies` updated to the **narrowest** named interfaces if a genuinely new,
+      non-cyclic dependency was added (if the module declares them).
+- [ ] A moved/renamed **published event** ships a Flyway `event_type` rewrite for the Event
+      Publication Registry (see `V18__event_publication_event_type_moves.sql`).
 - [ ] `ModularityTests.verifiesModularStructure()` passes (`./gradlew test --tests "*ModularityTests*"`).
 
 ## Integration

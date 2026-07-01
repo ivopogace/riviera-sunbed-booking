@@ -5,11 +5,11 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.operator.api.NotVenueOwnerException;
+import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.api.OperatorDirectory;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.operator.api.VenueRef;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
  * The {@code operator} module's application service (invariant #13): resolves a principal to an

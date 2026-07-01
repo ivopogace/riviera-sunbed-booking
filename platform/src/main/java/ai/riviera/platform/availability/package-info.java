@@ -7,7 +7,7 @@
  *
  * <p>Full-module layout (ADR-0007): it owns an application service (the synchronous
  * claim port with real concurrency semantics), so it takes the full template —
- * {@code api} + {@code application} + {@code adapter.in} + {@code adapter.out}
+ * {@code api} + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out}
  * (no {@code domain} today). It implements {@code venue::spi}
  * ({@code SetAvailabilityLookup}); it owns no {@code spi} of its own.
  */
@@ -15,6 +15,6 @@
     displayName = "Availability",
     // Depends on the operator module's api port (issue #73) so staff tap-to-mark verifies the
     // operator owns the set's venue (invariant #13), resolving that venue from the set id.
-    allowedDependencies = { "venue::api", "venue::spi", "operator::api" }
+    allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.availability;

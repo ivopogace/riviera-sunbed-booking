@@ -7,14 +7,14 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.LedgerEntryRow;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.application.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.payout.domain.PeriodKey;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * JDBC adapter for {@link PayoutLedger} — explicit SQL via {@link JdbcClient}, no JPA (invariant

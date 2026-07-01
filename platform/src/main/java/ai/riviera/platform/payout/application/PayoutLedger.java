@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.payout.domain.PeriodKey;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The {@code payout} module's outbound persistence port (driven seam) for the payout ledger.

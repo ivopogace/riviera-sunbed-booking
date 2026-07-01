@@ -1,6 +1,6 @@
 package ai.riviera.platform.venue.application;
 
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The closed set of outcomes of {@link EditBeachMap#addSet}. Sealed so the REST adapter

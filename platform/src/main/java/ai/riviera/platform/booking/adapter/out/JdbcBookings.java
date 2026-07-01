@@ -9,7 +9,7 @@ import java.util.OptionalLong;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
@@ -19,8 +19,8 @@ import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * JDBC adapter for {@link Bookings} — explicit SQL via {@link JdbcClient}, no JPA (invariant
@@ -142,7 +142,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor, ai.riviera.platform.booking.api.RefundReason reason) {
+			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 		// Guarded CONFIRMED -> CANCELLED. RETURNING yields the facts only on a real transition, so a
 		// double-cancel (already CANCELLED) is a 0-row empty no-op — the caller then releases the set,
 		// refunds, and publishes BookingCancelled exactly once. The reason (POLICY/WEATHER, U9) is the

@@ -2,6 +2,9 @@ package ai.riviera.platform.operator.api;
 
 import java.util.Set;
 
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
+
 /**
  * The {@code operator} module's published authorization port (invariant #13) — a synchronous
  * <em>inbound</em> ("call-me") query, so it lives in {@code api}, not {@code spi}. Every

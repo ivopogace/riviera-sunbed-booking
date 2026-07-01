@@ -15,12 +15,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -73,11 +73,11 @@ class PayoutReversalIT {
 	}
 
 	private BookingCancelled cancelled(Ref b, long refundMinor) {
-		return cancelled(b, refundMinor, ai.riviera.platform.booking.api.RefundReason.POLICY);
+		return cancelled(b, refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason.POLICY);
 	}
 
 	private BookingCancelled cancelled(Ref b, long refundMinor,
-			ai.riviera.platform.booking.api.RefundReason reason) {
+			ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 		return new BookingCancelled(new BookingId(b.bookingId()), new VenueId(b.venueId()),
 				new SetId(b.setId()), LocalDate.of(2030, 7, 1), refundMinor, "EUR", reason);
 	}
@@ -131,7 +131,7 @@ class PayoutReversalIT {
 		// REVERSAL (here full) records reason WEATHER so the ledger distinguishes it from a policy refund.
 		Ref b = bookingWithAccrual("REVWX001");
 
-		publishInTransaction(cancelled(b, 4500L, ai.riviera.platform.booking.api.RefundReason.WEATHER));
+		publishInTransaction(cancelled(b, 4500L, ai.riviera.platform.booking.vocabulary.RefundReason.WEATHER));
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, reversalRows(b.bookingId())));
 		assertEquals(3825L, reversalNet(b.bookingId()), "full weather reversal nets out the accrual");

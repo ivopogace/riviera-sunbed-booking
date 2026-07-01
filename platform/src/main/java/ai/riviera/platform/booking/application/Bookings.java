@@ -13,9 +13,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.view.DailyBooking;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The {@code booking} module's outbound persistence port (driven seam). Two narrow writes
@@ -82,7 +82,7 @@ public interface Bookings {
 	 * release/refund/event fire exactly once); a non-{@code CONFIRMED} booking yields empty.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor, ai.riviera.platform.booking.api.RefundReason reason);
+			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
 
 	/**
 	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date}, as {@code (setId, code)}

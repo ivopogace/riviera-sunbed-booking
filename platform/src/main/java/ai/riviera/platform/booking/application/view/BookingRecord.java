@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * A booking row loaded by {@link Bookings#findByCode} — the persisted facts the view and cancel use

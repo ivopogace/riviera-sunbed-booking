@@ -1,5 +1,8 @@
 package ai.riviera.platform.payment.api;
 
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
+
 /**
  * The {@code payment} module's <strong>inbound</strong> published port for cancelling a booking's
  * PaymentIntent (issue #51) — the seam the {@code booking} module's abandoned-payment sweep calls

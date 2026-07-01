@@ -1,6 +1,6 @@
 package ai.riviera.platform.venue.adapter.in;
 
-import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.application.SetCommand;
 
 /**

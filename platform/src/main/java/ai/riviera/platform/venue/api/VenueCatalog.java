@@ -4,6 +4,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import ai.riviera.platform.venue.vocabulary.VenueFilter;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueMapView;
+import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
+
 /**
  * The {@code venue} module's published <strong>tourist-read</strong> port (invariant #11)
  * — browsing venues and rendering a venue's beach map. A deep module: this small interface

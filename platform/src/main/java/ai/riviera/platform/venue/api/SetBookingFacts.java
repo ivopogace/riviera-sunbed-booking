@@ -2,6 +2,9 @@ package ai.riviera.platform.venue.api;
 
 import java.util.Optional;
 
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
+
 /**
  * The {@code venue} module's published <strong>set-facts</strong> port (invariant #11) —
  * the booking-relevant truths about a single set, split out of {@code VenueCatalog} by

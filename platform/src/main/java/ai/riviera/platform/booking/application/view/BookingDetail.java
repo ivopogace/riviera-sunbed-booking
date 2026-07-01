@@ -3,8 +3,8 @@ package ai.riviera.platform.booking.application.view;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Everything the booking-view screen shows (U6): the booking summary (code, {@code status}, venue +

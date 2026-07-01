@@ -1,7 +1,7 @@
 package ai.riviera.platform.payout.application;
 
-import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The per-venue payout-ledger read use case (U9, issue #12) — the inbound port the operator-gated web

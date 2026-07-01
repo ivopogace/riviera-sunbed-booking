@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.application.reserve;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The {@code (set, date)} a cancelled booking was holding — returned by

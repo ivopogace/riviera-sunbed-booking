@@ -14,10 +14,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.venue.api.VenueCatalog;
-import ai.riviera.platform.venue.api.VenueFilter;
-import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.api.VenueMapView;
-import ai.riviera.platform.venue.api.VenueSummaryView;
+import ai.riviera.platform.venue.vocabulary.VenueFilter;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueMapView;
+import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
  * Public tourist read endpoints for venues (invariant #11 — depends only on the {@code venue.api}

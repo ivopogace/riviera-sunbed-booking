@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking.adapter.in;
 
 import ai.riviera.platform.booking.application.view.BookingDetail;
-import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * The {@code 200} response body for {@code GET /api/bookings/{code}} (U6) — the booking summary plus

@@ -20,22 +20,22 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.availability.api.ClaimOutcome;
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.customer.api.CustomerDirectory;
-import ai.riviera.platform.customer.api.CustomerId;
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.api.SetBookingInfo;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -156,24 +156,24 @@ class CreateBookingServiceTest {
 			@Override
 			public java.util.Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
 					long bookingId, java.time.Instant cancelledAt, long refundMinor,
-					ai.riviera.platform.booking.api.RefundReason reason) {
+					ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 				return java.util.Optional.empty();
 			}
 
 			@Override
 			public List<ai.riviera.platform.booking.application.view.DailyBooking> findConfirmedForVenueOn(
-					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+					ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 				return List.of();
 			}
 
 			@Override
 			public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findConfirmedForWeatherRefund(
-					ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+					ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 				return List.of();
 			}
 
 			@Override
-			public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
+			public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
 					java.time.Instant olderThan) {
 				return List.of();
 			}
@@ -371,24 +371,24 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
 				long bookingId, Instant cancelledAt, long refundMinor,
-				ai.riviera.platform.booking.api.RefundReason reason) {
+				ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 			return Optional.empty();
 		}
 
 		@Override
 		public List<ai.riviera.platform.booking.application.view.DailyBooking> findConfirmedForVenueOn(
-				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}
 
 		@Override
 		public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findConfirmedForWeatherRefund(
-				ai.riviera.platform.venue.api.VenueId venueId, java.time.LocalDate date) {
+				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}
 
 		@Override
-		public List<ai.riviera.platform.booking.api.BookingId> findExpirableAwaitingPayment(
+		public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
 				Instant olderThan) {
 			return List.of();
 		}

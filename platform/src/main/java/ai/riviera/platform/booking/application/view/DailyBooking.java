@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.view;
 
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * One row of the staff daily view (U8): which {@code set} a confirmed booking holds and its

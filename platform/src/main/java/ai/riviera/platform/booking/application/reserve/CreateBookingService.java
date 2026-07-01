@@ -6,14 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.booking.api.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.payment.api.BookingRef;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.Money;
-import ai.riviera.platform.payment.api.PaymentOutcome;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The Instant-Book use case (issue #6), now <strong>two-phase</strong> to keep the Stripe network

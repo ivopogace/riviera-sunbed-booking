@@ -9,9 +9,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.application.Operators;
-import ai.riviera.platform.operator.api.OperatorCredential;
-import ai.riviera.platform.operator.api.OperatorId;
-import ai.riviera.platform.operator.api.VenueRef;
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.operator.domain.OperatorStatus;
 
 /**

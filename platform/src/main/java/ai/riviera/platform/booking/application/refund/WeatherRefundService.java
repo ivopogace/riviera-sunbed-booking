@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
-import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.api.BookingId;
-import ai.riviera.platform.booking.api.RefundReason;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
-import ai.riviera.platform.operator.api.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.operator.api.VenueRef;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The admin weather-refund use case (U9, issue #12). In one transaction it loads every

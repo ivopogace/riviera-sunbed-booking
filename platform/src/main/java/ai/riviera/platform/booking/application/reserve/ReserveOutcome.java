@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.reserve;
 
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The result of the committed <em>reserve</em> phase of Instant-Book (issue #52): either a

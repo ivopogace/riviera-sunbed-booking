@@ -1,6 +1,6 @@
 package ai.riviera.platform.payout.application;
 
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The signed net owed to one venue for one settlement period (U9, issue #12) — the aggregate the BKT

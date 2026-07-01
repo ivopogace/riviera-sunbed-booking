@@ -6,8 +6,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.customer.api.CustomerDirectory;
-import ai.riviera.platform.customer.api.CustomerId;
-import ai.riviera.platform.customer.api.GuestContact;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 /**
  * JDBC adapter implementing {@link CustomerDirectory} directly (no intervening application

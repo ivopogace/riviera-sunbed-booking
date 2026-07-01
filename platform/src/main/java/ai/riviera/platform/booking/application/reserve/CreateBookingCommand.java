@@ -2,8 +2,8 @@ package ai.riviera.platform.booking.application.reserve;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.customer.api.GuestContact;
-import ai.riviera.platform.venue.api.SetId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * The intent to create an Instant booking: which set, for which calendar day (a

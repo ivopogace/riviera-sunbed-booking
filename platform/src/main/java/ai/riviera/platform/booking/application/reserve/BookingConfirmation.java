@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.reserve;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The successful result of creating a booking — everything the caller needs to show a

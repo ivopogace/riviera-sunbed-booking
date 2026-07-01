@@ -228,3 +228,34 @@ inconsistently in review. The door is deliberately left open.
    `payment` → `booking` last. Build `operator` (A1) directly in the target shape as the reference.
 5. Settle the one open detail: `customer`'s adapter in `adapter/out/` (uniform vocabulary,
    recommended) vs `internal/` (Modulith-idiomatic hidden).
+
+---
+
+## Amendment 1 — published-surface split: `vocabulary` + `events` named interfaces (issue #95, 2026-07-01)
+
+Issue #95 (improvement-plan B2+C1) split each module's published surface by **kind**, superseding
+the parts of this ADR that showed ids/value records/events living in `api/`:
+
+- **`api/`** — ports only ("call-me" interfaces; plain, never sealed).
+- **`vocabulary/`** — published typed ids, value records, enums, sealed outcome hierarchies
+  (+ nested implementations), published exceptions. `@NamedInterface("vocabulary")`.
+- **`events/`** — published domain-event records only. `@NamedInterface("events")`.
+- **`spi/`** — unchanged (cross-module driven ports).
+
+All four are **top-level siblings** (the same reasoning that put `spi` top-level, not under `api`),
+so the allowed top-level set becomes `{api, spi, vocabulary, events, application, domain, adapter}`
+and surfaces stay optional per kind — no forced empty packages. Notably `booking` now has **no
+`api/` at all** (it publishes no ports): its surface is `events/` (`BookingConfirmed`,
+`BookingCancelled`) + `vocabulary/` (`BookingId`, `RefundReason`), and `payout` is granted
+`booking::events` + `booking::vocabulary` — never a command surface. `customer` (thin) is
+`api/` + `vocabulary/` + `adapter/out/`.
+
+`allowedDependencies` grants are per-surface and least-privilege (see the grant matrix in
+`docs/plans/issue-95-published-surface-split.md`). Because the Event Publication Registry persists
+event FQCNs, the move shipped with `V18__event_publication_event_type_moves.sql`.
+
+**Enforcement added (C1):** `PublishedSurfacePlacementArchitectureTests` — api/spi hold only
+non-sealed interfaces; events surfaces hold only records; vocabulary surfaces hold no plain
+interfaces; every cross-module `@ApplicationModuleListener` parameter type lives in its owner's
+`events` surface. Proven against fixtures in `ai.riviera.placementfixture`.
+`PackageShapeArchitectureTests`' allowed sets were widened accordingly.

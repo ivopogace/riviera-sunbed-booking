@@ -12,18 +12,18 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import ai.riviera.platform.venue.api.AvailabilitySummary;
-import ai.riviera.platform.venue.api.MoneyView;
+import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.api.SetBookingFacts;
-import ai.riviera.platform.venue.api.SetBookingInfo;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.SetView;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
-import ai.riviera.platform.venue.api.VenueFilter;
-import ai.riviera.platform.venue.api.VenueId;
-import ai.riviera.platform.venue.api.VenueMapView;
+import ai.riviera.platform.venue.vocabulary.VenueFilter;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.api.VenueRates;
-import ai.riviera.platform.venue.api.VenueSummaryView;
+import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**

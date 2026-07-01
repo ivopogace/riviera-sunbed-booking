@@ -1,8 +1,8 @@
 package ai.riviera.platform.booking.adapter.in;
 
 import ai.riviera.platform.booking.application.reserve.BookingConfirmation;
-import ai.riviera.platform.venue.api.MoneyView;
-import ai.riviera.platform.venue.api.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The {@code 202 Accepted} response body when a booking is created under the {@code stripe}

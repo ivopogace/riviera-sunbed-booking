@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import ai.riviera.platform.booking.api.BookingConfirmed;
+import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.api.VenueRates;

@@ -1,5 +1,8 @@
 package ai.riviera.platform.customer.api;
 
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
+
 /**
  * The {@code customer} module's published port (invariant #11) — the one seam for turning a
  * {@link GuestContact} into a stable {@link CustomerId}. A deep module: this single method

@@ -1,5 +1,7 @@
 package ai.riviera.platform.operator.api;
 
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+
 /**
  * Published provisioning port for operator credentials (issue #74) — how a new operator gets an
  * account and how a password is rotated, driven programmatically (the boot provisioner for the

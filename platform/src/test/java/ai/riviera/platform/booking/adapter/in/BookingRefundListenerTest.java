@@ -6,14 +6,14 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import ai.riviera.platform.booking.api.BookingCancelled;
-import ai.riviera.platform.booking.api.BookingId;
-import ai.riviera.platform.payment.api.BookingRef;
-import ai.riviera.platform.payment.api.Money;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
-import ai.riviera.platform.payment.api.RefundResult;
-import ai.riviera.platform.venue.api.SetId;
-import ai.riviera.platform.venue.api.VenueId;
+import ai.riviera.platform.payment.vocabulary.RefundResult;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,7 +32,7 @@ class BookingRefundListenerTest {
 	private static BookingCancelled event(long bookingId, long refundMinor, String currency) {
 		return new BookingCancelled(new BookingId(bookingId), new VenueId(1L), new SetId(2L),
 				LocalDate.of(2030, 7, 1), refundMinor, currency,
-				ai.riviera.platform.booking.api.RefundReason.POLICY);
+				ai.riviera.platform.booking.vocabulary.RefundReason.POLICY);
 	}
 
 	@Test
