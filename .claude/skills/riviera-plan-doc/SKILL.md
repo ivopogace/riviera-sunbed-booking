@@ -105,7 +105,14 @@ When planning a riviera feature, also do:
    matter in this project: concurrent reservation of the same set (invariant #2),
    Stripe webhook duplicate/out-of-order delivery (#8), payout double-accrual (#9),
    timezone/cutoff arithmetic (#4/#6), money rounding (#5), module boundary leaks
-   (#11), and any temptation toward JPA or Stripe Connect.
+   (#11), **per-venue authorization on any venue-scoped endpoint (an operator must
+   only reach their own venue's data — BOLA; if the slice touches
+   `/api/venues/{venueId}/**`, the payout ledger, staff bookings, or beach-map
+   edit, state how ownership is verified in the application service)**, and any
+   temptation toward JPA or Stripe Connect. **If the slice adds or changes a request
+   DTO or an endpoint's error responses, note the error-contract expectation
+   (centralized `ProblemDetail`, not a per-controller `{"error": …}` body —
+   `riviera-java-conventions` §6b).**
 
 3. **Fill the Availability & concurrency section if the feature touches booking,
    the beach map, or `availability`.** State exactly how invariant #2 is upheld:
@@ -120,6 +127,25 @@ When planning a riviera feature, also do:
    id-based payloads). Use `codebase-design` for the module interfaces/seams; the
    boundary and id-based-event rules are invariant #11, checked by
    `riviera-review-overlay` and the `ApplicationModules.verify()` test.
+
+   **4a. Module-ownership table (required whenever a slice adds or moves behavior).**
+   For each new or changed capability in the slice, state **which module owns it** and
+   **why**, checked against `RESPONSIBILITIES.md`. One row each:
+
+   | Capability (what the slice adds/changes) | Owner module | Justification |
+   |---|---|---|
+   | e.g. "compute the late-cancel refund amount" | `booking` | `booking` Job: owns cancellation/refund **policy**; **not** `payment` (its Not-My-Job: "deciding whether/how much to refund → `booking`") |
+
+   The justification must cite the owner's **Job** line *and* confirm the capability
+   is **not** on another module's **Not My Job** list. This is the plan-time boundary
+   gate: a capability that lands on some module's Not-My-Job list, or that two modules
+   both claim, is a boundary error to resolve **before** code — cheap here, expensive
+   at review. Pay special attention to the two decision-vs-execution splits
+   (`booking` decides refunds / `payment` executes; `venue` stores the commission rate
+   / `payout` computes) and the Need-To-Know rule (a subscriber gets ids, never a
+   foreign aggregate). If the slice touches only one module and adds no cross-module
+   interaction, a one-line "all in `<module>`, no boundary change" suffices.
+   `riviera-review-overlay` **RV-BE-11** re-checks this table against the diff.
 
 5. **Fill the Payment & payout section if money moves.** Name the model
    (collect-only, no Connect), the webhook-as-source-of-truth rule, idempotency,

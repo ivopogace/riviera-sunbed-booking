@@ -41,6 +41,13 @@ layout in invariant #11.
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | light tourist identity / guest-checkout contact | `Customer` |
+| `operator` | operator accounts and the operator↔venue ownership mapping (per-venue authorization, invariant #13) | `Operator` |
+
+> **`operator` is planned, not yet shipped.** Invariant #13 is canonical now, but the
+> module and the per-venue ownership check are an open build item (multi-operator launch
+> blocker). Until it lands, authorization is a single shared `OPERATOR` role with no
+> ownership check — a known gap, not the target. See `riviera-modulith` for the module
+> design.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The spine flow: `BookingConfirmed` → `availability`
@@ -110,6 +117,20 @@ The skills reference them by number.
     `src/main/resources/db/migration`. No hand-run DDL, no ORM schema generation
     (there's no ORM). Every constraint that enforces an invariant (especially #2)
     is created and tested by a migration.
+13. **Venue-scoped operations verify the actor owns the venue.** This is a
+    multi-tenant marketplace: many independent operators each manage their own
+    venue(s). Every operation on venue-owned data — a venue-scoped endpoint
+    (`/api/venues/{venueId}/**`: beach-map edits, staff daily bookings, staff
+    tap-to-mark, the payout ledger, weather refunds) or the service behind it —
+    must verify the **authenticated operator owns the path `venueId`** and reject a
+    mismatch with **`403`**. Authorization is **object-level, not role-level**: a
+    shared role (e.g. `OPERATOR`) is necessary but **not** sufficient — owning the
+    role does not authorize another operator's venue (OWASP API #1, Broken Object
+    Level Authorization). The check lives in the **application service**, so no
+    driving adapter can bypass it; the operator↔venue ownership mapping is owned by
+    the `operator` module and consulted via its `api/` port (id-based, invariant
+    #11). Platform-wide admin surfaces (`/api/admin/**`) are role-gated and exempt.
+    Reviewed by `riviera-review-overlay` RV-BE-9.
 
 ## Provisional decisions (confirm at scaffolding)
 

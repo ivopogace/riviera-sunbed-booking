@@ -1,6 +1,6 @@
 ---
 name: riviera-java-conventions
-description: The Java language-level conventions for riviera-sunbed-booking backend code (Java 25, Spring Boot 4, Spring Modulith). Load BEFORE writing or refactoring any Java — a class, record, port, service, JDBC adapter, event, or test. It encodes the idioms that push Claude off its Spring-tutorial defaults: JDBC-only with NO JPA/Hibernate and NO Lombok, records for DTOs/value-objects/ids, constructor injection with package-private adapters, typed-outcome over exceptions, and Java 25 features (sealed types, pattern matching, text-block SQL, virtual-threads posture). Pairs with codebase-design (seam shape) and postgres (SQL); the numbered invariants live in CLAUDE.md and are checked by riviera-review-overlay.
+description: The Java language-level conventions for riviera-sunbed-booking backend code (Java 25, Spring Boot 4, Spring Modulith). Load BEFORE writing or refactoring any Java — a class, record, port, service, JDBC adapter, event, or test. It encodes the idioms that push Claude off its Spring-tutorial defaults - JDBC-only with NO JPA/Hibernate and NO Lombok, records for DTOs/value-objects/ids, constructor injection with package-private adapters, typed-outcome over exceptions, and Java 25 features (sealed types, pattern matching, text-block SQL, virtual-threads posture). Pairs with codebase-design (seam shape) and postgres (SQL); the numbered invariants live in CLAUDE.md and are checked by riviera-review-overlay.
 ---
 
 # Riviera Java conventions
@@ -153,6 +153,32 @@ these are the right way to use Spring Data JDBC from the start.)*
   isn't named is a silent-typo bug waiting to happen.
 - Status/pool/state tokens that the DB `CHECK` constraints also list are the highest-value
   case — keep the Java constant and the SQL token in lockstep.
+
+### 6b. Request validation & error contract (consistent, not per-controller)
+
+The repo currently hand-rolls validation in each request DTO's `toCommand()` (throwing
+`IllegalArgumentException`) and maps it with a **per-controller** `@ExceptionHandler`
+returning a `{"error": CODE}` map. That works but drifts — every controller reinvents the
+shape. Standardize:
+
+- **One error contract.** Emit **RFC-7807 `ProblemDetail`** from a single
+  `@RestControllerAdvice`, with a stable machine-readable error code per failure. Don't add a
+  new bespoke `{"error": …}` body per controller. (If the team deliberately keeps the
+  explicit-`toCommand()` validation style rather than adopting `spring-boot-starter-validation`,
+  that's fine — but the **mapping to the wire** still goes through the one advice, so clients
+  see one error shape.)
+- **Where validation lives.** Presence/shape/format checks belong at the edge (the DTO or a
+  `@Valid` bean), domain invariants belong in the value object's canonical constructor
+  (`Money`, ids) and the application service. Keep HTTP-status mapping out of the domain — the
+  controller/advice maps a typed outcome or a domain exception to a status.
+- **Map collisions correctly:** availability/uniqueness conflicts → `409`; not-bookable/cutoff →
+  `422`; unknown id → `404`; malformed body → `400`. (This mirrors the existing
+  `BookingController` switch — the point is to make it uniform and centrally defined.)
+
+> Decision still open in the plan: full `spring-boot-starter-validation` + `@Valid` **vs**
+> centralized-explicit validation. Either is acceptable; pick one and apply it everywhere.
+> What's **not** acceptable is the current per-controller ad-hoc error bodies persisting once
+> the contract is standardized.
 
 ### 7. Money & time (invariants #5, #6 — details in CLAUDE.md)
 

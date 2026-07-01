@@ -30,8 +30,7 @@ needs them, **reach out — don't go silent and wait.**
 - **Backstop / written record — email.** Also send an email to
   **`ivopogace@gmail.com`** (via the Gmail tools) for the "done, your move" case
   and whenever a push may not get through (Remote Control not connected). This is
-  the durable trail; the push is the buzz. Note: this is **not** the account email
-  (`ivo.pogace@lyth.de`) — send to the gmail address above.
+  the durable trail; the push is the buzz.
 - **Don't ping during live back-and-forth.** If they're clearly present and
   replying within seconds, no push/email — they're already here. The trigger is
   *"there's a real chance they've walked away and something is waiting."* Err
@@ -39,6 +38,12 @@ needs them, **reach out — don't go silent and wait.**
 
 (One-time check to mention if pushes don't seem to arrive: iOS → Settings →
 Notifications → Claude → Allow Notifications must be ON.)
+
+> **Maintainer note (privacy/portability):** this section hardcodes a personal
+> destination email. That's fine as private config, but it is PII baked into a shared
+> skill file: if these skills are ever templated, published, or copied to another repo,
+> it leaks. Consider parameterizing the address (env var / non-committed local config)
+> rather than inlining it.
 
 ## The loop
 
@@ -93,6 +98,13 @@ process miss is treating a post-review (or post-Sonar) fix as exempt: a migratio
      assumptions. (E.g. example values inlined in the issue may be stale.)
    - What did we **not** think of when we wrote it — missing states, edge cases, the
      invariants in play (esp. #2 availability, #4 cutoff, #5 money, #8 webhook-as-truth)?
+   - **Which module should own each piece of the work?** Sanity-check the intended
+     placement against `RESPONSIBILITIES.md` (Job / Not-My-Job) *before* planning: does
+     any step put logic in a module whose **Not My Job** list rejects it (a refund
+     *decision* in `payment`, commission *math* in `venue`, a login subsystem in
+     `customer`), or that two modules both claim? Catching a misplacement here is a
+     sentence in the plan; catching it at review is a diff. The plan doc then records
+     the answer in its Module-ownership table (plan-doc §4a).
    - Division of labor (same rule as any grill): answer the **discoverable/factual**
      questions yourself from the code/spec and mark each "← confirm?"; escalate the
      **intent/decision** questions to the user via `AskUserQuestion`. Never auto-fill a
@@ -124,7 +136,8 @@ The size flexes; the gate does not.
 |---|---|---|
 | **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
 | **Any backend module / structure** (Spring Modulith: new module, `api/` **or `spi/`** port, application service, domain event, JDBC adapter, controller, or moving a class between packages) | **`riviera-modulith`** (module layout, `api/`-vs-`spi/` named-interface boundaries, port-vs-event, `verify()` contract) + **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | hexagonal package shape + invariant #11 boundaries (incl. the api-vs-spi choice for a cross-module *driven* port) enforced by `ModularityTests` + review (RV-BE-3b), not first-principles structure |
-| **Writing/refactoring any backend Java** (class, record, port, JDBC adapter, event, controller, test) | **`riviera-java-conventions`** (Java idioms) + **`riviera-modulith`** (which package it belongs in) | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — **and** the right module/package per the hexagon. Both fire on any backend Java create/modify. |
+| **Writing/refactoring any backend Java** (class, record, port, JDBC adapter, event, controller, test) | **`riviera-java-conventions`** (Java idioms) + **`riviera-modulith`** (which package it belongs in) | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — **and** the right module/package per the hexagon. Both fire on any backend Java create/modify. **Also covers the validation/error contract (§6b).** |
+| **A venue-scoped endpoint/service or operator identity** (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map edit, staff availability, weather refund; the `operator` module; per-venue ownership) | **`riviera-modulith`** (the `operator` module placement + the ownership-check seam) + **`riviera-java-conventions`** | Per-venue authorization is the multi-operator launch blocker (BOLA, OWASP #1) — the actor-owns-venue check must sit in the application service, not the controller. Reviewed by RV-BE-9 (Blocker). |
 | **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
 | **The Angular frontend** (component, service, route, styling, forms) | **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | version-correct v22 APIs + a11y, not stale tutorials |
 | **A user-facing frontend flow / behaviour** (any component / route / form / service change a user can observe, or anything under `frontend/e2e/`) | **`playwright-cli`** (official `@playwright/cli` skill — drive the flow, scaffold a best-practice spec, mock requests, generate from actions) | every frontend slice ships e2e coverage authored to Playwright best practice — not an afterthought; checked by RV-FE-E2E. **Project facts the generic skill can't know** — the two-suite split (CI-safe mocked-a11y `frontend/e2e/` vs local-only real-backend `frontend/e2e/real-backend/`) and which suite a spec belongs in — live in the review overlay's RV-FE-E2E item; consult it when placing the spec |

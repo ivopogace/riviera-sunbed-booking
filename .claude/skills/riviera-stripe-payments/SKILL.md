@@ -70,16 +70,32 @@ module). The two modes charge differently — pin this down rather than re-deriv
 
 - **Instant Book:** the flow above — pay now → verified webhook → booking
   `CONFIRMED`. The `(set, date)` row is claimed at booking time (invariant #2).
-- **Request-to-Book:** **authorize at request, capture on accept.** Create a
-  **manual-capture** PaymentIntent when the tourist requests (the card is
-  authorized/held, not charged); **capture** it when the venue accepts → booking
-  `CONFIRMED`; **cancel/void** the authorization on venue decline or request
-  timeout (no charge). While the request is pending, the `(set, date)` row is held
-  in a **pending** state that blocks other reservations exactly like a confirmed
-  one (invariant #2) and is **released on decline/timeout**. Capture-on-accept
-  carries an idempotency key like any other money move.
+  This is the **shipped, built** flow: `StripePaymentGateway` creates an
+  immediate-capture PaymentIntent (`setAutomaticPaymentMethods(enabled=true)`),
+  `ReserveSetService` claims and inserts `AWAITING_PAYMENT` before the Stripe call,
+  and the verified webhook confirms.
+- **Request-to-Book: payment-request-on-accept** (NOT auth-and-capture).
+  Request-to-Book is **not yet built** — when it lands, the model is: the tourist
+  **requests** (no card charged, no PaymentIntent yet); the `(set, date)` row is
+  soft-held in a **pending** state that blocks other reservations exactly like a
+  confirmed one (invariant #2) and is **released on decline/timeout**; on venue
+  **accept**, the booking moves to `AWAITING_PAYMENT` and a **payment request is
+  issued to the guest** — i.e. a fresh PaymentIntent is created at accept time and
+  the guest pays it, confirmed by the **same verified webhook** as Instant Book.
+  From `AWAITING_PAYMENT` onward the two flows are **byte-for-byte identical**
+  (same PaymentIntent + Elements + webhook spine), so the payment/confirmation
+  code is written once.
 - The request-expiry window (how long a venue has to accept) is a config value;
-  expiry triggers the void + the availability release.
+  expiry releases the soft-hold. Use a **ShedLock-guarded** deadline sweep
+  mirroring the existing abandoned-payment sweep (`AbandonedBookingSweepService`),
+  and document the same single-instance constraint the existing sweep carries.
+
+> **Retraction (was wrong in an earlier version of this skill):** a prior version
+> said Request-to-Book should **"authorize at request, capture on accept"** with a
+> **manual-capture PaymentIntent** voided on decline/timeout. That is **not** the
+> model and contradicts the shipped immediate-capture Instant flow — do **not**
+> build auth-and-capture. The model is **payment-request-on-accept** as above. If a
+> task or older doc implies manual-capture/void, treat it as stale and ignore it.
 
 ### Refunds & cancellation (invariant #10)
 

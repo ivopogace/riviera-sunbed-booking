@@ -48,105 +48,119 @@ definition of "correct structure," not intuition.** It already runs as
    `SetId`/`VenueId`/`CustomerId`, not a `Set`/`Customer`. Same for event payloads. The typed ids
    live in the owning module's `api/` (e.g. `venue.api.SetId`, `customer.api.CustomerId`).
 3. **Cross-module collaboration goes through the other module's `api/` port OR a domain event —
-   never a reach into its `application.*` / `infrastructure.*` / `domain`.** The only packages
+   never a reach into its `application.*` / `adapter.*` / `domain`.** The only packages
    another module may import are the module's `@NamedInterface` packages: `api` (inbound ports
    others call) and, when present, `spi` (driven ports another module implements — see
    *`api` vs `spi`* below).
 4. **`ModularityTests.verifiesModularStructure()` stays green** after any structural change. A
    failure is the design being wrong, not the test.
 
-## Module layout (our hexagon)
+## Module layout — two templates by weight (ADR-0007)
 
-Each module is a direct sub-package of `ai.riviera.platform`. Use this shape — it matches the
-existing `venue`, `availability`, `booking`, `customer`, `payment` modules. The **published surface
-is the `api/` package**, exposed as `@NamedInterface("api")`.
+Each module is a direct sub-package of `ai.riviera.platform`. There is **no single fixed shape** — a
+module's structure tracks its weight. The **published surface is `api/`** (`@NamedInterface("api")`);
+`spi/` is the cross-module driven-port surface when present. Both stay **top-level and exposed** —
+never nested under `application`, which would hide them from Modulith.
 
-The asymmetry this layout enforces is **inside vs outside**, not left vs right. Cockburn's framing:
-*"The asymmetry to exploit is not that between left and right sides of the application but between
-inside and outside... code pertaining to the inside part should not leak into the outside part."*
-`domain` + `application` are the inside; `infrastructure.in/out` are the outside adapters. The whole
-point of keeping driving adapters (`@RestController`) thin is that the inside must not know whether a
-real HTTP client, an `@ApplicationModuleTest`, or a future app-to-app caller is on the other side.
+> **Migration in progress (ADR-0007).** This section describes the **target** shape. Existing modules
+> still use the older `application/in` + `application/out` + `infrastructure/in` + `infrastructure/out`
+> layout until their migration PR lands (one module per PR, `ModularityTests` green at each step).
+> **Write new modules — and `operator` — directly in the target shape below;** converge existing ones
+> as they're touched.
 
+The asymmetry this enforces is **inside vs outside**, not left vs right. Cockburn: *"The asymmetry to
+exploit is not that between left and right sides of the application but between inside and outside...
+code pertaining to the inside part should not leak into the outside part."* `domain` + `application`
+are the inside; `adapter/in` + `adapter/out` are the outside. Driving adapters (`@RestController`,
+`@ApplicationModuleListener`) stay thin so the inside never knows whether a real HTTP client, an
+`@ApplicationModuleTest`, or a future caller is on the other side.
+
+**Assignment rule (mechanical): a module is THIN iff it has no application service** — its `api/` port
+is implemented directly by a JDBC adapter. Otherwise it is FULL. Today: `customer` = thin;
+`booking`/`venue`/`payment`/`payout`/`availability`/`operator` = full. `availability` is "small but
+full" because it owns a published command port with real concurrency semantics — small LOC does not
+make a module thin; **having no service** does.
+
+### Thin template — serviceless modules (today: only `customer`)
 ```
 ai.riviera.platform.<module>/
-├── package-info.java                 # @ApplicationModule(displayName = "...")
-├── api/                              # @NamedInterface("api") — THE published surface:
-│   ├── package-info.java             #   INBOUND ports others CALL + typed ids
-│   │                                 #   + DTO/value records + published domain-event records
-├── spi/                              # @NamedInterface("spi") — OPTIONAL, only when needed:
-│   ├── package-info.java             #   DRIVEN ports another module IMPLEMENTS for this one
-│   │                                 #   (cross-module dependency inversion — see "api vs spi")
-├── application/
-│   ├── in/                           # INTERNAL driving (use-case) ports + command/result types,
-│   │                                 #   when NOT published cross-module (e.g. booking.application.in.CreateBooking)
-│   ├── <Service>.java                #   application services implementing a port (package-private, @Service/@Transactional)
-│   └── out/                          # outbound (driven) ports the domain needs (e.g. booking.application.out.Bookings)
-├── domain/                          # INTERNAL: enums, value objects, aggregates (framework-light)
-└── infrastructure/
-    ├── in/                           # driving adapters: @RestController, future @ApplicationModuleListener
-    └── out/                          # driven adapters: JdbcClient repos / port impls (package-private @Repository/@Component)
+├── package-info.java          # @ApplicationModule(allowedDependencies = {...})
+├── api/                       # @NamedInterface("api") — the published port(s) + typed ids + value records
+└── adapter/out/               # the JDBC adapter implementing the api port DIRECTLY (package-private)
 ```
+No `application/`, no `domain/` — a single adapter is a *hypothetical* seam (`codebase-design`), so
+don't invent an empty layer for it. If the module grows a real service, it **graduates** to the full
+template (a visible, reviewable refactor — a feature, not a cost). *(Open detail: `customer`'s adapter
+bucket is `adapter/out/` to keep the adapter vocabulary uniform and the ArchUnit allowed-set clean;
+`internal/` is the Modulith-idiomatic alternative — settle this once.)*
 
-Why this shape (and how it maps to real code):
+### Full template — everything else
+```
+ai.riviera.platform.<module>/
+├── package-info.java          # @ApplicationModule(allowedDependencies = {...})
+├── api/                       # @NamedInterface("api") — ONLY if a sibling consumes a port/event here
+│   └── package-info.java      #   inbound ports others CALL + typed ids + value records + published events
+├── spi/                       # @NamedInterface("spi") — ONLY if this module owns a cross-module inversion
+│   └── package-info.java      #   driven ports another module IMPLEMENTS for this one
+├── application/               # services (package-private @Service/@Transactional) + their driving/driven
+│   │                          #   PORT interfaces, TOGETHER — no in/out sub-split (direction lives in adapter/)
+│   └── <use-case>/            # OPTIONAL sub-grouping by use-case — booking ONLY (reserve/cancel/refund/view)
+├── domain/                    # INTERNAL: enums, value objects, aggregates, policies (framework-light)
+└── adapter/
+    ├── in/                    # driving adapters: @RestController, @ApplicationModuleListener (+ request/response DTOs)
+    └── out/                   # driven adapters: JdbcClient repos / port impls (package-private)
+```
+`api/` and `spi/` are **both optional**: `payout` (pure event subscriber) has neither; only `venue`
+has `spi` today. **Don't force an empty `api/`** onto a module that only consumes events.
 
-- **`api/` is the module's public API and the only thing other modules may import.** It holds the
-  published **ports** (`venue.api.VenueCatalog`, `availability.api.AvailabilityClaim`,
-  `customer.api.CustomerDirectory`, `payment.api.CheckoutPort`), the **typed ids**
-  (`venue.api.SetId`/`VenueId`), the **DTO/value records** (`venue.api.SetBookingInfo`,
-  `payment.api.Money`), and **published event records** (U5: `booking.api.BookingConfirmed`).
-  Mark it `@NamedInterface("api")` via its own `package-info.java`. Other modules reference it as
-  `<module>::api`. **Name ports by purpose, never by technology** — the weather-system lesson from
-  Cockburn's article (*"architect the system's interfaces by purpose rather than by technology"*).
-  `CheckoutPort`, not `StripePort`; `AvailabilityClaim`, not `JdbcAvailabilityTable`. The technology
-  is the *adapter's* concern in `infrastructure/out`; the port name must survive swapping it.
-- **`application/in` is for INTERNAL driving ports** — a use-case interface the module's own web
-  adapter calls but that no *other* module needs (e.g. `booking.application.in.CreateBooking`,
-  implemented by package-private `booking.application.CreateBookingService`). Keep it here, NOT in
-  `api/`, precisely because it is not cross-module surface. Promote a port to `api/` only when
-  another module must call it.
-- **`application/out` holds outbound (driven) ports** the orchestration needs
-  (`booking.application.out.Bookings`, `BookingCodeGenerator`). Internal to the module.
-- **`domain` is internal.** Enums/value objects/aggregates (`booking.domain.BookingStatus`).
-- **`infrastructure/in` / `infrastructure/out` are internal adapters** — controllers and
-  `JdbcClient` repositories, package-private (`JdbcVenueCatalog`, `JdbcBookings`,
-  `BookingController`).
+How this maps to real code:
 
-Keep `@SpringBootApplication` (`PlatformApplication`) in the root package only; never put shared
-domain types there. App-wide config (`SecurityConfig`, `WebCorsConfig`, `TimeConfig`) also lives in
-the root and is not a module.
+- **`api/` is the module's public API and (with `spi/`) the only thing other modules may import.** It
+  holds the published **ports** (`venue.api.VenueCatalog`, `availability.api.AvailabilityClaim`,
+  `customer.api.CustomerDirectory`, `payment.api.CheckoutPort`), the **typed ids** (`venue.api.SetId`),
+  the **value records** (`payment.api.Money`), and **published event records**
+  (`booking.api.BookingConfirmed`). **Name ports by purpose, never technology** — the weather-system
+  lesson (*"architect the system's interfaces by purpose rather than by technology"*). `CheckoutPort`,
+  not `StripePort`; `AvailabilityClaim`, not `JdbcAvailabilityTable`. The technology is the adapter's
+  concern in `adapter/out`; the port name must survive swapping it.
+- **`application/` holds the services AND their ports together** — the internal driving/use-case ports
+  (e.g. `CreateBooking`, implemented by package-private `CreateBookingService`) and the outbound driven
+  ports (e.g. `Bookings`, `BookingCodeGenerator`). **No `in`/`out` sub-split:** once the *adapter* layer
+  carries direction (`adapter/in` vs `adapter/out`), the port interfaces don't need to. The repository
+  port stays an interface in `application/`, implemented by `adapter/out` — the inversion is real (it
+  enables fakes in tests); it just doesn't need its own package to prove it. A port graduates to `api/`
+  only when another module must call it; to `spi/` only for a cross-module inversion.
+- **`domain/` is internal** — enums/value objects/aggregates/policies (`booking.domain.BookingStatus`,
+  `RefundPolicy`). For `booking`, keep `domain/` **flat and shared** across the use-case slices.
+- **`adapter/in` / `adapter/out` are internal adapters** — controllers + listeners (driving) and
+  `JdbcClient` repositories + gateways (driven), all package-private (`JdbcVenueCatalog`, `JdbcBookings`,
+  `BookingController`, `PaymentEventListener`). Direction is a **package fact** here — the enforceable
+  hexagon boundary and the driving/driven distinction made visible. Both a `@RestController` and an
+  `@ApplicationModuleListener` are *driving* adapters and both live in `adapter/in` (they'd wrongly
+  split under a technology spelling). If you ever need the technology axis, it's a *sub*-package
+  (`adapter/in/rest`, `adapter/in/event`); the primary split stays **direction**.
 
-> **Single-adapter modules may collapse the layers.** `venue`/`availability`/`customer` implement
-> their `api/` port *directly* with a `JdbcClient` adapter in `infrastructure/out` — no
-> `application` layer — because a single implementation is a *hypothetical* seam (`codebase-design`).
-> `booking` keeps the full hexagon because it genuinely **orchestrates** four modules. Use the full
-> layout when there is real orchestration; collapse it when the module is a thin query/command
-> adapter. Don't add an empty `application` layer for its own sake.
+Keep `@SpringBootApplication` (`PlatformApplication`) in the root package only; never put shared domain
+types there. App-wide config (`SecurityConfig`, `WebCorsConfig`, `TimeConfig`) also lives in the root
+and is not a module.
+
+> **`booking` is the one module sliced by use-case.** It has 8 services — past a readable flat
+> `application/`. Group them: `application/reserve/` (reserve + confirm + claim/release),
+> `application/cancel/` (cancel + policy + cutoff), `application/refund/` (weather refund + abandoned
+> sweep), `application/view/` (read side). The outbound `Bookings` port stays at `application/` root,
+> shared by the slices. **No other module is sliced** — none has the mass. Structure tracks weight.
 
 > **A port is a purposeful conversation, not one-interface-per-use-case.** Cockburn's 2005
 > ports-and-adapters article: *"A port identifies a purposeful conversation"* and favors *"a small
-> number, two, three or four ports."* Mirror that here — a module's `api/` exposes a *few* intent-named
-> ports (`AvailabilityClaim`, `VenueCatalog`, `CheckoutPort`), not one port per method. If you're
-> tempted to add a fifth narrow port, ask whether it's the same conversation as an existing one.
+> number, two, three or four ports."* A module's `api/` exposes a *few* intent-named ports
+> (`AvailabilityClaim`, `VenueCatalog`, `CheckoutPort`), not one per method. Tempted by a fifth narrow
+> port? Ask whether it's the same conversation as an existing one.
 
 ## Declaring boundaries
 
-Today each module declares only a display name:
-
-```java
-@org.springframework.modulith.ApplicationModule(displayName = "Booking")
-package ai.riviera.platform.booking;
-```
-
-and exposes its `api/`:
-
-```java
-@org.springframework.modulith.NamedInterface("api")
-package ai.riviera.platform.booking.api;
-```
-
-**Recommended tightening (deny-by-default):** for a new module, list its `allowedDependencies`
-explicitly so an accidental new coupling fails `verify()` loudly. List each as `<module>::api`:
+Each module declares a display name **and an explicit `allowedDependencies` deny-list** —
+this is **already true of every module in `main`** (`booking`, `availability`, `payout`,
+`venue`, `payment`, `customer` all set it), not a future tightening. Keep it that way:
 
 ```java
 @org.springframework.modulith.ApplicationModule(
@@ -156,9 +170,22 @@ explicitly so an accidental new coupling fails `verify()` loudly. List each as `
 package ai.riviera.platform.booking;
 ```
 
-If you add `allowedDependencies`, it must list **every** module the code legitimately uses or
-`verify()` fails — run `ModularityTests` immediately after. (Existing modules don't set this yet;
-adding it is a safe, encouraged follow-up, not a requirement for an unrelated change.)
+and each module exposes its `api/` (and `spi/` where present):
+
+```java
+@org.springframework.modulith.NamedInterface("api")
+package ai.riviera.platform.booking.api;
+```
+
+**`allowedDependencies` must list every module the code legitimately uses or `verify()`
+fails** — so when you add a genuinely new, non-cyclic dependency, add it to the list in the
+same change and run `ModularityTests` immediately. A failure is the design being wrong (an
+unintended coupling), not the test being fussy. **Never** widen the list to silence a
+`verify()` failure without understanding the new edge.
+
+> **New module (e.g. `operator`, see below) must declare its deny-list from creation** —
+> don't ship a module with no `allowedDependencies` and "tighten later." Deny-by-default is
+> the standard here.
 
 ## `api` vs `spi`: inbound ports vs cross-module driven ports
 
@@ -166,8 +193,8 @@ A module's `api/` (`@NamedInterface("api")`) is its **inbound / driving** surfac
 other modules **call** (`VenueCatalog`, `AvailabilityClaim`). The caller depends on the provider;
 call direction == dependency direction. **This is the default — reach for it first.**
 
-A module's **driven / outbound** port normally stays **internal** in `application.out`, implemented
-by the module's *own* `infrastructure.out` adapter — it is *not* published. Promote a driven port to
+A module's **driven / outbound** port normally stays **internal** in `application/` (alongside its
+service), implemented by the module's *own* `adapter/out` adapter — it is *not* published. Promote a driven port to
 a published named interface **only** when its adapter must live in **another module** — i.e. a
 cross-module **dependency inversion**, done to keep the graph acyclic. When you do, put it in a
 dedicated **`spi`** named interface (`<module>.spi`, `@NamedInterface("spi")`), **never** in `api/`:
@@ -190,9 +217,54 @@ granted `venue::api` only — never `venue::spi`. (`SetId` and other shared voca
 only the *driven port* lives in `spi/`.)
 
 **Decision rule.** Inbound port (others call) → `api`. Driven port implemented in-module →
-`application.out` (internal, unpublished). Driven port implemented by **another** module → `spi`. If
+`application/` (internal, unpublished). Driven port implemented by **another** module → `spi`. If
 you're tempted to put an "implement-me" interface in `api/`, that is exactly the smell this rule
 fixes — `riviera-review-overlay` (RV-BE-3b) flags it at the review gate.
+
+## Splitting an overgrown `api/` (in progress): ports vs vocabulary vs events
+
+`api/` started as "the published surface" and tends to accumulate **three different kinds of
+thing**: (1) **ports** ("call-me" interfaces), (2) **published vocabulary** (typed ids, value
+records — `SetId`, `Money`), and (3) **published domain events** (`BookingConfirmed`). When one
+`api/` interface serves several consumers with different needs, segregate it:
+
+- **Split a wide port by consumer role.** `venue.api.VenueCatalog` has grown into a god-port (one
+  interface serving the tourist read model, `availability`'s pool check, `booking`'s reserve facts,
+  and `payout`'s rate config). The intended split keeps the implementations in place but narrows
+  what each consumer imports — e.g. `VenueCatalog` (tourist reads), `SetBookingFacts`
+  (`setBookingInfo`/`poolOf`), `VenueRates` (`commissionBps`/`lateCancelRefundBps`). This makes the
+  `verify()` dependency arrows honest. **Do not** keep adding methods to `VenueCatalog`; add to the
+  role-named interface instead.
+- **Separate events (and optionally vocabulary) into their own named interface.** A listener-only
+  module (`payout` consumes `booking`'s events but never its command ports) should be able to depend
+  on a `booking::events` named interface without importing `booking`'s command surface. The split is
+  a `@NamedInterface` decision; the *enforcement* that the right kind of type lands in the right
+  surface is a hand-written ArchUnit rule (alongside `JdbcOnlyArchitectureTests`, keyed off the
+  package/naming convention) and `riviera-review-overlay` RV-BE-3c.
+
+When you do this split, update `allowedDependencies` grants to the narrower named interfaces
+(least privilege) and keep `ModularityTests` green.
+
+## The `operator` module (per-venue authorization)
+
+Multi-operator launch requires per-venue ownership: every venue-scoped operation must verify the
+**authenticated operator owns the path `venueId`** (today the code authorizes on a single shared
+`OPERATOR` role with **no** ownership check — the launch blocker). This ownership concept needs a
+home, and it is **not** `venue` (layout/pricing/pools) and **not** `customer` (tourist
+guest-checkout). Introduce a dedicated **`operator`** (or `identity`) module:
+
+- Owns operator accounts and the **operator↔venue ownership mapping**.
+- Publishes a minimal `operator::api` query port — e.g. `OwnsVenue(operatorId, venueId) → boolean`
+  or `ownedVenues(operatorId) → Set<VenueId>` (id-based, invariant #11).
+- The ownership check is enforced in the **application service** of each venue-scoped command/query
+  (so no adapter can bypass it), returning `403` on mismatch — **not** in the controller alone.
+  Platform-wide admin (`/api/admin/**`) stays role-gated.
+- Declares its `allowedDependencies` from creation; venue-scoped modules that consult it add
+  `operator::api` to their deny-list.
+- Optional defence-in-depth: PostgreSQL Row-Level Security keyed on the operator's venue set.
+
+`riviera-review-overlay` gains a Blocker bank item for any venue-scoped surface whose `venueId`
+isn't checked against the operator's owned venues.
 
 ## Choosing between an `api/` port and a domain event
 
@@ -232,7 +304,7 @@ fix the **structure**, not the test. To debug the detected arrangement:
 
 ## Reference files — read before non-trivial work
 
-- **`references/persistence-jdbc.md`** — before touching `infrastructure/out`, a repository, an
+- **`references/persistence-jdbc.md`** — before touching `adapter/out`, a repository, an
   aggregate, or a migration. **`JdbcClient` + explicit SQL is the default here**; a Spring Data JDBC
   aggregate is the *exception* (only when a row cluster is one consistency unit). The JPA
   anti-patterns to refuse. (Pairs with `riviera-java-conventions` §1/§1a and `postgres`.)
@@ -244,10 +316,11 @@ fix the **structure**, not the test. To debug the detected arrangement:
 
 ## Quick checklist before finishing a backend structural change
 
-- [ ] New class is in the right package (`api/` published; `application.in/out` ports; `domain`
-      internal; `infrastructure.in/out` adapters, package-private).
+- [ ] New class is in the right package (`api/`/`spi/` published; `application/` = service + its
+      ports; `domain/` internal; `adapter/in`+`adapter/out` adapters, package-private). Thin module
+      (no service) = `api/` + `adapter/out/` only. No `.in`/`.out` at the application layer (ADR-0007).
 - [ ] Cross-module use goes through `<module>::api` (port or published event record) — no import of
-      another module's `application.*`/`infrastructure.*`/`domain`.
+      another module's `application.*`/`adapter.*`/`domain`.
 - [ ] A cross-module **driven** port (implemented by *another* module) lives in `<module>.spi`
       (`@NamedInterface("spi")`), **not** `api/`; `<module>::spi` is granted only to the implementor.
 - [ ] Aggregates and event payloads reference other aggregates by **typed id**, not by object.
