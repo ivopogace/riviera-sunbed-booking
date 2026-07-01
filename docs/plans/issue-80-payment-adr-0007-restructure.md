@@ -222,6 +222,32 @@ drive test-first; the pre-existing tests are the safety net):
 
 ---
 
+## Review-gate note (PR #90)
+
+Ran the SDLC review gate (`riviera-review-overlay` + `/code-review` on
+`origin/main...HEAD`) — two independent finder passes (correctness + overlay conventions).
+**No findings.** The content diff is exclusively package declarations, import statements, and
+javadoc, plus the single `NoStripeConnectArchitectureTest` bytecode-probe path (a string a
+`git mv` can't rewrite). Items walked:
+
+- **RV-BE-12** (ADR-0007 package shape) ✅ — final top-level set `{api, application, domain,
+  adapter}` ⊆ allowed; adapters split by direction; no `.in/.out` at the application layer;
+  no lingering `infrastructure/`; `api` top-level `@NamedInterface`; no `application`/`domain`
+  → `adapter.*` import.
+- **RV-BE-3b/3c** (spi/api placement) ✅ — no `spi/` invented; nothing added to `api/` (the one
+  `api/package-info.java` line is a javadoc accuracy fix).
+- **RV-BE-11** (responsibility placement) ✅ — every changed file stays in `payment`
+  (renames 88–98% similarity); no policy/calc moved between modules; no new writer to another
+  module's table; no forbidden cross-module reach.
+- **Invariant #8** (RV-BE-7/RV-CT-3) ✅ — `StripeWebhookController` is a 96% rename; signature
+  verification and the idempotency dedup are byte-for-byte unchanged.
+- **RV-PROC-1** ✅ — *Skills consulted* (`riviera-modulith`, `riviera-java-conventions`,
+  `riviera-stripe-payments`) matches the payment-only backend diff (no migration/FE/SQL).
+- Correctness (removed-behavior + cross-file) ✅ — dropped imports were genuinely same-package;
+  every rewritten import points at the real landing package; probe path updated correctly.
+
+---
+
 ## Acceptance-criteria verification (final)
 
 - [ ] **AC-1:** `./gradlew test --tests "*ModularityTests*"` → PASS.
