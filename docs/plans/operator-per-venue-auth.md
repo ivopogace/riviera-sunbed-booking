@@ -174,11 +174,11 @@ authenticated operator does not own the venue. Existing 2xx/4xx shapes unchanged
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `operator` module + V16 + `OperatorOwnershipIT` | ✅ | (this commit) |
-| 1 — Enforce in `venue` (VenueAdminService) + 403 advice | ⏳ | |
-| 2 — Enforce in `booking` (daily view + weather refund) | | |
-| 3 — Enforce in `availability` (setId→venue) | | |
-| 4 — Enforce in `payout` (ledger read) | | |
-| 5 — `CrossVenueDenialIT` matrix + full regression | | |
+| 1 — Enforce in `venue` (VenueAdminService) + 403 advice | ✅ | (enforcement commit) |
+| 2 — Enforce in `booking` (daily view + weather refund) | ✅ | (enforcement commit) |
+| 3 — Enforce in `availability` (setId→venue) | ✅ | (enforcement commit) |
+| 4 — Enforce in `payout` (ledger read) | ✅ | (enforcement commit) |
+| 5 — `CrossVenueDenialIT` matrix + full regression | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

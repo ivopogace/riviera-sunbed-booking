@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorId;
 import ai.riviera.platform.venue.api.SetId;
 import ai.riviera.platform.venue.api.VenueId;
 import ai.riviera.platform.venue.application.in.AddSetOutcome;
@@ -26,10 +29,16 @@ import ai.riviera.platform.venue.application.in.SetRejection;
 /**
  * Operator write endpoints for venue onboarding + beach-map editing (U7, issue #7). Driving
  * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap}
- * ports (invariant #11). These are an authenticated operator surface (httpBasic, role
- * {@code OPERATOR}, configured in {@code SecurityConfig}); the public U1 read endpoint is a
- * separate controller. Outcomes map to HTTP via exhaustive {@code switch}: created→201 (+Location),
- * applied→204, {@code NO_SUCH_*}→404, {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409, malformed→400.
+ * ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
+ * operator surface (httpBasic, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
+ * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
+ * {@code switch}: created→201 (+Location), applied→204, {@code NO_SUCH_*}→404,
+ * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409, malformed→400.
+ *
+ * <p>The per-set edits are venue-scoped: the controller resolves the authenticated principal to an
+ * {@link OperatorId} and hands it to {@link EditBeachMap}, which asserts ownership of {@code venueId}
+ * before acting (invariant #13); a mismatch is {@code 403} via {@code VenueAuthorizationExceptionHandler}.
+ * {@code create} takes no {@code venueId} and stays role-gated only.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -40,10 +49,13 @@ class VenueAdminController {
 
 	private final OnboardVenue onboardVenue;
 	private final EditBeachMap editBeachMap;
+	private final CurrentOperator currentOperator;
 
-	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap) {
+	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
+			CurrentOperator currentOperator) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
+		this.currentOperator = currentOperator;
 	}
 
 	@PostMapping
@@ -54,8 +66,10 @@ class VenueAdminController {
 	}
 
 	@PostMapping("/{venueId}/sets")
-	ResponseEntity<?> addSet(@PathVariable long venueId, @RequestBody SetPositionRequest request) {
-		return switch (editBeachMap.addSet(new VenueId(venueId), request.toCommand())) {
+	ResponseEntity<?> addSet(Authentication authentication, @PathVariable long venueId,
+			@RequestBody SetPositionRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		return switch (editBeachMap.addSet(operator, new VenueId(venueId), request.toCommand())) {
 			case AddSetOutcome.Added added -> ResponseEntity
 					.created(URI.create("/api/venues/" + venueId + "/sets/" + added.setId().value()))
 					.body(Map.of("id", added.setId().value()));
@@ -64,15 +78,18 @@ class VenueAdminController {
 	}
 
 	@PatchMapping("/{venueId}/sets/{setId}")
-	ResponseEntity<?> editSet(@PathVariable long venueId, @PathVariable long setId,
-			@RequestBody SetPositionRequest request) {
-		return toResponse(editBeachMap.editSet(new VenueId(venueId), new SetId(setId),
+	ResponseEntity<?> editSet(Authentication authentication, @PathVariable long venueId,
+			@PathVariable long setId, @RequestBody SetPositionRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		return toResponse(editBeachMap.editSet(operator, new VenueId(venueId), new SetId(setId),
 				request.toCommand()));
 	}
 
 	@DeleteMapping("/{venueId}/sets/{setId}")
-	ResponseEntity<?> removeSet(@PathVariable long venueId, @PathVariable long setId) {
-		return toResponse(editBeachMap.removeSet(new VenueId(venueId), new SetId(setId)));
+	ResponseEntity<?> removeSet(Authentication authentication, @PathVariable long venueId,
+			@PathVariable long setId) {
+		OperatorId operator = currentOperator.require(authentication);
+		return toResponse(editBeachMap.removeSet(operator, new VenueId(venueId), new SetId(setId)));
 	}
 
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {
