@@ -344,7 +344,7 @@ move) → **Sonar gate** → merge + close-out checklist.
 - [x] **AC-2:** `grep -rn "booking::api" platform/src/main/java` → empty; `platform/src/main/java/ai/riviera/platform/booking/api` does not exist. Verified at commit 3940239.
 - [x] **AC-4/AC-5:** `gradle test --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS, 10/10 incl. the five fixture-fed negatives. Verified at commit 6b9f4e3.
 - [x] **AC-6:** V18 rewrites all four FQCNs in both registry tables; `PayoutSpineScenarioIT` (boots context, applies V18) green locally at commit 3940239; CI ITs re-verify on the PR.
-- [ ] **AC-7:** CI full suite green at PR head. Verified at the PR's check run (pending — the one AC CI owns).
+- [x] **AC-7:** CI full suite green at PR head 5ac4fd0 — all 10 checks (backend, frontend, CodeQL both langs, SonarCloud scan + quality gate) success: https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/28553222342 . Sonar: 0 new issues, 80.0% new-code coverage.
 
 ## Review-gate record (PR #105)
 
