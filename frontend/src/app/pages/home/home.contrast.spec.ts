@@ -1,18 +1,25 @@
+import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../../testing/contrast';
 import {
-  AA_LARGE,
-  AA_NORMAL,
-  Rgb,
-  composite,
-  contrastRatio,
-  hexToRgb,
-  rgbToHex,
-} from '../../../testing/contrast';
+  CARD_INK,
+  Glass,
+  INK_DARK,
+  PORCELAIN_CHIP,
+  PORCELAIN_HEADER_GLASS,
+  PORCELAIN_STOPS,
+  RIVIERA_CHIP,
+  RIVIERA_HEADER_GLASS,
+  RIVIERA_STOPS,
+  WHITE,
+  expectAaOverStops,
+  surfaceOver,
+} from '../../../testing/glass-tokens';
 
 /**
  * WCAG-AA contrast guard for the Liquid Glass Discover page (issue #135; gate from #38).
  * Glass surfaces are translucent, so every pair is checked as the EFFECTIVE colour — the
  * glass rgba composited over the worst-case stops of the theme's background gradient, and
  * alpha inks composited over that result (the `app.contrast.spec.ts` pattern from #134).
+ * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
  * This table mirrors every text-bearing token in `styles.scss` + `home.scss`; a token edit
  * there must re-pass here. Deviations from the design file, on purpose (plan R-1/R-2, same
@@ -27,25 +34,16 @@ import {
  * decorative card border.
  */
 
-const WHITE = hexToRgb('ffffff');
-const INK_DARK = hexToRgb('0a2a33'); // porcelain --riv-ink AND both themes' --riv-card-ink
-const CARD_INK = hexToRgb('0c2a33'); // the rgba(12,42,51,…) muted-ink base
 const ACCENT = '#085a6e'; // --riv-accent-ink
 
-// styles.scss tokens (keep in sync)
-const RIVIERA_HEADER_GLASS = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
-const PORCELAIN_HEADER_GLASS = { color: WHITE, alpha: 0.6 };
-const RIVIERA_CARD_GLASS = { color: WHITE, alpha: 0.78 };
-const PORCELAIN_CARD_GLASS = { color: WHITE, alpha: 0.55 };
-const FIELD_FILL_ALPHA = 0.55; // select/date fill over the card glass
-const MODE_CHIP_GLASS = { color: WHITE, alpha: 0.7 };
+// styles.scss card-surface tokens (theme-invariant ones live in the :root block)
+const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
+const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
+const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the card glass
+const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.7 }; // --riv-mode-chip-glass
 const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
 const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint)
-
-// Worst-case gradient stops a glass surface can sit over (mirrors app.contrast.spec.ts).
-const RIVIERA_STOPS = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);
-const PORCELAIN_STOPS = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(hexToRgb);
 
 // --riv-photo-grad stops (same in both themes; from the design's CTA hexes).
 const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);
@@ -53,8 +51,9 @@ const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);
 interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
-  readonly headerGlass: { color: Rgb; alpha: number };
-  readonly cardGlass: { color: Rgb; alpha: number };
+  readonly headerGlass: Glass;
+  readonly chip: Glass;
+  readonly cardGlass: Glass;
   readonly heroInk: Rgb;
   readonly heroInkSoftAlpha: number; // --riv-ink-soft
 }
@@ -64,6 +63,7 @@ const THEMES: readonly Theme[] = [
     name: 'riviera',
     stops: RIVIERA_STOPS,
     headerGlass: RIVIERA_HEADER_GLASS,
+    chip: RIVIERA_CHIP,
     cardGlass: RIVIERA_CARD_GLASS,
     heroInk: WHITE,
     heroInkSoftAlpha: 0.86,
@@ -72,33 +72,12 @@ const THEMES: readonly Theme[] = [
     name: 'porcelain',
     stops: PORCELAIN_STOPS,
     headerGlass: PORCELAIN_HEADER_GLASS,
+    chip: PORCELAIN_CHIP,
     cardGlass: PORCELAIN_CARD_GLASS,
     heroInk: INK_DARK,
     heroInkSoftAlpha: 0.7,
   },
 ];
-
-/** Effective surface of a glass layer over a stop. */
-function surfaceOver(glass: { color: Rgb; alpha: number }, stop: Rgb): Rgb {
-  return composite(glass.color, glass.alpha, stop);
-}
-
-function expectAaOverStops(
-  ink: Rgb,
-  inkAlpha: number,
-  glass: { color: Rgb; alpha: number },
-  stops: readonly Rgb[],
-  threshold: number = AA_NORMAL,
-): void {
-  for (const stop of stops) {
-    const surface = surfaceOver(glass, stop);
-    const effectiveInk = composite(ink, inkAlpha, surface);
-    expect(
-      contrastRatio(rgbToHex(effectiveInk), rgbToHex(surface)),
-      `over stop ${rgbToHex(stop)}`,
-    ).toBeGreaterThanOrEqual(threshold);
-  }
-}
 
 describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #135)', (theme) => {
   it('hero headline + state text (ink) meets AA on the hero/state panel glass', () => {
@@ -107,6 +86,19 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
 
   it('hero intro / state copy (ink-soft) meets AA on the hero/state panel glass', () => {
     expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
+  });
+
+  it('hero chip text meets AA on the chip tint over the hero panel glass', () => {
+    // The thinnest pair on the page (riviera worst case ~4.53:1 over #ffe2b0) — pinned
+    // here as well as in app.contrast.spec.ts because the hero relies on it directly.
+    for (const stop of theme.stops) {
+      const panel = surfaceOver(theme.headerGlass, stop);
+      const chip = composite(theme.chip.color, theme.chip.alpha, panel);
+      expect(
+        contrastRatio(rgbToHex(theme.heroInk), rgbToHex(chip)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
   it('card ink (names, ratings, free count) meets AA on the card glass', () => {
@@ -154,9 +146,13 @@ describe('Discover photo-area contrast (theme-independent, issue #135)', () => {
     }
   });
 
-  it('location overlay (white) meets AA over the weakest scrim it can sit on', () => {
-    // The overlay sits in the scrim's bottom band; alpha there is >= 0.5. Worst case:
-    // the thinnest scrim over the lightest photo stop.
+  it('location overlay (white) meets AA over the weakest scrim under the text band', () => {
+    // Geometry (kept true by home.scss + styles.scss): the photo is 150px; the scrim
+    // reaches alpha 0.5 at its 75% stop (y = 112.5px); the overlay text (bottom: 13px,
+    // explicit 15px line box) occupies y ≈ 122–137px — entirely below the 0.5 stop, so
+    // 0.5 is a floor with margin (actual band minimum ≈ 0.54). Review finding at #135:
+    // an earlier scrim curve only reached ~0.35 under the text, where the lightest
+    // photo stop composites below AA.
     const SCRIM = hexToRgb('0d2828');
     for (const stop of PHOTO_STOPS) {
       const backdrop = composite(SCRIM, 0.5, stop);

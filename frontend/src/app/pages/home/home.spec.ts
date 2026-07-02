@@ -159,7 +159,9 @@ describe('Home (venue discovery)', () => {
     const results = el().querySelector('[data-testid="results"]')!;
     expect(results.closest('form')).not.toBeNull(); // inside the filter bar
     expect(results.getAttribute('aria-live')).toBe('polite');
-    expect(results.textContent).toContain('2');
+    // Assert the count element exactly — a substring match on the whole block is
+    // vacuously satisfied by the digits of the year in the date label (review finding).
+    expect(results.querySelector('.count-number')?.textContent?.trim()).toBe('2');
     expect(results.textContent).toContain('venues');
     expect(results.textContent).toMatch(/\b\d{4}\b/); // the formatted date, year kept
   });
@@ -168,9 +170,9 @@ describe('Home (venue discovery)', () => {
     listRequest().flush([]);
     await fixture.whenStable();
 
-    const results = el().querySelector('[data-testid="results"]');
-    expect(results?.textContent).toContain('0');
-    expect(results?.textContent).toContain('venues');
+    const results = el().querySelector('[data-testid="results"]')!;
+    expect(results.querySelector('.count-number')?.textContent?.trim()).toBe('0');
+    expect(results.textContent).toContain('venues');
   });
 
   it('sizes the availability-bar fill as round(free/total*100)%', async () => {

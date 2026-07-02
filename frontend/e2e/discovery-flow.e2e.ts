@@ -70,8 +70,9 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('Miramar Beach Club');
   await expect(cards.first()).toContainText('18 of 24 free');
-  await expect(page.getByTestId('results')).toContainText('2');
-  await expect(page.getByTestId('results')).toContainText('venues');
+  // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
+  // year digits in the date label (review finding).
+  await expect(page.getByTestId('results')).toContainText('2 venues');
   await expectNoSeriousAxeViolations(page, 'discovery list');
 
   // Filter by beach → the list narrows to the matching venue (server-side filter, mocked);
@@ -98,6 +99,6 @@ test('discovery shows an accessible empty state when no venues match', async ({ 
   await expect(page.getByTestId('empty')).toBeVisible();
   await expect(page.getByTestId('venue-card')).toHaveCount(0);
   // The in-bar count stays visible in the empty state (#135): "0 venues · <date>".
-  await expect(page.getByTestId('results')).toContainText('0');
+  await expect(page.getByTestId('results')).toContainText('0 venues');
   await expectNoSeriousAxeViolations(page, 'discovery empty state');
 });

@@ -159,7 +159,8 @@ N/A — no contract change (`GET /api/venues` summary consumed as-is).
 | 0 — Card-surface tokens + composited contrast spec | ✅ | 30f3f5e |
 | 1 — Component restyle (template/styles/logic) + route flag flip | ✅ | 4f3a67b |
 | 2 — e2e adjustments + full local FE suite | ✅ | daa377e |
-| 3 — Substrate patch (`riviera-frontend` skill) + plan final state | ✅ | (this commit) |
+| 3 — Substrate patch (`riviera-frontend` skill) + plan final state | ✅ | 967018e |
+| 4 — Review-gate fix round (scrim geometry, vacuous count pins, chip-slot gap, token literals, spec/token dedup) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -214,6 +215,58 @@ recorded on epic #133 as riding this PR. Plan-doc final state; push; PR; gates.
 | 2026-07-02 | Phase 2: compiler whitespace-stripping glued `<strong>1</strong>` to "venue" → "1venue" in text content (e2e catch) | other adjacent inline elements whose combined text AT/assertions read | `grep -n "</strong>$" src/app/**/*.html` (manual scan of multi-element text runs) | only the new count block; existing templates keep separators inside one element or use literal `·`/text nodes | `&ngsp;` after the count; rule noted: text split across sibling inline elements needs an explicit space |
 
 ---
+
+## Review-gate record (riviera-review-overlay + code-review, high effort, on PR #145)
+
+8 finder angles → 30 candidates → dedup → 3 verifier agents on the numerically uncertain
+ones (rest confirmed by direct inspection). **Fixed in the fix-round commit:**
+(1) **scrim geometry** (CONFIRMED, 4 independent finders): the location-overlay contrast
+guard assumed scrim alpha ≥ 0.5 under the text; actual band was 0.35–0.47 (white over the
+light photo stop = 4.26:1 < AA) — scrim token gains a 0.5 @75% stop, `.photo-location`
+gets an explicit 15px line box, spec asserts the now-true 0.5 floor with the geometry
+documented; (2) **vacuous count assertions** (CONFIRMED): `'2'`/`'0'` substring pins were
+satisfied by the year "2026" — unit specs assert `.count-number` exactly, e2e asserts
+`'2 venues'`/`'0 venues'`; (3) **chip-slot gap** (CONFIRMED): the empty T7 slot cost an
+extra 8px flex gap → `:empty { display: none }`; (4) **bar-count jump** (CONFIRMED by
+real-render measurement, 53px vs 51px reserved) → explicit `line-height: 14px` +
+`min-height: 53px` (deterministic sum); (5) **hero-chip pair** (PLAUSIBLE, riviera worst
+case 4.53:1 = thinnest on the page) added to the home spec per theme; (6) **porcelain
+token-block duplication** → porcelain now overrides only `--riv-card-glass`;
+(7) **contrast-fixture duplication** → shared `testing/glass-tokens.ts` (token mirrors +
+`expectAaOverStops`), both specs refactored onto it; (8) **palette literals** → new
+`--riv-field-fill`/`--riv-photo-ink` tokens, focus halo via `color-mix` on
+`--riv-accent-ink`, mode-chip border on `--riv-card-border`; (9) **glass-recipe
+duplication** → `%panel-glass`/`%card-glass` placeholders in home.scss.
+**Declined with rationale:** axe-incomplete on glass surfaces (T1-established
+architecture; the composited unit specs are the compensating net); deleting the T7 chip
+slot (the issue's AC mandates it); scrim-as-multi-background (changes the sun/scrim paint
+order the design specifies; #142 restructures the photo area anyway); per-card
+`backdrop-filter` cost (the design language mandates card glass; blur is genuinely
+visible over the animated background — revisit with #142 real-photo work if profiling
+shows jank); mode-chip blur being a no-op over the flat gradient (becomes functional
+with #142 photos; negligible cost); a `--riv-panel-glass` alias (the hero/state coupling
+to the header-glass tokens is deliberate — it is what makes the T1-proven AA pairs apply);
+a global glass-utility partial (rule of three — extract at T3 when a second page consumes
+it; noted on epic #133 at close-out).
+Overlay walk: RV-BE-1 / RV-CT-3 / RV-BE-9 / RV-BE-3c/10/11/12 all N/A (frontend-only,
+read-only display, no venue-scoped surface); RV-FE-* pass; RV-FE-E2E pass (CI-safe suite,
+shared axe policy); RV-PROC-1 pass (Skills consulted covers FE + e2e; re-walked for the
+fix round — all fixes are frontend, skills already loaded).
+Post-fix verification: unit 264/264, lint clean, `discovery-flow` + `theme-shell` e2e 6/6.
+
+## Acceptance-criteria verification (final)
+
+- [x] **AC-1** design render both themes + pointer-only hover: home.spec structure pins,
+  hover `@media (hover: hover)`, theme-shell e2e axe sweeps both themes; screenshots
+  verified during Phase 2 (desktop riviera/porcelain + mobile).
+- [x] **AC-2** count + noun + date in the bar, aria-live, visible when empty: home.spec
+  (exact `.count-number` pins), discovery-flow e2e.
+- [x] **AC-3** money via shared/money.ts, rating from tenths: home.spec €25 / 4.8 pins.
+- [x] **AC-4** bar width round(free/total*100), zero-set → 0%: home.spec 75%/50%/0% pins.
+- [x] **AC-5** testids preserved, discovery-flow green: e2e 17/17 locally + CI.
+- [x] **AC-6** axe + composited AA both themes, cards real links with full aria-label:
+  home.a11y.spec, home.contrast.spec (incl. scrim-geometry + hero-chip pins), e2e sweeps.
+- [x] **AC-7** `''` off legacySurface, others still flagged: app.spec route-flag spec.
 
 ## Self-review checklist (before merge / PR)
 

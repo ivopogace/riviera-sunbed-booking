@@ -1,28 +1,32 @@
 import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../testing/contrast';
+import {
+  INK_DARK,
+  PORCELAIN_CHIP,
+  PORCELAIN_HEADER_GLASS,
+  PORCELAIN_STOPS,
+  RIVIERA_CHIP,
+  RIVIERA_HEADER_GLASS,
+  RIVIERA_STOPS,
+  WHITE,
+  expectAaOverStops,
+  surfaceOver,
+} from '../testing/glass-tokens';
 
 /**
  * WCAG-AA contrast guard for the Liquid Glass shell tokens (issue #134, AC-4; gate from #38).
  * Glass surfaces are translucent, so each pair is checked as the EFFECTIVE colour: the glass
  * rgba composited over the worst-case (lightest and darkest) stop of the theme's background
- * gradient, and alpha inks composited over that result. Mirrors `styles.scss` + `app.scss` —
- * a token edit there must re-pass here (three tokens already deviate from the design file for
+ * gradient, and alpha inks composited over that result. The token mirrors live in
+ * `testing/glass-tokens.ts` (shared with the per-page glass specs) — a token edit in
+ * `styles.scss` must re-pass here (three tokens already deviate from the design file for
  * exactly this reason; see the styles.scss header note and plan R-2).
  *
  * Decorative, text-free elements (sun disc, blobs, swatches, menu bars, caret) are exempt
  * (WCAG 1.4.3 incidental/decoration).
  */
 
-const WHITE = hexToRgb('ffffff');
-const INK_DARK = hexToRgb('0a2a33');
-
-// styles.scss tokens (keep in sync)
-const RIVIERA_HEADER_GLASS = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
-const PORCELAIN_HEADER_GLASS = { color: WHITE, alpha: 0.6 };
+// Shell-only surface (near-opaque white popover in every theme)
 const POPOVER = { color: WHITE, alpha: 0.92 };
-
-// Worst-case gradient stops the header/footer glass can sit over.
-const RIVIERA_STOPS = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);
-const PORCELAIN_STOPS = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(hexToRgb);
 
 interface GlassPair {
   readonly usage: string;
@@ -43,28 +47,21 @@ const PAIRS: readonly GlassPair[] = [
 
 describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
   it.each(PAIRS)('$usage meets AA over every gradient stop', ({ ink, inkAlpha, glass, stops }) => {
-    for (const stop of stops) {
-      const surface = composite(glass.color, glass.alpha, stop);
-      const effectiveInk = composite(ink, inkAlpha, surface);
-      expect(
-        contrastRatio(rgbToHex(effectiveInk), rgbToHex(surface)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
+    expectAaOverStops(ink, inkAlpha, glass, stops);
   });
 
   it('riviera chip text (white) stays AA on the chip glass over the header glass', () => {
     for (const stop of RIVIERA_STOPS) {
-      const header = composite(RIVIERA_HEADER_GLASS.color, RIVIERA_HEADER_GLASS.alpha, stop);
-      const chip = composite(WHITE, 0.16, header); // --riv-chip-bg
+      const header = surfaceOver(RIVIERA_HEADER_GLASS, stop);
+      const chip = composite(RIVIERA_CHIP.color, RIVIERA_CHIP.alpha, header);
       expect(contrastRatio(rgbToHex(WHITE), rgbToHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 
   it('porcelain chip text (ink) stays AA on the chip tint over the header glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const header = composite(PORCELAIN_HEADER_GLASS.color, PORCELAIN_HEADER_GLASS.alpha, stop);
-      const chip = composite(INK_DARK, 0.05, header); // --riv-chip-bg
+      const header = surfaceOver(PORCELAIN_HEADER_GLASS, stop);
+      const chip = composite(PORCELAIN_CHIP.color, PORCELAIN_CHIP.alpha, header);
       expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });

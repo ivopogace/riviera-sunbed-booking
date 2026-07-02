@@ -12,6 +12,23 @@
   color: var(--riv-card-ink);
 }
 
+/* The two glass recipes of this page, declared once (review finding: recipe drift
+   between twin surfaces). Panels reuse the shell's AA-proven header-glass tokens
+   (see the header note); cards/bars use the per-theme card glass. */
+%panel-glass {
+  background: var(--riv-header-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid var(--riv-header-border);
+  border-radius: 26px;
+}
+
+%card-glass {
+  background: var(--riv-card-glass);
+  border: 1px solid var(--riv-card-border);
+  color: var(--riv-card-ink);
+}
+
 .discover {
   max-width: 1080px;
   margin: 0 auto;
@@ -21,12 +38,9 @@
 /* ---- hero (on the shell's proven glass tokens) ---- */
 
 .hero {
+  @extend %panel-glass;
+
   max-width: 680px;
-  background: var(--riv-header-glass);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
-  border: 1px solid var(--riv-header-border);
-  border-radius: 26px;
   padding: 24px 26px 26px;
   color: var(--riv-ink);
   box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.25);
@@ -76,19 +90,18 @@
 /* ---- glass filter bar (count block inside) ---- */
 
 .filter-bar {
+  @extend %card-glass;
+
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 18px;
-  background: var(--riv-card-glass);
   -webkit-backdrop-filter: blur(28px) saturate(170%);
   backdrop-filter: blur(28px) saturate(170%);
-  border: 1px solid var(--riv-card-border);
   border-radius: 26px;
   padding: 20px 22px;
   margin: 34px 0 4px;
   box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  color: var(--riv-card-ink);
 }
 
 .field {
@@ -111,7 +124,7 @@
   font: inherit;
   font-size: 15px;
   color: var(--riv-card-ink);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--riv-field-fill);
   border: 1px solid var(--riv-field-border);
   border-radius: 14px;
   padding: 10px 13px;
@@ -130,8 +143,10 @@
   align-self: center;
   text-align: right;
   padding-left: 8px;
-  /* Reserve the block's height while loading so the bar doesn't jump when the count lands. */
-  min-height: 51px;
+  /* Reserve the loaded block's exact height so the bar doesn't jump when the count
+     lands: 34px number line + 5px margin + 14px subline (both line-heights explicit
+     below, so the sum is deterministic across font stacks — review-verified render). */
+  min-height: 53px;
   min-width: 3rem;
 }
 
@@ -146,6 +161,7 @@
 .count-sub {
   display: block;
   font-size: 12px;
+  line-height: 14px;
   color: var(--riv-card-ink-faint);
   margin-top: 5px;
 }
@@ -162,18 +178,17 @@
 }
 
 .card {
+  @extend %card-glass;
+
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--riv-card-glass);
   -webkit-backdrop-filter: blur(26px) saturate(170%);
   backdrop-filter: blur(26px) saturate(170%);
-  border: 1px solid var(--riv-card-border);
   border-radius: 28px;
   overflow: hidden;
   box-shadow: 0 12px 40px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  color: var(--riv-card-ink);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -196,11 +211,12 @@
   }
 }
 
-/* White ring + dark halo: visible against any gradient stop (2.4.7 / 1.4.11). */
+/* White ring + dark halo: visible against any gradient stop (2.4.7 / 1.4.11).
+   The halo derives from the accent token so a retune retints it too. */
 .card:focus-visible {
   outline: 3px solid #ffffff;
   outline-offset: 2px;
-  box-shadow: 0 0 0 7px rgba(8, 90, 110, 0.9);
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
 }
 
 /* ---- card photo area (gradient placeholder until #142) ---- */
@@ -246,7 +262,7 @@
   letter-spacing: 0.03em;
   padding: 5px 11px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--riv-card-border);
 }
 
 .photo-location {
@@ -255,7 +271,10 @@
   bottom: 13px;
   font-size: 12.5px;
   font-weight: 600;
-  color: #ffffff; /* over the scrim's bottom band — pinned in home.contrast.spec.ts */
+  /* Explicit line box: keeps the text band inside the scrim's >= 0.5 region — the
+     geometry home.contrast.spec.ts asserts (see the scrim token note in styles.scss). */
+  line-height: 15px;
+  color: var(--riv-photo-ink);
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
@@ -298,11 +317,16 @@
   color: rgba(12, 42, 51, 0.3); /* decorative separator */
 }
 
-/* T7 (#140) slot — collapses to nothing while empty, keeps the design's rhythm once filled. */
+/* T7 (#140) slot. :empty removes it from the flex flow until chips exist — otherwise a
+   zero-height item still costs an extra 8px column gap (review finding). */
 .card-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+
+  &:empty {
+    display: none;
+  }
 }
 
 .avail-track {
@@ -352,14 +376,11 @@
 /* ---- loading / empty / error states (on the proven glass, see header note) ---- */
 
 .state {
+  @extend %panel-glass;
+
   margin-top: 24px;
   padding: 48px 20px;
   text-align: center;
   font-size: 15px;
   color: var(--riv-ink-soft);
-  background: var(--riv-header-glass);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
-  border: 1px solid var(--riv-header-border);
-  border-radius: 26px;
 }
