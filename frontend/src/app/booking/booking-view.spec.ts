@@ -4,7 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
-import { BookingDetail, Cancellation, PaymentHandoff } from './booking.model';
+import { BookingDetail, BookingStatus, Cancellation, PaymentHandoff } from './booking.model';
 import { BookingView } from './booking-view';
 import { BookingService } from './booking.service';
 
@@ -35,14 +35,19 @@ const CANCELLATION: Cancellation = {
 /** A BookingService stub with configurable getByCode / cancel / beginPayment and call spies. */
 function stubService(opts: {
   detail?: BookingDetail;
+  /** Served on the reload after a successful cancel (mirrors the backend returning CANCELLED). */
+  detailAfterCancel?: BookingDetail;
   getError?: unknown;
   cancel?: Cancellation;
   cancelCalls?: string[];
   handoffs?: PaymentHandoff[];
 }): Partial<BookingService> {
+  let served = 0;
   return {
-    getByCode: () =>
-      (opts.getError ? throwError(() => opts.getError) : of(opts.detail!)) as Observable<BookingDetail>,
+    getByCode: () => {
+      const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
+      return (opts.getError ? throwError(() => opts.getError) : of(detail)) as Observable<BookingDetail>;
+    },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
       return of(opts.cancel ?? CANCELLATION);
@@ -126,7 +131,84 @@ describe('BookingView', () => {
     expect(panel?.textContent).toContain('17:00');
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
     expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    // Guest request-withdraw is backend #123 and not shipped: render the banner WITHOUT a
+    // withdraw control (leave the slot; don't wire the action).
+    expect(host.querySelector('[data-testid="withdraw-request"]')).toBeNull();
+    expect(host.textContent).not.toContain('Withdraw');
     await expectNoAxeViolations(host);
+  });
+
+  // The unified status chip renders the design label for the whole #98 union — one header chip
+  // carrying `booking-status`, replacing the old dl "Status" row.
+  it.each<[BookingStatus, string]>([
+    ['CONFIRMED', 'Confirmed'],
+    ['PENDING_REQUEST', 'Pending request'],
+    ['AWAITING_PAYMENT', 'Awaiting payment'],
+    ['DECLINED', 'Declined'],
+    ['EXPIRED', 'Expired'],
+    ['CANCELLED', 'Cancelled'],
+    ['COMPLETED', 'Completed'],
+    ['NO_SHOW', 'No-show'],
+  ])('renders the %s status as the "%s" chip', async (status, label) => {
+    const fixture = await render(
+      stubService({ detail: { ...DETAIL, status, cancellable: false } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(label);
+  });
+
+  it('flips the chip to Cancelled and shows the refunded row after cancelling (no reload)', async () => {
+    // The post-cancel reload returns the backend's CANCELLED detail (refunded amount set).
+    const cancelled: BookingDetail = {
+      ...DETAIL,
+      status: 'CANCELLED',
+      cancellable: false,
+      refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+    };
+    const fixture = await render(stubService({ detail: DETAIL, detailAfterCancel: cancelled }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('Cancelled');
+    expect(host.querySelector('[data-testid="refunded-amount"]')?.textContent).toContain('45');
+    expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain('refunded');
+    // The cancel action is gone once cancelled.
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+  });
+
+  it('shows the Refunded row for a CANCELLED booking the server reports a refund for', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'CANCELLED',
+          cancellable: false,
+          refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="refunded-amount"]')?.textContent).toContain('45');
+    await expectNoAxeViolations(host);
+  });
+
+  it('omits the Refunded row when the server reports no refund', async () => {
+    const fixture = await render(
+      stubService({
+        detail: { ...DETAIL, status: 'CANCELLED', cancellable: false, refundedAmount: null },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="refunded-amount"]')).toBeNull();
   });
 
   it('shows neutral resume copy for an unpaid instant booking (never "request accepted")', async () => {

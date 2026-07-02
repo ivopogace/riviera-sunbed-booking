@@ -49,9 +49,9 @@ export const routes: Routes = [
     title: 'Request sent — Riviera',
   },
   {
+    // Restyled to Liquid Glass by T5 (#138) — no compat surface.
     path: 'booking/:code',
     loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
     title: 'Your booking — Riviera',
-    data: { legacySurface: true },
   },
 ];

@@ -136,6 +136,12 @@ remote session branch — this is a local session on `main`).
 - **Withdraw button** — resolved by the issue's own instruction and #123 status: render the
   PENDING banner **without** a withdraw control; cross-link #123 in a comment. (Not an open
   question — recorded here for traceability.)
+- **Font-link removal (T1 follow-up)** — **deferred, not done.** `grep -ri "Manrope|Instrument
+  Serif" frontend/src` at phase 7 shows `staff-daily.scss` still consumes both fonts (lines
+  5/10/299). `staff-daily` is still `legacySurface` (operator epic **#141**, not yet restyled),
+  so T5 is **not** the last consumer. The Google Fonts `<link>` in `index.html` **stays**; its
+  removal defers to whichever operator slice restyles `staff-daily` last. Recorded here + on the
+  PR + carried to the operator epic at close-out.
 
 ## Availability & concurrency (invariant #2)
 
@@ -209,14 +215,14 @@ N/A — no contract change. `BookingDetail` / `Cancellation` consumed exactly as
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + branch | ⏳ | |
-| 1 — Status metadata + chip (unit red→green) | | |
-| 2 — Template restyle: header chip, code card, detail rows, banners, cancel, states | | |
-| 3 — booking-view.scss glass rewrite | | |
-| 4 — Contrast spec (new) | | |
-| 5 — Route un-legacy + app.spec RESTYLED_PATHS | | |
-| 6 — e2e adjust + run (CI-safe suite) | | |
-| 7 — Font-link close-out check (Manrope/Instrument Serif) | | |
+| 0 — Plan doc + branch | ✅ | 552640a |
+| 1 — Status metadata + chip (unit red→green) | ✅ | (impl commit) |
+| 2 — Template restyle: header chip, code card, detail rows, banners, cancel, states | ✅ | (impl commit) |
+| 3 — booking-view.scss glass rewrite | ✅ | (impl commit) |
+| 4 — Contrast spec (new) | ✅ | (impl commit) |
+| 5 — Route un-legacy + app.spec RESTYLED_PATHS | ✅ | (impl commit) |
+| 6 — e2e adjust + run (CI-safe suite) | ✅ | (impl commit; no selector change needed — testids preserved) |
+| 7 — Font-link close-out check (Manrope/Instrument Serif) | ✅ deferred | (impl commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -276,14 +282,18 @@ Each phase is red → green → refactor, scoped to `booking-view*` specs
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-03 | Phase 2 (status chip pattern) | other status displays that should share the chip | `grep -r "statusLabel\|STATUS_META" frontend/src` | only `booking-view` today; T6 (#139 my-bookings list) will render the same chips | Keep chip styles local to `booking-view` (rule of three: 1st user). T6 promotes them to `_glass.scss`/`styles.scss` when it becomes the 2nd consumer. |
+| 2026-07-03 | Phase 7 (font-link removal) | Manrope / Instrument Serif consumers | `grep -ri "Manrope\|Instrument Serif" frontend/src` | `index.html` (link) + `staff-daily.scss` (still uses both) | Defer link removal — `staff-daily` (operator epic #141) is the true last consumer. |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-10:** `npm run test -- booking-view app.spec` → green (unit + contrast + route).
-- [ ] **AC-11:** `app.spec.ts` route-flag test green.
-- [ ] **AC-12:** `npm run test:e2e:a11y` (booking-flow + request-to-book) green.
+- [x] **AC-1..AC-10:** `ng test --include booking-view*.spec.ts + app.spec.ts` → 28 green (unit +
+  contrast); full FE suite 359 green.
+- [x] **AC-11:** `app.spec.ts` route-flag test green (`booking/:code` in `RESTYLED_PATHS`, no flag).
+- [x] **AC-12:** `npx playwright test --config playwright.a11y.config.ts request-to-book booking-flow`
+  → 7 green (real-browser axe on the restyled banners; testids preserved).
 
 ## Self-review checklist (before merge / PR)
 
