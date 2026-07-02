@@ -18,6 +18,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -80,9 +81,11 @@ class RequestToBookFlowIT {
 		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 						.get("/api/venues/{v}/booking-requests", venueId))
 				.andExpect(status().isUnauthorized());
-		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, 1))
+		// The anonymous POSTs carry a valid CSRF token so the 401 pins the AUTH gate — without
+		// one, CsrfFilter would answer first with 403 INVALID_CSRF_TOKEN (issue #109 posture).
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, 1).with(csrf()))
 				.andExpect(status().isUnauthorized());
-		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, 1))
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, 1).with(csrf()))
 				.andExpect(status().isUnauthorized());
 	}
 

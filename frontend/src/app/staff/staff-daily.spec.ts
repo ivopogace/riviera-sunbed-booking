@@ -77,7 +77,7 @@ describe('StaffDaily', () => {
   let httpMock: HttpTestingController;
   let operator: OperatorAuth;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [StaffDaily],
       providers: [
@@ -91,12 +91,28 @@ describe('StaffDaily', () => {
     });
     operator = TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
+    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109);
+    // answer 401 so every test starts signed out, then drain microtasks so restoring() settles.
+    httpMock
+      .expectOne(`${BASE}/api/auth/me`)
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   afterEach(() => httpMock.verify());
 
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** Establish an operator session: post the credential and flush the login POST (issue #109). */
+  async function signIn(): Promise<void> {
+    const result = operator.signIn('operator', 'pw');
+    httpMock
+      .expectOne(`${BASE}/api/auth/operator/login`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await result;
   }
 
   function flushLoad(
@@ -114,9 +130,9 @@ describe('StaffDaily', () => {
   }
 
   async function createSignedIn(requests: readonly PendingRequestItem[] = []): Promise<void> {
-    operator.signIn('operator', 'pw');
+    await signIn();
     fixture = TestBed.createComponent(StaffDaily);
-    await fixture.whenStable();
+    await fixture.whenStable(); // the signedIn effect fires the venue + bookings + requests loads
     flushLoad(SETS, BOOKINGS, requests);
     await fixture.whenStable();
   }
@@ -125,10 +141,11 @@ describe('StaffDaily', () => {
     return host().querySelector<HTMLElement>(`[data-set-id="${id}"]`);
   }
 
-  it('shows the sign-in form and makes no request when signed out', async () => {
+  it('shows the sign-in form and loads nothing when signed out', async () => {
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
     expect(host().querySelector('#signin-title')).not.toBeNull();
+    // No venue/bookings request — only the (already flushed) /me restore has gone out.
     httpMock.expectNone(() => true);
   });
 
@@ -234,14 +251,16 @@ describe('StaffDaily', () => {
       .flush({}, { status: 401, statusText: 'Unauthorized' });
     await fixture.whenStable();
 
-    flushLoad(); // onWriteError still reconciles
+    // onWriteError still reconciles; sessionLost() drops the state with NO logout round-trip,
+    // so the only open requests are the reconcile reads.
+    flushLoad();
     await fixture.whenStable();
     expect(operator.signedIn()).toBe(false);
     expect(host().querySelector('#signin-title')).not.toBeNull();
   });
 
   it('signs out when the bookings load returns 401', async () => {
-    operator.signIn('operator', 'pw');
+    await signIn();
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
     httpMock.expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET').flush(venueWith(SETS));
@@ -268,6 +287,11 @@ describe('StaffDaily', () => {
     await fixture.whenStable();
 
     host().querySelector('form')!.dispatchEvent(new Event('submit'));
+    // The submit posts the credential to the login endpoint (issue #109); once it succeeds,
+    // signedIn flips and the constructor effect fires the venue + bookings loads.
+    httpMock
+      .expectOne(`${BASE}/api/auth/operator/login`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
     await fixture.whenStable();
     flushLoad();
     await fixture.whenStable();
@@ -278,6 +302,10 @@ describe('StaffDaily', () => {
       b.textContent?.includes('Sign out'),
     ) as HTMLButtonElement;
     signOut.click();
+    // Sign-out invalidates the server session before the local state clears.
+    httpMock
+      .expectOne(`${BASE}/api/auth/logout`)
+      .flush(null, { status: 204, statusText: 'No Content' });
     await fixture.whenStable();
     expect(operator.signedIn()).toBe(false);
     expect(host().querySelector('#signin-title')).not.toBeNull();

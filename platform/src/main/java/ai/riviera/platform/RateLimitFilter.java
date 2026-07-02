@@ -23,9 +23,11 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Per-IP and per-code rate limiting for the three public, unauthenticated booking endpoints
  * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel} and
- * {@code POST /api/bookings}. They are {@code permitAll} because the booking code is the bearer
- * credential (invariant #7); the {@code 200}/{@code 404} answer is otherwise a brute-force oracle,
- * so this filter caps request volume.
+ * {@code POST /api/bookings} — plus, since issue #109, the session login
+ * ({@code POST /api/auth/operator/login}) on its own stricter per-IP budget (D-8: the login is a
+ * credential-guessing oracle exactly like the code endpoints). They are {@code permitAll} because
+ * the booking code is the bearer credential (invariant #7); the {@code 200}/{@code 404} answer is
+ * otherwise a brute-force oracle, so this filter caps request volume.
  *
  * <p><strong>Keying.</strong> The per-IP bucket guards all three endpoints (the primary defence
  * against an enumerator trying many codes from one IP); the per-code bucket additionally guards the
@@ -64,12 +66,17 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String CODE_VAR = "code";
+	// The session login (issue #109, D-8): per-IP throttled on its OWN, stricter budget — a
+	// credential-guessing oracle, like the booking-code endpoints, but a separate dimension so
+	// tightening one never starves the other. Mirrors SecurityConfig's LOGIN_PATH.
+	private static final String LOGIN_PATH = "/api/auth/operator/login";
 
 	private final RateLimitProperties props;
 	private final Clock clock;
 	private final AntPathMatcher paths = new AntPathMatcher();
 	private final Map<String, TokenBucket> ipBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> codeBuckets = new ConcurrentHashMap<>();
+	private final Map<String, TokenBucket> loginBuckets = new ConcurrentHashMap<>();
 
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
@@ -79,6 +86,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
+		// The session login rides its own per-IP budget (issue #109, D-8) — checked first because
+		// it is not one of the booking Targets below.
+		if (props.enabled() && isLoginAttempt(request)) {
+			Instant now = clock.instant();
+			String ip = ClientIpResolver.resolve(request);
+			TokenBucket loginBucket = bucketFor(loginBuckets, ip, props.login(), now);
+			if (!loginBucket.tryAcquire(now)) {
+				reject(response, loginBucket.retryAfterSeconds(now), ip, "login");
+				return;
+			}
+			chain.doFilter(request, response);
+			return;
+		}
+
 		// Classify the request once: skip non-booking endpoints, preflights, and (when disabled) all.
 		Target target = props.enabled() ? targetOf(request) : null;
 		if (target == null) {
@@ -110,6 +131,12 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/** A matched booking endpoint and its booking code ({@code null} for the code-less create). */
 	private record Target(String code) {
+	}
+
+	/** The session login POST (never an OPTIONS preflight — the method check excludes it). */
+	private boolean isLoginAttempt(HttpServletRequest request) {
+		return HttpMethod.POST.matches(request.getMethod())
+				&& LOGIN_PATH.equals(pathWithinApplication(request));
 	}
 
 	/**

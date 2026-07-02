@@ -9,7 +9,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
- * The platform edge's Spring Security {@link UserDetailsService} (#74): resolves an httpBasic login
+ * The platform edge's Spring Security {@link UserDetailsService} (#74): resolves a session-login username (issue #109)
  * to a per-operator principal backed by the DB, replacing the single shared in-memory {@code operator}
  * user. Authentication is an edge concern (RV-BE-11), so this — and all encoding/verifying — lives in
  * the application root, not the {@code operator} module: it reads the module's stored credential via

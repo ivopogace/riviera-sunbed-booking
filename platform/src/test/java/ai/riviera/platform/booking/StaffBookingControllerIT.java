@@ -3,6 +3,7 @@ package ai.riviera.platform.booking;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,9 +13,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import jakarta.servlet.http.Cookie;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,6 +45,13 @@ class StaffBookingControllerIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	private Cookie operatorSession;
+
+	@BeforeEach
+	void logIn() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
 
 	private List<Long> venueSets(int n) {
 		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT :n")
@@ -76,7 +86,7 @@ class StaffBookingControllerIT {
 		seedBooking("U8AWAITING1", sets.get(2), customer, "AWAITING_PAYMENT");
 		seedBooking("U8CANCELLED", sets.get(3), customer, "CANCELLED");
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
 						.param("date", DAY.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))

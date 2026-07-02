@@ -1,7 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
-import { OperatorAuth } from '../core/operator-auth';
+import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
@@ -98,9 +98,13 @@ export class StaffDaily {
       return;
     }
     this.venueId = id;
-    if (this.operator.signedIn()) {
-      this.load();
-    }
+    // Load whenever a session appears — covers both a fresh sign-in and the async
+    // reload-restore from GET /api/auth/me (issue #109), which resolves after construction.
+    effect(() => {
+      if (this.operator.signedIn()) {
+        untracked(() => this.load());
+      }
+    });
   }
 
   /** Sets grouped into rows (read order preserved) for the grid. */
@@ -160,18 +164,28 @@ export class StaffDaily {
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
-  protected onSignIn(): void {
-    if (!this.username() || !this.password()) {
+  /** True while the sign-in POST is in flight (button disabled, no double submit). */
+  protected readonly signingIn = signal(false);
+
+  protected async onSignIn(): Promise<void> {
+    if (!this.username() || !this.password() || this.signingIn()) {
       return;
     }
-    this.operator.signIn(this.username(), this.password());
+    this.signingIn.set(true);
     this.failed.set(false);
     this.notice.set(undefined);
-    this.load();
+    // Server-validated (issue #109); a success flips signedIn and the constructor effect loads.
+    const result = await this.operator.signIn(this.username(), this.password());
+    this.signingIn.set(false);
+    if (result === 'signed-in') {
+      this.password.set('');
+    } else {
+      this.notice.set(signInFailureMessage(result));
+    }
   }
 
-  protected onSignOut(): void {
-    this.operator.signOut();
+  protected async onSignOut(): Promise<void> {
+    await this.operator.signOut();
     this.password.set('');
     this.venue.set(undefined);
     this.bookings.set([]);
@@ -243,11 +257,12 @@ export class StaffDaily {
     });
   }
 
-  /** Shared mark/release failure path: surface the notice, sign out on 401, and reconcile. */
+  /** Shared mark/release failure path: surface the notice, drop the lost session on 401, reconcile. */
   private onWriteError(message: string, unauthorized: boolean): void {
     this.notice.set(message);
     if (unauthorized) {
-      this.operator.signOut();
+      // The server already rejected the session — clear local state without a logout round-trip.
+      this.operator.sessionLost();
     }
     this.reconcile();
   }
@@ -280,9 +295,10 @@ export class StaffDaily {
       error: (e) => {
         const reason = staffRequestErrorOf(e);
         if (reason === 'UNAUTHORIZED') {
-          // Sign out and settle WITHOUT reconciling: the reloads would go out credential-less,
-          // 401 again, and overwrite this notice with a generic sign-in failure.
-          this.operator.signOut();
+          // Drop the lost session (no logout round-trip — the server already rejected it) and
+          // settle WITHOUT reconciling: the reloads would go out session-less, 401 again, and
+          // overwrite this notice with a generic sign-in failure.
+          this.operator.sessionLost();
           this.settleDecision(row.bookingId, decisionFailureNotice(action, reason), false);
           return;
         }
@@ -358,8 +374,8 @@ export class StaffDaily {
       },
       error: (e) => {
         if (staffMarkErrorOf(e) === 'UNAUTHORIZED') {
-          this.notice.set('Could not sign in as operator. Check your credentials.');
-          this.operator.signOut();
+          this.notice.set('Your operator session has expired. Please sign in again.');
+          this.operator.sessionLost();
         }
         settle();
       },
@@ -372,8 +388,8 @@ export class StaffDaily {
       },
       error: (e) => {
         if (staffRequestErrorOf(e) === 'UNAUTHORIZED') {
-          this.notice.set('Could not sign in as operator. Check your credentials.');
-          this.operator.signOut();
+          this.notice.set('Your operator session has expired. Please sign in again.');
+          this.operator.sessionLost();
         }
         settle();
       },

@@ -2,6 +2,7 @@ package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,9 +11,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import jakarta.servlet.http.Cookie;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,16 +41,26 @@ class WeatherRefundSecurityIT {
 	@Autowired
 	MockMvc mvc;
 
+	private Cookie operatorSession;
+
+	@BeforeEach
+	void logIn() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
+
 	@Test
 	void weatherRefundRequiresOperator() throws Exception {
-		mvc.perform(post("/api/venues/{id}/weather-refund", MIRAMAR).param("date", EMPTY_DAY.toString()))
+		// A valid CSRF token is supplied so the rejection pins the auth gate (401 from the entry
+		// point), not the CsrfFilter's 403.
+		mvc.perform(post("/api/venues/{id}/weather-refund", MIRAMAR).with(csrf())
+						.param("date", EMPTY_DAY.toString()))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void operatorGetsTheRefundSummary() throws Exception {
 		mvc.perform(post("/api/venues/{id}/weather-refund", MIRAMAR)
-						.with(httpBasic(OPERATOR, PASSWORD)).param("date", EMPTY_DAY.toString()))
+						.cookie(operatorSession).with(csrf()).param("date", EMPTY_DAY.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.refundedCount").value(0))
 				.andExpect(jsonPath("$.totalRefundedMinor").value(0));

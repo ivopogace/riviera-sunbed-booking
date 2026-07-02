@@ -17,7 +17,7 @@ cheap here and expensive at review.
 
 | Folder | Owns | May import from | Examples today |
 |---|---|---|---|
-| `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service | `shared/` only — never a feature | `operator-auth.ts`, `operator-auth.interceptor.ts` |
+| `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service | `shared/` only — never a feature | `operator-auth.ts`, `api-session.interceptor.ts` |
 | `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state | nothing app-internal | `money.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
 | Feature folders (`booking/`, `venue/`, `venue-admin/`, `staff/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |

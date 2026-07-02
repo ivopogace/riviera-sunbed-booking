@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 
+import { mockAuthApi } from './support/auth-mocks';
+
 /**
  * Real-render a11y + behaviour audit of the operator pending-requests queue (Request-to-Book,
  * issue #98): sign in as the operator → the venue-wide queue lists open requests (guest, set,
@@ -66,6 +68,8 @@ test('operator works the pending-requests queue: list, accept, decline', async (
   });
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: mapBody() }));
 
+  // Session auth (issue #109): the sign-in is a real POST now; /me restores state on load.
+  await mockAuthApi(page, { validPassword: 'test-pw' });
   await page.goto(`/venue-admin/daily/${VENUE}`);
   await page.getByLabel('Operator').fill('operator');
   await page.getByLabel('Password').fill('test-pw');
@@ -120,6 +124,8 @@ test('a decision that lost a race with the sweep surfaces the error copy', async
   );
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: mapBody() }));
 
+  // Session auth (issue #109): the sign-in is a real POST now; /me restores state on load.
+  await mockAuthApi(page, { validPassword: 'test-pw' });
   await page.goto(`/venue-admin/daily/${VENUE}`);
   await page.getByLabel('Operator').fill('operator');
   await page.getByLabel('Password').fill('test-pw');

@@ -1,5 +1,6 @@
 package ai.riviera.platform.payout;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -8,11 +9,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+
+import jakarta.servlet.http.Cookie;
 
 import org.springframework.http.MediaType;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +41,13 @@ class AdminPayoutSecurityIT {
 	@Autowired
 	MockMvc mvc;
 
+	private Cookie operatorSession;
+
+	@BeforeEach
+	void logIn() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
+
 	@Test
 	void ledgerReadRequiresOperator() throws Exception {
 		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR))
@@ -45,7 +56,7 @@ class AdminPayoutSecurityIT {
 
 	@Test
 	void operatorReadsTheLedger() throws Exception {
-		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.venueId").value((int) MIRAMAR));
 	}
@@ -54,22 +65,25 @@ class AdminPayoutSecurityIT {
 	void batchReportRequiresOperator() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30"))
 				.andExpect(status().isUnauthorized());
-		mvc.perform(post("/api/admin/payout-batches").param("period", "2099-W30"))
+		// The POST carries a valid CSRF token so the rejection pins the auth gate (401 from the
+		// entry point), not the CsrfFilter's 403.
+		mvc.perform(post("/api/admin/payout-batches").with(csrf()).param("period", "2099-W30"))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void operatorReadsTheBatchReport() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30")
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession))
 				.andExpect(status().isOk());
 	}
 
 	@Test
 	void batchStatusPatchRequiresOperator() throws Exception {
 		// The PATCH item path is a distinct matcher (PAYOUT_BATCH_ITEM_PATH); it advances a batch toward
-		// SETTLED, so it must also be operator-gated — unauthenticated is 401.
-		mvc.perform(patch("/api/admin/payout-batches/{id}", 1L)
+		// SETTLED, so it must also be operator-gated — unauthenticated is 401. A valid CSRF token is
+		// supplied so the rejection pins the auth gate, not the CsrfFilter's 403.
+		mvc.perform(patch("/api/admin/payout-batches/{id}", 1L).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"REPORTED\"}"))
 				.andExpect(status().isUnauthorized());
 	}
@@ -77,7 +91,7 @@ class AdminPayoutSecurityIT {
 	@Test
 	void malformedPeriodIsBadRequest() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "not-a-week")
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession))
 				.andExpect(status().isBadRequest());
 	}
 }

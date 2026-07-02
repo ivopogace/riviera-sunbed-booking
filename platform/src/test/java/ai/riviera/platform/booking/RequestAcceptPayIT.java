@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.jayway.jsonpath.JsonPath;
 
 import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -25,7 +26,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -68,9 +69,11 @@ class RequestAcceptPayIT {
 
 	private long venueId;
 	private long setId;
+	private jakarta.servlet.http.Cookie operatorSession;
 
 	@BeforeEach
-	void seedRequestVenueWithOwner() {
+	void seedRequestVenueWithOwner() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 		venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
 				VALUES ('Accept Club', 'Accept Beach', 'Accept Region', 'REQUEST', 1500, 'EUR')
@@ -121,7 +124,7 @@ class RequestAcceptPayIT {
 		long bookingId = bookingIdOf(code);
 
 		// The queue shows the pending request (no code in the payload).
-		mvc.perform(get("/api/venues/{v}/booking-requests", venueId).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{v}/booking-requests", venueId).cookie(operatorSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].bookingId").value(bookingId))
 				.andExpect(jsonPath("$[0].guestName").value("Req Guest"))
@@ -129,7 +132,7 @@ class RequestAcceptPayIT {
 
 		// Accept: stub profile collects synchronously → CONFIRMED.
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, bookingId)
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("CONFIRMED"));
 
@@ -141,11 +144,11 @@ class RequestAcceptPayIT {
 
 		// A second decision on a decided request is rejected.
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, bookingId)
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, bookingId)
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
 	}
@@ -157,7 +160,7 @@ class RequestAcceptPayIT {
 		long bookingId = bookingIdOf(code);
 
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, bookingId)
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("DECLINED"));
 
@@ -169,7 +172,7 @@ class RequestAcceptPayIT {
 
 		// Terminal: a declined request can never be accepted (no payment path opens, AC-4).
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, bookingId)
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
 

@@ -25,7 +25,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * Operator write endpoints for staff tap-to-mark walk-ins (U8, issue #10) — the availability
  * module's first driving (REST) adapter, depending on its own {@link StaffAvailability} port
  * (invariant #11) plus the edge {@link CurrentOperator} resolver. An authenticated operator surface
- * (httpBasic, role {@code OPERATOR}, configured in {@code SecurityConfig}), mirroring the U7 write
+ * (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}), mirroring the U7 write
  * posture.
  *
  * <p>Outcomes map to HTTP via exhaustive {@code switch}: mark MARKED→200, ALREADY_TAKEN→409,

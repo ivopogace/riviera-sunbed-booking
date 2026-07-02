@@ -17,6 +17,7 @@ import ch.qos.logback.core.read.ListAppender;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"riviera.ratelimit.per-ip.refill-period=PT1H",
 		"riviera.ratelimit.per-code.capacity=2",
 		"riviera.ratelimit.per-code.refill-period=PT1H",
+		"riviera.ratelimit.login.capacity=2",
+		"riviera.ratelimit.login.refill-period=PT1H",
 		"riviera.ratelimit.max-tracked-keys=100000",
 })
 class RateLimitFilterTest {
@@ -115,6 +118,43 @@ class RateLimitFilterTest {
 				.andExpect(status().isTooManyRequests())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	// ---- The session login is per-IP limited on its own budget (issue #109, D-8) ----
+
+	private ResultActions loginFromIp(String ip) throws Exception {
+		// csrf() satisfies the CSRF gate (the limiter runs BEFORE CsrfFilter); the stubbed empty
+		// credential store means an allowed attempt lands as the generic 401 — a 429 is the limiter.
+		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "ghost", "password": "nope"}"""));
+	}
+
+	@Test
+	void loginIsPerIpLimited() throws Exception {
+		loginFromIp("10.9.0.1").andExpect(status().isUnauthorized());
+		loginFromIp("10.9.0.1").andExpect(status().isUnauthorized());
+		loginFromIp("10.9.0.1")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		// A different IP keeps its own login budget.
+		loginFromIp("10.9.0.2").andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void loginBudgetIsSeparateFromTheBookingBudget() throws Exception {
+		String ip = "10.10.0.1";
+		// Exhaust the BOOKING per-IP budget…
+		viewFromIp(ip, "sep-A").andExpect(status().isNotFound());
+		viewFromIp(ip, "sep-B").andExpect(status().isNotFound());
+		viewFromIp(ip, "sep-C").andExpect(status().isTooManyRequests());
+
+		// …and the same IP's LOGIN budget is untouched (separate dimension, stricter default).
+		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
 	@Test

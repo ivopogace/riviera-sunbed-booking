@@ -36,7 +36,7 @@ describe('StaffDaily accessibility (axe)', () => {
   let httpMock: HttpTestingController;
   let operator: OperatorAuth;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [StaffDaily],
       providers: [
@@ -50,12 +50,28 @@ describe('StaffDaily accessibility (axe)', () => {
     });
     operator = TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
+    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109);
+    // answer 401 so every test starts signed out, then drain microtasks so restoring() settles.
+    httpMock
+      .expectOne(`${BASE}/api/auth/me`)
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   afterEach(() => httpMock.verify());
 
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** Establish an operator session: post the credential and flush the login POST (issue #109). */
+  async function signIn(): Promise<void> {
+    const result = operator.signIn('operator', 'pw');
+    httpMock
+      .expectOne(`${BASE}/api/auth/operator/login`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await result;
   }
 
   function expectMap() {
@@ -77,7 +93,7 @@ describe('StaffDaily accessibility (axe)', () => {
   });
 
   it('has no violations when the daily view is loaded', async () => {
-    operator.signIn('operator', 'pw');
+    await signIn();
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
     expectMap().flush(fixtureMap());
@@ -88,7 +104,7 @@ describe('StaffDaily accessibility (axe)', () => {
   });
 
   it('has no violations with a populated pending-requests queue (#98)', async () => {
-    operator.signIn('operator', 'pw');
+    await signIn();
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
     expectMap().flush(fixtureMap());
@@ -109,7 +125,7 @@ describe('StaffDaily accessibility (axe)', () => {
   });
 
   it('has no violations in the loading state', async () => {
-    operator.signIn('operator', 'pw');
+    await signIn();
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
     const map = expectMap(); // pending → loading message
@@ -122,7 +138,7 @@ describe('StaffDaily accessibility (axe)', () => {
   });
 
   it('has no violations in the error state', async () => {
-    operator.signIn('operator', 'pw');
+    await signIn();
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
     expectMap().error(new ProgressEvent('error'));

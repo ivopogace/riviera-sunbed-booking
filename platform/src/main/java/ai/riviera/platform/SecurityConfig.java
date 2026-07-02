@@ -6,13 +6,22 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.session.web.http.CookieSerializer;
+import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -23,12 +32,16 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
  * actuator health endpoint and requires authentication for everything else.
  *
  * <p>Public tourist reads (the venue/beach-map catalogue, U1) are permitted; the venue write +
- * staff/admin surfaces are gated behind {@code httpBasic} with role {@code OPERATOR}. Credentials are
- * <strong>per-operator and DB-backed</strong> (#74): {@link #operatorDetailsService} loads each
- * operator's stored hash from the {@code operator} module ({@link OperatorAccounts}) and Spring
- * Security's {@code DaoAuthenticationProvider} verifies it against the delegating
- * {@link #passwordEncoder()} — no shared password, no JWT, no custom token filter. The bootstrap
- * operator's credential is provisioned from {@code RIVIERA_OPERATOR_PASSWORD} at startup
+ * staff/admin surfaces are gated behind a <strong>server-side session</strong> with role
+ * {@code OPERATOR} (issue #109, design D-1): an operator signs in once via
+ * {@code POST /api/auth/operator/login} ({@code AuthController} driving the framework
+ * {@link AuthenticationManager}) and rides an {@code HttpOnly; Secure; SameSite=Lax} cookie —
+ * sessions persist in Postgres via Spring Session JDBC (V20) so a restart keeps operators signed
+ * in. Credentials are <strong>per-operator and DB-backed</strong> (#74):
+ * {@link #operatorDetailsService} loads each operator's stored hash from the {@code operator}
+ * module ({@link OperatorAccounts}) and {@code DaoAuthenticationProvider} verifies it against the
+ * delegating {@link #passwordEncoder()} — no shared password, no JWT, no custom token filter. The
+ * bootstrap operator's credential is provisioned from {@code RIVIERA_OPERATOR_PASSWORD} at startup
  * ({@link OperatorCredentialInitializer}); additional operators are provisioned via the
  * {@code operator} module's provisioning port. The per-<em>venue</em> authorization (invariant #13)
  * is object-level and enforced in the application services, not here.
@@ -40,55 +53,66 @@ class SecurityConfig {
 
 	/** The single role that gates the U7 operator write surface. */
 	private static final String OPERATOR_ROLE = "OPERATOR";
-	/** A single laid-out set (PATCH/DELETE target); also CSRF-exempt as a token-less write path. */
+	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
-	/** A set's per-day staff availability (U8 mark POST / release DELETE); CSRF-exempt token-less write. */
+	/** A set's per-day staff availability (U8 mark POST / release DELETE); session + CSRF token required. */
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
-	/** The admin weather-refund write (U9); token-less operator POST, CSRF-exempt like the other writes. */
+	/** The admin weather-refund write (U9); an operator-session POST, CSRF-protected like every write. */
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
 	/** The operator-only pending-requests queue (#98); must be gated BEFORE the public venue GET. */
 	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
-	/** Accept/decline a pending request (#98); token-less operator POSTs, CSRF-exempt like the rest. */
+	/** Accept/decline a pending request (#98); operator-session POSTs, CSRF token required (issue #109). */
 	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
 	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
 	/** The operator-only weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
-	/** A single payout batch (U9): status transition (PATCH). CSRF-exempt token-less write. */
+	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
+	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
+	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
+	private static final String LOGOUT_PATH = "/api/auth/logout";
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock) throws Exception {
 		http
 				.cors(Customizer.withDefaults())
-				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56): runs
+				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56) and,
+				// on its own stricter per-IP budget, the session login (issue #109, D-8): runs
 				// just after CORS so a preflight is handled first (and is skipped by the filter anyway),
 				// and before authorization — the booking endpoints are permitAll, so the code IS the
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock), CorsFilter.class)
-				// Public guest checkout (U3): the booking POST is token-less and stateless (no
-				// session, no auth), so CSRF — which protects cookie/session-authenticated
-				// requests — does not apply. The matcher is the EXACT path "/api/bookings", so it
-				// covers only this endpoint (a later sub-path like "/api/bookings/{code}" is not
-				// matched). Only POST is mapped/permitted here; other methods 401 regardless.
-				// The Stripe webhook (U4) is a server-to-server POST authenticated by its own
-				// signature header (invariant #8), not a session/cookie — so CSRF does not apply
-				// and it must be reachable without auth. Its security IS the signature check in
-				// StripeWebhookController; an unverified call is rejected there with 400.
-				// The venue write API (U7) is a stateless operator surface authenticated by httpBasic
-				// (no session/cookie), so CSRF — which protects cookie/session-authenticated
-				// requests — does not apply; ignore it on those paths like the other token-less APIs.
-				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
-						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
-						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH,
-						WEATHER_REFUND_PATH, PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH,
-						BOOKING_REQUEST_ACCEPT_PATH, BOOKING_REQUEST_DECLINE_PATH))
+				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
+				// so its writes REQUIRE the cookie-to-header token. `.spa()` is Spring Security 7's
+				// native single-page-app posture: CookieCsrfTokenRepository issues the JS-readable
+				// XSRF-TOKEN cookie, the SPA echoes it as X-XSRF-TOKEN (resolved plain, while
+				// rendered tokens keep BREACH/Xor protection), and the token loads eagerly so every
+				// response can (re)issue the cookie. The ONLY exemptions left are the genuinely
+				// token-less surfaces: guest booking create/cancel — authorized by the booking code
+				// alone (invariant #7), deliberately session-free — and the Stripe webhook, a
+				// server-to-server POST authenticated by its signature header (invariant #8; an
+				// unverified call is rejected in StripeWebhookController with 400). A CSRF rejection
+				// is answered by CsrfFilter itself through the accessDeniedHandler below →
+				// 403 INVALID_CSRF_TOKEN.
+				.csrf(csrf -> csrf
+						.spa()
+						// spa()'s CookieCsrfTokenRepository, hardened: Secure + SameSite=Lax to
+						// mirror the session cookie's posture (the override keeps spa()'s handler).
+						.csrfTokenRepository(csrfCookieRepository())
+						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
+								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						// Session login (issue #109): anonymous by definition — authentication happens
+						// INSIDE the endpoint (AuthController → AuthenticationManager). /api/auth/me
+						// stays behind anyRequest().authenticated(); logout is the LogoutFilter below.
+						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).
@@ -129,8 +153,74 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.anyRequest().authenticated())
-				.httpBasic(Customizer.withDefaults());
+				// Session logout (issue #109): the framework LogoutFilter invalidates the server
+				// session and clears the context; 204 (no redirect — this is an SPA's API).
+				.logout(logout -> logout
+						.logoutUrl(LOGOUT_PATH)
+						.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
+				// Unauthenticated access to a protected endpoint → RFC-7807 401 UNAUTHENTICATED. This
+				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
+				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
+				.exceptionHandling(handling -> handling
+						.authenticationEntryPoint((request, response, exception) ->
+								SecurityProblemResponses.writeUnauthenticated(response))
+						.accessDeniedHandler((request, response, exception) ->
+								SecurityProblemResponses.writeAccessDenied(response, exception)));
 		return http.build();
+	}
+
+
+	/**
+	 * The framework authentication manager (issue #109): built by Spring Security's global
+	 * {@link AuthenticationConfiguration} from {@link #operatorDetailsService} +
+	 * {@link #passwordEncoder()} — the exact same {@code DaoAuthenticationProvider} path Basic
+	 * used, now driven by {@code AuthController}'s session login. No custom filter (D-1).
+	 */
+	@Bean
+	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+		return configuration.getAuthenticationManager();
+	}
+
+	/**
+	 * Where {@code AuthController} saves the authenticated context: the HTTP session — which
+	 * Spring Session transparently persists to Postgres (V20). The filter chain's default
+	 * delegating repository reads the same {@code SPRING_SECURITY_CONTEXT} attribute back on
+	 * every later request, so save and load stay in lockstep.
+	 */
+	@Bean
+	SecurityContextRepository securityContextRepository() {
+		return new HttpSessionSecurityContextRepository();
+	}
+
+	/**
+	 * The SPA-readable CSRF token cookie: {@code HttpOnly=false} is the point (cookie-to-header
+	 * requires JS to read it — the token is a secret from OTHER origins, not from the page);
+	 * {@code Secure} + {@code SameSite=Lax} mirror the session cookie's posture.
+	 */
+	private static CookieCsrfTokenRepository csrfCookieRepository() {
+		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Lax"));
+		return repository;
+	}
+
+	/**
+	 * The session cookie's D-1 posture, owned in code: {@code HttpOnly} (no JS access),
+	 * {@code Secure} (browsers treat {@code http://localhost} as a trustworthy origin, so local
+	 * dev still works), {@code SameSite=Lax} (CSRF layer 1 — the cookie-to-header token is
+	 * layer 2). A user-defined {@link CookieSerializer} bean makes Boot's session
+	 * auto-configuration back off, which keeps these flags deterministic in every environment
+	 * (embedded Tomcat, mock-MVC tests, e2e) instead of depending on the
+	 * {@code server.servlet.session.cookie.*} property mapping — which did not reach the Spring
+	 * Session cookie under a mock web environment. Pinned by {@code AuthSessionIT}.
+	 */
+	@Bean
+	CookieSerializer cookieSerializer() {
+		DefaultCookieSerializer serializer = new DefaultCookieSerializer();
+		serializer.setCookieName("SESSION");
+		serializer.setUseHttpOnlyCookie(true);
+		serializer.setUseSecureCookie(true);
+		serializer.setSameSite("Lax");
+		return serializer;
 	}
 
 	/** Delegating encoder ({@code {bcrypt}} by default) — used to verify the stored per-operator hash. */

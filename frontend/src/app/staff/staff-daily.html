@@ -1,4 +1,6 @@
-@if (!operator.signedIn()) {
+@if (operator.restoring()) {
+  <output class="state">Checking your session…</output>
+} @else if (!operator.signedIn()) {
   <section class="signin mx-auto max-w-md px-5 py-8" aria-labelledby="signin-title">
     <h1 id="signin-title" class="display-title">Staff daily view</h1>
     <p class="hint">Sign in as the venue operator to see today’s bookings and mark walk-ins.</p>
@@ -14,7 +16,9 @@
         <input id="op-pass" #pass name="password" type="password" autocomplete="current-password"
           [value]="password()" (input)="password.set(pass.value)" />
       </p>
-      <button type="submit" class="primary">Sign in</button>
+      <button type="submit" class="primary" [disabled]="signingIn()">
+        {{ signingIn() ? 'Signing in…' : 'Sign in' }}
+      </button>
     </form>
 
     @if (notice(); as msg) {

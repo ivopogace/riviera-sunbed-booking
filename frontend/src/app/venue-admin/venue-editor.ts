@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
-import { OperatorAuth } from '../core/operator-auth';
+import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
 import { formatMoney } from '../shared/money';
 import { defaultBookingDate } from '../venue/booking-date';
 import { BookingMode, Pool, SetView, Tier, VenueMapView } from '../venue/venue.model';
@@ -97,16 +97,31 @@ export class VenueEditor {
     required(path.gridY, { message: 'Grid row is required' });
   });
 
-  protected onSignIn(): void {
-    if (!this.username() || !this.password()) {
+  /** True while the sign-in POST is in flight (button disabled, no double submit). */
+  protected readonly signingIn = signal(false);
+  /** A sign-in failure message, distinct from the write-flow errors in {@link errorMessage}. */
+  protected readonly signInError = signal<string | undefined>(undefined);
+
+  protected async onSignIn(): Promise<void> {
+    if (!this.username() || !this.password() || this.signingIn()) {
       return;
     }
-    this.operator.signIn(this.username(), this.password());
-    this.errorCode.set(undefined);
+    this.signingIn.set(true);
+    this.signInError.set(undefined);
+    // Server-validated (issue #109): the session is established here or the failure is known
+    // here — no more capture-and-discover-on-first-write.
+    const result = await this.operator.signIn(this.username(), this.password());
+    this.signingIn.set(false);
+    if (result === 'signed-in') {
+      this.password.set('');
+      this.errorCode.set(undefined);
+    } else {
+      this.signInError.set(signInFailureMessage(result));
+    }
   }
 
-  protected onSignOut(): void {
-    this.operator.signOut();
+  protected async onSignOut(): Promise<void> {
+    await this.operator.signOut();
     this.password.set('');
   }
 
@@ -136,7 +151,7 @@ export class VenueEditor {
         this.venueId.set(created.id);
         await this.safeReload();
       } catch (error) {
-        this.errorCode.set(venueAdminErrorOf(error));
+        this.failWrite(error);
       } finally {
         this.saving.set(false);
       }
@@ -180,7 +195,7 @@ export class VenueEditor {
         this.resetSetForm();
         await this.safeReload();
       } catch (error) {
-        this.errorCode.set(venueAdminErrorOf(error));
+        this.failWrite(error);
       } finally {
         this.saving.set(false);
       }
@@ -225,9 +240,23 @@ export class VenueEditor {
       await write();
       await this.safeReload();
     } catch (error) {
-      this.errorCode.set(venueAdminErrorOf(error));
+      this.failWrite(error);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /**
+   * Map a write failure to its message and, on a 401, drop the lost session so the sign-in form
+   * re-renders (issue #109 review): the server session can expire/invalidate mid-edit, and without
+   * clearing local auth state the operator is stuck on the signed-in card retrying a dead session.
+   * Mirrors StaffDaily's `sessionLost()` handling.
+   */
+  private failWrite(error: unknown): void {
+    const code = venueAdminErrorOf(error);
+    this.errorCode.set(code);
+    if (code === 'UNAUTHORIZED') {
+      this.operator.sessionLost();
     }
   }
 
@@ -275,7 +304,7 @@ export class VenueEditor {
   protected errorMessage(): string | undefined {
     switch (this.errorCode()) {
       case 'UNAUTHORIZED':
-        return 'Your operator sign-in was rejected. Check your credentials and sign in again.';
+        return 'Your operator session has expired. Please sign in again.';
       case 'CELL_TAKEN':
       case 'CONFLICT':
         return 'Another set already occupies that grid cell. Pick a different column/row.';

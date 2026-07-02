@@ -52,9 +52,9 @@ Alternatives considered and rejected:
 
 Consequences kept from the session choice:
 
-- The current FE `OperatorAuth` (raw password held in a signal, replayed as
-  `Authorization: Basic` per request) is retired by this epic; SSO cannot be
-  expressed as Basic anyway.
+- The old FE `OperatorAuth` (raw password held in a signal, replayed as
+  `Authorization: Basic` per request) is retired — done by S1 (#109), which made it
+  session-aware end-to-end; SSO could not be expressed as Basic anyway.
 - Session fixation: Spring's default protection (session id rotates on login).
   Logout/password-reset truly invalidate server sessions (needs the server-side
   session store — trivial here, a denylist under JWT).

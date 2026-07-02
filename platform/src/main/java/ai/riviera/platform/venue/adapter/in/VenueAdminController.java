@@ -30,7 +30,7 @@ import ai.riviera.platform.venue.application.SetRejection;
  * Operator write endpoints for venue onboarding + beach-map editing (U7, issue #7). Driving
  * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap}
  * ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
- * operator surface (httpBasic, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
+ * operator surface (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
  * {@code switch}: created→201 (+Location), applied→204, {@code NO_SUCH_*}→404,
  * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409; malformed→400 and the

@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 
+import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
 import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
 
 /**
@@ -19,11 +20,13 @@ function venueName(label: string): string {
   return `E2E ${label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
-/** Capture the operator credential (the InMemoryUserDetailsManager only accepts this exact login). */
+/**
+ * Establish a REAL operator session (issue #109): the form POSTs the credential once, the backend
+ * verifies the DB-backed hash and answers with the session cookie + CSRF token every later write
+ * rides. Uses the shared Page Object (issue #120 item 1).
+ */
 async function signIn(page: Page, password: string = OPERATOR_PASSWORD): Promise<void> {
-  await page.getByLabel('Username', { exact: true }).fill(OPERATOR_USERNAME);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await new OperatorSignInPage(page).signIn(OPERATOR_USERNAME, password);
 }
 
 /** Fill the "1 · Create venue" form (defaults stand for commission/currency/cutoff) and submit. */
@@ -92,24 +95,22 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
     await expect(page.getByRole('heading', { name: '1 · Create venue' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Create venue' })).toHaveCount(0);
 
-    // Signing in (client-side credential capture) reveals the create form.
+    // A real session login (server-validated, cookie established) reveals the create form.
     await signIn(page);
     await expect(page.getByRole('heading', { name: '1 · Create venue' })).toBeVisible();
   });
 
-  test('a wrong operator password yields a real 401 and a sign-in-rejected message', async ({
+  test('a wrong operator password is rejected AT sign-in with the generic message', async ({
     page,
   }) => {
-    await signIn(page, 'definitely-not-the-password');
-    // Sign-in is local; the credential is only tested when the create POST hits the real backend.
-    await page.getByLabel('Name', { exact: true }).fill(venueName('unauthorized'));
-    await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
-    await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
-    await page.getByRole('button', { name: 'Create venue' }).click();
+    // Server-validated login (issue #109): the real 401 arrives immediately — the write surface
+    // is never revealed — and the message is deliberately generic (no account enumeration, D-8).
+    const card = new OperatorSignInPage(page);
+    await card.signIn(OPERATOR_USERNAME, 'definitely-not-the-password');
 
-    await expect(page.getByRole('alert')).toContainText('sign-in was rejected');
-    // The 401 left us on the create step — no venue was created.
-    await expect(page.getByTestId('venue-created')).toHaveCount(0);
+    await expect(card.error).toContainText('Sign-in failed');
+    await card.expectSignedOut();
+    await expect(page.getByRole('heading', { name: '1 · Create venue' })).toHaveCount(0);
   });
 
   test('creates a venue (real 201) and reads it back through the public API', async ({ page }) => {
