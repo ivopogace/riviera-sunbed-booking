@@ -10,5 +10,5 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
  * beyond {@code payment}.
  */
 public record NewPayment(BookingRef bookingRef, String paymentIntentId, long amountMinor,
-		String currency) {
+		String currency, String clientSecret) {
 }

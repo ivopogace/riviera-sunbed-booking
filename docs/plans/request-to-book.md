@@ -217,7 +217,7 @@ adapter-level tests named alongside.
 | # | Surface | Change | Consumers |
 |---|---|---|---|
 | NI-1 | `venue.vocabulary.SetBookingInfo` | + `BookingMode bookingMode` (new `venue.vocabulary.BookingMode` enum `INSTANT/REQUEST`) | `booking` (reserve branch) |
-| NI-2 | `payment.api.CheckoutPort` | + `Optional<PaymentCredentials> pendingCredentials(BookingRef)` (new `payment.vocabulary.PaymentCredentials(clientSecret, paymentIntentId)`) — same purposeful "checkout" conversation, not a fifth port | `booking` (guest view) |
+| NI-2 | `payment.api.PaymentCredentialsLookup` (new role port) | `pendingCredentials(BookingRef): Optional<PaymentCredentials>` (new `payment.vocabulary.PaymentCredentials`) — split from `CheckoutPort` by consumer role at implement time (issue-#94 precedent, keeps `CheckoutPort` a functional seam); + `customer.api.CustomerLookup.findById(CustomerId)` for the queue's guest names | `booking` (guest view / queue) |
 
 **Domain events (id-based payloads, invariant #11)**
 
@@ -305,11 +305,11 @@ the mocked suite can't cover, matching the existing split.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V19 migration + statuses + booking mode vocabulary | ✅ | (this commit) |
-| 1 — Request creation path (soft-hold, no PI) + concurrency IT | ✅ | (this commit) |
-| 2 — Accept/decline services + endpoints + CrossVenueDenialIT | ⏳ | |
-| 3 — Expiry sweep + pay-window extension of abandoned sweep | | |
-| 4 — Guest view (status/credentials) + pending-queue endpoint | | |
+| 0 — V19 migration + statuses + booking mode vocabulary | ✅ | a1f36b5 |
+| 1 — Request creation path (soft-hold, no PI) + concurrency IT | ✅ | a1f36b5 |
+| 2 — Accept/decline services + endpoints + CrossVenueDenialIT | ✅ | (this commit) |
+| 3 — Expiry sweep + pay-window extension of abandoned sweep | ✅ | (this commit) |
+| 4 — Guest view (status/credentials) + pending-queue endpoint | ✅ | (this commit) |
 | 5 — FE tourist flow + mocked e2e | | |
 | 6 — FE operator queue + mocked e2e | | |
 | 7 — Docs/substrate updates + runbook note | | |

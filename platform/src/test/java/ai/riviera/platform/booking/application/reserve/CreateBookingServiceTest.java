@@ -128,7 +128,7 @@ class CreateBookingServiceTest {
 		// First insert "collides" (empty), second succeeds — the booking must still confirm with
 		// the second code (proves the ON CONFLICT retry actually recovers).
 		java.util.List<String> codes = new ArrayList<>(java.util.List.of("DUPCODE0001", "FRESHCODE02"));
-		var collidingOnce = new Bookings() {
+		var collidingOnce = new RecordingBookings() {
 			boolean first = true;
 
 			@Override
@@ -138,57 +138,6 @@ class CreateBookingServiceTest {
 					return java.util.OptionalLong.empty();
 				}
 				return java.util.OptionalLong.of(1234L);
-			}
-
-			@Override
-			public java.util.OptionalLong insertPendingRequest(NewBooking booking, java.time.Instant requestExpiresAt) {
-				return java.util.OptionalLong.empty();
-			}
-
-			@Override
-			public ConfirmedBooking confirm(long bookingId, java.time.Instant at) {
-				return null; // unused: the stub path confirms via the ConfirmBooking seam, not here
-			}
-
-			@Override
-			public java.util.Optional<ConfirmedBooking> confirmFromPayment(long bookingId, java.time.Instant at) {
-				return java.util.Optional.empty();
-			}
-
-			@Override
-			public java.util.Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
-				return java.util.Optional.empty();
-			}
-
-			@Override
-			public java.util.Optional<ai.riviera.platform.booking.application.view.BookingRecord> findByCode(
-					String code) {
-				return java.util.Optional.empty();
-			}
-
-			@Override
-			public java.util.Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
-					long bookingId, java.time.Instant cancelledAt, long refundMinor,
-					ai.riviera.platform.booking.vocabulary.RefundReason reason) {
-				return java.util.Optional.empty();
-			}
-
-			@Override
-			public List<ai.riviera.platform.booking.application.view.DailyBooking> findConfirmedForVenueOn(
-					ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
-				return List.of();
-			}
-
-			@Override
-			public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findConfirmedForWeatherRefund(
-					ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
-				return List.of();
-			}
-
-			@Override
-			public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
-					java.time.Instant olderThan) {
-				return List.of();
 			}
 		};
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
@@ -396,7 +345,7 @@ class CreateBookingServiceTest {
 	}
 
 	/** Captures persistence calls so branches can be asserted without a database. */
-	private static final class RecordingBookings implements Bookings {
+	private static class RecordingBookings implements Bookings {
 		final List<NewBooking> inserted = new ArrayList<>();
 		final List<NewBooking> pendingInserted = new ArrayList<>();
 		Instant lastRequestExpiresAt;
@@ -413,6 +362,40 @@ class CreateBookingServiceTest {
 			pendingInserted.add(booking);
 			lastRequestExpiresAt = requestExpiresAt;
 			return java.util.OptionalLong.of(++nextId);
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
+				long bookingId, ai.riviera.platform.venue.vocabulary.VenueId venueId, Instant now) {
+			return Optional.empty();
+		}
+
+		@Override
+		public boolean revertAcceptToPending(long bookingId) {
+			return false;
+		}
+
+		@Override
+		public Optional<ClaimRef> declinePending(long bookingId,
+				ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			return Optional.empty();
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> requestSnapshot(
+				long bookingId, ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			return Optional.empty();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.request.PendingRequestRow> findPendingRequestsForVenue(
+				ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			return List.of();
+		}
+
+		@Override
+		public List<ClaimRef> expirePendingRequests(Instant now) {
+			return List.of();
 		}
 
 		@Override
@@ -456,7 +439,7 @@ class CreateBookingServiceTest {
 
 		@Override
 		public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
-				Instant olderThan) {
+				Instant createdBefore, Instant acceptedBefore) {
 			return List.of();
 		}
 	}

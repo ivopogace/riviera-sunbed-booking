@@ -31,15 +31,34 @@ class JdbcPayments implements Payments {
 	@Override
 	public void register(NewPayment payment) {
 		jdbc.sql("""
-				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status)
-				VALUES (:ref, :intent, :amount, :currency, :status)
+				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status,
+				                     client_secret)
+				VALUES (:ref, :intent, :amount, :currency, :status, :clientSecret)
 				""")
 				.param("ref", payment.bookingRef().value())
 				.param(PARAM_INTENT, payment.paymentIntentId())
 				.param("amount", payment.amountMinor())
 				.param("currency", payment.currency())
 				.param("status", PaymentStatus.REQUIRES_PAYMENT.name())
+				.param("clientSecret", payment.clientSecret())
 				.update();
+	}
+
+	@Override
+	public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+			BookingRef booking) {
+		// Pay-on-accept read (issue #98): only an OPEN intent with a stored secret is payable —
+		// succeeded/failed/canceled rows (or secret-less stub/pre-V19 rows) yield empty.
+		return jdbc.sql("""
+				SELECT payment_intent_id, client_secret
+				FROM payment
+				WHERE booking_ref = :ref AND status = :status AND client_secret IS NOT NULL
+				""")
+				.param("ref", booking.value())
+				.param("status", PaymentStatus.REQUIRES_PAYMENT.name())
+				.query((rs, rowNum) -> new ai.riviera.platform.payment.vocabulary.PaymentCredentials(
+						rs.getString("client_secret"), rs.getString("payment_intent_id")))
+				.optional();
 	}
 
 	@Override

@@ -229,6 +229,12 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+					BookingRef booking) {
+				return Optional.empty();
+			}
+
+			@Override
 			public Optional<String> findIntentByBookingRef(BookingRef booking) {
 				return Optional.empty();
 			}

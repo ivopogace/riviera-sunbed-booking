@@ -47,6 +47,48 @@ public interface Bookings {
 	OptionalLong insertPendingRequest(NewBooking booking, Instant requestExpiresAt);
 
 	/**
+	 * Accept a pending request (issue #98): the guarded {@code PENDING_REQUEST → AWAITING_PAYMENT}
+	 * transition, venue-scoped and deadline-guarded ({@code request_expires_at > now}), stamping
+	 * {@code accepted_at = now} — the guest pay-window clock. Returns the accepted facts (amount,
+	 * via SQL {@code RETURNING}) iff a row actually transitioned; empty when the id is unknown at
+	 * this venue, no longer pending, or past its deadline — the caller classifies via
+	 * {@link #requestSnapshot}.
+	 */
+	Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
+			long bookingId, VenueId venueId, Instant now);
+
+	/**
+	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT →
+	 * PENDING_REQUEST} revert (clearing {@code accepted_at}), possible only because no
+	 * PaymentIntent exists to race it. True iff a row reverted.
+	 */
+	boolean revertAcceptToPending(long bookingId);
+
+	/**
+	 * Decline a pending request (issue #98): the guarded {@code PENDING_REQUEST → DECLINED}
+	 * transition, venue-scoped, returning the {@link ClaimRef} iff it transitioned so the caller
+	 * releases the soft-hold exactly once (invariant #2). Deliberately NOT deadline-guarded — an
+	 * expired-but-unswept request may still be declined (same release, different terminal label).
+	 */
+	Optional<ClaimRef> declinePending(long bookingId, VenueId venueId);
+
+	/**
+	 * The request-relevant state of a booking at this venue (status + deadline), or empty when
+	 * the id is unknown <em>or belongs to another venue</em> — the venue-scoped read that lets
+	 * accept/decline classify a missed transition without disclosing foreign bookings
+	 * (invariant #13).
+	 */
+	Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> requestSnapshot(
+			long bookingId, VenueId venueId);
+
+	/**
+	 * The venue's {@code PENDING_REQUEST} bookings ordered by response deadline (most urgent
+	 * first) — the operator queue (issue #98). Carries no booking code (invariant #7).
+	 */
+	List<ai.riviera.platform.booking.application.request.PendingRequestRow> findPendingRequestsForVenue(
+			VenueId venueId);
+
+	/**
 	 * Load a booking by its {@code code} (the bearer credential, invariant #7) for the view and
 	 * cancel use cases (U6), or {@code empty} if no booking has that code. Read-only — carries the
 	 * full row the caller needs (status, ids, amount, the cancellation audit) without exposing the
@@ -118,5 +160,14 @@ public interface Bookings {
 	 * for stable iteration. Empty when none are stale. Served by the partial index on
 	 * {@code (created_at) WHERE status = 'AWAITING_PAYMENT'} (V13).
 	 */
-	List<BookingId> findExpirableAwaitingPayment(Instant olderThan);
+	List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore);
+
+	/**
+	 * Expire every {@code PENDING_REQUEST} past its stored deadline (issue #98): the guarded bulk
+	 * {@code PENDING_REQUEST → EXPIRED} transition, {@code RETURNING} each expired request's
+	 * {@code (set, date)} so the caller releases every soft-hold exactly once (invariant #2). The
+	 * guard is disjoint from accept's ({@code request_expires_at <= now} vs {@code > now}) and
+	 * from decline's (status), so no race can double-act.
+	 */
+	List<ClaimRef> expirePendingRequests(Instant now);
 }

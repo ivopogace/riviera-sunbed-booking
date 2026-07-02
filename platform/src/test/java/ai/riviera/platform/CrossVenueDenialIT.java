@@ -153,7 +153,54 @@ class CrossVenueDenialIT {
 				.andExpect(status().isForbidden());
 	}
 
+	@Test
+	void pendingRequestsQueueByNonOwnerIs403() throws Exception {
+		// #98: the pending-requests queue is venue-scoped operator data (guest names, demand).
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/booking-requests", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void acceptRequestByNonOwnerIs403() throws Exception {
+		// #98: accept moves money (issues the payment request) — the ownership check must fire
+		// BEFORE any state is read or transitioned, so even a nonexistent bookingId is 403, not 404.
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", MIRAMAR, 999_999)
+						.with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void declineRequestByNonOwnerIs403() throws Exception {
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", MIRAMAR, 999_999)
+						.with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
 	// ---- The owner (B) is NOT forbidden on the same surfaces ----
+
+	@Test
+	void ownerRequestSurfacesAreNotForbidden() throws Exception {
+		// #98 positive counterparts: for the owner the queue is 200, and accept/decline of an
+		// unknown request are 404 (the check passed; the id is simply not a pending request).
+		actingAs(operatorB);
+		mvc.perform(get("/api/venues/{v}/booking-requests", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isOk());
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", MIRAMAR, 999_999)
+						.with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", MIRAMAR, 999_999)
+						.with(httpBasic(OPERATOR, PASSWORD)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));
+	}
+
 
 	@Test
 	void ownerReadsAreNotForbidden() throws Exception {

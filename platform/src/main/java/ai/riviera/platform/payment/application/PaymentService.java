@@ -2,9 +2,12 @@ package ai.riviera.platform.payment.application;
 
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 
 /**
@@ -15,16 +18,23 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
  * field (no Lombok, no field {@code @Autowired}).
  */
 @Service
-class PaymentService implements CheckoutPort {
+class PaymentService implements CheckoutPort, ai.riviera.platform.payment.api.PaymentCredentialsLookup {
 
 	private final PaymentGateway gateway;
+	private final Payments payments;
 
-	PaymentService(PaymentGateway gateway) {
+	PaymentService(PaymentGateway gateway, Payments payments) {
 		this.gateway = gateway;
+		this.payments = payments;
 	}
 
 	@Override
 	public PaymentOutcome pay(BookingRef booking, Money amount) {
 		return gateway.initiate(booking, amount);
+	}
+
+	@Override
+	public Optional<PaymentCredentials> pendingCredentials(BookingRef booking) {
+		return payments.findPendingCredentials(booking);
 	}
 }
