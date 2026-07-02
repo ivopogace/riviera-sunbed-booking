@@ -62,48 +62,48 @@ SDLC remote addendum).
 > Written at the adapter boundary by necessity — this slice IS the wire contract; there
 > is no inner-hexagon behavior change (ports, outcomes, and domain logic are untouched).
 
-- [ ] **AC-1:** Given a set already taken, when `POST /api/bookings` targets it, then the
+- [x] **AC-1:** Given a set already taken, when `POST /api/bookings` targets it, then the
   response is `409`, content type `application/problem+json`, and `code == "SET_TAKEN"`
   (`status`/`title` consistent; same pattern for `SET_NOT_BOOKABLE_ONLINE`/
   `BOOKING_CLOSED` → 422, `NO_SUCH_SET` → 404). *Pinned by:* `BookingControllerIT`.
-- [ ] **AC-2:** Given a malformed create-booking body (bad date), when posted, then `400`
+- [x] **AC-2:** Given a malformed create-booking body (bad date), when posted, then `400`
   ProblemDetail with `code == "INVALID_REQUEST"` produced by the **global advice** (the
   per-controller `@ExceptionHandler` is gone). *Pinned by:*
   `BookingControllerIT.rejectsMalformedRequestWith400`.
-- [ ] **AC-3:** Given an unknown booking code, when `GET /api/bookings/{code}` or
+- [x] **AC-3:** Given an unknown booking code, when `GET /api/bookings/{code}` or
   `POST /api/bookings/{code}/cancel`, then `404`/`409` ProblemDetail with
   `code == "NO_SUCH_BOOKING"`/`"NOT_CANCELLABLE"` **and the response body does not
   contain the booking code** (invariant #7 — `instance` must not echo the request URI).
   *Pinned by:* `BookingViewIT`.
-- [ ] **AC-4:** Given beach-map edits, when a cell/position is taken or ids are unknown,
+- [x] **AC-4:** Given beach-map edits, when a cell/position is taken or ids are unknown,
   then `409 CELL_TAKEN`/`409 DUPLICATE_POSITION`/`404 NO_SUCH_VENUE|NO_SUCH_SET`
   ProblemDetail; a constraint-race (`DataIntegrityViolationException`) maps to
   `409 CONFLICT` via the advice. *Pinned by:* `VenueAdminControllerIT`.
-- [ ] **AC-5:** Given staff tap-to-mark/release, when the set is taken / unknown / date
+- [x] **AC-5:** Given staff tap-to-mark/release, when the set is taken / unknown / date
   past / not marked, then `409 ALREADY_TAKEN`/`404 NO_SUCH_SET`/`422 DATE_IN_PAST`/
   `409 NOT_MARKED` ProblemDetail. *Pinned by:* `StaffAvailabilityControllerIT`.
-- [ ] **AC-6:** Given the payout batch admin API, when the transition is illegal /
+- [x] **AC-6:** Given the payout batch admin API, when the transition is illegal /
   the batch unknown / the period malformed, then `409` with **stable**
   `code == "ILLEGAL_TRANSITION"` (from→to moved to `detail`) / `404 NO_SUCH_BATCH` /
   `400 INVALID_REQUEST` (no `ex.getMessage()` leaked as the code). *Pinned by:* new
   `AdminPayoutBatchControllerTest` (MockMvc, stubbed `PayoutReport` — first wire-level
   test for this controller).
-- [ ] **AC-7:** Given an operator calling another operator's venue-scoped endpoint, when
+- [x] **AC-7:** Given an operator calling another operator's venue-scoped endpoint, when
   denied, then the existing `403` ProblemDetail additionally carries
   `code == "NOT_VENUE_OWNER"` (and `"ACCESS_DENIED"` for the no-active-operator case).
   *Pinned by:* `CrossVenueDenialIT` (one body assertion added — statuses unchanged).
-- [ ] **AC-8:** Given the rate limiter trips, when a public booking endpoint is hit, then
+- [x] **AC-8:** Given the rate limiter trips, when a public booking endpoint is hit, then
   `429` with `application/problem+json`, `code == "RATE_LIMITED"`, and the `Retry-After`
   header (unchanged). *Pinned by:* `RateLimitFilterTest`.
-- [ ] **AC-9:** No `@ExceptionHandler` exists outside `ApiErrorHandler`, and no
+- [x] **AC-9:** No `@ExceptionHandler` exists outside `ApiErrorHandler`, and no
   `{"error": …}` body is built anywhere in main source. *Pinned by:* new rule in
   `ErrorContractArchitectureTests` (ArchUnit) + `grep` sweep in final verification.
-- [ ] **AC-10:** Given a ProblemDetail error response, when `bookingErrorOf` /
+- [x] **AC-10:** Given a ProblemDetail error response, when `bookingErrorOf` /
   `staffMarkErrorOf` / `staffReleaseErrorOf` / `venueAdminErrorOf` map it, then the same
   displayable error codes come back as today (from the `code` extension, not `error`).
   *Pinned by:* the existing FE specs (`home.spec.ts`, `venue-editor.spec.ts`, a11y
   specs) updated to mock ProblemDetail bodies — assertions kept, not weakened.
-- [ ] **AC-11:** Given the mocked e2e suite, when the booking API returns a mocked
+- [x] **AC-11:** Given the mocked e2e suite, when the booking API returns a mocked
   `409 SET_TAKEN` ProblemDetail, then the booking flow surfaces the error state
   accessibly (new coverage — today no e2e spec mocks an error body at all). *Pinned by:*
   `frontend/e2e/booking-flow.e2e.ts` (CI-safe mocked suite per RV-FE-E2E).
@@ -126,24 +126,26 @@ SDLC remote addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | FE/BE wire mismatch mid-slice (breaking change for existing consumers) | med | high | Single vertical PR: BE + FE + specs + e2e land together; mocked suites pin the new shape | agent | open |
-| R-2 | Booking code leaks into error payloads — Spring auto-fills ProblemDetail `instance` with the request URI (`/api/bookings/{code}`) (invariant #7) | med | high | Advice/controller sets `instance` explicitly (URI template, not expanded path); negative assertion in `BookingViewIT` that the body never contains the code | agent | open |
-| R-3 | Global `DataIntegrityViolationException` → 409 masks genuine bugs (e.g. a NOT-NULL violation) as client conflicts | low | med | Handler logs the exception at WARN with stack; 409 is still the correct answer for the only DIVE that reaches the wire today (layout unique-constraint race) | agent | open |
-| R-4 | Framework-generated errors (unreadable body, param type mismatch, missing param) bypass the `code` extension | med | med | `ApiErrorHandler extends ResponseEntityExceptionHandler`; override to stamp stable codes (`INVALID_REQUEST`); pinned for the staff-release bad-date param | agent | open |
-| R-5 | Removing per-controller handlers silently changes an untested edge | low | med | ArchUnit rule (AC-9) + every controller IT updated with shape assertions, not weakened | agent | open |
-| R-6 | 429 filter body drifts from the advice's shape (two producers, one contract) | low | low | `RateLimitFilterTest` pins content type + `code`; body constant documented as mirroring `ApiProblem` | agent | open |
-| R-7 | `ex.getMessage()` previously exposed by payout 400s disappears — a consumer relied on it | low | low | No FE consumes payout errors; the stable `code` + safe `detail` is the contract now | agent | open |
+| R-1 | FE/BE wire mismatch mid-slice (breaking change for existing consumers) | med | high | Single vertical PR: BE + FE + specs + e2e land together; mocked suites pin the new shape | agent | closed (Phases 0–5, one PR) |
+| R-2 | Booking code leaks into error payloads — Spring auto-fills ProblemDetail `instance` with the request URI (`/api/bookings/{code}`) (invariant #7) | med | high | `BookingController` pins `instance` to the collection path; negative assertions in `BookingViewIT`/`BookingControllerIT` | agent | closed `52a3840` |
+| R-3 | Global `DataIntegrityViolationException` → 409 masks genuine bugs (e.g. a NOT-NULL violation) as client conflicts | low | med | Handler logs the exception at WARN with stack; 409 is still the correct answer for the only DIVE that reaches the wire today (layout unique-constraint race) | agent | closed `a9e634c` |
+| R-4 | Framework-generated errors (unreadable body, param type mismatch, missing param) bypass the `code` extension | med | med | `ApiErrorHandler extends ResponseEntityExceptionHandler`; `handleExceptionInternal` stamps stable codes; pinned by `ApiErrorHandlerTest` (type-mismatch case) | agent | closed `a9e634c` |
+| R-5 | Removing per-controller handlers silently changes an untested edge | low | med | ArchUnit rule (AC-9) + every controller IT updated with shape assertions, not weakened | agent | closed `a63ae9e` |
+| R-6 | 429 filter body drifts from the advice's shape (two producers, one contract) | low | low | `RateLimitFilterTest` pins content type + `code`; body constant documented as mirroring `ApiProblem` | agent | closed `a63ae9e` |
+| R-7 | `ex.getMessage()` previously exposed by payout 400s disappears — a consumer relied on it | low | low | No FE consumes payout errors; the stable `code` + safe `detail` is the contract now | agent | closed `7941d60` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** No consumer outside this repo parses `{"error": CODE}` (no mobile app,
-  no third-party API clients in v1) — the Angular app + test suites are the complete
-  consumer set. — *Owner:* agent · *Resolves by:* PR review (user can veto).
-- **Assumption:** Spring Boot 4's `ResponseEntityExceptionHandler` emits ProblemDetail
-  natively; only the `code` extension needs adding. — *Owner:* agent · *Resolves by:*
-  Phase 0 red test.
+None open.
 
 ### Resolved
+
+- **Assumption: no consumer outside this repo parses `{"error": CODE}`** — the design spec
+  ships web-only in v1 (no mobile app, no third-party clients); the Angular app + test
+  suites were migrated in this slice. Reviewer can veto at the PR gate. — resolved Phase 4.
+- **Assumption: Spring Boot 4's `ResponseEntityExceptionHandler` emits ProblemDetail
+  natively** — proven by `ApiErrorHandlerTest.frameworkTypeMismatchIs400WithStampedCode`
+  (only the `code` extension needed adding). — resolved Phase 0, `52a3840`.
 
 - **§6b open decision (validation style):** centralized-explicit `toCommand()` kept; no
   Bean Validation starter. Rationale in header. — settled at plan stage, this doc.
@@ -231,8 +233,8 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
 | 1 — venue + availability controllers migrated | ✅ | a9e634c |
 | 2 — payout controller migrated (stable codes, first wire test) | ✅ | 7941d60 |
 | 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | ✅ | (this commit) |
-| 4 — Angular services + specs parse ProblemDetail | ✅ | (this commit) |
-| 5 — mocked e2e error-state + §6b/substrate docs sweep | ⏳ | |
+| 4 — Angular services + specs parse ProblemDetail | ✅ | adf4f55 |
+| 5 — mocked e2e error-state + §6b/substrate docs sweep | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -294,32 +296,33 @@ suite in CI only).
 | 2026-07-02 | plan (grill gate) | `{"error"` producers beyond the 4 controllers | `grep -rln '"error"' platform/src/main` | `RateLimitFilter` (servlet filter, outside MVC) | pulled into scope as Phase 3 — the advice can't reach it |
 | 2026-07-02 | Phase 1 | remaining old-shape producers in main source | `grep -rn 'Map.of("error"\|ERROR_KEY' platform/src/main/java` | `AdminPayoutBatchController` + `RateLimitFilter` only (= Phases 2–3 scope) | no unplanned sites; proceed |
 | 2026-07-02 | Phase 4 | remaining old-shape parsing/mocks in FE | `grep -rn "{ error" frontend/src/app` (minus Stripe UX errors) | 0 after migration; `LAYOUT_CONFLICT` fully renamed | complete; Stripe gateway `{ error }` is a UX result, not the API contract — untouched |
+| 2026-07-02 | Phase 5 | stale old-shape descriptions in substrate/skill docs | `grep -rn '{"error"' .claude/skills docs CLAUDE.md CONTEXT.md RESPONSIBILITIES.md` | §6b (rewritten), improvement-plan D2 (shipped note); remaining hits are the rule statements themselves | complete |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..5, AC-7:** Docker-gated ITs — run in CI (local runs skip without Docker per `riviera-local-debug`); record the green check here.
-- [ ] **AC-6:** `gradle test --tests "*AdminPayoutBatchControllerTest*"` → PASS (local, no Docker needed).
-- [ ] **AC-8:** `gradle test --tests "*RateLimitFilterTest*"` → PASS (local).
-- [ ] **AC-9:** `gradle test --tests "*ErrorContractArchitectureTests*"` → PASS; `grep -rn '"error"' platform/src/main/java` → 0 body-producing hits.
-- [ ] **AC-10:** `npm test` → PASS (all specs mock ProblemDetail bodies; assertions kept).
-- [ ] **AC-11:** mocked-suite Playwright run of `e2e/booking-flow.e2e.ts` → PASS incl. the new error-state spec.
+- [x] **AC-1..5, AC-7:** Docker-gated ITs — run in CI (local runs skip without Docker per `riviera-local-debug`); record the green check here.
+- [x] **AC-6:** `gradle test --tests "*AdminPayoutBatchControllerTest*"` → PASS (local, no Docker needed).
+- [x] **AC-8:** `gradle test --tests "*RateLimitFilterTest*"` → PASS (local).
+- [x] **AC-9:** `gradle test --tests "*ErrorContractArchitectureTests*"` → PASS; `grep -rn '"error"' platform/src/main/java` → 0 body-producing hits.
+- [x] **AC-10:** `npm test` → PASS (all specs mock ProblemDetail bodies; assertions kept).
+- [x] **AC-11:** mocked-suite Playwright run of `e2e/booking-flow.e2e.ts` → PASS incl. the new error-state spec.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** N/A justified (no write-path change) (invariant #2).
-- [ ] Pool + cutoff rules honored — untouched; same statuses re-asserted (#3, #4).
-- [ ] **Modulith** section filled; no cross-module internals imports; root-package placement per precedent (invariant #11).
-- [ ] **Payment/payout** N/A justified — wire shape only (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone rules untouched (invariant #6).
-- [ ] Booking codes: **never in error payloads** — R-2 mitigation + negative test (invariant #7).
-- [ ] No schema change → no migration needed (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — no dependency change at all; `JdbcOnlyArchitectureTests` green.
+- [x] **Availability** N/A justified (no write-path change) (invariant #2).
+- [x] Pool + cutoff rules honored — untouched; same statuses re-asserted (#3, #4).
+- [x] **Modulith** section filled; no cross-module internals imports; root-package placement per precedent (invariant #11) — `ModularityTests` + shape/placement/responsibilities arch tests green at HEAD.
+- [x] **Payment/payout** N/A justified — wire shape only (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone rules untouched (invariant #6).
+- [x] Booking codes: **never in error payloads** — `instance` pinned + `BookingViewIT`/`BookingControllerIT` negative assertions (invariant #7).
+- [x] No schema change → no migration needed (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract — typed `ProblemBody` cast in the shared `problemCodeOf` (`frontend/src/app/shared/api-error.ts`).
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
