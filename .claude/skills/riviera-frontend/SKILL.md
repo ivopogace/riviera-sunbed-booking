@@ -91,6 +91,19 @@ The only place providers are wired:
 - Which suite a new spec belongs in, and what RV-FE-E2E checks, is defined in
   `riviera-review-overlay` — consult it when placing a spec.
 
+## External reference
+
+[Ismaestro/angular-example-app](https://github.com/Ismaestro/angular-example-app)
+(Angular 21, standalone/signals/zoneless, actively maintained) uses the same
+`core/`/`shared/`/feature taxonomy — community validation that this layout is
+mainstream, not house idiosyncrasy. Two deltas, both deliberate: (1) it nests
+domain folders under a `features/` wrapper; we keep them flat — **adopt the
+wrapper only if the app grows past ~8–10 feature folders** (mechanical move,
+update this skill then). (2) It demos **JWT auth; do not import that** — this
+project chose server-side sessions on merits
+(`docs/architecture/auth-signin-register.md` D-1); the example repo is not an
+argument to reopen it.
+
 ## When NOT to apply
 
 - Generated files (`angular.json`, CI workflows) — devops conventions rule there.
