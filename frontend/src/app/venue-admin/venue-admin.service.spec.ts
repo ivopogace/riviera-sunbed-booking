@@ -79,8 +79,12 @@ describe('VenueAdminService', () => {
 });
 
 describe('venueAdminErrorOf', () => {
+  /** A realistic RFC-7807 body (issue #97) — the `code` extension carries the identity. */
   function httpError(status: number, code?: string): HttpErrorResponse {
-    return new HttpErrorResponse({ status, error: code ? { error: code } : null });
+    return new HttpErrorResponse({
+      status,
+      error: code ? { type: 'about:blank', title: 'Error', status, detail: 'why', code } : null,
+    });
   }
 
   it('maps 401 to UNAUTHORIZED', () => {
@@ -90,7 +94,7 @@ describe('venueAdminErrorOf', () => {
   it('maps known server codes', () => {
     expect(venueAdminErrorOf(httpError(409, 'CELL_TAKEN'))).toBe('CELL_TAKEN');
     expect(venueAdminErrorOf(httpError(409, 'DUPLICATE_POSITION'))).toBe('DUPLICATE_POSITION');
-    expect(venueAdminErrorOf(httpError(409, 'LAYOUT_CONFLICT'))).toBe('LAYOUT_CONFLICT');
+    expect(venueAdminErrorOf(httpError(409, 'CONFLICT'))).toBe('CONFLICT');
     expect(venueAdminErrorOf(httpError(404, 'NO_SUCH_VENUE'))).toBe('NO_SUCH_VENUE');
     expect(venueAdminErrorOf(httpError(404, 'NO_SUCH_SET'))).toBe('NO_SUCH_SET');
     expect(venueAdminErrorOf(httpError(400, 'INVALID_REQUEST'))).toBe('INVALID_REQUEST');

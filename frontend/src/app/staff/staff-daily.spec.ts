@@ -148,7 +148,7 @@ describe('StaffDaily', () => {
     await fixture.whenStable();
     httpMock
       .expectOne(`${BASE}/api/venues/${VENUE}/sets/1/availability`)
-      .flush({ error: 'ALREADY_TAKEN' }, { status: 409, statusText: 'Conflict' });
+      .flush({ status: 409, code: 'ALREADY_TAKEN' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
 
     // Reconcile shows the truth: set 1 was taken online by someone else.
@@ -187,7 +187,7 @@ describe('StaffDaily', () => {
     await fixture.whenStable();
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/sets/3/availability` && r.method === 'DELETE')
-      .flush({ error: 'NOT_MARKED' }, { status: 409, statusText: 'Conflict' });
+      .flush({ status: 409, code: 'NOT_MARKED' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
 
     // Reconcile shows the truth: set 3 was actually held online, not a staff mark.

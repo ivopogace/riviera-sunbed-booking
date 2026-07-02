@@ -15,6 +15,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -76,7 +77,8 @@ class StaffAvailabilityControllerIT {
 		mvc.perform(post(markUrl(set)).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody(date)))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error").value("ALREADY_TAKEN"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("ALREADY_TAKEN"));
 
 		mvc.perform(delete(markUrl(set)).with(httpBasic(OPERATOR, PASSWORD)).param("date", date))
 				.andExpect(status().isNoContent());
@@ -84,7 +86,8 @@ class StaffAvailabilityControllerIT {
 		// Releasing again → nothing staff-marked → 409 NOT_MARKED.
 		mvc.perform(delete(markUrl(set)).with(httpBasic(OPERATOR, PASSWORD)).param("date", date))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error").value("NOT_MARKED"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_MARKED"));
 	}
 
 	@Test
@@ -92,7 +95,8 @@ class StaffAvailabilityControllerIT {
 		mvc.perform(post(markUrl(anyOnlineSet())).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody("2020-01-01")))
 				.andExpect(status().isUnprocessableEntity())
-				.andExpect(jsonPath("$.error").value("DATE_IN_PAST"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("DATE_IN_PAST"));
 	}
 
 	@Test
@@ -100,7 +104,8 @@ class StaffAvailabilityControllerIT {
 		mvc.perform(post(markUrl(999_999L)).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody("2032-07-03")))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error").value("NO_SUCH_SET"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
 	}
 
 	@Test
@@ -108,6 +113,7 @@ class StaffAvailabilityControllerIT {
 		mvc.perform(post(markUrl(anyOnlineSet())).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.error").value("INVALID_REQUEST"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 }
