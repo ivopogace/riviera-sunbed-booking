@@ -72,21 +72,21 @@ branch stands in for `feature/liquid-glass-foundation` (cloud-session addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Legacy pages unreadable on the dark `riviera` background | high | high | route-data compat surface (AC-6); per-page contrast specs re-run | agent | open |
-| R-2 | Glass token pairs fail WCAG AA (esp. white ink on translucent glass over bright gradient) | med | med | contrast spec per token pair per theme (AC-4); adjust token values, keep design feel | agent | open |
-| R-3 | Shell changes break existing e2e/a11y specs (selectors, landmarks) | med | med | keep existing `data-testid`s; run all suites before push (AC-7) | agent | open |
-| R-4 | `backdrop-filter` unsupported browsers render low-contrast glass | low | low | opaque-ish rgba fallback baked into token values (they carry ≥0.5 alpha white) | agent | open |
-| R-5 | Theme attr written outside Angular (document) desyncs in tests | low | med | ThemeService is the only writer; specs assert through it | agent | open |
+| R-1 | Legacy pages unreadable on the dark `riviera` background | high | high | route-data compat surface (AC-6); per-page contrast specs re-run | agent | resolved 7b4210a |
+| R-2 | Glass token pairs fail WCAG AA (esp. white ink on translucent glass over bright gradient) | med | med | contrast spec per token pair per theme (AC-4); three tokens tuned vs design | agent | resolved a478285 |
+| R-3 | Shell changes break existing e2e/a11y specs (selectors, landmarks) | med | med | keep existing `data-testid`s; run all suites before push (AC-7) | agent | resolved a478285 |
+| R-4 | `backdrop-filter` unsupported browsers render low-contrast glass | low | low | opaque-ish rgba fallback baked into token values (they carry ≥0.5 alpha white) | agent | accepted (cosmetic) |
+| R-5 | Theme attr written outside Angular (document) desyncs in tests | low | med | ThemeService is the only writer; specs assert through it | agent | resolved 622e691 |
+| R-6 | Shell stacking/containing-block regressions vs page modals (found at review) | med | high | bg at z:-1, unpositioned main, glass on ::before; real-render elementFromPoint pins | agent | resolved a147e79 |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the design's system font stack (`-apple-system, 'SF Pro Display', …,
-  system-ui`) becomes the app font via a token, replacing Manrope visually; the Manrope
-  `<link>` is removed when the last tourist page restyles (T5). Cheap to reverse (one
-  token). — *Owner:* agent · *Resolves by:* T5 close-out.
-- **Assumption:** with only two themes, the desktop switcher is the design's pill +
-  dropdown (not a toggle), because #143 adds 12 palettes as data. — *Owner:* agent ·
-  *Resolves by:* merge (design fidelity check).
+### Resolved
+
+- **Assumption (kept, deferred to T5):** the design's system font stack replaces Manrope via the
+  `--riv-font` token; the Manrope `<link>` is removed at T5 when the last tourist page restyles
+  (page scss still consumes it — verified by the review's cross-file tracer). Carried on #138.
+- **Assumption (confirmed at review):** pill + dropdown switcher kept — #143 adds palettes as data.
 
 ## Availability & concurrency (invariant #2)
 
@@ -177,9 +177,30 @@ like the sibling suites). Run the full FE unit suite + both e2e suites locally p
 
 ---
 
+## Review-gate record (riviera-review-overlay + code-review, medium effort, pre-PR at a478285)
+
+8 finder angles → 13 candidates → verified (cross-angle confirmation + direct code semantics).
+**Fixed in a147e79:** (1) `<main>`/footer stacking contexts trapped the booking dialog below the
+sticky header — Blocker, e2e-pinned; (2) `backdrop-filter` on the header made it the containing
+block for the menus' fixed backdrops — Major, e2e-pinned; (3) e2e "riviera" axe sweeps actually
+ran porcelain (headless boots light) — Major test gap; (4) `role=radio` without the radio
+keyboard pattern → `aria-pressed` toggle buttons; toggle name violates Label-in-Name → name now
+contains the visible label; (5) dead global reduced-motion guard removed; (6) axe e2e helper
+extracted to `e2e/support/axe.ts` (was 8 copies); compositing math moved to
+`testing/contrast.ts`; `ThemeOption.light` now drives the OS-light default; theme applied via
+`provideAppInitializer`. **Declined with rationale:** extracting a shared shell()-fixture harness
+for two spec files (indirection outweighs 6 duplicated lines). Overlay walk: RV-FE-* pass;
+RV-BE-*/RV-CT-* N/A (frontend-only); RV-PROC-1 pass (Skills consulted covers FE + e2e areas).
+
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1..AC-7: commands + commit sha recorded here before claiming done.
+- [x] **AC-1** theme default + OS fallback: `npm test -- --include='**/theme.spec.ts'` → 6/6 green (a147e79).
+- [x] **AC-2** switch + persistence: theme.spec + `theme-shell.e2e.ts` persistence test → green (a147e79).
+- [x] **AC-3** mobile menu open/Escape/focus-return/backdrop: app.spec + theme-shell e2e → green (a147e79).
+- [x] **AC-4** axe + AA in both themes: `app.a11y.spec.ts`, `app.contrast.spec.ts`, e2e axe sweeps (riviera + porcelain, colorScheme pinned) → green (a147e79).
+- [x] **AC-5** reduced motion: theme-shell e2e `reducedMotion: 'reduce'` → `animation-name: none` (a147e79).
+- [x] **AC-6** compat surface: app.spec route-data cases + routes-flag spec → green (a147e79).
+- [x] **AC-7** whole FE suite: unit 245/245, lint clean, mocked e2e 17/17 locally; push CI green at a478285 and re-verified after the fix push.
 
 ## Self-review checklist (before merge / PR)
 
