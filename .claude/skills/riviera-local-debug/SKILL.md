@@ -62,6 +62,26 @@ gradle --no-daemon --console=plain test --tests "*<ClassName>*"
   is the complete verification, and the plan doc's AC table should say which half proves
   what.
 
+### The full-suite-only failure class (known blind spot of scoped runs)
+
+Scoped batches share almost nothing; CI's full suite runs every test through **cached,
+long-lived Spring contexts in one JVM**. So there is a failure class that scoped runs
+**cannot** show: **cross-cutting stateful infrastructure accumulating state across tests**.
+It has bitten twice in one day:
+
+- **#127:** a new per-IP login rate limiter passed every scoped batch, then failed the full
+  suite with 19×429 — every MockMvc login in the JVM shared the one default client IP and
+  blew the 10/min budget mid-run. Fix: each test login presents a unique `X-Forwarded-For`.
+- **#98/#122:** an unconditional `@EnableScheduling` background sweep interfered with a
+  race IT's timing window. Fix: a long `initial-delay` pushes the sweep out of test windows.
+
+**The rule:** when a change adds or touches a **filter, rate limiter, `@Scheduled` job,
+cache, or any shared-state bean in the security/web chain**, ask *"what does the full
+suite's cumulative traffic do to this?"* before pushing — and design the tests to isolate
+(unique keying dimension per test, initial-delay for background jobs, per-test state
+reset). Expect the answer to be verified **only by the push's CI run** — check it before
+building the next phase on top (the riviera-sdlc CI-gate rule).
+
 ### Local machine (contributor laptop)
 
 `./gradlew` works normally (wrapper self-provisions). Same scoped-test discipline applies

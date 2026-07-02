@@ -112,7 +112,11 @@ When planning a riviera feature, also do:
    temptation toward JPA or Stripe Connect. **If the slice adds or changes a request
    DTO or an endpoint's error responses, note the error-contract expectation
    (centralized `ProblemDetail`, not a per-controller `{"error": …}` body —
-   `riviera-java-conventions` §6b).**
+   `riviera-java-conventions` §6b).** **If the slice adds a Flyway migration, the
+   plan may only claim `V<n>` after verifying the number is free on `main` AND
+   unclaimed by any open PR's diff** (riviera-sdlc's in-flight check; the #122/#127
+   V19 collision is the cautionary tale) — and it names who renumbers if a parallel
+   slice merges first (default: whoever merges second).
 
 3. **Fill the Availability & concurrency section if the feature touches booking,
    the beach map, or `availability`.** State exactly how invariant #2 is upheld:
