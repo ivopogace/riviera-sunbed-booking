@@ -40,11 +40,9 @@ describe('VenueEditor', () => {
     fixture = TestBed.createComponent(VenueEditor);
     httpMock = TestBed.inject(HttpTestingController);
     auth = TestBed.inject(OperatorAuth);
-    // The app initializer kicks the session restore at startup (GET /api/auth/me, issue #109;
-    // moved out of OperatorAuth's constructor for S7059). Kick it here, then render and answer 401
-    // so every test starts signed out with restoring() settled.
-    auth.init();
     fixture.detectChanges();
+    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109);
+    // answer 401 so every test starts signed out with restoring() settled.
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/me`)
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });

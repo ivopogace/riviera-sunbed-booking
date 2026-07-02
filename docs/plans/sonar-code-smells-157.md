@@ -4,7 +4,7 @@
 
 **Goal:** Drive the SonarCloud **Overall-Code open-issue list to 0** (14 code smells today; 0 bugs/vulns, 0 duplication) with real, in-code fixes that honour the project invariants — verified via `api/issues/search`, not the gate conclusion (the #159 rule).
 
-**Architecture:** Pure quality cleanup, no behaviour change except one deliberately behaviour-preserving refactor (S7059: move the operator-session restore kickoff out of the `OperatorAuth` constructor into the `app.config.ts` composition root, mirroring the existing `provideAppInitializer(ThemeService)` pattern). The 9 `css:S7924` are static false-positives on translucent Liquid Glass — fixed the T3 `_glass.scss` `failure-icon` way (swap translucent fill → solid composited fill so the analyser computes the real colour). The 3 `java:S1075` are API route patterns, not filesystem URIs — resolved by a justified `sonar-project.properties` suppression.
+**Architecture:** Pure quality cleanup, no behaviour change. S7059: move the operator-session restore kickoff out of the `OperatorAuth` **constructor body** into a **private field initializer** (`private readonly restoreOnStartup = this.restore();`) — a valid Angular injection context, listed distinctly from the constructor (angular.dev/guide/di/dependency-injection-context), so the async op leaves the constructor that `no-async-constructor` flags **while behaviour is byte-for-byte preserved**: restore still fires only when `OperatorAuth` is first injected (lazily — anonymous tourist pages issue no `/me` call). *(An earlier draft used `provideAppInitializer`; the review gate flagged that it fires `/me` on every anonymous page — a real behaviour change — so it was reverted to the field initializer, which is what issue #157 lists first.)* The 9 `css:S7924` are static false-positives on translucent Liquid Glass — fixed the T3 `_glass.scss` `failure-icon` way (swap translucent fill → solid composited fill so the analyser computes the real colour). The 3 `java:S1075` are API route patterns, not filesystem URIs — resolved by a justified `sonar-project.properties` suppression.
 
 **Persistence:** JDBC only (invariant #1). N/A — no DB, no migration, no SQL in this slice.
 
@@ -13,7 +13,7 @@
 **Skills consulted (Skill-routing gate — fullstack):**
 - `riviera-plan-doc` — plan discipline (this doc).
 - `riviera-frontend` — confirmed all edits are **in-place** (no folder moves); `app.config.ts` is the composition root; `provideAppInitializer` + DI-token patterns; Liquid Glass token/contrast-spec rules (composited-math proof, solid-fill for static analysis).
-- `angular-developer` + angular-cli MCP (`get_best_practices`, v22) — `@Service`, `inject()`, `provideAppInitializer` idioms for the S7059 refactor; `String.fromCodePoint` for S7758.
+- `angular-developer` + angular-cli MCP (`get_best_practices` + `search_documentation`, v22) — confirmed a **field initializer is a valid injection context, distinct from the constructor** (angular.dev DI context) → the S7059 fix; `String.fromCodePoint` for S7758. Also checked the skill's Tailwind reference: N/A — the booking surfaces use component SCSS + `--riv-*` tokens (0 Tailwind utility classes), and the project's Tailwind is already v4-correct (`.postcssrc.json`, no `tailwind.config.js`).
 - `riviera-modulith` / `riviera-java-conventions` — consulted for the backend item: it is **config-only** (`sonar-project.properties`); **no Java authored**, so `ModularityTests` / `JdbcOnlyArchitectureTests` / no-JPA / no-Lombok are untouched. `SecurityConfig`/`RateLimitFilter` are root-package app-level classes, not Modulith modules.
 - `riviera-local-debug` — scoped-test discipline (run the touched spec classes, not the bare suites) before the first `npm`.
 - `playwright-cli` / `riviera-review-overlay` — at the review/e2e gate (no user-facing **behaviour** changes, so e2e authoring isn't triggered; the a11y e2e is a regression check only).
@@ -27,7 +27,7 @@
 Each AC = one specific SonarCloud issue (or group) cleared + its guarding spec/arch test green. The Overall list reaching 0 is verified at the Sonar gate via `api/issues/search`.
 
 - [ ] **AC-1 (S7758):** Given `rowCode`, when `venue-map.ts:52` uses `String.fromCodePoint(65 + n%26)` instead of `fromCharCode`, then output is identical for A–Z and the rule clears. *Pinned by:* `venue-map.spec.ts` › `rowCode` (`A/Z/AA/AB`).
-- [ ] **AC-2 (S7059):** Given the app boots, when the operator-session restore is kicked from an `app.config.ts` `provideAppInitializer` (not the `OperatorAuth` constructor), then `restore()` still runs once at startup, the `restoring` signal stays honest, **and constructing the service issues no HTTP**. *Pinned by:* `operator-auth.spec.ts` (new "construction is side-effect-free" test + all existing tests via the updated `serviceWithRestore` helper calling `init()`).
+- [ ] **AC-2 (S7059):** Given `OperatorAuth`, when the restore kickoff moves from the constructor **body** to a **field initializer**, then the async op leaves the constructor (rule clears) and behaviour is preserved exactly — restore still fires on first injection (lazy scope: no `/me` on anonymous pages), `restoring` stays honest. *Pinned by:* the **unchanged** `operator-auth.spec.ts` + the 4 `venue-editor`/`staff-daily` specs (all still green with no edits — the field initializer fires `/me` on construction exactly as the old constructor did, so the behaviour they assert is identical).
 - [ ] **AC-3 (S1075 ×3):** Given `SecurityConfig.java` / `RateLimitFilter.java` HTTP route-pattern constants, when a justified `sonar.issue.ignore.multicriteria` suppression scoped to those files is added (mirroring the existing `S4032` `e1`), then the 3 `java:S1075` no longer appear in the reported list and the existing `S4032` suppression is preserved. *Pinned by:* Sonar gate (`api/issues/search` shows 0 `S1075`); no code/behaviour change.
 - [ ] **AC-4 (S7924 ×9):** Given the four Liquid Glass booking surfaces, when each flagged translucent fill is swapped for its **solid composited equivalent** (ink at ≥4.5:1 outright), then all 9 `css:S7924` clear and every `*.contrast.spec.ts` stays green in **both** themes. *Pinned by:* the four `booking-*.contrast.spec.ts` (green) + Sonar gate (0 `S7924`).
 - [ ] **AC-5 (list→0):** Given the PR, when `api/issues/search?...&pullRequest=<PR#>&resolved=false` is pulled, then it returns **0** open issues, the new-code gate is green, and new-code coverage ≥ 80%.
@@ -44,8 +44,8 @@ Each AC = one specific SonarCloud issue (or group) cleared + its guarding spec/a
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The S7059 refactor changes **when/whether** `restore()` runs, or leaves `restoring` dishonest (surfaces hang or flash signed-out) | med | high | Test-first: new "no-HTTP-on-construction" red test + all existing `operator-auth.spec.ts` tests kept green via `init()`; behaviour is fire-and-forget at bootstrap (mirrors `ThemeService` initializer), `restoring` starts `true` and flips on `/me` settle exactly as before | agent | **resolved** (310ebc4 + spec ripple below) |
-| R-2 | A `provideAppInitializer(OperatorAuth)` firing `/me` at bootstrap breaks a test/e2e that relies on construction firing the restore (unmocked/unexpected HTTP) | low | med | **Materialised** in the 4 component specs (`venue-editor`/`staff-daily`, unit + a11y) that inject `OperatorAuth` and expected the **constructor** to fire `/me` — full-suite run caught it (328→36 red); fixed by calling `auth.init()` explicitly in each `beforeEach` (mirrors the app initializer). No `appConfig`-booting spec exists; a11y e2e already handles the bootstrap `/me`. | agent | **resolved** (this commit) |
+| R-1 | The S7059 refactor changes **when/whether** `restore()` runs, or leaves `restoring` dishonest (surfaces hang or flash signed-out) | med | high | **Final fix (field initializer)** preserves the exact construction-time, lazy trigger → behaviour byte-for-byte identical; the unchanged `operator-auth.spec.ts` + the 4 operator component specs stay green with no edits, which is the regression proof | agent | **resolved** (field-init commit) |
+| R-2 | The S7059 refactor changes the **scope** of when `/me` fires (e.g. an app initializer would fire it on every anonymous page, not just operator routes) | med | high | **Materialised** in the earlier `provideAppInitializer` draft — the review gate (finding 1, CONFIRMED ×4) caught that it added a `GET /api/auth/me` to every tourist page (`app.ts` never injects `OperatorAuth`). **Reverted** to the field initializer (issue #157's first option), which keeps the original lazy scope → no `/me` on anonymous pages | agent | **resolved** (field-init commit) |
 | R-3 | A chosen solid badge/error fill fails the S7924 analyser threshold or drifts a `contrast.spec.ts` | med | med | Every solid value's ink contrast is pre-computed ≥4.5:1 (table below); contrast specs assert the exact new pairs; follows the already-shipped `_glass.scss failure-icon` / `booking-pay .fail-badge` precedent that cleared S7924 in T3 | agent | open |
 | R-4 | S1075 suppression too broad (hides a real future hardcoded-URI smell) or too narrow (misses a file) | low | med | Scope by rule **and** resource: one entry per file (`**/RateLimitFilter.java`, `**/SecurityConfig.java`), with a rationale comment; keep `S4032` `e1` intact | agent | open |
 | R-5 | Green Sonar gate but non-empty issue list (the #159 trap) | low | high | Definition of done pulls `api/issues/search` for the PR and drives it to literally 0, not the gate conclusion | agent | open |
@@ -57,7 +57,18 @@ Each AC = one specific SonarCloud issue (or group) cleared + its guarding spec/a
 - **Assumption:** No other spec/e2e boots the app via `appConfig.providers` in a way that an unmocked bootstrap `/me` would break. *Resolves by:* grep during Phase 1 (R-2).
 
 ### Resolved
-- _(none yet)_
+- **Assumption (no app-boot spec breaks):** partially wrong for the *app-initializer draft* — 4 operator component specs relied on construction firing `/me`. Moot after the pivot to the field initializer (construction fires `/me` again, so those specs are unchanged). *Resolved: field-init commit.*
+- **Sonar gate red on `new_coverage` (50%) — first PR-160 analysis (app-initializer draft):** the issue list reached **0** (all 14 cleared) but the gate failed its single `new_coverage ≥ 80%` condition — the `app.config.ts` initializer line was the 1 uncovered new line. This was **superseded** by the review-driven pivot: the field-initializer fix has **no `app.config` change at all**, and its one new line (`restoreOnStartup = this.restore()`) is covered by every `OperatorAuth` construction in the existing specs → new-code coverage back to ~100% with no extra spec. Confirms the #159 lesson in reverse: read the gate *conditions*, not just pass/fail.
+
+## Review-gate findings (PR #160, `code-review` high-effort + `riviera-review-overlay`)
+
+Three CONFIRMED findings; all re-entered at Implement (skill-routing re-run: FE → `angular-developer` + angular-cli MCP incl. `search_documentation`).
+
+1. **`app.config.ts` — behaviour change (dominant, ×4 confirmations).** The `provideAppInitializer` draft fired `GET /api/auth/me` at every boot on **every** route, incl. anonymous tourist pages that (verified: `app.ts` never injects `OperatorAuth`) previously made no auth call. **Fix:** reverted the app-initializer machinery; used issue #157's first option — a **field initializer** in `OperatorAuth` (Angular-documented valid injection context), preserving the exact lazy scope. Coincidentally removes the coverage gap.
+2. **`booking-dialog.scss` — chips flattened.** The close (white-0.16) and step-num (white-0.24) chips were both set to one darker `#2c7789`, losing the two distinct frosted looks. **Fix:** distinct composites — close → its true `#31798a` (white 4.96:1); step-num kept `#2c7789` (its true 0.24 composite `#458595` is too light for AA white text, 4.16:1, so darkened), each commented.
+3. **`sonar-project.properties` — S1075 file-wide scope + inaccurate comment.** The comment named only `LOGIN_PATH`/`LOGOUT_PATH` (SecurityConfig has ~13 route constants). **Fix:** corrected the comment and justified the file scope — these two classes hold *only* HTTP route-pattern constants by nature, so S1075 is a false positive throughout them and the file scope is correct, not overly broad (kept the issue-#157-prescribed properties approach over a per-constant `@SuppressWarnings`, which would silence the same false positives while needing re-adding as routes grow).
+
+Refuted (1): "construction is no longer self-triggering" — moot after the field-initializer pivot (construction self-triggers again).
 
 ## Availability & concurrency (invariant #2)
 
@@ -95,14 +106,15 @@ All-in-config; no capability added or moved between modules — no boundary chan
 |---|---|---|---|---|
 | `.badge` / `.done-badge` (✓/✉, teal) | bg `rgba(43,184,212,.18)`, ink `#0a6e85` | `#d9f2f7` | `#0a5f74` | 6.2:1 |
 | `.badge.warn` / `.done-badge.warn` (⏳, amber) | bg `rgba(240,170,46,.18)`, ink `#a86a12` | `#fcf0d9` | `#8a5410` | 5.5:1 |
-| `.dialog-close` (✕), inactive `.step-num` (white on teal) | bg `rgba(255,255,255,.16/.24)`, ink `#fff` | `#2c7789` | `#ffffff` | 5.1:1 |
+| `.dialog-close` (✕, white on teal) | bg `rgba(255,255,255,.16)`, ink `#fff` | `#31798a` | `#ffffff` | 4.96:1 |
+| inactive `.step-num` (white on teal) | bg `rgba(255,255,255,.24)`, ink `#fff` | `#2c7789` | `#ffffff` | 5.1:1 |
 | `.form-error` (both files) | bg `rgba(163,22,14,.1)`, ink `#a3160e` | `#f6e8e7` | `#a3160e` | 6.6:1 |
 
 Group A (badges/chips) are `aria-hidden` decorative glyphs — the heading/label carries the meaning (WCAG 1.4.11-exempt) and the `*.contrast.spec.ts` never asserted them, so they stay green trivially. Group B (`.form-error`) is real error text — its spec assertion moves from "red on the panel/card glass" to "red on the solid `#f6e8e7` fill".
 
 ## FE↔BE contract
 
-**N/A — no contract change.** No endpoint, DTO, or wire shape changes. `OperatorAuth` still calls the same `GET /api/auth/me`; only the caller (initializer vs constructor) moves.
+**N/A — no contract change.** No endpoint, DTO, or wire shape changes. `OperatorAuth` still calls the same `GET /api/auth/me` at the same time (first injection); only the *syntactic* location of the kickoff moves (constructor body → field initializer).
 
 ## Execution status
 

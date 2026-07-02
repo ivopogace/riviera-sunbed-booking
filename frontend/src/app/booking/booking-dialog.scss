@@ -62,8 +62,8 @@
   height: 30px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.4);
-  background: #2c7789; // solid composite of the frosted-white chip over the teal header (static-analysis safe)
-  color: #ffffff; // white clears AA on the solid chip
+  background: #31798a; // solid composite of the frosted white-0.16 chip over the teal header (white 4.96:1; static-analysis safe)
+  color: #ffffff;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -128,8 +128,10 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #2c7789; // solid composite of the frosted-white chip over the teal header (static-analysis safe)
-  color: #ffffff; // white clears AA on the solid chip
+  // Inactive chip: the frosted white-0.24 composite (#458595) is too light for AA white text, so
+  // it's the AA-safe muted teal — a touch darker than the close chip (white 5.1:1; static-analysis safe).
+  background: #2c7789;
+  color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;

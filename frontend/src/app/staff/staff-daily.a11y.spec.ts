@@ -50,10 +50,8 @@ describe('StaffDaily accessibility (axe)', () => {
     });
     operator = TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
-    // The app initializer kicks the session restore at startup (GET /api/auth/me, issue #109;
-    // moved out of OperatorAuth's constructor for S7059). Kick it here, answer 401 so every test
-    // starts signed out, then drain microtasks so restoring() settles.
-    operator.init();
+    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109);
+    // answer 401 so every test starts signed out, then drain microtasks so restoring() settles.
     httpMock
       .expectOne(`${BASE}/api/auth/me`)
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });

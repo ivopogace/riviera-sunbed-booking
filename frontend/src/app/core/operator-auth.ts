@@ -56,16 +56,16 @@ export class OperatorAuth {
   readonly username = computed(() => this.principal()?.username);
 
   /**
-   * Kick off the one-time startup session restore. Wired from the composition root
-   * ({@link appConfig}'s {@code provideAppInitializer}) rather than the constructor, so no async
-   * work runs during construction (S7059 — construction stays synchronous and side-effect-free).
-   * Fire-and-forget by design: the {@link restoring} signal (not bootstrap blocking) gates
-   * rendering exactly as the old constructor kickoff did — a page reload still restores a live
-   * session. Idempotent enough for one call; the app initializer invokes it once at boot.
+   * Fire the one-time session restore at construction (issue #109). Kept in a FIELD INITIALIZER — a
+   * valid Angular injection context, listed distinctly from the constructor
+   * (angular.dev/guide/di/dependency-injection-context) — rather than the constructor BODY, so no
+   * async operation runs *in the constructor* (Sonar typescript:S7059 / no-async-constructor) while
+   * behaviour is preserved EXACTLY: it still fires once when this service is first injected —
+   * lazily, so anonymous tourist pages that never inject OperatorAuth issue no /me call — and the
+   * `restoring` signal (declared above, starts true) holds rendering until GET /api/auth/me settles.
+   * Declared after the deps + signals it reads.
    */
-  init(): void {
-    void this.restore();
-  }
+  private readonly restoreOnStartup = this.restore();
 
   /**
    * Server-validated sign-in: unlike the old capture-and-hope Basic flow, a wrong credential is

@@ -36,9 +36,7 @@ describe('VenueEditor accessibility (axe)', () => {
     fixture = TestBed.createComponent(VenueEditor);
     auth = TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
-    // The app initializer kicks the /me restore at startup (S7059 — moved out of the constructor);
-    // kick it here and settle as signed-out so restoring() flips false.
-    auth.init();
+    // Settle the constructor's /me restore as signed-out so restoring() flips false.
     httpMock
       .expectOne(`${AUTH_API}/me`)
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
