@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.ApiProblem;
 import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -32,15 +33,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * segment keeps the URL consistent with the U7 set paths ({@code /api/venues/{id}/sets/{id}}) but is
  * <strong>not</strong> the authorization key: the owning venue is derived from the {@code setId}
  * inside the service (invariant #13, issue #73), and a mismatch is {@code 403} via
- * {@code VenueAuthorizationExceptionHandler}. The controller resolves the authenticated operator and
- * passes it through.
+ * {@code ApiErrorHandler}. The controller resolves the authenticated operator and
+ * passes it through. Errors are RFC-7807 problem bodies built by {@link ApiProblem} (issue #97).
  */
 @RestController
 @RequestMapping("/api/venues")
 class StaffAvailabilityController {
-
-	/** JSON body key for an error-code payload ({@code {"error": CODE}}), matching the U7 shape. */
-	private static final String ERROR_KEY = "error";
 
 	private final StaffAvailability staff;
 	private final CurrentOperator currentOperator;
@@ -51,32 +49,35 @@ class StaffAvailabilityController {
 	}
 
 	@PostMapping("/{venueId}/sets/{setId}/availability")
-	ResponseEntity<Map<String, String>> mark(Authentication authentication, @PathVariable long venueId,
+	ResponseEntity<Object> mark(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long setId, @RequestBody(required = false) MarkRequest request) {
 		if (request == null || request.date() == null) {
-			return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "INVALID_REQUEST"));
+			return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A date is required.");
 		}
 		OperatorId operator = currentOperator.require(authentication);
 		return switch (staff.mark(operator, new SetId(setId), request.date())) {
 			case MARKED -> ResponseEntity.ok(Map.of("state", "STAFF_MARKED"));
-			case ALREADY_TAKEN -> error(HttpStatus.CONFLICT, "ALREADY_TAKEN");
-			case NO_SUCH_SET -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET");
-			case DATE_IN_PAST -> error(HttpStatus.UNPROCESSABLE_ENTITY, "DATE_IN_PAST");
+			case ALREADY_TAKEN -> error(HttpStatus.CONFLICT, "ALREADY_TAKEN",
+					"The set is already taken for this date.");
+			case NO_SUCH_SET -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.");
+			case DATE_IN_PAST -> error(HttpStatus.UNPROCESSABLE_ENTITY, "DATE_IN_PAST",
+					"The date is in the past.");
 		};
 	}
 
 	@DeleteMapping("/{venueId}/sets/{setId}/availability")
-	ResponseEntity<Map<String, String>> release(Authentication authentication,
+	ResponseEntity<Object> release(Authentication authentication,
 			@PathVariable long venueId, @PathVariable long setId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		OperatorId operator = currentOperator.require(authentication);
 		return switch (staff.release(operator, new SetId(setId), date)) {
 			case RELEASED -> ResponseEntity.noContent().build();
-			case NOT_MARKED -> error(HttpStatus.CONFLICT, "NOT_MARKED");
+			case NOT_MARKED -> error(HttpStatus.CONFLICT, "NOT_MARKED",
+					"Nothing is staff-marked for this set and date.");
 		};
 	}
 
-	private static ResponseEntity<Map<String, String>> error(HttpStatus status, String code) {
-		return ResponseEntity.status(status).body(Map.of(ERROR_KEY, code));
+	private static ResponseEntity<Object> error(HttpStatus status, String code, String detail) {
+		return ResponseEntity.status(status).body(ApiProblem.of(status, code, detail));
 	}
 }

@@ -227,9 +227,9 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — ApiProblem + single advice + booking controller on the contract | ✅ | (this commit) |
-| 1 — venue + availability controllers migrated | ⏳ | |
-| 2 — payout controller migrated (stable codes, first wire test) | | |
+| 0 — ApiProblem + single advice + booking controller on the contract | ✅ | 52a3840 |
+| 1 — venue + availability controllers migrated | ✅ | (this commit) |
+| 2 — payout controller migrated (stable codes, first wire test) | ⏳ | |
 | 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | | |
 | 4 — Angular services + specs parse ProblemDetail | | |
 | 5 — mocked e2e error-state + §6b/substrate docs sweep | | |
@@ -292,6 +292,7 @@ suite in CI only).
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-02 | plan (grill gate) | `{"error"` producers beyond the 4 controllers | `grep -rln '"error"' platform/src/main` | `RateLimitFilter` (servlet filter, outside MVC) | pulled into scope as Phase 3 — the advice can't reach it |
+| 2026-07-02 | Phase 1 | remaining old-shape producers in main source | `grep -rn 'Map.of("error"\|ERROR_KEY' platform/src/main/java` | `AdminPayoutBatchController` + `RateLimitFilter` only (= Phases 2–3 scope) | no unplanned sites; proceed |
 
 ---
 

@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -161,7 +162,9 @@ class VenueAdminControllerIT {
 		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "GOLD", 3000, "EUR", 1, 1)))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
 	@Test
@@ -170,7 +173,8 @@ class VenueAdminControllerIT {
 		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "ABC", 1, 1)))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
 	@Test
@@ -179,7 +183,8 @@ class VenueAdminControllerIT {
 		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 0, 1)))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
 	@Test
@@ -193,7 +198,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row B", 9, "STANDARD", "ONLINE", 3000, "EUR", 2, 1)))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error").value("CELL_TAKEN"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("CELL_TAKEN"));
 	}
 
 	@Test
@@ -206,7 +212,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 5)))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error").value("DUPLICATE_POSITION"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("DUPLICATE_POSITION"));
 	}
 
 	@Test
@@ -215,7 +222,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error").value("NO_SUCH_VENUE"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));
 	}
 
 	@Test
@@ -225,7 +233,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error").value("NO_SUCH_SET"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
 	}
 
 	@Test
