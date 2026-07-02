@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  @keyframes rivFade{from{opacity:0}to{opacity:1}}
+  @keyframes rivPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+  @keyframes rivDrift{0%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}100%{transform:translate(0,0)}}
+  [data-riv-scroller]::-webkit-scrollbar{display:none;}
+</style>
+</helmet>
+
+<div data-screen-label="Riviera" style="min-height:100vh;position:relative;font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif;color:#0a2a33;-webkit-font-smoothing:antialiased;">
+
+  <div style="position:fixed;inset:0;z-index:0;overflow:hidden;transition:background .5s ease;background:{{ bgStyle }};">
+    <span style="position:absolute;top:-120px;left:-80px;width:560px;height:560px;border-radius:50%;background:{{ blob1Bg }};filter:blur(50px);opacity:.55;animation:rivDrift 18s ease-in-out infinite;"></span>
+    <span style="position:absolute;bottom:-160px;right:-60px;width:620px;height:620px;border-radius:50%;background:{{ blob2Bg }};filter:blur(55px);opacity:.5;animation:rivDrift 22s ease-in-out infinite reverse;"></span>
+  </div>
+
+  <div style="position:relative;z-index:1;">
+
+  <header style="position:sticky;top:0;z-index:20;background:rgba(255,255,255,0.13);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid rgba(255,255,255,0.22);box-shadow:0 8px 30px rgba(6,38,52,0.14);">
+    <div style="position:relative;width:100%;max-width:1080px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div onClick="{{ onBack }}" style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+        <span style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 34% 30%, #ffe6a3, #f0aa2e 70%);box-shadow:0 0 0 4px rgba(255,255,255,0.18),0 4px 14px rgba(240,170,46,0.5);display:block;"></span>
+        <span style="display:flex;flex-direction:column;line-height:1;">
+          <span style="font-size:21px;font-weight:700;letter-spacing:-0.01em;color:{{ ink }};">Riviera</span>
+          <span style="font-size:10px;letter-spacing:0.24em;text-transform:uppercase;color:{{ inkFaint }};margin-top:4px;">Albanian Coast</span>
+        </span>
+      </div>
+      <sc-if value="{{ isMobileNav }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ onToggleMenu }}" aria-label="Menu" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4.5px;width:42px;height:42px;border-radius:14px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;padding:0;">
+          <span style="display:block;width:17px;height:2px;border-radius:2px;background:{{ ink }};"></span>
+          <span style="display:block;width:17px;height:2px;border-radius:2px;background:{{ ink }};"></span>
+          <span style="display:block;width:17px;height:2px;border-radius:2px;background:{{ ink }};"></span>
+        </button>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ onToggleMenu }}" style="position:fixed;inset:0;z-index:30;background:rgba(6,30,40,0.2);"></div>
+          <div style="position:absolute;top:calc(100% + 8px);left:12px;right:12px;z-index:40;background:rgba(255,255,255,0.88);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(255,255,255,0.7);border-radius:22px;box-shadow:0 24px 60px rgba(6,30,40,0.4),inset 0 1px 0 rgba(255,255,255,0.9);padding:8px;animation:rivPop .2s ease;">
+            <button onClick="{{ onMenuBeaches }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">Beaches</button>
+            <button onClick="{{ onMenuHow }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">How it works</button>
+            <button onClick="{{ onMyBooking }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">My bookings</button>
+            <sc-if value="{{ isSignedOut }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ onOpenAuth }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:700;color:#0a6e85;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">Sign in or register</button>
+            </sc-if>
+            <sc-if value="{{ isSignedIn }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;">
+                <span style="display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:#0a2a33;min-width:0;"><span style="width:26px;height:26px;border-radius:50%;background:{{ ctaGrad }};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;flex-shrink:0;">{{ userInitial }}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ userFirst }}</span></span>
+                <button onClick="{{ onSignOutTourist }}" style="font:inherit;font-size:13px;font-weight:700;color:#a3372a;background:transparent;border:0;cursor:pointer;padding:6px;">Sign out</button>
+              </div>
+            </sc-if>
+            <div style="padding:10px 14px 12px;border-top:1px solid rgba(12,42,51,0.1);margin-top:4px;">
+              <span style="font-size:10.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Color theme</span>
+              <div style="display:flex;flex-wrap:wrap;gap:9px;margin-top:9px;">
+                <sc-for list="{{ themeList }}" as="t" hint-placeholder-count="6">
+                  <sc-if value="{{ t.active }}" hint-placeholder-val="{{ false }}"><button onClick="{{ t.onSelect }}" aria-label="{{ t.name }}" title="{{ t.name }}" style="width:30px;height:30px;border-radius:50%;background:{{ t.swatch }};border:0;cursor:pointer;box-shadow:0 0 0 2px #ffffff,0 0 0 4px #0e8aa8;padding:0;"></button></sc-if>
+                  <sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ true }}"><button onClick="{{ t.onSelect }}" aria-label="{{ t.name }}" title="{{ t.name }}" style="width:30px;height:30px;border-radius:50%;background:{{ t.swatch }};border:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.6);padding:0;"></button></sc-if>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{ isDesktopNav }}" hint-placeholder-val="{{ true }}">
+      <nav style="display:flex;align-items:center;gap:22px;font-size:13.5px;color:{{ inkSoft }};">
+        <span onClick="{{ onBack }}" style="cursor:pointer;">Beaches</span>
+        <span style="cursor:pointer;">How it works</span>
+        <div style="position:relative;display:flex;align-items:center;">
+          <button onClick="{{ onToggleTheme }}" aria-label="Switch color theme" style="display:inline-flex;align-items:center;gap:9px;font:inherit;font-weight:600;font-size:13.5px;color:{{ ink }};cursor:pointer;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:999px;padding:6px 13px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);">
+            <span style="width:16px;height:16px;border-radius:50%;background:{{ themeSwatch }};box-shadow:inset 0 0 0 1px rgba(255,255,255,0.55);"></span>
+            <span>{{ themeName }}</span>
+            <span style="font-size:9px;opacity:.85;">&#9660;</span>
+          </button>
+          <sc-if value="{{ themeOpen }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ onToggleTheme }}" style="position:fixed;inset:0;z-index:30;"></div>
+            <div style="position:absolute;top:calc(100% + 10px);right:0;z-index:40;width:214px;max-height:calc(100vh - 96px);overflow-y:auto;padding:7px;background:rgba(255,255,255,0.72);-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,0.6);border-radius:18px;box-shadow:0 22px 54px rgba(6,30,40,0.4),inset 0 1px 0 rgba(255,255,255,0.85);animation:rivPop .2s ease;">
+              <p style="margin:4px 9px 7px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Color theme</p>
+              <sc-for list="{{ themeList }}" as="t" hint-placeholder-count="5">
+                <button onClick="{{ t.onSelect }}" style="display:flex;align-items:center;gap:11px;width:100%;font:inherit;text-align:left;padding:9px 10px;border:0;border-radius:12px;cursor:pointer;background:transparent;transition:background .12s ease;" style-hover="background:rgba(12,42,51,0.06);">
+                  <span style="width:26px;height:26px;border-radius:50%;background:{{ t.swatch }};box-shadow:inset 0 0 0 1px rgba(255,255,255,0.55);flex-shrink:0;"></span>
+                  <span style="flex:1;font-size:14px;font-weight:600;color:#0a2a33;">{{ t.name }}</span>
+                  <sc-if value="{{ t.active }}" hint-placeholder-val="{{ false }}"><span style="color:#0a6e85;font-size:15px;font-weight:700;">&#10003;</span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <span style="display:inline-flex;align-items:center;gap:8px;font-weight:600;color:{{ ink }};cursor:pointer;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:999px;padding:7px 15px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);" onClick="{{ onMyBooking }}">My bookings</span>
+        <sc-if value="{{ isSignedOut }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ onOpenAuth }}" style="font:inherit;font-size:13.5px;font-weight:700;color:#ffffff;cursor:pointer;background:{{ ctaGrad }};border:1px solid rgba(255,255,255,0.4);border-radius:999px;padding:8px 17px;box-shadow:0 8px 20px rgba(11,120,150,0.4),inset 0 1px 0 rgba(255,255,255,0.5);">Sign in</button>
+        </sc-if>
+        <sc-if value="{{ isSignedIn }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;display:flex;align-items:center;">
+            <button onClick="{{ onToggleUserMenu }}" style="display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;font-weight:600;color:{{ ink }};cursor:pointer;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:999px;padding:5px 13px 5px 5px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);">
+              <span style="width:26px;height:26px;border-radius:50%;background:{{ ctaGrad }};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;">{{ userInitial }}</span>
+              <span>{{ userFirst }}</span>
+            </button>
+            <sc-if value="{{ userMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ onToggleUserMenu }}" style="position:fixed;inset:0;z-index:30;"></div>
+              <div style="position:absolute;top:calc(100% + 10px);right:0;z-index:40;width:220px;padding:8px;background:rgba(255,255,255,0.85);-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,0.7);border-radius:18px;box-shadow:0 22px 54px rgba(6,30,40,0.4),inset 0 1px 0 rgba(255,255,255,0.85);animation:rivPop .2s ease;">
+                <p style="margin:6px 10px 8px;font-size:12px;color:rgba(12,42,51,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ userEmail }}</p>
+                <button onClick="{{ onSignOutTourist }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:14px;font-weight:600;color:#a3372a;background:transparent;border:0;padding:10px;border-radius:12px;cursor:pointer;" style-hover="background:rgba(200,90,60,0.1);">Sign out</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </nav>
+      </sc-if>
+    </div>
+  </header>
+
+  <sc-if value="{{ isDiscover }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="Discover" style="width:100%;max-width:1080px;margin:0 auto;padding:48px 24px 80px;">
+    <div style="max-width:680px;">
+      <p style="display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:{{ ink }};font-weight:700;margin:0 0 18px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:7px 14px;border-radius:999px;">
+        <span style="width:18px;height:1px;background:{{ inkFaint }};display:inline-block;"></span> Sunbeds by the sea
+      </p>
+      <h1 style="font-weight:700;font-size:clamp(40px,6vw,66px);line-height:1.02;letter-spacing:-0.025em;color:{{ ink }};margin:0 0 16px;text-shadow:{{ heroShadow }};">Find your spot on the Riviera.</h1>
+      <p style="font-size:17px;line-height:1.5;color:{{ inkSoft }};margin:0;max-width:520px;">Pick a beach and a date, then choose your sunbed straight from the venue&rsquo;s map &mdash; front row to promenade.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:26px;padding:20px 22px;margin:34px 0 4px;box-shadow:0 14px 44px rgba(7,42,58,0.26),inset 0 1px 0 rgba(255,255,255,0.85);">
+      <label style="display:flex;flex-direction:column;gap:7px;margin:0;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Beach</span>
+        <select value="{{ selectedBeach }}" onChange="{{ onBeachChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:11px 13px;min-width:168px;cursor:pointer;">
+          <option value="">All beaches</option>
+          <sc-for list="{{ beaches }}" as="b" hint-placeholder-count="4"><option value="{{ b }}">{{ b }}</option></sc-for>
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:7px;margin:0;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Region</span>
+        <select value="{{ selectedRegion }}" onChange="{{ onRegionChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:11px 13px;min-width:168px;cursor:pointer;">
+          <option value="">All regions</option>
+          <sc-for list="{{ regions }}" as="r" hint-placeholder-count="3"><option value="{{ r }}">{{ r }}</option></sc-for>
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:7px;margin:0;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Date</span>
+        <input type="date" value="{{ selectedDate }}" min="{{ minDate }}" onChange="{{ onDateChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:10px 13px;cursor:pointer;"/>
+      </label>
+      <div style="margin-left:auto;align-self:center;text-align:right;padding-left:8px;">
+        <span style="font-size:34px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;line-height:1;">{{ resultCount }}</span>
+        <span style="display:block;font-size:12px;color:rgba(12,42,51,0.55);margin-top:5px;">{{ resultNoun }} &middot; {{ dateLabel }}</span>
+      </div>
+    </div>
+
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:64px 20px;color:{{ inkSoft }};font-size:15px;">No venues match these filters. Try another beach, region, or date.</div>
+    </sc-if>
+
+    <ul style="list-style:none;margin:24px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(264px,1fr));gap:20px;">
+      <sc-for list="{{ venueCards }}" as="card" hint-placeholder-count="6">
+        <li style="list-style:none;">
+          <div onClick="{{ card.onOpen }}" style="cursor:pointer;display:flex;flex-direction:column;height:100%;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:28px;overflow:hidden;box-shadow:0 12px 40px rgba(7,42,58,0.26),inset 0 1px 0 rgba(255,255,255,0.8);transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;" style-hover="transform:translateY(-5px);box-shadow:0 26px 60px rgba(7,42,58,0.4),inset 0 1px 0 rgba(255,255,255,0.9);border-color:rgba(255,255,255,0.85);">
+            <div style="position:relative;height:150px;background:{{ photoGrad }};">
+              <span style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 34% 30%, rgba(255,236,180,0.95), rgba(240,170,46,0.5) 72%);filter:blur(0.5px);opacity:.85;pointer-events:none;"></span>
+              <span style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(13,40,40,0) 42%,rgba(13,40,40,0.16) 66%,rgba(13,40,40,0.58) 100%);"></span>
+              <span style="position:absolute;left:14px;top:14px;pointer-events:none;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#0a6e85;font-size:11px;font-weight:700;letter-spacing:0.03em;padding:5px 11px;border-radius:999px;border:1px solid rgba(255,255,255,0.6);">{{ card.modeLabel }}</span>
+              <span style="position:absolute;left:15px;bottom:13px;pointer-events:none;font-size:12.5px;font-weight:600;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,0.4);">{{ card.location }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:17px 18px 18px;flex:1;">
+              <h3 style="font-weight:700;font-size:21px;letter-spacing:-0.01em;line-height:1.08;color:#0a2a33;margin:0;">{{ card.name }}</h3>
+              <div style="display:flex;align-items:center;gap:7px;font-size:13.5px;color:rgba(12,42,51,0.7);">
+                <span style="color:#f4a939;">&#9733;</span><strong style="color:#0a2a33;font-weight:700;">{{ card.ratingStr }}</strong>
+                <span style="color:rgba(12,42,51,0.3);">&middot;</span><span>{{ card.reviews }} reviews</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">
+                <span style="display:inline-flex;align-items:center;font-size:11px;color:#0a6e85;background:rgba(43,184,212,0.18);border:1px solid rgba(255,255,255,0.5);border-radius:999px;padding:4px 10px;font-weight:600;">{{ card.toWater }} to water</span>
+                <sc-for list="{{ card.amenities }}" as="am" hint-placeholder-count="3">
+                  <span style="display:inline-flex;align-items:center;font-size:11px;color:rgba(12,42,51,0.7);background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.55);border-radius:999px;padding:4px 10px;">{{ am }}</span>
+                </sc-for>
+              </div>
+              <div style="height:6px;border-radius:999px;background:rgba(12,42,51,0.12);overflow:hidden;margin-top:10px;">
+                <span style="display:block;height:100%;width:{{ card.freePct }}%;background:{{ barGrad }};"></span>
+              </div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:3px;">
+                <span style="font-size:14px;color:rgba(12,42,51,0.7);">from <strong style="color:#0a6e85;font-weight:800;font-size:16px;">{{ card.fromStr }}</strong> / set</span>
+                <span style="font-size:12.5px;color:rgba(12,42,51,0.7);"><strong style="color:#0a2a33;">{{ card.free }}</strong> of {{ card.total }} free</span>
+              </div>
+            </div>
+          </div>
+        </li>
+      </sc-for>
+    </ul>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isMap }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Beach map" style="width:100%;max-width:780px;margin:0 auto;padding:24px 24px 88px;">
+    <button onClick="{{ onBack }}" style="display:inline-flex;align-items:center;gap:8px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:{{ ink }};font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 14px;border-radius:999px;margin-bottom:16px;">&larr; All beaches</button>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px;">
+      <div>
+        <span style="display:inline-block;border-radius:999px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:{{ ink }};font-weight:700;font-size:12px;padding:6px 12px;margin-bottom:13px;">{{ venue.modeLabel }}</span>
+        <h1 style="font-weight:700;font-size:clamp(32px,5vw,48px);line-height:1.02;letter-spacing:-0.02em;color:{{ ink }};margin:0 0 7px;text-shadow:{{ heroShadow }};">{{ venue.name }}</h1>
+        <p style="margin:0 0 5px;color:{{ inkSoft }};font-size:15px;">{{ venue.location }}</p>
+        <p style="margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:14px;color:{{ inkSoft }};"><span style="color:#ffd16b;">&#9733;</span><strong style="color:{{ ink }};">{{ venue.ratingStr }}</strong><span style="color:{{ inkFaint }};">&middot;</span>{{ venue.reviews }} reviews<span style="color:{{ inkFaint }};">&middot;</span>from <strong style="color:{{ ink }};">{{ venue.fromStr }}</strong> / set</p>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;">
+          <span style="display:inline-flex;align-items:center;font-size:12px;color:{{ ink }};background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:999px;padding:5px 12px;font-weight:600;">{{ venue.toWater }} to water</span>
+          <sc-for list="{{ venue.amenities }}" as="am" hint-placeholder-count="4">
+            <span style="display:inline-flex;align-items:center;font-size:12px;color:{{ inkSoft }};background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:999px;padding:5px 12px;">{{ am }}</span>
+          </sc-for>
+        </div>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:7px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:{{ inkFaint }};">Date</span>
+        <input type="date" value="{{ selectedDate }}" min="{{ minDate }}" onChange="{{ onDateChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:10px 12px;cursor:pointer;"/>
+      </label>
+    </div>
+
+    <div style="margin:24px 0 6px;font-size:16px;color:{{ ink }};"><strong style="font-size:19px;font-weight:700;">{{ freeCount }}</strong> of {{ totalCount }} sets free on {{ dateLabel }}</div>
+    <div style="height:8px;border-radius:999px;background:{{ trackBg }};overflow:hidden;"><span style="display:block;height:100%;width:{{ freePct }}%;background:{{ barGrad }};"></span></div>
+
+    <div style="position:relative;margin-top:20px;height:210px;border-radius:24px;overflow:hidden;background:{{ photoGrad }};border:1px solid rgba(255,255,255,0.4);box-shadow:0 12px 40px rgba(7,42,58,0.3);">
+      <span style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;background:radial-gradient(circle at 34% 30%, rgba(255,236,180,0.95), rgba(240,170,46,0.5) 72%);filter:blur(0.5px);opacity:.85;pointer-events:none;"></span>
+      <span style="position:absolute;left:0;right:0;bottom:44px;text-align:center;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);pointer-events:none;">Venue photos coming soon</span>
+      <span style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(13,40,40,0) 55%,rgba(13,40,40,0.42) 100%);"></span>
+    </div>
+
+    <section style="margin-top:20px;border-radius:28px;background:rgba(255,255,255,0.52);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:0 14px 44px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.8);padding:0 16px 16px;overflow:hidden;">
+      <p style="text-align:center;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;font-size:12px;color:#ffffff;background:linear-gradient(180deg,rgba(43,184,212,0.92),rgba(14,138,168,0.94));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);margin:0 -16px 18px;padding:13px;">&#9650;&nbsp;&nbsp;Facing the sea</p>
+
+      <div ref="{{ setMapVport }}" data-riv-scroller style="overflow-y:auto;overflow-x:hidden;max-height:532px;scrollbar-width:none;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0;">
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="4">
+            <span style="height:{{ tileCol }};display:flex;align-items:center;"><span style="display:inline-flex;min-width:24px;height:24px;padding:0 3px;border-radius:8px;background:rgba(12,42,51,0.08);align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#0a4f5e;">{{ row.label }}</span></span>
+          </sc-for>
+        </div>
+        <div ref="{{ setRowsWrap }}" data-riv-scroller onMouseDown="{{ onMapMouseDown }}" onMouseMove="{{ onMapMouseMove }}" onMouseUp="{{ onMapMouseUp }}" onMouseLeave="{{ onMapMouseUp }}" style="overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1;min-width:0;cursor:grab;user-select:none;">
+          <div style="display:flex;flex-direction:column;gap:7px;width:max-content;">
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:repeat({{ mapCols }},{{ tileCol }});gap:6px;">
+              <sc-for list="{{ row.sets }}" as="set" hint-placeholder-count="12">
+                <sc-if value="{{ set.isFreeStandard }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ set.onSelect }}" title="{{ set.title }}" aria-label="{{ set.title }}" style="width:100%;aspect-ratio:1;min-width:0;display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#0a6e85;font:inherit;font-weight:700;font-size:12.5px;border-radius:10px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);transition:background .15s ease, transform .12s ease;padding:0;" style-hover="background:rgba(255,255,255,0.85);transform:translateY(-2px);">{{ set.label }}</button>
+                </sc-if>
+                <sc-if value="{{ set.isFreePremium }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ set.onSelect }}" title="{{ set.title }}" aria-label="{{ set.title }}" style="width:100%;aspect-ratio:1;min-width:0;display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(240,170,46,0.6);background:rgba(255,221,150,0.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#8a5a12;font:inherit;font-weight:700;font-size:12.5px;border-radius:10px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);transition:background .15s ease, transform .12s ease;padding:0;" style-hover="background:rgba(255,221,150,0.8);transform:translateY(-2px);">{{ set.label }}</button>
+                </sc-if>
+                <sc-if value="{{ set.isTaken }}" hint-placeholder-val="{{ false }}">
+                  <span title="{{ set.title }}" style="width:100%;aspect-ratio:1;min-width:0;display:flex;align-items:center;justify-content:center;border:1.5px dashed rgba(12,42,51,0.22);background:rgba(12,42,51,0.05);color:rgba(12,42,51,0.35);font:inherit;font-weight:700;font-size:12.5px;border-radius:10px;">{{ set.label }}</span>
+                </sc-if>
+              </sc-for>
+            </div>
+        </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0;">
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="4">
+            <span style="height:{{ tileCol }};display:flex;align-items:center;justify-content:flex-end;min-width:52px;font-size:12px;font-weight:600;color:rgba(12,42,51,0.65);">{{ row.priceStr }}</span>
+          </sc-for>
+        </div>
+      </div>
+      </div>
+      <sc-if value="{{ mapScrollHint }}" hint-placeholder-val="{{ false }}">
+        <p style="text-align:center;font-size:12px;color:#0a6e85;font-weight:600;margin:12px 0 0;">&#10021;&nbsp; Drag or swipe to pan the map &mdash; this beach is bigger than your screen</p>
+      </sc-if>
+      <p style="text-align:center;font-size:12px;color:rgba(12,42,51,0.55);margin:10px 0 0;letter-spacing:0.02em;">Tap any free set to book it &middot; prices are per set, full day</p>
+
+      <p style="text-align:center;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;font-size:12px;color:#0a4f5e;margin:6px -16px -16px;padding:13px;border-top:1px dashed rgba(12,42,51,0.22);">&#9660;&nbsp;&nbsp;Promenade &middot; Entrance</p>
+    </section>
+
+    <ul style="list-style:none;display:flex;gap:18px;flex-wrap:wrap;padding:0;margin:18px 2px 0;font-size:13px;color:{{ inkSoft }};">
+      <li style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:5px;border:1.5px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.55);"></span> Available</li>
+      <li style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:5px;border:1.5px solid rgba(240,170,46,0.7);background:rgba(255,221,150,0.55);"></span> Front row</li>
+      <li style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:5px;border:1.5px dashed rgba(255,255,255,0.6);background:rgba(255,255,255,0.12);"></span> Taken</li>
+    </ul>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isBooking }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="My bookings" style="width:100%;max-width:560px;margin:0 auto;padding:24px 24px 88px;">
+    <button onClick="{{ onBack }}" style="display:inline-flex;align-items:center;gap:8px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:{{ ink }};font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 14px;border-radius:999px;margin-bottom:16px;">&larr; All beaches</button>
+
+    <sc-if value="{{ showBookingList }}" hint-placeholder-val="{{ false }}">
+      <h1 style="font-weight:700;font-size:clamp(28px,4vw,36px);letter-spacing:-0.02em;color:{{ ink }};margin:4px 0 16px;text-shadow:{{ heroShadow }};">Your bookings</h1>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <sc-for list="{{ bkList }}" as="b" hint-placeholder-count="3">
+          <button onClick="{{ b.onOpen }}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;cursor:pointer;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:22px;padding:16px 18px;box-shadow:0 10px 30px rgba(7,42,58,0.22),inset 0 1px 0 rgba(255,255,255,0.8);transition:transform .15s ease, box-shadow .15s ease;" style-hover="transform:translateY(-2px);box-shadow:0 16px 40px rgba(7,42,58,0.3),inset 0 1px 0 rgba(255,255,255,0.9);">
+            <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;">
+              <span style="font-size:16px;font-weight:700;color:#0a2a33;">{{ b.venueName }}</span>
+              <span style="font-size:13px;color:rgba(12,42,51,0.6);">Set {{ b.setLabel }} &middot; {{ b.dateLabel }}</span>
+              <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:#0a6e85;">{{ b.code }}</span>
+            </span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+              <sc-if value="{{ b.isConfirmed }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;font-size:11px;font-weight:700;color:#0e6e46;background:rgba(46,180,120,0.18);border:1px solid rgba(46,180,120,0.35);border-radius:999px;padding:4px 10px;">{{ b.statusLabel }}</span></sc-if>
+              <sc-if value="{{ b.isCancelled }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;font-size:11px;font-weight:700;color:#8a3a2a;background:rgba(200,90,60,0.16);border:1px solid rgba(200,90,60,0.32);border-radius:999px;padding:4px 10px;">{{ b.statusLabel }}</span></sc-if>
+              <span style="font-size:13.5px;font-weight:700;color:#0a2a33;">{{ b.paidStr }}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasSelected }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ onBackToList }}" style="display:inline-flex;align-items:center;gap:8px;background:transparent;border:0;color:{{ inkSoft }};font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:0 2px 12px;">&larr; All bookings</button>
+      <section style="border-radius:28px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:0 14px 44px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.8);padding:26px 26px 24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <h1 style="font-weight:700;font-size:28px;letter-spacing:-0.02em;color:#0a2a33;margin:0;">Your booking</h1>
+          <sc-if value="{{ bk.isConfirmed }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#0e6e46;background:rgba(46,180,120,0.18);border:1px solid rgba(46,180,120,0.35);border-radius:999px;padding:5px 12px;">{{ bk.statusLabel }}</span></sc-if>
+          <sc-if value="{{ bk.isCancelled }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#8a3a2a;background:rgba(200,90,60,0.16);border:1px solid rgba(200,90,60,0.32);border-radius:999px;padding:5px 12px;">{{ bk.statusLabel }}</span></sc-if>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.4);border:1px dashed rgba(12,42,51,0.28);border-radius:18px;padding:15px;margin:18px 0 16px;">
+          <span style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Booking code</span>
+          <div style="font-size:27px;font-weight:700;letter-spacing:0.12em;color:#0a6e85;margin-top:5px;">{{ bk.code }}</div>
+          <p style="font-size:12px;line-height:1.4;color:rgba(12,42,51,0.55);margin:8px 0 0;">Show this code to staff when you arrive.</p>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Venue</span><strong style="color:#0a2a33;">{{ bk.venueName }}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Set</span><strong style="color:#0a2a33;">{{ bk.setLabel }}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Date</span><strong style="color:#0a2a33;">{{ bk.dateLabel }}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Paid</span><strong style="color:#0a6e85;">{{ bk.paidStr }}</strong></div>
+        <sc-if value="{{ bk.refundedStr }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Refunded</span><strong style="color:#0a2a33;">{{ bk.refundedStr }}</strong></div>
+        </sc-if>
+
+        <sc-if value="{{ hasCancelMsg }}" hint-placeholder-val="{{ false }}">
+          <p role="status" style="margin:16px 0 0;font-size:13.5px;line-height:1.5;font-weight:600;color:#0a6e85;">{{ cancelDoneMsg }}</p>
+        </sc-if>
+
+        <sc-if value="{{ bk.cancellable }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(12,42,51,0.12);">
+            <h2 style="font-size:16px;font-weight:700;color:#0a2a33;margin:0 0 6px;">Cancel this booking</h2>
+            <p style="font-size:13.5px;line-height:1.5;color:rgba(12,42,51,0.62);margin:0 0 14px;">{{ refundTerms }}</p>
+            <sc-if value="{{ notConfirming }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ startCancel }}" style="border:1.5px solid rgba(200,90,60,0.5);border-radius:14px;background:rgba(255,255,255,0.5);color:#a3372a;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;cursor:pointer;">Cancel booking</button>
+            </sc-if>
+            <sc-if value="{{ cancelConfirming }}" hint-placeholder-val="{{ false }}">
+              <p style="font-size:14px;font-weight:600;color:#0a2a33;margin:0 0 12px;">Cancel this booking? This can&rsquo;t be undone.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button onClick="{{ confirmCancel }}" style="border:1px solid rgba(200,90,60,0.4);border-radius:14px;background:linear-gradient(180deg,#d96a4a,#b3432a);color:#fff;font:inherit;font-weight:700;font-size:14px;padding:11px 18px;cursor:pointer;box-shadow:0 8px 20px rgba(179,67,42,0.4);">Confirm cancellation</button>
+                <button onClick="{{ keepBooking }}" style="border:1.5px solid rgba(255,255,255,0.7);border-radius:14px;background:rgba(255,255,255,0.5);color:#0a4f5e;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;cursor:pointer;">Keep booking</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ noBooking }}" hint-placeholder-val="{{ true }}">
+      <section style="border-radius:28px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:0 14px 44px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.8);padding:40px 30px;text-align:center;">
+        <h1 style="font-weight:700;font-size:26px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 8px;">No booking yet</h1>
+        <p style="font-size:14.5px;line-height:1.5;color:rgba(12,42,51,0.62);margin:0 0 20px;">Pick a beach, choose your exact set on the map, and your booking code will live here.</p>
+        <button onClick="{{ onBack }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px 26px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Browse beaches</button>
+      </section>
+    </sc-if>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ showDialog }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onClose }}" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
+      <div onClick="{{ stop }}" style="width:100%;max-width:430px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;background:rgba(255,255,255,0.72);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:34px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);overflow:hidden;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+
+        <div style="padding:22px 24px 20px;background:linear-gradient(165deg,rgba(54,179,207,0.92),rgba(14,125,146,0.94));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#ffffff;flex-shrink:0;">
+          <span style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:.86;">{{ dialog.venueName }}</span>
+          <div style="display:flex;align-items:baseline;gap:11px;margin-top:5px;">
+            <span style="font-size:30px;font-weight:700;letter-spacing:-0.02em;line-height:1;">Set {{ dialog.seat }}</span>
+            <span style="font-size:13px;opacity:.92;">{{ dialog.tierLabel }}</span>
+          </div>
+          <p style="margin:7px 0 0;font-size:12.5px;opacity:.9;">{{ dialog.included }}</p>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:18px;">
+            <sc-for list="{{ steps }}" as="st" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;white-space:nowrap;">
+                  <sc-if value="{{ st.active }}" hint-placeholder-val="{{ true }}"><span style="width:22px;height:22px;border-radius:50%;background:#fff;color:#0e8aa8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">{{ st.n }}</span></sc-if>
+                  <sc-if value="{{ st.inactive }}" hint-placeholder-val="{{ false }}"><span style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.24);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">{{ st.n }}</span></sc-if>
+                  <span>{{ st.label }}</span>
+                </span>
+                <sc-if value="{{ st.notLast }}" hint-placeholder-val="{{ true }}"><span style="flex:1;height:1px;background:rgba(255,255,255,0.32);min-width:8px;"></span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div data-riv-scroller style="padding:20px 24px 8px;overflow-y:auto;flex:1;">
+
+          <sc-if value="{{ bStep1 }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 12px;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Date</span><strong style="color:#0a2a33;">{{ dateLabel }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Price</span><strong style="color:#0a6e85;font-size:16px;">{{ totalStr }}</strong></div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
+              <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Full name</span>
+                <input type="text" value="{{ contactName }}" onChange="{{ onNameChange }}" autoComplete="name" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.7);border-radius:14px;padding:11px 13px;"/>
+                <sc-if value="{{ nameError }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:12px;color:#b3362b;font-weight:600;">{{ nameError }}</span></sc-if>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Email</span>
+                <input type="email" value="{{ contactEmail }}" onChange="{{ onEmailChange }}" autoComplete="email" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.7);border-radius:14px;padding:11px 13px;"/>
+                <sc-if value="{{ emailError }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:12px;color:#b3362b;font-weight:600;">{{ emailError }}</span></sc-if>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Phone</span>
+                <input type="tel" value="{{ contactPhone }}" onChange="{{ onPhoneChange }}" autoComplete="tel" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.7);border-radius:14px;padding:11px 13px;"/>
+                <sc-if value="{{ phoneError }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:12px;color:#b3362b;font-weight:600;">{{ phoneError }}</span></sc-if>
+              </label>
+            </div>
+            <p style="margin:14px 0 6px;font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);">We only use these to send your booking code and reach you about this booking.</p>
+          </sc-if>
+
+          <sc-if value="{{ bStep2 }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 11px;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Venue</span><strong style="color:#0a2a33;">{{ dialog.venueName }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Set</span><strong style="color:#0a2a33;">{{ dialog.seat }} &middot; {{ dialog.tierLabel }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Date</span><strong style="color:#0a2a33;">{{ dateLabel }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Guest</span><strong style="color:#0a2a33;">{{ confirmGuest }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 4px;"><span style="color:rgba(12,42,51,0.62);font-size:15px;">Total</span><strong style="font-size:26px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;">{{ totalStr }}</strong></div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:16px;padding:13px 15px;margin-top:12px;">
+              <span style="width:34px;height:22px;border-radius:5px;background:linear-gradient(135deg,#1a1f71,#3a4bbf);flex-shrink:0;"></span>
+              <span style="flex:1;font-size:13.5px;color:#0a2a33;">Visa &middot;&middot;&middot;&middot; 4242</span>
+              <span style="font-size:13px;color:#0a6e85;font-weight:600;">Change</span>
+            </div>
+            <sc-if value="{{ paying }}" hint-placeholder-val="{{ false }}">
+              <p role="status" style="margin:14px 0 4px;font-size:13.5px;font-weight:600;color:#0a6e85;">Processing your payment &mdash; please wait&hellip;</p>
+            </sc-if>
+            <p style="margin:12px 0 6px;font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);">Free cancellation until the evening before. Your booking code arrives on-screen and by email.</p>
+          </sc-if>
+
+        </div>
+
+        <div style="padding:14px 24px 20px;flex-shrink:0;border-top:1px solid rgba(12,42,51,0.12);display:flex;gap:10px;">
+          <sc-if value="{{ canBack }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onBookBack }}" style="border:1.5px solid rgba(255,255,255,0.7);border-radius:16px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#0a4f5e;font:inherit;font-weight:600;font-size:15px;padding:14px 20px;cursor:pointer;flex-shrink:0;">Back</button>
+          </sc-if>
+          <button onClick="{{ onPrimary }}" style="flex:1;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:14px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);transition:filter .15s ease;" style-hover="filter:brightness(1.06);">{{ primaryLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showConfirmed }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onDone }}" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
+      <div onClick="{{ stop }}" style="width:100%;max-width:400px;background:rgba(255,255,255,0.72);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:34px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);text-align:center;padding:36px 30px 30px;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(43,184,212,0.18);border:1px solid rgba(255,255,255,0.6);color:#0a6e85;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">&#10003;</div>
+        <h2 style="font-weight:700;font-size:30px;letter-spacing:-0.02em;margin:0 0 8px;color:#0a2a33;">You&rsquo;re booked.</h2>
+        <p style="color:rgba(12,42,51,0.62);margin:0 0 18px;font-size:15px;line-height:1.45;">Set {{ dialog.seat }} at {{ dialog.venueName }}<br>on {{ dateLabel }}.</p>
+        <div style="background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.6);border-radius:18px;padding:14px 16px;margin-bottom:14px;text-align:left;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13.5px;"><span style="color:rgba(12,42,51,0.55);">Guest</span><span style="color:#0a2a33;font-weight:600;">{{ confirmGuest }}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13.5px;"><span style="color:rgba(12,42,51,0.55);">Includes</span><span style="color:#0a2a33;font-weight:600;">2 loungers + umbrella &middot; full day</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0 2px;margin-top:5px;border-top:1px solid rgba(12,42,51,0.12);font-size:14px;"><span style="color:rgba(12,42,51,0.62);">Paid</span><strong style="color:#0a6e85;font-size:16px;">{{ totalStr }}</strong></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.4);border:1px dashed rgba(12,42,51,0.28);border-radius:18px;padding:15px;margin-bottom:20px;">
+          <span style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Booking code</span>
+          <div style="font-size:27px;font-weight:700;letter-spacing:0.12em;color:#0a6e85;margin-top:5px;">{{ code }}</div>
+          <p style="font-size:12px;line-height:1.4;color:rgba(12,42,51,0.55);margin:8px 0 0;">Show this code to staff when you arrive. We&rsquo;ve also emailed it to you.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button onClick="{{ onDone }}" style="width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:14px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);transition:filter .15s ease;" style-hover="filter:brightness(1.06);">Back to the beach</button>
+          <button onClick="{{ onViewBooking }}" style="width:100%;border:1.5px solid rgba(255,255,255,0.7);border-radius:16px;background:rgba(255,255,255,0.5);color:#0a4f5e;font:inherit;font-weight:600;font-size:14.5px;padding:13px;cursor:pointer;">View or manage this booking</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ authOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseAuth }}" style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
+      <div onClick="{{ stop }}" data-riv-scroller style="width:100%;max-width:400px;max-height:calc(100vh - 40px);overflow-y:auto;background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:30px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);padding:28px 26px 24px;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+        <h2 style="font-weight:700;font-size:24px;letter-spacing:-0.02em;margin:0 0 5px;color:#0a2a33;">{{ tAuthTitle }}</h2>
+        <p style="font-size:13px;line-height:1.5;color:rgba(12,42,51,0.6);margin:0 0 18px;">{{ tAuthSubtitle }}</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button onClick="{{ onTouristGoogle }}" style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid rgba(12,42,51,0.16);border-radius:16px;background:rgba(255,255,255,0.9);color:#0a2a33;font:inherit;font-weight:600;font-size:14.5px;padding:12px;cursor:pointer;box-shadow:inset 0 1px 0 #fff;transition:background .12s ease;" style-hover="background:#ffffff;">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.26-2.09 3.57-5.17 3.57-8.81z"></path><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.93-2.91l-3.87-3c-1.07.72-2.44 1.14-4.06 1.14-3.12 0-5.77-2.11-6.71-4.95H1.29v3.1A12 12 0 0 0 12 24z"></path><path fill="#FBBC05" d="M5.29 14.28a7.2 7.2 0 0 1 0-4.56v-3.1H1.29a12 12 0 0 0 0 10.76l4-3.1z"></path><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.29 6.62l4 3.1C6.23 6.88 8.88 4.77 12 4.77z"></path></svg>
+            Continue with Google
+          </button>
+          <button onClick="{{ onTouristApple }}" style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid rgba(0,0,0,0.85);border-radius:16px;background:#0b0b0c;color:#fff;font:inherit;font-weight:600;font-size:14.5px;padding:12px;cursor:pointer;transition:filter .12s ease;" style-hover="filter:brightness(1.25);">
+            <svg width="16" height="19" viewBox="0 0 814 1000" aria-hidden="true"><path fill="#ffffff" d="M788 341c-6 4-107 61-107 187 0 146 128 198 132 199-1 3-20 70-67 138-42 60-86 119-152 119s-83-38-159-38c-74 0-101 39-161 39s-102-55-150-123C68 782 22 665 22 554c0-178 116-272 230-272 61 0 111 40 149 40 36 0 92-42 161-42 26 0 120 2 181 90zM554 127c30-36 52-86 52-136 0-7-1-14-2-19-49 2-108 33-143 74-28 32-54 82-54 133 0 8 1 15 2 18 3 1 8 1 13 1 44 0 100-30 132-71z"></path></svg>
+            Continue with Apple
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin:18px 0 16px;">
+          <span style="flex:1;height:1px;background:rgba(12,42,51,0.14);"></span>
+          <span style="font-size:11.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(12,42,51,0.45);">or</span>
+          <span style="flex:1;height:1px;background:rgba(12,42,51,0.14);"></span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <sc-if value="{{ tIsRegister }}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;flex-direction:column;gap:6px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Full name</span>
+              <input type="text" value="{{ aName }}" onChange="{{ onAName }}" autoComplete="name" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+            </label>
+          </sc-if>
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Email</span>
+            <input type="email" value="{{ aEmail }}" onChange="{{ onAEmail }}" autoComplete="email" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Password</span>
+            <input type="password" value="{{ aPass }}" onChange="{{ onAPass }}" autoComplete="current-password" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+          </label>
+          <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:0;font-size:13px;font-weight:600;color:#b3362b;">{{ authError }}</p></sc-if>
+          <button onClick="{{ onSubmitTouristAuth }}" style="margin-top:2px;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);transition:filter .15s ease;" style-hover="filter:brightness(1.06);">{{ tAuthSubmitLabel }}</button>
+          <p style="margin:4px 0 0;font-size:13px;color:rgba(12,42,51,0.6);text-align:center;">{{ tTogglePrompt }} <button onClick="{{ onSwitchAuthMode }}" style="border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:700;color:#0a6e85;cursor:pointer;text-decoration:underline;">{{ tToggleAction }}</button></p>
+          <p style="margin:0;font-size:11.5px;color:rgba(12,42,51,0.45);text-align:center;">Demo &mdash; any credentials work.</p>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:820},&quot;showTilePrices&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Beach map&quot;},&quot;instantBookOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Discovery&quot;}}">
+class Component extends DCLogic {
+  state = {
+    view: 'discover',
+    theme: 'riviera',
+    themeOpen: false,
+    activePage: 0,
+    viewW: 0,
+    beach: '',
+    region: '',
+    date: this.tomorrow(),
+    venueId: null,
+    stage: 'none',
+    setId: null,
+    code: '',
+    bookingStep: 1,
+    contact: { fullName: '', email: '', phone: '' },
+    submitAttempted: false,
+    paying: false,
+    bookings: [],
+    selectedCode: null,
+    menuOpen: false,
+    winW: 0,
+    user: null,
+    authOpen: false,
+    authMode: 'signin',
+    aName: '', aEmail: '', aPass: '', authError: '',
+    userMenuOpen: false,
+    cancelConfirming: false,
+    cancelDone: null,
+    venues: this.buildVenues(),
+  };
+
+  bookingDefaults() {
+    const u = this.state ? this.state.user : null;
+    return { bookingStep: 1, contact: { fullName: u ? u.name : '', email: u ? u.email : '', phone: '' }, submitAttempted: false, paying: false };
+  }
+
+  setUser(user) {
+    try { localStorage.setItem('rivlg-tourist-user', JSON.stringify(user)); } catch (e) { /* ignore */ }
+    this.setState({ user, authOpen: false, userMenuOpen: false, aPass: '', authError: '' });
+  }
+  openAuth = () => this.setState({ authOpen: true, authMode: 'signin', authError: '', menuOpen: false, themeOpen: false });
+  closeAuth = () => this.setState({ authOpen: false });
+  switchAuthMode = () => this.setState((s) => ({ authMode: s.authMode === 'signin' ? 'register' : 'signin', authError: '' }));
+  submitTouristAuth = () => {
+    const s = this.state;
+    const emailOk = /^\S+@\S+\.\S+$/.test(s.aEmail.trim());
+    if (s.authMode === 'register') {
+      if (!s.aName.trim() || !emailOk || !s.aPass.trim()) {
+        this.setState({ authError: 'Fill in your name, a valid email, and a password.' });
+        return;
+      }
+      this.setUser({ name: s.aName.trim(), email: s.aEmail.trim(), provider: 'email' });
+      return;
+    }
+    if (!emailOk || !s.aPass.trim()) {
+      this.setState({ authError: 'Enter a valid email and your password.' });
+      return;
+    }
+    const guessName = s.aEmail.trim().split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    this.setUser({ name: guessName || 'Guest', email: s.aEmail.trim(), provider: 'email' });
+  };
+  touristSso = (provider) => {
+    this.setUser({
+      name: 'Ana Kelmendi',
+      email: provider === 'Google' ? 'ana.kelmendi@gmail.com' : 'ana@icloud.com',
+      provider,
+    });
+  };
+  touristSignOut = () => {
+    try { localStorage.removeItem('rivlg-tourist-user'); } catch (e) { /* ignore */ }
+    this.setState({ user: null, userMenuOpen: false, menuOpen: false });
+  };
+
+  todayIso() { return new Date().toISOString().slice(0, 10); }
+
+  seedBookings() {
+    const iso = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); };
+    return [
+      { code: 'RIV-K4TQ', status: 'CONFIRMED', venueId: 1, venueName: 'Sereno Beach Club', setId: 10005, rowLabel: 'A', positionNo: 5, bookingDate: iso(1), amount: { minorUnits: 3400, currency: 'EUR' }, contactName: 'You', refundedMinor: null },
+      { code: 'RIV-88MD', status: 'CONFIRMED', venueId: 2, venueName: 'Drymades Sun', setId: 20018, rowLabel: 'B', positionNo: 6, bookingDate: iso(4), amount: { minorUnits: 1800, currency: 'EUR' }, contactName: 'You', refundedMinor: null },
+      { code: 'RIV-QP2N', status: 'CANCELLED', venueId: 4, venueName: 'Luna Lido', setId: 40027, rowLabel: 'C', positionNo: 3, bookingDate: iso(2), amount: { minorUnits: 1350, currency: 'EUR' }, contactName: 'You', refundedMinor: 1350 },
+    ];
+  }
+
+  persistBookings(list) {
+    try { localStorage.setItem('rivlg-bookings', JSON.stringify(list)); } catch (e) { /* ignore */ }
+  }
+
+  tomorrow() {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  buildVenues() {
+    const cur = 'EUR';
+    const defs = [
+      { id: 1, name: 'Sereno Beach Club', beach: 'Dhërmi', region: 'Himarë', rating: 48, reviews: 212, mode: 'INSTANT', base: 2200, toWater: 15, amenities: ['Beach bar', 'Restaurant', 'Free parking', 'Showers'] },
+      { id: 2, name: 'Drymades Sun', beach: 'Drymades', region: 'Himarë', rating: 46, reviews: 158, mode: 'INSTANT', base: 1800, toWater: 25, amenities: ['Beach bar', 'Water sports', 'Showers'] },
+      { id: 3, name: 'Palasë Pearl', beach: 'Palasë', region: 'Himarë', rating: 49, reviews: 341, mode: 'REQUEST', base: 2600, toWater: 8, amenities: ['Beach bar', 'Restaurant', 'WiFi'] },
+      { id: 4, name: 'Luna Lido', beach: 'Dhërmi', region: 'Himarë', rating: 45, reviews: 96, mode: 'INSTANT', base: 1600, toWater: 30, amenities: ['Cafe', 'Free parking', 'Showers'] },
+      { id: 5, name: 'Drymades Hideaway', beach: 'Drymades', region: 'Himarë', rating: 47, reviews: 74, mode: 'REQUEST', base: 2000, toWater: 40, cols: 20, amenities: ['Snack shack', 'Snorkelling', 'Quiet bay'] },
+      { id: 6, name: 'Palasë Bay Club', beach: 'Palasë', region: 'Himarë', rating: 44, reviews: 130, mode: 'INSTANT', base: 1400, toWater: 20, cols: 40, rowCount: 50, amenities: ['Beach bar', 'Free parking', 'Pet friendly'] },
+    ];
+    return defs.map((d) => ({ ...d, currency: cur, sets: this.buildSets(d.id, d.base, cur, d.cols, d.rowCount) }));
+  }
+
+  rowLabelOf(i) {
+    if (i < 26) return String.fromCharCode(65 + i);
+    return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
+  }
+
+  buildSets(seed, base, currency, cols, rowCount) {
+    const nRows = rowCount || 4;
+    const rows = Array.from({ length: nRows }, (_, i) => this.rowLabelOf(i));
+    const step = nRows > 4 ? Math.max(20, Math.round((base - 900) / (nRows - 1) / 10) * 10) : 250;
+    const perRow = cols || 12;
+    const sets = [];
+    let id = seed * 10000;
+    rows.forEach((label, ri) => {
+      const premium = ri === 0;
+      const price = premium ? Math.round(base * 1.55 / 50) * 50 : Math.max(900, base - (ri - 1) * step);
+      for (let p = 1; p <= perRow; p++) {
+        id++;
+        const taken = ((seed * 7 + ri * 5 + p * 3) % 7) < 2;
+        sets.push({
+          id,
+          rowLabel: label,
+          positionNo: p,
+          tier: premium ? 'PREMIUM' : 'STANDARD',
+          price: { minorUnits: price, currency },
+          availability: taken ? 'TAKEN' : 'FREE',
+        });
+      }
+    });
+    return sets;
+  }
+
+  formatMoney(m) {
+    const v = m.minorUnits / 100;
+    const str = Number.isInteger(v) ? String(v) : v.toFixed(2);
+    return '\u20ac' + str;
+  }
+
+  formatDate(iso) {
+    const d = new Date(iso + 'T00:00:00Z');
+    return new Intl.DateTimeFormat('en-IE', {
+      timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short',
+    }).format(d);
+  }
+
+  openVenue = (id) => this.setState({ view: 'map', venueId: id, stage: 'none', setId: null, activePage: 0 });
+  selectSet = (st) => {
+    if ((this._dragDist || 0) > 6) return; /* it was a drag-pan, not a tap */
+    if (st.availability === 'FREE') this.setState({ stage: 'dialog', setId: st.id, ...this.bookingDefaults() });
+  };
+
+  setMapVport = (el) => { this.mapVportEl = el; };
+  onMapMouseDown = (e) => {
+    const el = this.rowsWrapEl;
+    if (!el) return;
+    this._panning = true; this._dragDist = 0;
+    this._panX = e.clientX; this._panScroll = el.scrollLeft;
+    this._panY = e.clientY; this._panScrollTop = this.mapVportEl ? this.mapVportEl.scrollTop : 0;
+  };
+  onMapMouseMove = (e) => {
+    if (!this._panning || !this.rowsWrapEl) return;
+    const dx = e.clientX - this._panX;
+    const dy = e.clientY - this._panY;
+    this._dragDist = Math.max(this._dragDist || 0, Math.abs(dx), Math.abs(dy));
+    this.rowsWrapEl.scrollLeft = this._panScroll - dx;
+    if (this.mapVportEl) this.mapVportEl.scrollTop = this._panScrollTop - dy;
+  };
+  onMapMouseUp = () => { this._panning = false; };
+
+  setContact = (k, v) => this.setState((s) => ({ contact: { ...s.contact, [k]: v } }));
+  contactErrors(c) {
+    return {
+      fullName: c.fullName.trim() ? '' : 'Your name is required',
+      email: !c.email.trim() ? 'Email is required' : (/^\S+@\S+\.\S+$/.test(c.email.trim()) ? '' : 'Enter a valid email address'),
+      phone: c.phone.trim() ? '' : 'Phone is required',
+    };
+  }
+  detailsContinue = () => {
+    const errs = this.contactErrors(this.state.contact);
+    if (errs.fullName || errs.email || errs.phone) { this.setState({ submitAttempted: true }); return; }
+    this.setState({ bookingStep: 2, submitAttempted: false });
+  };
+  bookingBack = () => this.setState({ bookingStep: 1, paying: false });
+
+  startCancel = () => this.setState({ cancelConfirming: true });
+  keepBooking = () => this.setState({ cancelConfirming: false });
+  confirmCancel = () => {
+    this.setState((s) => {
+      const b = s.bookings.find((x) => x.code === s.selectedCode);
+      if (!b || b.status !== 'CONFIRMED') return {};
+      const beforeCutoff = b.bookingDate > this.todayIso();
+      const refundMinor = beforeCutoff ? b.amount.minorUnits : 0;
+      const updated = { ...b, status: 'CANCELLED', refundedMinor: refundMinor };
+      const bookings = s.bookings.map((x) => (x.code === b.code ? updated : x));
+      this.persistBookings(bookings);
+      const venues = s.venues.map((v) => (v.id !== b.venueId ? v : { ...v, sets: v.sets.map((x) => (x.id !== b.setId ? x : { ...x, availability: 'FREE' })) }));
+      return { bookings, venues, cancelConfirming: false, cancelDone: { tier: beforeCutoff ? 'FULL' : 'NONE', refundMinor, currency: b.amount.currency } };
+    });
+  };
+
+  THEMES = {
+    riviera: { name: 'Riviera', swatch: 'linear-gradient(135deg,#38b6d2,#0a4f6e)', bg: 'radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147,230,242,0) 52%), radial-gradient(100% 80% at 94% 0%, #ffe2b0 0%, rgba(255,226,176,0) 44%), radial-gradient(130% 120% at 80% 106%, #0a5e93 0%, rgba(10,94,147,0) 58%), linear-gradient(165deg, #38b6d2 0%, #0f7f94 46%, #0a4f6e 100%)', blob1: 'radial-gradient(circle,#ffd896 0%,rgba(255,216,150,0) 70%)', blob2: 'radial-gradient(circle,#52d7ec 0%,rgba(82,215,236,0) 70%)', cta: 'linear-gradient(180deg,#2bb8d4,#0e8aa8)', bar: 'linear-gradient(90deg,#2bb8d4,#0e8aa8)' },
+    sunset: { name: 'Sunset', swatch: 'linear-gradient(135deg,#ff9e6d,#7a2f6e)', bg: 'radial-gradient(110% 70% at 8% 2%, #ffd29e 0%, rgba(255,210,158,0) 52%), radial-gradient(100% 80% at 94% 0%, #ffb0c8 0%, rgba(255,176,200,0) 44%), radial-gradient(130% 120% at 80% 106%, #b3326b 0%, rgba(179,50,107,0) 58%), linear-gradient(165deg, #ff9e6d 0%, #e0556f 46%, #7a2f6e 100%)', blob1: 'radial-gradient(circle,#ffd28a 0%,rgba(255,210,138,0) 70%)', blob2: 'radial-gradient(circle,#ff8fb0 0%,rgba(255,143,176,0) 70%)', cta: 'linear-gradient(180deg,#ff8a6b,#e0556f)', bar: 'linear-gradient(90deg,#ff8a6b,#e0556f)' },
+    lagoon: { name: 'Lagoon', swatch: 'linear-gradient(135deg,#3ec79a,#0a5a4a)', bg: 'radial-gradient(110% 70% at 8% 2%, #b8f1cf 0%, rgba(184,241,207,0) 52%), radial-gradient(100% 80% at 94% 0%, #fdf0b0 0%, rgba(253,240,176,0) 44%), radial-gradient(130% 120% at 80% 106%, #0a7a5e 0%, rgba(10,122,94,0) 58%), linear-gradient(165deg, #3ec79a 0%, #0f8f6e 46%, #0a5a4a 100%)', blob1: 'radial-gradient(circle,#f2e58a 0%,rgba(242,229,138,0) 70%)', blob2: 'radial-gradient(circle,#5ce0b0 0%,rgba(92,224,176,0) 70%)', cta: 'linear-gradient(180deg,#2bd49a,#0e8a6e)', bar: 'linear-gradient(90deg,#2bd49a,#0e8a6e)' },
+    twilight: { name: 'Twilight', swatch: 'linear-gradient(135deg,#6a7ad2,#2a1f5e)', bg: 'radial-gradient(110% 70% at 8% 2%, #b8c6f2 0%, rgba(184,198,242,0) 52%), radial-gradient(100% 80% at 94% 0%, #e0b0ff 0%, rgba(224,176,255,0) 44%), radial-gradient(130% 120% at 80% 106%, #3a2a93 0%, rgba(58,42,147,0) 58%), linear-gradient(165deg, #6a7ad2 0%, #4a3f94 46%, #2a1f5e 100%)', blob1: 'radial-gradient(circle,#c8a0ff 0%,rgba(200,160,255,0) 70%)', blob2: 'radial-gradient(circle,#7c8fec 0%,rgba(124,143,236,0) 70%)', cta: 'linear-gradient(180deg,#8a6bff,#5a4bd0)', bar: 'linear-gradient(90deg,#8a6bff,#5a4bd0)' },
+    mono: { name: 'Slate', swatch: 'linear-gradient(135deg,#6b8190,#243640)', bg: 'radial-gradient(110% 70% at 8% 2%, #cdd6dd 0%, rgba(205,214,221,0) 52%), radial-gradient(100% 80% at 94% 0%, #e8edf0 0%, rgba(232,237,240,0) 44%), radial-gradient(130% 120% at 80% 106%, #2a3b47 0%, rgba(42,59,71,0) 58%), linear-gradient(165deg, #6b8190 0%, #3f5562 46%, #243640 100%)', blob1: 'radial-gradient(circle,#dfe7ec 0%,rgba(223,231,236,0) 70%)', blob2: 'radial-gradient(circle,#8fa6b4 0%,rgba(143,166,180,0) 70%)', cta: 'linear-gradient(180deg,#5b6f7d,#36505d)', bar: 'linear-gradient(90deg,#5b6f7d,#36505d)' },
+    aurora: { name: 'Aurora', swatch: 'linear-gradient(135deg,#3ad6a0,#2a2f7e)', bg: 'radial-gradient(110% 70% at 8% 2%, #9ff7d0 0%, rgba(159,247,208,0) 52%), radial-gradient(100% 80% at 94% 0%, #c8a0ff 0%, rgba(200,160,255,0) 44%), radial-gradient(130% 120% at 80% 106%, #1a8f7a 0%, rgba(26,143,122,0) 58%), linear-gradient(165deg, #3ad6a0 0%, #1f7fa8 46%, #2a2f7e 100%)', blob1: 'radial-gradient(circle,#9ff7d0 0%,rgba(159,247,208,0) 70%)', blob2: 'radial-gradient(circle,#c89fff 0%,rgba(200,159,255,0) 70%)', cta: 'linear-gradient(180deg,#2bd4b0,#1f7fa8)', bar: 'linear-gradient(90deg,#2bd4b0,#1f7fa8)' },
+    citrus: { name: 'Citrus', swatch: 'linear-gradient(135deg,#b6d23a,#a85a0e)', bg: 'radial-gradient(110% 70% at 8% 2%, #eaff9f 0%, rgba(234,255,159,0) 52%), radial-gradient(100% 80% at 94% 0%, #ffd47a 0%, rgba(255,212,122,0) 44%), radial-gradient(130% 120% at 80% 106%, #c47a0a 0%, rgba(196,122,10,0) 58%), linear-gradient(165deg, #b6d23a 0%, #e0a52f 46%, #a85a0e 100%)', blob1: 'radial-gradient(circle,#f2f58a 0%,rgba(242,245,138,0) 70%)', blob2: 'radial-gradient(circle,#ffd28a 0%,rgba(255,210,138,0) 70%)', cta: 'linear-gradient(180deg,#e0b52b,#c47a0e)', bar: 'linear-gradient(90deg,#e0b52b,#c47a0e)' },
+    flamingo: { name: 'Flamingo', swatch: 'linear-gradient(135deg,#ff7eb0,#7a1f5e)', bg: 'radial-gradient(110% 70% at 8% 2%, #ffc2d6 0%, rgba(255,194,214,0) 52%), radial-gradient(100% 80% at 94% 0%, #ffd29e 0%, rgba(255,210,158,0) 44%), radial-gradient(130% 120% at 80% 106%, #a3185f 0%, rgba(163,24,95,0) 58%), linear-gradient(165deg, #ff7eb0 0%, #e0407f 46%, #7a1f5e 100%)', blob1: 'radial-gradient(circle,#ffb0d0 0%,rgba(255,176,208,0) 70%)', blob2: 'radial-gradient(circle,#ffae8f 0%,rgba(255,174,143,0) 70%)', cta: 'linear-gradient(180deg,#ff6ba8,#d0407f)', bar: 'linear-gradient(90deg,#ff6ba8,#d0407f)' },
+    glacier: { name: 'Glacier', swatch: 'linear-gradient(135deg,#8fc4dd,#2a4458)', bg: 'radial-gradient(110% 70% at 8% 2%, #d6f2ff 0%, rgba(214,242,255,0) 52%), radial-gradient(100% 80% at 94% 0%, #eaf4f7 0%, rgba(234,244,247,0) 44%), radial-gradient(130% 120% at 80% 106%, #2a5a7a 0%, rgba(42,90,122,0) 58%), linear-gradient(165deg, #8fc4dd 0%, #4f7f9c 46%, #2a4458 100%)', blob1: 'radial-gradient(circle,#dceefa 0%,rgba(220,238,250,0) 70%)', blob2: 'radial-gradient(circle,#9fc6dc 0%,rgba(159,198,220,0) 70%)', cta: 'linear-gradient(180deg,#5fa8d4,#36708d)', bar: 'linear-gradient(90deg,#5fa8d4,#36708d)' },
+    mango: { name: 'Mango', swatch: 'linear-gradient(135deg,#ffb24d,#8a3f0e)', bg: 'radial-gradient(110% 70% at 8% 2%, #ffe09e 0%, rgba(255,224,158,0) 52%), radial-gradient(100% 80% at 94% 0%, #ffc27a 0%, rgba(255,194,122,0) 44%), radial-gradient(130% 120% at 80% 106%, #b35a0a 0%, rgba(179,90,10,0) 58%), linear-gradient(165deg, #ffb24d 0%, #e07a2f 46%, #8a3f0e 100%)', blob1: 'radial-gradient(circle,#ffd88a 0%,rgba(255,216,138,0) 70%)', blob2: 'radial-gradient(circle,#ffac6b 0%,rgba(255,172,107,0) 70%)', cta: 'linear-gradient(180deg,#ff9e3d,#d06a1f)', bar: 'linear-gradient(90deg,#ff9e3d,#d06a1f)' },
+    orchid: { name: 'Orchid', swatch: 'linear-gradient(135deg,#b07ed2,#4a2a6e)', bg: 'radial-gradient(110% 70% at 8% 2%, #e0c2ff 0%, rgba(224,194,255,0) 52%), radial-gradient(100% 80% at 94% 0%, #ffc2ec 0%, rgba(255,194,236,0) 44%), radial-gradient(130% 120% at 80% 106%, #6a2a93 0%, rgba(106,42,147,0) 58%), linear-gradient(165deg, #b07ed2 0%, #8a4fb0 46%, #4a2a6e 100%)', blob1: 'radial-gradient(circle,#d8b0ff 0%,rgba(216,176,255,0) 70%)', blob2: 'radial-gradient(circle,#ffb0e6 0%,rgba(255,176,230,0) 70%)', cta: 'linear-gradient(180deg,#b06bd4,#7a4bb0)', bar: 'linear-gradient(90deg,#b06bd4,#7a4bb0)' },
+    porcelain: { light: true, name: 'Porcelain', swatch: 'linear-gradient(135deg,#ffffff,#2bb8d4)', bg: 'radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255,255,255,0) 54%), radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238,246,248,0) 46%), radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207,234,242,0) 60%), linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%)', blob1: 'radial-gradient(circle,#ffffff 0%,rgba(255,255,255,0) 70%)', blob2: 'radial-gradient(circle,#bfe6f0 0%,rgba(191,230,240,0) 70%)', cta: 'linear-gradient(180deg,#2bb8d4,#0e8aa8)', bar: 'linear-gradient(90deg,#2bb8d4,#0e8aa8)' },
+    blush: { light: true, name: 'Blush', swatch: 'linear-gradient(135deg,#ffffff,#e0557f)', bg: 'radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255,255,255,0) 54%), radial-gradient(100% 80% at 94% 0%, #fdeef2 0%, rgba(253,238,242,0) 46%), radial-gradient(130% 120% at 80% 106%, #fad3de 0%, rgba(250,211,222,0) 60%), linear-gradient(165deg, #fefcfd 0%, #fbeef2 50%, #f6dde4 100%)', blob1: 'radial-gradient(circle,#ffffff 0%,rgba(255,255,255,0) 70%)', blob2: 'radial-gradient(circle,#ffd0dd 0%,rgba(255,208,221,0) 70%)', cta: 'linear-gradient(180deg,#ff6b95,#e0557f)', bar: 'linear-gradient(90deg,#ff6b95,#e0557f)' },
+    linen: { light: true, name: 'Linen', swatch: 'linear-gradient(135deg,#ffffff,#c79a3a)', bg: 'radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255,255,255,0) 54%), radial-gradient(100% 80% at 94% 0%, #faf4e8 0%, rgba(250,244,232,0) 46%), radial-gradient(130% 120% at 80% 106%, #f0e3c4 0%, rgba(240,227,196,0) 60%), linear-gradient(165deg, #fefdfa 0%, #f7f1e6 50%, #efe5d2 100%)', blob1: 'radial-gradient(circle,#ffffff 0%,rgba(255,255,255,0) 70%)', blob2: 'radial-gradient(circle,#f0e0b8 0%,rgba(240,224,184,0) 70%)', cta: 'linear-gradient(180deg,#d4a93a,#b3870e)', bar: 'linear-gradient(90deg,#d4a93a,#b3870e)' },
+  };
+
+  toggleTheme = () => this.setState((s) => ({ themeOpen: !s.themeOpen }));
+  selectTheme = (k) => {
+    this.setState({ theme: k, themeOpen: false });
+    try { localStorage.setItem('rivlg-theme', k); } catch (e) { /* ignore */ }
+  };
+
+  componentDidMount() {
+    this._onResize = () => this.measure();
+    window.addEventListener('resize', this._onResize);
+    try {
+      let list = [];
+      const raw = localStorage.getItem('rivlg-bookings');
+      if (raw) list = JSON.parse(raw) || [];
+      if (!list.length) {
+        const old = localStorage.getItem('rivlg-last-booking');
+        if (old) list = [JSON.parse(old)];
+      }
+      if (list.length < 2) {
+        const have = new Set(list.map((b) => b.code));
+        list = [...list, ...this.seedBookings().filter((b) => !have.has(b.code))];
+        this.persistBookings(list);
+      }
+      this.setState({ bookings: list });
+    } catch (e) { /* ignore */ }
+    try {
+      const u = localStorage.getItem('rivlg-tourist-user');
+      if (u) this.setState({ user: JSON.parse(u) });
+    } catch (e) { /* ignore */ }
+    this.measure();
+    try {
+      const saved = localStorage.getItem('rivlg-theme');
+      if (saved && this.THEMES[saved]) {
+        this.setState({ theme: saved });
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        this.setState({ theme: 'porcelain' });
+      }
+    } catch (e) { /* ignore */ }
+  }
+  componentWillUnmount() {
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+    if (this._payTimer) clearTimeout(this._payTimer);
+  }
+  setRowsWrap = (el) => { this.rowsWrapEl = el; if (el) this.measure(); };
+  measure = () => {
+    const upd = {};
+    const ww = window.innerWidth;
+    if (Math.abs(ww - (this.state.winW || 0)) > 1) upd.winW = ww;
+    const el = this.rowsWrapEl;
+    if (el) {
+      const w = el.clientWidth;
+      if (w && Math.abs(w - (this.state.viewW || 0)) > 1) upd.viewW = w;
+    }
+    if (Object.keys(upd).length) this.setState(upd);
+  };
+  goPage = (i) => this.setState({ activePage: Math.max(0, Math.min((this._pageCount || 1) - 1, i)) });
+  goPrev = () => this.goPage(this.state.activePage - 1);
+  goNext = () => this.goPage(this.state.activePage + 1);
+  onPointerDown = (e) => { this._tx = e.clientX; };
+  onPointerUp = (e) => {
+    if (this._tx == null) return;
+    const dx = e.clientX - this._tx; this._tx = null;
+    if (Math.abs(dx) > 45) { if (dx < 0) this.goNext(); else this.goPrev(); }
+  };
+
+  onPay = () => {
+    if (this.state.paying) return;
+    this.setState({ paying: true });
+    this._payTimer = setTimeout(() => {
+      const s = this.state;
+      const venue = s.venues.find((v) => v.id === s.venueId);
+      const set = venue ? venue.sets.find((x) => x.id === s.setId) : null;
+      if (!venue || !set) { this.setState({ paying: false }); return; }
+      const code = 'RIV-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+      const booking = {
+        code, status: 'CONFIRMED', venueId: venue.id, venueName: venue.name,
+        setId: set.id, rowLabel: set.rowLabel, positionNo: set.positionNo,
+        bookingDate: s.date, amount: set.price, contactName: s.contact.fullName,
+        refundedMinor: null,
+      };
+      this.setState((st) => {
+        const bookings = [booking, ...st.bookings];
+        this.persistBookings(bookings);
+        const venues = st.venues.map((v) =>
+          v.id !== st.venueId ? v : { ...v, sets: v.sets.map((x) => (x.id !== st.setId ? x : { ...x, availability: 'TAKEN' })) }
+        );
+        return { venues, stage: 'confirmed', code, bookings, selectedCode: code, paying: false, cancelDone: null, cancelConfirming: false };
+      });
+    }, 1400);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const fmt = (m) => this.formatMoney(m);
+    const curTheme = this.THEMES[s.theme] || this.THEMES.riviera;
+    const ctaHex = (curTheme.cta.match(/#[0-9a-f]{6}/gi) || ['#2bb8d4', '#0e8aa8']);
+    const photoGrad = 'linear-gradient(162deg,' + ctaHex[0] + ' 0%,' + ctaHex[1] + ' 70%,' + ctaHex[1] + ' 100%)';
+    const themeList = Object.keys(this.THEMES).map((k) => ({ key: k, name: this.THEMES[k].name, swatch: this.THEMES[k].swatch, active: k === s.theme, inactive: k !== s.theme, onSelect: () => this.selectTheme(k) }));
+    const modeLabel = (m) => (m === 'INSTANT' ? 'Instant Book' : 'Request to Book');
+    const instantOnly = this.props.instantBookOnly ?? false;
+    const showPrices = this.props.showTilePrices ?? false;
+
+    const all = s.venues;
+    const beaches = [...new Set(all.map((v) => v.beach))].sort((a, b) => a.localeCompare(b));
+    const regions = [...new Set(all.map((v) => v.region))].sort((a, b) => a.localeCompare(b));
+    const filtered = all.filter((v) =>
+      (!s.beach || v.beach === s.beach) &&
+      (!s.region || v.region === s.region) &&
+      (!instantOnly || v.mode === 'INSTANT')
+    );
+
+    const avail = (v) => ({ total: v.sets.length, free: v.sets.filter((x) => x.availability === 'FREE').length });
+    const fromOf = (v) => {
+      const fp = v.sets.reduce((m, x) => (x.price.minorUnits < m ? x.price.minorUnits : m), Infinity);
+      return isFinite(fp) ? { minorUnits: fp, currency: v.currency } : null;
+    };
+
+    const venueCards = filtered.map((v) => {
+      const a = avail(v); const fp = fromOf(v);
+      return {
+        id: v.id, name: v.name, location: v.beach + ' \u00b7 ' + v.region, modeLabel: modeLabel(v.mode),
+        ratingStr: (v.rating / 10).toFixed(1), reviews: v.reviews, fromStr: fp ? fmt(fp) : '\u2014',
+        free: a.free, total: a.total, freePct: a.total ? Math.round((a.free / a.total) * 100) : 0,
+        toWater: v.toWater + 'm', amenities: v.amenities.slice(0, 3),
+        onOpen: () => this.openVenue(v.id),
+      };
+    });
+
+    const dateLabel = this.formatDate(s.date);
+
+    const perView = 5;
+    const pStep = 4;
+    const gap = 8;
+    const viewW = this.state.viewW || 0;
+    const venue = all.find((v) => v.id === s.venueId) || null;
+    let rows = [], dots = [], freeCount = 0, totalCount = 0, freePct = 0, venueView = null,
+      activeRangeLabel = '', pageCount = 1, tilePx = '19%', trackShiftPx = '0px',
+      tileCol = '48px', mapScrollHint = false, mapColsN = 12;
+    if (venue) {
+      const a = avail(venue); freeCount = a.free; totalCount = a.total;
+      freePct = a.total ? Math.round((a.free / a.total) * 100) : 0;
+      const fp = fromOf(venue);
+      venueView = {
+        id: venue.id, name: venue.name, location: venue.beach + ' \u00b7 ' + venue.region, modeLabel: modeLabel(venue.mode),
+        ratingStr: (venue.rating / 10).toFixed(1), reviews: venue.reviews, fromStr: fp ? fmt(fp) : '\u2014',
+        toWater: venue.toWater + 'm', amenities: venue.amenities,
+      };
+      const byRow = {};
+      venue.sets.forEach((st) => { (byRow[st.rowLabel] = byRow[st.rowLabel] || []).push(st); });
+      const rowLabels = Object.keys(byRow); /* insertion order — A, B, … Z, AA, AB (a .sort() would misorder two-letter rows) */
+      const sortedByRow = {};
+      rowLabels.forEach((l) => { sortedByRow[l] = byRow[l].slice().sort((x, y) => x.positionNo - y.positionNo); });
+      const maxPos = rowLabels.reduce((m, l) => Math.max(m, sortedByRow[l].length), 0);
+      const tileOf = (st) => {
+        const taken = st.availability === 'TAKEN';
+        const premium = st.tier === 'PREMIUM';
+        return {
+          id: st.id, label: showPrices ? fmt(st.price) : String(st.positionNo),
+          title: 'Set ' + st.rowLabel + st.positionNo + ' \u00b7 ' + fmt(st.price) + ' \u00b7 ' + (premium ? 'front row' : 'standard') + (taken ? ' \u00b7 taken' : ' \u2014 tap to book'),
+          isTaken: taken, isFreePremium: !taken && premium, isFreeStandard: !taken && !premium,
+          onSelect: () => this.selectSet(st),
+        };
+      };
+      rows = rowLabels.map((l) => ({
+        label: l, priceStr: fmt(sortedByRow[l][0].price), sets: sortedByRow[l].map(tileOf),
+      }));
+      pageCount = Math.max(1, Math.ceil(maxPos / pStep));
+      this._pageCount = pageCount;
+      const active = Math.max(0, Math.min(s.activePage, pageCount - 1));
+      if (viewW > 0 && maxPos > 0) {
+        const tileW = (viewW - gap * (perView - 1)) / perView;
+        tilePx = tileW + 'px';
+        const blockW = pStep * tileW + gap * (pStep - 1);
+        const trackW = maxPos * tileW + gap * (maxPos - 1);
+        let raw = (viewW - blockW) / 2 - active * pStep * (tileW + gap);
+        const minShift = Math.min(0, viewW - trackW);
+        raw = Math.min(0, Math.max(minShift, raw));
+        trackShiftPx = raw + 'px';
+      }
+      dots = Array.from({ length: pageCount }, (_, i) => ({ i, active: i === active, inactive: i !== active, onClick: () => this.goPage(i) }));
+      activeRangeLabel = 'Positions ' + (active * pStep + 1) + '\u2013' + Math.min(active * pStep + pStep, maxPos);
+
+      mapColsN = Math.max(1, maxPos);
+      const measuredW = viewW || 620; /* the scroll area's own width (labels + prices sit outside it) */
+      const rawTile = Math.floor((measuredW - (mapColsN - 1) * 6) / mapColsN);
+      const tileSize = Math.max(44, Math.min(64, rawTile));
+      tileCol = tileSize + 'px';
+      const mapWide = tileSize * mapColsN + (mapColsN - 1) * 6 > measuredW + 2;
+      const mapTall = rowLabels.length * (tileSize + 7) - 7 > 520;
+      mapScrollHint = mapWide || mapTall;
+    }
+
+    const dialogSet = s.setId != null && venue ? venue.sets.find((x) => x.id === s.setId) : null;
+    let dialog = null, steps = [], totalStr = '', primaryLabel = 'Continue';
+    const bStep = s.bookingStep;
+    if (dialogSet && venue) {
+      const premium = dialogSet.tier === 'PREMIUM';
+      dialog = {
+        venueName: venue.name, seat: dialogSet.rowLabel + String(dialogSet.positionNo),
+        rowLabel: dialogSet.rowLabel, tierLabel: premium ? 'Front row \u00b7 Premium' : 'Standard set',
+        included: '2 loungers + umbrella \u00b7 full day',
+      };
+      const stepDefs = [{ n: 1, label: 'Details' }, { n: 2, label: 'Pay' }];
+      steps = stepDefs.map((d, i) => ({
+        n: d.n, label: d.label, active: bStep === d.n, inactive: bStep !== d.n, notLast: i < stepDefs.length - 1,
+      }));
+      totalStr = fmt(dialogSet.price);
+      primaryLabel = bStep === 1 ? 'Continue to payment' : (s.paying ? 'Processing\u2026' : 'Pay ' + totalStr);
+    }
+    const cErrs = this.contactErrors(s.contact);
+    const showErr = s.submitAttempted;
+
+    const bkList = s.bookings.map((b) => ({
+      code: b.code, venueName: b.venueName,
+      setLabel: b.rowLabel + b.positionNo,
+      dateLabel: this.formatDate(b.bookingDate),
+      paidStr: fmt(b.amount),
+      statusLabel: b.status === 'CONFIRMED' ? 'Confirmed' : 'Cancelled',
+      isConfirmed: b.status === 'CONFIRMED', isCancelled: b.status !== 'CONFIRMED',
+      onOpen: () => this.setState({ selectedCode: b.code, cancelConfirming: false, cancelDone: null }),
+    }));
+    const bkRaw = s.bookings.find((x) => x.code === s.selectedCode) || null;
+    let bk = null, refundTerms = '';
+    if (bkRaw) {
+      const confirmed = bkRaw.status === 'CONFIRMED';
+      const beforeCutoff = bkRaw.bookingDate > this.todayIso();
+      bk = {
+        code: bkRaw.code,
+        statusLabel: confirmed ? 'Confirmed' : 'Cancelled',
+        isConfirmed: confirmed, isCancelled: !confirmed,
+        venueName: bkRaw.venueName,
+        setLabel: bkRaw.rowLabel + ' \u00b7 spot ' + bkRaw.positionNo,
+        dateLabel: this.formatDate(bkRaw.bookingDate),
+        paidStr: fmt(bkRaw.amount),
+        refundedStr: bkRaw.refundedMinor != null && bkRaw.refundedMinor > 0 ? fmt({ minorUnits: bkRaw.refundedMinor, currency: bkRaw.amount.currency }) : '',
+        cancellable: confirmed,
+      };
+      refundTerms = beforeCutoff
+        ? 'Free cancellation until the evening before \u2014 you\u2019ll be refunded ' + fmt(bkRaw.amount) + ' in full.'
+        : 'The free-cancellation cutoff has passed \u2014 this cancellation is non-refundable.';
+    }
+    let cancelDoneMsg = '';
+    if (s.cancelDone) {
+      cancelDoneMsg = 'Booking cancelled. ' + (s.cancelDone.refundMinor > 0
+        ? fmt({ minorUnits: s.cancelDone.refundMinor, currency: s.cancelDone.currency }) + ' will be refunded to your card.'
+        : 'No refund applies under the cancellation policy.');
+    }
+
+    return {
+      isDiscover: s.view === 'discover', isMap: s.view === 'map',
+      beaches, regions, selectedBeach: s.beach, selectedRegion: s.region, selectedDate: s.date,
+      onBeachChange: (e) => this.setState({ beach: e.target.value }),
+      onRegionChange: (e) => this.setState({ region: e.target.value }),
+      onDateChange: (e) => { const v = e.target.value; if (v) this.setState({ date: v }); },
+      onBack: () => this.setState({ view: 'discover', venueId: null, stage: 'none', setId: null }),
+      venueCards, isEmpty: filtered.length === 0, resultCount: filtered.length,
+      resultNoun: filtered.length === 1 ? 'venue' : 'venues', dateLabel,
+      venue: venueView, rows, dots, activeRangeLabel, pageCount, showPager: pageCount > 1,
+      mapCols: mapColsN, tileCol, mapScrollHint,
+      tilePx, trackShiftPx, setRowsWrap: this.setRowsWrap,
+      onPointerDown: this.onPointerDown, onPointerUp: this.onPointerUp,
+      onMapMouseDown: this.onMapMouseDown, onMapMouseMove: this.onMapMouseMove, onMapMouseUp: this.onMapMouseUp,
+      setMapVport: this.setMapVport,
+      goPrev: this.goPrev, goNext: this.goNext,
+      freeCount, totalCount, freePct,
+      heroSlotId: venue ? 'rivlg-hero-' + venue.id : 'rivlg-hero',
+      showDialog: s.stage === 'dialog', showConfirmed: s.stage === 'confirmed', dialog, code: s.code,
+      steps, totalStr, primaryLabel, canBack: bStep === 2 && !s.paying,
+      bStep1: bStep === 1, bStep2: bStep === 2,
+      contactName: s.contact.fullName, contactEmail: s.contact.email, contactPhone: s.contact.phone,
+      onNameChange: (e) => this.setContact('fullName', e.target.value),
+      onEmailChange: (e) => this.setContact('email', e.target.value),
+      onPhoneChange: (e) => this.setContact('phone', e.target.value),
+      nameError: showErr ? cErrs.fullName : '', emailError: showErr ? cErrs.email : '', phoneError: showErr ? cErrs.phone : '',
+      paying: s.paying,
+      confirmGuest: s.contact.fullName || (bkRaw ? bkRaw.contactName : ''),
+      minDate: this.todayIso(),
+      onBookBack: this.bookingBack,
+      onPrimary: () => (this.state.bookingStep === 1 ? this.detailsContinue() : this.onPay()),
+      onClose: () => this.setState({ stage: 'none', setId: null }),
+      onDone: () => this.setState({ stage: 'none', setId: null }),
+      onViewBooking: () => this.setState({ stage: 'none', setId: null, view: 'booking' }),
+      isBooking: s.view === 'booking',
+      onMyBooking: () => this.setState({ view: 'booking', stage: 'none', setId: null, themeOpen: false, menuOpen: false, selectedCode: null, cancelConfirming: false, cancelDone: null }),
+      bkList, showBookingList: !bkRaw, hasSelected: !!bk, noBooking: !bkRaw && bkList.length === 0, bk, refundTerms,
+      onBackToList: () => this.setState({ selectedCode: null, cancelConfirming: false, cancelDone: null }),
+      isDesktopNav: (s.winW || 1024) >= 640, isMobileNav: (s.winW || 1024) < 640,
+      menuOpen: s.menuOpen,
+      onToggleMenu: () => this.setState((st) => ({ menuOpen: !st.menuOpen, themeOpen: false })),
+      onMenuBeaches: () => this.setState({ menuOpen: false, view: 'discover', venueId: null, stage: 'none', setId: null }),
+      onMenuHow: () => this.setState({ menuOpen: false }),
+      isSignedIn: !!s.user, isSignedOut: !s.user,
+      userFirst: s.user ? s.user.name.split(' ')[0] : '',
+      userInitial: s.user ? s.user.name.charAt(0).toUpperCase() : '',
+      userEmail: s.user ? s.user.email : '',
+      userMenuOpen: s.userMenuOpen,
+      onToggleUserMenu: () => this.setState((st) => ({ userMenuOpen: !st.userMenuOpen, themeOpen: false })),
+      onSignOutTourist: this.touristSignOut,
+      authOpen: s.authOpen, onOpenAuth: this.openAuth, onCloseAuth: this.closeAuth,
+      tIsRegister: s.authMode === 'register',
+      tAuthTitle: s.authMode === 'register' ? 'Create your account' : 'Welcome back',
+      tAuthSubtitle: s.authMode === 'register'
+        ? 'Keep all your sunbed bookings in one place.'
+        : 'Sign in to see and manage your bookings faster.',
+      tAuthSubmitLabel: s.authMode === 'register' ? 'Create account' : 'Sign in',
+      tTogglePrompt: s.authMode === 'register' ? 'Already have an account?' : 'New to Riviera?',
+      tToggleAction: s.authMode === 'register' ? 'Sign in' : 'Register',
+      onSwitchAuthMode: this.switchAuthMode,
+      onSubmitTouristAuth: this.submitTouristAuth,
+      onTouristGoogle: () => this.touristSso('Google'),
+      onTouristApple: () => this.touristSso('Apple'),
+      aName: s.aName, aEmail: s.aEmail, aPass: s.aPass, authError: s.authError,
+      onAName: (e) => this.setState({ aName: e.target.value, authError: '' }),
+      onAEmail: (e) => this.setState({ aEmail: e.target.value, authError: '' }),
+      onAPass: (e) => this.setState({ aPass: e.target.value, authError: '' }),
+      cancelConfirming: s.cancelConfirming, notConfirming: !s.cancelConfirming,
+      cancelDoneMsg, hasCancelMsg: !!cancelDoneMsg,
+      startCancel: this.startCancel, keepBooking: this.keepBooking, confirmCancel: this.confirmCancel,
+      bgStyle: curTheme.bg, blob1Bg: curTheme.blob1, blob2Bg: curTheme.blob2,
+      ctaGrad: curTheme.cta, barGrad: curTheme.bar,
+      ink: curTheme.light ? '#0a2a33' : '#ffffff',
+      inkSoft: curTheme.light ? 'rgba(12,42,51,0.7)' : 'rgba(255,255,255,0.86)',
+      inkFaint: curTheme.light ? 'rgba(12,42,51,0.5)' : 'rgba(255,255,255,0.72)',
+      chipBg: curTheme.light ? 'rgba(12,42,51,0.05)' : 'rgba(255,255,255,0.16)',
+      chipBorder: curTheme.light ? 'rgba(12,42,51,0.14)' : 'rgba(255,255,255,0.3)',
+      chipText: curTheme.light ? '#0a4f5e' : '#ffffff',
+      heroShadow: curTheme.light ? 'none' : '0 2px 36px rgba(6,40,55,0.32)',
+      trackBg: curTheme.light ? 'rgba(12,42,51,0.12)' : 'rgba(255,255,255,0.25)',
+      photoGrad,
+      themeName: curTheme.name, themeSwatch: curTheme.swatch,
+      themeOpen: s.themeOpen, themeList, onToggleTheme: this.toggleTheme,
+      stop: (e) => e.stopPropagation(),
+    };
+  }
+}
+</script>
+</body>
+</html>

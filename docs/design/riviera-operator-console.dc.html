@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  @keyframes rivFade{from{opacity:0}to{opacity:1}}
+  @keyframes rivPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+</style>
+<script src="./image-slot.js"></script>
+</helmet>
+
+<div data-screen-label="Operator console" style="min-height:100vh;position:relative;font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif;color:#0a2a33;-webkit-font-smoothing:antialiased;">
+
+  <div style="position:fixed;inset:0;z-index:0;overflow:hidden;background:radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255,255,255,0) 54%), radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238,246,248,0) 46%), radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207,234,242,0) 60%), linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);"></div>
+
+  <div style="position:relative;z-index:1;">
+
+  <header style="position:sticky;top:0;z-index:20;background:rgba(255,255,255,0.13);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid rgba(255,255,255,0.22);box-shadow:0 8px 30px rgba(6,38,52,0.14);">
+    <div style="width:100%;max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 34% 30%, #ffe6a3, #f0aa2e 70%);box-shadow:0 0 0 4px rgba(255,255,255,0.18),0 4px 14px rgba(240,170,46,0.5);display:block;"></span>
+        <span style="display:flex;flex-direction:column;line-height:1;">
+          <span style="font-size:19px;font-weight:700;letter-spacing:-0.01em;color:#0a2a33;">Riviera <span style="font-weight:500;opacity:.7;">Operator</span></span>
+          <span style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(12,42,51,0.5);margin-top:4px;">{{ venueTitle }}</span>
+        </span>
+      </div>
+      <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <span style="font-size:13px;color:rgba(12,42,51,0.6);">Signed in as <strong style="color:#0a2a33;">{{ operatorName }}</strong></span>
+          <button onClick="{{ onSignOut }}" style="font:inherit;font-size:13px;font-weight:600;color:#0a2a33;cursor:pointer;background:rgba(12,42,51,0.05);border:1px solid rgba(12,42,51,0.14);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:999px;padding:7px 15px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);">Sign out</button>
+        </div>
+      </sc-if>
+    </div>
+  </header>
+
+  <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="Operator sign-in" style="width:100%;max-width:420px;margin:0 auto;padding:72px 24px;">
+    <section style="border-radius:28px;background:rgba(255,255,255,0.6);-webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);border:1px solid rgba(255,255,255,0.65);box-shadow:0 18px 50px rgba(7,42,58,0.3),inset 0 1px 0 rgba(255,255,255,0.85);padding:30px 28px;animation:rivPop .3s ease;">
+      <h1 style="font-weight:700;font-size:26px;letter-spacing:-0.02em;margin:0 0 6px;">{{ authTitle }}</h1>
+      <p style="font-size:13.5px;line-height:1.5;color:rgba(12,42,51,0.6);margin:0 0 20px;">{{ authSubtitle }}</p>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onClick="{{ onGoogle }}" style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid rgba(12,42,51,0.16);border-radius:16px;background:rgba(255,255,255,0.85);color:#0a2a33;font:inherit;font-weight:600;font-size:14.5px;padding:12px;cursor:pointer;box-shadow:inset 0 1px 0 #fff;transition:background .12s ease;" style-hover="background:#ffffff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.26-2.09 3.57-5.17 3.57-8.81z"></path><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.93-2.91l-3.87-3c-1.07.72-2.44 1.14-4.06 1.14-3.12 0-5.77-2.11-6.71-4.95H1.29v3.1A12 12 0 0 0 12 24z"></path><path fill="#FBBC05" d="M5.29 14.28a7.2 7.2 0 0 1 0-4.56v-3.1H1.29a12 12 0 0 0 0 10.76l4-3.1z"></path><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.29 6.62l4 3.1C6.23 6.88 8.88 4.77 12 4.77z"></path></svg>
+          Continue with Google
+        </button>
+        <button onClick="{{ onApple }}" style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid rgba(0,0,0,0.85);border-radius:16px;background:#0b0b0c;color:#fff;font:inherit;font-weight:600;font-size:14.5px;padding:12px;cursor:pointer;transition:filter .12s ease;" style-hover="filter:brightness(1.25);">
+          <svg width="16" height="19" viewBox="0 0 814 1000" aria-hidden="true"><path fill="#ffffff" d="M788 341c-6 4-107 61-107 187 0 146 128 198 132 199-1 3-20 70-67 138-42 60-86 119-152 119s-83-38-159-38c-74 0-101 39-161 39s-102-55-150-123C68 782 22 665 22 554c0-178 116-272 230-272 61 0 111 40 149 40 36 0 92-42 161-42 26 0 120 2 181 90zM554 127c30-36 52-86 52-136 0-7-1-14-2-19-49 2-108 33-143 74-28 32-54 82-54 133 0 8 1 15 2 18 3 1 8 1 13 1 44 0 100-30 132-71z"></path></svg>
+          Continue with Apple
+        </button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin:18px 0 16px;">
+        <span style="flex:1;height:1px;background:rgba(12,42,51,0.14);"></span>
+        <span style="font-size:11.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(12,42,51,0.45);">or</span>
+        <span style="flex:1;height:1px;background:rgba(12,42,51,0.14);"></span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Venue name</span>
+            <input type="text" value="{{ regVenue }}" onChange="{{ onRegVenueChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Email</span>
+            <input type="email" value="{{ regEmail }}" onChange="{{ onRegEmailChange }}" autoComplete="email" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+          </label>
+        </sc-if>
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Username</span>
+          <input type="text" value="{{ username }}" onChange="{{ onUserChange }}" autoComplete="username" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Password</span>
+          <input type="password" value="{{ password }}" onChange="{{ onPassChange }}" autoComplete="current-password" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:14px;padding:11px 13px;"/>
+        </label>
+        <sc-if value="{{ signInError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:0;font-size:13px;font-weight:600;color:#b3362b;">{{ signInError }}</p></sc-if>
+        <button onClick="{{ onSubmitAuth }}" style="margin-top:4px;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">{{ authSubmitLabel }}</button>
+        <p style="margin:6px 0 0;font-size:13px;color:rgba(12,42,51,0.6);text-align:center;">{{ authTogglePrompt }} <button onClick="{{ onToggleAuthMode }}" style="border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:700;color:#0a6e85;cursor:pointer;text-decoration:underline;">{{ authToggleAction }}</button></p>
+        <p style="margin:2px 0 0;font-size:12px;color:rgba(12,42,51,0.45);text-align:center;">Demo &mdash; any credentials work.</p>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+  <main style="width:100%;max-width:1180px;margin:0 auto;padding:22px 24px 80px;">
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+      <div style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Free today</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;margin-top:3px;">{{ statFree }}<span style="font-size:14px;font-weight:600;color:rgba(12,42,51,0.45);"> / {{ statTotal }}</span></div>
+      </div>
+      <div style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Booked online</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statBooked }}</div>
+      </div>
+      <div style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Walk-ins marked</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statMarked }}</div>
+      </div>
+      <div style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Online takings &middot; today</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;margin-top:3px;">{{ statRevenue }}</div>
+        <span style="font-size:11.5px;color:rgba(12,42,51,0.5);">{{ statPayout }} after {{ commissionPctStr }} commission</span>
+      </div>
+    </div>
+
+    <nav style="display:flex;gap:8px;margin:20px 0 18px;flex-wrap:wrap;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}"><button onClick="{{ t.onClick }}" style="font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border-radius:999px;padding:9px 18px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#0a4f5e;background:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.95);box-shadow:0 6px 18px rgba(7,42,58,0.25),inset 0 1px 0 #fff;">{{ t.label }}</button></sc-if>
+        <sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ false }}"><button onClick="{{ t.onClick }}" style="font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border-radius:999px;padding:9px 18px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:rgba(12,42,51,0.65);background:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.7);">{{ t.label }}</button></sc-if>
+      </sc-for>
+    </nav>
+
+    <sc-if value="{{ tabLayout }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Layout editor" style="display:grid;grid-template-columns:280px 1fr;gap:18px;align-items:start;">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 18px 16px;">
+          <h2 style="font-size:15px;font-weight:700;margin:0 0 4px;">Generate layout</h2>
+          <p style="font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);margin:0 0 12px;">Creates the full grid in one go. Rows are labelled A&ndash;{{ lastRowLabel }}, row A faces the sea.</p>
+          <div style="display:flex;gap:10px;">
+            <label style="display:flex;flex-direction:column;gap:5px;flex:1;">
+              <span style="font-size:10.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Rows</span>
+              <input type="number" min="1" max="26" value="{{ genRows }}" onChange="{{ onGenRowsChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:12px;padding:9px 11px;width:100%;"/>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:5px;flex:1;">
+              <span style="font-size:10.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Positions</span>
+              <input type="number" min="1" max="40" value="{{ genCols }}" onChange="{{ onGenColsChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:12px;padding:9px 11px;width:100%;"/>
+            </label>
+          </div>
+          <button onClick="{{ onGenerate }}" style="margin-top:12px;width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:14px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font:inherit;font-weight:700;font-size:14px;padding:11px;cursor:pointer;box-shadow:0 8px 22px rgba(11,120,150,0.45),inset 0 1px 0 rgba(255,255,255,0.5);">Generate {{ genTotal }} sets</button>
+          <p style="font-size:11.5px;color:rgba(12,42,51,0.5);margin:9px 0 0;line-height:1.4;">Regenerating replaces the current layout. Row A is priced as front row automatically.</p>
+        </section>
+
+        <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 18px 16px;">
+          <h2 style="font-size:15px;font-weight:700;margin:0 0 4px;">Paint tool</h2>
+          <p style="font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);margin:0 0 12px;">Pick a tool, then click or drag across the map to apply it.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ tools }}" as="tl" hint-placeholder-count="4">
+              <sc-if value="{{ tl.active }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ tl.onClick }}" style="display:flex;align-items:center;gap:10px;width:100%;font:inherit;font-size:13.5px;font-weight:600;color:#0a2a33;padding:10px 12px;border-radius:13px;cursor:pointer;border:1.5px solid rgba(14,138,168,0.75);background:rgba(43,184,212,0.18);">
+                  <span style="width:18px;height:18px;border-radius:6px;background:{{ tl.swatch }};border:1px solid rgba(12,42,51,0.2);flex-shrink:0;"></span>
+                  <span style="flex:1;text-align:left;">{{ tl.label }}</span>
+                  <span style="font-size:11.5px;color:rgba(12,42,51,0.45);">{{ tl.count }}</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{ tl.inactive }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ tl.onClick }}" style="display:flex;align-items:center;gap:10px;width:100%;font:inherit;font-size:13.5px;font-weight:600;color:#0a2a33;padding:10px 12px;border-radius:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.65);background:rgba(255,255,255,0.42);">
+                  <span style="width:18px;height:18px;border-radius:6px;background:{{ tl.swatch }};border:1px solid rgba(12,42,51,0.2);flex-shrink:0;"></span>
+                  <span style="flex:1;text-align:left;">{{ tl.label }}</span>
+                  <span style="font-size:11.5px;color:rgba(12,42,51,0.45);">{{ tl.count }}</span>
+                </button>
+              </sc-if>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+
+      <section style="border-radius:28px;background:rgba(255,255,255,0.52);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:0 14px 44px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.8);padding:0 18px 16px;overflow:hidden;">
+        <p style="text-align:center;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;font-size:12px;color:#ffffff;background:linear-gradient(180deg,rgba(43,184,212,0.92),rgba(14,138,168,0.94));margin:0 -18px 14px;padding:12px;">&#9650;&nbsp;&nbsp;Facing the sea</p>
+        <div onMouseLeave="{{ onPaintEnd }}" onMouseUp="{{ onPaintEnd }}" style="user-select:none;">
+          <sc-for list="{{ gridRows }}" as="row" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+              <span style="width:20px;flex-shrink:0;font-size:11px;font-weight:700;color:#0a4f5e;text-align:center;">{{ row.label }}</span>
+              <div style="flex:1;display:grid;grid-template-columns:repeat({{ colCount }},1fr);gap:4px;">
+                <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="12">
+                  <button onMouseDown="{{ cell.onDown }}" onMouseEnter="{{ cell.onEnter }}" title="{{ cell.title }}" aria-label="{{ cell.title }}" style="{{ cell.style }}"></button>
+                </sc-for>
+              </div>
+              <span style="width:58px;flex-shrink:0;font-size:11px;font-weight:600;color:rgba(12,42,51,0.55);text-align:right;">{{ row.priceStr }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <p style="text-align:center;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;font-size:12px;color:#0a4f5e;margin:12px -18px -16px;padding:12px;border-top:1px dashed rgba(12,42,51,0.22);">&#9660;&nbsp;&nbsp;Promenade &middot; Entrance</p>
+      </section>
+    </div>
+    <ul style="list-style:none;display:flex;gap:16px;flex-wrap:wrap;padding:0;margin:14px 2px 0;font-size:12.5px;color:rgba(12,42,51,0.7);">
+      <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:rgba(255,255,255,0.85);border:1px solid rgba(12,42,51,0.15);"></span> Standard &middot; online</li>
+      <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:linear-gradient(180deg,#ffe3a3,#f4c05a);border:1px solid rgba(180,120,20,0.4);"></span> Front row &middot; premium</li>
+      <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:repeating-linear-gradient(45deg,rgba(12,42,51,0.3) 0 3px,rgba(12,42,51,0.12) 3px 6px);"></span> Walk-in pool (not bookable online)</li>
+      <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;border:1.5px dashed rgba(255,255,255,0.55);"></span> Gap / aisle</li>
+    </ul>
+    </sc-if>
+
+    <sc-if value="{{ tabPricing }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Pricing" style="display:grid;grid-template-columns:minmax(340px,560px);gap:14px;">
+      <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 22px;">
+        <h2 style="font-size:16px;font-weight:700;margin:0 0 4px;">Row pricing</h2>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 14px;">Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the row.</p>
+        <sc-for list="{{ priceRows }}" as="pr" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(12,42,51,0.1);">
+            <span style="display:inline-flex;width:26px;height:26px;border-radius:8px;background:rgba(12,42,51,0.08);align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0a4f5e;flex-shrink:0;">{{ pr.label }}</span>
+            <span style="flex:1;font-size:13px;color:rgba(12,42,51,0.6);">{{ pr.desc }}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:14px;color:rgba(12,42,51,0.5);">&euro;</span>
+              <input type="number" min="0" step="0.5" value="{{ pr.priceEur }}" onChange="{{ pr.onChange }}" style="font:inherit;font-size:14.5px;font-weight:600;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:11px;padding:8px 10px;width:88px;text-align:right;"/>
+            </div>
+          </div>
+        </sc-for>
+        <p style="font-size:12px;color:rgba(12,42,51,0.5);margin:12px 0 0;">Projected full-day take if every online set sells: <strong style="color:#0a6e85;">{{ projectedStr }}</strong></p>
+      </section>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ tabDaily }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Daily view" style="display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start;">
+      <section style="border-radius:28px;background:rgba(255,255,255,0.52);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:0 14px 44px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.8);padding:0 18px 16px;overflow:hidden;">
+        <p style="text-align:center;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;font-size:12px;color:#ffffff;background:linear-gradient(180deg,rgba(43,184,212,0.92),rgba(14,138,168,0.94));margin:0 -18px 14px;padding:12px;">&#9650;&nbsp;&nbsp;Facing the sea</p>
+        <sc-for list="{{ dailyRows }}" as="row" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+            <span style="width:20px;flex-shrink:0;font-size:11px;font-weight:700;color:#0a4f5e;text-align:center;">{{ row.label }}</span>
+            <div style="flex:1;display:grid;grid-template-columns:repeat({{ colCount }},1fr);gap:4px;">
+              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="12">
+                <button onClick="{{ cell.onTap }}" title="{{ cell.title }}" aria-label="{{ cell.title }}" style="{{ cell.style }}"></button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <p style="font-size:12px;color:rgba(12,42,51,0.55);margin:12px 0 2px;text-align:center;">Tap a free set to mark a walk-in &middot; tap a walk-in to release it. Online bookings are locked.</p>
+      </section>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:16px 18px;">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Day</span>
+            <input type="date" value="{{ selectedDate }}" onChange="{{ onDateChange }}" style="font:inherit;font-size:14.5px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:12px;padding:9px 11px;"/>
+          </label>
+        </section>
+        <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:16px 18px;">
+          <h2 style="font-size:15px;font-weight:700;margin:0 0 3px;">Arrivals &middot; {{ dateLabel }}</h2>
+          <p style="font-size:12px;color:rgba(12,42,51,0.55);margin:0 0 10px;">{{ statBooked }} confirmed online bookings. Verify the code on arrival.</p>
+          <div style="display:flex;flex-direction:column;">
+            <sc-for list="{{ arrivalRows }}" as="ar" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(12,42,51,0.1);">
+                <span style="font-size:13.5px;font-weight:600;color:#0a2a33;">{{ ar.label }}</span>
+                <span style="font-size:13px;font-weight:700;letter-spacing:0.08em;color:#0a6e85;background:rgba(43,184,212,0.14);border:1px solid rgba(43,184,212,0.3);border-radius:8px;padding:3px 9px;">{{ ar.code }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;padding:14px 4px 0;margin:0;font-size:12.5px;color:rgba(12,42,51,0.7);">
+          <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:rgba(255,255,255,0.85);border:1px solid rgba(12,42,51,0.15);"></span> Free</li>
+          <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);"></span> Booked online (locked)</li>
+          <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:linear-gradient(180deg,#3f5562,#243640);"></span> Walk-in marked by staff</li>
+        </ul>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ tabVenue }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Venue details" style="display:grid;grid-template-columns:minmax(340px,560px) minmax(280px,1fr);gap:18px;align-items:start;">
+      <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 22px;">
+        <h2 style="font-size:16px;font-weight:700;margin:0 0 14px;">Venue details</h2>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Name</span>
+            <input type="text" value="{{ vName }}" onChange="{{ onVName }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;"/>
+          </label>
+          <div style="display:flex;gap:10px;">
+            <label style="display:flex;flex-direction:column;gap:6px;flex:1;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Beach</span>
+              <input type="text" value="{{ vBeach }}" onChange="{{ onVBeach }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;width:100%;"/>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;flex:1;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Region</span>
+              <input type="text" value="{{ vRegion }}" onChange="{{ onVRegion }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;width:100%;"/>
+            </label>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Description</span>
+            <input type="text" value="{{ vDesc }}" onChange="{{ onVDesc }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;"/>
+          </label>
+          <div style="display:flex;gap:10px;">
+            <label style="display:flex;flex-direction:column;gap:6px;flex:1;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Booking mode</span>
+              <select value="{{ vMode }}" onChange="{{ onVMode }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;width:100%;cursor:pointer;">
+                <option value="INSTANT">Instant Book</option>
+                <option value="REQUEST">Request to Book</option>
+              </select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;flex:1;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Booking cutoff</span>
+              <input type="time" value="{{ vCutoff }}" onChange="{{ onVCutoff }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:9px 12px;width:100%;"/>
+            </label>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <label style="display:flex;flex-direction:column;gap:6px;flex:1;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Commission</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" min="0" max="5000" step="50" value="{{ vCommission }}" onChange="{{ onVCommission }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;width:100%;"/>
+                <span style="font-size:12.5px;color:rgba(12,42,51,0.55);white-space:nowrap;">bps = {{ commissionPctStr }}</span>
+              </div>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;width:130px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Payout currency</span>
+              <input type="text" value="{{ vCurrency }}" onChange="{{ onVCurrency }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.75);border-radius:13px;padding:10px 12px;width:100%;"/>
+            </label>
+          </div>
+          <button onClick="{{ onSaveVenue }}" style="margin-top:6px;border:1px solid rgba(255,255,255,0.4);border-radius:14px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font:inherit;font-weight:700;font-size:14.5px;padding:12px;cursor:pointer;box-shadow:0 8px 22px rgba(11,120,150,0.45),inset 0 1px 0 rgba(255,255,255,0.5);">Save changes</button>
+          <sc-if value="{{ savedNotice }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin:2px 0 0;font-size:13px;font-weight:600;color:#0e6e46;">{{ savedNotice }}</p></sc-if>
+        </div>
+      </section>
+
+      <div style="display:flex;flex-direction:column;gap:18px;">
+      <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 22px;">
+        <h2 style="font-size:16px;font-weight:700;margin:0 0 4px;">Photos</h2>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 12px;">Shown to tourists on your venue card and beach-map page.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <image-slot id="opv-photo-cover" shape="rounded" radius="14" placeholder="Cover photo — the beach" style="grid-column:1 / -1;height:150px;display:block;"></image-slot>
+          <image-slot id="opv-photo-2" shape="rounded" radius="14" placeholder="Sunbeds" style="height:96px;display:block;"></image-slot>
+          <image-slot id="opv-photo-3" shape="rounded" radius="14" placeholder="Bar / restaurant" style="height:96px;display:block;"></image-slot>
+        </div>
+      </section>
+      <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 22px;">
+        <h2 style="font-size:16px;font-weight:700;margin:0 0 4px;">Commodities</h2>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 14px;">Shown as tags on your venue card and beach-map page.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <sc-for list="{{ amenityChips }}" as="am" hint-placeholder-count="8">
+            <sc-if value="{{ am.active }}" hint-placeholder-val="{{ false }}"><button onClick="{{ am.onToggle }}" style="font:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:999px;padding:8px 15px;color:#0a4f5e;background:rgba(43,184,212,0.22);border:1.5px solid rgba(14,138,168,0.7);">{{ am.label }}</button></sc-if>
+            <sc-if value="{{ am.inactive }}" hint-placeholder-val="{{ true }}"><button onClick="{{ am.onToggle }}" style="font:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:999px;padding:8px 15px;color:rgba(12,42,51,0.65);background:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.7);">{{ am.label }}</button></sc-if>
+          </sc-for>
+        </div>
+      </section>
+      </div>
+    </div>
+    </sc-if>
+
+  </main>
+  </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:880},&quot;startSignedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+class Component extends DCLogic {
+  AMENITIES = ['Beach bar', 'Restaurant', 'Showers', 'Free parking', 'WiFi', 'Water sports', 'Cafe', 'Snorkelling', 'Pet friendly', 'Sunset view'];
+
+  state = {
+    signedIn: false, username: '', password: '', signInError: '',
+    authMode: 'signin', regVenue: '', regEmail: '',
+    operatorName: '',
+    tab: 'layout',
+    tool: 'premium',
+    genRows: 16, genCols: 23,
+    rows: this.generate(16, 23),
+    staffMarks: {},
+    date: new Date().toISOString().slice(0, 10),
+    venue: {
+      name: 'Sereno Beach Club', beach: 'Dhërmi', region: 'Himarë',
+      description: 'Front-line beach club on Dhërmi bay.',
+      bookingMode: 'INSTANT', commissionBps: 1500, payoutCurrency: 'EUR',
+      bookingCutoff: '19:00',
+      amenities: ['Beach bar', 'Restaurant', 'Showers', 'Free parking'],
+    },
+    savedNotice: '',
+  };
+
+  rowLabel(i) { return String.fromCharCode(65 + i); }
+
+  generate(nRows, nCols) {
+    const rows = [];
+    for (let r = 0; r < nRows; r++) {
+      const premium = r === 0;
+      const priceMinor = premium ? 3400 : Math.max(900, 2200 - (r - 1) * 100);
+      const cells = [];
+      for (let c = 0; c < nCols; c++) cells.push({ state: premium ? 'premium' : 'standard' });
+      rows.push({ label: this.rowLabel(r), priceMinor, cells });
+    }
+    return rows;
+  }
+
+  fmtMinor(minor) {
+    const v = minor / 100;
+    return '\u20ac' + (Number.isInteger(v) ? String(v) : v.toFixed(2));
+  }
+
+  formatDate(iso) {
+    const d = new Date(iso + 'T00:00:00Z');
+    return new Intl.DateTimeFormat('en-IE', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(d);
+  }
+
+  /* Deterministic per-day online bookings on active online cells. */
+  bookedOf(r, c) {
+    const s = this.state;
+    const cell = s.rows[r] && s.rows[r].cells[c];
+    if (!cell || cell.state === 'empty' || cell.state === 'walkin') return null;
+    const day = parseInt(s.date.replaceAll('-', ''), 10) || 0;
+    const h = (r * 31 + c * 17 + day * 7) % 23;
+    if (h >= 3) return null;
+    const code = 'RIV-' + this.rowLabel(r) + String(c + 1) + String((day + r * 3 + c) % 10) + String((day + r + c * 5) % 10);
+    return code;
+  }
+
+  onSubmitAuth = () => {
+    const s = this.state;
+    if (s.authMode === 'register') {
+      if (!s.regVenue.trim() || !s.regEmail.trim() || !s.username.trim() || !s.password.trim()) {
+        this.setState({ signInError: 'Fill in venue name, email, username and password.' });
+        return;
+      }
+      this.setState((st) => ({
+        signedIn: true, operatorName: st.username.trim(), signInError: '', password: '',
+        venue: { ...st.venue, name: st.regVenue.trim() },
+      }));
+      return;
+    }
+    if (!s.username.trim() || !s.password.trim()) {
+      this.setState({ signInError: 'Enter a username and password.' });
+      return;
+    }
+    this.setState({ signedIn: true, operatorName: s.username.trim(), signInError: '', password: '' });
+  };
+  onSsoSignIn = (provider) => this.setState({ signedIn: true, operatorName: provider + ' account', signInError: '', password: '' });
+  onToggleAuthMode = () => this.setState((s) => ({ authMode: s.authMode === 'signin' ? 'register' : 'signin', signInError: '' }));
+  onSignOut = () => this.setState({ signedIn: false, username: '', password: '', authMode: 'signin' });
+
+  onGenerate = () => {
+    const s = this.state;
+    const r = Math.max(1, Math.min(26, s.genRows | 0));
+    const c = Math.max(1, Math.min(40, s.genCols | 0));
+    this.setState({ rows: this.generate(r, c), staffMarks: {}, genRows: r, genCols: c });
+  };
+
+  paintCell(r, c) {
+    this.setState((s) => {
+      const tool = s.tool;
+      const rows = s.rows.map((row, ri) => {
+        if (ri !== r) return row;
+        const cells = row.cells.map((cell, ci) => {
+          if (ci !== c) return cell;
+          return { state: tool === 'erase' ? 'empty' : tool };
+        });
+        return { ...row, cells };
+      });
+      return { rows };
+    });
+  }
+  onCellDown = (r, c) => { this._painting = true; this.paintCell(r, c); };
+  onCellEnter = (r, c) => { if (this._painting) this.paintCell(r, c); };
+  onPaintEnd = () => { this._painting = false; };
+
+  onTapDaily = (r, c) => {
+    const cell = this.state.rows[r] && this.state.rows[r].cells[c];
+    if (!cell || cell.state === 'empty') return;
+    if (this.bookedOf(r, c)) return; // online-held — locked
+    const key = r + '-' + c + '@' + this.state.date;
+    this.setState((s) => {
+      const marks = { ...s.staffMarks };
+      if (marks[key]) delete marks[key]; else marks[key] = true;
+      return { staffMarks: marks };
+    });
+  };
+
+  setVenue(k, v) { this.setState((s) => ({ venue: { ...s.venue, [k]: v }, savedNotice: '' })); }
+  onSaveVenue = () => {
+    this.setState({ savedNotice: 'Saved. The public beach map reflects your changes.' });
+    if (this._noticeTimer) clearTimeout(this._noticeTimer);
+    this._noticeTimer = setTimeout(() => this.setState({ savedNotice: '' }), 3200);
+  };
+  componentDidMount() {
+    if ((this.props.startSignedIn ?? false) && !this.state.signedIn) {
+      this.setState({ signedIn: true, operatorName: 'demo-operator' });
+    }
+  }
+  componentWillUnmount() { if (this._noticeTimer) clearTimeout(this._noticeTimer); }
+
+  renderVals() {
+    const s = this.state;
+    const nCols = s.rows.length ? s.rows[0].cells.length : 0;
+
+    /* ---- stats across the current layout + day ---- */
+    let total = 0, booked = 0, marked = 0, revenueMinor = 0, projectedMinor = 0;
+    s.rows.forEach((row, r) => {
+      row.cells.forEach((cell, c) => {
+        if (cell.state === 'empty') return;
+        total++;
+        if (cell.state !== 'walkin') projectedMinor += row.priceMinor;
+        const code = this.bookedOf(r, c);
+        const mk = s.staffMarks[r + '-' + c + '@' + s.date];
+        if (code) { booked++; revenueMinor += row.priceMinor; }
+        else if (mk) marked++;
+      });
+    });
+    const free = total - booked - marked;
+    const bps = s.venue.commissionBps || 0;
+    const payoutMinor = Math.round(revenueMinor * (1 - bps / 10000));
+
+    /* ---- tabs ---- */
+    const tabDefs = [
+      { key: 'layout', label: 'Beach map' },
+      { key: 'pricing', label: 'Pricing' },
+      { key: 'daily', label: 'Daily view' },
+      { key: 'venue', label: 'Venue & commodities' },
+    ];
+    const tabs = tabDefs.map((t) => ({
+      label: t.label,
+      active: s.tab === t.key, inactive: s.tab !== t.key,
+      onClick: () => this.setState({ tab: t.key }),
+    }));
+
+    /* ---- layout editor ---- */
+    const counts = { standard: 0, premium: 0, walkin: 0, erase: 0 };
+    s.rows.forEach((row) => row.cells.forEach((cell) => {
+      if (cell.state === 'empty') counts.erase++; else counts[cell.state]++;
+    }));
+    const toolDefs = [
+      { key: 'premium', label: 'Front row \u00b7 premium', swatch: 'linear-gradient(180deg,#ffe3a3,#f4c05a)', count: counts.premium },
+      { key: 'standard', label: 'Standard set', swatch: 'rgba(255,255,255,0.9)', count: counts.standard },
+      { key: 'walkin', label: 'Walk-in pool', swatch: 'repeating-linear-gradient(45deg,rgba(12,42,51,0.35) 0 3px,rgba(12,42,51,0.12) 3px 6px)', count: counts.walkin },
+      { key: 'erase', label: 'Gap / aisle', swatch: 'transparent', count: counts.erase },
+    ];
+    const tools = toolDefs.map((t) => ({
+      label: t.label, swatch: t.swatch, count: t.count,
+      active: s.tool === t.key, inactive: s.tool !== t.key,
+      onClick: () => this.setState({ tool: t.key }),
+    }));
+
+    const cellBase = 'aspect-ratio:1;width:100%;min-width:0;padding:0;border-radius:6px;cursor:pointer;transition:transform .08s ease;';
+    const cellStyleOf = (st) => {
+      if (st === 'premium') return cellBase + 'background:linear-gradient(180deg,#ffe3a3,#f4c05a);border:1px solid rgba(180,120,20,0.45);';
+      if (st === 'walkin') return cellBase + 'background:repeating-linear-gradient(45deg,rgba(12,42,51,0.3) 0 3px,rgba(12,42,51,0.1) 3px 6px);border:1px solid rgba(12,42,51,0.3);';
+      if (st === 'empty') return cellBase + 'background:transparent;border:1.5px dashed rgba(12,42,51,0.2);';
+      return cellBase + 'background:rgba(255,255,255,0.85);border:1px solid rgba(12,42,51,0.18);';
+    };
+    const stateName = { premium: 'front row', standard: 'standard', walkin: 'walk-in pool', empty: 'gap' };
+    const gridRows = s.rows.map((row, r) => ({
+      label: row.label,
+      priceStr: this.fmtMinor(row.priceMinor),
+      cells: row.cells.map((cell, c) => ({
+        title: row.label + (c + 1) + ' \u00b7 ' + stateName[cell.state],
+        style: cellStyleOf(cell.state),
+        onDown: () => this.onCellDown(r, c),
+        onEnter: () => this.onCellEnter(r, c),
+      })),
+    }));
+
+    /* ---- pricing ---- */
+    const priceRows = s.rows.map((row, r) => {
+      const active = row.cells.filter((x) => x.state !== 'empty').length;
+      const tier = row.cells.some((x) => x.state === 'premium') ? 'Front row' : 'Standard';
+      return {
+        label: row.label,
+        desc: tier + ' \u00b7 ' + active + ' sets',
+        priceEur: (row.priceMinor / 100).toString(),
+        onChange: (e) => {
+          const v = Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100));
+          this.setState((st) => ({ rows: st.rows.map((rw, ri) => (ri === r ? { ...rw, priceMinor: v } : rw)) }));
+        },
+      };
+    });
+
+    /* ---- daily ---- */
+    const dailyCellOf = (r, c, cell) => {
+      const code = this.bookedOf(r, c);
+      const mk = s.staffMarks[r + '-' + c + '@' + s.date];
+      const name = s.rows[r].label + (c + 1);
+      if (cell.state === 'empty') return { title: name + ' \u00b7 gap', style: cellBase + 'background:transparent;border:1.5px dashed rgba(12,42,51,0.15);cursor:default;', onTap: () => {} };
+      if (code) return { title: name + ' \u00b7 booked online \u00b7 ' + code, style: cellBase + 'background:linear-gradient(180deg,#2bb8d4,#0e8aa8);border:1px solid rgba(10,110,133,0.5);cursor:not-allowed;', onTap: () => {} };
+      if (mk) return { title: name + ' \u00b7 walk-in marked \u2014 tap to release', style: cellBase + 'background:linear-gradient(180deg,#3f5562,#243640);border:1px solid rgba(12,42,51,0.5);', onTap: () => this.onTapDaily(r, c) };
+      const st = cell.state === 'premium'
+        ? 'background:linear-gradient(180deg,#ffe3a3,#f4c05a);border:1px solid rgba(180,120,20,0.45);'
+        : 'background:rgba(255,255,255,0.85);border:1px solid rgba(12,42,51,0.18);';
+      return { title: name + ' \u00b7 free \u2014 tap to mark a walk-in', style: cellBase + st, onTap: () => this.onTapDaily(r, c) };
+    };
+    const dailyRows = s.rows.map((row, r) => ({
+      label: row.label,
+      cells: row.cells.map((cell, c) => dailyCellOf(r, c, cell)),
+    }));
+    const arrivalRows = [];
+    s.rows.forEach((row, r) => row.cells.forEach((cell, c) => {
+      const code = this.bookedOf(r, c);
+      if (code && cell.state !== 'empty') arrivalRows.push({ label: row.label + ' \u00b7 ' + (c + 1), code });
+    }));
+
+    /* ---- venue / amenities ---- */
+    const amenityChips = this.AMENITIES.map((a) => {
+      const on = s.venue.amenities.includes(a);
+      return {
+        label: a,
+        active: on, inactive: !on,
+        onToggle: () => this.setVenue('amenities', on ? s.venue.amenities.filter((x) => x !== a) : [...s.venue.amenities, a]),
+      };
+    });
+
+    return {
+      signedIn: s.signedIn, signedOut: !s.signedIn,
+      username: s.username, password: s.password, signInError: s.signInError,
+      onUserChange: (e) => this.setState({ username: e.target.value, signInError: '' }),
+      onPassChange: (e) => this.setState({ password: e.target.value, signInError: '' }),
+      onSignOut: this.onSignOut,
+      isRegister: s.authMode === 'register',
+      authTitle: s.authMode === 'register' ? 'Create operator account' : 'Operator sign-in',
+      authSubtitle: s.authMode === 'register'
+        ? 'Register your venue to manage its beach map, pricing and bookings.'
+        : 'The venue write API requires an operator credential.',
+      authSubmitLabel: s.authMode === 'register' ? 'Create account' : 'Sign in',
+      authTogglePrompt: s.authMode === 'register' ? 'Already have an account?' : 'New venue on Riviera?',
+      authToggleAction: s.authMode === 'register' ? 'Sign in' : 'Register',
+      onToggleAuthMode: this.onToggleAuthMode,
+      onSubmitAuth: this.onSubmitAuth,
+      onGoogle: () => this.onSsoSignIn('Google'),
+      onApple: () => this.onSsoSignIn('Apple'),
+      regVenue: s.regVenue, regEmail: s.regEmail,
+      onRegVenueChange: (e) => this.setState({ regVenue: e.target.value, signInError: '' }),
+      onRegEmailChange: (e) => this.setState({ regEmail: e.target.value, signInError: '' }),
+      operatorName: s.operatorName,
+      venueTitle: s.venue.name + ' \u00b7 ' + s.venue.beach,
+
+      statFree: free, statTotal: total, statBooked: booked, statMarked: marked,
+      statRevenue: this.fmtMinor(revenueMinor), statPayout: this.fmtMinor(payoutMinor),
+      commissionPctStr: (bps / 100).toFixed(1).replace(/\.0$/, '') + '%',
+
+      tabs,
+      tabLayout: s.tab === 'layout', tabPricing: s.tab === 'pricing',
+      tabDaily: s.tab === 'daily', tabVenue: s.tab === 'venue',
+
+      genRows: s.genRows, genCols: s.genCols,
+      genTotal: (Math.max(1, Math.min(26, s.genRows | 0)) * Math.max(1, Math.min(40, s.genCols | 0))),
+      lastRowLabel: this.rowLabel(Math.max(1, Math.min(26, s.genRows | 0)) - 1),
+      onGenRowsChange: (e) => this.setState({ genRows: parseInt(e.target.value, 10) || 1 }),
+      onGenColsChange: (e) => this.setState({ genCols: parseInt(e.target.value, 10) || 1 }),
+      onGenerate: this.onGenerate,
+      tools, gridRows, colCount: nCols, onPaintEnd: this.onPaintEnd,
+
+      priceRows, projectedStr: this.fmtMinor(projectedMinor),
+
+      dailyRows, arrivalRows,
+      selectedDate: s.date, dateLabel: this.formatDate(s.date),
+      onDateChange: (e) => { const v = e.target.value; if (v) this.setState({ date: v, staffMarks: this.state.staffMarks }); },
+
+      vName: s.venue.name, vBeach: s.venue.beach, vRegion: s.venue.region, vDesc: s.venue.description,
+      vMode: s.venue.bookingMode, vCutoff: s.venue.bookingCutoff,
+      vCommission: s.venue.commissionBps, vCurrency: s.venue.payoutCurrency,
+      onVName: (e) => this.setVenue('name', e.target.value),
+      onVBeach: (e) => this.setVenue('beach', e.target.value),
+      onVRegion: (e) => this.setVenue('region', e.target.value),
+      onVDesc: (e) => this.setVenue('description', e.target.value),
+      onVMode: (e) => this.setVenue('bookingMode', e.target.value),
+      onVCutoff: (e) => this.setVenue('bookingCutoff', e.target.value),
+      onVCommission: (e) => this.setVenue('commissionBps', parseInt(e.target.value, 10) || 0),
+      onVCurrency: (e) => this.setVenue('payoutCurrency', e.target.value.toUpperCase()),
+      onSaveVenue: this.onSaveVenue,
+      savedNotice: s.savedNotice,
+      amenityChips,
+    };
+  }
+}
+</script>
+</body>
+</html>
