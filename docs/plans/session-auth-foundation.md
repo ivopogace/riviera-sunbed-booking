@@ -379,4 +379,64 @@ historical design narrative, in scope-discipline exempt).
 
 ## Review-gate record
 
-Filled at the review gate (findings, fixes, skills loaded per fix, Sonar note).
+**Run:** `riviera-review-overlay` + `/code-review` HIGH effort (authorization touched) over
+`origin/main...HEAD`, PR #127, 2026-07-02. 8 finder angles (line-by-line, removed-behavior,
+cross-file, reuse, simplification, efficiency+altitude, conventions, security, test-quality) →
+verify. Skills reloaded per fix: `riviera-java-conventions` (BE test/config fixes),
+`angular-developer` (FE `failWrite`/message-helper), `riviera-frontend` (FE placement) —
+Skill-routing gate re-run on the fix diff.
+
+**CI-red diagnosis (before review findings):** the full-suite CI backend job failed with 19
+tests 429ing — the new login rate limiter (D-8) accumulates every MockMvc login from the same
+default client IP across the cached Spring contexts in one JVM, exceeding 10/min mid-run (the
+local scoped batches never did). Fixed by presenting a unique `X-Forwarded-For` per test login
+(`SessionLoginSupport.uniqueClientIp()` + the direct-login ITs) — the limiter's own keying
+dimension (f7704db).
+
+**Findings fixed in-loop (985dbc7):**
+1. *(3 finders, CONFIRMED)* VenueEditor mid-flow 401 didn't clear the session → operator stranded
+   on the signed-in card. Now routes write failures through `failWrite`, which calls
+   `sessionLost()` on 401 (matches StaffDaily); message → "session has expired". Spec updated to
+   pin the re-rendered sign-in form.
+2. *(test-quality, CONFIRMED)* `CsrfProtectionIT` guest-exemption tests used wrong DTO field names
+   (`date`/`customer`) → 400 not the claimed domain 404; corrected to `bookingDate`/`contact`,
+   now assert 404 (request reaches the domain un-CSRF-gated).
+3. *(test-quality, CONFIRMED)* `SessionPersistenceIT` didn't prove the DB row is load-bearing;
+   added delete-row-then-401 so a hypothetical in-memory cache over the store would fail (AC-4).
+4. *(reuse, Major)* `signInFailureMessage()` extracted to `core/operator-auth.ts`; VenueEditor +
+   StaffDaily consume it (was a verbatim duplicated switch).
+
+**Verified as false positive (REFUTED on inspection — no change):**
+- "Expired-session cleanup only runs under the `stripe` profile → unbounded growth." I wrote the
+  fix (`@EnableScheduling` config + a scheduling IT), and the IT revealed the premise was wrong:
+  scheduling is already on in the default profile (Modulith Moments), *and* more fundamentally
+  `JdbcIndexedSessionRepository.afterPropertiesSet()` starts its **own** `ThreadPoolTaskScheduler`
+  for cleanup (disabled only by cleanup-cron `"-"`), independent of `@EnableScheduling`. Cleanup
+  runs by default; the redundant config + test were backed out.
+- Login-path `%2F` encoding bypass → Spring's `StrictHttpFirewall` rejects encoded slashes (400)
+  before any filter.
+- First-login CSRF race → both surfaces gate the sign-in form behind `restoring()`, which only
+  clears after `GET /api/auth/me` seeds the XSRF cookie.
+
+**Deferred to follow-up issues (out of scope for S1 / broad):**
+- **#128** — session revocation on operator suspend / password rotation / robust logout (a live
+  session outlives suspension; logout swallows failures). Belongs with S6 operator-lifecycle
+  (#115). `PerOperatorLoginIT` lost its request-time-suspension assertion in migration (no
+  per-request re-check under sessions, by design) — replacement coverage lands with the fix.
+- **#129** — trusted-proxy allowlist for the login limiter (XFF is client-spoofable; same
+  pre-existing R-2 trust model as #56); travels with the S7 hosting/ADR-0004 work.
+- **#130** — machine/CLI auth for admin + actuator after Basic retirement (BKT payout runbook;
+  monitoring health-details probe).
+- **#110 (S7, pre-existing)** — deployed cross-site cookie: `SameSite=Lax` + GitHub-Pages→Render
+  is cross-site, so the deployed operator surface needs S7's same-origin hosting before it works
+  in the cloud. Already tracked (S7's own scope note says S1 is only cloud-demoable once S7 lands);
+  local dev + real-backend e2e are same-site and pass.
+
+**Accepted with rationale (no change):** the webhook-no-signature-header 500 (pre-existing, noted
+in the PR); the `SecurityProblemResponses` vs `RateLimitFilter` problem-JSON duplication and the
+LOGIN_PATH triple-literal (real drift risks but a shared-builder/constant refactor is broader than
+this slice warrants — the security control is pinned by tests either way; left as quality debt).
+
+## Sonar-gate record
+
+Filled at the Sonar gate (new issues, coverage on new code, resolutions).
