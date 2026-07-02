@@ -33,11 +33,10 @@
           </button>
 
           @if (themeOpen()) {
-            <div class="riv-backdrop" data-testid="theme-backdrop" (click)="closeMenus()" aria-hidden="true"></div>
-            <!-- Toggle buttons, not role="radio": the radio pattern demands roving tabindex +
-                 arrow-key selection; aria-pressed carries the same selected-state info with
-                 plain-button keyboard behavior (review finding, WCAG 4.1.2). -->
-            <div class="riv-pop riv-pop-in riv-theme-pop" role="group" aria-label="Color theme">
+            <div class="riv-backdrop" data-testid="theme-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
+            <!-- Theme options are pressed-state toggle buttons: the ARIA radio pattern would
+                 demand roving tabindex and arrow-key selection (review finding, WCAG 4.1.2). -->
+            <div class="riv-pop riv-pop-in riv-theme-pop">
               @for (option of themes.options; track option.id) {
                 <button
                   type="button"
@@ -73,12 +72,12 @@
       </button>
 
       @if (menuOpen()) {
-        <div class="riv-backdrop" data-testid="menu-backdrop" (click)="closeMenus()" aria-hidden="true"></div>
+        <div class="riv-backdrop" data-testid="menu-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
         <nav class="riv-pop riv-pop-in riv-mobile-menu" aria-label="Menu" data-testid="mobile-menu">
           <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
           <div class="riv-mobile-theme">
             <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
-            <div class="riv-mobile-swatches" role="group" aria-labelledby="riv-mobile-theme-label">
+            <div class="riv-mobile-swatches">
               @for (option of themes.options; track option.id) {
                 <button
                   type="button"

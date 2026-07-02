@@ -77,5 +77,6 @@ function initialTheme(): ThemeId {
 }
 
 function applyToDocument(id: ThemeId): void {
-  document.documentElement.setAttribute('data-riv-theme', id);
+  // dataset, not setAttribute (S7761); the camelCase key maps to the data-riv-theme attribute.
+  document.documentElement.dataset['rivTheme'] = id;
 }
