@@ -3,6 +3,7 @@ import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { problemCodeOf } from '../shared/api-error';
 import { DailyBookingItem, StaffMarkError, StaffReleaseError } from './staff.model';
 
 /**
@@ -40,13 +41,13 @@ export class StaffService {
   }
 }
 
-/** Map an HTTP failure to a known {@link StaffMarkError} (`{ "error": CODE }` body, or 401). */
+/** Map an HTTP failure to a known {@link StaffMarkError} (RFC-7807 `code`, issue #97; or 401). */
 export function staffMarkErrorOf(error: unknown): StaffMarkError {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {
       return 'UNAUTHORIZED';
     }
-    const code = (error.error as { error?: string } | null)?.error;
+    const code = problemCodeOf(error);
     switch (code) {
       case 'ALREADY_TAKEN':
       case 'NO_SUCH_SET':
@@ -66,7 +67,7 @@ export function staffReleaseErrorOf(error: unknown): StaffReleaseError {
     if (error.status === 401) {
       return 'UNAUTHORIZED';
     }
-    if ((error.error as { error?: string } | null)?.error === 'NOT_MARKED') {
+    if (problemCodeOf(error) === 'NOT_MARKED') {
       return 'NOT_MARKED';
     }
   }

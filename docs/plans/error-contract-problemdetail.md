@@ -231,8 +231,8 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
 | 1 — venue + availability controllers migrated | ✅ | a9e634c |
 | 2 — payout controller migrated (stable codes, first wire test) | ✅ | 7941d60 |
 | 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | ✅ | (this commit) |
-| 4 — Angular services + specs parse ProblemDetail | ⏳ | |
-| 5 — mocked e2e error-state + §6b/substrate docs sweep | | |
+| 4 — Angular services + specs parse ProblemDetail | ✅ | (this commit) |
+| 5 — mocked e2e error-state + §6b/substrate docs sweep | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -293,6 +293,7 @@ suite in CI only).
 |---|---|---|---|---|---|
 | 2026-07-02 | plan (grill gate) | `{"error"` producers beyond the 4 controllers | `grep -rln '"error"' platform/src/main` | `RateLimitFilter` (servlet filter, outside MVC) | pulled into scope as Phase 3 — the advice can't reach it |
 | 2026-07-02 | Phase 1 | remaining old-shape producers in main source | `grep -rn 'Map.of("error"\|ERROR_KEY' platform/src/main/java` | `AdminPayoutBatchController` + `RateLimitFilter` only (= Phases 2–3 scope) | no unplanned sites; proceed |
+| 2026-07-02 | Phase 4 | remaining old-shape parsing/mocks in FE | `grep -rn "{ error" frontend/src/app` (minus Stripe UX errors) | 0 after migration; `LAYOUT_CONFLICT` fully renamed | complete; Stripe gateway `{ error }` is a UX result, not the API contract — untouched |
 
 ---
 

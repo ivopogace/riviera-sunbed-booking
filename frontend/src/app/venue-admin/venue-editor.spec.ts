@@ -283,7 +283,7 @@ describe('VenueEditor', () => {
     await fixture.whenStable();
     httpMock
       .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)
-      .flush({ error: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -364,7 +364,7 @@ describe('VenueEditor', () => {
     await fixture.whenStable();
     httpMock
       .expectOne((r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`)
-      .flush({ error: 'CELL_TAKEN' }, { status: 409, statusText: 'Conflict' });
+      .flush({ status: 409, code: 'CELL_TAKEN' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -399,7 +399,7 @@ describe('VenueEditor', () => {
         .expectOne(
           (r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets`,
         )
-        .flush({ error: code }, { status, statusText: code });
+        .flush({ status, code }, { status, statusText: code });
       await fixture.whenStable();
       fixture.detectChanges();
 

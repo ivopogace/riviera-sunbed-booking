@@ -149,7 +149,7 @@ describe('BookingDialog', () => {
     await fixture.whenStable();
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/bookings`)
-      .flush({ error: 'SET_TAKEN' }, { status: 409, statusText: 'Conflict' });
+      .flush({ status: 409, code: 'SET_TAKEN' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
 
     expect(emitted).toBe(false);

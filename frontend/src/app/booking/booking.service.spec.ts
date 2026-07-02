@@ -138,8 +138,12 @@ describe('BookingService', () => {
 });
 
 describe('bookingErrorOf', () => {
+  /** A realistic RFC-7807 body (issue #97) — the `code` extension carries the identity. */
   function httpError(status: number, code?: string): HttpErrorResponse {
-    return new HttpErrorResponse({ status, error: code ? { error: code } : null });
+    return new HttpErrorResponse({
+      status,
+      error: code ? { type: 'about:blank', title: 'Error', status, detail: 'why', code } : null,
+    });
   }
 
   it('maps known server codes', () => {

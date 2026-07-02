@@ -56,7 +56,7 @@ describe('StaffService', () => {
 
 describe('staffMarkErrorOf', () => {
   it('maps the server error code', () => {
-    const err = new HttpErrorResponse({ status: 409, error: { error: 'ALREADY_TAKEN' } });
+    const err = new HttpErrorResponse({ status: 409, error: { status: 409, code: 'ALREADY_TAKEN' } });
     expect(staffMarkErrorOf(err)).toBe('ALREADY_TAKEN');
   });
 
@@ -72,7 +72,7 @@ describe('staffMarkErrorOf', () => {
 
 describe('staffReleaseErrorOf', () => {
   it('maps NOT_MARKED and 401', () => {
-    expect(staffReleaseErrorOf(new HttpErrorResponse({ status: 409, error: { error: 'NOT_MARKED' } }))).toBe(
+    expect(staffReleaseErrorOf(new HttpErrorResponse({ status: 409, error: { status: 409, code: 'NOT_MARKED' } }))).toBe(
       'NOT_MARKED',
     );
     expect(staffReleaseErrorOf(new HttpErrorResponse({ status: 401 }))).toBe('UNAUTHORIZED');

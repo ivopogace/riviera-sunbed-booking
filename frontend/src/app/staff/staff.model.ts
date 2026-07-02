@@ -16,7 +16,7 @@ export interface DailyBookingItem {
  */
 export type StaffTileState = 'FREE' | 'STAFF_MARKED' | 'BOOKED_ONLINE';
 
-/** Known mark failures (server `{ "error": CODE }` body), plus the auth/transport cases. */
+/** Known mark failures (the RFC-7807 `code` extension, issue #97), plus the auth/transport cases. */
 export type StaffMarkError =
   | 'ALREADY_TAKEN'
   | 'NO_SUCH_SET'

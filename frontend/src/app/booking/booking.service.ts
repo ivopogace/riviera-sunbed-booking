@@ -3,6 +3,7 @@ import { Service, inject, signal } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { problemCodeOf } from '../shared/api-error';
 import {
   AwaitingPayment,
   BookingConfirmation,
@@ -82,10 +83,10 @@ export class BookingService {
   }
 }
 
-/** Map an HTTP failure to a stable, displayable booking error code. */
+/** Map an HTTP failure (RFC-7807 body, issue #97) to a stable, displayable booking error code. */
 export function bookingErrorOf(error: unknown): BookingErrorCode {
   if (error instanceof HttpErrorResponse) {
-    const code = (error.error as { error?: string } | null)?.error;
+    const code = problemCodeOf(error);
     switch (code) {
       case 'SET_TAKEN':
       case 'SET_NOT_BOOKABLE_ONLINE':
