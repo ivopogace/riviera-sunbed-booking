@@ -212,10 +212,10 @@ only.
 | 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | ed2ae5a |
 | 2 — BE: migrate ITs off Basic; remove httpBasic | ✅ | 176a39a |
 | 3 — BE: CSRF cookie-to-header; exemptions inverted | ✅ | 1513f88 |
-| 4 — BE: login rate limit | ✅ | (this commit) |
-| 5 — FE: session auth state + interceptor + sign-in UX | ⏳ | |
-| 6 — e2e: POM + sign-in spec; real-backend update | | |
-| 7 — riviera-docs-freshness skill + substrate updates | | |
+| 4 — BE: login rate limit | ✅ | 32b1294 |
+| 5 — FE: session auth state + interceptor + sign-in UX | ✅ | bfbbc32, 2948e81 |
+| 6 — e2e: POM + sign-in spec; real-backend update | ⏳ | bfbbc32 (authored; real-backend validation running) |
+| 7 — riviera-docs-freshness skill + substrate updates | ✅ | e3cff42 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -247,7 +247,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `src/app/core/operator-auth.ts` + spec — rewritten (session state).
 - `src/app/core/api-session.interceptor.ts` + spec — new; delete
   `core/operator-auth.interceptor.ts` + spec.
-- `src/app/core/auth.model.ts` — principal/login DTO types (core-owned, cross-feature).
 - `src/app/app.config.ts` — interceptor swap.
 - `src/app/venue-admin/venue-editor.ts` (+ spec) — async sign-in.
 - `e2e/support/pages/operator-sign-in.page.ts` (+ any minimal shared fixture) — POM seed.
@@ -316,10 +315,8 @@ wording).
 | 2026-07-02 | Phase 2 (Basic retirement) | remaining `httpBasic(` in backend | `grep -rn httpBasic platform/src` | 5 at first pass: 3 stale main-source javadocs + SecurityConfig CSRF comment + SessionLoginSupport's intentional history note | 3 javadocs rewritten (Phase-3 commit); CSRF comment rewritten in Phase 3; helper note kept |
 | 2026-07-02 | Phase 3 (CSRF inversion) | stale "CSRF-exempt"/"stateless → CSRF n/a" comments | `grep -n "CSRF-exempt\|token-less" SecurityConfig.java` | 4 path-constant javadocs + the csrf() block comment | all rewritten to the session+token posture |
 
-Planned audits (run at their phases, results recorded here): Phase 2 — remaining
-`httpBasic(`/`basicAuthHeader` usages; Phase 3 — stale "stateless / no session → CSRF
-n/a" comments in `platform/src/main`; Phase 6 — stale `InMemoryUserDetailsManager`
-comments in `frontend/`.
+| 2026-07-02 | Phase 5 (FE swap) | remaining `basicAuthHeader`/`operatorAuthInterceptor`/`operator-auth.interceptor` refs | `grep -rn ... frontend/src frontend/e2e` | 4 files (2 javadoc links, 2 spec imports) beyond the rewrites | all swapped to `apiSessionInterceptor`; 0 remain |
+| 2026-07-02 | Phase 6 (e2e) | stale `InMemoryUserDetailsManager` comments | `grep -rn InMemoryUserDetailsManager frontend/` | 2 (support/operator.ts, venue-editor.e2e.ts) | both rewritten to the session flow; also independently caught by the riviera-docs-freshness smoke run |
 
 ## Acceptance-criteria verification (final)
 
