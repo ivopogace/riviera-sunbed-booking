@@ -26,7 +26,14 @@ import {
  * class as T1's header): the hero and list-state panels sit on the AA-proven header glass
  * instead of the bare gradient; the riviera card glass is 0.78 (design 0.55); the muted
  * card inks are 0.78/0.72 (design 0.7/0.55); the teal accent is #085a6e (design #0a6e85);
- * the field border is a dark tint (design white) for the 1.4.11 component boundary.
+ * the field border is a dark tint (design white) for the 1.4.11 component boundary; the
+ * CTA-button gradient is darkened for white-text AA (#149, see CTA_STOPS below).
+ *
+ * T2b (#149) additions reuse already-pinned tokens: the failure panel sits on the same
+ * `--riv-card-glass` as the cards with `--riv-card-ink` (title) / `--riv-card-ink-soft`
+ * (body copy), and the cutoff explainer line uses `--riv-card-ink-soft` on that card glass —
+ * both covered by the "card ink" / "card ink-soft" cases above. The genuinely new surface is
+ * the "Try again" button's white text on `--riv-cta-grad` (pinned below).
  *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the
  * availability bar track+fill (`N of M free` text carries the fact), the sun disc, the
@@ -35,6 +42,12 @@ import {
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink
+
+// --riv-cta-grad stops (theme-invariant; consumed by the Discover failure-panel "Try again"
+// button, #149). Deviation from the design file, on purpose (plan R-1): the design's brighter
+// #2bb8d4→#0e8aa8 gives white body-size text only 2.4–4.0:1 (< AA); darkened for AA. Both stops
+// are pinned because the text sits over the whole gradient (worst case is the lighter stop).
+const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
 // styles.scss card-surface tokens (theme-invariant ones live in the :root block)
 const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
@@ -143,6 +156,12 @@ describe('Discover photo-area contrast (theme-independent, issue #135)', () => {
         contrastRatio(ACCENT, rgbToHex(chip)),
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the failure-panel "Try again" button (white) meets AA over both CTA-gradient stops', () => {
+    for (const stop of CTA_STOPS) {
+      expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 

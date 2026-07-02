@@ -215,12 +215,76 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(0);
   });
 
-  it('shows an accessible error state when the request fails', async () => {
+  it('shows the designed failure panel (alert semantics + retry) when the request fails', async () => {
     listRequest().error(new ProgressEvent('error'));
     await fixture.whenStable();
+
     const error = el().querySelector('[data-testid="error"]');
     expect(error).not.toBeNull();
+    // Alert semantics T2 shipped are preserved so AT announces the failure (#149 AC-1).
     expect(error?.getAttribute('role')).toBe('alert');
+    // The designed panel content: heading, reassurance copy, and a Retry action.
+    expect(error?.querySelector('.failure-title')?.textContent).toContain('load the beaches');
+    expect(error?.textContent).toContain('your bookings are safe');
+    const retry = error?.querySelector('[data-testid="retry"]');
+    expect(retry).not.toBeNull();
+    expect(retry?.textContent?.trim()).toBe('Try again');
+  });
+
+  it('recovers from an initial-load failure when Retry is pressed — refetch + re-seed filters', async () => {
+    listRequest().error(new ProgressEvent('error'));
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="error"]')).not.toBeNull();
+
+    el().querySelector<HTMLButtonElement>('[data-testid="retry"]')!.click();
+    await fixture.whenStable();
+
+    // Retry re-runs the failed request (the initial, unfiltered load) and recovers.
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    expect(el().querySelector('[data-testid="error"]')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(2);
+    // An initial-load retry re-seeds the filter selects (which the failed first load never did).
+    const beachOptions = [...el().querySelectorAll('[data-testid="filter-beach"] option')].map(
+      (o) => o.textContent?.trim(),
+    );
+    expect(beachOptions).toEqual(['All beaches', 'Dhërmi', 'Ksamil']);
+  });
+
+  it('retries the filtered request (not the initial load) when a filter-change fetch failed', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const select = el().querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
+    select.value = 'Dhërmi';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    listRequest().error(new ProgressEvent('error')); // the filtered reload fails
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="error"]')).not.toBeNull();
+
+    el().querySelector<HTMLButtonElement>('[data-testid="retry"]')!.click();
+    await fixture.whenStable();
+
+    // The retry carries the active beach filter — it re-ran reload(), not the unfiltered loadInitial().
+    const req = listRequest();
+    expect(req.request.params.get('beach')).toBe('Dhërmi');
+    req.flush([venues()[1]]);
+    await fixture.whenStable();
+    expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
+  });
+
+  it('renders the cutoff explainer line under the filter bar (display-only, invariant #4)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const note = el().querySelector('[data-testid="cutoff-note"]');
+    expect(note).not.toBeNull();
+    // \s matches the non-breaking space in "6 PM", so the copy reads plainly here.
+    const text = note?.textContent ?? '';
+    expect(text).toContain('Bookings close the evening before');
+    expect(text).toMatch(/book by 6\s+PM the day before/);
   });
 
   it('shows the loading state before the response arrives', async () => {

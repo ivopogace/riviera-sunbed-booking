@@ -92,6 +92,34 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expectNoSeriousAxeViolations(page, 'venue beach map');
 });
 
+test('discovery load-failure panel recovers when Retry is pressed (#149)', async ({ page }) => {
+  // First list fetch fails, the next succeeds — proving Retry refetches and recovers.
+  let listCalls = 0;
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => {
+    listCalls += 1;
+    return listCalls === 1
+      ? route.fulfill({ status: 500, json: { error: 'boom' } })
+      : route.fulfill({ json: VENUES });
+  });
+
+  await page.goto('/');
+
+  // The designed failure panel appears with alert semantics (announced to AT).
+  const panel = page.getByTestId('error');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveAttribute('role', 'alert');
+  await expect(panel.getByRole('heading', { name: /couldn.t load the beaches/ })).toBeVisible();
+  // The cutoff explainer sits under the filter bar in every state, including this one.
+  await expect(page.getByTestId('cutoff-note')).toContainText(/book by 6\s+PM the day before/);
+  await expectNoSeriousAxeViolations(page, 'discovery load-failure panel');
+
+  // Retry refetches → the panel is replaced by the venue list.
+  await page.getByTestId('retry').click();
+  await expect(page.getByTestId('error')).toHaveCount(0);
+  await expect(page.getByTestId('venue-card')).toHaveCount(2);
+  await expectNoSeriousAxeViolations(page, 'discovery list after retry');
+});
+
 test('discovery shows an accessible empty state when no venues match', async ({ page }) => {
   // Override the list route to return nothing for this run.
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [] }));

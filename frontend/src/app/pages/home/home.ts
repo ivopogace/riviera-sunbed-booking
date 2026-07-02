@@ -46,12 +46,22 @@ export class Home {
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
 
+  /**
+   * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
+   * initial-load failure retries `loadInitial` (which re-seeds the filter selects), whereas a
+   * filter-change failure retries `reload` (which preserves the active beach/region filter).
+   * Assigned by whichever load runs first; the constructor's `loadInitial()` sets it before any
+   * Retry click is possible (definite assignment — no dead initial closure to leave uncovered).
+   */
+  private lastLoad!: () => void;
+
   constructor() {
     this.loadInitial();
   }
 
   /** First load: no filters. Seeds the filter selects from the full catalogue and shows all venues. */
   private loadInitial(): void {
+    this.lastLoad = () => this.loadInitial();
     const token = this.beginRequest();
     this.venueService.listVenues({}, this.selectedDate()).subscribe({
       next: (list) => {
@@ -75,6 +85,7 @@ export class Home {
 
   /** Re-fetch the list for the current filter + date. */
   private reload(): void {
+    this.lastLoad = () => this.reload();
     const token = this.beginRequest();
     this.venueService
       .listVenues({ beach: this.beach() || undefined, region: this.region() || undefined }, this.selectedDate())
@@ -118,6 +129,11 @@ export class Home {
     }
     this.selectedDate.set(value);
     this.reload();
+  }
+
+  /** Retry the load that failed (the failure panel's "Try again" button, #149 AC-1). */
+  protected onRetryDiscover(): void {
+    this.lastLoad();
   }
 
   /** Currency formatting for the template + accessible labels (shared helper, invariant #5). */
