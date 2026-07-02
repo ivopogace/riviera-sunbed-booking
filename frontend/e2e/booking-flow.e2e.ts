@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
  * Real-render a11y audit of the Instant-Book flow (issue #6, AC-12/AC-13): beach map →
@@ -66,14 +67,6 @@ const AWAITING_DETAIL = {
   refundedAmount: null,
 };
 
-async function expectNoSeriousAxeViolations(page: Page, context: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(blocking, `axe violations at: ${context}\n${JSON.stringify(blocking, null, 2)}`).toEqual([]);
-}
-
 test.beforeEach(async ({ page }) => {
   // Match with or without the `?date=` query the map now appends (issue #44).
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
@@ -100,6 +93,17 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('input').first()).toBeFocused();
   await expectNoSeriousAxeViolations(page, 'booking dialog');
+
+  // Stacking pin (#134 review): the modal scrim must paint ABOVE the sticky glass header —
+  // a stacking context on <main> once trapped it below, leaving the header clickable.
+  const headerHit = await page.evaluate(() => {
+    const header = document.querySelector('.riv-header') as HTMLElement;
+    const rect = header.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit ? { insideHeader: header.contains(hit), tag: hit.tagName } : null;
+  });
+  expect(headerHit, 'header center should be covered by the modal layer').not.toBeNull();
+  expect(headerHit!.insideHeader).toBe(false);
 
   // Complete the guest form and submit.
   await dialog.getByLabel('Full name').fill('Holiday Guest');

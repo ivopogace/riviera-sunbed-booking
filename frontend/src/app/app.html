@@ -1,17 +1,107 @@
-<div class="flex min-h-screen flex-col bg-slate-50 text-slate-900">
-  <header class="border-b border-slate-200 bg-white">
-    <div class="mx-auto flex max-w-5xl items-center px-6 py-4">
-      <span class="text-lg font-semibold tracking-tight">{{ title() }}</span>
+<div class="riv-app">
+  <div class="riv-bg" aria-hidden="true">
+    <span class="riv-blob riv-blob-1"></span>
+    <span class="riv-blob riv-blob-2"></span>
+  </div>
+
+  <header class="riv-header">
+    <div class="riv-header-inner">
+      <a class="riv-brand" routerLink="/" data-testid="brand-home">
+        <span class="riv-sun" aria-hidden="true"></span>
+        <span class="riv-brand-text">
+          <span class="riv-brand-name">Riviera</span>
+          <span class="riv-brand-sub">Albanian Coast</span>
+        </span>
+      </a>
+
+      <nav class="riv-nav-desktop" aria-label="Primary">
+        <a routerLink="/" class="riv-nav-link">Beaches</a>
+
+        <div class="riv-theme-picker">
+          <button
+            #themeButton
+            type="button"
+            class="riv-chip-btn"
+            data-testid="theme-toggle"
+            [attr.aria-label]="'Color theme: ' + activeTheme().name"
+            [attr.aria-expanded]="themeOpen()"
+            (click)="toggleThemePicker()"
+          >
+            <span class="riv-swatch" [style.background]="activeTheme().swatch" aria-hidden="true"></span>
+            <span>{{ activeTheme().name }}</span>
+            <span class="riv-caret" aria-hidden="true">&#9662;</span>
+          </button>
+
+          @if (themeOpen()) {
+            <div class="riv-backdrop" data-testid="theme-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
+            <!-- Theme options are pressed-state toggle buttons: the ARIA radio pattern would
+                 demand roving tabindex and arrow-key selection (review finding, WCAG 4.1.2). -->
+            <div class="riv-pop riv-pop-in riv-theme-pop">
+              @for (option of themes.options; track option.id) {
+                <button
+                  type="button"
+                  class="riv-theme-option"
+                  [attr.aria-pressed]="option.id === themes.theme()"
+                  [attr.data-testid]="'theme-option-' + option.id"
+                  (click)="selectTheme(option.id)"
+                >
+                  <span class="riv-swatch riv-swatch-lg" [style.background]="option.swatch" aria-hidden="true"></span>
+                  <span class="riv-theme-name">{{ option.name }}</span>
+                  @if (option.id === themes.theme()) {
+                    <span class="riv-check" aria-hidden="true">&#10003;</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </nav>
+
+      <button
+        #menuButton
+        type="button"
+        class="riv-menu-btn"
+        data-testid="menu-toggle"
+        aria-label="Menu"
+        [attr.aria-expanded]="menuOpen()"
+        (click)="toggleMenu()"
+      >
+        <span class="riv-menu-bar" aria-hidden="true"></span>
+        <span class="riv-menu-bar" aria-hidden="true"></span>
+        <span class="riv-menu-bar" aria-hidden="true"></span>
+      </button>
+
+      @if (menuOpen()) {
+        <div class="riv-backdrop" data-testid="menu-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
+        <nav class="riv-pop riv-pop-in riv-mobile-menu" aria-label="Menu" data-testid="mobile-menu">
+          <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
+          <div class="riv-mobile-theme">
+            <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
+            <div class="riv-mobile-swatches">
+              @for (option of themes.options; track option.id) {
+                <button
+                  type="button"
+                  class="riv-mobile-swatch"
+                  [class.riv-mobile-swatch-active]="option.id === themes.theme()"
+                  [style.background]="option.swatch"
+                  [attr.aria-pressed]="option.id === themes.theme()"
+                  [attr.aria-label]="option.name"
+                  [title]="option.name"
+                  (click)="selectTheme(option.id)"
+                ></button>
+              }
+            </div>
+          </div>
+        </nav>
+      }
     </div>
   </header>
 
-  <main class="flex-1">
+  <main class="riv-main" [class.riv-legacy-surface]="legacySurface()">
     <router-outlet />
   </main>
 
-  <footer class="border-t border-slate-200 bg-white">
-    <div class="mx-auto max-w-5xl px-6 py-4 text-sm text-slate-500">
-      © Riviera Sunbed Booking
-    </div>
+  <footer class="riv-footer">
+    <div class="riv-footer-inner">© Riviera Sunbed Booking</div>
   </footer>
 </div>

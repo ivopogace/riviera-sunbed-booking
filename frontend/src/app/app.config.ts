@@ -1,8 +1,14 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners
+} from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
 import { apiSessionInterceptor } from './core/api-session.interceptor';
+import { ThemeService } from './core/theme';
 
 import {
   FakeStripePaymentGateway,
@@ -31,6 +37,11 @@ export const appConfig: ApplicationConfig = {
     // calls (issue #109 — replaces the retired Basic-credential interceptor).
     provideHttpClient(withInterceptors([apiSessionInterceptor])),
     provideRouter(routes),
+    // The stored/OS theme must apply at bootstrap regardless of which components render —
+    // don't rely on the shell happening to inject ThemeService (issue #134 review).
+    provideAppInitializer(() => {
+      inject(ThemeService);
+    }),
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory }
   ]
 };

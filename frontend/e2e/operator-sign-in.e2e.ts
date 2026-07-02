@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
 
 import { mockAuthApi } from './support/auth-mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
@@ -13,14 +14,6 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * real backend lives in `e2e/real-backend/venue-editor.e2e.ts`. First user of the Page Object
  * convention (issue #120 item 1): selectors live in `support/pages/operator-sign-in.page.ts`.
  */
-
-async function expectNoSeriousAxeViolations(page: Page, context: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(blocking, `axe violations at: ${context}\n${JSON.stringify(blocking, null, 2)}`).toEqual([]);
-}
 
 test('operator signs in, survives a reload, and signs out', async ({ page }) => {
   await mockAuthApi(page, { validPassword: 'good-pw' });

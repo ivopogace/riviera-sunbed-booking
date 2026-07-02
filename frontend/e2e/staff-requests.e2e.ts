@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
 
 import { mockAuthApi } from './support/auth-mocks';
 
@@ -39,14 +40,6 @@ const REQUESTS = [
     requestedAt: '2026-07-01T10:00:00Z', requestExpiresAt: '2026-07-02T18:00:00Z',
   },
 ];
-
-async function expectNoSeriousAxeViolations(page: Page, context: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(blocking, `axe violations at: ${context}\n${JSON.stringify(blocking, null, 2)}`).toEqual([]);
-}
 
 test('operator works the pending-requests queue: list, accept, decline', async ({ page }) => {
   // Stateful queue: accept/decline remove the entry, exactly like the backend sweep would.

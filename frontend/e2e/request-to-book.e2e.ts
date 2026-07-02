@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
  * Real-render a11y + behaviour audit of the Request-to-Book flow (issue #98): REQUEST-mode beach
@@ -57,14 +58,6 @@ const DETAIL_BASE = {
   requestExpiresAt: '2026-11-30T16:00:00Z',
   payment: null,
 };
-
-async function expectNoSeriousAxeViolations(page: Page, context: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(blocking, `axe violations at: ${context}\n${JSON.stringify(blocking, null, 2)}`).toEqual([]);
-}
 
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
