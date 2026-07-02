@@ -1,15 +1,25 @@
 # Liquid Glass redesign — design intake note (2026-07-02)
 
 Source-of-intent record for the visual redesign imported from Claude Design
-(project `73dfb0cd-c6f2-42e1-831b-287db5ddc63c`, exported 2026-07-02). The two
-design artifacts live next to this note and are the authoritative visual spec:
+(project `73dfb0cd-c6f2-42e1-831b-287db5ddc63c`; first export 2026-07-02, the
+**gap-fill v3 export later the same day supersedes it** — see "v3 gap-fill"
+below). The design artifacts live next to this note and are the authoritative
+visual spec:
 
-- `riviera-sunbeds-liquid-glass-v2.dc.html` — the **tourist** app (Discover,
-  Beach map, booking dialog + confirmation, My bookings + cancel, auth modal,
-  theme switcher, responsive header/nav).
-- `riviera-operator-console.dc.html` — the **operator console** (sign-in /
-  venue registration, stats strip, Layout editor with paint tool, Row pricing,
-  Daily view with arrivals, Venue details incl. photos + amenity chips).
+- `riviera-sunbeds-liquid-glass-v3.dc.html` — the **tourist** app (Discover,
+  Beach map, booking dialog + confirmation, My bookings + cancel, theme
+  switcher, responsive header/nav — plus, from v3: the full Request-to-Book
+  guest lifecycle, the real Payment page, Find-a-booking, cutoff explainers,
+  venue description, and load-failure states).
+- `riviera-operator-console-v2.dc.html` — the **operator console** (stats
+  strip, Layout editor with paint tool, Row pricing, Daily view with arrivals,
+  Venue details incl. photos + amenity chips — plus, from v2: the **Requests**
+  queue tab and the **Payouts** ledger/statement tab with the weather-refund
+  action).
+- `riviera-sign-in.dc.html` — the **unified sign-in/register page** (one page
+  for both sides; registration picks Tourist vs Venue operator; operator
+  registration ends in a pending-approval notice). Visual spec for epic #108
+  (#111/#112/#115), implementing the maintainer's unified-auth decision.
 
 Both are self-contained design-canvas files; open them in a browser
 (`support.js` / `image-slot.js` alongside are the canvas runtime). The `.dc.html`
@@ -39,6 +49,29 @@ behavior stays with the backend contracts and the invariants in `CLAUDE.md`.
    remembered on-device (localStorage) at checkout and listed under
    "My bookings", each entry opening the existing per-code booking view.
    #114 later merges this with account-backed bookings.
+
+## v3 gap-fill (same day, second export)
+
+After T1 shipped, a gap analysis (backend capability vs designed UI) fed a
+design brief back to Claude Design; the v3 export answers it. What v3 adds —
+and where each lands:
+
+| v3 addition | Lands in |
+|---|---|
+| Request-to-Book guest lifecycle: request-mode dialog ("Send request"), Request-sent screen, status banners (pending + withdraw, accepted + Pay-now + deadline, declined, expired), full status-chip union incl. COMPLETED/NO_SHOW | #137 (dialog/request), #138 (detail banners/chips) |
+| Real Payment page (Payment-Element container, summary, "Confirming your booking…" webhook-wait state, payment-failed + retry) | #137 |
+| Find-a-booking (code entry; nav item replaces the dead "How it works") | new tourist-epic slice (T8) |
+| Cutoff explainer ("Book by 6 PM the day before"), date picker excludes today | #135/#136 (copy), behavior already server-enforced (invariant #4) |
+| Venue description on the map header | #136 |
+| Discover/map load-failure states with retry | #135/#136 |
+| Operator **Requests** tab (queue, accept/decline, expiry-race error copy, badge count) | operator epic #141 (mandatory slice) |
+| Operator **Payouts** tab (per-booking gross/commission/net, refund reversals, "owed to you", per-period statement for the manual bank batch, weather-refund action with confirm) | operator epic #141 (mandatory slice) |
+| Unified sign-in/register page (account-type choice at registration; operator branch ends in pending-approval) | epic #108 — #111 (page + tourist branch), #115 (operator branch), #112 (SSO buttons) |
+
+The v3 diffs to previously-designed screens were audited at intake: all
+additive and on-brief; no unsolicited restyle. The demo-logic caveat still
+applies (script blocks specify look/interaction, never behavior — statuses,
+refunds, cutoffs, payment truth all stay server-side per the invariants).
 
 ## Reconciliations against current reality
 
