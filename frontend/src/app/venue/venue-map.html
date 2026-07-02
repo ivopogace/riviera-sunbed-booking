@@ -1,100 +1,174 @@
-@if (venue(); as v) {
-  <article class="venue mx-auto max-w-3xl px-5 py-6" aria-labelledby="venue-name">
-    <p class="mode-pill">{{ bookingModeLabel(v.bookingMode) }}</p>
+<div class="venue-page">
+  <button type="button" class="back-pill" (click)="onBack()">
+    <span aria-hidden="true">←</span> All beaches
+  </button>
 
-    <h1 id="venue-name" class="display-title">{{ v.name }}</h1>
-    <p class="location">{{ v.beach }} · {{ v.region }}</p>
+  @if (venue(); as v) {
+    <article class="venue" aria-labelledby="venue-name">
+      <header class="map-head">
+        <p class="mode-pill">{{ bookingModeLabel(v.bookingMode) }}</p>
+        <h1 id="venue-name" class="display-title">{{ v.name }}</h1>
+        <p class="location">{{ v.beach }} · {{ v.region }}</p>
 
-    <p class="meta">
-      <span class="star" aria-hidden="true">★</span>
-      <span class="rating" aria-label="Rated {{ rating(v) }} out of 5">{{ rating(v) }}</span>
-      <span class="dot">·</span> {{ v.reviewsCount }} reviews
-      @if (v.fromPrice; as from) {
-        <span class="dot">·</span> <strong>{{ money(from) }}</strong> / set
-      }
-    </p>
+        <p class="meta">
+          <span class="star" aria-hidden="true">★</span>
+          <span class="rating" aria-label="Rated {{ rating(v) }} out of 5">{{ rating(v) }}</span>
+          <span class="dot" aria-hidden="true">·</span> {{ v.reviewsCount }} reviews
+          @if (v.fromPrice; as from) {
+            <span class="dot" aria-hidden="true">·</span> from <strong>{{ money(from) }}</strong> / set
+          }
+        </p>
 
-    <p class="date-field">
-      <label class="date-label" for="map-date">Date</label>
-      <input
-        id="map-date"
-        type="date"
-        data-testid="map-date"
-        [value]="selectedDate()"
-        (change)="onDateChange($event)"
-      />
-    </p>
+        @if (v.description) {
+          <p class="description">{{ v.description }}</p>
+        }
 
-    <!-- aria-live: changing the date silently swaps the grid, so announce the new count to AT. -->
-    <p class="availability" data-testid="availability" aria-live="polite">
-      <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free on {{ dateLabel() }}
-    </p>
-    <!-- Decorative: the "{free} of {total}" count above already conveys this to AT. -->
-    <div class="progress" aria-hidden="true">
-      <span class="progress-fill" [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"></span>
-    </div>
+        <!-- T7 (#140) slot: amenity + to-water chips render here once the data exists. -->
+        <div class="head-chips" data-testid="venue-chips"></div>
 
-    <section class="map" aria-label="Beach map — {{ v.name }}">
-      <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
+        <p class="date-field">
+          <label class="date-label" for="map-date">Date</label>
+          <input
+            id="map-date"
+            type="date"
+            data-testid="map-date"
+            [value]="selectedDate()"
+            [min]="minDate"
+            (change)="onDateChange($event)"
+          />
+        </p>
+        <!-- Cutoff explainer (invariant #4 — display only; the server enforces the real cutoff).
+             The ngsp entity keeps a real space between the clock glyph and the copy. -->
+        <p class="cutoff-note" data-testid="cutoff-note">
+          <span class="cutoff-icon" aria-hidden="true">⏰</span>&ngsp;
+          <span>Book by 6&nbsp;PM the day before — today isn’t bookable.</span>
+        </p>
+      </header>
 
-      @for (row of rows(); track row.label) {
-        <div class="map-row">
-          <div class="row-head">
-            <span class="row-label">{{ row.label }}</span>
-            <span class="row-price">{{ money(row.sets[0].price) }} / set</span>
+      <section class="map" aria-label="Beach map — {{ v.name }}">
+        <div class="map-summary">
+          <!-- aria-live: changing the date silently swaps the grid, so announce the new count. -->
+          <p class="availability" data-testid="availability" aria-live="polite">
+            <strong>{{ freeCount() }}</strong> of {{ totalCount() }} sets free on {{ dateLabel() }}
+          </p>
+          <!-- Decorative: the count above already conveys this to AT. -->
+          <div class="progress" aria-hidden="true">
+            <span class="progress-fill" [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"></span>
           </div>
-          <ul class="set-grid">
-            @for (set of row.sets; track set.id) {
-              <li
-                class="set-tile"
-                data-testid="set-tile"
-                [class.premium]="set.tier === 'PREMIUM'"
-                [class.taken]="set.availability === 'TAKEN'"
-                [class.bookable]="isBookable(set)"
-                [attr.aria-label]="tileAriaLabel(set)"
-              >
-                @if (isBookable(set)) {
-                  <button
-                    type="button"
-                    class="set-button"
-                    [attr.data-set-id]="set.id"
-                    [attr.aria-label]="bookLabel(set)"
-                    (click)="select(set)"
-                  >
-                    <span aria-hidden="true">{{ money(set.price) }}</span>
-                  </button>
-                } @else {
-                  <span aria-hidden="true">{{ money(set.price) }}</span>
-                }
-              </li>
-            }
-          </ul>
         </div>
-      }
 
-      <p class="promenade"><span aria-hidden="true">▼</span> Promenade · Entrance</p>
-    </section>
+        <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
 
-    <ul class="legend" aria-label="Legend">
-      <li><span class="swatch available" aria-hidden="true"></span> Available</li>
-      <li><span class="swatch premium" aria-hidden="true"></span> Front row</li>
-      <li><span class="swatch taken" aria-hidden="true"></span> Taken</li>
-    </ul>
-  </article>
+        <!-- Venue photos are a follow-up (#142); a gradient placeholder holds the space. -->
+        <div class="photo-band" aria-hidden="true">
+          <span class="photo-sun"></span>
+          <span class="photo-scrim"></span>
+          <span class="photo-caption">Venue photos coming soon</span>
+        </div>
 
-  @if (selectedSet(); as set) {
-    <app-booking-dialog
-      [set]="set"
-      [date]="selectedDate()"
-      [mode]="v.bookingMode"
-      (dismissed)="onDialogClose()"
-      (booked)="onBooked()"
-      (awaiting)="onAwaiting()"
-      (requested)="onRequested()"
-    />
+        <div class="map-vport" data-riv-scroller>
+          <div class="map-grid" [style.--riv-map-cols]="mapCols()">
+            <!-- Left: derived row codes (aria-hidden; each tile's name already carries its seat). -->
+            <div class="row-codes" aria-hidden="true">
+              @for (row of rows(); track row.code) {
+                <span class="side-cell"><span class="row-code" data-testid="row-code">{{ row.code }}</span></span>
+              }
+            </div>
+
+            <!-- Center: the horizontally pannable tile grid (mouse drag; touch scrolls natively). -->
+            <div
+              #setRowsWrap
+              class="tiles-pan"
+              data-testid="map-pan"
+              data-riv-scroller
+              (mousedown)="onMapMouseDown($event)"
+              (mousemove)="onMapMouseMove($event)"
+              (mouseup)="onMapMouseUp()"
+              (mouseleave)="onMapMouseUp()"
+            >
+              <div class="tiles-cols">
+                @for (row of rows(); track row.code) {
+                  <ul class="set-row">
+                    @for (tile of row.tiles; track tile.set.id) {
+                      <li
+                        class="set-tile"
+                        data-testid="set-tile"
+                        [class.premium]="tile.set.tier === 'PREMIUM'"
+                        [class.taken]="tile.set.availability === 'TAKEN'"
+                        [class.bookable]="tile.bookable"
+                        [attr.aria-label]="tile.bookable ? null : tile.name"
+                      >
+                        @if (tile.bookable) {
+                          <button
+                            type="button"
+                            class="set-button"
+                            [attr.data-set-id]="tile.set.id"
+                            [attr.aria-label]="tile.bookName"
+                            (click)="select(tile.set, $event)"
+                          >
+                            <span aria-hidden="true">{{ tile.set.positionNo }}</span>
+                          </button>
+                        } @else {
+                          <span aria-hidden="true">{{ tile.set.positionNo }}</span>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+            </div>
+
+            <!-- Right: per-row price (aria-hidden; carried in each tile's name too). -->
+            <div class="row-prices" aria-hidden="true">
+              @for (row of rows(); track row.code) {
+                <span class="side-cell"><span class="row-price" data-testid="row-price">{{ money(row.price) }}</span></span>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (scrollHint()) {
+          <p class="scroll-hint" data-testid="scroll-hint">
+            <span aria-hidden="true">✦</span>&ngsp;
+            <span>Drag or swipe to pan the map — this beach is bigger than your screen.</span>
+          </p>
+        }
+        <p class="tap-hint">Tap any free set to book it · prices are per set, full day.</p>
+
+        <p class="promenade"><span aria-hidden="true">▼</span> Promenade · Entrance</p>
+      </section>
+
+      <ul class="legend" aria-label="Legend">
+        <li><span class="swatch available" aria-hidden="true"></span> Available</li>
+        <li><span class="swatch premium" aria-hidden="true"></span> Front row</li>
+        <li><span class="swatch taken" aria-hidden="true"></span> Taken</li>
+      </ul>
+    </article>
+
+    @if (selectedSet(); as set) {
+      <app-booking-dialog
+        [set]="set"
+        [date]="selectedDate()"
+        [mode]="v.bookingMode"
+        (dismissed)="onDialogClose()"
+        (booked)="onBooked()"
+        (awaiting)="onAwaiting()"
+        (requested)="onRequested()"
+      />
+    }
+  } @else if (failed()) {
+    <div class="failure" role="alert" data-testid="map-error">
+      <span class="failure-icon" aria-hidden="true">⚠</span>
+      <h2 class="failure-title">We couldn’t load this beach map</h2>
+      <p class="failure-text">
+        The live availability didn’t come through. Give it another go — no set is booked until you
+        pay.
+      </p>
+      <button type="button" class="failure-retry" data-testid="map-retry" (click)="retry()">
+        Try again
+      </button>
+    </div>
+  } @else {
+    <p class="state" aria-live="polite">Loading the beach map…</p>
   }
-} @else if (failed()) {
-  <p class="state" role="alert">Sorry — we couldn’t load this venue. Please try again.</p>
-} @else {
-  <p class="state" aria-live="polite">Loading the beach map…</p>
-}
+</div>

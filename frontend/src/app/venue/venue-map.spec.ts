@@ -11,7 +11,7 @@ import { vi } from 'vitest';
 import { environment } from '../../environments/environment';
 import { defaultBookingDate } from './booking-date';
 import { SetView, VenueMapView } from './venue.model';
-import { VenueMap } from './venue-map';
+import { rowCode, VenueMap } from './venue-map';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium. */
 function miramar(): VenueMapView {
@@ -55,6 +55,15 @@ function miramar(): VenueMapView {
     sets,
   };
 }
+
+describe('rowCode', () => {
+  it('derives A…Z then AA after Z by insertion index (no lexicographic sort)', () => {
+    expect(rowCode(0)).toBe('A');
+    expect(rowCode(25)).toBe('Z');
+    expect(rowCode(26)).toBe('AA'); // AA follows Z; a string sort would put it before B
+    expect(rowCode(27)).toBe('AB');
+  });
+});
 
 describe('VenueMap', () => {
   let fixture: ComponentFixture<VenueMap>;
@@ -114,18 +123,30 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain('18 of 24');
   });
 
-  it('renders prices from integer minor units (4500 → €45)', async () => {
+  it('renders rows with derived A/B/… codes in insertion order and per-row price from minor units', async () => {
     flushVenue();
     await fixture.whenStable();
-    const firstTile = el().querySelector('[data-testid="set-tile"]');
-    expect(firstTile?.textContent).toContain('€45');
+    const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) => n.textContent?.trim());
+    expect(codes).toEqual(['A', 'B', 'C', 'D']); // insertion order, not sorted by the descriptive label
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) => n.textContent?.trim());
+    expect(prices[0]).toBe('€45'); // row A, 4500 minor units
+    expect(prices[3]).toBe('€25'); // row D, 2500 minor units
   });
 
-  it('gives each tile an accessible name carrying its state (not colour-only)', async () => {
+  it('renders the venue description in the header', async () => {
     flushVenue();
     await fixture.whenStable();
-    const firstTile = el().querySelector('[data-testid="set-tile"]');
-    expect(firstTile?.getAttribute('aria-label')).toContain('Set Front row · Sea view 1');
+    expect(el().querySelector('.description')?.textContent).toContain(
+      'Premium loungers on the Ksamil shoreline.',
+    );
+  });
+
+  it('gives each tile an accessible name carrying its seat, descriptive row and state (not colour-only)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const firstTile = el().querySelector('[data-testid="set-tile"]'); // A1 — taken, so the <li> carries the name
+    expect(firstTile?.getAttribute('aria-label')).toContain('Set A1');
+    expect(firstTile?.getAttribute('aria-label')).toContain('Front row · Sea view');
     expect(firstTile?.getAttribute('aria-label')).toContain('taken');
   });
 
@@ -135,6 +156,23 @@ describe('VenueMap', () => {
     // Free ONLINE sets are bookable buttons; taken and walk-in sets are not interactive.
     expect(el().querySelectorAll('.set-button').length).toBeGreaterThan(0);
     expect(el().querySelector('.set-tile.taken')?.querySelector('button')).toBeNull();
+  });
+
+  it('keeps the bookable button accessible name ending in "Select to book"', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const label = el().querySelector('.set-button')?.getAttribute('aria-label');
+    expect(label).toContain('Select to book'); // pinned so booking-flow.e2e.ts keeps matching
+  });
+
+  it('renders the cutoff explainer and sets the date-picker min to tomorrow (today not offered)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const note = el().querySelector('[data-testid="cutoff-note"]');
+    // \s matches the non-breaking space in "6 PM", so the copy reads plainly here.
+    expect(note?.textContent).toMatch(/book by 6\s+PM the day before/i);
+    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
+    expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date())); // tomorrow, Europe/Tirane
   });
 
   it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {
@@ -148,6 +186,75 @@ describe('VenueMap', () => {
     (fixture.componentInstance as unknown as { onDialogClose(): void }).onDialogClose();
     await fixture.whenStable();
     expect(el().querySelector('app-booking-dialog')).toBeNull();
+  });
+
+  interface PanHarness {
+    onMapMouseDown(e: MouseEvent): void;
+    onMapMouseMove(e: MouseEvent): void;
+    onMapMouseUp(): void;
+    select(s: SetView, e?: Event): void;
+    selectedSet(): SetView | undefined;
+    venue(): VenueMapView;
+  }
+  function pan(c: PanHarness): void {
+    const scroller = { scrollLeft: 0 } as HTMLElement;
+    c.onMapMouseDown({ clientX: 0, currentTarget: scroller } as unknown as MouseEvent);
+    c.onMapMouseMove({ clientX: 40, currentTarget: scroller } as unknown as MouseEvent); // 40px > 6px → pan
+    c.onMapMouseUp();
+  }
+  const mouseClick = { detail: 1 } as MouseEvent; // a pointer click carries detail > 0
+  const keyActivation = { detail: 0 } as MouseEvent; // Enter/Space fires a click with detail 0
+
+  it('does not open the dialog when a drag-pan (not a tap) mouse-releases over a tile', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const c = fixture.componentInstance as unknown as PanHarness;
+    const free = c.venue().sets.find((s) => s.availability === 'FREE' && s.pool === 'ONLINE')!;
+
+    pan(c);
+    c.select(free, mouseClick); // the mouse click that follows a pan-release
+    expect(c.selectedSet()).toBeUndefined();
+    c.select(free, mouseClick); // a genuine mouse tap afterwards still opens the dialog
+    expect(c.selectedSet()).toBe(free);
+  });
+
+  it('does NOT swallow a keyboard activation after a pan that ended off a tile (a11y)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const c = fixture.componentInstance as unknown as PanHarness;
+    const free = c.venue().sets.find((s) => s.availability === 'FREE' && s.pool === 'ONLINE')!;
+
+    pan(c); // a pan whose release fired no consuming click (ended off a button) — flag lingers
+    c.select(free, keyActivation); // tab to a tile, press Enter → must open, not be swallowed
+    expect(c.selectedSet()).toBe(free);
+  });
+
+  it('shows the designed failure panel (alert semantics + retry) and recovers on Retry', async () => {
+    venueRequest().error(new ProgressEvent('error'));
+    await fixture.whenStable();
+
+    const panel = el().querySelector('[data-testid="map-error"]');
+    expect(panel).not.toBeNull();
+    expect(panel?.getAttribute('role')).toBe('alert');
+    expect(panel?.querySelector('.failure-title')?.textContent).toContain('load this beach map');
+
+    el().querySelector<HTMLButtonElement>('[data-testid="map-retry"]')!.click();
+    await fixture.whenStable();
+    venueRequest().flush(miramar());
+    await fixture.whenStable();
+
+    expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
+  });
+
+  it('navigates back to discovery when the back pill is pressed', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    el().querySelector<HTMLButtonElement>('.back-pill')!.click();
+
+    expect(navigate).toHaveBeenCalledWith(['/']);
   });
 
   it('navigates to the confirmation when the dialog reports a booking', async () => {

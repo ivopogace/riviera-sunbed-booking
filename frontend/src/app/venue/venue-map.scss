@@ -1,170 +1,395 @@
-/* U1 beach-map design tokens (docs/design/u1-beach-map). Fonts are wired in index.html. */
+// Liquid Glass beach map (issue #136, design: riviera-sunbeds-liquid-glass-v3.dc.html →
+// Beach map). Palette comes exclusively from the styles.scss tokens + the shared glass
+// recipes; every text-bearing pair is pinned as a composited effective colour in
+// venue-map.contrast.spec.ts.
+//
+// Deviations from the design file, on purpose (same reasoning as T1/T2):
+//  - the header/back pill sit on the AA-proven dark header-glass, not the bare gradient
+//    (white ink over the gradient's light stops cannot reach WCAG AA);
+//  - the seat tiles keep the map's original SOLID tile colours (white/amber/dashed) rather
+//    than translucent glass, so their ink pairs are AA regardless of backdrop.
+
+@use '../shared/glass' as glass;
+
+// Pull each shared recipe once into a local placeholder, then @extend it — the compiled
+// output groups the selectors (`.back-pill, .map-head, .state { … }`) instead of inlining
+// the recipe at every call site, keeping the component-style budget in check.
+%panel-surface {
+  @include glass.panel-glass;
+}
+%card-surface {
+  @include glass.card-glass;
+}
+
 :host {
   display: block;
-  font-family: 'Manrope', system-ui, sans-serif;
-  color: #22302f;
+  // One tile size drives the grid columns AND the label/price side-cell heights, so the three
+  // columns stay row-aligned. 44px keeps the touch target at the WCAG minimum.
+  --riv-tile: clamp(44px, 11vw, 56px);
+  color: var(--riv-card-ink);
 }
 
-.display-title {
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-size: 2.25rem;
-  line-height: 1.05;
-  margin: 0.25rem 0 0.15rem;
+.venue-page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 24px 88px;
 }
 
-.location {
-  color: #54514b;
-  margin: 0 0 0.5rem;
+// ---- back pill (dark glass chip; white ink AA over any gradient stop) ----
+.back-pill {
+  @extend %panel-surface;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--riv-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.back-pill:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+}
+
+// ---- header (dark glass panel, white inks) ----
+.map-head {
+  @extend %panel-surface;
+
+  color: var(--riv-ink);
+  padding: 20px 22px;
+  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .mode-pill {
   display: inline-block;
   border-radius: 999px;
-  background: #e6f4f3;
-  color: #0c6675; /* AA contrast on #e6f4f3 (css:S7924) */
+  background: var(--riv-chip-bg);
+  border: 1px solid var(--riv-chip-border);
+  color: var(--riv-ink);
   font-weight: 700;
   font-size: 0.78rem;
-  padding: 0.25rem 0.7rem;
+  padding: 5px 12px;
+  margin: 0 0 13px;
+}
+
+.display-title {
+  font-weight: 700;
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0 0 7px;
+  text-shadow: var(--riv-hero-shadow);
+}
+
+.location {
+  margin: 0 0 5px;
+  color: var(--riv-ink-soft);
+  font-size: 15px;
 }
 
 .meta {
-  color: #54514b;
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
   flex-wrap: wrap;
+  gap: 7px;
+  font-size: 14px;
+  color: var(--riv-ink-soft);
 }
 .meta .star {
-  color: #e2a32b;
+  color: #ffd16b; // decorative; the numeric rating carries the value
 }
-.meta .rating {
+.meta .rating,
+.meta strong {
   font-weight: 700;
-  color: #22302f;
+  color: var(--riv-ink);
 }
 .meta .dot {
-  color: #94908a;
+  color: var(--riv-ink-faint);
+}
+
+.description {
+  margin: 9px 0 0;
+  max-width: 540px;
+  color: var(--riv-ink-soft);
+  font-size: 14.5px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.head-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+
+  &:empty {
+    display: none;
+  }
 }
 
 .date-field {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin: 1.1rem 0 0.2rem;
+  flex-direction: column;
+  gap: 7px;
+  margin: 16px 0 0;
+  max-width: 210px;
 }
+
 .date-label {
+  font-size: 11px;
   font-weight: 700;
-  color: #22302f; /* body text on white — AA */
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riv-ink-faint);
 }
+
+// Near-opaque field: a translucent fill over the dark header glass would drop dark ink below
+// AA — the input sits on dark glass here, unlike Discover's light card glass.
 .date-field input {
   font: inherit;
-  color: #22302f;
-  background: #ffffff;
-  border: 1px solid #b9b4a9;
-  border-radius: 0.5rem;
-  padding: 0.4rem 0.6rem;
+  font-size: 15px;
+  color: var(--riv-card-ink);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--riv-field-border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.date-field input:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
 }
 
+.cutoff-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--riv-ink-faint);
+}
+.cutoff-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+// ---- map card (light card glass, dark inks) ----
+.map {
+  @extend %card-surface;
+
+  margin-top: 20px;
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border-radius: 28px;
+  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 16px 16px 0; // the promenade footer is full-bleed at the bottom
+  overflow: hidden;
+}
+
+.map-summary {
+  padding: 4px 2px 14px;
+}
 .availability {
-  margin: 0.4rem 0 0.4rem;
-  font-size: 1.05rem;
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--riv-card-ink);
 }
 .availability strong {
-  color: #0e7a89;
-  font-size: 1.2rem;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--riv-accent-ink);
 }
-
 .progress {
-  height: 0.5rem;
+  height: 8px;
   border-radius: 999px;
-  background: #ece6d8;
+  background: var(--riv-card-track);
   overflow: hidden;
 }
 .progress-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #15a08f, #0e7a89);
-}
-
-.map {
-  margin-top: 1.25rem;
-  border-radius: 1rem;
-  background: linear-gradient(180deg, #f6ecd6, #efe0c2);
-  padding: 0 0.85rem 0.85rem;
-  border: 1px solid #e8e1d2;
+  background: var(--riv-bar-grad);
 }
 
 .sea-banner,
 .promenade {
   text-align: center;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  font-size: 0.78rem;
+  font-size: 12px;
   color: #ffffff;
-  /* Dark teal so white text clears AA contrast (css:S7924); lighter sea tones failed. */
+  // Dark teal so white text clears AA (from the original map); lighter sea tones failed.
   background: linear-gradient(180deg, #0e7a89, #0c6675);
-  margin: 0 -0.85rem 0.85rem;
-  padding: 0.6rem;
-  border-radius: 1rem 1rem 0 0;
+  margin: 0 -16px 18px;
+  padding: 13px;
 }
 .promenade {
   background: none;
-  color: #6f5f2c; /* AA on the sandy map background; 12px-bold so the 4.5 threshold applies (venue-map.contrast.spec) */
-  margin: 0.85rem -0.85rem 0;
-  border-radius: 0;
+  color: var(--riv-card-ink-soft); // dark ink on the card glass — AA
+  margin: 6px -16px 0;
+  padding: 13px;
+  border-top: 1px dashed var(--riv-card-track);
 }
 
-.map-row {
-  margin-bottom: 0.85rem;
+// ---- photo placeholder band (removed at #142) ----
+.photo-band {
+  position: relative;
+  height: 150px;
+  margin: 0 0 18px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--riv-photo-grad);
 }
-.row-head {
+.photo-sun {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, rgba(255, 236, 180, 0.95), rgba(240, 170, 46, 0.5) 72%);
+  filter: blur(0.5px);
+  opacity: 0.85;
+}
+.photo-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--riv-photo-scrim);
+}
+// White caption on a dark pill: the composite clears AA over the teal band unambiguously.
+.photo-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  background: rgba(9, 32, 40, 0.62);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+// ---- the row-major, pannable seat grid ----
+.map-vport {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 532px;
+  scrollbar-width: none;
+}
+.map-vport::-webkit-scrollbar {
+  display: none;
+}
+
+.map-grid {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: #6f5f2c; /* AA on the sandy map background; 12px-bold so the 4.5 threshold applies (venue-map.contrast.spec) */
-  font-weight: 700;
-  margin-bottom: 0.35rem;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.set-grid {
+.row-codes,
+.row-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.side-cell {
+  height: var(--riv-tile);
+  display: flex;
+  align-items: center;
+}
+.row-codes .side-cell {
+  justify-content: flex-start;
+}
+.row-prices .side-cell {
+  justify-content: flex-end;
+  min-width: 52px;
+}
+.row-code {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--riv-card-ink);
+}
+.row-price {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--riv-card-ink-soft);
+}
+
+// The only horizontally-scrolling element: mouse drags pan it (component threshold), touch
+// scrolls it natively. The label/price columns are its siblings, so they never move
+// horizontally — they track their rows while panning.
+.tiles-pan {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-width: 0;
+  cursor: grab;
+  user-select: none;
+}
+.tiles-pan::-webkit-scrollbar {
+  display: none;
+}
+.tiles-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+}
+.set-row {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.45rem;
+  grid-template-columns: repeat(var(--riv-map-cols, 1), var(--riv-tile));
+  gap: 6px;
 }
 
 .set-tile {
+  aspect-ratio: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.6rem;
-  border-radius: 0.6rem;
+  border-radius: 10px;
   border: 1.5px solid #bfe3df;
   background: #ffffff;
   color: #0f7d8c;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 12.5px;
 }
 .set-tile.premium {
   background: #fbf1d9;
   border-color: #e6c483;
-  color: #875911; /* AA contrast on #fbf1d9 (css:S7924) */
+  color: #875911; // AA on #fbf1d9
 }
 .set-tile.taken {
   background: #ece8e0;
   border: 1.5px dashed #d2ccbf;
-  color: #696459; /* AA contrast on #ece8e0 — readable even though muted (css:S7924) */
+  color: #696459; // AA on #ece8e0
 }
-/* A free, online-pool tile is bookable: render a full-tile button (U3). */
 .set-tile.bookable {
   padding: 0;
 }
 .set-button {
   width: 100%;
   height: 100%;
-  min-height: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -174,36 +399,70 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
 }
-.set-button:hover {
-  background: #e6f6f3;
+@media (hover: hover) {
+  .set-button:hover {
+    background: #e6f6f3;
+    transform: translateY(-2px);
+  }
+}
+// Motion guard next to the motion it guards (T1 rule — encapsulation specificity).
+@media (prefers-reduced-motion: reduce) {
+  .set-button {
+    transition: none;
+  }
+  .set-button:hover {
+    transform: none;
+  }
 }
 .set-button:focus-visible {
   outline: 3px solid #0f7d8c;
   outline-offset: 2px;
 }
 
+.scroll-hint {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--riv-accent-ink);
+  margin: 12px 0 0;
+}
+.tap-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--riv-card-ink-faint);
+  margin: 10px 0 0;
+  letter-spacing: 0.02em;
+}
+
+// ---- legend (its own light glass strip so its ink clears AA over the gradient) ----
 .legend {
+  @extend %card-surface;
+
   list-style: none;
   display: flex;
-  gap: 1rem;
+  gap: 18px;
   flex-wrap: wrap;
-  padding: 0;
-  margin: 1rem 0 0;
-  font-size: 0.8rem;
-  color: #54514b;
+  padding: 12px 16px;
+  margin: 16px 0 0;
+  border-radius: 16px;
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  font-size: 13px;
+  color: var(--riv-card-ink-soft);
 }
 .legend li {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 8px;
 }
 .swatch {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 0.25rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
   border: 1.5px solid #bfe3df;
-  background: #fff;
+  background: #ffffff;
 }
 .swatch.premium {
   background: #fbf1d9;
@@ -214,8 +473,32 @@
   border: 1.5px dashed #d2ccbf;
 }
 
+// ---- load-failure panel + loading state (shared glass recipes) ----
+.failure {
+  @include glass.failure-panel;
+}
+.failure-icon {
+  @include glass.failure-icon;
+}
+.failure-title {
+  @include glass.failure-title;
+}
+.failure-text {
+  @include glass.failure-text;
+}
+.failure-retry {
+  @include glass.failure-retry;
+}
+.failure-retry:focus-visible {
+  @include glass.retry-focus-ring;
+}
+
 .state {
+  @extend %panel-surface;
+
+  margin-top: 24px;
+  padding: 48px 20px;
   text-align: center;
-  color: #54514b;
-  padding: 3rem 1rem;
+  font-size: 15px;
+  color: var(--riv-ink-soft);
 }

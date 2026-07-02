@@ -23,10 +23,10 @@ export const routes: Routes = [
     data: { legacySurface: true },
   },
   {
+    // Restyled to Liquid Glass by T3 (#136) — no compat surface.
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
     title: 'Beach map — Riviera',
-    data: { legacySurface: true },
   },
   {
     path: 'booking/confirmation',

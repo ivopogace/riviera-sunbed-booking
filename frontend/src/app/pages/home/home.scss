@@ -7,25 +7,19 @@
  * bare gradient — white ink over the riviera gradient's light top stops cannot reach
  * WCAG AA, glass or shadow notwithstanding. */
 
+@use '../../shared/glass' as glass;
+
+// Pull each shared recipe once into a local placeholder, then @extend it — grouped output
+// (one selector list per surface) instead of the recipe inlined at every call site.
+%panel-surface {
+  @include glass.panel-glass;
+}
+%card-surface {
+  @include glass.card-glass;
+}
+
 :host {
   display: block;
-  color: var(--riv-card-ink);
-}
-
-/* The two glass recipes of this page, declared once (review finding: recipe drift
-   between twin surfaces). Panels reuse the shell's AA-proven header-glass tokens
-   (see the header note); cards/bars use the per-theme card glass. */
-%panel-glass {
-  background: var(--riv-header-glass);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
-  border: 1px solid var(--riv-header-border);
-  border-radius: 26px;
-}
-
-%card-glass {
-  background: var(--riv-card-glass);
-  border: 1px solid var(--riv-card-border);
   color: var(--riv-card-ink);
 }
 
@@ -38,7 +32,7 @@
 /* ---- hero (on the shell's proven glass tokens) ---- */
 
 .hero {
-  @extend %panel-glass;
+  @extend %panel-surface;
 
   max-width: 680px;
   padding: 24px 26px 26px;
@@ -90,7 +84,7 @@
 /* ---- glass filter bar (count block inside) ---- */
 
 .filter-bar {
-  @extend %card-glass;
+  @extend %card-surface;
 
   display: flex;
   flex-wrap: wrap;
@@ -178,7 +172,7 @@
 }
 
 .card {
-  @extend %card-glass;
+  @extend %card-surface;
 
   display: flex;
   flex-direction: column;
@@ -378,7 +372,7 @@
    AA, so it reuses the AA-proven card glass + card-ink-soft (plan R-2; same class as the
    hero-on-glass deviation). */
 .cutoff-note {
-  @extend %card-glass;
+  @extend %card-surface;
 
   display: inline-flex;
   align-items: center;
@@ -401,7 +395,7 @@
 /* ---- loading / empty states (on the proven glass, see header note) ---- */
 
 .state {
-  @extend %panel-glass;
+  @extend %panel-surface;
 
   margin-top: 24px;
   padding: 48px 20px;
@@ -410,71 +404,26 @@
   color: var(--riv-ink-soft);
 }
 
-/* ---- load-failure panel (issue #149) ----
-   Light card glass with dark card inks per the v3 design — distinct from the dark loading/empty
-   `.state` panels, but they are mutually exclusive so never shown together. */
+/* ---- load-failure panel (issue #149) — recipes shared via shared/_glass.scss (#136). ---- */
 .failure {
-  @extend %card-glass;
-
-  margin-top: 28px;
-  padding: 52px 26px;
-  text-align: center;
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
-  backdrop-filter: blur(24px) saturate(170%);
-  border-radius: 26px;
-  box-shadow: 0 12px 40px rgba(7, 42, 58, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  @include glass.failure-panel;
 }
 
-/* Decorative danger badge (aria-hidden; the heading carries the meaning, so the red tint is
-   1.4.11-exempt like the ★ glyph). Solid light-peach fill (the composite of the design's
-   rgba(200,90,60,0.14/0.3) tints over the light failure panel) rather than a translucent one:
-   #a3372a on the solid clears contrast unambiguously — a translucent fill makes static CSS
-   analysis compute the ink against the opaque base and false-positive. One-off literals. */
 .failure-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: #f7e8e4;
-  border: 1px solid #eecdc4;
-  color: #a3372a;
-  font-size: 26px;
+  @include glass.failure-icon;
 }
 
 .failure-title {
-  margin: 0 0 7px;
-  font-weight: 700;
-  font-size: 21px;
-  letter-spacing: -0.01em;
-  color: var(--riv-card-ink);
+  @include glass.failure-title;
 }
 
 .failure-text {
-  margin: 0 auto 20px;
-  max-width: 380px;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--riv-card-ink-soft);
+  @include glass.failure-text;
 }
 
 .failure-retry {
-  font: inherit;
-  font-weight: 700;
-  font-size: 14.5px;
-  color: #ffffff;
-  background: var(--riv-cta-grad);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 16px;
-  padding: 12px 26px;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  @include glass.failure-retry;
 }
-
 .failure-retry:focus-visible {
-  outline: 3px solid #ffffff;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
+  @include glass.retry-focus-ring;
 }
