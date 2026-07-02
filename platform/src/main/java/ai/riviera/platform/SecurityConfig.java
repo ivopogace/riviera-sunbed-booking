@@ -6,13 +6,21 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.session.web.http.CookieSerializer;
+import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -54,6 +62,10 @@ class SecurityConfig {
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). CSRF-exempt token-less write. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
+	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
+	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
+	private static final String LOGOUT_PATH = "/api/auth/logout";
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
@@ -83,6 +95,10 @@ class SecurityConfig {
 						WEATHER_REFUND_PATH, PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						// Session login (issue #109): anonymous by definition — authentication happens
+						// INSIDE the endpoint (AuthController → AuthenticationManager). /api/auth/me
+						// stays behind anyRequest().authenticated(); logout is the LogoutFilter below.
+						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).
@@ -116,8 +132,60 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.anyRequest().authenticated())
+				// Session logout (issue #109): the framework LogoutFilter invalidates the server
+				// session and clears the context; 204 (no redirect — this is an SPA's API).
+				.logout(logout -> logout
+						.logoutUrl(LOGOUT_PATH)
+						.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
+				// Unauthenticated access to a protected endpoint → RFC-7807 401 UNAUTHENTICATED. This
+				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
+				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
+				.exceptionHandling(handling -> handling.authenticationEntryPoint(
+						(request, response, exception) -> SecurityProblemResponses.writeUnauthenticated(response)))
 				.httpBasic(Customizer.withDefaults());
 		return http.build();
+	}
+
+	/**
+	 * The framework authentication manager (issue #109): built by Spring Security's global
+	 * {@link AuthenticationConfiguration} from {@link #operatorDetailsService} +
+	 * {@link #passwordEncoder()} — the exact same {@code DaoAuthenticationProvider} path Basic
+	 * used, now driven by {@code AuthController}'s session login. No custom filter (D-1).
+	 */
+	@Bean
+	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+		return configuration.getAuthenticationManager();
+	}
+
+	/**
+	 * Where {@code AuthController} saves the authenticated context: the HTTP session — which
+	 * Spring Session transparently persists to Postgres (V19). The filter chain's default
+	 * delegating repository reads the same {@code SPRING_SECURITY_CONTEXT} attribute back on
+	 * every later request, so save and load stay in lockstep.
+	 */
+	@Bean
+	SecurityContextRepository securityContextRepository() {
+		return new HttpSessionSecurityContextRepository();
+	}
+
+	/**
+	 * The session cookie's D-1 posture, owned in code: {@code HttpOnly} (no JS access),
+	 * {@code Secure} (browsers treat {@code http://localhost} as a trustworthy origin, so local
+	 * dev still works), {@code SameSite=Lax} (CSRF layer 1 — the cookie-to-header token is
+	 * layer 2). A user-defined {@link CookieSerializer} bean makes Boot's session
+	 * auto-configuration back off, which keeps these flags deterministic in every environment
+	 * (embedded Tomcat, mock-MVC tests, e2e) instead of depending on the
+	 * {@code server.servlet.session.cookie.*} property mapping — which did not reach the Spring
+	 * Session cookie under a mock web environment. Pinned by {@code AuthSessionIT}.
+	 */
+	@Bean
+	CookieSerializer cookieSerializer() {
+		DefaultCookieSerializer serializer = new DefaultCookieSerializer();
+		serializer.setCookieName("SESSION");
+		serializer.setUseHttpOnlyCookie(true);
+		serializer.setUseSecureCookie(true);
+		serializer.setSameSite("Lax");
+		return serializer;
 	}
 
 	/** Delegating encoder ({@code {bcrypt}} by default) — used to verify the stored per-operator hash. */

@@ -30,7 +30,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	// Server-side session persistence (issue #109, design D-1): sessions live in Postgres so a
 	// restart/redeploy keeps operators signed in. Schema is Flyway-owned (V19), never auto-initialized.
-	implementation 'org.springframework.session:spring-session-jdbc'
+	// Boot 4 starter (not bare spring-session-jdbc): the session auto-configuration lives in the
+	// split-out spring-boot-session-jdbc module the starter brings.
+	implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springframework.modulith:spring-modulith-observability-api'
 	implementation 'org.springframework.modulith:spring-modulith-starter-core'

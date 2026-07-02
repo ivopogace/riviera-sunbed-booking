@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -56,6 +57,19 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(AccessDeniedException.class)
 	ProblemDetail onAccessDenied(AccessDeniedException e) {
 		return ApiProblem.of(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access denied.");
+	}
+
+	/**
+	 * A failed session login (issue #109): {@code AuthController} drives the
+	 * {@code AuthenticationManager} from MVC, so — unlike the old filter-chain Basic — its
+	 * failures DO reach this advice. One deliberately indistinguishable body for every cause
+	 * (wrong password, unknown username, suspended account): distinguishing them is account
+	 * enumeration (design D-8). Filter-chain 401s (no/expired session) stay with the entry
+	 * point in {@code SecurityConfig}.
+	 */
+	@ExceptionHandler(AuthenticationException.class)
+	ProblemDetail onAuthenticationFailure(AuthenticationException e) {
+		return ApiProblem.of(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.");
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

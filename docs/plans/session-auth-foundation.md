@@ -209,8 +209,8 @@ only.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ⏳ | |
-| 2 — BE: migrate ITs off Basic; remove httpBasic | | |
+| 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | (this commit) |
+| 2 — BE: migrate ITs off Basic; remove httpBasic | ⏳ | |
 | 3 — BE: CSRF cookie-to-header; exemptions inverted | | |
 | 4 — BE: login rate limit | | |
 | 5 — FE: session auth state + interceptor + sign-in UX | | |
