@@ -59,6 +59,14 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
   // A venue wider than the viewport shows the drag-to-pan hint.
   await expect(page.getByTestId('scroll-hint')).toBeVisible();
+
+  // The glass header actually renders its surface — guards the shared-partial extraction: a
+  // stripped background drops white header ink onto the bare gradient below AA, which neither the
+  // token-based contrast spec nor axe-over-a-gradient can detect.
+  const headBg = await page.locator('.map-head').evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(headBg).not.toBe('rgba(0, 0, 0, 0)');
+  expect(headBg).not.toBe('transparent');
+
   await expectNoSeriousAxeViolations(page, 'beach map (wide, pannable)');
 
   await page.getByRole('button', { name: /Select to book/ }).first().click();

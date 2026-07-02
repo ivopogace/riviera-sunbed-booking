@@ -15,10 +15,10 @@
 // output groups the selectors (`.back-pill, .map-head, .state { … }`) instead of inlining
 // the recipe at every call site, keeping the component-style budget in check.
 %panel-surface {
-  @extend %panel-surface;
+  @include glass.panel-glass;
 }
 %card-surface {
-  @extend %card-surface;
+  @include glass.card-glass;
 }
 
 :host {

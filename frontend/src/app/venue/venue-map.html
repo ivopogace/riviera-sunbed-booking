@@ -104,7 +104,7 @@
                             class="set-button"
                             [attr.data-set-id]="tile.set.id"
                             [attr.aria-label]="tile.bookName"
-                            (click)="select(tile.set)"
+                            (click)="select(tile.set, $event)"
                           >
                             <span aria-hidden="true">{{ tile.set.positionNo }}</span>
                           </button>

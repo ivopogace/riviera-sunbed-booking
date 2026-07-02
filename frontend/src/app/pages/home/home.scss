@@ -12,10 +12,10 @@
 // Pull each shared recipe once into a local placeholder, then @extend it — grouped output
 // (one selector list per surface) instead of the recipe inlined at every call site.
 %panel-surface {
-  @extend %panel-surface;
+  @include glass.panel-glass;
 }
 %card-surface {
-  @extend %card-surface;
+  @include glass.card-glass;
 }
 
 :host {

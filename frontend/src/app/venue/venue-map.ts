@@ -266,10 +266,15 @@ export class VenueMap {
     return mode === 'INSTANT' ? 'Instant Book' : 'Request to Book';
   }
 
-  protected select(set: SetView): void {
-    // A pan-release fires a click too; swallow it once so dragging never opens the dialog.
-    if (this.panned) {
-      this.panned = false;
+  protected select(set: SetView, event?: Event): void {
+    // A mouse pan-release fires a click too; swallow that one so dragging never opens the dialog.
+    // Guard on `detail > 0` (a real pointer click) so a KEYBOARD activation (Enter/Space fires a
+    // click with detail 0) is never swallowed — even if a prior pan ended off a tile and left the
+    // flag set. Any activation clears the flag, so it can never linger past one interaction.
+    const isPointerClick = ((event as MouseEvent | undefined)?.detail ?? 0) > 0;
+    const suppressed = this.panned && isPointerClick;
+    this.panned = false;
+    if (suppressed) {
       return;
     }
     this.lastTriggerId = set.id;

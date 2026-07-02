@@ -460,6 +460,25 @@ horizontal pan; (e) `expectNoSeriousAxeViolations` on the map. Await
 - [x] Execution-status table at HEAD matches reality.
 - [x] Risk register resolved (below); Open Questions moved to Resolved.
 
+### Review gate outcome (high effort — riviera-review-overlay + /code-review, PR #156)
+
+Three CONFIRMED findings, all fixed test-first and re-verified (one refuted: the `name`/`bookName`
+precompute — intentional, kept):
+
+1. **Blocker — glass stripped (home.scss + venue-map.scss).** The budget-regroup `replace_all` also
+   rewrote the `@include glass.*` **inside** the `%panel-surface`/`%card-surface` placeholder
+   *definitions* into self-referential `@extend`s (silent no-ops), so every glass surface on both
+   pages compiled with no background/blur/border — white ink onto the bare gradient, below AA. The
+   token-based contrast spec (computes from token values) and axe-over-a-gradient both miss it. Fixed
+   the placeholder bodies to `@include`; added a **real-browser computed-style guard** in
+   `venue-map-pan.e2e.ts` (`.map-head` background must not be transparent) that *would* have caught it.
+2. **Major — keyboard activation swallowed after a pan.** A mouse pan ending off a tile left `panned`
+   set; the next keyboard Enter/Space on a free set was suppressed. Fixed: only a **pointer** click
+   (`detail > 0`) is suppressed and any activation clears the flag; pinned by a new a11y unit test.
+
+Re-verification after fixes: build ✅ (venue-map 7.79 kB < 8 kB), unit 94/94 (venue-map 21), contrast
+26/26, a11y 3/3, e2e 20/20, lint clean.
+
 ### Risk resolutions
 R-1 pan-vs-select pinned by unit + e2e (both directions) · R-2 header-on-glass, contrast spec 26/26
 both themes · R-3 home suite 44/44 green post-extraction · R-4 booking e2e green, testids preserved ·

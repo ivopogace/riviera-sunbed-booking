@@ -188,26 +188,44 @@ describe('VenueMap', () => {
     expect(el().querySelector('app-booking-dialog')).toBeNull();
   });
 
-  it('does not open the dialog when a drag-pan (not a tap) releases over a tile', async () => {
-    flushVenue();
-    await fixture.whenStable();
-    const c = fixture.componentInstance as unknown as {
-      onMapMouseDown(e: MouseEvent): void;
-      onMapMouseMove(e: MouseEvent): void;
-      onMapMouseUp(): void;
-      select(s: SetView): void;
-      selectedSet(): SetView | undefined;
-      venue(): VenueMapView;
-    };
+  interface PanHarness {
+    onMapMouseDown(e: MouseEvent): void;
+    onMapMouseMove(e: MouseEvent): void;
+    onMapMouseUp(): void;
+    select(s: SetView, e?: Event): void;
+    selectedSet(): SetView | undefined;
+    venue(): VenueMapView;
+  }
+  function pan(c: PanHarness): void {
     const scroller = { scrollLeft: 0 } as HTMLElement;
     c.onMapMouseDown({ clientX: 0, currentTarget: scroller } as unknown as MouseEvent);
     c.onMapMouseMove({ clientX: 40, currentTarget: scroller } as unknown as MouseEvent); // 40px > 6px → pan
     c.onMapMouseUp();
+  }
+  const mouseClick = { detail: 1 } as MouseEvent; // a pointer click carries detail > 0
+  const keyActivation = { detail: 0 } as MouseEvent; // Enter/Space fires a click with detail 0
 
+  it('does not open the dialog when a drag-pan (not a tap) mouse-releases over a tile', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const c = fixture.componentInstance as unknown as PanHarness;
     const free = c.venue().sets.find((s) => s.availability === 'FREE' && s.pool === 'ONLINE')!;
-    c.select(free); // the click that follows a pan-release
+
+    pan(c);
+    c.select(free, mouseClick); // the mouse click that follows a pan-release
     expect(c.selectedSet()).toBeUndefined();
-    c.select(free); // a genuine tap afterwards still opens the dialog
+    c.select(free, mouseClick); // a genuine mouse tap afterwards still opens the dialog
+    expect(c.selectedSet()).toBe(free);
+  });
+
+  it('does NOT swallow a keyboard activation after a pan that ended off a tile (a11y)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const c = fixture.componentInstance as unknown as PanHarness;
+    const free = c.venue().sets.find((s) => s.availability === 'FREE' && s.pool === 'ONLINE')!;
+
+    pan(c); // a pan whose release fired no consuming click (ended off a button) — flag lingers
+    c.select(free, keyActivation); // tab to a tile, press Enter → must open, not be swallowed
     expect(c.selectedSet()).toBe(free);
   });
 
