@@ -24,3 +24,6 @@ replay_pid*.log
 
 # Claude Code personal/local settings (not team-wide)
 .claude/settings.local.json
+
+# Graphify (evaluated, not adopted — docs/architecture/graphify-evaluation.md); regenerable via `graphify update .`
+graphify-out/
