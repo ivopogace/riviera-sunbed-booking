@@ -120,24 +120,30 @@ restarted from `main` d8063cb, previous PRs merged).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Removing CSRF `ignoringRequestMatchers` breaks the token-less guest booking flow (create/cancel) or the Stripe webhook | med | high | Keep exactly those three paths exempt; `CsrfProtectionIT` pins both directions (operator write needs token; guest+webhook don't) | Claude | open |
-| R-2 | Controller-based login skips the filter-chain `SessionAuthenticationStrategy` → session fixation not mitigated | med | high | Explicit rotation in the login service (`changeSessionId`) + `AuthSessionIT.sessionIdRotatesOnLogin` | Claude | open |
-| R-3 | `Secure` cookie flag breaks local dev / real-backend e2e over `http://localhost` | low | med | Browsers exempt `localhost` from the Secure-over-HTTPS rule (trustworthy origin); verified live by the real-backend e2e in Phase 6 | Claude | open |
-| R-4 | Session-cookie + CORS: FE on `:4200` against BE `:8080` needs `allowCredentials` and the cookie is port-agnostic on localhost | med | med | `WebCorsConfig` gains `allowCredentials(true)` with explicit origins (never `*`); real-backend e2e proves the pair | Claude | open |
-| R-5 | 7+ ITs authenticate with `.with(httpBasic(...))` — mass breakage on the auth switch | high | med | One shared test helper (session-login `RequestPostProcessor`/MockMvc flow) introduced first, migrated file-by-file in one phase | Claude | open |
-| R-6 | Angular's built-in XSRF support skips absolute URLs — `withXsrfConfiguration` alone silently never sends the header | high | high | Custom `core/` interceptor reads the `XSRF-TOKEN` cookie and sets the header for `apiBaseUrl` mutating requests; spec pins it | Claude | open |
+| R-1 | Removing CSRF `ignoringRequestMatchers` breaks the token-less guest booking flow (create/cancel) or the Stripe webhook | med | high | Keep exactly those three paths exempt; `CsrfProtectionIT` pins both directions (operator write needs token; guest+webhook don't) | Claude | resolved (CsrfProtectionIT pins both directions; guest ITs green) |
+| R-2 | Controller-based login skips the filter-chain `SessionAuthenticationStrategy` → session fixation not mitigated | med | high | Explicit rotation in the login controller (`changeSessionId`) + `AuthSessionIT.sessionIdRotatesOnLogin` | Claude | resolved (ed2ae5a) |
+| R-3 | `Secure` cookie flag breaks local dev / real-backend e2e over `http://localhost` | low | med | Browsers exempt `localhost` from the Secure-over-HTTPS rule (trustworthy origin); verified live by the real-backend e2e in Phase 6 | Claude | resolved (8/8 live) |
+| R-4 | Session-cookie + CORS: FE on `:4200` against BE `:8080` needs `allowCredentials` and the cookie is port-agnostic on localhost | med | med | `WebCorsConfig` gains `allowCredentials(true)` with explicit origins (never `*`); pinned by `WebCorsConfigTest`, proven live by the real-backend e2e | Claude | resolved |
+| R-5 | 7+ ITs authenticate with `.with(httpBasic(...))` — mass breakage on the auth switch | high | med | One shared helper (`SessionLoginSupport`) + one sweep; all 8 IT files green | Claude | resolved (176a39a) |
+| R-6 | Angular's built-in XSRF support skips absolute URLs — `withXsrfConfiguration` alone silently never sends the header | high | high | Custom `core/` interceptor reads the `XSRF-TOKEN` cookie and sets the header for `apiBaseUrl` mutating requests; `api-session.interceptor.spec.ts` pins it | Claude | resolved (bfbbc32) |
 | R-7 | Spring Security 7 SPA CSRF handling mis-wired → token never issued or always rejected | med | high | Resolved via SS7's native `.spa()` + hardened cookie repo; `CsrfProtectionIT` + `CsrfCookieBootstrapIT` pin issue/accept/reject. Learned: the `csrf()` TEST post-processor permanently swaps the shared CsrfFilter repo in a cached context — bootstrap pin isolated in its own context | Claude | resolved (Phase 3) |
-| R-8 | A second error-mapping path for auth sneaks in (second advice / per-controller handler) breaking the #117 contract | low | med | Login errors flow through `ApiErrorHandler` (new 401 mappings); filter-level 401/403 hand-mirror `ApiProblem` like `RateLimitFilter`; `ErrorContractArchitectureTests` unchanged | Claude | open |
-| R-9 | Spring Session cleanup / serialization: principal object graph stored as bytes — a heavyweight or non-serializable principal breaks persistence | low | med | Store the minimal Spring Security `User` principal (username + authorities) only; `SessionPersistenceIT` round-trips it | Claude | open |
+| R-8 | A second error-mapping path for auth sneaks in (second advice / per-controller handler) breaking the #117 contract | low | med | Login errors flow through `ApiErrorHandler` (new 401 mapping); filter-level 401/403 hand-mirror `ApiProblem` like `RateLimitFilter`; `ErrorContractArchitectureTests` green unchanged | Claude | resolved |
+| R-9 | Spring Session cleanup / serialization: principal object graph stored as bytes — a heavyweight or non-serializable principal breaks persistence | low | med | Store the minimal Spring Security `User` principal (username + authorities) only; `SessionPersistenceIT` round-trips it | Claude | resolved (ed2ae5a) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Chrome (Playwright) accepts `Secure` cookies from `http://localhost`
-  (trustworthy-origin exemption) — *Owner:* Claude · *Resolves by:* Phase 6 (real-backend
-  e2e run).
-- **Assumption:** Spring Boot 4.1 auto-configures the Spring Session cookie from
-  `server.servlet.session.cookie.*` (name/SameSite/Secure/HttpOnly) — *Owner:* Claude ·
-  *Resolves by:* Phase 1 (`AuthSessionIT` cookie-flag assertions).
+None open.
+
+### Resolved
+
+- **Chrome accepts `Secure` cookies from `http://localhost`** — CONFIRMED live: the
+  real-backend suite (8/8, Chromium against bootRun on :8080) holds the session across
+  sign-in → venue create → set writes with `Secure` set. Resolved Phase 6.
+- **Boot 4.1 maps `server.servlet.session.cookie.*` onto the Spring Session cookie** —
+  REFUTED in the mock web environment (the `EmbeddedWebServerConfiguration` mapping did
+  not reach the cookie): resolved by owning the posture in code — the explicit
+  `CookieSerializer` bean in `SecurityConfig`, pinned by `AuthSessionIT`. Resolved
+  Phase 1 (ed2ae5a).
 
 ## Availability & concurrency (invariant #2)
 
@@ -214,7 +220,7 @@ only.
 | 3 — BE: CSRF cookie-to-header; exemptions inverted | ✅ | 1513f88 |
 | 4 — BE: login rate limit | ✅ | 32b1294 |
 | 5 — FE: session auth state + interceptor + sign-in UX | ✅ | bfbbc32, 2948e81 |
-| 6 — e2e: POM + sign-in spec; real-backend update | ⏳ | bfbbc32 (authored; real-backend validation running) |
+| 6 — e2e: POM + sign-in spec; real-backend update | ✅ | bfbbc32 (validated: mocked 7/7, real-backend 8/8) |
 | 7 — riviera-docs-freshness skill + substrate updates | ✅ | e3cff42 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -322,29 +328,32 @@ wording).
 
 > Filled with commands + SHAs as each AC is verified; the gate before claiming done.
 
-- [ ] **AC-1..AC-7:** scoped gradle runs of the pinning ITs (local, dockerd session) + CI full suite green.
-- [ ] **AC-8/AC-9:** `npm test` (vitest) green incl. the rewritten/new specs.
-- [ ] **AC-10:** mocked suite (`playwright.a11y.config.ts`) green incl. `operator-sign-in.e2e.ts`; real-backend `venue-editor.e2e.ts` green locally.
-- [ ] **AC-11:** scoped run of the four structural test classes green.
-- [ ] **AC-12:** skill drafted + registered; smoke-run record added to the review note.
+- [x] **AC-1/2/4/6:** `gradle test --tests "*AuthSessionIT*" --tests "*SessionPersistenceIT*"` → 6/6 (ed2ae5a).
+- [x] **AC-3:** all 8 migrated IT classes green in two scoped batches (176a39a); Basic no longer authenticates (no `httpBasic` in the chain).
+- [x] **AC-5:** `gradle test --tests "*CsrfProtectionIT*" --tests "*CsrfCookieBootstrapIT*"` → green (1513f88); guest ITs (`BookingControllerIT`) green in the same batch.
+- [x] **AC-7:** `gradle test --tests "*RateLimit*"` → green incl. the login cases (32b1294).
+- [x] **AC-8/AC-9:** `npm test` → 194/194 incl. rewritten `operator-auth.spec.ts` + new `api-session.interceptor.spec.ts`; lint clean (2948e81).
+- [x] **AC-10:** mocked suite 7/7 (`playwright.a11y.config.ts`, pinned Chromium) incl. `operator-sign-in.e2e.ts`; real-backend suite 8/8 against live bootRun + Postgres.
+- [x] **AC-11:** `ModularityTests`, `OperatorAuthPlacementTests`, `ErrorContractArchitectureTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests` green (176a39a batch).
+- [x] **AC-12:** skill drafted + registered + smoke run over `origin/main...HEAD` with 3 findings, all handled (e3cff42; record above). CI full suite = the PR gate.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A; no concurrency surface changed (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module internals imports; no new events (invariant #11).
-- [ ] **Payment/payout** N/A; webhook posture explicitly preserved (invariant #8).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6); session timestamps are framework-owned epoch millis.
-- [ ] Booking codes: error bodies stay redacted (`ApiProblem` by construction) (invariant #7).
-- [ ] Flyway V19 present; `initialize-schema=never` (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A; no concurrency surface changed (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module internals imports; no new events (invariant #11).
+- [x] **Payment/payout** N/A; webhook posture explicitly preserved (invariant #8).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6); session timestamps are framework-owned epoch millis.
+- [x] Booking codes: error bodies stay redacted (`ApiProblem` by construction) (invariant #7).
+- [x] Flyway V19 present; `initialize-schema=never` (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 
 ## riviera-docs-freshness smoke run (AC-12)
 
