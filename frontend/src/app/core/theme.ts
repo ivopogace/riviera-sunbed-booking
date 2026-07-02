@@ -70,7 +70,10 @@ function initialTheme(): ThemeId {
   const prefersLight =
     typeof globalThis.matchMedia === 'function' &&
     globalThis.matchMedia('(prefers-color-scheme: light)').matches;
-  return prefersLight ? 'porcelain' : DEFAULT_THEME;
+  // Derived from the registry, not hardcoded, so the light default follows the data when
+  // palettes are added (#143).
+  const lightDefault = THEME_OPTIONS.find((option) => option.light)?.id ?? DEFAULT_THEME;
+  return prefersLight ? lightDefault : DEFAULT_THEME;
 }
 
 function applyToDocument(id: ThemeId): void {

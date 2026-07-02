@@ -23,7 +23,7 @@
             type="button"
             class="riv-chip-btn"
             data-testid="theme-toggle"
-            aria-label="Switch color theme"
+            [attr.aria-label]="'Color theme: ' + activeTheme().name"
             [attr.aria-expanded]="themeOpen()"
             (click)="toggleThemePicker()"
           >
@@ -34,13 +34,15 @@
 
           @if (themeOpen()) {
             <div class="riv-backdrop" data-testid="theme-backdrop" (click)="closeMenus()" aria-hidden="true"></div>
-            <div class="riv-pop riv-pop-in riv-theme-pop" role="radiogroup" aria-label="Color theme">
+            <!-- Toggle buttons, not role="radio": the radio pattern demands roving tabindex +
+                 arrow-key selection; aria-pressed carries the same selected-state info with
+                 plain-button keyboard behavior (review finding, WCAG 4.1.2). -->
+            <div class="riv-pop riv-pop-in riv-theme-pop" role="group" aria-label="Color theme">
               @for (option of themes.options; track option.id) {
                 <button
                   type="button"
-                  role="radio"
                   class="riv-theme-option"
-                  [attr.aria-checked]="option.id === themes.theme()"
+                  [attr.aria-pressed]="option.id === themes.theme()"
                   [attr.data-testid]="'theme-option-' + option.id"
                   (click)="selectTheme(option.id)"
                 >
@@ -76,15 +78,14 @@
           <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
           <div class="riv-mobile-theme">
             <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
-            <div class="riv-mobile-swatches" role="radiogroup" aria-labelledby="riv-mobile-theme-label">
+            <div class="riv-mobile-swatches" role="group" aria-labelledby="riv-mobile-theme-label">
               @for (option of themes.options; track option.id) {
                 <button
                   type="button"
-                  role="radio"
                   class="riv-mobile-swatch"
                   [class.riv-mobile-swatch-active]="option.id === themes.theme()"
                   [style.background]="option.swatch"
-                  [attr.aria-checked]="option.id === themes.theme()"
+                  [attr.aria-pressed]="option.id === themes.theme()"
                   [attr.aria-label]="option.name"
                   [title]="option.name"
                   (click)="selectTheme(option.id)"

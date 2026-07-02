@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
  * Real-render e2e for the Liquid Glass shell (issue #134): theme switching + persistence
@@ -21,16 +22,6 @@ const VENUES = [
     availability: { free: 18, total: 24 },
   },
 ];
-
-async function expectNoSeriousAxeViolations(page: Page, context: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(blocking, `axe violations at: ${context}\n${JSON.stringify(blocking, null, 2)}`).toEqual(
-    [],
-  );
-}
 
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
@@ -54,22 +45,30 @@ test.describe('theme persistence', () => {
   });
 });
 
-test('axe passes on the shell in both themes, including the open theme picker (AC-4)', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await expectNoSeriousAxeViolations(page, 'riviera shell');
+test.describe('axe sweeps', () => {
+  // Without this, headless (light) boots porcelain and the "riviera" sweeps would silently
+  // audit porcelain twice (review finding on the first version of this spec).
+  test.use({ colorScheme: 'dark' });
 
-  await page.getByTestId('theme-toggle').click();
-  // Let the pop-in animation finish — axe samples computed colours, and mid-fade opacity
-  // reads as washed-out text (a false contrast failure).
-  await page
-    .locator('.riv-theme-pop')
-    .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-  await expectNoSeriousAxeViolations(page, 'riviera shell, theme picker open');
+  test('axe passes on the shell in both themes, including the open theme picker (AC-4)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    await expectNoSeriousAxeViolations(page, 'riviera shell');
 
-  await page.getByTestId('theme-option-porcelain').click();
-  await expectNoSeriousAxeViolations(page, 'porcelain shell');
+    await page.getByTestId('theme-toggle').click();
+    // Let the pop-in animation finish — axe samples computed colours, and mid-fade opacity
+    // reads as washed-out text (a false contrast failure).
+    await page
+      .locator('.riv-theme-pop')
+      .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+    await expectNoSeriousAxeViolations(page, 'riviera shell, theme picker open');
+
+    await page.getByTestId('theme-option-porcelain').click();
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+    await expectNoSeriousAxeViolations(page, 'porcelain shell');
+  });
 });
 
 test.describe('mobile viewport', () => {
@@ -87,13 +86,21 @@ test.describe('mobile viewport', () => {
     await toggle.click();
     await expect(page.getByTestId('mobile-menu')).toBeVisible();
 
+    // Containing-block pin (#134 review): the dim backdrop must cover the viewport, not just
+    // the header strip (backdrop-filter on the header itself once shrank it to the header).
+    const centerHit = await page.evaluate(() => {
+      const hit = document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.7);
+      return hit?.getAttribute('data-testid') ?? hit?.className ?? null;
+    });
+    expect(centerHit).toBe('menu-backdrop');
+
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('mobile-menu')).toBeHidden();
     await expect(toggle).toBeFocused();
 
     await toggle.click();
     await expectNoSeriousAxeViolations(page, 'mobile menu open');
-    await page.getByRole('radio', { name: 'Porcelain' }).click();
+    await page.getByRole('button', { name: 'Porcelain' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expect(page.getByTestId('mobile-menu')).toBeHidden(); // selection closes the menu
   });

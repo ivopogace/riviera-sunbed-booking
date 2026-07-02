@@ -39,3 +39,36 @@ export function contrastRatio(foreground: string, background: string): number {
   const darker = Math.min(a, b);
   return (lighter + 0.05) / (darker + 0.05);
 }
+
+/*
+ * Alpha-compositing helpers for TRANSLUCENT surfaces (Liquid Glass, issue #134): a glass
+ * rgba over a gradient stop has no single hex, so specs composite the effective colour first
+ * and then assert `contrastRatio` on the result. Shared here because every glass restyle
+ * slice (T2–T5, operator epic) writes the same math.
+ */
+
+export type Rgb = readonly [number, number, number];
+
+/** `#rrggbb` → RGB channel tuple. */
+export function hexToRgb(value: string): Rgb {
+  const match = /^#?([0-9a-f]{6})$/i.exec(value.trim());
+  if (!match) {
+    throw new Error(`Expected a #rrggbb colour, got "${value}"`);
+  }
+  const n = Number.parseInt(match[1], 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+/** RGB channel tuple → `#rrggbb`. */
+export function rgbToHex(rgb: Rgb): string {
+  return `#${rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** Source-over composite of an rgba foreground (colour + alpha) onto an opaque background. */
+export function composite(fg: Rgb, alpha: number, bg: Rgb): Rgb {
+  return [
+    Math.round(alpha * fg[0] + (1 - alpha) * bg[0]),
+    Math.round(alpha * fg[1] + (1 - alpha) * bg[1]),
+    Math.round(alpha * fg[2] + (1 - alpha) * bg[2]),
+  ];
+}

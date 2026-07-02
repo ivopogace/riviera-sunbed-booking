@@ -9,10 +9,13 @@
 
 /* ---- themed background layer ---- */
 
+/* Negative z keeps the whole layer behind unpositioned page content, so <main> needs no
+   stacking context of its own — page modals (booking dialog, fixed z-50) must stay free to
+   paint above the sticky header (review finding: a z-indexed <main> trapped them below it). */
 .riv-bg {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   overflow: hidden;
   background: var(--riv-bg);
   transition: background 0.5s ease;
@@ -63,11 +66,21 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--riv-header-glass);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
   border-bottom: 1px solid var(--riv-header-border);
   box-shadow: 0 8px 30px rgba(6, 38, 52, 0.14);
+
+  /* The glass lives on a pseudo-element: backdrop-filter on the header ITSELF would make it
+     the containing block for fixed descendants, shrinking the menus' full-viewport backdrops
+     to the header strip (review finding; Filter Effects L2 containing-block rule). */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--riv-header-glass);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    backdrop-filter: blur(22px) saturate(170%);
+  }
 }
 
 .riv-header-inner {
@@ -340,10 +353,10 @@
 
 /* ---- content + compat surface ---- */
 
+/* Deliberately unpositioned: a stacking context here would trap page-level fixed modals
+   (booking dialog z-50) below the sticky header (review finding). */
 .riv-main {
   flex: 1;
-  position: relative;
-  z-index: 1;
 }
 
 /* Opaque pre-redesign surface: keeps legacy pages exactly on the background their contrast
@@ -354,8 +367,6 @@
 }
 
 .riv-footer {
-  position: relative;
-  z-index: 1;
   border-top: 1px solid var(--riv-header-border);
   background: var(--riv-header-glass);
   -webkit-backdrop-filter: blur(22px) saturate(170%);

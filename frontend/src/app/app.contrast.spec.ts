@@ -1,4 +1,4 @@
-import { AA_NORMAL, contrastRatio } from '../testing/contrast';
+import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../testing/contrast';
 
 /**
  * WCAG-AA contrast guard for the Liquid Glass shell tokens (issue #134, AC-4; gate from #38).
@@ -12,41 +12,17 @@ import { AA_NORMAL, contrastRatio } from '../testing/contrast';
  * (WCAG 1.4.3 incidental/decoration).
  */
 
-type Rgb = readonly [number, number, number];
-
-function hex(value: string): Rgb {
-  const h = value.replace('#', '');
-  return [
-    Number.parseInt(h.slice(0, 2), 16),
-    Number.parseInt(h.slice(2, 4), 16),
-    Number.parseInt(h.slice(4, 6), 16),
-  ];
-}
-
-/** Source-over composite of an rgba foreground onto an opaque background. */
-function composite(fg: Rgb, alpha: number, bg: Rgb): Rgb {
-  return [
-    Math.round(alpha * fg[0] + (1 - alpha) * bg[0]),
-    Math.round(alpha * fg[1] + (1 - alpha) * bg[1]),
-    Math.round(alpha * fg[2] + (1 - alpha) * bg[2]),
-  ];
-}
-
-function toHex(rgb: Rgb): string {
-  return `#${rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
-}
-
-const WHITE = hex('ffffff');
-const INK_DARK = hex('0a2a33');
+const WHITE = hexToRgb('ffffff');
+const INK_DARK = hexToRgb('0a2a33');
 
 // styles.scss tokens (keep in sync)
-const RIVIERA_HEADER_GLASS = { color: hex('0a2c3f'), alpha: 0.72 };
+const RIVIERA_HEADER_GLASS = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
 const PORCELAIN_HEADER_GLASS = { color: WHITE, alpha: 0.6 };
 const POPOVER = { color: WHITE, alpha: 0.92 };
 
 // Worst-case gradient stops the header/footer glass can sit over.
-const RIVIERA_STOPS = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hex);
-const PORCELAIN_STOPS = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(hex);
+const RIVIERA_STOPS = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);
+const PORCELAIN_STOPS = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(hexToRgb);
 
 interface GlassPair {
   readonly usage: string;
@@ -71,8 +47,8 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
       const surface = composite(glass.color, glass.alpha, stop);
       const effectiveInk = composite(ink, inkAlpha, surface);
       expect(
-        contrastRatio(toHex(effectiveInk), toHex(surface)),
-        `over stop ${toHex(stop)}`,
+        contrastRatio(rgbToHex(effectiveInk), rgbToHex(surface)),
+        `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
@@ -81,7 +57,7 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
     for (const stop of RIVIERA_STOPS) {
       const header = composite(RIVIERA_HEADER_GLASS.color, RIVIERA_HEADER_GLASS.alpha, stop);
       const chip = composite(WHITE, 0.16, header); // --riv-chip-bg
-      expect(contrastRatio(toHex(WHITE), toHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(rgbToHex(WHITE), rgbToHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 
@@ -89,18 +65,18 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
     for (const stop of PORCELAIN_STOPS) {
       const header = composite(PORCELAIN_HEADER_GLASS.color, PORCELAIN_HEADER_GLASS.alpha, stop);
       const chip = composite(INK_DARK, 0.05, header); // --riv-chip-bg
-      expect(contrastRatio(toHex(INK_DARK), toHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 
   it('popover text meets AA over the darkest riviera stop (worst case for the white popover)', () => {
-    const darkest = hex('0a4f6e');
+    const darkest = hexToRgb('0a4f6e');
     const popover = composite(POPOVER.color, POPOVER.alpha, darkest);
     // menu links / theme names (#0a2a33), the 10.5px theme label (ink at 0.7), and the check (#0a6e85)
-    expect(contrastRatio(toHex(INK_DARK), toHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
     const label = composite(INK_DARK, 0.7, popover);
-    expect(contrastRatio(toHex(label), toHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio('#0a6e85', toHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio(rgbToHex(label), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio('#0a6e85', rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('legacy compat surface keeps the slate ink the pre-redesign pages assume', () => {

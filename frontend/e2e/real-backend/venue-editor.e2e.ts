@@ -1,6 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 
+import { expectNoSeriousAxeViolations } from '../support/axe';
 import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
 import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
 
@@ -272,11 +272,7 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
       pool: 'ONLINE',
     });
 
-    // Mirror the a11y suite's bar: WCAG 2 A/AA, gate on serious + critical (real CSS/contrast).
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-    const blocking = results.violations.filter(
-      (v) => v.impact === 'serious' || v.impact === 'critical',
-    );
-    expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+    // Mirror the a11y suite's bar (shared policy): WCAG 2 A/AA, gate on serious + critical.
+    await expectNoSeriousAxeViolations(page, 'venue editor (real backend)');
   });
 });

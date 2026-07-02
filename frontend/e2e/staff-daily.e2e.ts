@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
 
 import { mockAuthApi } from './support/auth-mocks';
 
@@ -26,14 +27,6 @@ function mapBody(marked: ReadonlySet<number>) {
     bookingMode: 'INSTANT', fromPrice: { minorUnits: 4500, currency: 'EUR' },
     sets: [set(1, 'ONLINE'), set(2, 'WALK_IN')],
   };
-}
-
-async function expectNoSeriousAxeViolations(page: Page, context: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(blocking, `axe violations at: ${context}\n${JSON.stringify(blocking, null, 2)}`).toEqual([]);
 }
 
 test('operator signs in, sees bookings, and marks a walk-in', async ({ page }) => {
