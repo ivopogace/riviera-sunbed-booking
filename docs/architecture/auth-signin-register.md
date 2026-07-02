@@ -118,14 +118,25 @@ linking past guest bookings** to a new account — linking by unverified email w
 hand an attacker the victim's booking codes (invariant #7). Tokens are single-use,
 expiring, and stored hashed (they are bearer credentials, invariant #7 posture).
 
-### D-7: Same-site hosting is a prerequisite for the deployed demo
+### D-7: Same-site FE/BE hosting is an architectural requirement (dev now, prod hoster later)
 
-GitHub Pages (`github.io`) and Render (`onrender.com`) are **cross-site**; a
-session cookie would need `SameSite=None` and Safari's ITP would still drop it.
-Fix (devops slice): serve the FE from a **Render static site with an `/api/*`
-rewrite-proxy** to the backend service → same-origin, cookies work, the CORS
-surface shrinks. Local dev is unaffected (`localhost:4200` → `localhost:8080` is
-same-site). ADR-0004 (non-prod hosting) gets amended by that slice.
+Session cookies require the FE and the API to be **same-site in every deployed
+environment** — that is a property of this auth design, not of any particular
+host. Per environment:
+
+- **Dev/demo (Render — this is the only thing Render is for):** GitHub Pages
+  (`github.io`) and Render (`onrender.com`) are cross-site; a session cookie would
+  need `SameSite=None` and Safari's ITP would still drop it. Fix (devops slice):
+  serve the FE from a **Render static site with an `/api/*` rewrite-proxy** to the
+  backend service → same-origin, cookies work, the CORS surface shrinks.
+  ADR-0004 (non-prod hosting) gets amended by that slice.
+- **Prod:** will run on a **DSGVO-conform hoster** (the ADR-0004 deferred
+  follow-up; identity data makes this stricter, not looser). The same-site
+  constraint is an explicit **selection criterion** for that hoster: one origin
+  (reverse proxy serving SPA + `/api/**`) or same-registrable-domain subdomains
+  (e.g. `app.…`/`api.…`). Anything else re-breaks the cookie.
+
+Local dev is unaffected (`localhost:4200` → `localhost:8080` is same-site).
 
 ### D-8: Abuse hardening
 
