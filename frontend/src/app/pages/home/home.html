@@ -44,7 +44,9 @@
          Per the design the count stays visible whenever a list has loaded — including 0. -->
     <p class="bar-count" data-testid="results" aria-live="polite">
       @if (venues(); as list) {
-        <strong class="count-number">{{ list.length }}</strong>
+        <!-- &ngsp; keeps a real space in the text content ("1 venue", not "1venue") for AT and
+             text assertions — the compiler strips the inter-element whitespace otherwise. -->
+        <strong class="count-number">{{ list.length }}</strong>&ngsp;
         <span class="count-sub">{{ list.length === 1 ? 'venue' : 'venues' }} · {{ dateLabel() }}</span>
       }
     </p>
