@@ -14,7 +14,7 @@ import {
 /**
  * Typed access to the U7 venue write API (operator endpoints). Single responsibility: HTTP for the
  * create-venue + per-set CRUD calls; the Basic credentials are attached by the
- * {@link import('../core/operator-auth.interceptor').operatorAuthInterceptor}, not here, and no
+ * {@link import('../core/api-session.interceptor').apiSessionInterceptor}, not here, and no
  * state is held. The editor owns workflow state and round-trips the result through the read API.
  */
 @Service()

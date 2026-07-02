@@ -97,16 +97,40 @@ export class VenueEditor {
     required(path.gridY, { message: 'Grid row is required' });
   });
 
-  protected onSignIn(): void {
-    if (!this.username() || !this.password()) {
+  /** True while the sign-in POST is in flight (button disabled, no double submit). */
+  protected readonly signingIn = signal(false);
+  /** A sign-in failure message, distinct from the write-flow errors in {@link errorMessage}. */
+  protected readonly signInError = signal<string | undefined>(undefined);
+
+  protected async onSignIn(): Promise<void> {
+    if (!this.username() || !this.password() || this.signingIn()) {
       return;
     }
-    this.operator.signIn(this.username(), this.password());
-    this.errorCode.set(undefined);
+    this.signingIn.set(true);
+    this.signInError.set(undefined);
+    // Server-validated (issue #109): the session is established here or the failure is known
+    // here — no more capture-and-discover-on-first-write.
+    const result = await this.operator.signIn(this.username(), this.password());
+    this.signingIn.set(false);
+    switch (result) {
+      case 'signed-in':
+        this.password.set('');
+        this.errorCode.set(undefined);
+        break;
+      case 'invalid-credentials':
+        this.signInError.set('Sign-in failed. Check your username and password.');
+        break;
+      case 'rate-limited':
+        this.signInError.set('Too many sign-in attempts. Please wait a minute and try again.');
+        break;
+      case 'error':
+        this.signInError.set('Something went wrong signing in. Please try again.');
+        break;
+    }
   }
 
-  protected onSignOut(): void {
-    this.operator.signOut();
+  protected async onSignOut(): Promise<void> {
+    await this.operator.signOut();
     this.password.set('');
   }
 

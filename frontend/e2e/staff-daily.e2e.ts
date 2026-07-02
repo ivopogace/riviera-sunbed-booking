@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 
+import { mockAuthApi } from './support/auth-mocks';
+
 /**
  * Real-render a11y + behaviour audit of the U8 staff daily view (issue #10): sign in as the
  * operator → see today's bookings + the live map → tap a free set to mark a walk-in. Runs axe at
@@ -38,6 +40,8 @@ test('operator signs in, sees bookings, and marks a walk-in', async ({ page }) =
   // Stateful availability: set 2 is staff-marked once the operator taps it.
   const marked = new Set<number>();
 
+  // Session auth (issue #109): the sign-in is a real POST now; /me restores state on load.
+  await mockAuthApi(page, { validPassword: 'test-pw' });
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
     route.fulfill({ json: [{ setId: 1, code: 'ARRIVE2345' }] }),
   );

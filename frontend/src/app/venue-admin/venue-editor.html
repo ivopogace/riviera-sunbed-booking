@@ -1,11 +1,13 @@
 <section class="editor">
   <h1>Venue editor</h1>
 
-  <!-- Operator sign-in (U7: the write API requires an operator credential) -->
-  @if (!operator.signedIn()) {
+  <!-- Operator sign-in (U7 write API; session-validated on submit since issue #109) -->
+  @if (operator.restoring()) {
+    <p class="card hint" role="status">Checking your session…</p>
+  } @else if (!operator.signedIn()) {
     <form class="card sign-in" (submit)="onSignIn(); $event.preventDefault()" novalidate>
       <h2>Operator sign-in</h2>
-      <p class="hint">The venue write API requires an operator credential.</p>
+      <p class="hint">The venue write API requires an operator sign-in.</p>
       <label class="field">
         <span>Username</span>
         <input
@@ -26,7 +28,12 @@
           (input)="password.set($any($event.target).value)"
         />
       </label>
-      <button type="submit" class="btn-primary">Sign in</button>
+      <button type="submit" class="btn-primary" [disabled]="signingIn()">
+        {{ signingIn() ? 'Signing in…' : 'Sign in' }}
+      </button>
+      @if (signInError(); as msg) {
+        <p class="form-error" role="alert">{{ msg }}</p>
+      }
     </form>
   } @else {
     <div class="card signed-in">

@@ -34,7 +34,9 @@ class WebCorsConfigTest {
 						.header("Origin", "https://ivopogace.github.io")
 						.header("Access-Control-Request-Method", "GET"))
 				.andExpect(status().isOk())
-				.andExpect(header().string("Access-Control-Allow-Origin", "https://ivopogace.github.io"));
+				.andExpect(header().string("Access-Control-Allow-Origin", "https://ivopogace.github.io"))
+				// Session cookies only travel cross-origin with credentials allowed (issue #109).
+				.andExpect(header().string("Access-Control-Allow-Credentials", "true"));
 	}
 
 	@Test

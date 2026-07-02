@@ -35,6 +35,11 @@ class WebCorsConfig {
 		config.setAllowedOrigins(allowedOrigins);
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
+		// Session auth (issue #109): the browser only attaches/accepts the session + CSRF cookies
+		// cross-origin when credentials are allowed — safe here because the origins above are an
+		// explicit allowlist, never "*". (Deployed same-site hosting is S7's job; local dev and the
+		// real-backend e2e run :4200 → :8080.)
+		config.setAllowCredentials(true);
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 		return source;

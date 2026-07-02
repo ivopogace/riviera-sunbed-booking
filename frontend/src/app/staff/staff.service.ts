@@ -9,7 +9,7 @@ import { DailyBookingItem, StaffMarkError, StaffReleaseError } from './staff.mod
 /**
  * Typed access to the U8 staff endpoints: read a venue's confirmed bookings for a day, and
  * mark/release a `(set, date)` walk-in. Single responsibility — HTTP only; the operator Basic
- * credential is attached by the {@link import('../core/operator-auth.interceptor').operatorAuthInterceptor},
+ * session cookie + CSRF header are attached by the {@link import('../core/api-session.interceptor').apiSessionInterceptor},
  * not here. `date` is an ISO `YYYY-MM-DD` string (invariant #6).
  */
 @Service()

@@ -1,48 +1,96 @@
-import { Service, computed, signal } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Service, computed, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
-interface OperatorCredentials {
+import { environment } from '../../environments/environment';
+
+/** The signed-in principal as the backend reports it (`POST …/login` and `GET /api/auth/me`). */
+interface AuthPrincipal {
   readonly username: string;
-  readonly password: string;
+  readonly principalType: string;
 }
 
+/** How a sign-in attempt ended, for the surface to translate into a message. */
+export type SignInResult = 'signed-in' | 'invalid-credentials' | 'rate-limited' | 'error';
+
+const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
+
 /**
- * Holds the signed-in operator's credentials for the venue write API (U7). The real staff/admin
- * identity model is deferred; for now the editor captures a username/password and this service
- * turns them into the `Authorization: Basic` header the {@link operatorAuthInterceptor} attaches
- * to write requests. Single responsibility: credential state + the header; it makes no HTTP calls
- * of its own. In-memory only (a signal) — nothing is persisted, so a reload signs the operator out.
+ * Session-aware operator auth state (issue #109, design D-1). The browser holds NO credential:
+ * `signIn` posts username/password once to the session login endpoint and the backend answers
+ * with an `HttpOnly` session cookie the browser attaches from then on ({@link apiSessionInterceptor}
+ * adds `withCredentials` + the CSRF header). On construction the state is restored from
+ * `GET /api/auth/me` — so, unlike the retired Basic-in-memory model, a signed-in operator
+ * survives a page reload; a `401` there simply means "signed out" (expected state, not an error).
+ * Sign-out invalidates the session server-side.
  */
 @Service()
 export class OperatorAuth {
-  private readonly credentials = signal<OperatorCredentials | undefined>(undefined);
+  private readonly http = inject(HttpClient);
 
-  /** Whether an operator credential is currently held. */
-  readonly signedIn = computed(() => this.credentials() !== undefined);
+  private readonly principal = signal<AuthPrincipal | undefined>(undefined);
+
+  /** True while the initial current-principal restore is in flight (surfaces can hold rendering). */
+  readonly restoring = signal(true);
+  /** Whether an operator session is established (as far as this tab knows). */
+  readonly signedIn = computed(() => this.principal() !== undefined);
   /** The signed-in operator's username, or undefined when signed out. */
-  readonly username = computed(() => this.credentials()?.username);
+  readonly username = computed(() => this.principal()?.username);
 
-  signIn(username: string, password: string): void {
-    this.credentials.set({ username, password });
+  constructor() {
+    void this.restore();
   }
 
-  signOut(): void {
-    this.credentials.set(undefined);
+  /**
+   * Server-validated sign-in: unlike the old capture-and-hope Basic flow, a wrong credential is
+   * known HERE (generic 401 — the backend never says why, D-8), not on the first write.
+   */
+  async signIn(username: string, password: string): Promise<SignInResult> {
+    try {
+      const principal = await firstValueFrom(
+        this.http.post<AuthPrincipal>(`${AUTH_API}/operator/login`, { username, password }),
+      );
+      this.principal.set(principal);
+      return 'signed-in';
+    } catch (error) {
+      this.principal.set(undefined);
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        return 'invalid-credentials';
+      }
+      if (error instanceof HttpErrorResponse && error.status === 429) {
+        return 'rate-limited';
+      }
+      return 'error';
+    }
   }
 
-  /** The `Authorization: Basic` header value for operator writes, or undefined when signed out. */
-  basicAuthHeader(): string | undefined {
-    const c = this.credentials();
-    if (!c) {
-      return undefined;
+  /** Invalidate the server session; local state clears even if the session was already gone. */
+  async signOut(): Promise<void> {
+    try {
+      await firstValueFrom(this.http.post<void>(`${AUTH_API}/logout`, null));
+    } catch {
+      // A failed logout (expired session, network) still means "signed out" for this tab.
     }
-    // UTF-8 → base64. `btoa` only accepts Latin-1, so a credential with any character above U+00FF
-    // (an accented or non-Latin password) would throw — encode the bytes first.
-    const bytes = new TextEncoder().encode(`${c.username}:${c.password}`);
-    let binary = '';
-    for (const byte of bytes) {
-      // Each `byte` is 0–255, so it is its own code point — one Latin-1 char `btoa` accepts.
-      binary += String.fromCodePoint(byte);
+    this.principal.set(undefined);
+  }
+
+  /**
+   * Called by surfaces when the backend answers 401 mid-flow (session expired/invalidated
+   * elsewhere): drops the local state WITHOUT a logout round-trip.
+   */
+  sessionLost(): void {
+    this.principal.set(undefined);
+  }
+
+  private async restore(): Promise<void> {
+    try {
+      this.principal.set(
+        await firstValueFrom(this.http.get<AuthPrincipal>(`${AUTH_API}/me`)),
+      );
+    } catch {
+      this.principal.set(undefined); // 401 = signed out; also the CSRF cookie got seeded either way
+    } finally {
+      this.restoring.set(false);
     }
-    return `Basic ${btoa(binary)}`;
   }
 }
