@@ -1,37 +1,180 @@
-import { AA_NORMAL, contrastRatio } from '../../testing/contrast';
+import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import {
+  CARD_INK,
+  Glass,
+  INK_DARK,
+  PORCELAIN_CHIP,
+  PORCELAIN_HEADER_GLASS,
+  PORCELAIN_STOPS,
+  RIVIERA_CHIP,
+  RIVIERA_HEADER_GLASS,
+  RIVIERA_STOPS,
+  WHITE,
+  expectAaOverStops,
+  surfaceOver,
+} from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the beach-map design tokens (issue #38, AC-4). axe-core's
- * `color-contrast` rule cannot run under jsdom, so the colour pairs the map actually uses
- * are verified here by relative-luminance maths instead.
+ * WCAG-AA contrast guard for the Liquid Glass beach map (issue #136; gate from #38). Glass
+ * surfaces are translucent, so every pair is checked as the EFFECTIVE colour — the glass rgba
+ * composited over the theme background's worst-case gradient stops, and alpha inks composited
+ * over that (the `home.contrast.spec.ts` / `app.contrast.spec.ts` pattern). Shared token
+ * mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
- * This table MIRRORS the `color` / `background` declarations in `venue-map.scss`. When a
- * token changes there, update it here too — that is the point: a colour edit must re-pass
- * AA. Every state-bearing pair (available / premium / taken tiles) is included, plus the
- * map text and banners. All are normal-size text (the largest, `.availability strong` at
- * 1.2rem bold, still clears the stricter 4.5 threshold), so AA_NORMAL applies throughout.
+ * This table mirrors every text-bearing token in `venue-map.scss`. Deviations from the design
+ * file, on purpose (plan R-2, same class as T1/T2): the header + back pill sit on the AA-proven
+ * dark header glass, not the bare gradient; the seat tiles keep SOLID colours (below) so their
+ * ink pairs are AA regardless of backdrop; the date field is near-opaque (it sits on dark glass,
+ * unlike Discover's field on light card glass).
+ *
+ * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the availability
+ * bar track+fill (`N of M free` carries the fact), the ★ / · glyphs and the sun disc
+ * (aria-hidden; the numeric rating carries the value), the failure badge (aria-hidden; the
+ * heading carries the meaning), and the decorative tile/card borders.
  */
-interface TokenPair {
-  readonly fg: string;
-  readonly bg: string;
-  readonly usage: string;
-}
 
-const TOKEN_PAIRS: readonly TokenPair[] = [
-  { fg: '#22302f', bg: '#ffffff', usage: ':host body text / .meta .rating' },
-  { fg: '#54514b', bg: '#ffffff', usage: '.location / .meta / .legend / .state (muted)' },
-  { fg: '#0c6675', bg: '#e6f4f3', usage: '.mode-pill text on pill background' },
-  { fg: '#0e7a89', bg: '#ffffff', usage: '.availability strong (teal count)' },
-  { fg: '#0f7d8c', bg: '#ffffff', usage: '.set-tile available text on white' },
-  { fg: '#875911', bg: '#fbf1d9', usage: '.set-tile.premium text on cream' },
-  { fg: '#696459', bg: '#ece8e0', usage: '.set-tile.taken text on taken background' },
-  { fg: '#ffffff', bg: '#0e7a89', usage: '.sea-banner white text on lightest teal stop' },
-  { fg: '#6f5f2c', bg: '#f6ecd6', usage: '.row-head / .row-price on lightest map stop' },
-  { fg: '#6f5f2c', bg: '#efe0c2', usage: '.promenade on darkest map stop' },
+const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
+
+// styles.scss card-surface tokens (theme-invariant ones live in the :root block).
+const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
+const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
+const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
+const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
+
+// The map's date field is near-opaque white on the DARK header glass (venue-map.scss) — a
+// translucent fill would drop dark ink below AA there.
+const FIELD_FILL_ALPHA = 0.9;
+const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint) over the field fill
+
+// --riv-cta-grad stops (theme-invariant) — the failure-panel "Try again" button's white text.
+const CTA_STOPS = ['#0c7288', '#0a5f74'];
+
+// Solid seat-tile colours (kept solid for backdrop-independent AA — see file header).
+const TILE_PAIRS: readonly { readonly fg: string; readonly bg: string; readonly usage: string }[] = [
+  { fg: '#0f7d8c', bg: '#ffffff', usage: 'available tile' },
+  { fg: '#875911', bg: '#fbf1d9', usage: 'premium (front-row) tile' },
+  { fg: '#696459', bg: '#ece8e0', usage: 'taken tile' },
 ];
 
-describe('VenueMap design-token contrast (WCAG AA)', () => {
-  it.each(TOKEN_PAIRS)('$usage meets AA ($fg on $bg)', ({ fg, bg }) => {
+// --riv-photo-grad stops (theme-independent) for the "photos coming soon" caption pill.
+const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);
+const PHOTO_CAPTION_SCRIM = hexToRgb('092028'); // rgba(9,32,40,…)
+const PHOTO_CAPTION_ALPHA = 0.62;
+
+interface Theme {
+  readonly name: string;
+  readonly stops: readonly Rgb[];
+  readonly headerGlass: Glass;
+  readonly chip: Glass;
+  readonly cardGlass: Glass;
+  readonly headInk: Rgb; // --riv-ink
+  readonly headInkSoftAlpha: number; // --riv-ink-soft
+  readonly headInkFaintAlpha: number; // --riv-ink-faint
+}
+
+const THEMES: readonly Theme[] = [
+  {
+    name: 'riviera',
+    stops: RIVIERA_STOPS,
+    headerGlass: RIVIERA_HEADER_GLASS,
+    chip: RIVIERA_CHIP,
+    cardGlass: RIVIERA_CARD_GLASS,
+    headInk: WHITE,
+    headInkSoftAlpha: 0.86,
+    headInkFaintAlpha: 0.8,
+  },
+  {
+    name: 'porcelain',
+    stops: PORCELAIN_STOPS,
+    headerGlass: PORCELAIN_HEADER_GLASS,
+    chip: PORCELAIN_CHIP,
+    cardGlass: PORCELAIN_CARD_GLASS,
+    headInk: INK_DARK,
+    headInkSoftAlpha: 0.7,
+    headInkFaintAlpha: 0.66,
+  },
+];
+
+describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue #136)', (theme) => {
+  it('header ink (back pill, title, rating, from-price) meets AA on the header panel glass', () => {
+    expectAaOverStops(theme.headInk, 1, theme.headerGlass, theme.stops);
+  });
+
+  it('header ink-soft (location, meta, description, loading copy) meets AA on the header glass', () => {
+    expectAaOverStops(theme.headInk, theme.headInkSoftAlpha, theme.headerGlass, theme.stops);
+  });
+
+  it('header ink-faint (separators, date label, cutoff line) meets AA on the header glass', () => {
+    expectAaOverStops(theme.headInk, theme.headInkFaintAlpha, theme.headerGlass, theme.stops);
+  });
+
+  it('mode-pill text meets AA on the chip tint over the header panel glass', () => {
+    for (const stop of theme.stops) {
+      const panel = surfaceOver(theme.headerGlass, stop);
+      const chip = composite(theme.chip.color, theme.chip.alpha, panel);
+      expect(
+        contrastRatio(rgbToHex(theme.headInk), rgbToHex(chip)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('date field text (dark ink) meets AA on the near-opaque field over the header glass', () => {
+    for (const stop of theme.stops) {
+      const panel = surfaceOver(theme.headerGlass, stop);
+      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('date field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
+    for (const stop of theme.stops) {
+      const panel = surfaceOver(theme.headerGlass, stop);
+      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+      const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+      expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+  });
+
+  it('card ink (availability count, row code) meets AA on the map card glass', () => {
+    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+  });
+
+  it('card ink-soft (row price, promenade, legend, failure copy) meets AA on the card glass', () => {
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+  });
+
+  it('card ink-faint (tap hint) meets AA on the card glass', () => {
+    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
+  });
+
+  it('accent ink (free count, scroll hint) meets AA on the card glass', () => {
+    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+  });
+});
+
+describe('Beach-map theme-independent contrast (issue #136)', () => {
+  it.each(TILE_PAIRS)('$usage text meets AA ($fg on $bg)', ({ fg, bg }) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('sea-banner white text meets AA on the lightest teal stop', () => {
+    expect(contrastRatio('#ffffff', '#0e7a89')).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('the failure-panel "Try again" button (white) meets AA over both CTA-gradient stops', () => {
+    for (const stop of CTA_STOPS) {
+      expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('photo "coming soon" caption (white) meets AA on its dark pill over the photo gradient', () => {
+    for (const stop of PHOTO_STOPS) {
+      const pill = composite(PHOTO_CAPTION_SCRIM, PHOTO_CAPTION_ALPHA, stop);
+      expect(
+        contrastRatio(rgbToHex(WHITE), rgbToHex(pill)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 });
