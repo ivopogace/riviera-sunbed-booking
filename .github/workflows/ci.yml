@@ -1,11 +1,17 @@
 name: CI
 
 on:
+  # Scope push CI to `main` only. Feature branches are validated through their PR
+  # (the `pull_request` trigger below), so an unfiltered push trigger just doubled
+  # every PR commit's CI (push + pull_request on the same ref) and spawned an extra
+  # skipped CD run per feature-branch push. PRs still run CI via `pull_request`.
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
-# Cancel superseded runs on the same ref (a PR branch fires both push + pull_request).
+# Cancel superseded runs on the same ref. A PR fires CI via `pull_request`; rapid
+# re-pushes to the PR branch cancel the prior in-progress run for that ref.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

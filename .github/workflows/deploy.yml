@@ -13,9 +13,14 @@ name: CD
 
 on:
   # Automatic, production path: deploy only after CI succeeds on `main`.
+  # The `branches` filter scopes the trigger to CI runs whose head branch is `main`,
+  # so a CI completion on any *other* branch (every feature-branch push, every PR)
+  # no longer spawns a CD run that only short-circuits to "skipped" at the guard.
+  # The guard's `head_branch == 'main'` check below stays as defence in depth.
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+    branches: [main]
   # Manual path: re-deploy on demand, choosing the target.
   workflow_dispatch:
     inputs:
