@@ -68,8 +68,8 @@ process miss is treating a post-review (or post-Sonar) fix as exempt: a migratio
 | **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. **After any push that claims a phase green, check that push's CI run before starting the next phase** (deliberate red-TDD commits and honestly-labeled partial commits are exempt; a "phase complete" push is not). The scoped-test discipline means a full-suite-only failure (see `riviera-local-debug`) shows up **only** here — on 2026-07-02 it rode along unnoticed twice (#122: 3 red pushes / 45 min; #127: 6 red pushes / 33 min) because nothing in the loop looked at push CI before PR time. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
 | **PR** | **Merge the latest `origin/main` into the branch first** — if anything merged to `main` since the branch was cut (parallel sessions do this routinely), integrate it *now* with full phase discipline (skill-routing gate for what the integration touches, scoped tests, honest commit) rather than discovering an unmergeable PR after review. Then open the PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
 | **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. **Each fix re-enters at Implement** (Skill-routing gate + `tdd` + CI gate), then the touched surface is re-reviewed. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
-| **Sonar gate** | **Mandatory gate (PR-time).** SonarCloud's quality gate runs on the PR (it analyzes PRs + `main`, never a feature-branch push). Wait for it; it must pass with **no new issues** (new-code coverage ≥ 80%). **A new issue that changes implemented logic re-enters at Implement** through the Skill-routing gate (decide BE/FE, load that area's skill, `tdd`, CI, re-review) — exactly like a review finding. **Run the Sonar gate (below).** | SonarCloud (issue #3) + **the Sonar gate (below)** + `diagnosing-bugs` for a genuine defect it flags |
-| **Merge** | Only after **green CI + Review gate done + Sonar quality gate green (no new issues) + findings resolved _through the loop_** → merge; then **run the Merge close-out checklist (below)**. | **the Merge close-out (below)** |
+| **Sonar gate** | **Mandatory gate (PR-time).** SonarCloud's quality gate runs on the PR (it analyzes PRs + `main`, never a feature-branch push). Wait for it — but **a green gate is not the check**: pull the reported new-issue + duplication *list* from the SonarCloud API (a green gate can still carry MAJOR smells + duplications) and **fix every entry before merge** (new-code coverage ≥ 80%). **A new issue that changes implemented logic re-enters at Implement** through the Skill-routing gate — exactly like a review finding. **Run the Sonar gate (below).** | SonarCloud (issue #3) + **the Sonar gate (below)** + `diagnosing-bugs` for a genuine defect it flags |
+| **Merge** | Only after **green CI + Review gate done + Sonar gate green AND its reported issue/duplication list cleared + findings resolved _through the loop_** → merge; then **run the Merge close-out checklist (below)**. | **the Merge close-out (below)** |
 
 ## Issue-intake grill gate (mandatory when entering at an existing issue)
 
@@ -230,8 +230,9 @@ doubt, load it.
    fixes)," never "green."
 
 **Definition of done for a slice:** green CI **and** review gate run **and** Sonar quality gate
-green (no new issues) **and** findings resolved/deferred **and** the issue's acceptance criteria
-verified. Missing any one means the slice is still in flight — say so rather than reporting it done.
+green **with its reported new-issue + duplication list cleared** (not merely a green gate) **and**
+findings resolved/deferred **and** the issue's acceptance criteria verified. Missing any one means the
+slice is still in flight — say so rather than reporting it done.
 
 ## SonarCloud quality gate (mandatory — on the PR, before merge)
 
@@ -240,16 +241,34 @@ verified. Missing any one means the slice is still in flight — say so rather t
 > branch-push Sonar job would go spuriously red. So the Sonar gate is **due when the PR exists**, runs
 > on the PR's check suite, and is a **distinct gate from CI** (a green CI build does **not** mean Sonar
 > passed — the SonarCloud check is separate). A slice is **not** mergeable until this gate is green.
+>
+> **Green is necessary, NOT sufficient.** The quality gate can **pass while SonarCloud still reports
+> new issues** (MAJOR/minor code smells, security hotspots) **and duplications** that sit *below* its
+> fail thresholds. So the green **check-run conclusion is not proof of "no new issues"** — you MUST
+> pull the actual reported issue + duplication *list* (step 2) and **fix every entry before merge, even
+> when the gate is green.** Don't merge on the gate's pass/fail alone. (Cautionary tale: PR #158 merged
+> green with **9 unaddressed MAJOR `css:S7924` smells** because only the check-run conclusion was read,
+> not the issue list.)
 
 **How the gate runs — every PR, after CI + the Review gate, before merge:**
 
 1. **Trigger.** The moment the PR is open, the SonarCloud analysis runs on the PR head. Wait for the
    **SonarCloud Code Analysis** check (and the PR's quality-gate status) to complete — do not merge on
-   "CI green" alone. The quality gate must **pass** with **no new issues** on new code and **new-code
-   coverage ≥ 80%**.
-2. **Read the findings.** Pull the PR's check runs / Sonar quality-gate status (e.g.
-   `pull_request_read get_check_runs`, or the SonarCloud PR decoration). Triage each **new** issue Sonar
-   raises — bug, vulnerability, code smell, security hotspot, or a coverage shortfall on new code.
+   "CI green" alone. The gate must **pass** with **new-code coverage ≥ 80%** — **and** (per the
+   blockquote) the reported new-issue + duplication *list* (step 2) must be empty-or-resolved, since the
+   gate can be green while that list is non-empty.
+2. **Read the findings — the actual list, not just the gate conclusion.** The check-run
+   (`pull_request_read get_check_runs`) only reports the gate's **pass/fail**; it does **not** list the
+   issues, so it cannot tell you a green gate still carries new smells/duplications. Pull the real
+   reported list from the SonarCloud web API (anonymous-readable for this public project, so `WebFetch`
+   works), project key **`ivopogace_riviera-sunbed-booking`**, `<N>` = the PR number:
+   - **Issues:** `https://sonarcloud.io/api/issues/search?componentKeys=ivopogace_riviera-sunbed-booking&pullRequest=<N>&resolved=false&ps=100`
+     — every new bug, vulnerability, code smell, and security hotspot with its rule, file, line, message.
+   - **Duplications + new-code measures:** `https://sonarcloud.io/api/measures/component?component=ivopogace_riviera-sunbed-booking&pullRequest=<N>&metricKeys=new_duplicated_lines_density,new_duplicated_blocks,new_bugs,new_vulnerabilities,new_code_smells,new_coverage`.
+
+   Triage **every** entry the list returns — bug, vulnerability, code smell, security hotspot, a
+   **duplicated block**, or a coverage shortfall. A green gate with a **non-empty** issue/duplication
+   list is **not** done.
 3. **Resolve — back through the loop, not around it.** This is the crux of the gate, and the reason it
    exists as a first-class stage:
    - **A Sonar finding that changes implemented logic is a code change, so it re-enters at Implement** —
@@ -262,16 +281,28 @@ verified. Missing any one means the slice is still in flight — say so rather t
    - **A coverage gap** on new code → add the missing tests (still test-first; the new test is itself the fix).
    - **A genuine defect** Sonar surfaced (real bug/vuln) → drive it with `diagnosing-bugs`, then the fix
      re-enters the loop as above.
-   - **A false positive / won't-fix / out-of-scope smell** → mark it resolved in SonarCloud with an explicit
-     rationale (or open a follow-up issue), and record the decision in the plan's review/Sonar note. Don't
-     silently ignore the gate — an unaddressed new issue blocks merge.
+   - **A duplicated block** (`new_duplicated_blocks > 0`, or a `common-*:DuplicatedBlocks` issue) →
+     refactor the duplication out (extract the shared helper / dedupe the near-identical test or `.scss`)
+     before merge — even if the duplication density stayed under the gate's fail threshold.
+   - **A false positive / won't-fix / out-of-scope smell** → **prefer an in-code fix that also satisfies
+     the static analyzer**, so the reported list reaches literally **zero** without needing SonarCloud
+     UI/token access. The recurring FE case is **`css:S7924` ("text does not meet the minimal contrast
+     requirement") on translucent glass** — the analyzer ignores the rgba alpha / can't composite the
+     glass over the gradient, so a pair the `*.contrast.spec.ts` proves AA still flags. Fix it the way
+     `frontend/src/app/shared/_glass.scss` (`failure-icon`, T3) already does: **swap the translucent fill
+     for its solid composited equivalent** (and nudge the ink to clear 4.5:1 outright); decorative
+     `aria-hidden` glyphs get the same treatment. Only when a code fix would genuinely degrade the design
+     do you **mark it resolved in SonarCloud with a written rationale** (or open a follow-up issue) — and
+     record that decision in the plan's Sonar note. Either way, an **unaddressed** reported new issue
+     blocks merge.
    - **No "post-Sonar exemption":** a Sonar fix being small or arriving after a green CI does **not** excuse
      it from the Skill-routing gate, `tdd`, CI, and re-review. Each fix push re-triggers CI **and** the Sonar
      analysis — re-check both before merging.
 4. **Only then merge.** Merge is reached **only** when CI is green **and** the Review gate has run **and**
-   the **Sonar quality gate is green (no new issues, new-code coverage ≥ 80%)** **and** every finding is
-   resolved/deferred **and** any fix round itself cleared the loop. "Green CI + reviewed + Sonar-clean,"
-   never just "green CI."
+   the **Sonar quality gate is green AND its reported new-issue + duplication list is empty-or-resolved**
+   (each entry code-fixed, or resolved-with-rationale in SonarCloud), new-code coverage ≥ 80%, **and**
+   every finding is resolved/deferred **and** any fix round itself cleared the loop. "Green CI + reviewed
+   + Sonar issue-list cleared," never "the gate went green."
 
 ## Merge close-out (mandatory — after the merge, before calling the slice done)
 
@@ -366,11 +397,14 @@ ways that repeatedly cost time when rediscovered. The rules:
    change. (Generalize the same way for a red-CI fix or a reviewer's later comment: any new edit
    re-runs the gate for what it touches.)
 9. **The Sonar gate is non-negotiable, and its findings re-enter the loop too.** SonarCloud runs on
-   the **PR** (not branch pushes); green CI is **not** the Sonar gate. Don't merge until the quality
-   gate passes with **no new issues** (new-code coverage ≥ 80%). A Sonar finding that **changes
-   implemented logic** re-enters at Implement exactly like a review finding: **decide BE or FE**, load
-   that area's skill, fix test-first, re-run CI **and** Sonar, re-review. A false positive / out-of-scope
-   smell is resolved-with-rationale in SonarCloud (or a follow-up issue), never silently ignored.
+   the **PR** (not branch pushes); green CI is **not** the Sonar gate. **A green quality gate is not
+   the check** — pull the reported new-issue + duplication *list* from the SonarCloud API (a green gate
+   can still carry MAJOR code smells + duplications below its fail thresholds) and **fix every entry
+   before merge**. A Sonar finding that **changes implemented logic** re-enters at Implement exactly like
+   a review finding: **decide BE or FE**, load that area's skill, fix test-first, re-run CI **and** Sonar,
+   re-review. Prefer an in-code fix (e.g. solid composited fills for `css:S7924` glass false-positives)
+   so the list reaches zero; only genuinely-design-degrading false positives are resolved-with-rationale
+   in SonarCloud (or a follow-up issue), never silently ignored.
 
 10. **Source-of-intent documents live in the repo, not the conversation.** Any plan,
    spec, or improvement plan that issues or ADRs reference must be **committed** (e.g.
