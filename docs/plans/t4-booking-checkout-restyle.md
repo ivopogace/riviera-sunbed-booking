@@ -234,7 +234,7 @@ stays an ISO `LocalDate` string on the wire (only its *display* is prettified).
 |-------|--------|---------|
 | 0 — Shared friendly booking-date label | ✅ | `feat(fe): friendly booking-date label helper (#137)` |
 | 1 — Booking dialog: 2-step glass modal | ✅ | `feat(fe): 2-step Liquid Glass booking dialog (#137)` |
-| 2 — Payment page: glass two-column + v3 states | | |
+| 2 — Payment page: glass two-column + v3 states | ✅ | `feat(fe): Liquid Glass payment page + v3 states (#137)` |
 | 3 — Confirmed + Request-sent glass cards | | |
 | 4 — Route flip + e2e alignment + full green | | |
 
