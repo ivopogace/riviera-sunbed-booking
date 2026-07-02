@@ -60,6 +60,7 @@ class SessionPersistenceIT {
 	@Test
 	void sessionIsStoredInPostgresAndAuthenticatesSubsequentRequests() throws Exception {
 		MvcResult result = mvc.perform(post("/api/auth/operator/login").with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username": "op-persist", "password": "pw-persist"}"""))

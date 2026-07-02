@@ -83,6 +83,7 @@ class AuthSessionIT {
 	@Test
 	void loginEstablishesSessionCookieWithSecureFlags() throws Exception {
 		MvcResult result = mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username": "op-a", "password": "pw-a"}"""))
@@ -119,6 +120,7 @@ class AuthSessionIT {
 
 	private String attemptLoginExpecting401(String username, String password) throws Exception {
 		return mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username": "%s", "password": "%s"}""".formatted(username, password)))
@@ -149,6 +151,7 @@ class AuthSessionIT {
 
 		// A login arriving WITH an existing session must not keep its id (fixation, D-1).
 		MvcResult result = mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.cookie(preLogin)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -187,6 +190,7 @@ class AuthSessionIT {
 
 	private Cookie login() throws Exception {
 		MvcResult result = mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username": "op-a", "password": "pw-a"}"""))

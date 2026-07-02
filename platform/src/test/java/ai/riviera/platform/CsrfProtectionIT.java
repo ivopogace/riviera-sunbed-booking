@@ -85,6 +85,7 @@ class CsrfProtectionIT {
 		// Login CSRF: without the token a cross-site page could silently log the victim into an
 		// attacker-chosen account. The FE always has the cookie first (any prior GET issues it).
 		mvc.perform(post("/api/auth/operator/login")
+						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"username": "operator", "password": "csrf-test-pw"}"""))

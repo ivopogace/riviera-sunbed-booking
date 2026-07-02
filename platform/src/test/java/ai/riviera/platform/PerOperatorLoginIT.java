@@ -150,6 +150,7 @@ class PerOperatorLoginIT {
 	/** The session login must reject these credentials with the generic 401 (AuthSessionIT pins the body). */
 	private void expectLoginRejected(String username, String password) throws Exception {
 		mvc.perform(post("/api/auth/operator/login").with(csrf())
+						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"username": "%s", "password": "%s"}""".formatted(username, password)))
