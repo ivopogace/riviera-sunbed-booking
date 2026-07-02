@@ -101,11 +101,17 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 });
 
 describe('app.routes legacy-surface flags (issue #134)', () => {
+  // Restyled routes render on the bare themed background; each T2–T5/operator slice
+  // moves its route from LEGACY to this list. T2 (#135): Discover ('').
+  const RESTYLED_PATHS = [''];
+
   it('marks every not-yet-restyled route with the compat surface (flipped per T2–T5/operator slice)', () => {
     for (const route of routes) {
-      expect(route.data?.['legacySurface'], `route '${route.path}' must carry legacySurface`).toBe(
-        true,
-      );
+      const expected = !RESTYLED_PATHS.includes(route.path ?? '');
+      expect(
+        route.data?.['legacySurface'] === true,
+        `route '${route.path}' legacySurface flag`,
+      ).toBe(expected);
     }
   });
 });
