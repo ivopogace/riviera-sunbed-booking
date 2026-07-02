@@ -10,17 +10,18 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass "You're booked." confirmation card (issue #137,
- * AC-12; gate from #6). A centered card-glass surface on the bare themed gradient, so every pair is
- * the EFFECTIVE colour composited over the theme's worst-case stops (the venue-map pattern). Mirrors
- * booking-confirmation.scss. The ✓ badge is decorative (aria-hidden) — 1.4.11-exempt.
+ * WCAG-AA contrast guard for the Liquid Glass "Request sent" card (issue #137, AC-12; gate from
+ * #98). A centered card-glass surface on the bare themed gradient — every pair is the EFFECTIVE
+ * colour composited over the theme's worst-case stops (the venue-map pattern). Mirrors
+ * request-confirmation.scss (the amber info box text is card ink-soft, covered below). The ✉ badge
+ * is decorative (aria-hidden) — 1.4.11-exempt.
  */
 
 const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 const CARD_INK_SOFT_ALPHA = 0.78;
-const ACCENT = '#085a6e'; // --riv-accent-ink (Paid, big code, link)
-const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the "Back to the beach" button
+const ACCENT = '#085a6e'; // --riv-accent-ink (big reference code)
+const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the "Track this request" button
 
 interface Theme {
   readonly name: string;
@@ -32,7 +33,7 @@ const THEMES: readonly Theme[] = [
   { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS },
 ];
 
-describe('Confirmation card — theme-independent CTA (WCAG AA, issue #137)', () => {
+describe('Request-sent card — theme-independent CTA (WCAG AA, issue #137)', () => {
   it('the primary button (white) meets AA over both CTA-gradient stops', () => {
     for (const stop of CTA_STOPS) {
       expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
@@ -40,16 +41,16 @@ describe('Confirmation card — theme-independent CTA (WCAG AA, issue #137)', ()
   });
 });
 
-describe.each(THEMES)('Confirmation card glass contrast — $name theme (WCAG AA, issue #137)', (theme) => {
-  it('card ink (heading, summary values) meets AA on the card glass', () => {
+describe.each(THEMES)('Request-sent card glass contrast — $name theme (WCAG AA, issue #137)', (theme) => {
+  it('card ink (heading, emphasis) meets AA on the card glass', () => {
     expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
   });
 
-  it('card ink-soft (lead, summary keys, code label + note) meets AA on the card glass', () => {
+  it('card ink-soft (lead, info box, code label, status) meets AA on the card glass', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
-  it('accent ink (Paid amount, big booking code, manage link) meets AA on the card glass', () => {
+  it('accent ink (big reference code) meets AA on the card glass', () => {
     expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
   });
 });

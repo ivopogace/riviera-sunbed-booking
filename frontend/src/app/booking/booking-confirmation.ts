@@ -1,14 +1,17 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 
 /**
- * Confirmation screen shown after a successful booking (U3, issue #6). Renders the booking
- * code and a summary from {@link BookingService}'s last confirmation (no `GET by code`
- * endpoint until U6). On a cold load with no confirmation in memory (e.g. a hard refresh) it
- * shows a "start over" message rather than a blank screen.
+ * Confirmation screen shown after a successful booking (U3 #6; Liquid Glass restyle #137). Renders
+ * the "You're booked." glass card — the booking code (a bearer credential, invariant #7, confined
+ * to this surface and the `/booking/:code` link) and a summary from {@link BookingService}'s last
+ * confirmation. On a cold load with no confirmation in memory (e.g. a hard refresh) it shows a
+ * "start over" message rather than a blank screen. No Guest row — the server confirmation carries
+ * no guest name (the dialog's Review step shows it, where the form knows it).
  */
 @Component({
   selector: 'app-booking-confirmation',
@@ -16,35 +19,34 @@ import { BookingService } from './booking.service';
   template: `
     @if (confirmation(); as c) {
       <section class="confirmation" aria-labelledby="confirmation-title">
-        <h1 id="confirmation-title">Booking confirmed</h1>
-        <p class="lead">Show this code to staff when you arrive.</p>
-
-        <p class="code" data-testid="booking-code">
-          <span class="code-label">Booking code</span>
-          <strong>{{ c.code }}</strong>
+        <div class="badge" aria-hidden="true">✓</div>
+        <h1 id="confirmation-title">You’re booked.</h1>
+        <p class="lead">
+          {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on
+          {{ formatBookingDate(c.bookingDate) }}.
         </p>
 
         <dl class="summary">
-          <dt>Venue</dt>
-          <dd>{{ c.venueName }}</dd>
-          <dt>Set</dt>
-          <dd>{{ c.rowLabel }} · spot {{ c.positionNo }}</dd>
-          <dt>Date</dt>
-          <dd>{{ c.bookingDate }}</dd>
-          <dt>Paid</dt>
-          <dd>{{ formatMoney(c.amount) }}</dd>
+          <div class="sum-row"><dt>Includes</dt><dd>2 loungers + umbrella · full day</dd></div>
+          <div class="sum-row total"><dt>Paid</dt><dd>{{ formatMoney(c.amount) }}</dd></div>
         </dl>
 
-        <a [routerLink]="['/booking', c.code]" class="home-link" data-testid="manage-link">
-          View or cancel this booking
+        <div class="code-card" data-testid="booking-code">
+          <span class="code-label">Booking code</span>
+          <div class="code">{{ c.code }}</div>
+          <p class="code-note">Show this code to staff when you arrive. We’ve also emailed it to you.</p>
+        </div>
+
+        <a routerLink="/" class="btn-primary">Back to the beach</a>
+        <a [routerLink]="['/booking', c.code]" class="link" data-testid="manage-link">
+          View or manage this booking
         </a>
-        <a routerLink="/" class="home-link">Back to home</a>
       </section>
     } @else {
       <section class="confirmation" aria-labelledby="confirmation-title">
         <h1 id="confirmation-title">No booking to show</h1>
         <p class="lead">Your booking details aren’t available here anymore.</p>
-        <a routerLink="/" class="home-link">Start a new booking</a>
+        <a routerLink="/" class="link">Start a new booking</a>
       </section>
     }
   `,
@@ -53,7 +55,7 @@ import { BookingService } from './booking.service';
 export class BookingConfirmation {
   private readonly bookings = inject(BookingService);
 
-  // Only render the "confirmed / Paid" card for an actually-CONFIRMED booking. An
+  // Only render the "You're booked. / Paid" card for an actually-CONFIRMED booking. An
   // AWAITING_PAYMENT booking (stripe profile) is routed to /booking/pay and confirmed via the
   // webhook (invariant #8) — it must never surface here as paid. Defensive belt-and-braces.
   protected readonly confirmation = computed(() => {
@@ -62,4 +64,5 @@ export class BookingConfirmation {
   });
 
   protected readonly formatMoney = formatMoney;
+  protected readonly formatBookingDate = formatBookingDate;
 }
