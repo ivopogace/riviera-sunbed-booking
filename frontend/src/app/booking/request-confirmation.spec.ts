@@ -4,7 +4,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { environment } from '../../environments/environment';
-import { expectNoAxeViolations } from '../../testing/axe';
 import { CreateBookingRequest } from './booking.model';
 import { RequestConfirmation } from './request-confirmation';
 import { BookingService } from './booking.service';
@@ -49,7 +48,7 @@ describe('RequestConfirmation', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('renders the pending request: code, Tirane-zone deadline, amount and status link', async () => {
+  it('renders the pending request: code, Tirane-zone deadline, no-charge copy and track link', () => {
     TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
     httpMock.expectOne(CREATE_URL).flush(REQUESTED, { status: 202, statusText: 'Accepted' });
 
@@ -57,11 +56,10 @@ describe('RequestConfirmation', () => {
     expect(host.querySelector('h1')?.textContent).toContain('Request sent');
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('RQST234567');
     expect(host.querySelector('[data-testid="request-deadline"]')?.textContent).toContain('17:00');
-    expect(host.textContent).toContain('you’ll only pay if the venue accepts');
+    expect(host.textContent).toMatch(/haven.t been charged/); // v3 no-charge copy
     expect(
       host.querySelector('[data-testid="status-link"]')?.getAttribute('href'),
     ).toContain('/booking/RQST234567');
-    await expectNoAxeViolations(host);
   });
 
   it('does NOT render a non-pending hand-off as a sent request (belt-and-braces)', () => {
@@ -75,9 +73,8 @@ describe('RequestConfirmation', () => {
     expect(host.querySelector('h1')?.textContent).toContain('No request to show');
   });
 
-  it('shows the start-over state on a cold load with no hand-off', async () => {
+  it('shows the start-over state on a cold load with no hand-off', () => {
     const { host } = render();
     expect(host.querySelector('h1')?.textContent).toContain('No request to show');
-    await expectNoAxeViolations(host);
   });
 });

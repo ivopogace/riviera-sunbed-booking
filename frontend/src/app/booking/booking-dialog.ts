@@ -12,6 +12,7 @@ import {
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingMode, SetView } from '../venue/venue.model';
 import {
@@ -22,16 +23,18 @@ import {
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
+/** What a set includes — the product's fixed unit (CLAUDE.md: 2 loungers + umbrella, full day). */
+const SET_INCLUDES = '2 loungers + umbrella · full day';
+
 /**
- * Modal guest-checkout form for booking one set (U3, issue #6). Signal Forms
- * (`@angular/forms/signals`) drive the email/name/phone/date fields; submission posts through
- * {@link BookingService}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC
- * and backdrop close, and focus returns to the triggering tile (handled by the parent on
- * `dismissed`). The set, amount and date are server-validated — the client form is UX only.
- *
- * <p>The {@code date} input is the day the map is showing (issue #44): the form's date field is
- * seeded from it so the map and the dialog always agree, while staying editable (the server
- * remains authoritative for the cutoff).
+ * Two-step guest-checkout modal for booking one set (U3 #6; Liquid Glass restyle #137, epic #133).
+ * Step 1 **Details** collects contact info (Signal Forms) with the date shown read-only — the map
+ * owns the date now (#44/#136); step 2 **Review** shows the summary + total and the mode-specific
+ * note, then submits through {@link BookingService}. Restyle only: the three shipped #98 flows are
+ * unchanged — a `201` emits {@link booked}, a `202 AWAITING_PAYMENT` emits {@link awaiting} (the
+ * booking is NOT confirmed until the verified webhook, invariant #8), a `202 PENDING_REQUEST` emits
+ * {@link requested}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC / backdrop
+ * / close-button dismiss, and focus returns to the triggering tile (handled by the parent).
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -46,63 +49,119 @@ import { BookingService, bookingErrorOf } from './booking.service';
       class="booking-panel"
       role="dialog"
       aria-modal="true"
-      [attr.aria-labelledby]="titleId"
+      [attr.aria-labelledby]="'booking-dialog-venue booking-dialog-title'"
       (click)="$event.stopPropagation()"
       (keydown.tab)="trapFocus($event, false)"
       (keydown.shift.tab)="trapFocus($event, true)"
     >
-      <h2 [id]="titleId" class="panel-title">{{ isRequest() ? 'Request this set' : 'Book this set' }}</h2>
-      <p class="panel-summary">
-        {{ set().rowLabel }} · spot {{ set().positionNo }} — <strong>{{ price() }}</strong>
-      </p>
-      @if (isRequest()) {
-        <p class="request-note">
-          This venue reviews each booking. You won’t be charged unless the venue accepts your
-          request.
-        </p>
-      }
+      <header class="dialog-head">
+        <button
+          type="button"
+          class="dialog-close"
+          data-testid="dialog-close"
+          aria-label="Close"
+          (click)="requestClose()"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+        <span id="booking-dialog-venue" class="dialog-venue">{{ venueName() }}</span>
+        <h2 id="booking-dialog-title" class="dialog-title">{{ set().rowLabel }}</h2>
+        <p class="dialog-meta">Spot {{ set().positionNo }} · {{ tierLabel() }}</p>
+        <p class="dialog-includes">{{ includes }}</p>
 
-      <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
-        <label class="field">
-          <span>Full name</span>
-          <input type="text" autocomplete="name" [formField]="bookingForm.fullName" />
-          @if (bookingForm.fullName().touched() && bookingForm.fullName().errors().length) {
-            <span class="field-error">{{ bookingForm.fullName().errors()[0].message }}</span>
+        <ol class="steps" aria-label="Booking steps">
+          @for (s of steps(); track s.n) {
+            <li
+              class="step"
+              [class.active]="s.active"
+              [attr.data-testid]="'step-' + s.n"
+              [attr.aria-current]="s.active ? 'step' : null"
+            >
+              <span class="step-num" aria-hidden="true">{{ s.n }}</span>
+              <span class="step-label">{{ s.label }}</span>
+            </li>
           }
-        </label>
+        </ol>
+      </header>
 
-        <label class="field">
-          <span>Email</span>
-          <input type="email" autocomplete="email" [formField]="bookingForm.email" />
-          @if (bookingForm.email().touched() && bookingForm.email().errors().length) {
-            <span class="field-error">{{ bookingForm.email().errors()[0].message }}</span>
-          }
-        </label>
+      <form (submit)="onPrimary(); $event.preventDefault()" novalidate>
+        <div class="dialog-body">
+          @if (step() === 1) {
+            <div class="ro-row">
+              <span class="ro-key">Date</span>
+              <strong class="ro-val" data-testid="dialog-date">{{ dateLabel() }}</strong>
+            </div>
+            <div class="ro-row">
+              <span class="ro-key">Price</span>
+              <strong class="ro-val accent" data-testid="dialog-price">{{ price() }}</strong>
+            </div>
 
-        <label class="field">
-          <span>Phone</span>
-          <input type="tel" autocomplete="tel" [formField]="bookingForm.phone" />
-          @if (bookingForm.phone().touched() && bookingForm.phone().errors().length) {
-            <span class="field-error">{{ bookingForm.phone().errors()[0].message }}</span>
+            <div class="fields">
+              <label class="field">
+                <span class="field-label">Full name</span>
+                <input type="text" autocomplete="name" [formField]="bookingForm.fullName" />
+                @if (submitAttempted() && bookingForm.fullName().errors().length) {
+                  <span class="field-error" role="alert">{{ bookingForm.fullName().errors()[0].message }}</span>
+                }
+              </label>
+              <label class="field">
+                <span class="field-label">Email</span>
+                <input type="email" autocomplete="email" [formField]="bookingForm.email" />
+                @if (submitAttempted() && bookingForm.email().errors().length) {
+                  <span class="field-error" role="alert">{{ bookingForm.email().errors()[0].message }}</span>
+                }
+              </label>
+              <label class="field">
+                <span class="field-label">Phone</span>
+                <input type="tel" autocomplete="tel" [formField]="bookingForm.phone" />
+                @if (submitAttempted() && bookingForm.phone().errors().length) {
+                  <span class="field-error" role="alert">{{ bookingForm.phone().errors()[0].message }}</span>
+                }
+              </label>
+            </div>
+            <p class="fine">We only use these to send your booking code and reach you about this booking.</p>
           }
-        </label>
 
-        <label class="field">
-          <span>Date</span>
-          <input type="date" [formField]="bookingForm.date" />
-          @if (bookingForm.date().touched() && bookingForm.date().errors().length) {
-            <span class="field-error">{{ bookingForm.date().errors()[0].message }}</span>
+          @if (step() === 2) {
+            <dl class="review">
+              <div class="sum-row"><dt>Venue</dt><dd>{{ venueName() }}</dd></div>
+              <div class="sum-row"><dt>Set</dt><dd>{{ set().rowLabel }} · spot {{ set().positionNo }}</dd></div>
+              <div class="sum-row"><dt>Date</dt><dd>{{ dateLabel() }}</dd></div>
+              <div class="sum-row"><dt>Guest</dt><dd>{{ model().fullName }}</dd></div>
+              <div class="sum-row total"><dt>Total</dt><dd data-testid="review-total">{{ price() }}</dd></div>
+            </dl>
+
+            @if (isRequest()) {
+              <p class="mode-note request">
+                <strong>Request to Book.</strong> This venue reviews each request before payment. We’ll
+                send your request now — <strong>you won’t be charged yet</strong>. If the venue accepts,
+                you’ll get a link to pay {{ price() }} and lock in the set.
+              </p>
+            } @else {
+              <p class="mode-note instant">
+                <strong>Instant Book.</strong> Next you’ll pay securely to confirm this set right away.
+                Free cancellation until the evening before — your booking code arrives on-screen and by
+                email.
+              </p>
+            }
           }
-        </label>
+        </div>
 
         @if (errorMessage(); as msg) {
-          <p class="form-error" role="alert">{{ msg }}</p>
+          <p class="form-error" role="alert" data-testid="dialog-error">{{ msg }}</p>
         }
 
-        <div class="actions">
-          <button type="button" class="btn-secondary" (click)="requestClose()">Cancel</button>
-          <button type="submit" class="btn-primary" [disabled]="bookingForm().invalid() || submitting()">
-            {{ submitting() ? busyLabel() : ctaLabel() }}
+        <div class="dialog-actions">
+          @if (step() === 2) {
+            <button type="button" class="btn-back" data-testid="dialog-back" (click)="back()">Back</button>
+          }
+          <button
+            type="submit"
+            class="btn-primary"
+            data-testid="dialog-primary"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? busyLabel() : primaryLabel() }}
           </button>
         </div>
       </form>
@@ -112,10 +171,12 @@ import { BookingService, bookingErrorOf } from './booking.service';
 })
 export class BookingDialog implements OnInit {
   readonly set = input.required<SetView>();
-  /** The day the map is showing (ISO YYYY-MM-DD); seeds the form's date so the two agree. */
+  /** The day the map is showing (ISO YYYY-MM-DD); seeds the POST body and the read-only date row. */
   readonly date = input.required<string>();
   /** The venue's booking mode: `REQUEST` swaps the CTA/copy to Request-to-Book (issue #98). */
   readonly mode = input<BookingMode>('INSTANT');
+  /** The venue name, shown in the gradient header (SetView carries none). */
+  readonly venueName = input<string>('');
 
   readonly dismissed = output<void>();
   /** Emitted on a `201 CONFIRMED` (stub/Instant profile) — the booking is already paid. */
@@ -131,17 +192,32 @@ export class BookingDialog implements OnInit {
    */
   readonly requested = output<RequestedBooking>();
 
-  protected readonly titleId = 'booking-dialog-title';
+  protected readonly includes = SET_INCLUDES;
 
   private readonly bookings = inject(BookingService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  /** 1 = Details, 2 = Review. */
+  protected readonly step = signal<1 | 2>(1);
+  /** Field errors are announced only after the first Continue (design; invariant-free UX). */
+  protected readonly submitAttempted = signal(false);
   protected readonly submitting = signal(false);
   private readonly errorCode = signal<BookingErrorCode | undefined>(undefined);
 
   protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
-  protected readonly ctaLabel = computed(() => (this.isRequest() ? 'Request to book' : 'Confirm booking'));
-  protected readonly busyLabel = computed(() => (this.isRequest() ? 'Requesting…' : 'Booking…'));
+  protected readonly tierLabel = computed(() => (this.set().tier === 'PREMIUM' ? 'Premium' : 'Standard'));
+  protected readonly dateLabel = computed(() => formatBookingDate(this.date()));
+  protected readonly primaryLabel = computed(() => {
+    if (this.step() === 1) {
+      return 'Continue';
+    }
+    return this.isRequest() ? 'Send request' : 'Continue to payment';
+  });
+  protected readonly busyLabel = computed(() => (this.isRequest() ? 'Sending request…' : 'Processing…'));
+  protected readonly steps = computed(() => [
+    { n: 1, label: 'Details', active: this.step() === 1 },
+    { n: 2, label: 'Review', active: this.step() === 2 },
+  ]);
 
   protected readonly model = signal({
     fullName: '',
@@ -155,7 +231,6 @@ export class BookingDialog implements OnInit {
     required(path.email, { message: 'Email is required' });
     email(path.email, { message: 'Enter a valid email address' });
     required(path.phone, { message: 'Phone is required' });
-    required(path.date, { message: 'Pick a date' });
   });
 
   constructor() {
@@ -176,7 +251,40 @@ export class BookingDialog implements OnInit {
     this.dismissed.emit();
   }
 
-  protected onSubmit(): void {
+  /** The one primary action; branches on the step (advance on Details, submit on Review). */
+  protected onPrimary(): void {
+    if (this.step() === 1) {
+      this.continueToReview();
+      return;
+    }
+    this.onSubmit();
+  }
+
+  private continueToReview(): void {
+    if (this.bookingForm().invalid()) {
+      this.submitAttempted.set(true);
+      return;
+    }
+    this.submitAttempted.set(false);
+    this.errorCode.set(undefined);
+    this.step.set(2);
+    this.focusPrimary();
+  }
+
+  protected back(): void {
+    this.step.set(1);
+    this.focusPrimary();
+  }
+
+  /** Keep focus inside the panel across step changes (the primary button is always present) so the
+   *  focus trap can never be escaped onto the shell behind the modal. */
+  private focusPrimary(): void {
+    this.hostRef.nativeElement
+      .querySelector<HTMLElement>('[data-testid="dialog-primary"]')
+      ?.focus();
+  }
+
+  private onSubmit(): void {
     this.errorCode.set(undefined);
     submit(this.bookingForm, async () => {
       const m = this.model();

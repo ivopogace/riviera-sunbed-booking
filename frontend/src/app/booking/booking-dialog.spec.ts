@@ -62,7 +62,16 @@ const REQUESTED: RequestedBooking = {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
-describe('BookingDialog', () => {
+interface DialogProbe {
+  model: { set(v: unknown): void };
+  step(): number;
+  submitAttempted(): boolean;
+  submitting(): boolean;
+  errorCode: { set(v: string | undefined): void };
+  errorMessage(): string | undefined;
+}
+
+describe('BookingDialog (2-step Liquid Glass modal)', () => {
   let fixture: ComponentFixture<BookingDialog>;
   let dialog: BookingDialog;
   let httpMock: HttpTestingController;
@@ -76,6 +85,7 @@ describe('BookingDialog', () => {
     fixture = TestBed.createComponent(BookingDialog);
     fixture.componentRef.setInput('set', SET);
     fixture.componentRef.setInput('date', '2026-12-01');
+    fixture.componentRef.setInput('venueName', 'Miramar Beach Club');
     dialog = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
     await fixture.whenStable();
@@ -86,10 +96,20 @@ describe('BookingDialog', () => {
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
   }
-
-  /** Fill the signal-form model with valid guest details (model-driven, per signal-forms.md). */
+  function probe(): DialogProbe {
+    return dialog as unknown as DialogProbe;
+  }
+  function primary(): HTMLButtonElement {
+    return host().querySelector<HTMLButtonElement>('[data-testid="dialog-primary"]')!;
+  }
+  /** Dispatch the form's submit — jsdom does not reliably fire submit on a submit-button click,
+   *  so exercise the (submit) binding directly (the primary is a real type=submit button in the DOM). */
+  function submitForm(): void {
+    host().querySelector('form')!.dispatchEvent(new Event('submit'));
+  }
+  /** Fill the signal-form model with valid guest details (date stays seeded from the input). */
   async function fillValid(): Promise<void> {
-    (dialog as unknown as { model: { set(v: unknown): void } }).model.set({
+    probe().model.set({
       fullName: 'Holiday Guest',
       email: 'guest@example.com',
       phone: '+355699000',
@@ -97,23 +117,57 @@ describe('BookingDialog', () => {
     });
     await fixture.whenStable();
   }
-
-  function submitForm(): void {
-    host().querySelector('form')!.dispatchEvent(new Event('submit'));
+  async function goToReview(): Promise<void> {
+    await fillValid();
+    submitForm();
+    await fixture.whenStable();
   }
 
-  it('renders the set summary and the formatted price', () => {
-    expect(host().querySelector('.panel-summary')?.textContent).toContain('spot 2');
-    expect(host().querySelector('.panel-summary')?.textContent).toContain('€45');
+  it('opens on the Details step: read-only date + price, step indicator on 1, no editable date input', () => {
+    expect(probe().step()).toBe(1);
+    expect(host().querySelector('[data-testid="dialog-date"]')?.textContent).toContain('Dec');
+    expect(host().querySelector('[data-testid="dialog-price"]')?.textContent).toContain('€45');
+    expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe('step');
+    expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBeNull();
+    // Date is now owned by the map (#44/#136) — no editable date field in the dialog.
+    expect(host().querySelector('input[type="date"]')).toBeNull();
+    // Venue name appears in the gradient header.
+    expect(host().textContent).toContain('Miramar Beach Club');
   });
 
-  it('seeds the date field from the date input (issue #44)', () => {
-    const dateInput = host().querySelector<HTMLInputElement>('input[type="date"]');
-    expect(dateInput?.value).toBe('2026-12-01');
+  it('shows role=alert field errors only after the first Continue, then advances when valid', async () => {
+    // Nothing announced before the first submit attempt.
+    expect(host().querySelectorAll('[role="alert"]').length).toBe(0);
+
+    submitForm(); // Continue with an empty form
+    await fixture.whenStable();
+    expect(probe().submitAttempted()).toBe(true);
+    expect(host().querySelectorAll('[role="alert"]').length).toBeGreaterThan(0);
+    expect(probe().step()).toBe(1); // stays on Details
+
+    await goToReview();
+    expect(probe().step()).toBe(2);
+    expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBe('step');
   });
 
-  it('posts the booking and emits booked on success', async () => {
-    await fillValid();
+  it('Review step (INSTANT) shows the summary + total + Instant note + "Continue to payment"; Back returns', async () => {
+    await goToReview();
+
+    expect(primary().textContent).toContain('Continue to payment');
+    const body = host().textContent ?? '';
+    expect(body).toContain('Miramar Beach Club'); // Venue row
+    expect(body).toContain('Holiday Guest'); // Guest row (from the form)
+    expect(host().querySelector('[data-testid="review-total"]')?.textContent).toContain('€45');
+    expect(body).toContain('Instant Book');
+
+    host().querySelector<HTMLButtonElement>('[data-testid="dialog-back"]')!.click();
+    await fixture.whenStable();
+    expect(probe().step()).toBe(1);
+    expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe('step');
+  });
+
+  it('posts the booking with the seeded date and emits booked on a 201 CONFIRMED', async () => {
+    await goToReview();
     let emitted: BookingConfirmation | undefined;
     dialog.booked.subscribe((c) => (emitted = c));
 
@@ -130,12 +184,12 @@ describe('BookingDialog', () => {
     await fixture.whenStable();
 
     expect(emitted).toEqual(CONFIRMATION);
-    expect((dialog as unknown as { submitting(): boolean }).submitting()).toBe(false);
-    expect(host().querySelector('.form-error')).toBeNull();
+    expect(probe().submitting()).toBe(false);
+    expect(host().querySelector('[data-testid="dialog-error"]')).toBeNull();
   });
 
-  it('emits awaiting (not booked) on a 202 awaiting-payment response (stripe)', async () => {
-    await fillValid();
+  it('emits awaiting (not booked) on a 202 AWAITING_PAYMENT (stripe profile, invariant #8)', async () => {
+    await goToReview();
     let booked = false;
     let awaiting: AwaitingPayment | undefined;
     dialog.booked.subscribe(() => (booked = true));
@@ -150,11 +204,11 @@ describe('BookingDialog', () => {
 
     expect(awaiting).toEqual(AWAITING);
     expect(booked).toBe(false);
-    expect((dialog as unknown as { submitting(): boolean }).submitting()).toBe(false);
+    expect(probe().submitting()).toBe(false);
   });
 
-  it('maps a 409 to the SET_TAKEN message and does not emit booked', async () => {
-    await fillValid();
+  it('maps a 409 to the SET_TAKEN alert, stays on Review, and does not emit or navigate', async () => {
+    await goToReview();
     let emitted = false;
     dialog.booked.subscribe(() => (emitted = true));
 
@@ -163,32 +217,26 @@ describe('BookingDialog', () => {
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/bookings`)
       .flush({ status: 409, code: 'SET_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    // The submit() helper sets errorCode in a promise continuation; drain it, then render.
     await fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(emitted).toBe(false);
-    // Assert the mapped state (the @if (errorMessage()) binding drives the .form-error node);
-    // the message→DOM rendering is covered by the mapping test.
-    const msg = (dialog as unknown as { errorMessage(): string | undefined }).errorMessage();
-    expect(msg).toContain('just booked this set');
+    expect(probe().step()).toBe(2); // still open on Review
+    expect(probe().errorMessage()).toContain('just booked this set');
+    const alert = host().querySelector('[data-testid="dialog-error"]');
+    expect(alert?.getAttribute('role')).toBe('alert');
+    expect(alert?.textContent).toContain('just booked this set');
   });
 
-  it('shows the request CTA and no-charge copy for a REQUEST-mode venue (#98)', async () => {
+  it('REQUEST venue: Review shows "Send request" + no-charge copy and emits requested on 202 PENDING', async () => {
     fixture.componentRef.setInput('mode', 'REQUEST');
-    await fixture.whenStable();
+    await goToReview();
 
-    expect(host().querySelector('.panel-title')?.textContent).toContain('Request this set');
-    expect(host().querySelector('.request-note')?.textContent).toContain('won’t be charged');
-    expect(host().querySelector('button[type="submit"]')?.textContent).toContain('Request to book');
-  });
+    expect(primary().textContent).toContain('Send request');
+    expect(host().textContent).toContain('won’t be charged');
 
-  it('keeps the instant CTA and hides the request note by default', () => {
-    expect(host().querySelector('.request-note')).toBeNull();
-    expect(host().querySelector('button[type="submit"]')?.textContent).toContain('Confirm booking');
-  });
-
-  it('emits requested (not booked/awaiting) on a 202 PENDING_REQUEST response (#98)', async () => {
-    fixture.componentRef.setInput('mode', 'REQUEST');
-    await fillValid();
     let booked = false;
     let awaiting = false;
     let requested: RequestedBooking | undefined;
@@ -206,21 +254,19 @@ describe('BookingDialog', () => {
     expect(requested).toEqual(REQUESTED);
     expect(booked).toBe(false);
     expect(awaiting).toBe(false);
-    expect((dialog as unknown as { submitting(): boolean }).submitting()).toBe(false);
   });
 
-  it('emits dismissed when the Cancel button is clicked', () => {
-    let dismissed = false;
-    dialog.dismissed.subscribe(() => (dismissed = true));
-    host().querySelector<HTMLButtonElement>('.btn-secondary')!.click();
-    expect(dismissed).toBe(true);
+  it('emits dismissed from the header close button and from a backdrop click', () => {
+    let dismissed = 0;
+    dialog.dismissed.subscribe(() => (dismissed += 1));
+
+    host().querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')!.click();
+    host().click(); // the host element IS the backdrop (class booking-backdrop + host click handler)
+    expect(dismissed).toBe(2);
   });
 
   it('maps every server error code to a human message', () => {
-    const d = dialog as unknown as {
-      errorCode: { set(v: string | undefined): void };
-      errorMessage(): string | undefined;
-    };
+    const p = probe();
     const cases: Record<string, string> = {
       SET_TAKEN: 'just booked',
       SET_NOT_BOOKABLE_ONLINE: 'not available to book online',
@@ -230,15 +276,15 @@ describe('BookingDialog', () => {
       UNKNOWN: 'Something went wrong',
     };
     for (const [code, fragment] of Object.entries(cases)) {
-      d.errorCode.set(code);
-      expect(d.errorMessage()).toContain(fragment);
+      p.errorCode.set(code);
+      expect(p.errorMessage()).toContain(fragment);
     }
-    d.errorCode.set(undefined);
-    expect(d.errorMessage()).toBeUndefined();
+    p.errorCode.set(undefined);
+    expect(p.errorMessage()).toBeUndefined();
   });
 
   it('traps Tab focus at both edges of the dialog', async () => {
-    await fillValid(); // enables the submit button so the focusable set is complete
+    await goToReview(); // Review has the full focusable set (Back + primary)
     const panel = host().querySelector('[role="dialog"]')!;
     const focusables = host().querySelectorAll<HTMLElement>(FOCUSABLE);
     const first = focusables[0];

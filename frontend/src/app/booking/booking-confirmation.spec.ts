@@ -53,7 +53,7 @@ describe('BookingConfirmation', () => {
 
     const { host } = render();
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('ABCD234567');
-    expect(host.querySelector('h1')?.textContent).toContain('Booking confirmed');
+    expect(host.querySelector('h1')?.textContent).toMatch(/You.re booked/); // v3 confirmed card copy
   });
 
   it('does NOT render an AWAITING_PAYMENT booking as paid (invariant #8 guard)', () => {

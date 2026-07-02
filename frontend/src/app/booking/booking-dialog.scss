@@ -1,116 +1,355 @@
-/* Booking dialog (U3). Colours chosen for WCAG AA contrast — pinned by
-   booking-dialog.contrast.spec.ts. */
+// Liquid Glass booking dialog (issue #137, design: riviera-sunbeds-liquid-glass-v3.dc.html →
+// booking dialog). Palette from the styles.scss tokens; every text-bearing pair is pinned as a
+// composited effective colour in booking-dialog.contrast.spec.ts.
+//
+// Deviations from the design file, on purpose (same class as T1–T3):
+//  - the gradient header uses the AA-safe dark-teal --riv-cta-grad stops (design's brighter
+//    #36b3cf→#0e7d92 cannot carry white text at WCAG AA), and all header text is SOLID white
+//    (opacity would drop below AA on the teal);
+//  - the panel is white 0.82 (design 0.72): the modal floats over a dark scrim + the gradient's
+//    darkest stop, and the extra opacity keeps the dark card inks (and the error red) AA there;
+//  - input borders are the dark --riv-field-border (design's white border fails the 3:1 boundary).
 
+// The dialog is a fixed, scrim-backed backdrop that must paint ABOVE the sticky glass header
+// (#134 stacking pin — the app shell relies on this z-index).
 :host.booking-backdrop {
   position: fixed;
   inset: 0;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  background: rgba(15, 23, 42, 0.6); /* slate-900 @ 60% */
-  z-index: 50;
+  padding: 20px;
+  background: rgba(6, 30, 40, 0.45);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 .booking-panel {
   width: 100%;
-  max-width: 28rem;
-  background: #ffffff;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.25);
-}
-
-.panel-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.375rem;
-  font-weight: 700;
-  color: #0f172a; /* slate-900 on white */
-}
-
-.panel-summary {
-  margin: 0 0 1rem;
-  color: #334155; /* slate-700 on white — AA */
-}
-
-.request-note {
-  margin: -0.5rem 0 1rem;
-  color: #334155; /* slate-700 on white — AA (same token as the summary) */
-  font-size: 0.9rem;
-}
-
-.field {
-  display: block;
-  margin-bottom: 0.875rem;
-
-  > span {
-    display: block;
-    margin-bottom: 0.25rem;
-    font-weight: 600;
-    color: #0f172a;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.5rem 0.625rem;
-    border: 1px solid #475569; /* slate-600 border — AA non-text contrast */
-    border-radius: 0.5rem;
-    font: inherit;
-    color: #0f172a;
-    background: #ffffff;
-  }
-
-  input:focus-visible {
-    outline: 3px solid #1d4ed8; /* blue-700 focus ring */
-    outline-offset: 1px;
-  }
-}
-
-.field-error,
-.form-error {
-  color: #b91c1c; /* red-700 on white — AA */
-  font-size: 0.875rem;
-}
-
-.field-error {
-  display: block;
-  margin-top: 0.25rem;
-}
-
-.form-error {
-  margin: 0 0 0.75rem;
-  font-weight: 600;
-}
-
-.actions {
+  max-width: 430px;
+  max-height: calc(100vh - 40px);
   display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  backdrop-filter: blur(34px) saturate(180%);
+  border: 1px solid var(--riv-card-border);
+  border-radius: 30px;
+  box-shadow: 0 40px 90px rgba(6, 30, 40, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--riv-card-ink);
+  animation: riv-pop 0.26s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
+// ---- gradient header (AA-safe dark teal, SOLID white inks) ----
+.dialog-head {
+  position: relative;
+  flex-shrink: 0;
+  padding: 22px 24px 20px;
+  background: linear-gradient(160deg, #0c7288, #0a5f74);
+  color: #ffffff;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
 }
-
-.btn-primary {
-  background: #1d4ed8; /* blue-700 */
-  color: #ffffff; /* ~6.3:1 — AA */
-  border: 1px solid #1d4ed8;
+.dialog-close:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
 }
 
-.btn-primary:disabled {
-  background: #64748b; /* slate-500 */
-  border-color: #64748b;
-  cursor: not-allowed;
+.dialog-venue {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+.dialog-title {
+  margin: 5px 0 0;
+  font-weight: 700;
+  font-size: 23px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #ffffff;
+}
+.dialog-meta {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: #ffffff;
+}
+.dialog-includes {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: #ffffff;
 }
 
-.btn-secondary {
+// ---- step indicator ----
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff; // solid white on the teal header — AA
+  white-space: nowrap;
+}
+// The number is decorative (aria-hidden) — the label carries the step's meaning, so the circle
+// tints are 1.4.11-exempt like the map's ★ glyph.
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.step.active .step-num {
   background: #ffffff;
-  color: #0f172a;
-  border: 1px solid #475569;
+  color: #0a5f74;
+}
+.step:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  min-width: 8px;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+// ---- scrollable body ----
+.dialog-body {
+  padding: 20px 24px 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ro-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--riv-card-track);
+  font-size: 14.5px;
+}
+.ro-row:first-child {
+  padding-top: 0;
+}
+.ro-key {
+  color: var(--riv-card-ink-soft);
+}
+.ro-val {
+  color: var(--riv-card-ink);
+}
+.ro-val.accent {
+  color: var(--riv-accent-ink);
+  font-size: 16px;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riv-card-ink-soft);
+}
+.field input {
+  font: inherit;
+  font-size: 15px;
+  color: var(--riv-card-ink);
+  background: var(--riv-field-fill);
+  border: 1px solid var(--riv-field-border);
+  border-radius: 14px;
+  padding: 11px 13px;
+}
+.field input:focus-visible {
+  outline: 3px solid var(--riv-accent-ink);
+  outline-offset: 1px;
+}
+.field-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a3160e; // dark brick red — AA on the light panel over the worst gradient stop
+}
+
+.fine {
+  margin: 14px 0 6px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--riv-card-ink-soft);
+}
+
+// ---- review summary ----
+.review {
+  margin: 0;
+}
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--riv-card-track);
+  font-size: 14.5px;
+}
+.sum-row:first-child {
+  padding-top: 0;
+}
+.sum-row dt {
+  color: var(--riv-card-ink-soft);
+}
+.sum-row dd {
+  margin: 0;
+  text-align: right;
+  color: var(--riv-card-ink);
+  font-weight: 700;
+}
+.sum-row.total {
+  border-bottom: 0;
+  padding-top: 14px;
+}
+.sum-row.total dt {
+  font-size: 15px;
+}
+.sum-row.total dd {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--riv-accent-ink);
+}
+
+.mode-note {
+  display: block;
+  margin: 14px 0 4px;
+  padding: 13px 15px;
+  border-radius: 16px;
+  font-size: 12.8px;
+  line-height: 1.5;
+  color: var(--riv-card-ink-soft);
+}
+.mode-note strong {
+  color: var(--riv-card-ink);
+}
+.mode-note.instant {
+  background: rgba(43, 184, 212, 0.12);
+  border: 1px solid rgba(43, 184, 212, 0.34);
+}
+.mode-note.request {
+  background: rgba(240, 170, 46, 0.12);
+  border: 1px solid rgba(240, 170, 46, 0.38);
+}
+
+.form-error {
+  margin: 0 24px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: rgba(163, 22, 14, 0.1);
+  color: #a3160e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+// ---- footer actions ----
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 14px 24px 20px;
+  border-top: 1px solid var(--riv-card-track);
+}
+.btn-back {
+  flex-shrink: 0;
+  padding: 14px 20px;
+  border-radius: 16px;
+  border: 1.5px solid var(--riv-card-border);
+  background: rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #0a4f5e;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+.btn-primary {
+  flex: 1;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--riv-cta-grad);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: filter 0.15s ease;
+}
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+@media (hover: hover) {
+  .btn-primary:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+.btn-back:focus-visible,
+.btn-primary:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+}
+
+// Motion guards live next to the motion they guard (T1 rule — component-encapsulation
+// specificity beats a global guard).
+@media (prefers-reduced-motion: reduce) {
+  :host.booking-backdrop {
+    animation: none;
+  }
+  .booking-panel {
+    animation: none;
+  }
+  .btn-primary {
+    transition: none;
+  }
 }

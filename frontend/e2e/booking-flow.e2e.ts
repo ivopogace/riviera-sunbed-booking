@@ -1,12 +1,12 @@
-import { expect, test } from '@playwright/test';
+import { expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render a11y audit of the Instant-Book flow (issue #6, AC-12/AC-13): beach map →
- * keyboard-select a free online set → booking dialog (focus trapped) → confirmation. Runs
- * axe at each step in a real browser — catching keyboard, focus-management and true
- * colour-contrast issues jsdom can't. The API is mocked, so the test is self-contained.
+ * Real-render a11y audit of the Instant-Book flow (issue #6; Liquid Glass restyle #137): beach map →
+ * keyboard-select a free online set → 2-step booking dialog (Details → Review, focus trapped) →
+ * confirmation. Runs axe at each step in a real browser — catching keyboard, focus-management and
+ * true colour-contrast issues jsdom can't. The API is mocked, so the test is self-contained.
  */
 
 const VENUE = {
@@ -67,6 +67,29 @@ const AWAITING_DETAIL = {
   refundedAmount: null,
 };
 
+/** Settle running entrance animations (the dialog's pop) before axe — a mid-fade opacity reads as
+ *  a false contrast failure (riviera-frontend rule). Await only FINITE animations: the background
+ *  gradient blobs run `infinite`, so their `.finished` never resolves (awaiting it would hang). */
+async function settle(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+}
+
+/** Fill the Details step and advance through Review to submit (the v3 2-step dialog). */
+async function completeDialog(dialog: Locator, reviewCta: string): Promise<void> {
+  await dialog.getByLabel('Full name').fill('Holiday Guest');
+  await dialog.getByLabel('Email').fill('guest@example.com');
+  await dialog.getByLabel('Phone').fill('+355699000');
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click(); // Details → Review
+  await dialog.getByRole('button', { name: reviewCta }).click();
+}
+
 test.beforeEach(async ({ page }) => {
   // Match with or without the `?date=` query the map now appends (issue #44).
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
@@ -88,11 +111,12 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expect(bookable).toBeFocused();
   await page.keyboard.press('Enter');
 
-  // The dialog opens and focus is moved inside it (modal focus management).
+  // The dialog opens on Details and focus is moved inside it (modal focus management).
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('input').first()).toBeFocused();
-  await expectNoSeriousAxeViolations(page, 'booking dialog');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking dialog (Details)');
 
   // Stacking pin (#134 review): the modal scrim must paint ABOVE the sticky glass header —
   // a stacking context on <main> once trapped it below, leaving the header clickable.
@@ -105,11 +129,14 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   expect(headerHit, 'header center should be covered by the modal layer').not.toBeNull();
   expect(headerHit!.insideHeader).toBe(false);
 
-  // Complete the guest form and submit.
+  // Advance to Review, audit it, then submit (INSTANT → "Continue to payment").
   await dialog.getByLabel('Full name').fill('Holiday Guest');
   await dialog.getByLabel('Email').fill('guest@example.com');
   await dialog.getByLabel('Phone').fill('+355699000');
-  await dialog.getByRole('button', { name: 'Confirm booking' }).click();
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(dialog.getByTestId('dialog-primary')).toHaveText('Continue to payment');
+  await expectNoSeriousAxeViolations(page, 'booking dialog (Review)');
+  await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
   // Lands on the confirmation with the booking code.
   await expect(page).toHaveURL(/\/booking\/confirmation/);
@@ -137,12 +164,9 @@ test('a taken-set rejection surfaces an accessible error in the dialog', async (
   await page.goto('/venues/1');
   await page.getByRole('button', { name: /Select to book/ }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Full name').fill('Holiday Guest');
-  await dialog.getByLabel('Email').fill('guest@example.com');
-  await dialog.getByLabel('Phone').fill('+355699000');
-  await dialog.getByRole('button', { name: 'Confirm booking' }).click();
+  await completeDialog(dialog, 'Continue to payment');
 
-  // The dialog stays open and announces the mapped failure (role=alert), keyed off the code.
+  // The dialog stays open on Review and announces the mapped failure (role=alert), keyed off the code.
   await expect(dialog.getByRole('alert')).toContainText('someone just booked this set');
   await expect(page).not.toHaveURL(/\/booking\/confirmation/);
   await expectNoSeriousAxeViolations(page, 'booking dialog (SET_TAKEN error)');
@@ -164,10 +188,7 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
   await page.goto('/venues/1');
   await page.getByRole('button', { name: /Select to book/ }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Full name').fill('Holiday Guest');
-  await dialog.getByLabel('Email').fill('guest@example.com');
-  await dialog.getByLabel('Phone').fill('+355699000');
-  await dialog.getByRole('button', { name: 'Confirm booking' }).click();
+  await completeDialog(dialog, 'Continue to payment');
 
   // Lands on the dedicated payment page (NOT the confirmation screen) with the card form ready.
   await expect(page).toHaveURL(/\/booking\/pay/);
@@ -177,7 +198,7 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
 
   // Pay → the page polls the backend and only then shows confirmed (invariant #8).
   await page.getByTestId('pay-button').click();
-  await expect(page.getByRole('heading', { name: 'Booking confirmed' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
   await expect(page).toHaveURL(/\/booking\/pay/); // confirmation is in-place, driven by the poll
   await expect(page.getByTestId('booking-code')).toContainText('WXYZ345678');
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
