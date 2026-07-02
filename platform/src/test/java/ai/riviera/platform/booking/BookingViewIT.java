@@ -16,8 +16,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -117,8 +120,11 @@ class BookingViewIT {
 
 	@Test
 	void unknownCodeReturns404() throws Exception {
+		// The body must never echo the attempted code — it is a bearer credential (invariant #7).
 		mvc.perform(get("/api/bookings/{code}", "NOSUCHCODE"))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error").value("NO_SUCH_BOOKING"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_BOOKING"))
+				.andExpect(content().string(not(containsString("NOSUCHCODE"))));
 	}
 }

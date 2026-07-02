@@ -227,8 +227,8 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — ApiProblem + single advice + booking controller on the contract | ⏳ | |
-| 1 — venue + availability controllers migrated | | |
+| 0 — ApiProblem + single advice + booking controller on the contract | ✅ | (this commit) |
+| 1 — venue + availability controllers migrated | ⏳ | |
 | 2 — payout controller migrated (stable codes, first wire test) | | |
 | 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | | |
 | 4 — Angular services + specs parse ProblemDetail | | |

@@ -17,6 +17,9 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import com.jayway.jsonpath.JsonPath;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -81,7 +84,9 @@ class BookingControllerIT {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content(body(set, date)))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error").value("SET_TAKEN"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.status").value(409))
+				.andExpect(jsonPath("$.code").value("SET_TAKEN"));
 	}
 
 	@Test
@@ -89,7 +94,8 @@ class BookingControllerIT {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content(body(walkInSet(), bookable().plusDays(3))))
 				.andExpect(status().isUnprocessableEntity())
-				.andExpect(jsonPath("$.error").value("SET_NOT_BOOKABLE_ONLINE"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("SET_NOT_BOOKABLE_ONLINE"));
 	}
 
 	@Test
@@ -98,7 +104,8 @@ class BookingControllerIT {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSet(), LocalDate.now().minusDays(1))))
 				.andExpect(status().isUnprocessableEntity())
-				.andExpect(jsonPath("$.error").value("BOOKING_CLOSED"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));
 	}
 
 	@Test
@@ -106,14 +113,17 @@ class BookingControllerIT {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content(body(999_999L, bookable())))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error").value("NO_SUCH_SET"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
 	}
 
 	@Test
 	void malformedBodyReturns400() throws Exception {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"setId\": null}"))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
 	private String createAndGetCode(long setId, LocalDate date) throws Exception {
@@ -138,9 +148,12 @@ class BookingControllerIT {
 
 	@Test
 	void cancelUnknownReturns404() throws Exception {
+		// The body must never echo the attempted code — it is a bearer credential (invariant #7).
 		mvc.perform(post("/api/bookings/{code}/cancel", "NOSUCHCODE"))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.error").value("NO_SUCH_BOOKING"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_BOOKING"))
+				.andExpect(content().string(not(containsString("NOSUCHCODE"))));
 	}
 
 	@Test
@@ -150,7 +163,9 @@ class BookingControllerIT {
 
 		mvc.perform(post("/api/bookings/{code}/cancel", code))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error").value("NOT_CANCELLABLE"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_CANCELLABLE"))
+				.andExpect(content().string(not(containsString(code))));
 	}
 
 	@Test
