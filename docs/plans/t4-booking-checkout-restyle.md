@@ -232,7 +232,7 @@ stays an ISO `LocalDate` string on the wire (only its *display* is prettified).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Shared friendly booking-date label | | |
+| 0 — Shared friendly booking-date label | ✅ | `feat(fe): friendly booking-date label helper (#137)` |
 | 1 — Booking dialog: 2-step glass modal | | |
 | 2 — Payment page: glass two-column + v3 states | | |
 | 3 — Confirmed + Request-sent glass cards | | |
