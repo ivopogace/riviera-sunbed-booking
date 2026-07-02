@@ -18,20 +18,49 @@ mode — guest checkout stays**:
 
 ## Decision record (the self-grill)
 
-### D-1: Server-side sessions, not JWT, not Basic
+### D-1: Server-side sessions (BFF shape), not JWT, not Basic — decided on merits
+
+> The #74 "no JWT / no custom filters" posture was a proof-of-concept-era rule; the
+> maintainer reopened the choice (2026-07-02) and this decision was re-made with all
+> options on the table, not inherited.
 
 Authentication is a **Spring Security server-side session**: an `HttpOnly; Secure;
 SameSite=Lax` session cookie established by framework-native login, with **CSRF
-cookie-to-header** protection for the SPA on session-authenticated writes.
+cookie-to-header** protection for the SPA on session-authenticated writes, and
+**sessions persisted in Postgres via Spring Session JDBC** (a Render restart or
+redeploy must not sign everyone out; also multi-instance-safe).
 
-- Locked by precedent: framework-native Spring Security, **no JWT, no custom token
-  filters** (#74, RV-BE-11, pinned by `OperatorAuthPlacementTests`).
-- Browser JWT means localStorage (XSS-stealable) or reinventing cookie sessions.
+Alternatives considered and rejected:
+
+- **JWT access+refresh in the browser** — the token must be reachable from browser
+  JS (XSS-stealable, and this app takes payments); revocation (logout, password
+  reset, operator deactivation) needs a server-side denylist that reintroduces the
+  state JWT was meant to remove; refresh rotation + key management is standing
+  complexity; the stateless-scaling benefit is nil for a single-monolith Modulith.
+  Current OAuth browser-based-app best practice (and OWASP) says: keep tokens out
+  of browser JS, use a backend-for-frontend with cookies — which is this design.
+- **Own OAuth2 Authorization Server (Spring Authorization Server)** — right when
+  multiple client types need tokens (native apps, third-party API). Today there is
+  one SPA and one backend, and the AS would still need an internal login session.
+  Recorded as the **evolution path**: when native apps arrive, add an authorization
+  server over the same identity store and issue tokens to those clients; the web
+  app keeps cookies. Nothing here blocks that.
+- **Managed IdP (Keycloak/Auth0/Cognito/Firebase)** — external dependency + cost;
+  US-provider DSGVO posture is worse for identity data than for hosting (cf.
+  ADR-0004's deferred concern); self-hosted Keycloak is real ops burden solo; and
+  the mocked-SSO-until-credentials requirement fits a port we own far more cleanly.
+
+Consequences kept from the session choice:
+
 - The current FE `OperatorAuth` (raw password held in a signal, replayed as
   `Authorization: Basic` per request) is retired by this epic; SSO cannot be
   expressed as Basic anyway.
 - Session fixation: Spring's default protection (session id rotates on login).
-  Logout truly invalidates the server session.
+  Logout/password-reset truly invalidate server sessions (needs the server-side
+  session store — trivial here, a denylist under JWT).
+- RV-BE-11 / `OperatorAuthPlacementTests` remain valid as a *placement* rule
+  (login machinery at the platform edge, not in domain modules) independent of the
+  mechanism re-decision.
 
 ### D-2: Two principal types, one edge mechanism
 
