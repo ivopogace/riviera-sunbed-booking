@@ -36,14 +36,15 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The transition's {@code request_expires_at > now} guard means an accept after the deadline
  * (or after bookings closed — the deadline is capped at the cutoff, invariant #4) matches no row.
  *
- * <p><strong>Failure compensation:</strong> a failed PaymentIntent creation reverts the booking
- * to {@code PENDING_REQUEST} (guarded, so a webhook race is impossible — no PI exists) rather
- * than releasing the hold: the venue said yes, so the operator retries; the Stripe idempotency
- * key ({@code booking-<id>-pi}) makes the retry replay-safe. A confirm failure on the stub path
+ * <p><strong>Failure compensation:</strong> a failed (or thrown) PaymentIntent issuance reverts
+ * the booking to {@code PENDING_REQUEST} rather than releasing the hold: the venue said yes, so
+ * the operator retries; the Stripe idempotency key ({@code booking-<id>-pi}) makes the retry
+ * replay-safe. No webhook can race the revert — only a REGISTERED intent is correlatable (a
+ * double-timeout residual at Stripe stays unregistered and inert until the retry re-adopts it). A confirm failure on the stub path
  * compensates like the instant flow (release, rethrow).
  *
  * <p><strong>Decline</strong> delegates transition + hold release to {@link Bookings} and
- * {@code AvailabilityClaim} via the transactional {@link DeclineReleaseService} seam, mirroring
+ * {@code AvailabilityClaim} via the transactional {@link RequestReleaseService} seam, mirroring
  * {@code ClaimReleaseService} — a booking is never left {@code DECLINED} with its set claimed
  * (invariant #2). Package-private; the public seam is {@link RespondToRequest} (invariant #11).
  */
@@ -54,14 +55,14 @@ class RespondToRequestService implements RespondToRequest {
 
 	private final VenueOwnership ownership;
 	private final Bookings bookings;
-	private final DeclineReleaseService declineRelease;
+	private final RequestReleaseService declineRelease;
 	private final CheckoutPort checkout;
 	private final ConfirmBooking confirmBooking;
 	private final ReleaseAbandonedBooking releaseAbandoned;
 	private final Clock clock;
 
 	RespondToRequestService(VenueOwnership ownership, Bookings bookings,
-			DeclineReleaseService declineRelease, CheckoutPort checkout, ConfirmBooking confirmBooking,
+			RequestReleaseService declineRelease, CheckoutPort checkout, ConfirmBooking confirmBooking,
 			ReleaseAbandonedBooking releaseAbandoned, Clock clock) {
 		this.ownership = ownership;
 		this.bookings = bookings;
@@ -79,13 +80,13 @@ class RespondToRequestService implements RespondToRequest {
 		Optional<AcceptedRequest> accepted =
 				bookings.acceptPendingRequest(bookingId.value(), venueId, now);
 		if (accepted.isEmpty()) {
-			return classifyAcceptMiss(bookingId, venueId, now);
+			return classifyAcceptMiss(bookingId, venueId);
 		}
-		return collect(accepted.get(), now);
+		return collect(accepted.get());
 	}
 
 	/** The transition matched no row — read the snapshot to say why, without leaking foreigners. */
-	private AcceptOutcome classifyAcceptMiss(BookingId bookingId, VenueId venueId, Instant now) {
+	private AcceptOutcome classifyAcceptMiss(BookingId bookingId, VenueId venueId) {
 		return bookings.requestSnapshot(bookingId.value(), venueId)
 				.<AcceptOutcome>map(snapshot -> {
 					if (snapshot.status() != BookingStatus.PENDING_REQUEST) {
@@ -100,9 +101,21 @@ class RespondToRequestService implements RespondToRequest {
 	 * Issue the payment request for the already-committed accept. Runs outside any transaction —
 	 * the Stripe call holds no lock. Logs ids only, never the booking code (invariant #7).
 	 */
-	private AcceptOutcome collect(AcceptedRequest accepted, Instant now) {
-		PaymentOutcome payment = checkout.pay(new BookingRef(accepted.bookingId()),
-				new Money(accepted.amountMinor(), accepted.currency()));
+	private AcceptOutcome collect(AcceptedRequest accepted) {
+		PaymentOutcome payment;
+		try {
+			payment = checkout.pay(new BookingRef(accepted.bookingId()),
+					new Money(accepted.amountMinor(), accepted.currency()));
+		}
+		catch (RuntimeException paymentBlewUp) {
+			// Not just the typed Failed: an unexpected throw (e.g. the payment-row insert failing
+			// after Stripe created the intent) would otherwise strand the booking AWAITING_PAYMENT
+			// with no payment row — unpayable by the guest AND unsweepable (the abandoned sweep
+			// skips bookings with no collection on record). Revert so the operator can retry; the
+			// Stripe idempotency key replays the same intent, which then registers normally.
+			bookings.revertAcceptToPending(accepted.bookingId());
+			throw paymentBlewUp;
+		}
 		return switch (payment) {
 			case PaymentOutcome.Succeeded ignored -> {
 				// In-process stub: collected synchronously — confirm now (publishes BookingConfirmed
@@ -125,8 +138,10 @@ class RespondToRequestService implements RespondToRequest {
 			}
 			case PaymentOutcome.Failed failed -> {
 				// PI creation failed after the transition committed — revert to PENDING_REQUEST so
-				// the hold survives and the operator can retry (idempotency key makes it safe). No
-				// webhook can race this revert: no PaymentIntent exists.
+				// the hold survives and the operator can retry (idempotency key makes it safe).
+				// Residual: after a double timeout (createWithRecovery) an UNREGISTERED intent may
+				// exist at Stripe — inert here, because webhooks correlate via the payment table
+				// and an accept retry replays the same idempotency key, registering that intent.
 				boolean reverted = bookings.revertAcceptToPending(accepted.bookingId());
 				log.warn("payment request for accepted booking {} failed ({}); reverted={}",
 						accepted.bookingId(), failed.reason(), reverted);

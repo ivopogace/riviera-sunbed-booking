@@ -95,7 +95,7 @@ class BookingRequestController {
 		};
 	}
 
-	private static ResponseEntity<Object> problem(HttpStatus status, String code, String detail) {
-		return ResponseEntity.status(status).body(ApiProblem.of(status, code, detail));
+	private static ResponseEntity<?> problem(HttpStatus status, String code, String detail) {
+		return ApiProblem.response(status, code, detail);
 	}
 }

@@ -201,6 +201,13 @@ class RequestAcceptPayIT {
 				.andExpect(jsonPath("$.payment.clientSecret").value("cs_accept_it_secret"))
 				.andExpect(jsonPath("$.payment.paymentIntentId").value("pi_accept_it"));
 
+		// A once-declined card (payment_failed) is NOT terminal — the intent stays payable, so
+		// the credentials must survive a FAILED status (review finding: don't strand the guest).
+		jdbc.sql("UPDATE payment SET status = 'FAILED' WHERE booking_ref = :ref")
+				.param("ref", bookingId).update();
+		mvc.perform(get("/api/bookings/{code}", code))
+				.andExpect(jsonPath("$.payment.clientSecret").value("cs_accept_it_secret"));
+
 		// Once no longer payable (succeeded), the credentials disappear from the view.
 		jdbc.sql("UPDATE payment SET status = 'SUCCEEDED' WHERE booking_ref = :ref")
 				.param("ref", bookingId).update();

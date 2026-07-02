@@ -129,6 +129,26 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
+  it('shows neutral resume copy for an unpaid instant booking (never "request accepted")', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'AWAITING_PAYMENT',
+          cancellable: false,
+          requestExpiresAt: null,
+          payment: { clientSecret: 'pi_8_secret_y', paymentIntentId: 'pi_8' },
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    const panel = host.querySelector('[data-testid="request-accepted"]');
+    expect(panel?.textContent).toContain('Complete your payment');
+    expect(panel?.textContent).not.toContain('accepted your booking request');
+    expect(host.querySelector('[data-testid="pay-now"]')).not.toBeNull();
+  });
+
   it('offers Pay now on an accepted request and hands the open intent to the pay route', async () => {
     const handoffs: PaymentHandoff[] = [];
     const fixture = await render(
@@ -137,6 +157,9 @@ describe('BookingView', () => {
           ...DETAIL,
           status: 'AWAITING_PAYMENT',
           cancellable: false,
+          // A real accepted request carries its (historical) response deadline — the view uses
+          // it to tell "request accepted" apart from an instant checkout being resumed.
+          requestExpiresAt: '2026-11-30T16:00:00Z',
           payment: { clientSecret: 'pi_9_secret_x', paymentIntentId: 'pi_9' },
         },
         handoffs,

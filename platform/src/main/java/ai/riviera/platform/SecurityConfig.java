@@ -96,6 +96,13 @@ class SecurityConfig {
 						// Per-venue payout ledger read (U9) — operator-only venue financial data. MUST
 						// precede the public "GET /api/venues/**" below (first match wins).
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
+						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
+						// venue demand are operator data. The GET MUST precede the public venue GET below
+						// (first match wins). The ownership check itself lives in the application services
+						// (invariant #13); this is the role layer on top.
+						.requestMatchers(HttpMethod.GET, BOOKING_REQUESTS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_DECLINE_PATH).hasRole(OPERATOR_ROLE)
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)

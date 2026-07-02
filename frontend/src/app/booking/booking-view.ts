@@ -79,10 +79,19 @@ import { BookingService } from './booking.service';
           @case ('AWAITING_PAYMENT') {
             @if (b.payment) {
               <section class="request-panel" data-testid="request-accepted" aria-labelledby="request-state-title">
-                <h2 id="request-state-title">Request accepted — complete your payment</h2>
-                <p class="terms">
-                  {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
-                </p>
+                @if (b.requestExpiresAt) {
+                  <h2 id="request-state-title">Request accepted — complete your payment</h2>
+                  <p class="terms">
+                    {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
+                  </p>
+                } @else {
+                  <!-- An instant booking with an open payment (e.g. an interrupted checkout) was
+                       never a request — don't claim the venue "accepted" anything. -->
+                  <h2 id="request-state-title">Complete your payment</h2>
+                  <p class="terms">
+                    This booking is reserved but unpaid. Pay now to confirm your spot.
+                  </p>
+                }
                 <button type="button" class="btn primary" (click)="payNow(b)" data-testid="pay-now">
                   Pay now
                 </button>
@@ -255,7 +264,7 @@ export class BookingView {
    * fetched detail's open-intent credentials and route to `/booking/pay`. The pay page then polls
    * for the webhook-driven CONFIRMED exactly as after a 202 create (invariant #8).
    */
-  protected payNow(b: BookingDetail): void {
+  protected async payNow(b: BookingDetail): Promise<void> {
     const payment = b.payment;
     if (!payment) {
       return;
@@ -270,7 +279,7 @@ export class BookingView {
       clientSecret: payment.clientSecret,
       paymentIntentId: payment.paymentIntentId,
     });
-    void this.router.navigate(['/booking/pay']);
+    await this.router.navigate(['/booking/pay']);
   }
 
   /** Refund-terms copy for a still-cancellable booking. */

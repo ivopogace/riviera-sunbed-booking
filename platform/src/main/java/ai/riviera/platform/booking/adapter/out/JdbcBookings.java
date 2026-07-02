@@ -44,6 +44,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_BOOKING_DATE = "booking_date";
 	private static final String COL_AMOUNT_MINOR = "amount_minor";
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
+	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
 
 	private final JdbcClient jdbc;
 
@@ -130,8 +131,10 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public boolean revertAcceptToPending(long bookingId) {
-		// Compensation for a failed payment-request issuance (no PI exists, so nothing can race
-		// this back-transition). Restores the original deadline by leaving request_expires_at as-is.
+		// Compensation for a failed payment-request issuance. No REGISTERED PaymentIntent exists
+		// (a double-timeout residual at Stripe stays unregistered and inert — webhooks correlate
+		// via the payment table), so no webhook can race this back-transition. Restores the
+		// original deadline by leaving request_expires_at as-is.
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :pending, accepted_at = NULL
@@ -174,7 +177,7 @@ class JdbcBookings implements Bookings {
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
 				.query((rs, rowNum) -> {
-					java.sql.Timestamp expires = rs.getTimestamp("request_expires_at");
+					java.sql.Timestamp expires = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 					return new ai.riviera.platform.booking.application.request.RequestSnapshot(
 							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 							expires == null ? null : expires.toInstant());
@@ -203,7 +206,7 @@ class JdbcBookings implements Bookings {
 						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong("customer_id")),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 						rs.getTimestamp("created_at").toInstant(),
-						rs.getTimestamp("request_expires_at").toInstant()))
+						rs.getTimestamp(COL_REQUEST_EXPIRES_AT).toInstant()))
 				.list();
 	}
 
@@ -219,7 +222,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> {
 					java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
 					Long refundMinor = rs.getObject("refund_minor", Long.class);
-					java.sql.Timestamp requestExpiresAt = rs.getTimestamp("request_expires_at");
+					java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 					return new BookingRecord(
 							rs.getLong("id"), rs.getString("code"),
 							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
@@ -360,22 +363,39 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public List<ClaimRef> expirePendingRequests(Instant now) {
-		// Request-expiry sweep (issue #98): one guarded bulk transition; RETURNING yields exactly
-		// the rows THIS statement expired, so each hold is released exactly once (invariant #2).
-		// Candidates served by booking_pending_expires_idx (V19, partial).
+	public List<BookingId> findOverduePendingRequests(Instant now) {
+		// Request-expiry sweep candidates (issue #98), served by booking_pending_expires_idx
+		// (V19, partial). Ids only — each is then expired via the guarded per-row transition.
+		return jdbc.sql("""
+				SELECT id
+				FROM booking
+				WHERE status = :pending AND request_expires_at <= :now
+				ORDER BY id
+				""")
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.param("now", java.sql.Timestamp.from(now))
+				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
+				.list();
+	}
+
+	@Override
+	public Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now) {
+		// Guarded per-row expiry: RETURNING yields the (set, date) exactly when THIS statement
+		// transitioned the row, so the hold is released exactly once (invariant #2); a candidate
+		// accepted or declined since the candidate read is a 0-row empty no-op.
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :expired
-				WHERE status = :pending AND request_expires_at <= :now
+				WHERE id = :id AND status = :pending AND request_expires_at <= :now
 				RETURNING set_id, booking_date
 				""")
 				.param("expired", BookingStatus.EXPIRED.name())
+				.param("id", bookingId)
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.param("now", java.sql.Timestamp.from(now))
 				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
-				.list();
+				.optional();
 	}
 
 	@Override

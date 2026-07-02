@@ -394,8 +394,13 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public List<ClaimRef> expirePendingRequests(Instant now) {
+		public List<ai.riviera.platform.booking.vocabulary.BookingId> findOverduePendingRequests(Instant now) {
 			return List.of();
+		}
+
+		@Override
+		public Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now) {
+			return Optional.empty();
 		}
 
 		@Override

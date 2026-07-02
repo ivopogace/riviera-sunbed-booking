@@ -47,59 +47,59 @@ branch, standing in for `feature/request-to-book` per the SDLC remote addendum.
 Written at the application boundary (inner hexagon); HTTP/Angular specifics are pinned by
 adapter-level tests named alongside.
 
-- [ ] **AC-1:** Given a REQUEST-mode venue with a free online-pool set and a pre-cutoff date, when
+- [x] **AC-1:** Given a REQUEST-mode venue with a free online-pool set and a pre-cutoff date, when
   `CreateBooking.create` runs, then the outcome is `Requested`: the booking is `PENDING_REQUEST`
   with `request_expires_at = min(now + expiry-window, evening-before cutoff)`, the
   `(set, date)` availability row is claimed, **no PaymentIntent exists and no `CheckoutPort` call
   happens**, and the code has invariant-#7 entropy (existing generator).
   *Pinned by:* `CreateBookingServiceTest` (request branch, gateway never invoked),
   `RequestToBookFlowIT` (adapter: `202` + `PENDING_REQUEST` body).
-- [ ] **AC-2:** Given a pending request holds `(set, date)`, when a concurrent online booking (or
+- [x] **AC-2:** Given a pending request holds `(set, date)`, when a concurrent online booking (or
   request) targets the same row, then exactly one claim succeeds (`SET_TAKEN` for the loser), and a
   staff mark on the same row is `ALREADY_TAKEN` (invariant #2 — same single row, same atomic claim).
   *Pinned by:* `ConcurrentRequestClaimIT` (two racing requests → one `PENDING_REQUEST`),
   `RequestToBookFlowIT.staffMarkBlockedWhilePending`.
-- [ ] **AC-3:** Given a pending, unexpired request, when the owning operator accepts, then the
+- [x] **AC-3:** Given a pending, unexpired request, when the owning operator accepts, then the
   booking transitions `PENDING_REQUEST → AWAITING_PAYMENT` (recording `accepted_at`), a **fresh
   PaymentIntent** is initiated via the existing `CheckoutPort` (idempotency key `booking-<id>-pi`),
   and from there the flow is the existing spine: the signature-verified webhook confirms,
   `BookingConfirmed` is published once, the payout ledger accrues exactly once (invariants #8, #9).
   *Pinned by:* `RespondToRequestServiceTest` (transition + port call),
   `RequestAcceptPayIT` (accept → webhook → CONFIRMED + single ledger row).
-- [ ] **AC-4:** Given a pending request, when the owning operator declines (or the request expires),
+- [x] **AC-4:** Given a pending request, when the owning operator declines (or the request expires),
   then the booking is terminally `DECLINED` (/`EXPIRED`), the availability row is released, and a
   subsequent accept/pay/confirm attempt is rejected — a declined/expired request can never be paid.
   *Pinned by:* `RespondToRequestServiceTest.declineReleasesHold`,
   `ExpireRequestsServiceTest.expiredRequestCannotBeAccepted`.
-- [ ] **AC-5:** Given a `PENDING_REQUEST` past its `request_expires_at`, when the request-expiry
+- [x] **AC-5:** Given a `PENDING_REQUEST` past its `request_expires_at`, when the request-expiry
   sweep runs, then the guarded transition (`UPDATE … WHERE status='PENDING_REQUEST' AND
   request_expires_at <= now … RETURNING`) moves it to `EXPIRED` and releases the claim — honoring
   the configured window, safe to run on the (documented) single instance without a lock, and a
   concurrent accept and sweep cannot both win.
   *Pinned by:* `ExpireRequestsServiceTest`, `RequestExpiryVsAcceptRaceIT`.
-- [ ] **AC-6:** Given an accepted request whose guest never pays, when the abandoned-payment sweep
+- [x] **AC-6:** Given an accepted request whose guest never pays, when the abandoned-payment sweep
   runs, then the booking is expirable only after `accepted_at + pay-window` (NOT `created_at +
   instant-TTL` — an accepted request must not be swept by the instant clock), and the existing
   cancel-PI-then-release machinery applies unchanged.
   *Pinned by:* `AbandonedBookingSweepServiceTest` (extended: accepted-request uses the pay-window
   clock; instant bookings unaffected).
-- [ ] **AC-7:** Given an operator who does not own the venue, when they call accept, decline, or the
+- [x] **AC-7:** Given an operator who does not own the venue, when they call accept, decline, or the
   pending-requests query, then the application service rejects with `NotVenueOwnerException` → `403
   NOT_VENUE_OWNER` (invariant #13, check in the service not the controller).
   *Pinned by:* `CrossVenueDenialIT` (three new denial rows + owner-positive counterparts).
-- [ ] **AC-8:** Given the V19 migration, when the enum and schema are compared, then
+- [x] **AC-8:** Given the V19 migration, when the enum and schema are compared, then
   `BookingStatus` and the `booking_status_check` CHECK constraint hold the identical set
   (`PENDING_REQUEST, AWAITING_PAYMENT, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW, DECLINED,
   EXPIRED`) — enum + migration land in lockstep (invariant #12).
   *Pinned by:* `BookingMigrationIT.everyEnumStatusAccepted` + `unknownStatusRejected` (folded into the existing migration IT rather than a new class).
-- [ ] **AC-9:** Given an INSTANT-mode venue, when the full existing booking/cancel/webhook/sweep
+- [x] **AC-9:** Given an INSTANT-mode venue, when the full existing booking/cancel/webhook/sweep
   suite runs, then it is green unchanged (regression).
   *Pinned by:* existing `booking`/`payment`/`availability` suites in CI.
-- [ ] **AC-10:** Given a guest's booking code, when they fetch their booking, then the view exposes
+- [x] **AC-10:** Given a guest's booking code, when they fetch their booking, then the view exposes
   the request status (`PENDING_REQUEST` + deadline / `AWAITING_PAYMENT` + payment credentials /
   `DECLINED` / `EXPIRED`) so the in-app page is the acceptance channel (decision Q3).
   *Pinned by:* `ViewBookingServiceTest`, `RequestAcceptPayIT` (GET carries clientSecret once accepted).
-- [ ] **AC-11:** Tourist request flow (request CTA on a REQUEST venue, pending status page,
+- [x] **AC-11:** Tourist request flow (request CTA on a REQUEST venue, pending status page,
   pay-on-accept) and operator pending queue (list + accept/decline) ship with mocked-suite e2e +
   axe coverage.
   *Pinned by:* `frontend/e2e/request-to-book.e2e.ts`, `frontend/e2e/staff-requests.e2e.ts`.
@@ -457,25 +457,25 @@ phase's code.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1…AC-8, AC-10: scoped `./gradlew test --tests` runs per phase locally; full suite +
-  Docker ITs via CI. Record commit SHA when verified.
-- [ ] AC-9: full existing suite green in CI. Record run.
-- [ ] AC-11: `npm run test:e2e:a11y` green (both new specs + axe). Record run.
+- [x] AC-1…AC-8, AC-10: scoped `gradle test` runs green locally per phase (see execution table
+  commits); full suite + Docker ITs green in CI on the PR head.
+- [x] AC-9: full existing suite green in CI (PR #122 checks).
+- [x] AC-11: `npm run test:e2e:a11y` — 12 e2e green locally (incl. expired-panel + error-copy cases).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; concurrency tests present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module internals imports; no new events (invariant #11).
-- [ ] **Payment/payout** filled; webhook source of truth; idempotent; minor units; exactly-once (#5, #8, #9).
-- [ ] Refund policy untouched/server-side (invariant #10).
-- [ ] Timezone: UTC stored, `Europe/Tirane` reasoning (invariant #6).
-- [ ] Booking codes unguessable; never in queue view/problems (invariant #7).
-- [ ] Flyway migration + constraint tests (invariant #12).
-- [ ] **Frontend** standards met; no `as any`.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (all under Resolved).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; concurrency tests present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module internals imports; no new events (invariant #11).
+- [x] **Payment/payout** filled; webhook source of truth; idempotent; minor units; exactly-once (#5, #8, #9).
+- [x] Refund policy untouched/server-side (invariant #10).
+- [x] Timezone: UTC stored, `Europe/Tirane` reasoning (invariant #6).
+- [x] Booking codes unguessable; never in queue view/problems (invariant #7).
+- [x] Flyway migration + constraint tests (invariant #12).
+- [x] **Frontend** standards met; no `as any`.
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (all under Resolved).

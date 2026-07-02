@@ -280,22 +280,28 @@ export class StaffDaily {
       error: (e) => {
         const reason = staffRequestErrorOf(e);
         if (reason === 'UNAUTHORIZED') {
+          // Sign out and settle WITHOUT reconciling: the reloads would go out credential-less,
+          // 401 again, and overwrite this notice with a generic sign-in failure.
           this.operator.signOut();
+          this.settleDecision(row.bookingId, decisionFailureNotice(action, reason), false);
+          return;
         }
         this.settleDecision(row.bookingId, decisionFailureNotice(action, reason));
       },
     });
   }
 
-  /** Shared decision epilogue: surface the outcome and re-read queue + map + bookings. */
-  private settleDecision(bookingId: number, message: string): void {
+  /** Shared decision epilogue: surface the outcome and (unless signed out) re-read everything. */
+  private settleDecision(bookingId: number, message: string, reload = true): void {
     this.notice.set(message);
     this.deciding.update((s) => {
       const next = new Set(s);
       next.delete(bookingId);
       return next;
     });
-    this.reconcile();
+    if (reload) {
+      this.reconcile();
+    }
   }
 
   /** Optimistically flip a tile and mark it pending. */

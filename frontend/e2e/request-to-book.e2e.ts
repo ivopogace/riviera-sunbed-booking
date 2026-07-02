@@ -147,6 +147,17 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
 });
 
+test('an expired request shows terminal no-charge copy', async ({ page }) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: { ...DETAIL_BASE, status: 'EXPIRED', requestExpiresAt: null } }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await expect(page.getByTestId('request-expired')).toContainText('Request expired');
+  await expect(page.getByTestId('request-expired')).toContainText('haven’t');
+  await expectNoSeriousAxeViolations(page, 'booking view (expired request)');
+});
+
 test('a declined request shows terminal no-charge copy', async ({ page }) => {
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: { ...DETAIL_BASE, status: 'DECLINED', requestExpiresAt: null } }),

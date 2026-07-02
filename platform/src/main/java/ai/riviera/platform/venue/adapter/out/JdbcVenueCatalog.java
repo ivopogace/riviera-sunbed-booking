@@ -47,6 +47,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_REGION = "region";
 	private static final String COL_PRICE_MINOR = "price_minor";
 	private static final String COL_PRICE_CURRENCY = "price_currency";
+	private static final String COL_BOOKING_MODE = "booking_mode";
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
@@ -68,7 +69,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
 						rs.getString(COL_REGION), rs.getString("description"),
 						rs.getInt("rating_tenths"), rs.getInt("reviews_count"),
-						rs.getString("booking_mode")))
+						rs.getString(COL_BOOKING_MODE)))
 				.optional();
 
 		if (venue.isEmpty()) {
@@ -127,7 +128,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.query((rs, rowNum) -> new SummaryRow(
 						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
 						rs.getString(COL_REGION), rs.getInt("rating_tenths"),
-						rs.getInt("reviews_count"), rs.getString("booking_mode")))
+						rs.getInt("reviews_count"), rs.getString(COL_BOOKING_MODE)))
 				.list();
 
 		if (venues.isEmpty()) {
@@ -217,7 +218,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getInt("position_no"), rs.getString("pool"),
 						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 						rs.getObject("booking_cutoff", java.time.LocalTime.class),
-						BookingMode.valueOf(rs.getString("booking_mode"))))
+						BookingMode.valueOf(rs.getString(COL_BOOKING_MODE))))
 				.optional();
 	}
 

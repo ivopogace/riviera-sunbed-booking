@@ -99,3 +99,33 @@ test('operator works the pending-requests queue: list, accept, decline', async (
   await expect(page.getByTestId('notice')).toContainText('Request declined');
   await expectNoSeriousAxeViolations(page, 'after declining the last request');
 });
+
+test('a decision that lost a race with the sweep surfaces the error copy', async ({ page }) => {
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/booking-requests$/, (route) =>
+    route.fulfill({ json: [...REQUESTS] }),
+  );
+  await page.route(/\/api\/venues\/1\/booking-requests\/11\/accept$/, (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: {
+        type: 'about:blank',
+        title: 'Conflict',
+        status: 409,
+        detail: "This request's response deadline has passed.",
+        code: 'REQUEST_EXPIRED',
+      },
+    }),
+  );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: mapBody() }));
+
+  await page.goto(`/venue-admin/daily/${VENUE}`);
+  await page.getByLabel('Operator').fill('operator');
+  await page.getByLabel('Password').fill('test-pw');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await page.getByRole('button', { name: /Accept booking request from Ana Guest/ }).click();
+  await expect(page.getByTestId('notice')).toContainText(/expired/i);
+  await expectNoSeriousAxeViolations(page, 'queue after an expired-request conflict');
+});

@@ -163,11 +163,19 @@ public interface Bookings {
 	List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore);
 
 	/**
-	 * Expire every {@code PENDING_REQUEST} past its stored deadline (issue #98): the guarded bulk
-	 * {@code PENDING_REQUEST → EXPIRED} transition, {@code RETURNING} each expired request's
-	 * {@code (set, date)} so the caller releases every soft-hold exactly once (invariant #2). The
-	 * guard is disjoint from accept's ({@code request_expires_at <= now} vs {@code > now}) and
-	 * from decline's (status), so no race can double-act.
+	 * The ids of {@code PENDING_REQUEST} bookings past their stored deadline — the request-expiry
+	 * sweep's candidate set (issue #98). Read-only; the sweep then expires each candidate via the
+	 * guarded {@link #expirePendingRequest} in its own transaction (per-row failure isolation,
+	 * like the abandoned-payment sweep).
 	 */
-	List<ClaimRef> expirePendingRequests(Instant now);
+	List<BookingId> findOverduePendingRequests(Instant now);
+
+	/**
+	 * Expire one overdue pending request: the guarded {@code PENDING_REQUEST → EXPIRED} transition
+	 * ({@code … AND request_expires_at <= now}), {@code RETURNING} its {@code (set, date)} iff it
+	 * transitioned so the caller releases the soft-hold exactly once (invariant #2). The guard is
+	 * disjoint from accept's ({@code <= now} vs {@code > now}) and from decline's (status), so no
+	 * race can double-act; a candidate accepted/declined since the read is a clean empty no-op.
+	 */
+	Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now);
 }

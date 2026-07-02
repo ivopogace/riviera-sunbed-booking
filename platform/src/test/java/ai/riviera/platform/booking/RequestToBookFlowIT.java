@@ -72,6 +72,21 @@ class RequestToBookFlowIT {
 	}
 
 	@Test
+	void pendingQueueIsOperatorGated() throws Exception {
+		// #98 / SecurityConfig: the queue GET must be role-gated BEFORE the public venue GET —
+		// an anonymous call is 401 (never a public read, never a 200). Accept/decline likewise.
+		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s")
+				.param("s", requestSet).query(Long.class).single();
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.get("/api/venues/{v}/booking-requests", venueId))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, 1))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, 1))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void requestModeCreatesPendingRequestWithoutPaymentCredentials() throws Exception {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content(body(requestSet, bookable())))

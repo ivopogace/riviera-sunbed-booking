@@ -65,7 +65,7 @@ class RespondToRequestServiceTest {
 
 	private RespondToRequestService service() {
 		return new RespondToRequestService(ownership, bookings,
-				new DeclineReleaseService(bookings, availability), checkout, confirmBooking,
+				new RequestReleaseService(bookings, availability), checkout, confirmBooking,
 				releaseAbandoned, clock);
 	}
 
@@ -186,15 +186,38 @@ class RespondToRequestServiceTest {
 
 	@Test
 	void expirySweepReleasesEveryExpiredHold() {
-		// ExpireRequestsService: the bulk transition returns the expired claims; each is released.
+		// ExpireRequestsService: per-row guarded expiry (failure-isolated), each hold released.
 		var date = java.time.LocalDate.of(2026, 8, 2);
-		when(bookings.expirePendingRequests(NOW)).thenReturn(List.of(
-				new ClaimRef(new SetId(1), date), new ClaimRef(new SetId(2), date)));
+		when(bookings.findOverduePendingRequests(NOW))
+				.thenReturn(List.of(new BookingId(11), new BookingId(12)));
+		when(bookings.expirePendingRequest(11, NOW))
+				.thenReturn(Optional.of(new ClaimRef(new SetId(1), date)));
+		when(bookings.expirePendingRequest(12, NOW))
+				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date)));
 
-		int expired = new ExpireRequestsService(bookings, availability, clock).sweep();
+		int expired = new ExpireRequestsService(bookings,
+				new RequestReleaseService(bookings, availability), clock).sweep();
 
 		assertEquals(2, expired);
 		verify(availability).release(new SetId(1), date);
+		verify(availability).release(new SetId(2), date);
+	}
+
+	@Test
+	void expirySweepIsolatesAFailingRow() {
+		// One poisoned row must not starve the batch (mirrors the abandoned sweep's isolation).
+		var date = java.time.LocalDate.of(2026, 8, 2);
+		when(bookings.findOverduePendingRequests(NOW))
+				.thenReturn(List.of(new BookingId(11), new BookingId(12)));
+		when(bookings.expirePendingRequest(11, NOW))
+				.thenThrow(new org.springframework.dao.QueryTimeoutException("release blocked"));
+		when(bookings.expirePendingRequest(12, NOW))
+				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date)));
+
+		int expired = new ExpireRequestsService(bookings,
+				new RequestReleaseService(bookings, availability), clock).sweep();
+
+		assertEquals(1, expired, "the healthy row is still expired");
 		verify(availability).release(new SetId(2), date);
 	}
 
