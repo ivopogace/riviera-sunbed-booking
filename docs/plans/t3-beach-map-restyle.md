@@ -224,8 +224,8 @@ integer minor units + currency; booking date stays ISO `LocalDate`.
 | 0 — Shared glass partial (rule of three) | ✅ | Phase 0 |
 | 1 — Component + template + SCSS restyle (TDD) | ✅ | Phase 1 |
 | 2 — Contrast spec rewrite + a11y green | ✅ | Phase 2 |
-| 3 — Pan-vs-select e2e + preserve booking e2e | ⏳ | |
-| 4 — Route de-legacy + app.spec RESTYLED_PATHS | | |
+| 3 — Pan-vs-select e2e + preserve booking e2e | ✅ | Phase 3 |
+| 4 — Route de-legacy + app.spec RESTYLED_PATHS | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Updated in the same commit
 window as each phase.

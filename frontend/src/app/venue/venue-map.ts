@@ -214,21 +214,26 @@ export class VenueMap {
   // --- drag-to-pan (mouse only; touch uses native overflow scrolling) ---
 
   protected onMapMouseDown(event: MouseEvent): void {
+    const el = this.panViewport()?.nativeElement;
+    if (!el) {
+      return;
+    }
     this.panPointerDown = true;
     this.panned = false;
     this.panStartX = event.clientX;
-    this.panStartScroll = (event.currentTarget as HTMLElement).scrollLeft;
+    this.panStartScroll = el.scrollLeft;
   }
 
   protected onMapMouseMove(event: MouseEvent): void {
-    if (!this.panPointerDown) {
+    const el = this.panViewport()?.nativeElement;
+    if (!this.panPointerDown || !el) {
       return;
     }
     const dx = event.clientX - this.panStartX;
     if (Math.abs(dx) > VenueMap.PAN_THRESHOLD_PX) {
       this.panned = true;
     }
-    (event.currentTarget as HTMLElement).scrollLeft = this.panStartScroll - dx;
+    el.scrollLeft = this.panStartScroll - dx;
   }
 
   protected onMapMouseUp(): void {
