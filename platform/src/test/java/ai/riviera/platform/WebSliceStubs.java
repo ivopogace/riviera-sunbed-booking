@@ -21,6 +21,11 @@ import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
+import ai.riviera.platform.booking.application.request.AcceptOutcome;
+import ai.riviera.platform.booking.application.request.DeclineOutcome;
+import ai.riviera.platform.booking.application.request.ExpireRequests;
+import ai.riviera.platform.booking.application.request.PendingRequests;
+import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -63,6 +68,37 @@ import ai.riviera.platform.venue.application.SetRejection;
  */
 @TestConfiguration(proxyBeanMethods = false)
 class WebSliceStubs {
+
+	/** #98 Request-to-Book web-slice stubs: the controller/scheduler ports with inert defaults. */
+	@Bean
+	PendingRequests pendingRequests() {
+		return (operator, venueId) -> List.of();
+	}
+
+	@Bean
+	RespondToRequest respondToRequest() {
+		return new RespondToRequest() {
+			@Override
+			public AcceptOutcome accept(OperatorId operator,
+					ai.riviera.platform.venue.vocabulary.VenueId venueId,
+					ai.riviera.platform.booking.vocabulary.BookingId bookingId) {
+				return AcceptOutcome.Rejected.NO_SUCH_REQUEST;
+			}
+
+			@Override
+			public DeclineOutcome decline(OperatorId operator,
+					ai.riviera.platform.venue.vocabulary.VenueId venueId,
+					ai.riviera.platform.booking.vocabulary.BookingId bookingId) {
+				return DeclineOutcome.Rejected.NO_SUCH_REQUEST;
+			}
+		};
+	}
+
+	@Bean
+	ExpireRequests expireRequests() {
+		return () -> 0;
+	}
+
 
 	/** Stamp a client IP onto a MockMvc request (shared by the rate-limit slices). */
 	static RequestPostProcessor fromIp(String ip) {
