@@ -1,0 +1,78 @@
+import { Service, signal } from '@angular/core';
+
+/**
+ * The Liquid Glass themes shipped so far (issue #134). Palettes themselves are CSS custom
+ * properties under `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the
+ * switcher UI needs, so adding a palette (#143) is a styles.scss block plus one row here.
+ */
+export type ThemeId = 'riviera' | 'porcelain';
+
+export interface ThemeOption {
+  readonly id: ThemeId;
+  readonly name: string;
+  /** CSS background for the switcher swatch dot. */
+  readonly swatch: string;
+  /** Light themes use the dark ink token set; dark themes use white ink. */
+  readonly light: boolean;
+}
+
+export const THEME_OPTIONS: readonly ThemeOption[] = [
+  { id: 'riviera', name: 'Riviera', swatch: 'linear-gradient(135deg, #38b6d2, #0a4f6e)', light: false },
+  { id: 'porcelain', name: 'Porcelain', swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)', light: true },
+];
+
+const STORAGE_KEY = 'riviera-theme';
+const DEFAULT_THEME: ThemeId = 'riviera';
+
+function isThemeId(value: string | null): value is ThemeId {
+  return THEME_OPTIONS.some((option) => option.id === value);
+}
+
+/**
+ * The single writer of the document's `data-riv-theme` attribute. Resolution order on boot:
+ * stored choice → OS `prefers-color-scheme: light` (→ porcelain) → riviera. `select` persists,
+ * so the choice survives reloads (AC-2); storage access is guarded — a blocked storage
+ * (private mode) degrades to session-only theming, never an error.
+ */
+@Service()
+export class ThemeService {
+  readonly options = THEME_OPTIONS;
+
+  private readonly current = signal<ThemeId>(initialTheme());
+
+  /** The active theme id, as a read-only signal. */
+  readonly theme = this.current.asReadonly();
+
+  constructor() {
+    applyToDocument(this.current());
+  }
+
+  select(id: ThemeId): void {
+    this.current.set(id);
+    applyToDocument(id);
+    try {
+      globalThis.localStorage?.setItem(STORAGE_KEY, id);
+    } catch {
+      // Storage unavailable (private mode / quota): theme still applies for this session.
+    }
+  }
+}
+
+function initialTheme(): ThemeId {
+  try {
+    const stored = globalThis.localStorage?.getItem(STORAGE_KEY) ?? null;
+    if (isThemeId(stored)) {
+      return stored;
+    }
+  } catch {
+    // fall through to the OS preference
+  }
+  const prefersLight =
+    typeof globalThis.matchMedia === 'function' &&
+    globalThis.matchMedia('(prefers-color-scheme: light)').matches;
+  return prefersLight ? 'porcelain' : DEFAULT_THEME;
+}
+
+function applyToDocument(id: ThemeId): void {
+  document.documentElement.setAttribute('data-riv-theme', id);
+}

@@ -1,1 +1,95 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * Liquid Glass design tokens (issue #134, design: docs/design/riviera-sunbeds-liquid-glass-v2.dc.html).
+ *
+ * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — the attribute is
+ * written only by core/theme.ts. Components consume tokens, never palette literals, so a new
+ * palette (#143) is one block here + one row in core/theme.ts.
+ *
+ * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
+ * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;
+ * the dark tint keeps the glass look and passes (pinned by app.contrast.spec.ts, plan R-2).
+ */
+
+:root,
+[data-riv-theme='riviera'] {
+  --riv-font: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+
+  --riv-bg:
+    radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
+    radial-gradient(100% 80% at 94% 0%, #ffe2b0 0%, rgba(255, 226, 176, 0) 44%),
+    radial-gradient(130% 120% at 80% 106%, #0a5e93 0%, rgba(10, 94, 147, 0) 58%),
+    linear-gradient(165deg, #38b6d2 0%, #0f7f94 46%, #0a4f6e 100%);
+  --riv-blob-1: radial-gradient(circle, #ffd896 0%, rgba(255, 216, 150, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #52d7ec 0%, rgba(82, 215, 236, 0) 70%);
+
+  --riv-ink: #ffffff;
+  --riv-ink-soft: rgba(255, 255, 255, 0.86);
+  --riv-ink-faint: rgba(255, 255, 255, 0.72);
+  --riv-chip-bg: rgba(255, 255, 255, 0.16);
+  --riv-chip-border: rgba(255, 255, 255, 0.3);
+  --riv-hero-shadow: 0 2px 36px rgba(6, 40, 55, 0.32);
+  --riv-track-bg: rgba(255, 255, 255, 0.25);
+
+  /* dark glass (see header note above): #0a2c3f at 72% over the lightest bg stop still ≥ AA vs white ink */
+  --riv-header-glass: rgba(10, 44, 63, 0.72);
+  --riv-header-border: rgba(255, 255, 255, 0.22);
+
+  --riv-cta-grad: linear-gradient(180deg, #2bb8d4, #0e8aa8);
+  --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+}
+
+[data-riv-theme='porcelain'] {
+  --riv-bg:
+    radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255, 255, 255, 0) 54%),
+    radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238, 246, 248, 0) 46%),
+    radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207, 234, 242, 0) 60%),
+    linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);
+  --riv-blob-1: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #bfe6f0 0%, rgba(191, 230, 240, 0) 70%);
+
+  --riv-ink: #0a2a33;
+  --riv-ink-soft: rgba(12, 42, 51, 0.7);
+  --riv-ink-faint: rgba(12, 42, 51, 0.5);
+  --riv-chip-bg: rgba(12, 42, 51, 0.05);
+  --riv-chip-border: rgba(12, 42, 51, 0.14);
+  --riv-hero-shadow: none;
+  --riv-track-bg: rgba(12, 42, 51, 0.12);
+
+  --riv-header-glass: rgba(255, 255, 255, 0.6);
+  --riv-header-border: rgba(255, 255, 255, 0.7);
+
+  --riv-cta-grad: linear-gradient(180deg, #2bb8d4, #0e8aa8);
+  --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--riv-font);
+  color: var(--riv-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- animation ---- */
+
+@keyframes riv-drift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(40px, -30px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes riv-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .riv-blob,
+  .riv-pop-in {
+    animation: none;
+  }
+}
