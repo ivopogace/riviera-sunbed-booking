@@ -490,6 +490,14 @@ Sonar-UI false-positive mark): extracted the ring values into a `retry-focus-rin
 each consumer under a real `.failure-retry:focus-visible` selector — restoring the pre-extraction
 structure, still DRY. Re-verified: build ✅, affected specs 66/66, lint clean.
 
+### Docs-freshness sweep (`origin/main...HEAD`, run pre-merge)
+
+**0 findings.** Grepped the substrate set (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, docs/adr,
+docs/agents, `.claude/skills/riviera-*`) for the moved facts (glass recipes home.scss→`shared/_glass.scss`,
+beach-map restyle, legacySurface removal). No substrate doc states the recipes' location (only the
+T2 `--riv-card-*` tokens, unchanged); the beach-map substrate references are domain/backend facts;
+the `shared/` example list and two-suite e2e split are not contradicted. Nothing to patch.
+
 ### Risk resolutions
 R-1 pan-vs-select pinned by unit + e2e (both directions) · R-2 header-on-glass, contrast spec 26/26
 both themes · R-3 home suite 44/44 green post-extraction · R-4 booking e2e green, testids preserved ·
