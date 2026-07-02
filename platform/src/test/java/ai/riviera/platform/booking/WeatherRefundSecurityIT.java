@@ -16,6 +16,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,14 +50,17 @@ class WeatherRefundSecurityIT {
 
 	@Test
 	void weatherRefundRequiresOperator() throws Exception {
-		mvc.perform(post("/api/venues/{id}/weather-refund", MIRAMAR).param("date", EMPTY_DAY.toString()))
+		// A valid CSRF token is supplied so the rejection pins the auth gate (401 from the entry
+		// point), not the CsrfFilter's 403.
+		mvc.perform(post("/api/venues/{id}/weather-refund", MIRAMAR).with(csrf())
+						.param("date", EMPTY_DAY.toString()))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void operatorGetsTheRefundSummary() throws Exception {
 		mvc.perform(post("/api/venues/{id}/weather-refund", MIRAMAR)
-						.cookie(operatorSession).param("date", EMPTY_DAY.toString()))
+						.cookie(operatorSession).with(csrf()).param("date", EMPTY_DAY.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.refundedCount").value(0))
 				.andExpect(jsonPath("$.totalRefundedMinor").value(0));

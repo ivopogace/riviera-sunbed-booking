@@ -83,19 +83,22 @@ class SecurityConfig {
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock), CorsFilter.class)
 				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
-				// so its writes REQUIRE the cookie-to-header token — CookieCsrfTokenRepository
-				// issues the JS-readable XSRF-TOKEN cookie (Secure; SameSite=Lax), the SPA echoes
-				// it as X-XSRF-TOKEN, and SpaCsrfTokenRequestHandler (the framework's documented
-				// SPA recipe) resolves the raw header while keeping BREACH protection for rendered
-				// tokens. The ONLY exemptions left are the genuinely token-less surfaces:
-				// guest booking create/cancel — authorized by the booking code alone (invariant #7),
-				// deliberately session-free — and the Stripe webhook, a server-to-server POST
-				// authenticated by its signature header (invariant #8; an unverified call is
-				// rejected in StripeWebhookController with 400). A CSRF rejection is answered by
-				// CsrfFilter itself through the accessDeniedHandler below → 403 INVALID_CSRF_TOKEN.
+				// so its writes REQUIRE the cookie-to-header token. `.spa()` is Spring Security 7's
+				// native single-page-app posture: CookieCsrfTokenRepository issues the JS-readable
+				// XSRF-TOKEN cookie, the SPA echoes it as X-XSRF-TOKEN (resolved plain, while
+				// rendered tokens keep BREACH/Xor protection), and the token loads eagerly so every
+				// response can (re)issue the cookie. The ONLY exemptions left are the genuinely
+				// token-less surfaces: guest booking create/cancel — authorized by the booking code
+				// alone (invariant #7), deliberately session-free — and the Stripe webhook, a
+				// server-to-server POST authenticated by its signature header (invariant #8; an
+				// unverified call is rejected in StripeWebhookController with 400). A CSRF rejection
+				// is answered by CsrfFilter itself through the accessDeniedHandler below →
+				// 403 INVALID_CSRF_TOKEN.
 				.csrf(csrf -> csrf
-						.csrfTokenRepository(csrfTokenRepository())
-						.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+						.spa()
+						// spa()'s CookieCsrfTokenRepository, hardened: Secure + SameSite=Lax to
+						// mirror the session cookie's posture (the override keeps spa()'s handler).
+						.csrfTokenRepository(csrfCookieRepository())
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
@@ -153,16 +156,6 @@ class SecurityConfig {
 		return http.build();
 	}
 
-	/**
-	 * The SPA-readable CSRF token cookie: {@code HttpOnly=false} is the point (cookie-to-header
-	 * requires JS to read it — the token is not a secret from the page, it is a secret from
-	 * OTHER origins); {@code Secure} + {@code SameSite=Lax} mirror the session cookie's posture.
-	 */
-	private static CookieCsrfTokenRepository csrfTokenRepository() {
-		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Lax"));
-		return repository;
-	}
 
 	/**
 	 * The framework authentication manager (issue #109): built by Spring Security's global
@@ -184,6 +177,17 @@ class SecurityConfig {
 	@Bean
 	SecurityContextRepository securityContextRepository() {
 		return new HttpSessionSecurityContextRepository();
+	}
+
+	/**
+	 * The SPA-readable CSRF token cookie: {@code HttpOnly=false} is the point (cookie-to-header
+	 * requires JS to read it — the token is a secret from OTHER origins, not from the page);
+	 * {@code Secure} + {@code SameSite=Lax} mirror the session cookie's posture.
+	 */
+	private static CookieCsrfTokenRepository csrfCookieRepository() {
+		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Lax"));
+		return repository;
 	}
 
 	/**

@@ -16,6 +16,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -66,10 +67,13 @@ class StaffAvailabilityControllerIT {
 
 	@Test
 	void writesRequireOperator() throws Exception {
+		// A valid CSRF token is supplied so the rejection pins the auth gate (401 from the entry
+		// point), not the CsrfFilter's 403.
 		long set = anyOnlineSet();
-		mvc.perform(post(markUrl(set)).contentType(MediaType.APPLICATION_JSON).content(dateBody("2032-07-01")))
+		mvc.perform(post(markUrl(set)).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(dateBody("2032-07-01")))
 				.andExpect(status().isUnauthorized());
-		mvc.perform(delete(markUrl(set)).param("date", "2032-07-01"))
+		mvc.perform(delete(markUrl(set)).with(csrf()).param("date", "2032-07-01"))
 				.andExpect(status().isUnauthorized());
 	}
 
@@ -78,23 +82,23 @@ class StaffAvailabilityControllerIT {
 		long set = anyOnlineSet();
 		String date = "2032-07-02";
 
-		mvc.perform(post(markUrl(set)).cookie(operatorSession)
+		mvc.perform(post(markUrl(set)).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody(date)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.state").value("STAFF_MARKED"));
 
 		// A second mark on the now-taken (set, date) → 409.
-		mvc.perform(post(markUrl(set)).cookie(operatorSession)
+		mvc.perform(post(markUrl(set)).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody(date)))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("ALREADY_TAKEN"));
 
-		mvc.perform(delete(markUrl(set)).cookie(operatorSession).param("date", date))
+		mvc.perform(delete(markUrl(set)).cookie(operatorSession).with(csrf()).param("date", date))
 				.andExpect(status().isNoContent());
 
 		// Releasing again → nothing staff-marked → 409 NOT_MARKED.
-		mvc.perform(delete(markUrl(set)).cookie(operatorSession).param("date", date))
+		mvc.perform(delete(markUrl(set)).cookie(operatorSession).with(csrf()).param("date", date))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NOT_MARKED"));
@@ -102,7 +106,7 @@ class StaffAvailabilityControllerIT {
 
 	@Test
 	void markingPastDateReturns422() throws Exception {
-		mvc.perform(post(markUrl(anyOnlineSet())).cookie(operatorSession)
+		mvc.perform(post(markUrl(anyOnlineSet())).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody("2020-01-01")))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -111,7 +115,7 @@ class StaffAvailabilityControllerIT {
 
 	@Test
 	void markingUnknownSetReturns404() throws Exception {
-		mvc.perform(post(markUrl(999_999L)).cookie(operatorSession)
+		mvc.perform(post(markUrl(999_999L)).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(dateBody("2032-07-03")))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -120,7 +124,7 @@ class StaffAvailabilityControllerIT {
 
 	@Test
 	void markingWithMissingDateReturns400() throws Exception {
-		mvc.perform(post(markUrl(anyOnlineSet())).cookie(operatorSession)
+		mvc.perform(post(markUrl(anyOnlineSet())).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))

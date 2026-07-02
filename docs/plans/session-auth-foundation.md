@@ -126,7 +126,7 @@ restarted from `main` d8063cb, previous PRs merged).
 | R-4 | Session-cookie + CORS: FE on `:4200` against BE `:8080` needs `allowCredentials` and the cookie is port-agnostic on localhost | med | med | `WebCorsConfig` gains `allowCredentials(true)` with explicit origins (never `*`); real-backend e2e proves the pair | Claude | open |
 | R-5 | 7+ ITs authenticate with `.with(httpBasic(...))` — mass breakage on the auth switch | high | med | One shared test helper (session-login `RequestPostProcessor`/MockMvc flow) introduced first, migrated file-by-file in one phase | Claude | open |
 | R-6 | Angular's built-in XSRF support skips absolute URLs — `withXsrfConfiguration` alone silently never sends the header | high | high | Custom `core/` interceptor reads the `XSRF-TOKEN` cookie and sets the header for `apiBaseUrl` mutating requests; spec pins it | Claude | open |
-| R-7 | Spring Security 7 SPA CSRF handling (BREACH/Xor handler + deferred tokens) mis-wired → token never issued or always rejected | med | high | Follow the current Spring Security SPA recipe (cookie repo + request handler + force-load filter as documented); `CsrfProtectionIT` covers issue+accept+reject | Claude | open |
+| R-7 | Spring Security 7 SPA CSRF handling mis-wired → token never issued or always rejected | med | high | Resolved via SS7's native `.spa()` + hardened cookie repo; `CsrfProtectionIT` + `CsrfCookieBootstrapIT` pin issue/accept/reject. Learned: the `csrf()` TEST post-processor permanently swaps the shared CsrfFilter repo in a cached context — bootstrap pin isolated in its own context | Claude | resolved (Phase 3) |
 | R-8 | A second error-mapping path for auth sneaks in (second advice / per-controller handler) breaking the #117 contract | low | med | Login errors flow through `ApiErrorHandler` (new 401 mappings); filter-level 401/403 hand-mirror `ApiProblem` like `RateLimitFilter`; `ErrorContractArchitectureTests` unchanged | Claude | open |
 | R-9 | Spring Session cleanup / serialization: principal object graph stored as bytes — a heavyweight or non-serializable principal breaks persistence | low | med | Store the minimal Spring Security `User` principal (username + authorities) only; `SessionPersistenceIT` round-trips it | Claude | open |
 
@@ -210,9 +210,9 @@ only.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | ed2ae5a |
-| 2 — BE: migrate ITs off Basic; remove httpBasic | ✅ | (this commit) |
-| 3 — BE: CSRF cookie-to-header; exemptions inverted | ⏳ | |
-| 4 — BE: login rate limit | | |
+| 2 — BE: migrate ITs off Basic; remove httpBasic | ✅ | 176a39a |
+| 3 — BE: CSRF cookie-to-header; exemptions inverted | ✅ | (this commit) |
+| 4 — BE: login rate limit | ⏳ | |
 | 5 — FE: session auth state + interceptor + sign-in UX | | |
 | 6 — e2e: POM + sign-in spec; real-backend update | | |
 | 7 — riviera-docs-freshness skill + substrate updates | | |
@@ -313,7 +313,8 @@ wording).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-02 | Phase 2 (Basic retirement) | remaining `httpBasic(` in backend | `grep -rn httpBasic platform/src` | 0 (main + test) after sweep of 8 IT files + SecurityConfig | complete; SecurityConfig javadoc rewritten to session posture |
+| 2026-07-02 | Phase 2 (Basic retirement) | remaining `httpBasic(` in backend | `grep -rn httpBasic platform/src` | 5 at first pass: 3 stale main-source javadocs + SecurityConfig CSRF comment + SessionLoginSupport's intentional history note | 3 javadocs rewritten (Phase-3 commit); CSRF comment rewritten in Phase 3; helper note kept |
+| 2026-07-02 | Phase 3 (CSRF inversion) | stale "CSRF-exempt"/"stateless → CSRF n/a" comments | `grep -n "CSRF-exempt\|token-less" SecurityConfig.java` | 4 path-constant javadocs + the csrf() block comment | all rewritten to the session+token posture |
 
 Planned audits (run at their phases, results recorded here): Phase 2 — remaining
 `httpBasic(`/`basicAuthHeader` usages; Phase 3 — stale "stateless / no session → CSRF

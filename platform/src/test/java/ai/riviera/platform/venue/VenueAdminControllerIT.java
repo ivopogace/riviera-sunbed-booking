@@ -72,7 +72,7 @@ class VenueAdminControllerIT {
 
 	/** Create a venue as the operator and return its id (parsed from the JSON body). */
 	private long createVenue(String name) throws Exception {
-		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession)
+		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(venueBody(name, "INSTANT", 1500, "EUR")))
 				.andExpect(status().isCreated())
@@ -83,7 +83,7 @@ class VenueAdminControllerIT {
 
 	private long addSet(long venueId, String body) throws Exception {
 		MvcResult result = mvc.perform(post("/api/venues/{v}/sets", venueId)
-						.cookie(operatorSession)
+						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(body))
 				.andExpect(status().isCreated())
 				.andReturn();
@@ -147,7 +147,7 @@ class VenueAdminControllerIT {
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
 		// AC-3: move the set from the online to the walk-in pool; the read API reflects it.
-		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession)
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNoContent());
@@ -162,7 +162,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Remove Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
-		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession))
+		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(0));
@@ -171,7 +171,7 @@ class VenueAdminControllerIT {
 	@Test
 	void rejectsUnknownPool() throws Exception {
 		long venue = createVenue("Bad Pool Club");
-		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "GOLD", 3000, "EUR", 1, 1)))
 				.andExpect(status().isBadRequest())
@@ -182,7 +182,7 @@ class VenueAdminControllerIT {
 	@Test
 	void rejectsNonIsoCurrency() throws Exception {
 		long venue = createVenue("Bad Currency Club");
-		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "ABC", 1, 1)))
 				.andExpect(status().isBadRequest())
@@ -192,7 +192,7 @@ class VenueAdminControllerIT {
 	@Test
 	void rejectsNonPositiveCoordinate() throws Exception {
 		long venue = createVenue("Bad Coord Club");
-		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 0, 1)))
 				.andExpect(status().isBadRequest())
@@ -206,7 +206,7 @@ class VenueAdminControllerIT {
 
 		// AC-5: a second set at the same (grid_x, grid_y) is 409 CELL_TAKEN. Different position_no/
 		// row_label so only the grid-cell rule can trip.
-		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row B", 9, "STANDARD", "ONLINE", 3000, "EUR", 2, 1)))
 				.andExpect(status().isConflict())
@@ -220,7 +220,7 @@ class VenueAdminControllerIT {
 		addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
 		// Same (row_label, position_no), different cell → 409 DUPLICATE_POSITION.
-		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 5)))
 				.andExpect(status().isConflict())
@@ -230,7 +230,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void addSetToUnknownVenueIs404() throws Exception {
-		mvc.perform(post("/api/venues/{v}/sets", 999_999L).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/sets", 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNotFound())
@@ -241,7 +241,7 @@ class VenueAdminControllerIT {
 	@Test
 	void editUnknownSetIs404() throws Exception {
 		long venue = createVenue("Edit 404 Club");
-		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, 999_999L).cookie(operatorSession)
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNotFound())
@@ -251,8 +251,9 @@ class VenueAdminControllerIT {
 
 	@Test
 	void writeRequiresOperatorAuth() throws Exception {
-		// AC-6: no credentials → 401, and nothing is written.
-		mvc.perform(post("/api/venues").contentType(MediaType.APPLICATION_JSON)
+		// AC-6: no credentials → 401, and nothing is written. A valid CSRF token is supplied so the
+		// rejection pins the auth gate (401 from the entry point), not the CsrfFilter's 403.
+		mvc.perform(post("/api/venues").with(csrf()).contentType(MediaType.APPLICATION_JSON)
 						.content(venueBody("No Auth Club", "INSTANT", 1500, "EUR")))
 				.andExpect(status().isUnauthorized());
 

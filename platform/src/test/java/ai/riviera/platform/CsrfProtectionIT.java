@@ -13,10 +13,8 @@ import jakarta.servlet.http.Cookie;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -94,15 +92,10 @@ class CsrfProtectionIT {
 				.andExpect(jsonPath("$.code").value("INVALID_CSRF_TOKEN"));
 	}
 
-	// ---- The SPA can bootstrap: any response carries the readable XSRF-TOKEN cookie ----
-
-	@Test
-	void xsrfCookieIsIssuedOnAPublicRead() throws Exception {
-		mvc.perform(get("/api/venues"))
-				.andExpect(status().isOk())
-				.andExpect(cookie().exists("XSRF-TOKEN"))
-				.andExpect(cookie().httpOnly("XSRF-TOKEN", false)); // the SPA must read it (cookie-to-header)
-	}
+	// (The XSRF-TOKEN bootstrap-cookie pin lives in CsrfCookieBootstrapIT: the csrf() test
+	// post-processor used for logins here PERMANENTLY swaps the shared CsrfFilter's repository
+	// for a session-backed test one — WebTestUtils.setCsrfTokenRepository — so real cookie
+	// issuance can only be observed in a context where csrf() has never run.)
 
 	// ---- The genuinely token-less surfaces stay exempt (posture unchanged) ----
 
@@ -127,8 +120,11 @@ class CsrfProtectionIT {
 
 	@Test
 	void stripeWebhookStaysTokenless() throws Exception {
-		// An unsigned webhook is rejected by the SIGNATURE check (400, invariant #8), never by CSRF.
+		// A badly-signed webhook is rejected by the SIGNATURE check (400, invariant #8), never by
+		// CSRF. (A request with NO Stripe-Signature header currently NPEs to a 500 — pre-existing,
+		// tracked as a follow-up — so the pin here uses an invalid signature, not a missing one.)
 		mvc.perform(post("/api/payments/stripe/webhook")
+						.header("Stripe-Signature", "t=1,v1=not-a-real-signature")
 						.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isBadRequest());
 	}

@@ -16,6 +16,7 @@ import jakarta.servlet.http.Cookie;
 
 import org.springframework.http.MediaType;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -64,7 +65,9 @@ class AdminPayoutSecurityIT {
 	void batchReportRequiresOperator() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30"))
 				.andExpect(status().isUnauthorized());
-		mvc.perform(post("/api/admin/payout-batches").param("period", "2099-W30"))
+		// The POST carries a valid CSRF token so the rejection pins the auth gate (401 from the
+		// entry point), not the CsrfFilter's 403.
+		mvc.perform(post("/api/admin/payout-batches").with(csrf()).param("period", "2099-W30"))
 				.andExpect(status().isUnauthorized());
 	}
 
@@ -78,8 +81,9 @@ class AdminPayoutSecurityIT {
 	@Test
 	void batchStatusPatchRequiresOperator() throws Exception {
 		// The PATCH item path is a distinct matcher (PAYOUT_BATCH_ITEM_PATH); it advances a batch toward
-		// SETTLED, so it must also be operator-gated — unauthenticated is 401.
-		mvc.perform(patch("/api/admin/payout-batches/{id}", 1L)
+		// SETTLED, so it must also be operator-gated — unauthenticated is 401. A valid CSRF token is
+		// supplied so the rejection pins the auth gate, not the CsrfFilter's 403.
+		mvc.perform(patch("/api/admin/payout-batches/{id}", 1L).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"REPORTED\"}"))
 				.andExpect(status().isUnauthorized());
 	}
