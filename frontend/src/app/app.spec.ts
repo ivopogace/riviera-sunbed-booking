@@ -1,32 +1,111 @@
-import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Component } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
+
 import { App } from './app';
 import { routes } from './app.routes';
 
-describe('App', () => {
+@Component({ template: '' })
+class BlankPage {}
+
+/** Test routes exercising the compat-surface mechanism without loading real (HTTP-bound) pages. */
+const surfaceRoutes = [
+  { path: 'legacy', component: BlankPage, data: { legacySurface: true } },
+  { path: 'glass', component: BlankPage },
+];
+
+describe('App (Liquid Glass shell, issue #134)', () => {
   beforeEach(async () => {
+    document.documentElement.removeAttribute('data-riv-theme');
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(routes)],
+      providers: [provideRouter(surfaceRoutes)],
     }).compileComponents();
   });
 
+  function shell(): { fixture: ComponentFixture<App>; el: HTMLElement } {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    expect(shell().fixture.componentInstance).toBeTruthy();
   });
 
-  it('should render the brand title in the header', async () => {
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('header')?.textContent).toContain('Riviera');
+  it('renders the brand wordmark linking home and the router outlet', () => {
+    const { el } = shell();
+    const brand = el.querySelector<HTMLAnchorElement>('[data-testid="brand-home"]');
+    expect(brand?.textContent).toContain('Riviera');
+    expect(brand?.getAttribute('href')).toBe('/');
+    expect(el.querySelector('router-outlet')).not.toBeNull();
   });
 
-  it('should render the router outlet for routed content', () => {
-    const fixture = TestBed.createComponent(App);
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('router-outlet')).not.toBeNull();
+  it('theme pill opens the picker listing both themes; picking one switches the document theme', () => {
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
+    fixture.detectChanges();
+
+    const options = el.querySelectorAll('[data-testid^="theme-option-"]');
+    expect(options).toHaveLength(2);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="theme-option-porcelain"]')!.click();
+    fixture.detectChanges();
+
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('porcelain');
+    // picker closed after selection
+    expect(el.querySelector('[data-testid="theme-option-porcelain"]')).toBeNull();
+  });
+
+  it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
+    const { fixture, el } = shell();
+    const button = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+
+    button.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="mobile-menu"]')).not.toBeNull();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('backdrop click closes the mobile menu (AC-3)', () => {
+    const { fixture, el } = shell();
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+
+    el.querySelector<HTMLElement>('[data-testid="menu-backdrop"]')!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+  });
+
+  it('wraps legacy-flagged routes in the opaque compat surface, glass routes not (AC-6)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    await router.navigate(['/legacy']);
+    fixture.detectChanges();
+    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(true);
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
+  });
+});
+
+describe('app.routes legacy-surface flags (issue #134)', () => {
+  it('marks every not-yet-restyled route with the compat surface (flipped per T2–T5/operator slice)', () => {
+    for (const route of routes) {
+      expect(route.data?.['legacySurface'], `route '${route.path}' must carry legacySurface`).toBe(
+        true,
+      );
+    }
   });
 });
