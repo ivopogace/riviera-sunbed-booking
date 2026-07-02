@@ -218,6 +218,12 @@ These are repo-scoped — they load when working in this repository.
   sandbox — it can OOM; CI owns the full suite), and the frontend commands. Load before
   the first `./gradlew`/`npm` invocation of a session.
 
+- **`riviera-docs-freshness`** — the **substrate-doc staleness audit**: given a git range
+  (a merged slice, an epic's merge span), walk the substrate-doc map (this file,
+  `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/`, the `riviera-*` skills) and flag/patch
+  any stated fact the diff contradicts. Runs at merge close-out step 5 and at every epic
+  close-out (`riviera-sdlc` delegates the sweep there).
+
 ## Agent skills (SDLC workflow)
 
 This repo runs a software development life cycle loop. The **`riviera-sdlc`** skill is the

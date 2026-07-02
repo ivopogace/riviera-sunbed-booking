@@ -349,6 +349,28 @@ comments in `frontend/`.
 - [ ] Execution-status table at HEAD matches reality.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 
+## riviera-docs-freshness smoke run (AC-12)
+
+Range: `origin/main...HEAD` (+ working tree), 2026-07-02 — the skill's first run, against
+this slice's own diff. Findings:
+
+1. `.claude/skills/riviera-frontend/SKILL.md:20` — core/ example cited the deleted
+   `operator-auth.interceptor.ts` — contradicted by the FE interceptor swap — **patched**
+   (now `api-session.interceptor.ts`).
+2. `frontend/e2e/real-backend/support/operator.ts:4` + `venue-editor.e2e.ts:22` — stale
+   `InMemoryUserDetailsManager` comments (that bean died in #74; the login is now the
+   session flow) — **caught while still outstanding; patched by Phase 6** (the known
+   seeded target — the skill found it independently).
+3. `docs/architecture/auth-signin-register.md:55` — "The **current** FE `OperatorAuth`
+   (raw password … Basic per request) is retired by this epic" — tense stale once S1
+   ships — **patched** ("retired — done by S1 (#109)"), decision substance untouched.
+
+Checked clean: `CLAUDE.md` operator note (mechanism-agnostic wording holds),
+`CONTEXT.md` (no Basic-auth statements; bootstrap-operator entry still true),
+`RESPONSIBILITIES.md` (edge/UserDetailsService Not-My-Job line still true), ADRs,
+`docs/architecture/improvement-plan.md` (A1's `InMemoryUserDetailsManager` mention is
+historical design narrative, in scope-discipline exempt).
+
 ## Review-gate record
 
 Filled at the review gate (findings, fixes, skills loaded per fix, Sonar note).
