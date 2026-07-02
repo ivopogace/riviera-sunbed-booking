@@ -4,6 +4,8 @@ import java.io.IOException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.csrf.CsrfException;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -24,12 +26,34 @@ final class SecurityProblemResponses {
 			"detail":"Authentication is required.","code":"UNAUTHENTICATED",\
 			"instance":"about:blank"}""";
 
+	private static final String INVALID_CSRF_BODY = """
+			{"type":"about:blank","title":"Forbidden","status":403,\
+			"detail":"Missing or invalid CSRF token.","code":"INVALID_CSRF_TOKEN",\
+			"instance":"about:blank"}""";
+
+	private static final String ACCESS_DENIED_BODY = """
+			{"type":"about:blank","title":"Forbidden","status":403,\
+			"detail":"Access denied.","code":"ACCESS_DENIED",\
+			"instance":"about:blank"}""";
+
 	private SecurityProblemResponses() {
 	}
 
 	/** The entry-point 401: no (or no longer valid) session on a protected endpoint. */
 	static void writeUnauthenticated(HttpServletResponse response) throws IOException {
 		write(response, HttpStatus.UNAUTHORIZED, UNAUTHENTICATED_BODY);
+	}
+
+	/**
+	 * Filter-chain 403s: a CSRF rejection ({@code CsrfFilter} handles its own denial — it sits
+	 * upstream of {@code ExceptionTranslationFilter}) gets the distinct {@code INVALID_CSRF_TOKEN}
+	 * code so the SPA can tell "refresh your token" from a genuine authorization denial; anything
+	 * else mirrors the advice's {@code ACCESS_DENIED}.
+	 */
+	static void writeAccessDenied(HttpServletResponse response, AccessDeniedException exception)
+			throws IOException {
+		String body = exception instanceof CsrfException ? INVALID_CSRF_BODY : ACCESS_DENIED_BODY;
+		write(response, HttpStatus.FORBIDDEN, body);
 	}
 
 	private static void write(HttpServletResponse response, HttpStatus status, String body)

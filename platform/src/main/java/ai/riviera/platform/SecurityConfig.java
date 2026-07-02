@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
@@ -52,19 +53,19 @@ class SecurityConfig {
 
 	/** The single role that gates the U7 operator write surface. */
 	private static final String OPERATOR_ROLE = "OPERATOR";
-	/** A single laid-out set (PATCH/DELETE target); also CSRF-exempt as a token-less write path. */
+	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
-	/** A set's per-day staff availability (U8 mark POST / release DELETE); CSRF-exempt token-less write. */
+	/** A set's per-day staff availability (U8 mark POST / release DELETE); session + CSRF token required. */
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
-	/** The admin weather-refund write (U9); token-less operator POST, CSRF-exempt like the other writes. */
+	/** The admin weather-refund write (U9); an operator-session POST, CSRF-protected like every write. */
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
 	/** The operator-only weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
-	/** A single payout batch (U9): status transition (PATCH). CSRF-exempt token-less write. */
+	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
@@ -81,22 +82,22 @@ class SecurityConfig {
 				// and before authorization — the booking endpoints are permitAll, so the code IS the
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock), CorsFilter.class)
-				// Public guest checkout (U3): the booking POST is token-less and stateless (no
-				// session, no auth), so CSRF — which protects cookie/session-authenticated
-				// requests — does not apply. The matcher is the EXACT path "/api/bookings", so it
-				// covers only this endpoint (a later sub-path like "/api/bookings/{code}" is not
-				// matched). Only POST is mapped/permitted here; other methods 401 regardless.
-				// The Stripe webhook (U4) is a server-to-server POST authenticated by its own
-				// signature header (invariant #8), not a session/cookie — so CSRF does not apply
-				// and it must be reachable without auth. Its security IS the signature check in
-				// StripeWebhookController; an unverified call is rejected there with 400.
-				// The venue write API (U7) is a stateless operator surface authenticated by httpBasic
-				// (no session/cookie), so CSRF — which protects cookie/session-authenticated
-				// requests — does not apply; ignore it on those paths like the other token-less APIs.
-				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
-						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
-						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH,
-						WEATHER_REFUND_PATH, PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH))
+				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
+				// so its writes REQUIRE the cookie-to-header token — CookieCsrfTokenRepository
+				// issues the JS-readable XSRF-TOKEN cookie (Secure; SameSite=Lax), the SPA echoes
+				// it as X-XSRF-TOKEN, and SpaCsrfTokenRequestHandler (the framework's documented
+				// SPA recipe) resolves the raw header while keeping BREACH protection for rendered
+				// tokens. The ONLY exemptions left are the genuinely token-less surfaces:
+				// guest booking create/cancel — authorized by the booking code alone (invariant #7),
+				// deliberately session-free — and the Stripe webhook, a server-to-server POST
+				// authenticated by its signature header (invariant #8; an unverified call is
+				// rejected in StripeWebhookController with 400). A CSRF rejection is answered by
+				// CsrfFilter itself through the accessDeniedHandler below → 403 INVALID_CSRF_TOKEN.
+				.csrf(csrf -> csrf
+						.csrfTokenRepository(csrfTokenRepository())
+						.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
+								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Session login (issue #109): anonymous by definition — authentication happens
@@ -144,9 +145,23 @@ class SecurityConfig {
 				// Unauthenticated access to a protected endpoint → RFC-7807 401 UNAUTHENTICATED. This
 				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
 				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
-				.exceptionHandling(handling -> handling.authenticationEntryPoint(
-						(request, response, exception) -> SecurityProblemResponses.writeUnauthenticated(response)));
+				.exceptionHandling(handling -> handling
+						.authenticationEntryPoint((request, response, exception) ->
+								SecurityProblemResponses.writeUnauthenticated(response))
+						.accessDeniedHandler((request, response, exception) ->
+								SecurityProblemResponses.writeAccessDenied(response, exception)));
 		return http.build();
+	}
+
+	/**
+	 * The SPA-readable CSRF token cookie: {@code HttpOnly=false} is the point (cookie-to-header
+	 * requires JS to read it — the token is not a secret from the page, it is a secret from
+	 * OTHER origins); {@code Secure} + {@code SameSite=Lax} mirror the session cookie's posture.
+	 */
+	private static CookieCsrfTokenRepository csrfTokenRepository() {
+		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Lax"));
+		return repository;
 	}
 
 	/**
