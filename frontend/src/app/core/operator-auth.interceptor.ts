@@ -13,8 +13,9 @@ const VENUE_API_PREFIX = `${environment.apiBaseUrl}/api/venues`;
 
 /**
  * Attaches the operator's Basic credentials to operator-only venue API calls: every venue **write**
- * (U7 onboarding/editing, U8 mark/release) and the one operator **read**, the U8 staff
- * daily-bookings list (booking codes are secrets, invariant #7). The public U1 reads (the venue
+ * (U7 onboarding/editing, U8 mark/release, the #98 request accept/decline) and the operator
+ * **reads** — the U8 staff daily-bookings list (booking codes are secrets, invariant #7) and the
+ * #98 pending booking-requests queue. The public U1 reads (the venue
  * list/map `GET`s) are never touched, nor are non-venue API calls (payments) or any non-backend
  * URL. When no operator is signed in, the request goes out unchanged and the server answers `401` —
  * the surface surfaces that as a sign-in prompt rather than the interceptor inventing a credential.
@@ -23,9 +24,11 @@ export const operatorAuthInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(VENUE_API_PREFIX)) {
     return next(req);
   }
-  // A public read is a GET that is NOT the staff daily-bookings list. Writes (POST/PATCH/DELETE)
-  // and the `/bookings` GET are operator-gated and get the credential.
-  const isPublicRead = req.method === 'GET' && !req.url.endsWith('/bookings');
+  // A public read is a GET that is NOT the staff daily-bookings list and NOT the pending
+  // Request-to-Book queue (issue #98). Writes (POST/PATCH/DELETE) — including the accept/decline
+  // POSTs — and those two GETs are operator-gated and get the credential.
+  const isPublicRead =
+    req.method === 'GET' && !req.url.endsWith('/bookings') && !req.url.endsWith('/booking-requests');
   if (isPublicRead) {
     return next(req);
   }

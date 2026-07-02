@@ -10,6 +10,8 @@ import {
   Cancellation,
   CreateBookingRequest,
   CreateBookingResult,
+  PaymentHandoff,
+  RequestedBooking,
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
@@ -43,6 +45,19 @@ const AWAITING: AwaitingPayment = {
   amount: { minorUnits: 4500, currency: 'EUR' },
   clientSecret: 'pi_123_secret_abc',
   paymentIntentId: 'pi_123',
+};
+
+const REQUESTED: RequestedBooking = {
+  code: 'RQST234567',
+  status: 'PENDING_REQUEST',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  setId: 2,
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
+  requestExpiresAt: '2026-11-30T16:00:00Z',
 };
 
 describe('BookingService', () => {
@@ -85,14 +100,53 @@ describe('BookingService', () => {
     expect(service.lastConfirmation()).toBeUndefined();
   });
 
-  it('clear() resets both handoffs', () => {
+  it('exposes a requested result for a 202 PENDING_REQUEST body (REQUEST-mode venue, #98)', () => {
+    let received: CreateBookingResult | undefined;
+    service.createBooking(REQUEST).subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+    req.flush(REQUESTED, { status: 202, statusText: 'Accepted' });
+
+    // Same HTTP status as the stripe path — the body's status discriminates (no clientSecret here).
+    expect(received).toEqual({ kind: 'requested', requested: REQUESTED });
+    expect(service.lastRequested()).toEqual(REQUESTED);
+    expect(service.lastAwaitingPayment()).toBeUndefined();
+    expect(service.lastConfirmation()).toBeUndefined();
+  });
+
+  it('beginPayment primes the payment hand-off from a fetched booking detail (#98 Pay now)', () => {
+    // A stale request hand-off must not survive into the payment flow.
     service.createBooking(REQUEST).subscribe();
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/bookings`)
-      .flush(CONFIRMATION, { status: 201, statusText: 'Created' });
+      .flush(REQUESTED, { status: 202, statusText: 'Accepted' });
+
+    const handoff: PaymentHandoff = {
+      code: 'RQST234567',
+      venueName: 'Miramar Beach Club',
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      bookingDate: '2026-12-01',
+      amount: { minorUnits: 4500, currency: 'EUR' },
+      clientSecret: 'pi_9_secret_x',
+      paymentIntentId: 'pi_9',
+    };
+    service.beginPayment(handoff);
+
+    expect(service.lastAwaitingPayment()).toEqual(handoff);
+    expect(service.lastRequested()).toBeUndefined();
+    expect(service.lastConfirmation()).toBeUndefined();
+  });
+
+  it('clear() resets all handoffs', () => {
+    service.createBooking(REQUEST).subscribe();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+      .flush(REQUESTED, { status: 202, statusText: 'Accepted' });
     service.clear();
     expect(service.lastConfirmation()).toBeUndefined();
     expect(service.lastAwaitingPayment()).toBeUndefined();
+    expect(service.lastRequested()).toBeUndefined();
   });
 
   it('getByCode GETs the booking by code', () => {
@@ -109,6 +163,8 @@ describe('BookingService', () => {
       beforeCutoff: true,
       refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
       refundedAmount: null,
+      requestExpiresAt: null,
+      payment: null,
     };
     let received: BookingDetail | undefined;
     service.getByCode('ABCD234567').subscribe((d) => (received = d));

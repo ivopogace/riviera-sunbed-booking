@@ -284,8 +284,10 @@ the mocked suite can't cover, matching the existing split.
   `PENDING_REQUEST|DECLINED|EXPIRED`; adds `requestExpiresAt` (nullable) and, **only while
   `AWAITING_PAYMENT`**, `payment: { clientSecret, paymentIntentId }` (nullable otherwise).
 - **`GET /api/venues/{venueId}/booking-requests`** (new, operator) — `200` array of
-  `{ bookingId, setLabel (row+position), bookingDate, guestName, amountMinor, currency,
-  requestedAt, requestExpiresAt }` — **no booking code** (invariant #7), sorted by deadline.
+  `{ bookingId, setId, bookingDate, guestName, amount: { minorUnits, currency },
+  requestedAt, requestExpiresAt }` — **no booking code** (invariant #7), sorted by deadline;
+  the staff UI resolves the set's row/position label from its already-loaded map by `setId`
+  (as-built correction: was `setLabel`/`amountMinor` in the draft).
 - **`POST /api/venues/{venueId}/booking-requests/{bookingId}/accept`** (new) — `200`
   `{ bookingId, status }` (`AWAITING_PAYMENT`, or `CONFIRMED` on the stub profile). Errors
   (all `ApiProblem`, stable codes): `404 NO_SUCH_REQUEST`, `409 REQUEST_NOT_PENDING`,
@@ -307,12 +309,12 @@ the mocked suite can't cover, matching the existing split.
 |-------|--------|---------|
 | 0 — V19 migration + statuses + booking mode vocabulary | ✅ | a1f36b5 |
 | 1 — Request creation path (soft-hold, no PI) + concurrency IT | ✅ | a1f36b5 |
-| 2 — Accept/decline services + endpoints + CrossVenueDenialIT | ✅ | (this commit) |
-| 3 — Expiry sweep + pay-window extension of abandoned sweep | ✅ | (this commit) |
-| 4 — Guest view (status/credentials) + pending-queue endpoint | ✅ | (this commit) |
-| 5 — FE tourist flow + mocked e2e | | |
-| 6 — FE operator queue + mocked e2e | | |
-| 7 — Docs/substrate updates + runbook note | | |
+| 2 — Accept/decline services + endpoints + CrossVenueDenialIT | ✅ | 1d66b3a |
+| 3 — Expiry sweep + pay-window extension of abandoned sweep | ✅ | 1d66b3a |
+| 4 — Guest view (status/credentials) + pending-queue endpoint | ✅ | 1d66b3a |
+| 5 — FE tourist flow + mocked e2e | ✅ | (this commit) |
+| 6 — FE operator queue + mocked e2e | ✅ | (this commit) |
+| 7 — Docs/substrate updates + runbook note | ✅ | 015c5a8 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each
 phase's code.

@@ -86,9 +86,11 @@
     <app-booking-dialog
       [set]="set"
       [date]="selectedDate()"
+      [mode]="v.bookingMode"
       (dismissed)="onDialogClose()"
       (booked)="onBooked()"
       (awaiting)="onAwaiting()"
+      (requested)="onRequested()"
     />
   }
 } @else if (failed()) {

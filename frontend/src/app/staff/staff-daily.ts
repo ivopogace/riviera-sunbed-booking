@@ -2,12 +2,25 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView, VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
-import { DailyBookingItem, StaffMarkError, StaffReleaseError, StaffTileState } from './staff.model';
-import { StaffService, staffMarkErrorOf, staffReleaseErrorOf } from './staff.service';
+import {
+  DailyBookingItem,
+  PendingRequestItem,
+  StaffMarkError,
+  StaffReleaseError,
+  StaffRequestError,
+  StaffTileState,
+} from './staff.model';
+import {
+  StaffService,
+  staffMarkErrorOf,
+  staffReleaseErrorOf,
+  staffRequestErrorOf,
+} from './staff.service';
 
 interface MapRow {
   readonly label: string;
@@ -18,6 +31,11 @@ interface BookingRow {
   readonly setId: number;
   readonly code: string;
   readonly label: string;
+}
+
+/** A pending request with its set resolved to a display label from the loaded map. */
+interface PendingRequestRow extends PendingRequestItem {
+  readonly setLabel: string;
 }
 
 /**
@@ -32,6 +50,10 @@ interface BookingRow {
  * online booking's), so an optimistic mis-tap on an online-held tile resolves to a safe no-op and
  * reconciles back. Tile state is conveyed by an accessible name, not colour alone (WCAG AA). Codes
  * are bearer credentials (invariant #7) — shown for arrival verification, never logged.
+ *
+ * <p>Request-to-Book (issue #98) adds a venue-wide "Pending requests" queue (independent of the
+ * selected date — it lists every open request, no booking codes). Accept/decline are sent, then
+ * the queue AND the map/bookings are re-read: an accept can flip a tile for the shown day.
  */
 @Component({
   selector: 'app-staff-daily',
@@ -51,6 +73,10 @@ export class StaffDaily {
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly bookings = signal<readonly DailyBookingItem[]>([]);
+  /** The venue-wide Request-to-Book queue (issue #98) — every open request, all dates. */
+  protected readonly requests = signal<readonly PendingRequestItem[]>([]);
+  /** Requests with an in-flight accept/decline — their buttons are disabled until it settles. */
+  private readonly deciding = signal<ReadonlySet<number>>(new Set());
   protected readonly failed = signal(false);
   /** A transient notice shown after a reconcile (e.g. a set was just taken by the other channel). */
   protected readonly notice = signal<string | undefined>(undefined);
@@ -117,6 +143,15 @@ export class StaffDaily {
     });
   });
 
+  /** The pending-request rows, each set resolved from the loaded map (else the raw set id). */
+  protected readonly requestRows = computed<readonly PendingRequestRow[]>(() => {
+    const byId = new Map(this.venue()?.sets.map((s) => [s.id, s]) ?? []);
+    return this.requests().map((r) => {
+      const set = byId.get(r.setId);
+      return { ...r, setLabel: set ? `${set.rowLabel} · ${set.positionNo}` : `Set ${r.setId}` };
+    });
+  });
+
   protected readonly markedCount = computed(
     () => [...this.tileState().values()].filter((s) => s === 'STAFF_MARKED').length,
   );
@@ -140,6 +175,7 @@ export class StaffDaily {
     this.password.set('');
     this.venue.set(undefined);
     this.bookings.set([]);
+    this.requests.set([]);
   }
 
   protected onDateChange(event: Event): void {
@@ -216,6 +252,52 @@ export class StaffDaily {
     this.reconcile();
   }
 
+  protected isDeciding(bookingId: number): boolean {
+    return this.deciding().has(bookingId);
+  }
+
+  protected onAccept(row: PendingRequestRow): void {
+    this.decide(row, 'accept');
+  }
+
+  protected onDecline(row: PendingRequestRow): void {
+    this.decide(row, 'decline');
+  }
+
+  /** Send an accept/decline, then reconcile: an accept can flip a tile on the shown day. */
+  private decide(row: PendingRequestRow, action: 'accept' | 'decline'): void {
+    if (this.venueId === undefined || this.isDeciding(row.bookingId)) {
+      return;
+    }
+    this.notice.set(undefined);
+    this.deciding.update((s) => new Set(s).add(row.bookingId));
+    const call =
+      action === 'accept'
+        ? this.staff.acceptRequest(this.venueId, row.bookingId)
+        : this.staff.declineRequest(this.venueId, row.bookingId);
+    call.subscribe({
+      next: (decision) => this.settleDecision(row.bookingId, decisionNotice(action, decision.status)),
+      error: (e) => {
+        const reason = staffRequestErrorOf(e);
+        if (reason === 'UNAUTHORIZED') {
+          this.operator.signOut();
+        }
+        this.settleDecision(row.bookingId, decisionFailureNotice(action, reason));
+      },
+    });
+  }
+
+  /** Shared decision epilogue: surface the outcome and re-read queue + map + bookings. */
+  private settleDecision(bookingId: number, message: string): void {
+    this.notice.set(message);
+    this.deciding.update((s) => {
+      const next = new Set(s);
+      next.delete(bookingId);
+      return next;
+    });
+    this.reconcile();
+  }
+
   /** Optimistically flip a tile and mark it pending. */
   private applyOverride(setId: number, state: StaffTileState): void {
     this.notice.set(undefined);
@@ -231,13 +313,16 @@ export class StaffDaily {
     });
   }
 
-  /** Fetch the map and bookings for the selected date; `onSettled` runs after both resolve. */
+  /**
+   * Fetch the map and bookings for the selected date plus the venue-wide request queue
+   * (date-independent, issue #98); `onSettled` runs after all three resolve.
+   */
   private load(onSettled?: () => void): void {
     if (this.venueId === undefined) {
       return;
     }
     const requested = this.selectedDate();
-    let remaining = 2;
+    let remaining = 3;
     const settle = () => {
       if (--remaining === 0) {
         onSettled?.();
@@ -273,6 +358,20 @@ export class StaffDaily {
         settle();
       },
     });
+    this.staff.pendingRequests(this.venueId).subscribe({
+      next: (r) => {
+        // Venue-wide, not date-scoped — apply regardless of the selected date.
+        this.requests.set(r);
+        settle();
+      },
+      error: (e) => {
+        if (staffRequestErrorOf(e) === 'UNAUTHORIZED') {
+          this.notice.set('Could not sign in as operator. Check your credentials.');
+          this.operator.signOut();
+        }
+        settle();
+      },
+    });
   }
 
   protected money(amount: MoneyView): string {
@@ -295,6 +394,21 @@ export class StaffDaily {
   protected tileLabel(set: SetView): string {
     const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
     return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
+  }
+
+  /** A request's response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */
+  protected requestDeadline(iso: string): string {
+    return formatDeadline(iso);
+  }
+
+  /** Accessible name for an Accept button — names the guest, set and date, not just "Accept". */
+  protected acceptLabel(row: PendingRequestRow): string {
+    return `Accept booking request from ${row.guestName} for ${row.setLabel} on ${row.bookingDate}`;
+  }
+
+  /** Accessible name for a Decline button. */
+  protected declineLabel(row: PendingRequestRow): string {
+    return `Decline booking request from ${row.guestName} for ${row.setLabel} on ${row.bookingDate}`;
   }
 }
 
@@ -322,6 +436,36 @@ function releaseFailureNotice(reason: StaffReleaseError): string {
       return SESSION_EXPIRED;
     default:
       return 'Could not release that set. The map has been refreshed.';
+  }
+}
+
+/** The operator-facing notice for a successful accept/decline (issue #98). */
+function decisionNotice(action: 'accept' | 'decline', status: string): string {
+  if (action === 'decline') {
+    return 'Request declined.';
+  }
+  return status === 'CONFIRMED'
+    ? 'Request accepted — the booking is confirmed.'
+    : 'Request accepted — the guest has been asked to pay.';
+}
+
+/** Map an accept/decline failure to its operator-facing notice (issue #98). */
+function decisionFailureNotice(action: 'accept' | 'decline', reason: StaffRequestError): string {
+  switch (reason) {
+    case 'REQUEST_EXPIRED':
+      return 'That request has already expired — the queue has been refreshed.';
+    case 'REQUEST_NOT_PENDING':
+      return 'That request was already handled — the queue has been refreshed.';
+    case 'NO_SUCH_REQUEST':
+      return 'That request no longer exists — the queue has been refreshed.';
+    case 'PAYMENT_INIT_FAILED':
+      return 'Could not set up the guest’s payment — please try accepting again.';
+    case 'NOT_VENUE_OWNER':
+      return 'You don’t manage this venue, so you can’t handle its requests.';
+    case 'UNAUTHORIZED':
+      return SESSION_EXPIRED;
+    default:
+      return `Could not ${action} that request. Please try again.`;
   }
 }
 

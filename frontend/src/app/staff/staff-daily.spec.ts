@@ -6,7 +6,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
 import { SetView, VenueMapView } from '../venue/venue.model';
-import { DailyBookingItem } from './staff.model';
+import { DailyBookingItem, PendingRequestItem } from './staff.model';
 import { StaffDaily } from './staff-daily';
 
 const BASE = environment.apiBaseUrl;
@@ -51,6 +51,27 @@ const SETS: readonly SetView[] = [
 ];
 const BOOKINGS: readonly DailyBookingItem[] = [{ setId: 2, code: 'ONLINE0001' }];
 
+const REQUESTS: readonly PendingRequestItem[] = [
+  {
+    bookingId: 11,
+    setId: 1,
+    bookingDate: '2026-07-03',
+    guestName: 'Ana Guest',
+    amount: { minorUnits: 3000, currency: 'EUR' },
+    requestedAt: '2026-07-01T09:00:00Z',
+    requestExpiresAt: '2026-07-02T16:00:00Z',
+  },
+  {
+    bookingId: 12,
+    setId: 99, // not on the map — must fall back to the raw set id
+    bookingDate: '2026-07-04',
+    guestName: 'Bora Guest',
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    requestedAt: '2026-07-01T10:00:00Z',
+    requestExpiresAt: '2026-07-02T18:00:00Z',
+  },
+];
+
 describe('StaffDaily', () => {
   let fixture: ComponentFixture<StaffDaily>;
   let httpMock: HttpTestingController;
@@ -81,18 +102,22 @@ describe('StaffDaily', () => {
   function flushLoad(
     sets: readonly SetView[] = SETS,
     bookings: readonly DailyBookingItem[] = BOOKINGS,
+    requests: readonly PendingRequestItem[] = [],
   ): void {
     httpMock.expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET').flush(venueWith(sets));
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
       .flush(bookings);
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+      .flush(requests);
   }
 
-  async function createSignedIn(): Promise<void> {
+  async function createSignedIn(requests: readonly PendingRequestItem[] = []): Promise<void> {
     operator.signIn('operator', 'pw');
     fixture = TestBed.createComponent(StaffDaily);
     await fixture.whenStable();
-    flushLoad();
+    flushLoad(SETS, BOOKINGS, requests);
     await fixture.whenStable();
   }
 
@@ -223,6 +248,9 @@ describe('StaffDaily', () => {
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
       .flush({}, { status: 401, statusText: 'Unauthorized' });
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+      .flush([]);
     await fixture.whenStable();
     expect(operator.signedIn()).toBe(false);
   });
@@ -268,6 +296,78 @@ describe('StaffDaily', () => {
     await fixture.whenStable();
     expect(input.value).toBe('2099-01-15');
     expect(host().querySelector('[data-testid="bookings-empty"]')).not.toBeNull();
+  });
+
+  it('lists pending requests venue-wide, resolving set labels from the map (#98)', async () => {
+    await createSignedIn(REQUESTS);
+
+    const rows = host().querySelectorAll('[data-testid="request-row"]');
+    expect(rows.length).toBe(2);
+    expect(rows[0].textContent).toContain('Ana Guest');
+    expect(rows[0].textContent).toContain('Row A · 1'); // resolved from the loaded map
+    expect(rows[0].textContent).toContain('2026-07-03');
+    expect(rows[1].textContent).toContain('Bora Guest');
+    expect(rows[1].textContent).toContain('Set 99'); // unknown set id → raw fallback
+    // No booking code anywhere in the queue (invariant #7 — staff don't need it to decide).
+    expect(host().querySelector('[data-testid="requests-section"]')?.textContent).not.toContain(
+      'ONLINE0001',
+    );
+  });
+
+  it('accepts a request, then refreshes the queue and the map (#98)', async () => {
+    await createSignedIn(REQUESTS);
+
+    (host().querySelector('[data-testid="accept-request"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    const post = httpMock.expectOne(`${BASE}/api/venues/${VENUE}/booking-requests/11/accept`);
+    expect(post.request.method).toBe('POST');
+    post.flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    await fixture.whenStable();
+
+    // Reconcile re-reads everything: the accepted request is gone and its set is now taken.
+    flushLoad([set(1, 'TAKEN', 'ONLINE'), ...SETS.slice(1)], BOOKINGS, [REQUESTS[1]]);
+    await fixture.whenStable();
+
+    expect(host().querySelectorAll('[data-testid="request-row"]').length).toBe(1);
+    expect(host().querySelector('[data-testid="notice"]')?.textContent).toContain(
+      'asked to pay',
+    );
+  });
+
+  it('declines a request, then refreshes the queue (#98)', async () => {
+    await createSignedIn([REQUESTS[0]]);
+
+    (host().querySelector('[data-testid="decline-request"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    const post = httpMock.expectOne(`${BASE}/api/venues/${VENUE}/booking-requests/11/decline`);
+    expect(post.request.method).toBe('POST');
+    post.flush({ bookingId: 11, status: 'DECLINED' });
+    await fixture.whenStable();
+
+    flushLoad(SETS, BOOKINGS, []);
+    await fixture.whenStable();
+
+    expect(host().querySelector('[data-testid="requests-empty"]')).not.toBeNull();
+    expect(host().querySelector('[data-testid="notice"]')?.textContent).toContain('declined');
+  });
+
+  it('surfaces an expired-request failure and reconciles the queue (#98)', async () => {
+    await createSignedIn([REQUESTS[0]]);
+
+    (host().querySelector('[data-testid="accept-request"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    httpMock
+      .expectOne(`${BASE}/api/venues/${VENUE}/booking-requests/11/accept`)
+      .flush({ status: 409, code: 'REQUEST_EXPIRED' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+
+    flushLoad(SETS, BOOKINGS, []);
+    await fixture.whenStable();
+
+    expect(host().querySelector('[data-testid="notice"]')?.textContent).toContain('expired');
+    expect(host().querySelector('[data-testid="requests-empty"]')).not.toBeNull();
   });
 
   /** The date the component opens on (today in Europe/Tirane) — read back off the date input. */

@@ -82,6 +82,22 @@ describe('operatorAuthInterceptor', () => {
     req.flush([]);
   });
 
+  it('attaches Basic auth to the pending booking-requests GET (issue #98)', () => {
+    auth.signIn('operator', 'pw');
+    http.get(`${api}/api/venues/1/booking-requests`).subscribe();
+    const req = httpMock.expectOne(`${api}/api/venues/1/booking-requests`);
+    expect(req.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
+    req.flush([]);
+  });
+
+  it('attaches Basic auth to a request accept POST (issue #98)', () => {
+    auth.signIn('operator', 'pw');
+    http.post(`${api}/api/venues/1/booking-requests/11/accept`, {}).subscribe();
+    const req = httpMock.expectOne(`${api}/api/venues/1/booking-requests/11/accept`);
+    expect(req.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
+    req.flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+  });
+
   it('leaves the public map GET untouched even with a date query param', () => {
     auth.signIn('operator', 'pw');
     http.get(`${api}/api/venues/1`, { params: new HttpParams().set('date', '2026-06-30') }).subscribe();

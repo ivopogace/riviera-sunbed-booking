@@ -120,6 +120,38 @@
   font-weight: 700;
 }
 
+/* --- Pending requests (Request-to-Book, issue #98) --- */
+.requests {
+  margin-top: 1.4rem;
+}
+.request-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.request-actions .primary {
+  padding: 0.4rem 0.9rem;
+}
+.secondary {
+  background: #ffffff;
+  color: #22302f; /* AA on white (same token as body text) */
+  font: inherit;
+  font-weight: 700;
+  border: 1.5px solid #b9b4a9;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+.secondary:focus-visible {
+  outline: 3px solid #0c6675;
+  outline-offset: 2px;
+}
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* --- Map --- */
 .map {
   margin-top: 1.25rem;
