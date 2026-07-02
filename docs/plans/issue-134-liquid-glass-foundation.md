@@ -123,9 +123,9 @@ N/A — no contract change.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Theme core (tokens + ThemeService) | ⏳ | |
-| 1 — Shell (background, header, nav, switcher, compat surface) | | |
-| 2 — a11y/contrast specs + e2e + full local FE suite | | |
+| 0 — Theme core (tokens + ThemeService) | ✅ | 622e691 |
+| 1 — Shell (background, header, nav, switcher, compat surface) | ✅ | 7b4210a |
+| 2 — a11y/contrast specs + e2e + full local FE suite | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -172,6 +172,8 @@ like the sibling suites). Run the full FE unit suite + both e2e suites locally p
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-02 | Phase 2: reduced-motion override lost to component-style encapsulation specificity | other global-styles rules that must override component styles | `grep -n "prefers-reduced-motion\|animation" src/styles.scss src/app/*.scss` | only the blob/pop animations (both now guarded in app.scss where the animations live) | fixed in place; rule recorded: put motion guards in the same stylesheet as the animation |
+| 2026-07-02 | Phase 2: axe sampled mid pop-in animation → false contrast fail | other e2e axe runs after opening an animated surface | `grep -n "expectNoSeriousAxeViolations" e2e/*.e2e.ts` | existing suites audit static pages; only theme-shell opens an animated popover before axe | wait-for-animations added; pattern noted for T2–T5 dialogs |
 
 ---
 

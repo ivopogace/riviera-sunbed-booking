@@ -46,6 +46,17 @@
   animation: riv-drift 22s ease-in-out infinite reverse;
 }
 
+/* Inside the component style so the override carries the same emulated-encapsulation
+   attribute as the animation rules above — the global styles.scss guard alone loses that
+   specificity contest (issue #134, AC-5). */
+@media (prefers-reduced-motion: reduce) {
+  .riv-blob-1,
+  .riv-blob-2,
+  .riv-pop-in {
+    animation: none;
+  }
+}
+
 /* ---- glass header ---- */
 
 .riv-header {
@@ -303,7 +314,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(12, 42, 51, 0.5);
+  color: rgba(12, 42, 51, 0.7); /* 0.7 (design: 0.5): AA for 10.5px text on the popover */
 }
 
 .riv-mobile-swatches {

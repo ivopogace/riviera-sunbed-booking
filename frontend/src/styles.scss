@@ -24,7 +24,8 @@
 
   --riv-ink: #ffffff;
   --riv-ink-soft: rgba(255, 255, 255, 0.86);
-  --riv-ink-faint: rgba(255, 255, 255, 0.72);
+  /* 0.8 (design: 0.72): worst-case header stop #ffe2b0 needs ≥4.5:1 (app.contrast.spec.ts) */
+  --riv-ink-faint: rgba(255, 255, 255, 0.8);
   --riv-chip-bg: rgba(255, 255, 255, 0.16);
   --riv-chip-border: rgba(255, 255, 255, 0.3);
   --riv-hero-shadow: 0 2px 36px rgba(6, 40, 55, 0.32);
@@ -49,7 +50,8 @@
 
   --riv-ink: #0a2a33;
   --riv-ink-soft: rgba(12, 42, 51, 0.7);
-  --riv-ink-faint: rgba(12, 42, 51, 0.5);
+  /* 0.66 (design: 0.5): AA on the porcelain header glass (app.contrast.spec.ts) */
+  --riv-ink-faint: rgba(12, 42, 51, 0.66);
   --riv-chip-bg: rgba(12, 42, 51, 0.05);
   --riv-chip-border: rgba(12, 42, 51, 0.14);
   --riv-hero-shadow: none;
