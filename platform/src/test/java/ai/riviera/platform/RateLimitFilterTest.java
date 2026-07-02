@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,7 +65,9 @@ class RateLimitFilterTest {
 		viewFromIp(ip, "perip-C")
 				.andExpect(status().isTooManyRequests())
 				.andExpect(header().exists("Retry-After"))
-				.andExpect(jsonPath("$.error").value("RATE_LIMITED"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+				.andExpect(jsonPath("$.status").value(429));
 	}
 
 	@Test
@@ -85,7 +88,8 @@ class RateLimitFilterTest {
 		viewFromIp("10.3.0.2", "percode-Z").andExpect(status().isNotFound());
 		viewFromIp("10.3.0.3", "percode-Z")
 				.andExpect(status().isTooManyRequests())
-				.andExpect(jsonPath("$.error").value("RATE_LIMITED"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
 	@Test
@@ -109,7 +113,8 @@ class RateLimitFilterTest {
 		mvc.perform(post("/api/bookings").with(fromIp(ip))
 						.contentType(MediaType.APPLICATION_JSON).content(CREATE_BODY))
 				.andExpect(status().isTooManyRequests())
-				.andExpect(jsonPath("$.error").value("RATE_LIMITED"));
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
 	@Test

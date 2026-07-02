@@ -16,7 +16,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
  * which performs the actual ownership check (invariant #13).
  *
  * <p>An authenticated principal with no {@code ACTIVE} operator account owns nothing →
- * {@link AccessDeniedException} (mapped to {@code 403} by {@link VenueAuthorizationExceptionHandler}).
+ * {@link AccessDeniedException} (mapped to {@code 403} by {@link ApiErrorHandler}).
  * In the interim the only login is the shared {@code operator} user, which resolves to the bootstrap
  * operator; per-operator identity arrives with #74.
  */

@@ -154,31 +154,45 @@ these are the right way to use Spring Data JDBC from the start.)*
 - Status/pool/state tokens that the DB `CHECK` constraints also list are the highest-value
   case — keep the Java constant and the SQL token in lockstep.
 
-### 6b. Request validation & error contract (consistent, not per-controller)
+### 6b. Request validation & error contract (one contract, shipped by #97)
 
-The repo currently hand-rolls validation in each request DTO's `toCommand()` (throwing
-`IllegalArgumentException`) and maps it with a **per-controller** `@ExceptionHandler`
-returning a `{"error": CODE}` map. That works but drifts — every controller reinvents the
-shape. Standardize:
+Every API error is an **RFC-7807 `ProblemDetail`** (`application/problem+json`) carrying a
+stable machine-readable **`code`** extension. The shape is built in exactly two places:
 
-- **One error contract.** Emit **RFC-7807 `ProblemDetail`** from a single
-  `@RestControllerAdvice`, with a stable machine-readable error code per failure. Don't add a
-  new bespoke `{"error": …}` body per controller. (If the team deliberately keeps the
-  explicit-`toCommand()` validation style rather than adopting `spring-boot-starter-validation`,
-  that's fine — but the **mapping to the wire** still goes through the one advice, so clients
-  see one error shape.)
-- **Where validation lives.** Presence/shape/format checks belong at the edge (the DTO or a
-  `@Valid` bean), domain invariants belong in the value object's canonical constructor
-  (`Money`, ids) and the application service. Keep HTTP-status mapping out of the domain — the
-  controller/advice maps a typed outcome or a domain exception to a status.
-- **Map collisions correctly:** availability/uniqueness conflicts → `409`; not-bookable/cutoff →
-  `422`; unknown id → `404`; malformed body → `400`. (This mirrors the existing
-  `BookingController` switch — the point is to make it uniform and centrally defined.)
+- **`ApiProblem`** (root package) — the one factory for the wire shape. Controllers use it
+  when an exhaustive typed-outcome `switch` rejects (typed outcomes are returned, not thrown
+  — §6 — so an advice never sees them). `detail` must be safe for any caller: never a booking
+  code (invariant #7), an exception message, or another internal echo.
+- **`ApiErrorHandler`** (root package) — the **single** `@RestControllerAdvice` for
+  everything thrown: `IllegalArgumentException` → `400 INVALID_REQUEST`,
+  `DataIntegrityViolationException` → `409 CONFLICT` (the constraint-race backstop,
+  invariant #12), `NotVenueOwnerException`/`AccessDeniedException` → `403` (invariant #13);
+  it extends `ResponseEntityExceptionHandler` so framework errors carry the same shape.
+  **Per-controller `@ExceptionHandler`s are forbidden** — machine-locked by
+  `ErrorContractArchitectureTests`. (`RateLimitFilter` mirrors the shape by hand: it rejects
+  before MVC dispatch.)
+- **Where validation lives.** Presence/shape/format checks belong at the edge (the DTO's
+  `toCommand()`), domain invariants in the value object's canonical constructor (`Money`,
+  ids) and the application service. Keep HTTP-status mapping out of the domain — the
+  controller/advice maps a typed outcome or exception to a status.
+- **Status mapping, centrally defined:** availability/uniqueness conflicts → `409`;
+  not-bookable/cutoff → `422`; unknown id → `404`; malformed body → `400`; ownership → `403`;
+  rate limit → `429`. Framework-raised errors carry a **derived stable code**: `400` →
+  `INVALID_REQUEST`, otherwise the HTTP status name (`METHOD_NOT_ALLOWED`,
+  `UNSUPPORTED_MEDIA_TYPE`, …) — pinned by `ApiErrorHandlerTest`.
+- **`instance` is redacted by construction.** Spring auto-fills a null ProblemDetail
+  `instance` with the raw request URI — on `/api/bookings/{code}` paths that is the bearer
+  credential (invariant #7). `ApiProblem` pins every body to `about:blank` (the advice
+  re-applies it to framework-built bodies); a controller may override with a known-safe URI
+  (`BookingController` uses its collection path).
 
-> Decision still open in the plan: full `spring-boot-starter-validation` + `@Valid` **vs**
-> centralized-explicit validation. Either is acceptable; pick one and apply it everywhere.
-> What's **not** acceptable is the current per-controller ad-hoc error bodies persisting once
-> the contract is standardized.
+> **Decision settled at #97's plan stage:** **centralized-explicit validation** — hand-rolled
+> checks in `toCommand()` throwing `IllegalArgumentException`, mapped once by the advice.
+> `spring-boot-starter-validation`/`@Valid` was deliberately **not** adopted (three DTOs whose
+> checks are parse/cross-field logic; annotations would split validation across two
+> mechanisms; explicit code in records is the house idiom). Reversible in one dependency line
+> if the DTO count ever makes annotations pay — rationale in
+> `docs/plans/error-contract-problemdetail.md`.
 
 ### 7. Money & time (invariants #5, #6 — details in CLAUDE.md)
 

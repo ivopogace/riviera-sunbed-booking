@@ -20,6 +20,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -106,9 +108,12 @@ class CrossVenueDenialIT {
 				{"rowLabel":"Row A","positionNo":1,"tier":"STANDARD","pool":"ONLINE",
 				 "price":{"minorUnits":3000,"currency":"EUR"},"gridX":1,"gridY":1}
 				""";
+		// The 403 shape is the one error contract (issue #97): ProblemDetail + stable code.
 		mvc.perform(post("/api/venues/{v}/sets", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD))
 						.contentType(MediaType.APPLICATION_JSON).content(setBody))
-				.andExpect(status().isForbidden());
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 
 	@Test

@@ -277,7 +277,7 @@ export class VenueEditor {
       case 'UNAUTHORIZED':
         return 'Your operator sign-in was rejected. Check your credentials and sign in again.';
       case 'CELL_TAKEN':
-      case 'LAYOUT_CONFLICT':
+      case 'CONFLICT':
         return 'Another set already occupies that grid cell. Pick a different column/row.';
       case 'DUPLICATE_POSITION':
         return 'Another set already has that row label and position number.';

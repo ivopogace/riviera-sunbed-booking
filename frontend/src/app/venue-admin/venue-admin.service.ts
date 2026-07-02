@@ -3,6 +3,7 @@ import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { problemCodeOf } from '../shared/api-error';
 import {
   CreatedId,
   CreateVenueRequest,
@@ -38,19 +39,19 @@ export class VenueAdminService {
   }
 }
 
-/** Map an HTTP failure to a known {@link VenueAdminErrorCode} (server `{ "error": CODE }` body). */
+/** Map an HTTP failure to a known {@link VenueAdminErrorCode} (RFC-7807 `code`, issue #97). */
 export function venueAdminErrorOf(error: unknown): VenueAdminErrorCode {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {
       return 'UNAUTHORIZED';
     }
-    const code = (error.error as { error?: string } | null)?.error;
+    const code = problemCodeOf(error);
     switch (code) {
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
       case 'NO_SUCH_VENUE':
       case 'NO_SUCH_SET':
-      case 'LAYOUT_CONFLICT':
+      case 'CONFLICT':
       case 'INVALID_REQUEST':
         return code;
       default:

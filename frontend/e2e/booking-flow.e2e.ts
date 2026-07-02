@@ -113,6 +113,37 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'booking confirmation');
 });
 
+test('a taken-set rejection surfaces an accessible error in the dialog', async ({ page }) => {
+  // Overrides the beforeEach 201 route: the API rejects on the RFC-7807 contract (issue #97) —
+  // application/problem+json whose stable identity is the `code` extension.
+  await page.route('**/api/bookings', (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: {
+        type: 'about:blank',
+        title: 'Conflict',
+        status: 409,
+        detail: 'The set is already taken for this date.',
+        code: 'SET_TAKEN',
+      },
+    }),
+  );
+
+  await page.goto('/venues/1');
+  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Full name').fill('Holiday Guest');
+  await dialog.getByLabel('Email').fill('guest@example.com');
+  await dialog.getByLabel('Phone').fill('+355699000');
+  await dialog.getByRole('button', { name: 'Confirm booking' }).click();
+
+  // The dialog stays open and announces the mapped failure (role=alert), keyed off the code.
+  await expect(dialog.getByRole('alert')).toContainText('someone just booked this set');
+  await expect(page).not.toHaveURL(/\/booking\/confirmation/);
+  await expectNoSeriousAxeViolations(page, 'booking dialog (SET_TAKEN error)');
+});
+
 test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', async ({ page }) => {
   // Swap in the deterministic fake gateway (no js.stripe.com) for this run.
   await page.addInitScript(() => {

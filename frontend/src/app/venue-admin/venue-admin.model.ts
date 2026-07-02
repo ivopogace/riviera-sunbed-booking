@@ -41,7 +41,7 @@ export type VenueAdminErrorCode =
   | 'DUPLICATE_POSITION'
   | 'NO_SUCH_VENUE'
   | 'NO_SUCH_SET'
-  | 'LAYOUT_CONFLICT'
+  | 'CONFLICT'
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'UNKNOWN';
