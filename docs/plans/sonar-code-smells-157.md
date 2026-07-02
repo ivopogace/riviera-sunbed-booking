@@ -110,7 +110,7 @@ Group A (badges/chips) are `aria-hidden` decorative glyphs — the heading/label
 |-------|--------|---------|
 | 0 — Plan doc | ✅ | b070d28 |
 | 1 — S7059 operator-auth app-initializer refactor (test-first) | ✅ | (this commit) |
-| 2 — S7758 venue-map `fromCodePoint` | | |
+| 2 — S7758 venue-map `fromCodePoint` | ✅ | (this commit) |
 | 3 — S7924 solid composited fills + contrast-spec updates | | |
 | 4 — S1075 justified suppression | | |
 

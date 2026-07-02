@@ -49,7 +49,7 @@ export function rowCode(index: number): string {
   let n = index;
   let code = '';
   do {
-    code = String.fromCharCode(65 + (n % 26)) + code;
+    code = String.fromCodePoint(65 + (n % 26)) + code;
     n = Math.floor(n / 26) - 1;
   } while (n >= 0);
   return code;
