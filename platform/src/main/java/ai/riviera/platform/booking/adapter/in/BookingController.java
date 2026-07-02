@@ -97,9 +97,9 @@ class BookingController {
 
 	/**
 	 * The code-scoped request paths ({@code /api/bookings/{code}…}) carry the booking code — a
-	 * bearer credential (invariant #7). Spring fills a null ProblemDetail {@code instance} with the
-	 * request URI, so every error here pins {@code instance} to the collection path instead; the
-	 * ITs assert the code never appears in an error body.
+	 * bearer credential (invariant #7). {@link ApiProblem} already redacts {@code instance}; this
+	 * controller overrides it with the known-safe collection path, which is more informative than
+	 * the redaction placeholder. The ITs assert the code never appears in an error body.
 	 */
 	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
 

@@ -240,6 +240,38 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
+## Review-gate record (PR #117)
+
+Ran the SDLC review gate (`riviera-review-overlay` + `/code-review`, **high effort**: 6 finder
+angles, 1-vote verify) on `origin/main...HEAD`. Sonar quality gate: **passed** (0 new issues,
+95.4% new-code coverage). CI: green. Findings and resolutions:
+
+- **CONFIRMED (Blocker, invariant #7): advice/framework errors leaked the request URI via
+  ProblemDetail `instance`.** Spring auto-fills a null `instance` with the raw request path
+  (verified empirically: `"instance":"/throw/invalid"`), so any thrown or framework error on
+  `/api/bookings/{code}` echoed the bearer code — the controller-local pin didn't cover those
+  paths. **Fixed at depth:** `ApiProblem.of` pins `instance` to `about:blank`;
+  `ApiErrorHandler.handleExceptionInternal` re-applies it to framework-built bodies; pinned by
+  `ApiErrorHandlerTest` (handler + 405 cases, negative URI assertions).
+- **CONFIRMED (Major, invariant #7 + §10): the DIVE WARN log wrote the raw exception**, whose
+  Postgres message embeds offending column values — user-controlled text (CRLF log forging) or
+  a booking code on a `booking_code_uniq` collision. **Fixed:** log class names only.
+- **CONFIRMED (Major, deferred → issue #118): the now-global IAE→400 / DIVE→409 mapping masks
+  deep server bugs as client errors** on endpoints that previously defaulted to 500
+  (payout-ledger read with a corrupt row, weather refund, webhook processing). Deliberate §6b
+  trade-off widened by #97; narrowing to a typed edge-validation exception is follow-up #118.
+- **Fixed (reuse/altitude):** `ApiProblem.response(...)` replaces four hand-copied
+  `ResponseEntity` wrappers; `VenueAdminController`'s two parallel switches collapsed to one;
+  framework `defaultCode` vocabulary documented in §6b + pinned (405 → `METHOD_NOT_ALLOWED`).
+- **REFUTED:** "booking-race DIVE returns CONFLICT instead of SET_TAKEN" — the designed race
+  path is `INSERT … ON CONFLICT DO NOTHING` → typed `SET_TAKEN`; DIVE there is only a bug path.
+- **Accepted with rationale:** `RateLimitFilter`'s hand-written body (pinned by test; runtime
+  ObjectMapper serialization in a filter risks mixin drift instead), duplicated FE spec
+  problem-body builders (two 6-line helpers; mappers read only `code`).
+
+Fix round re-entered at Implement (backend → `riviera-java-conventions` + `riviera-modulith`,
+already loaded); scoped tests + ITs + structural net green; changed surface re-reviewed.
+
 ## File structure
 
 - `platform/src/main/java/ai/riviera/platform/ApiProblem.java` — **new**; the one place

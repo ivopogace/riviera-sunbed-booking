@@ -65,7 +65,11 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ProblemDetail onConstraintViolation(DataIntegrityViolationException e) {
-		log.warn("Data-integrity violation surfaced to the API as 409 CONFLICT", e);
+		// Class names only, never the message or stack: a constraint violation's DB message embeds
+		// the offending column values — user-controlled text (CRLF log forging, §10) or even a
+		// booking code on a code-collision insert (invariant #7, booking_code_uniq).
+		log.warn("Data-integrity violation surfaced to the API as 409 CONFLICT: {} (root cause {})",
+				e.getClass().getSimpleName(), e.getMostSpecificCause().getClass().getName());
 		return ApiProblem.of(HttpStatus.CONFLICT, "CONFLICT", "The change conflicts with existing data.");
 	}
 
@@ -75,11 +79,19 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 		ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
 		if (response != null && response.getBody() instanceof ProblemDetail problem) {
 			problem.setProperty(ApiProblem.CODE_PROPERTY, defaultCode(statusCode));
+			// Framework-built bodies bypass ApiProblem, so the instance redaction (invariant #7 —
+			// Spring would auto-fill the request URI, a booking code on the code-scoped paths)
+			// must be re-applied here.
+			problem.setInstance(ApiProblem.REDACTED_INSTANCE);
 		}
 		return response;
 	}
 
-	/** Framework-raised errors: client-input faults share {@code INVALID_REQUEST}; the rest use the status name. */
+	/**
+	 * Framework-raised errors: client-input faults share {@code INVALID_REQUEST}; the rest carry
+	 * the HTTP status name ({@code METHOD_NOT_ALLOWED}, {@code NOT_ACCEPTABLE}, …) — derived, so
+	 * stable, and documented in §6b as part of the contract's vocabulary.
+	 */
 	private static String defaultCode(HttpStatusCode statusCode) {
 		if (statusCode.equals(HttpStatus.BAD_REQUEST)) {
 			return "INVALID_REQUEST";

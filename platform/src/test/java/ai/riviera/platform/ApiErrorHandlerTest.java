@@ -15,7 +15,10 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -79,6 +82,34 @@ class ApiErrorHandlerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	/**
+	 * Invariant #7: without the {@code ApiProblem} redaction, Spring auto-fills a null
+	 * {@code instance} with the raw request URI — which on {@code /api/bookings/{code}} paths is
+	 * the bearer credential. Every advice-built body must carry the redaction placeholder, never
+	 * the request path.
+	 */
+	@Test
+	void handlerBuiltProblemNeverEchoesTheRequestUriInInstance() throws Exception {
+		mvc.perform(get("/throw/invalid"))
+				.andExpect(jsonPath("$.instance").value("about:blank"))
+				.andExpect(content().string(not(containsString("/throw/invalid"))));
+	}
+
+	/**
+	 * Framework-raised errors (here: 405) bypass {@code ApiProblem}, so the advice re-applies both
+	 * the {@code code} stamp — the HTTP status name, part of the documented vocabulary (§6b) — and
+	 * the instance redaction.
+	 */
+	@Test
+	void frameworkErrorCarriesStatusNameCodeAndRedactedInstance() throws Exception {
+		mvc.perform(post("/throw/invalid"))
+				.andExpect(status().isMethodNotAllowed())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"))
+				.andExpect(jsonPath("$.instance").value("about:blank"))
+				.andExpect(content().string(not(containsString("/throw/invalid"))));
 	}
 
 	@RestController

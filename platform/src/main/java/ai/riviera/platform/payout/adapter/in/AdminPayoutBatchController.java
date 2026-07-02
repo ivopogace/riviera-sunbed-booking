@@ -56,17 +56,14 @@ class AdminPayoutBatchController {
 		BatchStatus target = BatchStatus.valueOf(request.status());
 		return switch (payoutReport.mark(id, target)) {
 			case BatchStatusOutcome.Marked marked -> ResponseEntity.ok(PayoutBatchView.of(marked.batch()));
-			case BatchStatusOutcome.NotFound ignored -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BATCH",
-					"No such payout batch.");
+			case BatchStatusOutcome.NotFound ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
+					"NO_SUCH_BATCH", "No such payout batch.");
 			// The code is stable; the offending from→to pair belongs in the human-readable detail.
-			case BatchStatusOutcome.IllegalTransition it -> error(HttpStatus.CONFLICT, "ILLEGAL_TRANSITION",
-					it.from() + " to " + it.to() + " is not a legal transition.");
+			case BatchStatusOutcome.IllegalTransition it -> ApiProblem.response(HttpStatus.CONFLICT,
+					"ILLEGAL_TRANSITION", it.from() + " to " + it.to() + " is not a legal transition.");
 		};
 	}
 
-	private static ResponseEntity<?> error(HttpStatus status, String code, String detail) {
-		return ResponseEntity.status(status).body(ApiProblem.of(status, code, detail));
-	}
 
 	/** PATCH body: the target status token ({@code REPORTED} | {@code SETTLED}). */
 	record UpdateBatchStatusRequest(String status) {

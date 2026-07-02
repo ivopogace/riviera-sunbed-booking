@@ -177,7 +177,14 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
   controller/advice maps a typed outcome or exception to a status.
 - **Status mapping, centrally defined:** availability/uniqueness conflicts → `409`;
   not-bookable/cutoff → `422`; unknown id → `404`; malformed body → `400`; ownership → `403`;
-  rate limit → `429`.
+  rate limit → `429`. Framework-raised errors carry a **derived stable code**: `400` →
+  `INVALID_REQUEST`, otherwise the HTTP status name (`METHOD_NOT_ALLOWED`,
+  `UNSUPPORTED_MEDIA_TYPE`, …) — pinned by `ApiErrorHandlerTest`.
+- **`instance` is redacted by construction.** Spring auto-fills a null ProblemDetail
+  `instance` with the raw request URI — on `/api/bookings/{code}` paths that is the bearer
+  credential (invariant #7). `ApiProblem` pins every body to `about:blank` (the advice
+  re-applies it to framework-built bodies); a controller may override with a known-safe URI
+  (`BookingController` uses its collection path).
 
 > **Decision settled at #97's plan stage:** **centralized-explicit validation** — hand-rolled
 > checks in `toCommand()` throwing `IllegalArgumentException`, mapped once by the advice.

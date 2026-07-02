@@ -52,15 +52,15 @@ class StaffAvailabilityController {
 	ResponseEntity<Object> mark(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long setId, @RequestBody(required = false) MarkRequest request) {
 		if (request == null || request.date() == null) {
-			return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A date is required.");
+			return problem(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A date is required.");
 		}
 		OperatorId operator = currentOperator.require(authentication);
 		return switch (staff.mark(operator, new SetId(setId), request.date())) {
 			case MARKED -> ResponseEntity.ok(Map.of("state", "STAFF_MARKED"));
-			case ALREADY_TAKEN -> error(HttpStatus.CONFLICT, "ALREADY_TAKEN",
+			case ALREADY_TAKEN -> problem(HttpStatus.CONFLICT, "ALREADY_TAKEN",
 					"The set is already taken for this date.");
-			case NO_SUCH_SET -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.");
-			case DATE_IN_PAST -> error(HttpStatus.UNPROCESSABLE_ENTITY, "DATE_IN_PAST",
+			case NO_SUCH_SET -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.");
+			case DATE_IN_PAST -> problem(HttpStatus.UNPROCESSABLE_ENTITY, "DATE_IN_PAST",
 					"The date is in the past.");
 		};
 	}
@@ -72,12 +72,13 @@ class StaffAvailabilityController {
 		OperatorId operator = currentOperator.require(authentication);
 		return switch (staff.release(operator, new SetId(setId), date)) {
 			case RELEASED -> ResponseEntity.noContent().build();
-			case NOT_MARKED -> error(HttpStatus.CONFLICT, "NOT_MARKED",
+			case NOT_MARKED -> problem(HttpStatus.CONFLICT, "NOT_MARKED",
 					"Nothing is staff-marked for this set and date.");
 		};
 	}
 
-	private static ResponseEntity<Object> error(HttpStatus status, String code, String detail) {
+	/** Widens {@link ApiProblem#response} to {@code Object} — these switches mix success bodies in. */
+	private static ResponseEntity<Object> problem(HttpStatus status, String code, String detail) {
 		return ResponseEntity.status(status).body(ApiProblem.of(status, code, detail));
 	}
 }

@@ -100,16 +100,15 @@ class VenueAdminController {
 	}
 
 	private static ResponseEntity<ProblemDetail> error(SetRejection reason) {
-		HttpStatus status = switch (reason) {
-			case NO_SUCH_VENUE, NO_SUCH_SET -> HttpStatus.NOT_FOUND;
-			case CELL_TAKEN, DUPLICATE_POSITION -> HttpStatus.CONFLICT;
+		return switch (reason) {
+			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
+					"No such venue.");
+			case NO_SUCH_SET -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
+					"No such set.");
+			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Another set already occupies this grid cell.");
+			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Another set already has this row and position.");
 		};
-		String detail = switch (reason) {
-			case NO_SUCH_VENUE -> "No such venue.";
-			case NO_SUCH_SET -> "No such set.";
-			case CELL_TAKEN -> "Another set already occupies this grid cell.";
-			case DUPLICATE_POSITION -> "Another set already has this row and position.";
-		};
-		return ResponseEntity.status(status).body(ApiProblem.of(status, reason.name(), detail));
 	}
 }
