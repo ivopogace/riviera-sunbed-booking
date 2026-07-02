@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -10,9 +11,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import jakarta.servlet.http.Cookie;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -25,7 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Verifies the U7 venue write API (issue #7) end to end against Testcontainers Postgres: a venue
  * is created and its beach map laid out via the operator endpoints, and the layout round-trips
  * unchanged through the U1 read API ({@code GET /api/venues/{id}}) — the core integration AC.
- * Also pins the operator auth gate (invariant: write requires httpBasic, read stays public), the
+ * Also pins the operator auth gate (invariant: write requires an operator session cookie, read
+ * stays public), the
  * editable pool split (invariant #3), integer-minor-unit money (invariant #5), and the
  * coordinate/position uniqueness rejections (invariant #12). The operator password is set per-test
  * so it never shadows the main {@code application.properties}.
@@ -42,6 +47,13 @@ class VenueAdminControllerIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	private Cookie operatorSession;
+
+	@BeforeEach
+	void logIn() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
 
 	private static String venueBody(String name, String mode, int commissionBps, String currency) {
 		return """
@@ -60,7 +72,7 @@ class VenueAdminControllerIT {
 
 	/** Create a venue as the operator and return its id (parsed from the JSON body). */
 	private long createVenue(String name) throws Exception {
-		MvcResult result = mvc.perform(post("/api/venues").with(httpBasic(OPERATOR, PASSWORD))
+		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(venueBody(name, "INSTANT", 1500, "EUR")))
 				.andExpect(status().isCreated())
@@ -71,7 +83,7 @@ class VenueAdminControllerIT {
 
 	private long addSet(long venueId, String body) throws Exception {
 		MvcResult result = mvc.perform(post("/api/venues/{v}/sets", venueId)
-						.with(httpBasic(OPERATOR, PASSWORD))
+						.cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON).content(body))
 				.andExpect(status().isCreated())
 				.andReturn();
@@ -135,7 +147,7 @@ class VenueAdminControllerIT {
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
 		// AC-3: move the set from the online to the walk-in pool; the read API reflects it.
-		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNoContent());
@@ -150,7 +162,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Remove Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
-		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession))
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(0));
@@ -159,7 +171,7 @@ class VenueAdminControllerIT {
 	@Test
 	void rejectsUnknownPool() throws Exception {
 		long venue = createVenue("Bad Pool Club");
-		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "GOLD", 3000, "EUR", 1, 1)))
 				.andExpect(status().isBadRequest())
@@ -170,7 +182,7 @@ class VenueAdminControllerIT {
 	@Test
 	void rejectsNonIsoCurrency() throws Exception {
 		long venue = createVenue("Bad Currency Club");
-		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "ABC", 1, 1)))
 				.andExpect(status().isBadRequest())
@@ -180,7 +192,7 @@ class VenueAdminControllerIT {
 	@Test
 	void rejectsNonPositiveCoordinate() throws Exception {
 		long venue = createVenue("Bad Coord Club");
-		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 0, 1)))
 				.andExpect(status().isBadRequest())
@@ -194,7 +206,7 @@ class VenueAdminControllerIT {
 
 		// AC-5: a second set at the same (grid_x, grid_y) is 409 CELL_TAKEN. Different position_no/
 		// row_label so only the grid-cell rule can trip.
-		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row B", 9, "STANDARD", "ONLINE", 3000, "EUR", 2, 1)))
 				.andExpect(status().isConflict())
@@ -208,7 +220,7 @@ class VenueAdminControllerIT {
 		addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
 		// Same (row_label, position_no), different cell → 409 DUPLICATE_POSITION.
-		mvc.perform(post("/api/venues/{v}/sets", venue).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 5)))
 				.andExpect(status().isConflict())
@@ -218,7 +230,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void addSetToUnknownVenueIs404() throws Exception {
-		mvc.perform(post("/api/venues/{v}/sets", 999_999L).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", 999_999L).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNotFound())
@@ -229,7 +241,7 @@ class VenueAdminControllerIT {
 	@Test
 	void editUnknownSetIs404() throws Exception {
 		long venue = createVenue("Edit 404 Club");
-		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, 999_999L).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, 999_999L).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
 				.andExpect(status().isNotFound())
@@ -244,10 +256,11 @@ class VenueAdminControllerIT {
 						.content(venueBody("No Auth Club", "INSTANT", 1500, "EUR")))
 				.andExpect(status().isUnauthorized());
 
-		// Wrong password → 401 too.
-		mvc.perform(post("/api/venues").with(httpBasic(OPERATOR, "wrong"))
+		// Wrong password → the session login itself is rejected with 401, so no cookie is ever issued.
+		mvc.perform(post("/api/auth/operator/login").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(venueBody("No Auth Club", "INSTANT", 1500, "EUR")))
+						.content("""
+								{"username": "%s", "password": "wrong"}""".formatted(OPERATOR)))
 				.andExpect(status().isUnauthorized());
 	}
 

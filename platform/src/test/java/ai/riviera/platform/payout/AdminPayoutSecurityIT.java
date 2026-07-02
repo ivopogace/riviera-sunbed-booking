@@ -1,5 +1,6 @@
 package ai.riviera.platform.payout;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -8,11 +9,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+
+import jakarta.servlet.http.Cookie;
 
 import org.springframework.http.MediaType;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +40,13 @@ class AdminPayoutSecurityIT {
 	@Autowired
 	MockMvc mvc;
 
+	private Cookie operatorSession;
+
+	@BeforeEach
+	void logIn() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
+
 	@Test
 	void ledgerReadRequiresOperator() throws Exception {
 		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR))
@@ -45,7 +55,7 @@ class AdminPayoutSecurityIT {
 
 	@Test
 	void operatorReadsTheLedger() throws Exception {
-		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{id}/payout-ledger", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.venueId").value((int) MIRAMAR));
 	}
@@ -61,7 +71,7 @@ class AdminPayoutSecurityIT {
 	@Test
 	void operatorReadsTheBatchReport() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "2099-W30")
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession))
 				.andExpect(status().isOk());
 	}
 
@@ -77,7 +87,7 @@ class AdminPayoutSecurityIT {
 	@Test
 	void malformedPeriodIsBadRequest() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").param("period", "not-a-week")
-						.with(httpBasic(OPERATOR, PASSWORD)))
+						.cookie(operatorSession))
 				.andExpect(status().isBadRequest());
 	}
 }

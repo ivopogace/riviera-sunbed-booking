@@ -2,6 +2,7 @@ package ai.riviera.platform;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,7 +10,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import jakarta.servlet.http.Cookie;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,6 +47,13 @@ class ActuatorHardeningIT {
 	@Autowired
 	MockMvc mvc;
 
+	private Cookie operatorSession;
+
+	@BeforeEach
+	void logIn() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
+
 	@Test
 	void sensitiveEndpointsAreNotPubliclyReachable() throws Exception {
 		// AC-1: an anonymous caller is rejected by the security filter chain (401) — never a 200 body.
@@ -59,7 +68,7 @@ class ActuatorHardeningIT {
 		// allowlist, so the endpoint handler does not exist (404). Proves the lockdown is exposure,
 		// not merely authorization.
 		for (String path : SENSITIVE_ENDPOINTS) {
-			mvc.perform(get(path).with(httpBasic(OPERATOR, PASSWORD))).andExpect(status().isNotFound());
+			mvc.perform(get(path).cookie(operatorSession)).andExpect(status().isNotFound());
 		}
 	}
 
@@ -75,7 +84,7 @@ class ActuatorHardeningIT {
 	@Test
 	void healthShowsDetailsToOperator() throws Exception {
 		// AC-4: an authenticated operator sees component details (show-details=when-authorized).
-		mvc.perform(get("/actuator/health").with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/actuator/health").cookie(operatorSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.components.db.status").value("UP"));

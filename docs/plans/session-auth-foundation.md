@@ -209,9 +209,9 @@ only.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | (this commit) |
-| 2 — BE: migrate ITs off Basic; remove httpBasic | ⏳ | |
-| 3 — BE: CSRF cookie-to-header; exemptions inverted | | |
+| 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | ed2ae5a |
+| 2 — BE: migrate ITs off Basic; remove httpBasic | ✅ | (this commit) |
+| 3 — BE: CSRF cookie-to-header; exemptions inverted | ⏳ | |
 | 4 — BE: login rate limit | | |
 | 5 — FE: session auth state + interceptor + sign-in UX | | |
 | 6 — e2e: POM + sign-in spec; real-backend update | | |
@@ -313,6 +313,7 @@ wording).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-02 | Phase 2 (Basic retirement) | remaining `httpBasic(` in backend | `grep -rn httpBasic platform/src` | 0 (main + test) after sweep of 8 IT files + SecurityConfig | complete; SecurityConfig javadoc rewritten to session posture |
 
 Planned audits (run at their phases, results recorded here): Phase 2 — remaining
 `httpBasic(`/`basicAuthHeader` usages; Phase 3 — stale "stateless / no session → CSRF
