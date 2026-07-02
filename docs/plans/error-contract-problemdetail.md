@@ -234,7 +234,7 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
 | 2 — payout controller migrated (stable codes, first wire test) | ✅ | 7941d60 |
 | 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | ✅ | (this commit) |
 | 4 — Angular services + specs parse ProblemDetail | ✅ | adf4f55 |
-| 5 — mocked e2e error-state + §6b/substrate docs sweep | ✅ | (this commit) |
+| 5 — mocked e2e error-state + §6b/substrate docs sweep | ✅ | 9ce2f37 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
