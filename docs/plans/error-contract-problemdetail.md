@@ -229,9 +229,9 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
 |-------|--------|---------|
 | 0 — ApiProblem + single advice + booking controller on the contract | ✅ | 52a3840 |
 | 1 — venue + availability controllers migrated | ✅ | a9e634c |
-| 2 — payout controller migrated (stable codes, first wire test) | ✅ | (this commit) |
-| 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | ⏳ | |
-| 4 — Angular services + specs parse ProblemDetail | | |
+| 2 — payout controller migrated (stable codes, first wire test) | ✅ | 7941d60 |
+| 3 — RateLimitFilter 429 ProblemDetail + ArchUnit pin | ✅ | (this commit) |
+| 4 — Angular services + specs parse ProblemDetail | ⏳ | |
 | 5 — mocked e2e error-state + §6b/substrate docs sweep | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

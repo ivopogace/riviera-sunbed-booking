@@ -49,7 +49,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
-	private static final String RATE_LIMITED_BODY = "{\"error\":\"RATE_LIMITED\"}";
+	/**
+	 * Mirrors the {@code ApiProblem} RFC-7807 shape (issue #97) by hand: this filter rejects before
+	 * MVC dispatch, so {@code ApiErrorHandler} can never map it. Kept in lockstep by
+	 * {@code RateLimitFilterTest}.
+	 */
+	private static final String RATE_LIMITED_BODY = """
+			{"type":"about:blank","title":"Too Many Requests","status":429,\
+			"detail":"Too many requests. Retry later.","code":"RATE_LIMITED"}""";
 
 	// Mirrors the SecurityConfig matchers for the three public booking endpoints: CREATE_PATH is the
 	// exact create POST; VIEW_TEMPLATE the view-by-code GET; CANCEL_TEMPLATE the cancel POST.
@@ -165,7 +172,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			throws IOException {
 		response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
 		response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
 		response.getWriter().write(RATE_LIMITED_BODY);
 		// IP is newline-sanitised by ClientIpResolver; the booking code is NEVER logged (invariant #7).
 		log.debug("Rate-limited request from {} on the {} dimension", ip, dimension);
