@@ -12,10 +12,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import jakarta.servlet.http.Cookie;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -34,8 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Two synthetic per-venue operators are seeded: <strong>A</strong> owns a fresh venue, <strong>B</strong>
  * owns Miramar (venue 1). The real {@code VenueOwnership} runs against the real {@code operator} tables;
  * only the edge {@link CurrentOperator} (principal → operator id — the seam #74 completes) is mocked, so
- * each request is attributed to A or B independently of the interim single shared login. httpBasic still
- * satisfies the role gate. The staff-availability case is the spoofing test: A uses <em>its own</em>
+ * each request is attributed to A or B independently of the shared bootstrap login. The session cookie
+ * (from one real login, issue #109) still satisfies the role gate. The staff-availability case is the spoofing test: A uses <em>its own</em>
  * venue in the URL path but a Miramar {@code setId}, and is still denied because the service resolves the
  * owning venue from the set, never the path.
  */
@@ -62,9 +62,11 @@ class CrossVenueDenialIT {
 	private OperatorId operatorB;
 	private long venueOwnedByA;
 	private long miramarSetId;
+	private Cookie operatorSession;
 
 	@BeforeEach
-	void seedTwoOperators() {
+	void seedTwoOperators() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username IN ('op-a', 'op-b'))").update();
 		jdbc.sql("DELETE FROM operator WHERE username IN ('op-a', 'op-b')").update();
@@ -109,7 +111,7 @@ class CrossVenueDenialIT {
 				 "price":{"minorUnits":3000,"currency":"EUR"},"gridX":1,"gridY":1}
 				""";
 		// The 403 shape is the one error contract (issue #97): ProblemDetail + stable code.
-		mvc.perform(post("/api/venues/{v}/sets", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/sets", MIRAMAR).cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON).content(setBody))
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -119,14 +121,14 @@ class CrossVenueDenialIT {
 	@Test
 	void staffBookingsReadByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isForbidden());
 	}
 
 	@Test
 	void weatherRefundByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
-		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).cookie(operatorSession)
 						.param("date", "2020-01-01"))
 				.andExpect(status().isForbidden());
 	}
@@ -134,7 +136,7 @@ class CrossVenueDenialIT {
 	@Test
 	void payoutLedgerReadByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
-		mvc.perform(get("/api/venues/{v}/payout-ledger", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{v}/payout-ledger", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isForbidden());
 	}
 
@@ -144,12 +146,12 @@ class CrossVenueDenialIT {
 		// resolve the venue from the set (Miramar → owned by B), not the path → 403 (invariant #13, R-2).
 		actingAs(operatorA);
 		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByA, miramarSetId)
-						.with(httpBasic(OPERATOR, PASSWORD))
+						.cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2035-07-01\"}"))
 				.andExpect(status().isForbidden());
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}/availability", venueOwnedByA, miramarSetId)
-						.with(httpBasic(OPERATOR, PASSWORD)).param("date", "2035-07-01"))
+						.cookie(operatorSession).param("date", "2035-07-01"))
 				.andExpect(status().isForbidden());
 	}
 
@@ -158,12 +160,12 @@ class CrossVenueDenialIT {
 	@Test
 	void ownerReadsAreNotForbidden() throws Exception {
 		actingAs(operatorB);
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isOk());
-		mvc.perform(get("/api/venues/{v}/payout-ledger", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD)))
+		mvc.perform(get("/api/venues/{v}/payout-ledger", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isOk());
 		// A weather refund on a day with no bookings is a no-op (200), not a 403 — the check passed.
-		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).cookie(operatorSession)
 						.param("date", "2019-02-02"))
 				.andExpect(status().isOk());
 	}
@@ -176,7 +178,7 @@ class CrossVenueDenialIT {
 		// through, so the spoof denial's 403 is genuinely from ownership, not an always-deny bug.
 		actingAs(operatorB);
 		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", MIRAMAR, miramarSetId)
-						.with(httpBasic(OPERATOR, PASSWORD))
+						.cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
 				.andExpect(status().isOk());
 	}
@@ -186,7 +188,7 @@ class CrossVenueDenialIT {
 	@Test
 	void adminPayoutBatchesIsNotOwnershipChecked() throws Exception {
 		actingAs(operatorA); // A owns no Miramar data, yet the platform-wide admin report is reachable
-		mvc.perform(get("/api/admin/payout-batches").with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(get("/api/admin/payout-batches").cookie(operatorSession)
 						.param("period", "2026-W01"))
 				.andExpect(status().isOk());
 	}
@@ -198,7 +200,7 @@ class CrossVenueDenialIT {
 				{"name":"A New Venue","beach":"Ksamil","region":"Riviera","description":"x",
 				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""";
-		mvc.perform(post("/api/venues").with(httpBasic(OPERATOR, PASSWORD))
+		mvc.perform(post("/api/venues").cookie(operatorSession)
 						.contentType(MediaType.APPLICATION_JSON).content(venueBody))
 				.andExpect(status().isCreated());
 	}

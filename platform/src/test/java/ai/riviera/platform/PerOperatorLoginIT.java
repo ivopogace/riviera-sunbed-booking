@@ -12,9 +12,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
+import org.springframework.http.MediaType;
+import jakarta.servlet.http.Cookie;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -29,9 +32,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * port with edge-encoded hashes: <strong>A</strong> ({@code op-a}) owns a fresh venue,
  * <strong>B</strong> ({@code op-b}) owns Miramar (venue 1). The seeded bootstrap {@code operator}
  * (owns-all) is credentialled at startup from {@code riviera.operator.password} by
- * {@link OperatorCredentialInitializer}. The staff daily-bookings read
- * ({@code GET /api/venues/{id}/bookings}) is the probe: it returns 200 for the owning operator and
- * 403 for any other, so the response encodes <em>which principal</em> the login resolved to.
+ * {@link OperatorCredentialInitializer}. Since issue #109 the login is the SESSION flow: each
+ * operator logs in once ({@code SessionLoginSupport}) and the staff daily-bookings read
+ * ({@code GET /api/venues/{id}/bookings}) probes the resulting cookie: 200 for the owning
+ * operator and 403 for any other, so the response encodes <em>which principal</em> the session
+ * resolved to. Credential-rejection cases now assert the login endpoint itself (generic 401).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -74,22 +79,24 @@ class PerOperatorLoginIT {
 				.param("v", venueId).param("o", operator.value()).update();
 	}
 
-	// ---- AC-3: each operator's login resolves to ITS OWN principal ----
+	// ---- AC-3: each operator's session resolves to ITS OWN principal ----
 
 	@Test
 	void operatorAReachesItsOwnVenueButNotAnothers() throws Exception {
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("op-a", "pw-a")))
+		Cookie sessionA = SessionLoginSupport.operatorSession(mvc, "op-a", "pw-a");
+		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).cookie(sessionA))
 				.andExpect(status().isOk());
-		// A's own login must NOT resolve to any other principal → Miramar (B's) is forbidden.
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).with(httpBasic("op-a", "pw-a")))
+		// A's own session must NOT resolve to any other principal → Miramar (B's) is forbidden.
+		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(sessionA))
 				.andExpect(status().isForbidden());
 	}
 
 	@Test
 	void operatorBReachesItsOwnVenueButNotAnothers() throws Exception {
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).with(httpBasic("op-b", "pw-b")))
+		Cookie sessionB = SessionLoginSupport.operatorSession(mvc, "op-b", "pw-b");
+		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(sessionB))
 				.andExpect(status().isOk());
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("op-b", "pw-b")))
+		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).cookie(sessionB))
 				.andExpect(status().isForbidden());
 	}
 
@@ -97,38 +104,36 @@ class PerOperatorLoginIT {
 
 	@Test
 	void anotherOperatorsPasswordDoesNotAuthenticate() throws Exception {
-		// B's password used with A's username → 401 (credentials are per-operator, not interchangeable).
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("op-a", "pw-b")))
-				.andExpect(status().isUnauthorized());
+		// B's password used with A's username → 401 at the login endpoint (credentials are
+		// per-operator, not interchangeable).
+		expectLoginRejected("op-a", "pw-b");
 	}
 
 	@Test
 	void theBootstrapPasswordDoesNotAuthenticateAnotherOperator() throws Exception {
 		// The bootstrap operator's password is not a master key — it must not log in as op-a.
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("op-a", BOOTSTRAP_PW)))
-				.andExpect(status().isUnauthorized());
+		expectLoginRejected("op-a", BOOTSTRAP_PW);
 	}
 
 	@Test
 	void aWrongPasswordIsRejected() throws Exception {
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("op-a", "not-the-password")))
-				.andExpect(status().isUnauthorized());
+		expectLoginRejected("op-a", "not-the-password");
 	}
 
 	@Test
 	void anUnknownUsernameIsRejected() throws Exception {
-		// No operator row → the UserDetailsService finds no credential → 401 (not a 403/500).
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("ghost", "whatever")))
-				.andExpect(status().isUnauthorized());
+		// No operator row → the UserDetailsService finds no credential → generic 401 (not 403/500).
+		expectLoginRejected("ghost", "whatever");
 	}
 
 	// ---- AC-5: the bootstrap operator is credentialled at startup and still owns-all ----
 
 	@Test
 	void bootstrapOperatorLoginIsProvisionedAndOwnsEveryVenue() throws Exception {
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).with(httpBasic("operator", BOOTSTRAP_PW)))
+		Cookie bootstrap = SessionLoginSupport.operatorSession(mvc, "operator", BOOTSTRAP_PW);
+		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(bootstrap))
 				.andExpect(status().isOk());
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("operator", BOOTSTRAP_PW)))
+		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).cookie(bootstrap))
 				.andExpect(status().isOk());
 	}
 
@@ -139,7 +144,15 @@ class PerOperatorLoginIT {
 		provisioning.provision("op-c", encoder.encode("pw-c"));
 		jdbc.sql("UPDATE operator SET status = 'SUSPENDED' WHERE username = 'op-c'").update();
 
-		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).with(httpBasic("op-c", "pw-c")))
+		expectLoginRejected("op-c", "pw-c");
+	}
+
+	/** The session login must reject these credentials with the generic 401 (AuthSessionIT pins the body). */
+	private void expectLoginRejected(String username, String password) throws Exception {
+		mvc.perform(post("/api/auth/operator/login").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"username": "%s", "password": "%s"}""".formatted(username, password)))
 				.andExpect(status().isUnauthorized());
 	}
 }

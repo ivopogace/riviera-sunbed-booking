@@ -31,12 +31,16 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
  * actuator health endpoint and requires authentication for everything else.
  *
  * <p>Public tourist reads (the venue/beach-map catalogue, U1) are permitted; the venue write +
- * staff/admin surfaces are gated behind {@code httpBasic} with role {@code OPERATOR}. Credentials are
- * <strong>per-operator and DB-backed</strong> (#74): {@link #operatorDetailsService} loads each
- * operator's stored hash from the {@code operator} module ({@link OperatorAccounts}) and Spring
- * Security's {@code DaoAuthenticationProvider} verifies it against the delegating
- * {@link #passwordEncoder()} — no shared password, no JWT, no custom token filter. The bootstrap
- * operator's credential is provisioned from {@code RIVIERA_OPERATOR_PASSWORD} at startup
+ * staff/admin surfaces are gated behind a <strong>server-side session</strong> with role
+ * {@code OPERATOR} (issue #109, design D-1): an operator signs in once via
+ * {@code POST /api/auth/operator/login} ({@code AuthController} driving the framework
+ * {@link AuthenticationManager}) and rides an {@code HttpOnly; Secure; SameSite=Lax} cookie —
+ * sessions persist in Postgres via Spring Session JDBC (V19) so a restart keeps operators signed
+ * in. Credentials are <strong>per-operator and DB-backed</strong> (#74):
+ * {@link #operatorDetailsService} loads each operator's stored hash from the {@code operator}
+ * module ({@link OperatorAccounts}) and {@code DaoAuthenticationProvider} verifies it against the
+ * delegating {@link #passwordEncoder()} — no shared password, no JWT, no custom token filter. The
+ * bootstrap operator's credential is provisioned from {@code RIVIERA_OPERATOR_PASSWORD} at startup
  * ({@link OperatorCredentialInitializer}); additional operators are provisioned via the
  * {@code operator} module's provisioning port. The per-<em>venue</em> authorization (invariant #13)
  * is object-level and enforced in the application services, not here.
@@ -141,8 +145,7 @@ class SecurityConfig {
 				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
 				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
 				.exceptionHandling(handling -> handling.authenticationEntryPoint(
-						(request, response, exception) -> SecurityProblemResponses.writeUnauthenticated(response)))
-				.httpBasic(Customizer.withDefaults());
+						(request, response, exception) -> SecurityProblemResponses.writeUnauthenticated(response)));
 		return http.build();
 	}
 
