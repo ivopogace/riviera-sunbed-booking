@@ -1,11 +1,10 @@
 package ai.riviera.platform.payout.adapter.in;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.ApiProblem;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;
@@ -28,7 +28,8 @@ import ai.riviera.platform.payout.domain.PeriodKey;
  * <p><strong>Operator-gated</strong> — venue financial data + money lifecycle, never public.
  * {@code SecurityConfig} matches {@code /api/admin/payout-batches} to role {@code OPERATOR}; the POST/PATCH
  * are token-less and CSRF-exempt like the other operator writes. A malformed {@code period} or
- * {@code status} is a {@code 400}.
+ * {@code status} is a {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}; errors are RFC-7807
+ * {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
  */
 @RestController
 @RequestMapping("/api/admin/payout-batches")
@@ -55,20 +56,16 @@ class AdminPayoutBatchController {
 		BatchStatus target = BatchStatus.valueOf(request.status());
 		return switch (payoutReport.mark(id, target)) {
 			case BatchStatusOutcome.Marked marked -> ResponseEntity.ok(PayoutBatchView.of(marked.batch()));
-			case BatchStatusOutcome.NotFound ignored -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BATCH");
-			case BatchStatusOutcome.IllegalTransition it ->
-					error(HttpStatus.CONFLICT, "ILLEGAL_TRANSITION " + it.from() + "->" + it.to());
+			case BatchStatusOutcome.NotFound ignored -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BATCH",
+					"No such payout batch.");
+			// The code is stable; the offending from→to pair belongs in the human-readable detail.
+			case BatchStatusOutcome.IllegalTransition it -> error(HttpStatus.CONFLICT, "ILLEGAL_TRANSITION",
+					it.from() + " to " + it.to() + " is not a legal transition.");
 		};
 	}
 
-	/** Bad period/status token → 400 (PeriodKey.of / BatchStatus.valueOf throw IllegalArgumentException). */
-	@ExceptionHandler(IllegalArgumentException.class)
-	ResponseEntity<?> badRequest(IllegalArgumentException ex) {
-		return error(HttpStatus.BAD_REQUEST, ex.getMessage());
-	}
-
-	private static ResponseEntity<?> error(HttpStatus status, String message) {
-		return ResponseEntity.status(status).body(Map.of("error", message));
+	private static ResponseEntity<?> error(HttpStatus status, String code, String detail) {
+		return ResponseEntity.status(status).body(ApiProblem.of(status, code, detail));
 	}
 
 	/** PATCH body: the target status token ({@code REPORTED} | {@code SETTLED}). */

@@ -44,7 +44,7 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
  * </ul>
  */
 @RestControllerAdvice
-class ApiErrorHandler extends ResponseEntityExceptionHandler {
+public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(ApiErrorHandler.class);
 
