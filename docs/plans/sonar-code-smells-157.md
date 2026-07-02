@@ -112,7 +112,7 @@ Group A (badges/chips) are `aria-hidden` decorative glyphs — the heading/label
 | 1 — S7059 operator-auth app-initializer refactor (test-first) | ✅ | (this commit) |
 | 2 — S7758 venue-map `fromCodePoint` | ✅ | (this commit) |
 | 3 — S7924 solid composited fills + contrast-spec updates | ✅ | (this commit) |
-| 4 — S1075 justified suppression | | |
+| 4 — S1075 justified suppression | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
