@@ -50,8 +50,10 @@ export class Home {
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
    * initial-load failure retries `loadInitial` (which re-seeds the filter selects), whereas a
    * filter-change failure retries `reload` (which preserves the active beach/region filter).
+   * Assigned by whichever load runs first; the constructor's `loadInitial()` sets it before any
+   * Retry click is possible (definite assignment — no dead initial closure to leave uncovered).
    */
-  private lastLoad: () => void = () => this.loadInitial();
+  private lastLoad!: () => void;
 
   constructor() {
     this.loadInitial();
