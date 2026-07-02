@@ -114,11 +114,21 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # Name the artifact per run+attempt. upload-pages-artifact wraps
+          # upload-artifact@v4, which does NOT overwrite by default, so a *re-run*
+          # (run_attempt > 1) would otherwise leave the previous attempt's artifact
+          # in place alongside the new one. deploy-pages then finds two artifacts
+          # named "github-pages" for the run and aborts ("Multiple artifacts named
+          # …were unexpectedly found"). A per-attempt name keeps each attempt's
+          # artifact unique, so deploy-pages resolves exactly one.
+          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: frontend/dist/frontend/browser
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
 
   backend-render:
     name: Deploy backend → Render
