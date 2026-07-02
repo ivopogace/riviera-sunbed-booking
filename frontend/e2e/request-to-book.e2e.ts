@@ -1,14 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render a11y + behaviour audit of the Request-to-Book flow (issue #98): REQUEST-mode beach
- * map → dialog with the "Request to book" CTA → 202 PENDING_REQUEST → request-sent screen → the
- * booking-by-code view through its request lifecycle (pending → accepted "Pay now" → fake-Stripe
- * payment → poll to CONFIRMED; plus the DECLINED terminal view). The API is mocked (`page.route`,
- * stateful status like booking-flow.e2e.ts) and Stripe is the deterministic fake
- * (`__RIVIERA_FAKE_STRIPE__`), so the suite is CI-safe with no backend.
+ * Real-render a11y + behaviour audit of the Request-to-Book flow (issue #98; Liquid Glass restyle
+ * #137): REQUEST-mode beach map → 2-step dialog whose Review step shows the "Send request" CTA +
+ * no-charge copy → 202 PENDING_REQUEST → request-sent screen → the booking-by-code view through its
+ * request lifecycle (pending → accepted "Pay now" → fake-Stripe payment → poll to CONFIRMED; plus
+ * the DECLINED/EXPIRED terminal views). The API is mocked (`page.route`) and Stripe is the
+ * deterministic fake (`__RIVIERA_FAKE_STRIPE__`), so the suite is CI-safe with no backend.
  */
 
 const CODE = 'RQST234567';
@@ -59,6 +59,20 @@ const DETAIL_BASE = {
   payment: null,
 };
 
+/** Settle running entrance animations (the dialog's pop) before axe (riviera-frontend rule). Await
+ *  only FINITE animations: the background gradient blobs run `infinite`, so awaiting their
+ *  `.finished` would hang. */
+async function settle(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
 });
@@ -73,25 +87,30 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
   await page.getByRole('button', { name: /Select to book/ }).first().click();
 
-  // The dialog is mode-aware: request CTA + no-charge copy.
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'Request this set' })).toBeVisible();
-  await expect(dialog).toContainText('won’t be charged unless the venue accepts');
-  await expectNoSeriousAxeViolations(page, 'request dialog');
+  await expect(dialog).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'request dialog (Details)');
 
+  // Fill Details and advance to Review — the mode-aware copy lives on Review now.
   await dialog.getByLabel('Full name').fill('Holiday Guest');
   await dialog.getByLabel('Email').fill('guest@example.com');
   await dialog.getByLabel('Phone').fill('+355699000');
-  await dialog.getByRole('button', { name: 'Request to book' }).click();
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
-  // Lands on the request-sent screen: the code, the deadline, the only-pay-if-accepted note.
+  await expect(dialog).toContainText(/won.t be charged/);
+  await expect(dialog.getByRole('button', { name: 'Send request' })).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'request dialog (Review)');
+  await dialog.getByRole('button', { name: 'Send request' }).click();
+
+  // Lands on the request-sent screen: the code, the deadline, the no-charge note.
   await expect(page).toHaveURL(/\/booking\/requested/);
   await expect(page.getByTestId('booking-code')).toContainText(CODE);
   await expect(page.getByTestId('request-deadline')).not.toBeEmpty();
-  await expect(page.getByText('you’ll only pay if the venue accepts')).toBeVisible();
+  await expect(page.getByText(/haven.t been charged/)).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'request-sent screen');
 
-  // Check status by code: still pending — waiting copy + deadline.
+  // Check status by code: still pending — waiting copy + deadline (booking-view, unchanged).
   await page.getByTestId('status-link').click();
   await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
   await expect(page.getByTestId('request-pending')).toContainText('Waiting for the venue');
@@ -135,7 +154,7 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
   // Pay → the page polls the backend and only then shows confirmed (invariant #8).
   phase = 'paid';
   await page.getByTestId('pay-button').click();
-  await expect(page.getByRole('heading', { name: 'Booking confirmed' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
   await expect(page.getByTestId('booking-code')).toContainText(CODE);
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
 });

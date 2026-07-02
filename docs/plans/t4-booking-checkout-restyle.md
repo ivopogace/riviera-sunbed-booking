@@ -236,7 +236,7 @@ stays an ISO `LocalDate` string on the wire (only its *display* is prettified).
 | 1 — Booking dialog: 2-step glass modal | ✅ | `feat(fe): 2-step Liquid Glass booking dialog (#137)` |
 | 2 — Payment page: glass two-column + v3 states | ✅ | `feat(fe): Liquid Glass payment page + v3 states (#137)` |
 | 3 — Confirmed + Request-sent glass cards | ✅ | `feat(fe): Liquid Glass confirmed + request-sent cards (#137)` |
-| 4 — Route flip + e2e alignment + full green | | |
+| 4 — Route flip + e2e alignment + full green | ✅ | `feat(fe): flip booking routes to glass + align e2e (#137)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each
 phase's code.
@@ -517,7 +517,9 @@ expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContai
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-02 | Phase 1 (read-only date label) | raw `{{ …bookingDate }}` renders | grep `bookingDate` in booking/ | booking-pay, booking-confirmation, request-confirmation | Adopt `formatBookingDate` on those surfaces in Phases 2–3 (their restyle) |
+| 2026-07-02 | Phase 1 (read-only date label) | raw `{{ …bookingDate }}` renders | grep `bookingDate` in booking/ | booking-pay, booking-confirmation, request-confirmation | Adopt `formatBookingDate` on those surfaces in Phases 2–3 (their restyle) — done |
+| 2026-07-02 | Phase 4 (e2e settle) | `getAnimations().finished` hang on infinite anims | e2e settle helper | booking-flow, request-to-book | Filter finite animations in both `settle()` helpers (infinite background blobs never resolve) |
+| 2026-07-02 | Phase 4 (&ngsp; sweep) | text glued across sibling inline elements | reviewed new templates + green text/e2e assertions | none | No sibling-inline text splits introduced; values are single interpolations (unit + e2e text asserts pass) |
 
 ---
 

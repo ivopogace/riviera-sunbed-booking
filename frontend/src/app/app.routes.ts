@@ -29,25 +29,24 @@ export const routes: Routes = [
     title: 'Beach map — Riviera',
   },
   {
+    // Restyled to Liquid Glass by T4 (#137) — no compat surface.
     path: 'booking/confirmation',
     loadComponent: () =>
       import('./booking/booking-confirmation').then((m) => m.BookingConfirmation),
     title: 'Booking confirmed — Riviera',
-    data: { legacySurface: true },
   },
   {
+    // Restyled to Liquid Glass by T4 (#137) — no compat surface.
     path: 'booking/pay',
     loadComponent: () => import('./booking/booking-pay').then((m) => m.BookingPay),
     title: 'Complete payment — Riviera',
-    data: { legacySurface: true },
   },
   {
-    // Static segment — must stay above the 'booking/:code' catch-all.
+    // Restyled to Liquid Glass by T4 (#137). Static segment — must stay above 'booking/:code'.
     path: 'booking/requested',
     loadComponent: () =>
       import('./booking/request-confirmation').then((m) => m.RequestConfirmation),
     title: 'Request sent — Riviera',
-    data: { legacySurface: true },
   },
   {
     path: 'booking/:code',
