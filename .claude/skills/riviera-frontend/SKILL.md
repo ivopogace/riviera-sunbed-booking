@@ -17,7 +17,7 @@ cheap here and expensive at review.
 
 | Folder | Owns | May import from | Examples today |
 |---|---|---|---|
-| `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service | `shared/` only — never a feature | `operator-auth.ts`, `api-session.interceptor.ts` |
+| `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service, theme state | `shared/` only — never a feature | `operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts` |
 | `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state | nothing app-internal | `money.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
 | Feature folders (`booking/`, `venue/`, `venue-admin/`, `staff/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
@@ -72,6 +72,26 @@ The only place providers are wired:
   real/fake adapters + factory in `app.config.ts`; unit specs override the
   token directly.
 
+## Theming & design tokens (Liquid Glass, epic #133)
+
+- **Themes are CSS custom properties** (`--riv-*`) scoped by `data-riv-theme` on
+  `<html>`, declared per theme in `src/styles.scss`. The attribute is written
+  **only** by `core/theme.ts` (`ThemeService`: signal + localStorage +
+  `prefers-color-scheme` fallback; the theme registry lives there as data).
+- **Components consume tokens, never palette literals** — a new palette (#143)
+  is one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
+  component edits. Restyle slices add page-surface tokens there (e.g. the T2
+  `--riv-card-*` card-glass set) so later slices reuse them.
+- **Glass contrast is proven by composited math, not eyeballing**: translucent
+  surfaces get a `<page>.contrast.spec.ts` that composites the glass rgba over
+  the theme background's worst-case gradient stops via the shared helpers in
+  `src/testing/contrast.ts` (`composite`/`contrastRatio`), the
+  `app.contrast.spec.ts` pattern. Token values that deviate from the design
+  file for AA carry a comment saying so.
+- **Reduced-motion guards live in the same stylesheet as the animation they
+  guard** (component styles' emulated-encapsulation attribute beats a global
+  guard's specificity — the #134 lesson).
+
 ## Environment rules
 
 - `environments/environment.ts` (dev, `localhost:8080`) /
@@ -85,7 +105,10 @@ The only place providers are wired:
 
 - `frontend/e2e/*.e2e.ts` — **CI-safe suite**: real browser, API mocked via
   `page.route`, includes axe checks. Every user-facing slice ships coverage
-  here.
+  here. The one axe policy is `frontend/e2e/support/axe.ts`
+  (`expectNoSeriousAxeViolations`) — use it, don't hand-roll an AxeBuilder per
+  spec; an axe run after opening an **animated** surface must first await
+  `getAnimations().finished` (mid-fade opacity reads as a false contrast fail).
 - `frontend/e2e/real-backend/` — **local-only suite** against a running
   backend (+ its `support/` helpers). Never wired into CI.
 - Which suite a new spec belongs in, and what RV-FE-E2E checks, is defined in

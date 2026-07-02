@@ -37,6 +37,37 @@
 
   --riv-cta-grad: linear-gradient(180deg, #2bb8d4, #0e8aa8);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+
+  /* Card surfaces (issue #135; consumed by the T2–T5 glass panels/cards). Declared in
+     this :root block, so they are theme-invariant unless a theme block overrides them
+     (porcelain overrides only --riv-card-glass).
+     0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
+     card inks to reach AA — see home.contrast.spec.ts, plan R-2. */
+  --riv-card-glass: rgba(255, 255, 255, 0.78);
+  --riv-card-border: rgba(255, 255, 255, 0.6);
+  --riv-card-ink: #0a2a33;
+  /* 0.78 / 0.72 (design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
+  --riv-card-ink-soft: rgba(12, 42, 51, 0.78);
+  --riv-card-ink-faint: rgba(12, 42, 51, 0.72);
+  /* #085a6e (design: #0a6e85): AA for 16px-bold prices on the riviera card glass */
+  --riv-accent-ink: #085a6e;
+  /* dark tint (design: white border): input boundary needs 3:1 (WCAG 1.4.11) */
+  --riv-field-border: rgba(12, 42, 51, 0.55);
+  --riv-field-fill: rgba(255, 255, 255, 0.55);
+  --riv-card-track: rgba(12, 42, 51, 0.12);
+  --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
+  /* 0.5 @75% (design: none): the location overlay's text band (81–91% of the photo) must
+     sit on scrim >= 0.5 for white ink to clear AA over the light stop — the geometry the
+     contrast spec asserts (#135 review finding: the design curve only reached ~0.35 there). */
+  --riv-photo-scrim: linear-gradient(
+    180deg,
+    rgba(13, 40, 40, 0) 42%,
+    rgba(13, 40, 40, 0.16) 66%,
+    rgba(13, 40, 40, 0.5) 75%,
+    rgba(13, 40, 40, 0.66) 100%
+  );
+  --riv-photo-ink: #ffffff;
+  --riv-mode-chip-glass: rgba(255, 255, 255, 0.7);
 }
 
 [data-riv-theme='porcelain'] {
@@ -62,6 +93,12 @@
 
   --riv-cta-grad: linear-gradient(180deg, #2bb8d4, #0e8aa8);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+
+  /* Card surfaces (issue #135): only the glass alpha differs per theme — porcelain's
+     stops are light, so the design's airier 0.55 already clears AA (home.contrast.spec.ts).
+     The other card tokens inherit from the :root block above (review finding: a duplicated
+     block invites silent per-theme drift). */
+  --riv-card-glass: rgba(255, 255, 255, 0.55);
 }
 
 html,

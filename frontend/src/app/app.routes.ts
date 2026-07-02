@@ -5,10 +5,10 @@ import { Routes } from '@angular/router';
 // (issue #134, AC-6 — pinned by app.spec.ts).
 export const routes: Routes = [
   {
+    // Restyled to Liquid Glass by T2 (#135) — no compat surface.
     path: '',
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     title: 'Riviera — Sunbed Booking',
-    data: { legacySurface: true },
   },
   {
     path: 'venue-admin',

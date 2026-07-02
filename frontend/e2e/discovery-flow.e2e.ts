@@ -65,17 +65,22 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
-  // All venues are listed as cards.
+  // All venues are listed as cards; the live count sits inside the filter bar (#135).
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('Miramar Beach Club');
   await expect(cards.first()).toContainText('18 of 24 free');
+  // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
+  // year digits in the date label (review finding).
+  await expect(page.getByTestId('results')).toContainText('2 venues');
   await expectNoSeriousAxeViolations(page, 'discovery list');
 
-  // Filter by beach → the list narrows to the matching venue (server-side filter, mocked).
+  // Filter by beach → the list narrows to the matching venue (server-side filter, mocked);
+  // the in-bar count follows, with the singular noun.
   await page.getByTestId('filter-beach').selectOption('Dhërmi');
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText('Aurora Bay');
+  await expect(page.getByTestId('results')).toContainText('1 venue');
   await expectNoSeriousAxeViolations(page, 'discovery list (filtered)');
 
   // Open the venue → the beach map for that venue.
@@ -93,5 +98,7 @@ test('discovery shows an accessible empty state when no venues match', async ({ 
   await page.goto('/');
   await expect(page.getByTestId('empty')).toBeVisible();
   await expect(page.getByTestId('venue-card')).toHaveCount(0);
+  // The in-bar count stays visible in the empty state (#135): "0 venues · <date>".
+  await expect(page.getByTestId('results')).toContainText('0 venues');
   await expectNoSeriousAxeViolations(page, 'discovery empty state');
 });
