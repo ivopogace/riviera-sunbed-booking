@@ -15,6 +15,7 @@
   @keyframes rivFade{from{opacity:0}to{opacity:1}}
   @keyframes rivPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
   @keyframes rivDrift{0%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}100%{transform:translate(0,0)}}
+  @keyframes rivSpin{to{transform:rotate(360deg)}}
   [data-riv-scroller]::-webkit-scrollbar{display:none;}
 </style>
 </helmet>
@@ -49,6 +50,7 @@
             <button onClick="{{ onMenuBeaches }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">Beaches</button>
             <button onClick="{{ onMenuHow }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">How it works</button>
             <button onClick="{{ onMyBooking }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">My bookings</button>
+            <button onClick="{{ onOpenFind }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:600;color:#0a2a33;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">Find a booking by code</button>
             <sc-if value="{{ isSignedOut }}" hint-placeholder-val="{{ true }}">
               <button onClick="{{ onOpenAuth }}" style="display:block;width:100%;text-align:left;font:inherit;font-size:15.5px;font-weight:700;color:#0a6e85;background:transparent;border:0;padding:13px 14px;border-radius:14px;cursor:pointer;" style-hover="background:rgba(12,42,51,0.06);">Sign in or register</button>
             </sc-if>
@@ -73,7 +75,7 @@
       <sc-if value="{{ isDesktopNav }}" hint-placeholder-val="{{ true }}">
       <nav style="display:flex;align-items:center;gap:22px;font-size:13.5px;color:{{ inkSoft }};">
         <span onClick="{{ onBack }}" style="cursor:pointer;">Beaches</span>
-        <span style="cursor:pointer;">How it works</span>
+        <span onClick="{{ onOpenFind }}" style="cursor:pointer;">Find a booking</span>
         <div style="position:relative;display:flex;align-items:center;">
           <button onClick="{{ onToggleTheme }}" aria-label="Switch color theme" style="display:inline-flex;align-items:center;gap:9px;font:inherit;font-weight:600;font-size:13.5px;color:{{ ink }};cursor:pointer;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:999px;padding:6px 13px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);">
             <span style="width:16px;height:16px;border-radius:50%;background:{{ themeSwatch }};box-shadow:inset 0 0 0 1px rgba(255,255,255,0.55);"></span>
@@ -152,7 +154,18 @@
         <span style="display:block;font-size:12px;color:rgba(12,42,51,0.55);margin-top:5px;">{{ resultNoun }} &middot; {{ dateLabel }}</span>
       </div>
     </div>
+    <p style="display:flex;align-items:center;gap:8px;margin:12px 2px 0;font-size:13px;color:{{ inkSoft }};"><span style="font-size:15px;">&#9200;</span> Bookings close the evening before &mdash; book by 6&nbsp;PM the day before. Today isn&rsquo;t available.</p>
 
+    <sc-if value="{{ failDiscover }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:28px 0 0;text-align:center;padding:52px 26px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:26px;box-shadow:0 12px 40px rgba(7,42,58,0.24),inset 0 1px 0 rgba(255,255,255,0.8);">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(200,90,60,0.14);border:1px solid rgba(200,90,60,0.3);color:#a3372a;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;">&#9888;</div>
+        <h2 style="font-weight:700;font-size:21px;letter-spacing:-0.01em;color:#0a2a33;margin:0 0 7px;">We couldn&rsquo;t load the beaches</h2>
+        <p style="font-size:14.5px;line-height:1.5;color:rgba(12,42,51,0.62);margin:0 auto 20px;max-width:380px;">Something went wrong reaching Riviera. Check your connection and try again &mdash; your bookings are safe.</p>
+        <button onClick="{{ onRetryDiscover }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:14.5px;padding:12px 26px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Try again</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showDiscoverList }}" hint-placeholder-val="{{ true }}">
     <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
       <div style="text-align:center;padding:64px 20px;color:{{ inkSoft }};font-size:15px;">No venues match these filters. Try another beach, region, or date.</div>
     </sc-if>
@@ -191,6 +204,7 @@
         </li>
       </sc-for>
     </ul>
+    </sc-if>
   </main>
   </sc-if>
 
@@ -204,6 +218,7 @@
         <h1 style="font-weight:700;font-size:clamp(32px,5vw,48px);line-height:1.02;letter-spacing:-0.02em;color:{{ ink }};margin:0 0 7px;text-shadow:{{ heroShadow }};">{{ venue.name }}</h1>
         <p style="margin:0 0 5px;color:{{ inkSoft }};font-size:15px;">{{ venue.location }}</p>
         <p style="margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:14px;color:{{ inkSoft }};"><span style="color:#ffd16b;">&#9733;</span><strong style="color:{{ ink }};">{{ venue.ratingStr }}</strong><span style="color:{{ inkFaint }};">&middot;</span>{{ venue.reviews }} reviews<span style="color:{{ inkFaint }};">&middot;</span>from <strong style="color:{{ ink }};">{{ venue.fromStr }}</strong> / set</p>
+        <p style="margin:9px 0 0;max-width:540px;color:{{ inkSoft }};font-size:14.5px;line-height:1.5;text-wrap:pretty;">{{ venue.description }}</p>
         <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;">
           <span style="display:inline-flex;align-items:center;font-size:12px;color:{{ ink }};background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:999px;padding:5px 12px;font-weight:600;">{{ venue.toWater }} to water</span>
           <sc-for list="{{ venue.amenities }}" as="am" hint-placeholder-count="4">
@@ -214,9 +229,20 @@
       <label style="display:flex;flex-direction:column;gap:7px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:{{ inkFaint }};">Date</span>
         <input type="date" value="{{ selectedDate }}" min="{{ minDate }}" onChange="{{ onDateChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:10px 12px;cursor:pointer;"/>
+        <span style="font-size:11.5px;color:{{ inkFaint }};max-width:190px;line-height:1.35;">&#9200; Book by 6&nbsp;PM the day before &mdash; today isn&rsquo;t bookable.</span>
       </label>
     </div>
 
+    <sc-if value="{{ failMap }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:26px 0 0;text-align:center;padding:52px 26px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:26px;box-shadow:0 12px 40px rgba(7,42,58,0.24),inset 0 1px 0 rgba(255,255,255,0.8);">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(200,90,60,0.14);border:1px solid rgba(200,90,60,0.3);color:#a3372a;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;">&#9888;</div>
+        <h2 style="font-weight:700;font-size:21px;letter-spacing:-0.01em;color:#0a2a33;margin:0 0 7px;">We couldn&rsquo;t load this beach map</h2>
+        <p style="font-size:14.5px;line-height:1.5;color:rgba(12,42,51,0.62);margin:0 auto 20px;max-width:380px;">The live availability didn&rsquo;t come through. Give it another go &mdash; no set is booked until you pay.</p>
+        <button onClick="{{ onRetryMap }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:14.5px;padding:12px 26px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Try again</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMapContent }}" hint-placeholder-val="{{ true }}">
     <div style="margin:24px 0 6px;font-size:16px;color:{{ ink }};"><strong style="font-size:19px;font-weight:700;">{{ freeCount }}</strong> of {{ totalCount }} sets free on {{ dateLabel }}</div>
     <div style="height:8px;border-radius:999px;background:{{ trackBg }};overflow:hidden;"><span style="display:block;height:100%;width:{{ freePct }}%;background:{{ barGrad }};"></span></div>
 
@@ -275,6 +301,7 @@
       <li style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:5px;border:1.5px solid rgba(240,170,46,0.7);background:rgba(255,221,150,0.55);"></span> Front row</li>
       <li style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:5px;border:1.5px dashed rgba(255,255,255,0.6);background:rgba(255,255,255,0.12);"></span> Taken</li>
     </ul>
+    </sc-if>
   </main>
   </sc-if>
 
@@ -283,18 +310,21 @@
     <button onClick="{{ onBack }}" style="display:inline-flex;align-items:center;gap:8px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:{{ ink }};font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 14px;border-radius:999px;margin-bottom:16px;">&larr; All beaches</button>
 
     <sc-if value="{{ showBookingList }}" hint-placeholder-val="{{ false }}">
-      <h1 style="font-weight:700;font-size:clamp(28px,4vw,36px);letter-spacing:-0.02em;color:{{ ink }};margin:4px 0 16px;text-shadow:{{ heroShadow }};">Your bookings</h1>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 16px;">
+        <h1 style="font-weight:700;font-size:clamp(28px,4vw,36px);letter-spacing:-0.02em;color:{{ ink }};margin:0;text-shadow:{{ heroShadow }};">Your bookings</h1>
+        <button onClick="{{ onOpenFind }}" style="flex-shrink:0;display:inline-flex;align-items:center;gap:7px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:{{ ink }};font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:8px 14px;border-radius:999px;">&#128269; Find by code</button>
+      </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        <sc-for list="{{ bkList }}" as="b" hint-placeholder-count="3">
+        <sc-for list="{{ bkList }}" as="b" hint-placeholder-count="4">
           <button onClick="{{ b.onOpen }}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;cursor:pointer;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:22px;padding:16px 18px;box-shadow:0 10px 30px rgba(7,42,58,0.22),inset 0 1px 0 rgba(255,255,255,0.8);transition:transform .15s ease, box-shadow .15s ease;" style-hover="transform:translateY(-2px);box-shadow:0 16px 40px rgba(7,42,58,0.3),inset 0 1px 0 rgba(255,255,255,0.9);">
             <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;">
               <span style="font-size:16px;font-weight:700;color:#0a2a33;">{{ b.venueName }}</span>
               <span style="font-size:13px;color:rgba(12,42,51,0.6);">Set {{ b.setLabel }} &middot; {{ b.dateLabel }}</span>
+              <sc-if value="{{ b.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:600;color:rgba(12,42,51,0.72);">{{ b.subLine }}</span></sc-if>
               <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:#0a6e85;">{{ b.code }}</span>
             </span>
             <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
-              <sc-if value="{{ b.isConfirmed }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;font-size:11px;font-weight:700;color:#0e6e46;background:rgba(46,180,120,0.18);border:1px solid rgba(46,180,120,0.35);border-radius:999px;padding:4px 10px;">{{ b.statusLabel }}</span></sc-if>
-              <sc-if value="{{ b.isCancelled }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;font-size:11px;font-weight:700;color:#8a3a2a;background:rgba(200,90,60,0.16);border:1px solid rgba(200,90,60,0.32);border-radius:999px;padding:4px 10px;">{{ b.statusLabel }}</span></sc-if>
+              <span style="{{ b.chipStyle }}">{{ b.statusLabel }}</span>
               <span style="font-size:13.5px;font-weight:700;color:#0a2a33;">{{ b.paidStr }}</span>
             </span>
           </button>
@@ -307,20 +337,52 @@
       <section style="border-radius:28px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:0 14px 44px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.8);padding:26px 26px 24px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
           <h1 style="font-weight:700;font-size:28px;letter-spacing:-0.02em;color:#0a2a33;margin:0;">Your booking</h1>
-          <sc-if value="{{ bk.isConfirmed }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#0e6e46;background:rgba(46,180,120,0.18);border:1px solid rgba(46,180,120,0.35);border-radius:999px;padding:5px 12px;">{{ bk.statusLabel }}</span></sc-if>
-          <sc-if value="{{ bk.isCancelled }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#8a3a2a;background:rgba(200,90,60,0.16);border:1px solid rgba(200,90,60,0.32);border-radius:999px;padding:5px 12px;">{{ bk.statusLabel }}</span></sc-if>
+          <span style="{{ bk.chipStyle }}">{{ bk.statusLabel }}</span>
         </div>
+
+        <!-- AWAITING_PAYMENT banner -->
+        <sc-if value="{{ bk.isAwaiting }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:18px 0 4px;border-radius:20px;background:linear-gradient(165deg,rgba(43,184,212,0.16),rgba(14,138,168,0.12));border:1px solid rgba(43,184,212,0.4);padding:18px 18px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0a5e7a;">Your request was accepted &#127881;</span>
+            <p style="margin:6px 0 14px;font-size:14px;line-height:1.5;color:rgba(12,42,51,0.72);">{{ bk.venueName }} accepted your request. Pay now to lock in set {{ bk.setLabel }} &mdash; this hold releases if payment isn&rsquo;t completed by <strong style="color:#0a2a33;">{{ bk.payDeadlineStr }}</strong> ({{ bk.payTimeLeft }}).</p>
+            <button onClick="{{ onPayNow }}" style="width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15.5px;padding:15px;cursor:pointer;box-shadow:0 12px 28px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);transition:filter .15s ease;" style-hover="filter:brightness(1.06);">Pay {{ bk.amountStr }} now</button>
+          </div>
+        </sc-if>
+
+        <!-- PENDING_REQUEST banner -->
+        <sc-if value="{{ bk.isPending }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:18px 0 4px;border-radius:20px;background:rgba(240,170,46,0.12);border:1px solid rgba(240,170,46,0.4);padding:16px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#a86a12;">Waiting on the venue</span>
+            <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:rgba(12,42,51,0.72);">This is a <strong style="color:#0a2a33;">Request to Book</strong> venue, so {{ bk.venueName }} confirms each request personally. You&rsquo;ll only be asked to pay <strong style="color:#0a2a33;">after</strong> they accept. Expected reply by <strong style="color:#0a2a33;">{{ bk.respondByStr }}</strong> ({{ bk.respondTimeLeft }}).</p>
+          </div>
+        </sc-if>
+
+        <!-- DECLINED -->
+        <sc-if value="{{ bk.isDeclined }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:18px 0 4px;border-radius:20px;background:rgba(200,90,60,0.1);border:1px solid rgba(200,90,60,0.3);padding:16px 18px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a3a2a;">Request declined</span>
+            <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:rgba(12,42,51,0.72);">{{ bk.declineReason }} You weren&rsquo;t charged. Try another set or date &mdash; front-row sets free up often.</p>
+          </div>
+        </sc-if>
+
+        <!-- EXPIRED -->
+        <sc-if value="{{ bk.isExpired }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:18px 0 4px;border-radius:20px;background:rgba(12,42,51,0.05);border:1px solid rgba(12,42,51,0.16);padding:16px 18px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5a6a72;">Request expired</span>
+            <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:rgba(12,42,51,0.72);">The venue didn&rsquo;t respond in time, so this request expired. You weren&rsquo;t charged &mdash; feel free to book again.</p>
+          </div>
+        </sc-if>
 
         <div style="background:rgba(255,255,255,0.4);border:1px dashed rgba(12,42,51,0.28);border-radius:18px;padding:15px;margin:18px 0 16px;">
           <span style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Booking code</span>
           <div style="font-size:27px;font-weight:700;letter-spacing:0.12em;color:#0a6e85;margin-top:5px;">{{ bk.code }}</div>
-          <p style="font-size:12px;line-height:1.4;color:rgba(12,42,51,0.55);margin:8px 0 0;">Show this code to staff when you arrive.</p>
+          <p style="font-size:12px;line-height:1.4;color:rgba(12,42,51,0.55);margin:8px 0 0;">{{ bk.codeCaption }}</p>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Venue</span><strong style="color:#0a2a33;">{{ bk.venueName }}</strong></div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Set</span><strong style="color:#0a2a33;">{{ bk.setLabel }}</strong></div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Date</span><strong style="color:#0a2a33;">{{ bk.dateLabel }}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Paid</span><strong style="color:#0a6e85;">{{ bk.paidStr }}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">{{ bk.amountLabel }}</span><strong style="color:#0a6e85;">{{ bk.paidStr }}</strong></div>
         <sc-if value="{{ bk.refundedStr }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Refunded</span><strong style="color:#0a2a33;">{{ bk.refundedStr }}</strong></div>
         </sc-if>
@@ -329,6 +391,23 @@
           <p role="status" style="margin:16px 0 0;font-size:13.5px;line-height:1.5;font-weight:600;color:#0a6e85;">{{ cancelDoneMsg }}</p>
         </sc-if>
 
+        <!-- PENDING: withdraw -->
+        <sc-if value="{{ bk.isPending }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(12,42,51,0.12);">
+            <sc-if value="{{ notWithdrawing }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ startWithdraw }}" style="border:1.5px solid rgba(200,90,60,0.5);border-radius:14px;background:rgba(255,255,255,0.5);color:#a3372a;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;cursor:pointer;">Withdraw request</button>
+            </sc-if>
+            <sc-if value="{{ withdrawConfirming }}" hint-placeholder-val="{{ false }}">
+              <p style="font-size:14px;font-weight:600;color:#0a2a33;margin:0 0 12px;">Withdraw this request? The venue will no longer see it.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button onClick="{{ confirmWithdraw }}" style="border:1px solid rgba(200,90,60,0.4);border-radius:14px;background:linear-gradient(180deg,#d96a4a,#b3432a);color:#fff;font:inherit;font-weight:700;font-size:14px;padding:11px 18px;cursor:pointer;box-shadow:0 8px 20px rgba(179,67,42,0.4);">Withdraw request</button>
+                <button onClick="{{ keepRequest }}" style="border:1.5px solid rgba(255,255,255,0.7);border-radius:14px;background:rgba(255,255,255,0.5);color:#0a4f5e;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;cursor:pointer;">Keep waiting</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- CONFIRMED: cancel -->
         <sc-if value="{{ bk.cancellable }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(12,42,51,0.12);">
             <h2 style="font-size:16px;font-weight:700;color:#0a2a33;margin:0 0 6px;">Cancel this booking</h2>
@@ -353,6 +432,10 @@
         <h1 style="font-weight:700;font-size:26px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 8px;">No booking yet</h1>
         <p style="font-size:14.5px;line-height:1.5;color:rgba(12,42,51,0.62);margin:0 0 20px;">Pick a beach, choose your exact set on the map, and your booking code will live here.</p>
         <button onClick="{{ onBack }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px 26px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Browse beaches</button>
+        <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(12,42,51,0.12);">
+          <p style="font-size:13px;color:rgba(12,42,51,0.55);margin:0 0 12px;">Booked on another device? Open it with your code.</p>
+          <button onClick="{{ onOpenFind }}" style="border:1.5px solid rgba(255,255,255,0.7);border-radius:16px;background:rgba(255,255,255,0.55);color:#0a4f5e;font:inherit;font-weight:600;font-size:14.5px;padding:12px 22px;cursor:pointer;">&#128269; Find my booking by code</button>
+        </div>
       </section>
     </sc-if>
   </main>
@@ -414,15 +497,18 @@
             <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Date</span><strong style="color:#0a2a33;">{{ dateLabel }}</strong></div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14.5px;"><span style="color:rgba(12,42,51,0.62);">Guest</span><strong style="color:#0a2a33;">{{ confirmGuest }}</strong></div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 4px;"><span style="color:rgba(12,42,51,0.62);font-size:15px;">Total</span><strong style="font-size:26px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;">{{ totalStr }}</strong></div>
-            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:16px;padding:13px 15px;margin-top:12px;">
-              <span style="width:34px;height:22px;border-radius:5px;background:linear-gradient(135deg,#1a1f71,#3a4bbf);flex-shrink:0;"></span>
-              <span style="flex:1;font-size:13.5px;color:#0a2a33;">Visa &middot;&middot;&middot;&middot; 4242</span>
-              <span style="font-size:13px;color:#0a6e85;font-weight:600;">Change</span>
-            </div>
-            <sc-if value="{{ paying }}" hint-placeholder-val="{{ false }}">
-              <p role="status" style="margin:14px 0 4px;font-size:13.5px;font-weight:600;color:#0a6e85;">Processing your payment &mdash; please wait&hellip;</p>
+            <sc-if value="{{ venueIsRequest }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:11px;background:rgba(240,170,46,0.12);border:1px solid rgba(240,170,46,0.38);border-radius:16px;padding:13px 15px;margin-top:14px;">
+                <span style="font-size:18px;line-height:1.2;">&#9993;</span>
+                <span style="font-size:12.8px;line-height:1.5;color:rgba(12,42,51,0.75);"><strong style="color:#0a2a33;">Request to Book.</strong> This venue reviews each request before payment. We&rsquo;ll send your request now &mdash; <strong style="color:#0a2a33;">you won&rsquo;t be charged yet</strong>. If the venue accepts, you&rsquo;ll get a notification with a link to pay {{ totalStr }} and lock in the set.</span>
+              </div>
             </sc-if>
-            <p style="margin:12px 0 6px;font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);">Free cancellation until the evening before. Your booking code arrives on-screen and by email.</p>
+            <sc-if value="{{ venueIsInstant }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:11px;background:rgba(43,184,212,0.12);border:1px solid rgba(43,184,212,0.34);border-radius:16px;padding:13px 15px;margin-top:14px;">
+                <span style="font-size:18px;line-height:1.2;">&#128179;</span>
+                <span style="font-size:12.8px;line-height:1.5;color:rgba(12,42,51,0.75);"><strong style="color:#0a2a33;">Instant Book.</strong> Next you&rsquo;ll pay securely to confirm this set right away. Free cancellation until the evening before &mdash; your booking code arrives on-screen and by email.</span>
+              </div>
+            </sc-if>
           </sc-if>
 
         </div>
@@ -457,6 +543,160 @@
           <button onClick="{{ onDone }}" style="width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:14px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);transition:filter .15s ease;" style-hover="filter:brightness(1.06);">Back to the beach</button>
           <button onClick="{{ onViewBooking }}" style="width:100%;border:1.5px solid rgba(255,255,255,0.7);border-radius:16px;background:rgba(255,255,255,0.5);color:#0a4f5e;font:inherit;font-weight:600;font-size:14.5px;padding:13px;cursor:pointer;">View or manage this booking</button>
         </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showPayment }}" hint-placeholder-val="{{ false }}">
+    <div data-riv-scroller data-screen-label="Payment" style="position:fixed;inset:0;z-index:55;overflow-y:auto;background:{{ bgStyle }};animation:rivFade .2s ease;">
+      <header style="position:sticky;top:0;z-index:2;background:rgba(255,255,255,0.14);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid rgba(255,255,255,0.22);">
+        <div style="width:100%;max-width:920px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 34% 30%, #ffe6a3, #f0aa2e 70%);box-shadow:0 0 0 3px rgba(255,255,255,0.18);display:block;"></span>
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:{{ ink }};">Secure checkout <span style="font-weight:500;opacity:.8;">&middot; Riviera</span></span>
+          </div>
+          <button onClick="{{ onClosePayment }}" style="font:inherit;font-size:13px;font-weight:600;color:{{ ink }};cursor:pointer;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:999px;padding:7px 15px;">Cancel</button>
+        </div>
+      </header>
+
+      <main style="width:100%;max-width:920px;margin:0 auto;padding:28px 24px 72px;display:grid;grid-template-columns:1fr;gap:20px;" data-pay-grid>
+        <div style="display:grid;grid-template-columns:{{ payCols }};gap:22px;align-items:start;" data-pay-cols>
+
+          <!-- LEFT: card form / states -->
+          <section style="border-radius:28px;background:rgba(255,255,255,0.62);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(255,255,255,0.68);box-shadow:0 18px 50px rgba(7,42,58,0.28),inset 0 1px 0 rgba(255,255,255,0.85);padding:26px 26px 24px;min-height:340px;">
+
+            <sc-if value="{{ payStatusReady }}" hint-placeholder-val="{{ true }}">
+              <h1 style="font-weight:700;font-size:23px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 3px;">Payment details</h1>
+              <p style="font-size:13px;color:rgba(12,42,51,0.6);margin:0 0 18px;">Enter your card to confirm the booking. Payments are processed securely by Stripe &mdash; Riviera never sees your card number.</p>
+
+              <div style="border-radius:18px;border:1px solid rgba(12,42,51,0.14);background:rgba(255,255,255,0.7);padding:16px 16px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);">
+                <span style="font-size:10.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(12,42,51,0.42);">Stripe Payment Element</span>
+                <div style="margin-top:11px;display:flex;flex-direction:column;gap:10px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;height:44px;border-radius:11px;border:1px solid rgba(12,42,51,0.16);background:#ffffff;padding:0 13px;">
+                    <span style="font-size:14px;color:rgba(12,42,51,0.45);">Card number</span>
+                    <span style="display:inline-flex;gap:5px;">
+                      <span style="width:26px;height:16px;border-radius:3px;background:linear-gradient(135deg,#1a1f71,#3a4bbf);"></span>
+                      <span style="width:26px;height:16px;border-radius:3px;background:linear-gradient(135deg,#eb001b,#f79e1b);"></span>
+                    </span>
+                  </div>
+                  <div style="display:flex;gap:10px;">
+                    <div style="flex:1;display:flex;align-items:center;height:44px;border-radius:11px;border:1px solid rgba(12,42,51,0.16);background:#ffffff;padding:0 13px;font-size:14px;color:rgba(12,42,51,0.45);">MM / YY</div>
+                    <div style="flex:1;display:flex;align-items:center;height:44px;border-radius:11px;border:1px solid rgba(12,42,51,0.16);background:#ffffff;padding:0 13px;font-size:14px;color:rgba(12,42,51,0.45);">CVC</div>
+                  </div>
+                  <div style="display:flex;align-items:center;height:44px;border-radius:11px;border:1px solid rgba(12,42,51,0.16);background:#ffffff;padding:0 13px;font-size:14px;color:rgba(12,42,51,0.45);">Country &middot; Postcode</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11px;color:rgba(12,42,51,0.42);"><span style="font-size:13px;">&#128274;</span> Encrypted &amp; PCI-compliant &middot; powered by Stripe</div>
+              </div>
+
+              <div style="margin-top:16px;">
+                <span style="font-size:10.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.45);">Demo test card</span>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:9px;">
+                  <sc-for list="{{ payMethods }}" as="pm" hint-placeholder-count="3">
+                    <sc-if value="{{ pm.active }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ pm.onSelect }}" style="display:flex;align-items:center;gap:11px;width:100%;font:inherit;text-align:left;padding:11px 13px;border-radius:13px;cursor:pointer;border:1.5px solid rgba(14,138,168,0.7);background:rgba(43,184,212,0.16);">
+                        <span style="width:16px;height:16px;border-radius:50%;border:5px solid #0e8aa8;flex-shrink:0;"></span>
+                        <span style="flex:1;font-size:13.5px;font-weight:600;color:#0a2a33;">{{ pm.label }}</span>
+                        <span style="font-size:11.5px;color:rgba(12,42,51,0.55);">{{ pm.hint }}</span>
+                      </button>
+                    </sc-if>
+                    <sc-if value="{{ pm.inactive }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ pm.onSelect }}" style="display:flex;align-items:center;gap:11px;width:100%;font:inherit;text-align:left;padding:11px 13px;border-radius:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.5);">
+                        <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(12,42,51,0.3);flex-shrink:0;"></span>
+                        <span style="flex:1;font-size:13.5px;font-weight:600;color:#0a2a33;">{{ pm.label }}</span>
+                        <span style="font-size:11.5px;color:rgba(12,42,51,0.5);">{{ pm.hint }}</span>
+                      </button>
+                    </sc-if>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ payConfirming }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;padding:44px 10px 30px;">
+                <span style="display:inline-block;width:52px;height:52px;border-radius:50%;border:4px solid rgba(43,184,212,0.25);border-top-color:#0e8aa8;animation:rivSpin .8s linear infinite;margin-bottom:20px;"></span>
+                <h1 style="font-weight:700;font-size:22px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 8px;">Confirming your booking&hellip;</h1>
+                <p style="font-size:14px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0 auto;max-width:340px;">Your payment went through. We&rsquo;re waiting for the confirmation from our payment provider &mdash; this takes just a moment. Please don&rsquo;t close this page.</p>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ payFailed }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;padding:30px 10px 18px;">
+                <div style="width:60px;height:60px;border-radius:50%;background:rgba(200,90,60,0.14);border:1px solid rgba(200,90,60,0.32);color:#a3372a;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">&#10005;</div>
+                <h1 style="font-weight:700;font-size:22px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 8px;">Payment failed</h1>
+                <p style="font-size:14px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0 auto 20px;max-width:340px;">Your card was declined and you weren&rsquo;t charged. Your set is still held for a few minutes &mdash; try again or use a different card.</p>
+                <button onClick="{{ onRetryPayment }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px 30px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Try payment again</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ payTaken }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;padding:30px 10px 18px;">
+                <div style="width:60px;height:60px;border-radius:50%;background:rgba(240,170,46,0.18);border:1px solid rgba(240,170,46,0.4);color:#a86a12;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">&#9888;</div>
+                <h1 style="font-weight:700;font-size:22px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 8px;">Someone just booked this set</h1>
+                <p style="font-size:14px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0 auto 20px;max-width:360px;">This set was taken by another guest while you were paying, so we stopped the charge &mdash; <strong style="color:#0a2a33;">you weren&rsquo;t charged anything</strong>. Head back to the map and pick another spot.</p>
+                <button onClick="{{ onClosePayment }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px 30px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Back to the map</button>
+              </div>
+            </sc-if>
+          </section>
+
+          <!-- RIGHT: summary sidebar -->
+          <aside style="border-radius:28px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.62);box-shadow:0 14px 44px rgba(7,42,58,0.24),inset 0 1px 0 rgba(255,255,255,0.8);padding:22px 22px 20px;position:sticky;top:88px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Order summary</span>
+            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14px;"><span style="color:rgba(12,42,51,0.62);">Venue</span><strong style="color:#0a2a33;text-align:right;">{{ paySummary.venueName }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14px;"><span style="color:rgba(12,42,51,0.62);">Set</span><strong style="color:#0a2a33;">{{ paySummary.seat }} &middot; {{ paySummary.tierLabel }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(12,42,51,0.12);font-size:14px;"><span style="color:rgba(12,42,51,0.62);">Date</span><strong style="color:#0a2a33;">{{ paySummary.dateLabel }}</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:14px;"><span style="color:rgba(12,42,51,0.62);">Includes</span><strong style="color:#0a2a33;text-align:right;">2 loungers + umbrella</strong></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 0 4px;margin-top:6px;border-top:1px solid rgba(12,42,51,0.14);"><span style="color:rgba(12,42,51,0.62);font-size:15px;">Total</span><strong style="font-size:25px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;">{{ paySummary.totalStr }}</strong></div>
+
+            <sc-if value="{{ payStatusReady }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ onConfirmPayment }}" style="margin-top:16px;width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15.5px;padding:15px;cursor:pointer;box-shadow:0 12px 28px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);transition:filter .15s ease;" style-hover="filter:brightness(1.06);">Pay {{ paySummary.totalStr }}</button>
+              <p style="margin:11px 0 0;font-size:11.5px;line-height:1.45;color:rgba(12,42,51,0.5);text-align:center;">By paying you agree to Riviera&rsquo;s terms. Free cancellation until the evening before.</p>
+            </sc-if>
+            <sc-if value="{{ payConfirming }}" hint-placeholder-val="{{ false }}">
+              <p role="status" style="margin:16px 0 0;font-size:13px;font-weight:600;color:#0a6e85;text-align:center;">Finalising&hellip; hang tight.</p>
+            </sc-if>
+          </aside>
+
+        </div>
+      </main>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showRequestSent }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onRequestDone }}" style="position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
+      <div onClick="{{ stop }}" data-riv-scroller data-screen-label="Request sent" style="width:100%;max-width:410px;max-height:calc(100vh - 40px);overflow-y:auto;background:rgba(255,255,255,0.74);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:34px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);text-align:center;padding:34px 30px 28px;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(240,170,46,0.18);border:1px solid rgba(255,255,255,0.6);color:#a86a12;display:flex;align-items:center;justify-content:center;font-size:29px;margin:0 auto 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">&#9993;</div>
+        <h2 style="font-weight:700;font-size:27px;letter-spacing:-0.02em;margin:0 0 8px;color:#0a2a33;">Request sent</h2>
+        <p style="color:rgba(12,42,51,0.64);margin:0 0 18px;font-size:14.5px;line-height:1.5;">Set {{ reqSeat }} at {{ reqVenueName }} on {{ reqDateLabel }} is a <strong style="color:#0a2a33;">Request to Book</strong> venue. The host needs to accept before you pay &mdash; <strong style="color:#0a2a33;">you haven&rsquo;t been charged</strong>.</p>
+        <div style="background:rgba(43,184,212,0.1);border:1px solid rgba(43,184,212,0.3);border-radius:18px;padding:14px 16px;margin-bottom:14px;text-align:left;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="font-size:16px;">&#9203;</span>
+            <span style="font-size:13px;line-height:1.5;color:rgba(12,42,51,0.72);">We&rsquo;ll notify you by email as soon as the venue responds &mdash; expected by <strong style="color:#0a2a33;">{{ reqRespondBy }}</strong>. If accepted, you&rsquo;ll get a link to pay <strong style="color:#0a2a33;">{{ reqTotalStr }}</strong> and lock in the set.</span>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.4);border:1px dashed rgba(12,42,51,0.28);border-radius:18px;padding:14px;margin-bottom:20px;">
+          <span style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Request reference</span>
+          <div style="font-size:26px;font-weight:700;letter-spacing:0.12em;color:#0a6e85;margin-top:5px;">{{ requestCode }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button onClick="{{ onRequestView }}" style="width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:14px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Track this request</button>
+          <button onClick="{{ onRequestDone }}" style="width:100%;border:1.5px solid rgba(255,255,255,0.7);border-radius:16px;background:rgba(255,255,255,0.5);color:#0a4f5e;font:inherit;font-weight:600;font-size:14.5px;padding:13px;cursor:pointer;">Back to the beach</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ findOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseFind }}" style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
+      <div onClick="{{ stop }}" data-screen-label="Find booking" style="width:100%;max-width:390px;background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:30px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);padding:28px 26px 24px;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+        <h2 style="font-weight:700;font-size:23px;letter-spacing:-0.02em;margin:0 0 5px;color:#0a2a33;">Find your booking</h2>
+        <p style="font-size:13.5px;line-height:1.5;color:rgba(12,42,51,0.6);margin:0 0 18px;">Booked on another device or by a friend? Enter your booking code to open it here. It looks like <strong style="color:#0a2a33;">RIV-K4TQ</strong> and is on your confirmation email.</p>
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Booking code</span>
+          <input type="text" value="{{ findCode }}" onChange="{{ onFindCode }}" placeholder="RIV-XXXX" autoComplete="off" style="font:inherit;font-size:18px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0a2a33;background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.8);border-radius:14px;padding:13px 15px;"/>
+        </label>
+        <sc-if value="{{ findError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:10px 0 0;font-size:13px;font-weight:600;color:#b3362b;">{{ findError }}</p></sc-if>
+        <button onClick="{{ onSubmitFind }}" style="margin-top:16px;width:100%;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:{{ ctaGrad }};color:#fff;font:inherit;font-weight:700;font-size:15px;padding:13px;cursor:pointer;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Open booking</button>
+        <p style="margin:12px 0 0;font-size:11.5px;color:rgba(12,42,51,0.45);text-align:center;">Demo tip &mdash; try RIV-K4TQ or RIV-T7BC.</p>
       </div>
     </div>
   </sc-if>
@@ -511,7 +751,7 @@
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:820},&quot;showTilePrices&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Beach map&quot;},&quot;instantBookOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Discovery&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:820},&quot;showTilePrices&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Beach map&quot;},&quot;instantBookOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Discovery&quot;},&quot;demoLoadError&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;none&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;discover&quot;,&quot;map&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo states&quot;}}">
 class Component extends DCLogic {
   state = {
     view: 'discover',
@@ -542,6 +782,16 @@ class Component extends DCLogic {
     cancelConfirming: false,
     cancelDone: null,
     venues: this.buildVenues(),
+    payContext: null,        // {kind:'new'} | {kind:'existing', code}
+    payStatus: 'ready',      // ready | confirming | failed | taken
+    payMethod: 'ok',         // ok | decline | taken  (demo card outcome)
+    requestCode: '',
+    findOpen: false,
+    findCode: '',
+    findError: '',
+    withdrawConfirming: false,
+    retriedDiscover: false,
+    retriedMap: false,
   };
 
   bookingDefaults() {
@@ -590,15 +840,24 @@ class Component extends DCLogic {
 
   seedBookings() {
     const iso = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); };
+    const eur = (m) => ({ minorUnits: m, currency: 'EUR' });
+    // A now+hours ISO-ish label for payment deadlines
+    const deadline = (hrs) => { const d = new Date(); d.setHours(d.getHours() + hrs); return d.toISOString(); };
     return [
-      { code: 'RIV-K4TQ', status: 'CONFIRMED', venueId: 1, venueName: 'Sereno Beach Club', setId: 10005, rowLabel: 'A', positionNo: 5, bookingDate: iso(1), amount: { minorUnits: 3400, currency: 'EUR' }, contactName: 'You', refundedMinor: null },
-      { code: 'RIV-88MD', status: 'CONFIRMED', venueId: 2, venueName: 'Drymades Sun', setId: 20018, rowLabel: 'B', positionNo: 6, bookingDate: iso(4), amount: { minorUnits: 1800, currency: 'EUR' }, contactName: 'You', refundedMinor: null },
-      { code: 'RIV-QP2N', status: 'CANCELLED', venueId: 4, venueName: 'Luna Lido', setId: 40027, rowLabel: 'C', positionNo: 3, bookingDate: iso(2), amount: { minorUnits: 1350, currency: 'EUR' }, contactName: 'You', refundedMinor: 1350 },
+      { code: 'RIV-K4TQ', status: 'CONFIRMED', venueId: 1, venueName: 'Sereno Beach Club', setId: 10005, rowLabel: 'A', positionNo: 5, bookingDate: iso(2), amount: eur(3400), contactName: 'You', refundedMinor: null, mode: 'INSTANT' },
+      { code: 'RIV-9WPX', status: 'PENDING_REQUEST', venueId: 3, venueName: 'Palas\u00eb Pearl', setId: 30003, rowLabel: 'A', positionNo: 3, bookingDate: iso(3), amount: eur(4050), contactName: 'You', refundedMinor: null, mode: 'REQUEST', requestedAt: deadline(-4), respondBy: deadline(20) },
+      { code: 'RIV-T7BC', status: 'AWAITING_PAYMENT', venueId: 5, venueName: 'Drymades Hideaway', setId: 50002, rowLabel: 'A', positionNo: 2, bookingDate: iso(4), amount: eur(3100), contactName: 'You', refundedMinor: null, mode: 'REQUEST', payDeadline: deadline(22) },
+      { code: 'RIV-2ND8', status: 'DECLINED', venueId: 3, venueName: 'Palas\u00eb Pearl', setId: 30008, rowLabel: 'B', positionNo: 4, bookingDate: iso(5), amount: eur(2600), contactName: 'You', refundedMinor: null, mode: 'REQUEST', declineReason: 'The venue is fully committed for that date.' },
+      { code: 'RIV-XR31', status: 'EXPIRED', venueId: 5, venueName: 'Drymades Hideaway', setId: 50014, rowLabel: 'B', positionNo: 6, bookingDate: iso(6), amount: eur(2000), contactName: 'You', refundedMinor: null, mode: 'REQUEST' },
+      { code: 'RIV-88MD', status: 'CONFIRMED', venueId: 2, venueName: 'Drymades Sun', setId: 20018, rowLabel: 'B', positionNo: 6, bookingDate: iso(5), amount: eur(1800), contactName: 'You', refundedMinor: null, mode: 'INSTANT' },
+      { code: 'RIV-QP2N', status: 'CANCELLED', venueId: 4, venueName: 'Luna Lido', setId: 40027, rowLabel: 'C', positionNo: 3, bookingDate: iso(2), amount: eur(1350), contactName: 'You', refundedMinor: 1350, mode: 'INSTANT' },
+      { code: 'RIV-H5KP', status: 'COMPLETED', venueId: 1, venueName: 'Sereno Beach Club', setId: 10012, rowLabel: 'B', positionNo: 2, bookingDate: iso(-3), amount: eur(2100), contactName: 'You', refundedMinor: null, mode: 'INSTANT' },
+      { code: 'RIV-J3RM', status: 'NO_SHOW', venueId: 2, venueName: 'Drymades Sun', setId: 20009, rowLabel: 'A', positionNo: 4, bookingDate: iso(-6), amount: eur(2790), contactName: 'You', refundedMinor: null, mode: 'INSTANT' },
     ];
   }
 
   persistBookings(list) {
-    try { localStorage.setItem('rivlg-bookings', JSON.stringify(list)); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('rivlg-bookings-v3', JSON.stringify(list)); } catch (e) { /* ignore */ }
   }
 
   tomorrow() {
@@ -610,12 +869,12 @@ class Component extends DCLogic {
   buildVenues() {
     const cur = 'EUR';
     const defs = [
-      { id: 1, name: 'Sereno Beach Club', beach: 'Dhërmi', region: 'Himarë', rating: 48, reviews: 212, mode: 'INSTANT', base: 2200, toWater: 15, amenities: ['Beach bar', 'Restaurant', 'Free parking', 'Showers'] },
-      { id: 2, name: 'Drymades Sun', beach: 'Drymades', region: 'Himarë', rating: 46, reviews: 158, mode: 'INSTANT', base: 1800, toWater: 25, amenities: ['Beach bar', 'Water sports', 'Showers'] },
-      { id: 3, name: 'Palasë Pearl', beach: 'Palasë', region: 'Himarë', rating: 49, reviews: 341, mode: 'REQUEST', base: 2600, toWater: 8, amenities: ['Beach bar', 'Restaurant', 'WiFi'] },
-      { id: 4, name: 'Luna Lido', beach: 'Dhërmi', region: 'Himarë', rating: 45, reviews: 96, mode: 'INSTANT', base: 1600, toWater: 30, amenities: ['Cafe', 'Free parking', 'Showers'] },
-      { id: 5, name: 'Drymades Hideaway', beach: 'Drymades', region: 'Himarë', rating: 47, reviews: 74, mode: 'REQUEST', base: 2000, toWater: 40, cols: 20, amenities: ['Snack shack', 'Snorkelling', 'Quiet bay'] },
-      { id: 6, name: 'Palasë Bay Club', beach: 'Palasë', region: 'Himarë', rating: 44, reviews: 130, mode: 'INSTANT', base: 1400, toWater: 20, cols: 40, rowCount: 50, amenities: ['Beach bar', 'Free parking', 'Pet friendly'] },
+      { id: 1, name: 'Sereno Beach Club', beach: 'Dhërmi', region: 'Himarë', rating: 48, reviews: 212, mode: 'INSTANT', base: 2200, toWater: 15, amenities: ['Beach bar', 'Restaurant', 'Free parking', 'Showers'], description: 'A front-line beach club on Dh\u00ebrmi bay, where the pebbles meet clear turquoise water. Cocktails and a full kitchen keep the day going from sunrise swims to sunset.' },
+      { id: 2, name: 'Drymades Sun', beach: 'Drymades', region: 'Himarë', rating: 46, reviews: 158, mode: 'INSTANT', base: 1800, toWater: 25, amenities: ['Beach bar', 'Water sports', 'Showers'], description: 'Laid-back loungers on the wide Drymades sands, with paddleboards and kayaks a few steps from your umbrella.' },
+      { id: 3, name: 'Palasë Pearl', beach: 'Palasë', region: 'Himarë', rating: 49, reviews: 341, mode: 'REQUEST', base: 2600, toWater: 8, amenities: ['Beach bar', 'Restaurant', 'WiFi'], description: 'The most sought-after front row on Palas\u00eb \u2014 just eight metres to the shoreline. Requests are confirmed personally by the host.' },
+      { id: 4, name: 'Luna Lido', beach: 'Dhërmi', region: 'Himarë', rating: 45, reviews: 96, mode: 'INSTANT', base: 1600, toWater: 30, amenities: ['Cafe', 'Free parking', 'Showers'], description: 'A relaxed, family-friendly lido with shaded loungers, an easy car park, and a cafe for long lazy lunches.' },
+      { id: 5, name: 'Drymades Hideaway', beach: 'Drymades', region: 'Himarë', rating: 47, reviews: 74, mode: 'REQUEST', base: 2000, toWater: 40, cols: 20, amenities: ['Snack shack', 'Snorkelling', 'Quiet bay'], description: 'A tucked-away cove at the quiet end of Drymades \u2014 calm water for snorkelling and far fewer crowds. Book by request with the owner.' },
+      { id: 6, name: 'Palasë Bay Club', beach: 'Palasë', region: 'Himarë', rating: 44, reviews: 130, mode: 'INSTANT', base: 1400, toWater: 20, cols: 40, rowCount: 50, amenities: ['Beach bar', 'Free parking', 'Pet friendly'], description: 'The largest bay club on Palas\u00eb with rows stretching down to the water \u2014 room for everyone, dogs welcome, and easy parking.' },
     ];
     return defs.map((d) => ({ ...d, currency: cur, sets: this.buildSets(d.id, d.base, cur, d.cols, d.rowCount) }));
   }
@@ -701,7 +960,110 @@ class Component extends DCLogic {
     if (errs.fullName || errs.email || errs.phone) { this.setState({ submitAttempted: true }); return; }
     this.setState({ bookingStep: 2, submitAttempted: false });
   };
-  bookingBack = () => this.setState({ bookingStep: 1, paying: false });
+  bookingBack = () => this.setState({ bookingStep: 1 });
+
+  // ----- dialog primary: branches on venue booking mode -----
+  dialogPrimary = () => {
+    const s = this.state;
+    if (s.bookingStep === 1) { this.detailsContinue(); return; }
+    const venue = s.venues.find((v) => v.id === s.venueId);
+    if (venue && venue.mode === 'REQUEST') this.sendRequest();
+    else this.goToPayment({ kind: 'new' });
+  };
+
+  goToPayment = (ctx) => this.setState({ stage: 'payment', payContext: ctx, payStatus: 'ready', payMethod: 'ok' });
+  setPayMethod = (m) => this.setState({ payMethod: m });
+
+  payNow = (code) => {
+    const b = this.state.bookings.find((x) => x.code === code);
+    if (!b) return;
+    this.setState({ stage: 'payment', payContext: { kind: 'existing', code }, payStatus: 'ready', payMethod: 'ok', venueId: b.venueId, setId: b.setId, date: b.bookingDate });
+  };
+  closePayment = () => {
+    if (this._payTimer) clearTimeout(this._payTimer);
+    const ctx = this.state.payContext;
+    // returning from an existing-booking payment lands back on that booking
+    if (ctx && ctx.kind === 'existing') this.setState({ stage: 'none', view: 'booking', payStatus: 'ready', payContext: null });
+    else this.setState({ stage: 'none', setId: null, payStatus: 'ready', payContext: null });
+  };
+
+  confirmPayment = () => {
+    const s = this.state;
+    if (s.payStatus === 'confirming') return;
+    if (s.payMethod === 'decline') { this.setState({ payStatus: 'failed' }); return; }
+    if (s.payMethod === 'taken') { this.setState({ payStatus: 'taken' }); return; }
+    this.setState({ payStatus: 'confirming' });
+    this._payTimer = setTimeout(() => this.finalizePayment(), 1700);
+  };
+  retryPayment = () => this.setState({ payStatus: 'ready' });
+
+  finalizePayment = () => {
+    this.setState((st) => {
+      const ctx = st.payContext || { kind: 'new' };
+      if (ctx.kind === 'existing') {
+        const bookings = st.bookings.map((b) => (b.code === ctx.code ? { ...b, status: 'CONFIRMED' } : b));
+        this.persistBookings(bookings);
+        const b = bookings.find((x) => x.code === ctx.code);
+        const venues = st.venues.map((v) => (v.id !== b.venueId ? v : { ...v, sets: v.sets.map((x) => (x.id !== b.setId ? x : { ...x, availability: 'TAKEN' })) }));
+        return { bookings, venues, stage: 'confirmed', code: ctx.code, selectedCode: ctx.code, payStatus: 'ready', payContext: null };
+      }
+      const venue = st.venues.find((v) => v.id === st.venueId);
+      const set = venue ? venue.sets.find((x) => x.id === st.setId) : null;
+      if (!venue || !set) return { payStatus: 'ready' };
+      const code = 'RIV-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+      const booking = {
+        code, status: 'CONFIRMED', venueId: venue.id, venueName: venue.name,
+        setId: set.id, rowLabel: set.rowLabel, positionNo: set.positionNo,
+        bookingDate: st.date, amount: set.price, contactName: st.contact.fullName,
+        refundedMinor: null, mode: 'INSTANT',
+      };
+      const bookings = [booking, ...st.bookings];
+      this.persistBookings(bookings);
+      const venues = st.venues.map((v) => (v.id !== st.venueId ? v : { ...v, sets: v.sets.map((x) => (x.id !== st.setId ? x : { ...x, availability: 'TAKEN' })) }));
+      return { venues, stage: 'confirmed', code, bookings, selectedCode: code, payStatus: 'ready', payContext: null };
+    });
+  };
+
+  // ----- Request to Book -----
+  sendRequest = () => {
+    this.setState((st) => {
+      const venue = st.venues.find((v) => v.id === st.venueId);
+      const set = venue ? venue.sets.find((x) => x.id === st.setId) : null;
+      if (!venue || !set) return {};
+      const code = 'RIV-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+      const respondBy = (() => { const d = new Date(); d.setHours(d.getHours() + 24); return d.toISOString(); })();
+      const booking = {
+        code, status: 'PENDING_REQUEST', venueId: venue.id, venueName: venue.name,
+        setId: set.id, rowLabel: set.rowLabel, positionNo: set.positionNo,
+        bookingDate: st.date, amount: set.price, contactName: st.contact.fullName,
+        refundedMinor: null, mode: 'REQUEST', requestedAt: new Date().toISOString(), respondBy,
+      };
+      const bookings = [booking, ...st.bookings];
+      this.persistBookings(bookings);
+      return { bookings, stage: 'requestSent', requestCode: code, selectedCode: code };
+    });
+  };
+
+  startWithdraw = () => this.setState({ withdrawConfirming: true });
+  keepRequest = () => this.setState({ withdrawConfirming: false });
+  confirmWithdraw = () => {
+    this.setState((s) => {
+      const bookings = s.bookings.map((b) => (b.code === s.selectedCode && b.status === 'PENDING_REQUEST' ? { ...b, status: 'CANCELLED', withdrawn: true } : b));
+      this.persistBookings(bookings);
+      return { bookings, withdrawConfirming: false };
+    });
+  };
+
+  // ----- Find my booking by code -----
+  openFind = () => this.setState({ findOpen: true, findCode: '', findError: '', menuOpen: false, userMenuOpen: false, themeOpen: false });
+  closeFind = () => this.setState({ findOpen: false });
+  submitFind = () => {
+    const code = this.state.findCode.trim().toUpperCase();
+    if (!code) { this.setState({ findError: 'Enter your booking code.' }); return; }
+    const b = this.state.bookings.find((x) => x.code.toUpperCase() === code);
+    if (!b) { this.setState({ findError: 'No booking found for ' + code + '. Check the code and try again.' }); return; }
+    this.setState({ findOpen: false, view: 'booking', selectedCode: b.code, findCode: '', findError: '', cancelConfirming: false, cancelDone: null, withdrawConfirming: false });
+  };
 
   startCancel = () => this.setState({ cancelConfirming: true });
   keepBooking = () => this.setState({ cancelConfirming: false });
@@ -747,13 +1109,9 @@ class Component extends DCLogic {
     window.addEventListener('resize', this._onResize);
     try {
       let list = [];
-      const raw = localStorage.getItem('rivlg-bookings');
+      const raw = localStorage.getItem('rivlg-bookings-v3');
       if (raw) list = JSON.parse(raw) || [];
-      if (!list.length) {
-        const old = localStorage.getItem('rivlg-last-booking');
-        if (old) list = [JSON.parse(old)];
-      }
-      if (list.length < 2) {
+      if (list.length < 9) {
         const have = new Set(list.map((b) => b.code));
         list = [...list, ...this.seedBookings().filter((b) => !have.has(b.code))];
         this.persistBookings(list);
@@ -800,31 +1158,43 @@ class Component extends DCLogic {
     if (Math.abs(dx) > 45) { if (dx < 0) this.goNext(); else this.goPrev(); }
   };
 
-  onPay = () => {
-    if (this.state.paying) return;
-    this.setState({ paying: true });
-    this._payTimer = setTimeout(() => {
-      const s = this.state;
-      const venue = s.venues.find((v) => v.id === s.venueId);
-      const set = venue ? venue.sets.find((x) => x.id === s.setId) : null;
-      if (!venue || !set) { this.setState({ paying: false }); return; }
-      const code = 'RIV-' + Math.random().toString(36).slice(2, 6).toUpperCase();
-      const booking = {
-        code, status: 'CONFIRMED', venueId: venue.id, venueName: venue.name,
-        setId: set.id, rowLabel: set.rowLabel, positionNo: set.positionNo,
-        bookingDate: s.date, amount: set.price, contactName: s.contact.fullName,
-        refundedMinor: null,
-      };
-      this.setState((st) => {
-        const bookings = [booking, ...st.bookings];
-        this.persistBookings(bookings);
-        const venues = st.venues.map((v) =>
-          v.id !== st.venueId ? v : { ...v, sets: v.sets.map((x) => (x.id !== st.setId ? x : { ...x, availability: 'TAKEN' })) }
-        );
-        return { venues, stage: 'confirmed', code, bookings, selectedCode: code, paying: false, cancelDone: null, cancelConfirming: false };
-      });
-    }, 1400);
+  onPay = () => { /* superseded by dedicated payment page (confirmPayment) */ };
+
+  STATUS_META = {
+    CONFIRMED:        { label: 'Confirmed',        fg: '#0e6e46', bg: 'rgba(46,180,120,0.18)',  bd: 'rgba(46,180,120,0.35)',  rank: 2 },
+    PENDING_REQUEST:  { label: 'Pending request',  fg: '#a86a12', bg: 'rgba(240,170,46,0.2)',   bd: 'rgba(240,170,46,0.42)',  rank: 1 },
+    AWAITING_PAYMENT: { label: 'Awaiting payment', fg: '#0a5e7a', bg: 'rgba(43,184,212,0.2)',   bd: 'rgba(43,184,212,0.5)',   rank: 0 },
+    DECLINED:         { label: 'Declined',         fg: '#8a3a2a', bg: 'rgba(200,90,60,0.16)',   bd: 'rgba(200,90,60,0.32)',   rank: 3 },
+    EXPIRED:          { label: 'Expired',          fg: '#5a6a72', bg: 'rgba(12,42,51,0.08)',    bd: 'rgba(12,42,51,0.2)',     rank: 4 },
+    CANCELLED:        { label: 'Cancelled',        fg: '#8a3a2a', bg: 'rgba(200,90,60,0.16)',   bd: 'rgba(200,90,60,0.32)',   rank: 5 },
+    COMPLETED:        { label: 'Completed',        fg: '#0a5e6e', bg: 'rgba(43,184,212,0.14)',  bd: 'rgba(43,184,212,0.3)',   rank: 6 },
+    NO_SHOW:          { label: 'No-show',          fg: '#7a4a3a', bg: 'rgba(120,74,58,0.14)',   bd: 'rgba(120,74,58,0.32)',   rank: 7 },
   };
+  chipStyleOf(status) {
+    const m = this.STATUS_META[status] || this.STATUS_META.CONFIRMED;
+    return 'display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:0.01em;border-radius:999px;padding:4px 10px;color:' + m.fg + ';background:' + m.bg + ';border:1px solid ' + m.bd + ';';
+  }
+  chipStyleLg(status) {
+    const m = this.STATUS_META[status] || this.STATUS_META.CONFIRMED;
+    return 'display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:999px;padding:5px 12px;color:' + m.fg + ';background:' + m.bg + ';border:1px solid ' + m.bd + ';';
+  }
+  // "Fri, 3 Jul · 18:00" style for a deadline instant
+  formatDeadline(isoInstant) {
+    const d = new Date(isoInstant);
+    if (isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-IE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  }
+  hoursLeft(isoInstant) {
+    const d = new Date(isoInstant);
+    if (isNaN(d.getTime())) return null;
+    return Math.max(0, Math.round((d.getTime() - Date.now()) / 3600000));
+  }
+  timeLeftLabel(isoInstant) {
+    const h = this.hoursLeft(isoInstant);
+    if (h == null) return '';
+    if (h >= 24) return Math.floor(h / 24) + 'd ' + (h % 24) + 'h left';
+    return h + 'h left';
+  }
 
   renderVals() {
     const s = this.state;
@@ -880,7 +1250,7 @@ class Component extends DCLogic {
       venueView = {
         id: venue.id, name: venue.name, location: venue.beach + ' \u00b7 ' + venue.region, modeLabel: modeLabel(venue.mode),
         ratingStr: (venue.rating / 10).toFixed(1), reviews: venue.reviews, fromStr: fp ? fmt(fp) : '\u2014',
-        toWater: venue.toWater + 'm', amenities: venue.amenities,
+        toWater: venue.toWater + 'm', amenities: venue.amenities, description: venue.description || '',
       };
       const byRow = {};
       venue.sets.forEach((st) => { (byRow[st.rowLabel] = byRow[st.rowLabel] || []).push(st); });
@@ -928,6 +1298,7 @@ class Component extends DCLogic {
     }
 
     const dialogSet = s.setId != null && venue ? venue.sets.find((x) => x.id === s.setId) : null;
+    const venueIsRequest = !!(venue && venue.mode === 'REQUEST');
     let dialog = null, steps = [], totalStr = '', primaryLabel = 'Continue';
     const bStep = s.bookingStep;
     if (dialogSet && venue) {
@@ -936,41 +1307,90 @@ class Component extends DCLogic {
         venueName: venue.name, seat: dialogSet.rowLabel + String(dialogSet.positionNo),
         rowLabel: dialogSet.rowLabel, tierLabel: premium ? 'Front row \u00b7 Premium' : 'Standard set',
         included: '2 loungers + umbrella \u00b7 full day',
+        modeLabel: modeLabel(venue.mode),
       };
-      const stepDefs = [{ n: 1, label: 'Details' }, { n: 2, label: 'Pay' }];
+      const stepDefs = [{ n: 1, label: 'Details' }, { n: 2, label: 'Review' }];
       steps = stepDefs.map((d, i) => ({
         n: d.n, label: d.label, active: bStep === d.n, inactive: bStep !== d.n, notLast: i < stepDefs.length - 1,
       }));
       totalStr = fmt(dialogSet.price);
-      primaryLabel = bStep === 1 ? 'Continue to payment' : (s.paying ? 'Processing\u2026' : 'Pay ' + totalStr);
+      if (bStep === 1) primaryLabel = 'Continue';
+      else primaryLabel = venueIsRequest ? 'Send request' : 'Continue to payment';
     }
     const cErrs = this.contactErrors(s.contact);
     const showErr = s.submitAttempted;
 
-    const bkList = s.bookings.map((b) => ({
-      code: b.code, venueName: b.venueName,
-      setLabel: b.rowLabel + b.positionNo,
-      dateLabel: this.formatDate(b.bookingDate),
-      paidStr: fmt(b.amount),
-      statusLabel: b.status === 'CONFIRMED' ? 'Confirmed' : 'Cancelled',
-      isConfirmed: b.status === 'CONFIRMED', isCancelled: b.status !== 'CONFIRMED',
-      onOpen: () => this.setState({ selectedCode: b.code, cancelConfirming: false, cancelDone: null }),
-    }));
+    // ---- bookings list (ordered: action-needed first, then closed) ----
+    const bkSorted = s.bookings.slice().sort((a, b) => {
+      const ra = (this.STATUS_META[a.status] || {}).rank ?? 9;
+      const rb = (this.STATUS_META[b.status] || {}).rank ?? 9;
+      if (ra !== rb) return ra - rb;
+      return (a.bookingDate < b.bookingDate ? -1 : 1);
+    });
+    const subLineOf = (b) => {
+      if (b.status === 'AWAITING_PAYMENT') return b.payDeadline ? 'Pay by ' + this.formatDeadline(b.payDeadline) : 'Payment needed';
+      if (b.status === 'PENDING_REQUEST') return b.respondBy ? 'Awaiting host \u00b7 ' + this.timeLeftLabel(b.respondBy) : 'Awaiting host reply';
+      if (b.status === 'DECLINED') return 'Host could not accept';
+      if (b.status === 'EXPIRED') return 'Request expired unanswered';
+      if (b.status === 'CANCELLED') return b.withdrawn ? 'Request withdrawn' : 'Booking cancelled';
+      if (b.status === 'COMPLETED') return 'Enjoyed \u00b7 thanks for visiting';
+      if (b.status === 'NO_SHOW') return 'Marked as no-show';
+      return '';
+    };
+    const bkList = bkSorted.map((b) => {
+      const m = this.STATUS_META[b.status] || this.STATUS_META.CONFIRMED;
+      return {
+        code: b.code, venueName: b.venueName,
+        setLabel: b.rowLabel + b.positionNo,
+        dateLabel: this.formatDate(b.bookingDate),
+        paidStr: fmt(b.amount),
+        statusLabel: m.label, chipStyle: this.chipStyleOf(b.status),
+        subLine: subLineOf(b), hasSub: !!subLineOf(b),
+        needsAction: b.status === 'AWAITING_PAYMENT' || b.status === 'PENDING_REQUEST',
+        onOpen: () => this.setState({ selectedCode: b.code, cancelConfirming: false, cancelDone: null, withdrawConfirming: false }),
+      };
+    });
+
     const bkRaw = s.bookings.find((x) => x.code === s.selectedCode) || null;
     let bk = null, refundTerms = '';
     if (bkRaw) {
-      const confirmed = bkRaw.status === 'CONFIRMED';
+      const st = bkRaw.status;
+      const m = this.STATUS_META[st] || this.STATUS_META.CONFIRMED;
+      const confirmed = st === 'CONFIRMED';
       const beforeCutoff = bkRaw.bookingDate > this.todayIso();
       bk = {
         code: bkRaw.code,
-        statusLabel: confirmed ? 'Confirmed' : 'Cancelled',
-        isConfirmed: confirmed, isCancelled: !confirmed,
+        status: st, statusLabel: m.label, chipStyle: this.chipStyleLg(st),
         venueName: bkRaw.venueName,
         setLabel: bkRaw.rowLabel + ' \u00b7 spot ' + bkRaw.positionNo,
         dateLabel: this.formatDate(bkRaw.bookingDate),
         paidStr: fmt(bkRaw.amount),
+        amountStr: fmt(bkRaw.amount),
         refundedStr: bkRaw.refundedMinor != null && bkRaw.refundedMinor > 0 ? fmt({ minorUnits: bkRaw.refundedMinor, currency: bkRaw.amount.currency }) : '',
-        cancellable: confirmed,
+        modeLabel: modeLabel(bkRaw.mode || 'INSTANT'),
+        // state flags
+        isConfirmed: confirmed,
+        isPending: st === 'PENDING_REQUEST',
+        isAwaiting: st === 'AWAITING_PAYMENT',
+        isDeclined: st === 'DECLINED',
+        isExpired: st === 'EXPIRED',
+        isCancelled: st === 'CANCELLED',
+        isClosed: st === 'DECLINED' || st === 'EXPIRED' || st === 'CANCELLED' || st === 'COMPLETED' || st === 'NO_SHOW',
+        isPaid: confirmed || st === 'COMPLETED' || st === 'NO_SHOW' || st === 'CANCELLED',
+        showCode: confirmed || st === 'COMPLETED' || st === 'NO_SHOW',
+        cancellable: confirmed && beforeCutoff,
+        cancellableAny: confirmed,
+        codeCaption: (confirmed || st === 'COMPLETED' || st === 'NO_SHOW') ? 'Show this code to staff when you arrive.'
+          : st === 'AWAITING_PAYMENT' ? 'Your reference. It becomes valid once you pay.'
+          : st === 'PENDING_REQUEST' ? 'Your request reference while the venue reviews it.'
+          : 'For your reference.',
+        amountLabel: (confirmed || st === 'COMPLETED' || st === 'NO_SHOW' || st === 'CANCELLED') ? 'Paid' : 'Total',
+        // context lines
+        payDeadlineStr: bkRaw.payDeadline ? this.formatDeadline(bkRaw.payDeadline) : '',
+        payTimeLeft: bkRaw.payDeadline ? this.timeLeftLabel(bkRaw.payDeadline) : '',
+        respondByStr: bkRaw.respondBy ? this.formatDeadline(bkRaw.respondBy) : '',
+        respondTimeLeft: bkRaw.respondBy ? this.timeLeftLabel(bkRaw.respondBy) : '',
+        declineReason: bkRaw.declineReason || 'The venue was unable to accept this request.',
       };
       refundTerms = beforeCutoff
         ? 'Free cancellation until the evening before \u2014 you\u2019ll be refunded ' + fmt(bkRaw.amount) + ' in full.'
@@ -982,6 +1402,43 @@ class Component extends DCLogic {
         ? fmt({ minorUnits: s.cancelDone.refundMinor, currency: s.cancelDone.currency }) + ' will be refunded to your card.'
         : 'No refund applies under the cancellation policy.');
     }
+
+    // ---- payment page ----
+    let paySummary = null;
+    const payCtx = s.payContext;
+    if (s.stage === 'payment') {
+      if (payCtx && payCtx.kind === 'existing') {
+        const pb = s.bookings.find((x) => x.code === payCtx.code);
+        if (pb) {
+          const premium = pb.rowLabel === 'A';
+          paySummary = {
+            venueName: pb.venueName, seat: pb.rowLabel + pb.positionNo,
+            tierLabel: premium ? 'Front row \u00b7 Premium' : 'Standard set',
+            dateLabel: this.formatDate(pb.bookingDate), totalStr: fmt(pb.amount),
+            code: pb.code, isExisting: true,
+          };
+        }
+      } else if (dialogSet && venue) {
+        const premium = dialogSet.tier === 'PREMIUM';
+        paySummary = {
+          venueName: venue.name, seat: dialogSet.rowLabel + String(dialogSet.positionNo),
+          tierLabel: premium ? 'Front row \u00b7 Premium' : 'Standard set',
+          dateLabel, totalStr: fmt(dialogSet.price), code: '', isExisting: false,
+        };
+      }
+    }
+    const payMethods = [
+      { key: 'ok', label: 'Visa \u00b7\u00b7\u00b7\u00b7 4242', hint: 'Succeeds', active: s.payMethod === 'ok', inactive: s.payMethod !== 'ok' },
+      { key: 'decline', label: 'Visa \u00b7\u00b7\u00b7\u00b7 0002', hint: 'Declined', active: s.payMethod === 'decline', inactive: s.payMethod !== 'decline' },
+      { key: 'taken', label: 'Contested set', hint: 'Set taken while paying', active: s.payMethod === 'taken', inactive: s.payMethod !== 'taken' },
+    ].map((p) => ({ ...p, onSelect: () => this.setPayMethod(p.key) }));
+
+    // ---- request-sent ----
+    const reqBooking = s.bookings.find((x) => x.code === s.requestCode) || null;
+
+    // ---- discover / map load-error demo states ----
+    const failDiscover = (this.props.demoLoadError === 'discover') && !s.retriedDiscover;
+    const failMap = (this.props.demoLoadError === 'map') && !s.retriedMap;
 
     return {
       isDiscover: s.view === 'discover', isMap: s.view === 'map',
@@ -1002,25 +1459,60 @@ class Component extends DCLogic {
       freeCount, totalCount, freePct,
       heroSlotId: venue ? 'rivlg-hero-' + venue.id : 'rivlg-hero',
       showDialog: s.stage === 'dialog', showConfirmed: s.stage === 'confirmed', dialog, code: s.code,
-      steps, totalStr, primaryLabel, canBack: bStep === 2 && !s.paying,
+      venueIsRequest, venueIsInstant: !venueIsRequest,
+      steps, totalStr, primaryLabel, canBack: bStep === 2,
       bStep1: bStep === 1, bStep2: bStep === 2,
       contactName: s.contact.fullName, contactEmail: s.contact.email, contactPhone: s.contact.phone,
       onNameChange: (e) => this.setContact('fullName', e.target.value),
       onEmailChange: (e) => this.setContact('email', e.target.value),
       onPhoneChange: (e) => this.setContact('phone', e.target.value),
       nameError: showErr ? cErrs.fullName : '', emailError: showErr ? cErrs.email : '', phoneError: showErr ? cErrs.phone : '',
-      paying: s.paying,
       confirmGuest: s.contact.fullName || (bkRaw ? bkRaw.contactName : ''),
-      minDate: this.todayIso(),
+      minDate: this.tomorrow(),
       onBookBack: this.bookingBack,
-      onPrimary: () => (this.state.bookingStep === 1 ? this.detailsContinue() : this.onPay()),
+      onPrimary: this.dialogPrimary,
       onClose: () => this.setState({ stage: 'none', setId: null }),
       onDone: () => this.setState({ stage: 'none', setId: null }),
       onViewBooking: () => this.setState({ stage: 'none', setId: null, view: 'booking' }),
+
+      // ---- dedicated payment page ----
+      showPayment: s.stage === 'payment', paySummary,
+      payCols: (s.winW || 1024) < 720 ? '1fr' : '1.5fr 1fr',
+      payStatusReady: s.payStatus === 'ready', payConfirming: s.payStatus === 'confirming',
+      payFailed: s.payStatus === 'failed', payTaken: s.payStatus === 'taken',
+      payMethods, onConfirmPayment: this.confirmPayment, onRetryPayment: this.retryPayment,
+      onClosePayment: this.closePayment,
+      onPaymentToBookings: () => { if (this._payTimer) clearTimeout(this._payTimer); this.setState({ stage: 'none', setId: null, payStatus: 'ready', payContext: null, view: 'booking' }); },
+
+      // ---- request sent ----
+      showRequestSent: s.stage === 'requestSent',
+      requestCode: s.requestCode,
+      reqVenueName: reqBooking ? reqBooking.venueName : '',
+      reqSeat: reqBooking ? reqBooking.rowLabel + reqBooking.positionNo : '',
+      reqDateLabel: reqBooking ? this.formatDate(reqBooking.bookingDate) : '',
+      reqTotalStr: reqBooking ? fmt(reqBooking.amount) : '',
+      reqRespondBy: reqBooking && reqBooking.respondBy ? this.formatDeadline(reqBooking.respondBy) : '',
+      onRequestDone: () => this.setState({ stage: 'none', setId: null }),
+      onRequestView: () => this.setState({ stage: 'none', setId: null, view: 'booking', selectedCode: s.requestCode }),
+
+      // ---- find my booking ----
+      findOpen: s.findOpen, findCode: s.findCode, findError: s.findError,
+      onOpenFind: this.openFind, onCloseFind: this.closeFind,
+      onFindCode: (e) => this.setState({ findCode: e.target.value, findError: '' }),
+      onSubmitFind: this.submitFind,
+
       isBooking: s.view === 'booking',
-      onMyBooking: () => this.setState({ view: 'booking', stage: 'none', setId: null, themeOpen: false, menuOpen: false, selectedCode: null, cancelConfirming: false, cancelDone: null }),
+      onMyBooking: () => this.setState({ view: 'booking', stage: 'none', setId: null, themeOpen: false, menuOpen: false, selectedCode: null, cancelConfirming: false, cancelDone: null, withdrawConfirming: false }),
       bkList, showBookingList: !bkRaw, hasSelected: !!bk, noBooking: !bkRaw && bkList.length === 0, bk, refundTerms,
-      onBackToList: () => this.setState({ selectedCode: null, cancelConfirming: false, cancelDone: null }),
+      onBackToList: () => this.setState({ selectedCode: null, cancelConfirming: false, cancelDone: null, withdrawConfirming: false }),
+      onPayNow: () => this.payNow(s.selectedCode),
+      withdrawConfirming: s.withdrawConfirming, notWithdrawing: !s.withdrawConfirming,
+      startWithdraw: this.startWithdraw, keepRequest: this.keepRequest, confirmWithdraw: this.confirmWithdraw,
+
+      // ---- load-failure demo states ----
+      failDiscover, failMap, showDiscoverList: !failDiscover, showMapContent: !failMap,
+      onRetryDiscover: () => this.setState({ retriedDiscover: true }),
+      onRetryMap: () => this.setState({ retriedMap: true }),
       isDesktopNav: (s.winW || 1024) >= 640, isMobileNav: (s.winW || 1024) < 640,
       menuOpen: s.menuOpen,
       onToggleMenu: () => this.setState((st) => ({ menuOpen: !st.menuOpen, themeOpen: false })),
