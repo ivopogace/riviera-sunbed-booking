@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
-import { operatorAuthInterceptor } from '../core/operator-auth.interceptor';
+import { apiSessionInterceptor } from '../core/api-session.interceptor';
 import { VenueMapView } from '../venue/venue.model';
 import { VenueEditor } from './venue-editor';
 
@@ -32,7 +32,7 @@ describe('VenueEditor', () => {
     await TestBed.configureTestingModule({
       imports: [VenueEditor],
       providers: [
-        provideHttpClient(withInterceptors([operatorAuthInterceptor])),
+        provideHttpClient(withInterceptors([apiSessionInterceptor])),
         provideHttpClientTesting(),
       ],
     }).compileComponents();
@@ -41,12 +41,29 @@ describe('VenueEditor', () => {
     httpMock = TestBed.inject(HttpTestingController);
     auth = TestBed.inject(OperatorAuth);
     fixture.detectChanges();
+    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109);
+    // answer 401 so every test starts signed out with restoring() settled.
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/auth/me`)
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   afterEach(() => httpMock.verify());
 
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** Establish an operator session: submit the credential and flush the login POST (issue #109). */
+  async function signIn(): Promise<void> {
+    const result = auth.signIn('operator', 'pw');
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/auth/operator/login`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await result;
+    fixture.detectChanges();
   }
 
   /** Set a Signal Forms field by the text of its label, then notify the form. */
@@ -86,8 +103,7 @@ describe('VenueEditor', () => {
 
   /** Sign in, create venue 5, and settle its first read-back so the layout step is showing. */
   async function createVenue(): Promise<void> {
-    auth.signIn('operator', 'pw');
-    fixture.detectChanges();
+    await signIn();
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -139,8 +155,7 @@ describe('VenueEditor', () => {
   });
 
   it('creates a venue and rounds the layout trip through the read API', async () => {
-    auth.signIn('operator', 'pw');
-    fixture.detectChanges();
+    await signIn();
 
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
@@ -162,7 +177,10 @@ describe('VenueEditor', () => {
       payoutCurrency: 'EUR',
       bookingCutoff: '18:00',
     });
-    expect(createReq.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
+    // Session model (issue #109): the HttpOnly cookie is the credential — the request goes out
+    // withCredentials and carries NO Authorization header (the Basic flow is retired).
+    expect(createReq.request.headers.has('Authorization')).toBe(false);
+    expect(createReq.request.withCredentials).toBe(true);
     createReq.flush({ id: 5 }, { status: 201, statusText: 'Created' });
     await fixture.whenStable();
 
@@ -224,8 +242,7 @@ describe('VenueEditor', () => {
   });
 
   it('rejects a non-integer commission client-side without calling the server', async () => {
-    auth.signIn('operator', 'pw');
-    fixture.detectChanges();
+    await signIn();
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -241,8 +258,7 @@ describe('VenueEditor', () => {
   });
 
   it('keeps a read-back failure distinct from a write error', async () => {
-    auth.signIn('operator', 'pw');
-    fixture.detectChanges();
+    await signIn();
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -272,8 +288,9 @@ describe('VenueEditor', () => {
   });
 
   it('surfaces a 401 from the server as a sign-in error', async () => {
-    auth.signIn('operator', 'wrong');
-    fixture.detectChanges();
+    // Signed in, but the session dies before the write (expired/invalidated server-side): the
+    // 401 on the venue POST maps to the sign-in-rejected alert.
+    await signIn();
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -290,11 +307,16 @@ describe('VenueEditor', () => {
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('operator sign-in');
   });
 
-  it('signs the operator in and out through the form', () => {
+  it('signs the operator in and out through the form', async () => {
     setField('Username', 'operator');
     setField('Password', 'pw');
     fixture.detectChanges();
     clickButton('Sign in');
+    // Server-validated sign-in (issue #109): the form submit posts to the login endpoint.
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/auth/operator/login`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await fixture.whenStable();
     fixture.detectChanges();
 
     expect(auth.signedIn()).toBe(true);
@@ -302,12 +324,18 @@ describe('VenueEditor', () => {
     expect(host().textContent).toContain('Create venue');
 
     clickButton('Sign out');
+    // Sign-out invalidates the server session before the local state clears.
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/auth/logout`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(auth.signedIn()).toBe(false);
     expect(host().textContent).toContain('Operator sign-in');
 
-    // Submitting with an empty password is a no-op (the guard short-circuits).
+    // Submitting with an empty password is a no-op (the guard short-circuits, no login POST).
     clickButton('Sign in');
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(auth.signedIn()).toBe(false);
   });

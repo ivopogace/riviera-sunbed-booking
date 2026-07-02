@@ -1,115 +1,125 @@
-import { HttpClient, HttpParams, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from './operator-auth';
-import { operatorAuthInterceptor } from './operator-auth.interceptor';
 
-const api = environment.apiBaseUrl;
+const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
+const PROBLEM_401 = {
+  status: 401,
+  statusText: 'Unauthorized',
+  headers: { 'Content-Type': 'application/problem+json' },
+};
 
-describe('OperatorAuth', () => {
-  let auth: OperatorAuth;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({});
-    auth = TestBed.inject(OperatorAuth);
-  });
-
-  it('starts signed out with no header', () => {
-    expect(auth.signedIn()).toBe(false);
-    expect(auth.username()).toBeUndefined();
-    expect(auth.basicAuthHeader()).toBeUndefined();
-  });
-
-  it('signIn stores the credential and exposes a Basic header', () => {
-    auth.signIn('operator', 'pw');
-    expect(auth.signedIn()).toBe(true);
-    expect(auth.username()).toBe('operator');
-    expect(auth.basicAuthHeader()).toBe(`Basic ${btoa('operator:pw')}`);
-  });
-
-  it('signOut clears the credential', () => {
-    auth.signIn('operator', 'pw');
-    auth.signOut();
-    expect(auth.signedIn()).toBe(false);
-    expect(auth.basicAuthHeader()).toBeUndefined();
-  });
-});
-
-describe('operatorAuthInterceptor', () => {
-  let http: HttpClient;
+describe('OperatorAuth (session-aware, issue #109)', () => {
   let httpMock: HttpTestingController;
-  let auth: OperatorAuth;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(withInterceptors([operatorAuthInterceptor])),
-        provideHttpClientTesting(),
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
-    http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
-    auth = TestBed.inject(OperatorAuth);
   });
 
   afterEach(() => httpMock.verify());
 
-  it('attaches Basic auth to a venue write when signed in', () => {
-    auth.signIn('operator', 'pw');
-    http.post(`${api}/api/venues`, {}).subscribe();
-    const req = httpMock.expectOne(`${api}/api/venues`);
-    expect(req.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
-    req.flush({ id: 1 });
+  /** Construction fires the /me restore; flush it as signed-out unless a test says otherwise. */
+  function serviceWithRestore(flush: 'signed-out' | { username: string }): OperatorAuth {
+    const auth = TestBed.inject(OperatorAuth);
+    const restore = httpMock.expectOne(`${AUTH_API}/me`);
+    expect(restore.request.method).toBe('GET');
+    if (flush === 'signed-out') {
+      restore.flush({ code: 'UNAUTHENTICATED' }, PROBLEM_401);
+    } else {
+      restore.flush({ username: flush.username, principalType: 'OPERATOR' });
+    }
+    return auth;
+  }
+
+  it('restores a live session from /api/auth/me on construction (reload survival, AC-8)', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve(); // let the restore promise settle
+
+    expect(auth.signedIn()).toBe(true);
+    expect(auth.username()).toBe('operator');
+    expect(auth.restoring()).toBe(false);
   });
 
-  it('leaves public GET reads untouched', () => {
-    auth.signIn('operator', 'pw');
-    http.get(`${api}/api/venues/1`).subscribe();
-    const req = httpMock.expectOne(`${api}/api/venues/1`);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
+  it('starts signed out when /me answers 401 (the expected signed-out state, not an error)', async () => {
+    const auth = serviceWithRestore('signed-out');
+    await Promise.resolve();
+
+    expect(auth.signedIn()).toBe(false);
+    expect(auth.username()).toBeUndefined();
+    expect(auth.restoring()).toBe(false);
   });
 
-  it('attaches Basic auth to the operator bookings GET, even with a query param (U8)', () => {
-    // The staff daily-bookings read carries a `date` param; auth must still attach (codes are
-    // operator-only, invariant #7). Pins that the request-vs-query distinction is handled.
-    auth.signIn('operator', 'pw');
-    http.get(`${api}/api/venues/1/bookings`, { params: new HttpParams().set('date', '2026-06-30') }).subscribe();
-    const req = httpMock.expectOne((r) => r.url === `${api}/api/venues/1/bookings`);
-    expect(req.request.headers.get('Authorization')).toBe(`Basic ${btoa('operator:pw')}`);
-    req.flush([]);
+  it('signIn posts the credential once and holds only the principal — never the password', async () => {
+    const auth = serviceWithRestore('signed-out');
+
+    const result = auth.signIn('operator', 'pw');
+    const login = httpMock.expectOne(`${AUTH_API}/operator/login`);
+    expect(login.request.method).toBe('POST');
+    expect(login.request.body).toEqual({ username: 'operator', password: 'pw' });
+    login.flush({ username: 'operator', principalType: 'OPERATOR' });
+
+    expect(await result).toBe('signed-in');
+    expect(auth.signedIn()).toBe(true);
+    expect(auth.username()).toBe('operator');
   });
 
-  it('leaves the public map GET untouched even with a date query param', () => {
-    auth.signIn('operator', 'pw');
-    http.get(`${api}/api/venues/1`, { params: new HttpParams().set('date', '2026-06-30') }).subscribe();
-    const req = httpMock.expectOne((r) => r.url === `${api}/api/venues/1`);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
+  it('maps a generic 401 to invalid-credentials', async () => {
+    const auth = serviceWithRestore('signed-out');
+
+    const result = auth.signIn('operator', 'wrong');
+    httpMock.expectOne(`${AUTH_API}/operator/login`)
+      .flush({ code: 'INVALID_CREDENTIALS' }, PROBLEM_401);
+
+    expect(await result).toBe('invalid-credentials');
+    expect(auth.signedIn()).toBe(false);
   });
 
-  it('leaves non-venue requests untouched', () => {
-    auth.signIn('operator', 'pw');
-    http.post(`${api}/api/bookings`, {}).subscribe();
-    const req = httpMock.expectOne(`${api}/api/bookings`);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
+  it('maps a 429 to rate-limited', async () => {
+    const auth = serviceWithRestore('signed-out');
+
+    const result = auth.signIn('operator', 'pw');
+    httpMock.expectOne(`${AUTH_API}/operator/login`)
+      .flush({ code: 'RATE_LIMITED' }, { status: 429, statusText: 'Too Many Requests' });
+
+    expect(await result).toBe('rate-limited');
   });
 
-  it('does not leak credentials to a foreign URL that merely contains the path', () => {
-    auth.signIn('operator', 'pw');
-    http.post('https://evil.example.com/api/venues', {}).subscribe();
-    const req = httpMock.expectOne('https://evil.example.com/api/venues');
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
+  it('signOut posts to the logout endpoint and clears state', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve();
+
+    const done = auth.signOut();
+    const logout = httpMock.expectOne(`${AUTH_API}/logout`);
+    expect(logout.request.method).toBe('POST');
+    logout.flush(null, { status: 204, statusText: 'No Content' });
+    await done;
+
+    expect(auth.signedIn()).toBe(false);
   });
 
-  it('sends no auth header when signed out', () => {
-    http.post(`${api}/api/venues`, {}).subscribe();
-    const req = httpMock.expectOne(`${api}/api/venues`);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({ id: 1 });
+  it('signOut clears local state even when the server session is already gone', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve();
+
+    const done = auth.signOut();
+    httpMock.expectOne(`${AUTH_API}/logout`).flush({ code: 'UNAUTHENTICATED' }, PROBLEM_401);
+    await done;
+
+    expect(auth.signedIn()).toBe(false);
+  });
+
+  it('sessionLost drops the principal without any HTTP call', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve();
+
+    auth.sessionLost();
+
+    expect(auth.signedIn()).toBe(false); // httpMock.verify() proves no request went out
   });
 });
