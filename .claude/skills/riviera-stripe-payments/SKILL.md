@@ -75,7 +75,7 @@ module). The two modes charge differently — pin this down rather than re-deriv
   `ReserveSetService` claims and inserts `AWAITING_PAYMENT` before the Stripe call,
   and the verified webhook confirms.
 - **Request-to-Book: payment-request-on-accept** (NOT auth-and-capture).
-  Request-to-Book is **not yet built** — when it lands, the model is: the tourist
+  Request-to-Book is **built (issue #98)** — the model is: the tourist
   **requests** (no card charged, no PaymentIntent yet); the `(set, date)` row is
   soft-held in a **pending** state that blocks other reservations exactly like a
   confirmed one (invariant #2) and is **released on decline/timeout**; on venue
@@ -85,10 +85,17 @@ module). The two modes charge differently — pin this down rather than re-deriv
   From `AWAITING_PAYMENT` onward the two flows are **byte-for-byte identical**
   (same PaymentIntent + Elements + webhook spine), so the payment/confirmation
   code is written once.
-- The request-expiry window (how long a venue has to accept) is a config value;
-  expiry releases the soft-hold. Use a **ShedLock-guarded** deadline sweep
-  mirroring the existing abandoned-payment sweep (`AbandonedBookingSweepService`),
-  and document the same single-instance constraint the existing sweep carries.
+- The request-expiry window (how long a venue has to accept) is a config value
+  (`booking.request.expiry-window`, capped at the evening-before cutoff); expiry
+  releases the soft-hold. The deadline sweep (`ExpireRequestsService` +
+  `RequestSweepScheduler`) is **lockless**, mirroring the existing abandoned-payment
+  sweep's posture — the guarded `UPDATE … RETURNING` transition is the concurrency
+  primitive; the single-instance constraint is documented in
+  `docs/deploy/production-hardening.md`. (An earlier version of this skill said
+  "ShedLock-guarded" — wrong: the existing sweep never used ShedLock; add ShedLock
+  to BOTH sweeps only when scaling out, per improvement-plan D3.) After accept, the
+  guest's pay window is `booking.request.pay-window` measured from `accepted_at`
+  (the abandoned sweep's second clock — never the instant TTL's creation clock).
 
 > **Retraction (was wrong in an earlier version of this skill):** a prior version
 > said Request-to-Book should **"authorize at request, capture on accept"** with a

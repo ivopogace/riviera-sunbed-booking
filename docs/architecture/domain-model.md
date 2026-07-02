@@ -10,8 +10,9 @@
 > (`PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/`BookingCancelled`
 > → `payout`) wired through the Modulith Event Publication Registry, the payout ledger,
 > and the `operator` module with per-venue authorization (invariant #13).
-> **Request-to-Book is NOT built** (issue #98) — parts below marked *target* show it
-> ahead of the code. For as-built status per slice, see `docs/plans/`.
+> **Request-to-Book is built** (issue #98) — soft-hold on the shared availability claim,
+> operator accept/decline (payment-request-on-accept), the request-expiry sweep, and the
+> pay-on-accept guest view. For as-built status per slice, see `docs/plans/`.
 >
 > All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub.
 
@@ -261,11 +262,10 @@ classDiagram
 > never sequential, treated as a secret in logs (invariant #7). `cancellationDeadline`
 > is the evening-before cutoff, computed in `Europe/Tirane`, stored UTC (invariant #4, #6).
 >
-> **Built vs target:** the shipped enum + `booking.status` CHECK (V5) hold exactly
-> `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`.
-> `PENDING_REQUEST`, `DECLINED` (and any expiry state) are the **Request-to-Book
-> target (#98)** — not in the enum or schema yet; an abandoned `AWAITING_PAYMENT`
-> booking is swept to `CANCELLED` today, there is no `EXPIRED`.
+> **As built (#98, V19):** the enum + `booking.status` CHECK hold all eight states shown.
+> `EXPIRED` is reserved for a request the venue never answered (deadline sweep);
+> an abandoned `AWAITING_PAYMENT` booking — instant, or an accepted-but-unpaid request
+> past its pay-window — is swept to `CANCELLED`, exactly as before #98.
 
 ### 3.4 `payment`
 
@@ -463,7 +463,9 @@ stateDiagram-v2
     PENDING_REQUEST --> AWAITING_PAYMENT: venue accepts
     PENDING_REQUEST --> DECLINED: venue declines
     AWAITING_PAYMENT --> CONFIRMED: PaymentSucceeded (webhook)
-    AWAITING_PAYMENT --> EXPIRED: payment not completed
+    AWAITING_PAYMENT --> CANCELLED: abandoned payment swept (instant TTL / pay-window)
+    AWAITING_PAYMENT --> PENDING_REQUEST: payment-request issuance failed (compensating revert)
+    PENDING_REQUEST --> EXPIRED: response deadline passed (sweep)
     CONFIRMED --> CANCELLED: tourist cancel / weather refund
     CONFIRMED --> COMPLETED: day passed, guest arrived
     CONFIRMED --> NO_SHOW: day passed, no arrival
@@ -474,10 +476,12 @@ stateDiagram-v2
     NO_SHOW --> [*]
 ```
 
-> **Built vs target:** today only the Instant path exists — `[*] → AWAITING_PAYMENT`,
-> and an abandoned payment ends in `CANCELLED` (no `EXPIRED` state). The
-> `PENDING_REQUEST` / `DECLINED` legs (and the request-expiry release) are the
-> Request-to-Book target, tracked by #98.
+> **As built (#98):** both entry legs exist. An abandoned payment ends in `CANCELLED`
+> (instant: TTL from creation; accepted request: pay-window from `accepted_at`);
+> `EXPIRED` means the venue never answered before the request deadline (min(request +
+> expiry-window, evening-before cutoff)). The soft-hold is the same `BOOKED_ONLINE`
+> availability row as any online booking (§6.2 unchanged — availability records *that*
+> a set is held, never *why*); decline/expiry release it.
 
 ### 6.2 Set availability per (set, date)
 

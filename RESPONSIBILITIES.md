@@ -42,9 +42,11 @@ review-only.
    `BookingCancelled`, **`availability`** frees the set and **`payment`** refunds
    the amount `booking` decided.
 
-> **Variant — Request-to-Book** (per venue's booking mode; *not yet built — issue #98*): between
-> steps 2 and 3 the host accepts or declines; on accept, `payment` sends a payment
-> request rather than charging immediately. Same ownership boundaries apply.
+> **Variant — Request-to-Book** (per venue's booking mode; *shipped — issue #98*): between
+> steps 2 and 3 the host accepts or declines (`booking` owns the request lifecycle and its
+> expiry sweep; ownership checked via `operator::api`); on accept, `payment` issues a fresh
+> PaymentIntent (payment-request-on-accept) rather than charging at request time, and from
+> `AWAITING_PAYMENT` onward the Instant spine runs unchanged. Same ownership boundaries apply.
 
 **Key design decisions:**
 
