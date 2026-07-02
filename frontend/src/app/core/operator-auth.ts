@@ -55,7 +55,15 @@ export class OperatorAuth {
   /** The signed-in operator's username, or undefined when signed out. */
   readonly username = computed(() => this.principal()?.username);
 
-  constructor() {
+  /**
+   * Kick off the one-time startup session restore. Wired from the composition root
+   * ({@link appConfig}'s {@code provideAppInitializer}) rather than the constructor, so no async
+   * work runs during construction (S7059 — construction stays synchronous and side-effect-free).
+   * Fire-and-forget by design: the {@link restoring} signal (not bootstrap blocking) gates
+   * rendering exactly as the old constructor kickoff did — a page reload still restores a live
+   * session. Idempotent enough for one call; the app initializer invokes it once at boot.
+   */
+  init(): void {
     void this.restore();
   }
 

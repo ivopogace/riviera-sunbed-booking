@@ -8,6 +8,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
 import { apiSessionInterceptor } from './core/api-session.interceptor';
+import { OperatorAuth } from './core/operator-auth';
 import { ThemeService } from './core/theme';
 
 import {
@@ -41,6 +42,12 @@ export const appConfig: ApplicationConfig = {
     // don't rely on the shell happening to inject ThemeService (issue #134 review).
     provideAppInitializer(() => {
       inject(ThemeService);
+    }),
+    // Kick the one-time operator-session restore at startup (issue #109) from the composition
+    // root rather than OperatorAuth's constructor (S7059): construction stays side-effect-free,
+    // GET /api/auth/me still runs once at boot, and the `restoring` signal gates rendering.
+    provideAppInitializer(() => {
+      inject(OperatorAuth).init();
     }),
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory }
   ]

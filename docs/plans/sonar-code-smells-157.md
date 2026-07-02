@@ -108,8 +108,8 @@ Group A (badges/chips) are `aria-hidden` decorative glyphs — the heading/label
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc | ⏳ | |
-| 1 — S7059 operator-auth app-initializer refactor (test-first) | | |
+| 0 — Plan doc | ✅ | b070d28 |
+| 1 — S7059 operator-auth app-initializer refactor (test-first) | ✅ | (this commit) |
 | 2 — S7758 venue-map `fromCodePoint` | | |
 | 3 — S7924 solid composited fills + contrast-spec updates | | |
 | 4 — S1075 justified suppression | | |
@@ -166,6 +166,7 @@ Add `e2` (`**/RateLimitFilter.java`) + `e3` (`**/SecurityConfig.java`) `java:S10
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-03 | Phase 1 (S7059) | other services firing an awaited async op in a constructor | grep `constructor()` in `frontend/src/app` + SonarCloud reported-issue list | only `operator-auth` (Sonar reported exactly 1 `S7059`); `venue-map`'s ctor uses an Observable `.subscribe()`, not an awaited async op, so it is not flagged | none needed — single site fixed |
 
 ---
 

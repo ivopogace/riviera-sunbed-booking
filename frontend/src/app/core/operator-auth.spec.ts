@@ -24,9 +24,10 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
 
   afterEach(() => httpMock.verify());
 
-  /** Construction fires the /me restore; flush it as signed-out unless a test says otherwise. */
+  /** init() (the app initializer's startup kickoff) fires the /me restore; flush it as signed-out unless a test says otherwise. */
   function serviceWithRestore(flush: 'signed-out' | { username: string }): OperatorAuth {
     const auth = TestBed.inject(OperatorAuth);
+    auth.init(); // in the real app, app.config's APP_INITIALIZER calls this once at startup
     const restore = httpMock.expectOne(`${AUTH_API}/me`);
     expect(restore.request.method).toBe('GET');
     if (flush === 'signed-out') {
@@ -37,7 +38,17 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     return auth;
   }
 
-  it('restores a live session from /api/auth/me on construction (reload survival, AC-8)', async () => {
+  it('is side-effect-free on construction — the /me restore is kicked from the app initializer, not the constructor (S7059)', () => {
+    const auth = TestBed.inject(OperatorAuth);
+
+    // The initial restore has not been kicked, so the signal is honestly still true...
+    expect(auth.restoring()).toBe(true);
+    // ...and NO HTTP went out: the async kickoff lives in app.config's APP_INITIALIZER
+    // (OperatorAuth.init), never the constructor. httpMock.verify() throws if /me was requested.
+    httpMock.verify();
+  });
+
+  it('restores a live session from /api/auth/me on startup init (reload survival, AC-8)', async () => {
     const auth = serviceWithRestore({ username: 'operator' });
     await Promise.resolve(); // let the restore promise settle
 
