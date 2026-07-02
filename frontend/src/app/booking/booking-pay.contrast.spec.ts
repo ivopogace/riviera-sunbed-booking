@@ -18,7 +18,8 @@ import {
  * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in booking-pay.scss.
  *
  * Deliberately excluded (1.4.11 decorative, aria-hidden — the heading/label carries the meaning):
- * the ✓ / ⏳ done badge, the spinner, and the ✕ fail badge.
+ * the ✓ / ⏳ done badge, the spinner, and the ✕ fail badge. The done badges now use SOLID composited
+ * fills (not translucent tints) so static CSS contrast analysis computes their real colour.
  */
 
 const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
@@ -26,7 +27,8 @@ const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft (lead, keys, status, labels)
 const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint (trust line)
 const ACCENT = '#085a6e'; // --riv-accent-ink (total, code, links)
-const ERROR_RED = '#a3160e'; // .form-error
+const ERROR_RED = '#a3160e'; // .form-error ink
+const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the Pay button's white text
 
 interface Theme {
@@ -59,6 +61,12 @@ describe('Payment page — theme-independent CTA (WCAG AA, issue #137)', () => {
       expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
+
+  it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
+    // .form-error now sits on an opaque #f6e8e7 box (was a translucent red tint), so the pair is a
+    // single fixed hex in both themes — a real ~6.6:1, not the ~1:1 the analyser saw on the tint.
+    expect(contrastRatio(ERROR_RED, ERROR_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
 });
 
 describe.each(THEMES)('Payment page glass contrast — $name theme (WCAG AA, issue #137)', (theme) => {
@@ -76,10 +84,6 @@ describe.each(THEMES)('Payment page glass contrast — $name theme (WCAG AA, iss
 
   it('accent ink (total, big code, links) meets AA on the card glass', () => {
     expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
-  });
-
-  it('error red (payment error) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ERROR_RED), 1, theme.cardGlass, theme.stops);
   });
 
   it('cancel-chip ink meets AA on the dark header glass over every gradient stop', () => {

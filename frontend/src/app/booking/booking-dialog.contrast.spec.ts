@@ -22,8 +22,10 @@ import {
  * whites fail AA); the panel is white 0.82 (design 0.72) so dark inks clear AA over the darkest
  * stop; input borders are the dark `--riv-field-border` (a white border fails the 3:1 boundary).
  *
- * Deliberately excluded (1.4.11 redundant / decorative): the step-number circles (aria-hidden — the
- * step label carries the meaning) and the decorative panel/mode-note borders.
+ * Deliberately excluded (1.4.11 redundant / decorative): the step-number circles and the ✕ close
+ * chip (aria-hidden — the step label / "Close" name carries the meaning) and the decorative
+ * panel/mode-note borders. Those chips now use SOLID composited teal fills (not translucent white)
+ * so static CSS contrast analysis computes their real colour; white on that chip still clears AA.
  */
 
 // styles.scss booking-dialog surfaces.
@@ -33,7 +35,8 @@ const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark CARD_INK tint) over
 const BACK_FILL_ALPHA = 0.5; // .btn-back glass over the panel
 const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const ACCENT = '#085a6e'; // --riv-accent-ink (price, total)
-const ERROR_RED = '#a3160e'; // .field-error / .form-error
+const ERROR_RED = '#a3160e'; // .field-error (on the panel) + .form-error ink (on the solid fill below)
+const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
 const BACK_INK = '#0a4f5e'; // .btn-back text
 
 // The AA-safe dark-teal header gradient stops (= --riv-cta-grad), carrying solid white ink — used
@@ -60,6 +63,12 @@ describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137
     // Decorative reinforcement, but it clears AA anyway: #0a5f74 on solid white.
     expect(contrastRatio('#0a5f74', '#ffffff')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
+
+  it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
+    // .form-error now sits on an opaque #f6e8e7 box (was a translucent red tint), so the pair is a
+    // single fixed hex in both themes — a real ~6.6:1, not the ~1:1 the analyser saw on the tint.
+    expect(contrastRatio(ERROR_RED, ERROR_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
 });
 
 describe.each(THEMES)('Booking dialog panel contrast — $name theme (WCAG AA, issue #137)', (theme) => {
@@ -75,7 +84,9 @@ describe.each(THEMES)('Booking dialog panel contrast — $name theme (WCAG AA, i
     expectAaOverStops(hexToRgb(ACCENT), 1, DIALOG_GLASS, theme.stops);
   });
 
-  it('error red (field + form errors) meets AA on the panel glass', () => {
+  it('field-error red meets AA on the panel glass', () => {
+    // .field-error sits directly on the panel (no fill of its own); .form-error moved to a solid
+    // fill, asserted theme-independently above.
     expectAaOverStops(hexToRgb(ERROR_RED), 1, DIALOG_GLASS, theme.stops);
   });
 

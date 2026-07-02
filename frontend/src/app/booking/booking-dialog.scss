@@ -62,7 +62,7 @@
   height: 30px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.16);
+  background: #31798a; // solid composite of the frosted white-0.16 chip over the teal header (white 4.96:1; static-analysis safe)
   color: #ffffff;
   font-size: 15px;
   line-height: 1;
@@ -128,7 +128,9 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.24);
+  // Inactive chip: the frosted white-0.24 composite (#458595) is too light for AA white text, so
+  // it's the AA-safe muted teal — a touch darker than the close chip (white 5.1:1; static-analysis safe).
+  background: #2c7789;
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
@@ -283,8 +285,8 @@
   margin: 0 24px;
   padding: 10px 13px;
   border-radius: 12px;
-  background: rgba(163, 22, 14, 0.1);
-  color: #a3160e;
+  background: #f6e8e7; // solid composite of the translucent red tint over the panel (static-analysis safe)
+  color: #a3160e; // brick red clears AA (~6.6:1) on the solid light-pink fill
   font-size: 13px;
   font-weight: 600;
 }
