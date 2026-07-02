@@ -79,5 +79,6 @@ restyle must respect:
 | Amenities + to-water (BE + editor + tourist chips) | Tourist epic slice 7 |
 | Operator console restyle (all tabs) | Operator epic |
 | Auth modal, SSO buttons, user menu | Epic #108 (#111/#112/#114) — design is their visual spec |
+| Auth **surface split** (tourist modal vs operator sign-in card) | **Overridden** (maintainer, 2026-07-02): one unified sign-in/register page for both sides; registration chooses the account type. Styling per the designs; split per the #108 comment |
 | Venue photos (upload + display) | Follow-up issue |
 | Remaining 12 theme palettes | Follow-up issue |
