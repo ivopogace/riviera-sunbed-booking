@@ -81,7 +81,7 @@ standing in for `feature/responsibilities-fitness-functions` per the SDLC remote
 - [x] **AC-8 (docs):** `RESPONSIBILITIES.md` cross-references the fitness tests and states
   the machine-checkable vs semantic (necessary-not-sufficient) split; the same statement
   heads the new test class's javadoc. *Verified by inspection at review.*
-- [ ] **AC-9:** No behavior change; full suite green in CI.
+- [x] **AC-9:** No behavior change; full suite green in CI.
 
 ## Non-goals
 
@@ -254,7 +254,7 @@ the non-vacuous guard → GREEN; (c) scoped run: `--tests "*ResponsibilitiesArch
 
 - [x] AC-1..AC-7: `gradle … test --tests "*ResponsibilitiesArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*VenueApiRoleSplitTests*" --tests "*OperatorAuthPlacementTests*" --tests "*ModularityTests*"` → all green locally (JDK-25 toolchain recipe); verified at 21d28fc and re-verified after the review-fix round 6b4161a (structural net + ResponsibilitiesArchitectureTests, 9/9, skipped=0).
 - [x] AC-8: RESPONSIBILITIES.md section present; test-class javadoc states the split.
-- [ ] AC-9: full suite green in CI on the PR.
+- [x] AC-9: full suite green in CI on PR #106 (all 10 checks green at head fb2d138; merged as 1687ab3).
 
 ## Self-review checklist (before merge / PR)
 
