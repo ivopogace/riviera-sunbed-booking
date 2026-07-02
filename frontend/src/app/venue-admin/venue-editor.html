@@ -3,7 +3,7 @@
 
   <!-- Operator sign-in (U7 write API; session-validated on submit since issue #109) -->
   @if (operator.restoring()) {
-    <p class="card hint" role="status">Checking your session…</p>
+    <output class="card hint">Checking your session…</output>
   } @else if (!operator.signedIn()) {
     <form class="card sign-in" (submit)="onSignIn(); $event.preventDefault()" novalidate>
       <h2>Operator sign-in</h2>

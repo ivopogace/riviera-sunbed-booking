@@ -440,4 +440,27 @@ this slice warrants — the security control is pinned by tests either way; left
 
 ## Sonar-gate record
 
-Filled at the Sonar gate (new issues, coverage on new code, resolutions).
+**PR #127, 2026-07-02 — quality gate PASSED.** New-code coverage 88.0% (≥80%), 0 security
+hotspots, 0.0% duplication, 0 accepted issues. Six new code smells triaged:
+
+- **Web:S6819 ×2 (MAJOR)** — `staff-daily.html` / `venue-editor.html` "Checking your session…"
+  placeholders used `role="status"`; the rule prefers the native `<output>` (implicit
+  `role="status"`, better AT support — also the house pattern, cf. the booking `<output>`
+  notices). **Fixed** → `<output>`.
+- **java:S1075 ×3 (MINOR)** — hardcoded URI on the new `LOGIN_PATH`/`LOGOUT_PATH` constants
+  (`SecurityConfig`) and `RateLimitFilter.LOGIN_PATH`. **Accept-with-rationale (won't-fix):**
+  these are route literals identical to every existing `*_PATH` constant in `SecurityConfig`
+  (`SET_ITEM_PATH`, `WEATHER_REFUND_PATH`, …) — Spring request-matcher paths, not externalizable
+  config; externalizing auth routes would be inconsistent and pointless. Sonar flagged only the
+  new lines (leak period).
+- **typescript:S7059 ×1 (CRITICAL)** — async op in the `OperatorAuth` constructor (`restore()`).
+  **Accept-with-rationale:** the restore-on-init is the deliberate design (reload-survival, AC-8),
+  gated by the `restoring()` signal so consumers never read a half-initialized state, and
+  `OperatorAuth` is injected **only** by the two lazy operator routes (verified) — so it fires per
+  operator-surface navigation, never eagerly for anonymous tourists. An `APP_INITIALIZER` refactor
+  (Sonar's implied fix) would make `/api/auth/me` eager for *every* visitor — strictly worse.
+
+The gate passed, so none block merge; the S6819 fix lands in-slice, and the two accept-with-
+rationale smells are for the maintainer to mark won't-fix in SonarCloud (no dashboard token in the
+agent session). No finding changed implemented logic, so none re-entered the Implement loop beyond
+the trivial `<output>` swap (FE 221/221 + lint still green).
