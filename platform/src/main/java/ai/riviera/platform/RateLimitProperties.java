@@ -19,6 +19,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param enabled        master switch; when false no request is ever rate-limited
  * @param perIp          per-client-IP bucket, applied to all three booking endpoints
  * @param perCode        per-booking-code bucket, applied to the two code-keyed endpoints (view/cancel)
+ * @param login          per-client-IP bucket for the session login (issue #109, D-8) — its own,
+ *                       deliberately stricter dimension (shipped default 10/min in
+ *                       {@code application.properties}) so credential guessing is throttled without
+ *                       coupling to the booking budget
  * @param maxTrackedKeys soft cap on tracked keys per dimension; full (idle) buckets are pruned when hit
  */
 @ConfigurationProperties("riviera.ratelimit")
@@ -26,6 +30,7 @@ record RateLimitProperties(
 		@DefaultValue("true") boolean enabled,
 		@DefaultValue Limit perIp,
 		@DefaultValue Limit perCode,
+		@DefaultValue Limit login,
 		@DefaultValue("100000") int maxTrackedKeys) {
 
 	record Limit(@DefaultValue("60") int capacity, @DefaultValue("PT1M") Duration refillPeriod) {

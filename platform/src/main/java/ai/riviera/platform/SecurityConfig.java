@@ -77,7 +77,8 @@ class SecurityConfig {
 			Clock clock) throws Exception {
 		http
 				.cors(Customizer.withDefaults())
-				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56): runs
+				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56) and,
+				// on its own stricter per-IP budget, the session login (issue #109, D-8): runs
 				// just after CORS so a preflight is handled first (and is skipped by the filter anyway),
 				// and before authorization — the booking endpoints are permitAll, so the code IS the
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.

@@ -211,9 +211,9 @@ only.
 |-------|--------|---------|
 | 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | ed2ae5a |
 | 2 — BE: migrate ITs off Basic; remove httpBasic | ✅ | 176a39a |
-| 3 — BE: CSRF cookie-to-header; exemptions inverted | ✅ | (this commit) |
-| 4 — BE: login rate limit | ⏳ | |
-| 5 — FE: session auth state + interceptor + sign-in UX | | |
+| 3 — BE: CSRF cookie-to-header; exemptions inverted | ✅ | 1513f88 |
+| 4 — BE: login rate limit | ✅ | (this commit) |
+| 5 — FE: session auth state + interceptor + sign-in UX | ⏳ | |
 | 6 — e2e: POM + sign-in spec; real-backend update | | |
 | 7 — riviera-docs-freshness skill + substrate updates | | |
 
