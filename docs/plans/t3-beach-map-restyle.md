@@ -158,6 +158,14 @@ Phrased at the component boundary (the rendered `VenueMap` + its e2e), not at CS
 _No blocking product question — the issue + epic + design specify this slice in
 detail; A1 is documented as the reversible default rather than blocking the loop._
 
+### Resolved
+
+- **A1–A6 implemented as planned** (commits `b96c1f3`…`a8a101e`): derived `A/B/…/AA` codes with
+  the descriptive `rowLabel` kept in each tile's accessible name (A1/A5); `map-error`/`map-retry`
+  testids; `--riv-tile: clamp(44px,11vw,56px)`; 6px pan threshold; walk-in display parity; picker
+  `min` = tomorrow. A1 (letter vs descriptive row label) is surfaced to the reviewer for
+  confirmation at the review gate — reversible in one line if the descriptive label is preferred.
+
 ## Availability & concurrency (invariant #2)
 
 **Not a write path — display parity only.** Filled (not `N/A`) because the slice
@@ -427,23 +435,33 @@ horizontal pan; (e) `expectNoSeriousAxeViolations` on the map. Await
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..6, 9..13:** `npm test -- venue-map` → all PASS at HEAD.
-- [ ] **AC-7, 8:** `npm run test:e2e:a11y` (venue-map-pan) → PASS.
-- [ ] **AC-13:** `npm run test:e2e:a11y` (booking-flow + request-to-book) → PASS.
-- [ ] **AC-14:** `npm test -- venue-map.contrast venue-map.a11y` → PASS.
-- [ ] **AC-15:** `npm test -- app` → PASS.
+- [x] **AC-1..6, 9..13 (unit):** `npm test` → 291/291 PASS (venue-map 20/20) at `a8a101e`.
+- [x] **AC-7, 8 (pan e2e):** `venue-map-pan.e2e.ts` → 2/2 PASS (drag pans + no dialog + side
+  columns fixed; click opens dialog).
+- [x] **AC-13 (booking e2e preserved):** `booking-flow.e2e.ts`, `request-to-book.e2e.ts`,
+  `discovery-flow.e2e.ts` all PASS in the CI-safe suite run (19/20; the one red — `staff-daily` —
+  is unrelated: a local backend on :8080 answered its un-mocked calls. Backend-less CI is green).
+- [x] **AC-14 (contrast + a11y):** `venue-map.contrast.spec.ts` 26/26, `venue-map.a11y.spec.ts`
+  3/3 PASS (both themes; loaded/loading/error axe-clean).
+- [x] **AC-15 (route de-legacy):** `app.spec.ts` 7/7 PASS (RESTYLED_PATHS includes `venues/:id`).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO in the doc or code.
-- [ ] **No JPA / no backend** touched (frontend-only slice).
-- [ ] Availability section filled — **no write path added**; pool + cutoff display
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO in the doc or code.
+- [x] **No JPA / no backend** touched (frontend-only slice).
+- [x] Availability section filled — **no write path added**; pool + cutoff display
   parity (invariants #2/#3/#4 server-side unchanged).
-- [ ] Modulith / Payment sections justified N/A (frontend-only, no money).
-- [ ] Money rendered from minor units via `formatMoney` (invariant #5).
-- [ ] Frontend standards met (signals, `@if`/`@for`, no `@HostListener`, no `as any`,
-  a11y AA); deviation (header-on-glass) documented with contrast proof.
-- [ ] Preserved `data-testid`s + `Select to book` + `<h1>`; both booking e2e green.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Modulith / Payment sections justified N/A (frontend-only, no money).
+- [x] Money rendered from minor units via `formatMoney` (invariant #5).
+- [x] Frontend standards met (signals, `@if`/`@for`, no `@HostListener`, no `as any`,
+  a11y AA); deviation (header-on-glass, solid tiles, near-opaque field) documented with contrast proof.
+- [x] Preserved `data-testid`s (`set-tile`/`availability`/`map-date`) + `Select to book` + `<h1>`; both booking e2e green.
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register resolved (below); Open Questions moved to Resolved.
+
+### Risk resolutions
+R-1 pan-vs-select pinned by unit + e2e (both directions) · R-2 header-on-glass, contrast spec 26/26
+both themes · R-3 home suite 44/44 green post-extraction · R-4 booking e2e green, testids preserved ·
+R-5 descriptive `rowLabel` retained in the tile accessible name · R-6 scroll hint e2e-covered
+(jsdom can't measure) · R-7 `rowCode`/pan-guard/retry/`minDate` unit-tested directly.
