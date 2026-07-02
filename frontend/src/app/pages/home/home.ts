@@ -7,12 +7,12 @@ import { MoneyView, VenueSummary } from '../../venue/venue.model';
 import { VenueService } from '../../venue/venue.service';
 
 /**
- * Tourist venue discovery — the app's landing page (`/`, issue #61, design §4.1 steps 1–2). Lists
- * venues as cards (name, beach·region, rating, "from" price, that day's free/total availability),
- * each linking to the beach map at `/venues/:id`. A beach + region filter and a date control narrow
- * the list; the date drives the per-venue availability count (invariant #2). Money is rendered from
- * integer minor units (invariant #5); every card fact is conveyed as text, not colour alone (WCAG
- * AA). Loading, empty, and error states are distinct.
+ * Tourist venue discovery — the app's landing page (`/`, issue #61; Liquid Glass restyle #135).
+ * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
+ * cards (gradient photo area with mode chip, rating, availability bar), each a link to the beach
+ * map at `/venues/:id`. The date drives the per-venue availability count (invariant #2). Money is
+ * rendered from integer minor units (invariant #5); every card fact is conveyed as text, not
+ * colour alone (WCAG AA). Loading, empty, and error states are distinct.
  */
 @Component({
   selector: 'app-home',
@@ -131,6 +131,12 @@ export class Home {
 
   protected bookingModeLabel(mode: VenueSummary['bookingMode']): string {
     return mode === 'INSTANT' ? 'Instant Book' : 'Request to Book';
+  }
+
+  /** Availability-bar fill width; a venue with no sets renders 0% (no division by zero). */
+  protected freePercent(venue: VenueSummary): number {
+    const { free, total } = venue.availability;
+    return total === 0 ? 0 : Math.round((free / total) * 100);
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */

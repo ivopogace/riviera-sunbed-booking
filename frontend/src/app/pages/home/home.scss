@@ -1,164 +1,386 @@
-/* Venue-discovery design tokens (issue #61). Reuses the U1 beach-map palette for visual
- * continuity. Colour pairs are mirrored in home.contrast.spec.ts and must clear WCAG AA. */
+/* Liquid Glass Discover (issue #135, design: riviera-sunbeds-liquid-glass-v2.dc.html →
+ * Discover). Palette comes exclusively from the styles.scss tokens; every text-bearing
+ * pair is pinned as a composited effective colour in home.contrast.spec.ts.
+ *
+ * Deviation from the design file, on purpose (plan R-1, same reasoning as T1's header):
+ * the hero and the list states sit on the AA-proven header-glass tokens instead of the
+ * bare gradient — white ink over the riviera gradient's light top stops cannot reach
+ * WCAG AA, glass or shadow notwithstanding. */
+
 :host {
   display: block;
-  font-family: 'Manrope', system-ui, sans-serif;
-  color: #22302f;
+  color: var(--riv-card-ink);
 }
 
-.page-title {
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-size: 2.25rem;
-  line-height: 1.05;
-  margin: 0 0 0.25rem;
-  color: #22302f; /* on the slate-50 app background — AA */
+/* The two glass recipes of this page, declared once (review finding: recipe drift
+   between twin surfaces). Panels reuse the shell's AA-proven header-glass tokens
+   (see the header note); cards/bars use the per-theme card glass. */
+%panel-glass {
+  background: var(--riv-header-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid var(--riv-header-border);
+  border-radius: 26px;
 }
 
-.page-intro {
-  color: #54514b; /* muted, on the slate-50 app background — AA */
-  margin: 0 0 1.5rem;
+%card-glass {
+  background: var(--riv-card-glass);
+  border: 1px solid var(--riv-card-border);
+  color: var(--riv-card-ink);
 }
 
-.filters {
+.discover {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* ---- hero (on the shell's proven glass tokens) ---- */
+
+.hero {
+  @extend %panel-glass;
+
+  max-width: 680px;
+  padding: 24px 26px 26px;
+  color: var(--riv-ink);
+  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0 0 18px;
+  background: var(--riv-chip-bg);
+  border: 1px solid var(--riv-chip-border);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+
+.hero-chip-dash {
+  width: 18px;
+  height: 1px;
+  background: var(--riv-ink-faint);
+  display: inline-block;
+}
+
+.hero-title {
+  font-weight: 700;
+  font-size: clamp(40px, 6vw, 66px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0 0 16px;
+  text-shadow: var(--riv-hero-shadow);
+}
+
+.hero-intro {
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--riv-ink-soft);
+  margin: 0;
+  max-width: 520px;
+}
+
+/* ---- glass filter bar (count block inside) ---- */
+
+.filter-bar {
+  @extend %card-glass;
+
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  background: #ffffff;
-  border: 1px solid #e8e1d2;
-  border-radius: 0.9rem;
-  padding: 1rem 1.1rem;
-  margin-bottom: 1.5rem;
+  align-items: flex-end;
+  gap: 18px;
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  border-radius: 26px;
+  padding: 20px 22px;
+  margin: 34px 0 4px;
+  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
+
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 7px;
   margin: 0;
 }
+
 .field-label {
+  font-size: 11px;
   font-weight: 700;
-  font-size: 0.8rem;
-  color: #22302f; /* on white filter panel — AA */
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riv-card-ink-faint);
 }
+
 .field select,
 .field input {
   font: inherit;
-  color: #22302f;
-  background: #ffffff;
-  border: 1px solid #6b675f; /* 3:1+ against white for a UI-component boundary (WCAG 1.4.11) */
-  border-radius: 0.5rem;
-  padding: 0.45rem 0.6rem;
-  min-width: 12rem;
+  font-size: 15px;
+  color: var(--riv-card-ink);
+  background: var(--riv-field-fill);
+  border: 1px solid var(--riv-field-border);
+  border-radius: 14px;
+  padding: 10px 13px;
+  min-width: 168px;
+  cursor: pointer;
 }
+
 .field select:focus-visible,
 .field input:focus-visible {
-  outline: 3px solid #0f7d8c;
+  outline: 3px solid var(--riv-accent-ink);
   outline-offset: 2px;
 }
 
-.results {
-  margin: 0 0 1rem;
-  color: #54514b; /* on slate-50 — AA */
+.bar-count {
+  margin: 0 0 0 auto;
+  align-self: center;
+  text-align: right;
+  padding-left: 8px;
+  /* Reserve the loaded block's exact height so the bar doesn't jump when the count
+     lands: 34px number line + 5px margin + 14px subline (both line-heights explicit
+     below, so the sum is deterministic across font stacks — review-verified render). */
+  min-height: 53px;
+  min-width: 3rem;
 }
-.results strong {
-  color: #0e7a89; /* teal count on slate-50/white — AA */
+
+.count-number {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--riv-accent-ink);
+  line-height: 1;
 }
+
+.count-sub {
+  display: block;
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--riv-card-ink-faint);
+  margin-top: 5px;
+}
+
+/* ---- venue cards ---- */
 
 .venue-grid {
   list-style: none;
-  margin: 0;
+  margin: 24px 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+  gap: 20px;
 }
 
 .card {
+  @extend %card-glass;
+
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
   height: 100%;
-  background: #ffffff;
-  border: 1px solid #e8e1d2;
-  border-radius: 0.9rem;
-  padding: 1rem 1.1rem 1.1rem;
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  color: inherit;
-}
-.card:hover {
-  border-color: #bfe3df;
-  box-shadow: 0 4px 16px rgb(14 122 137 / 12%);
-}
-.card:focus-visible {
-  outline: 3px solid #0f7d8c;
-  outline-offset: 2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.mode-pill {
-  align-self: flex-start;
-  border-radius: 999px;
-  background: #e6f4f3;
-  color: #0c6675; /* AA on #e6f4f3 (matches venue-map .mode-pill) */
+/* Hover lift only where hover is a real affordance (pointer devices) — avoids the
+   sticky-hover artifact on touch (AC-1). */
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 26px 60px rgba(7, 42, 58, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+/* Motion guard lives next to the motion it guards (T1 rule — encapsulation specificity). */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* White ring + dark halo: visible against any gradient stop (2.4.7 / 1.4.11).
+   The halo derives from the accent token so a retune retints it too. */
+.card:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
+}
+
+/* ---- card photo area (gradient placeholder until #142) ---- */
+
+.card-photo {
+  position: relative;
+  display: block;
+  height: 150px;
+  background: var(--riv-photo-grad);
+}
+
+.photo-sun {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, rgba(255, 236, 180, 0.95), rgba(240, 170, 46, 0.5) 72%);
+  filter: blur(0.5px);
+  opacity: 0.85;
+}
+
+.photo-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--riv-photo-scrim);
+}
+
+.mode-chip {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--riv-mode-chip-glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--riv-accent-ink);
+  font-size: 11px;
   font-weight: 700;
-  font-size: 0.72rem;
-  padding: 0.2rem 0.6rem;
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.03em;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--riv-card-border);
+}
+
+.photo-location {
+  position: absolute;
+  left: 15px;
+  bottom: 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  /* Explicit line box: keeps the text band inside the scrim's >= 0.5 region — the
+     geometry home.contrast.spec.ts asserts (see the scrim token note in styles.scss). */
+  line-height: 15px;
+  color: var(--riv-photo-ink);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- card body ---- */
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 17px 18px 18px;
+  flex: 1;
 }
 
 .card-name {
   font-weight: 700;
-  font-size: 1.15rem;
-  color: #22302f; /* on white card — AA */
-}
-.card-location {
-  color: #54514b; /* on white card — AA */
-  font-size: 0.9rem;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+  color: var(--riv-card-ink);
 }
 
 .card-meta {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  color: #54514b; /* "reviews" text on white card — AA */
-  font-size: 0.9rem;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--riv-card-ink-soft);
 }
+
 .card-meta .star {
-  color: #e2a32b; /* decorative; the numeric rating carries the value */
+  color: #f4a939; /* decorative; the numeric rating carries the value */
 }
+
 .card-meta .rating {
   font-weight: 700;
-  color: #22302f; /* on white card — AA */
+  color: var(--riv-card-ink);
 }
+
 .card-meta .dot {
-  color: #94908a;
+  color: rgba(12, 42, 51, 0.3); /* decorative separator */
+}
+
+/* T7 (#140) slot. :empty removes it from the flex flow until chips exist — otherwise a
+   zero-height item still costs an extra 8px column gap (review finding). */
+.card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.avail-track {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--riv-card-track);
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.avail-fill {
+  display: block;
+  height: 100%;
+  background: var(--riv-bar-grad);
 }
 
 .card-footer {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  gap: 0.5rem;
-  margin-top: 0.55rem;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
   flex-wrap: wrap;
 }
+
 .price {
-  color: #54514b; /* on white card — AA */
-  font-size: 0.9rem;
-}
-.price strong {
-  color: #0e7a89; /* teal "from" price on white — AA */
-  font-size: 1.05rem;
-}
-.availability {
-  color: #54514b; /* on white card — AA */
-  font-size: 0.9rem;
-}
-.availability strong {
-  color: #0e7a89; /* teal free count on white — AA */
+  font-size: 14px;
+  color: var(--riv-card-ink-soft);
 }
 
+.price strong {
+  color: var(--riv-accent-ink);
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.availability {
+  font-size: 12.5px;
+  color: var(--riv-card-ink-soft);
+}
+
+.availability strong {
+  color: var(--riv-card-ink);
+}
+
+/* ---- loading / empty / error states (on the proven glass, see header note) ---- */
+
 .state {
-  color: #54514b; /* loading/empty/error copy on slate-50 — AA */
-  padding: 2.5rem 1rem;
+  @extend %panel-glass;
+
+  margin-top: 24px;
+  padding: 48px 20px;
   text-align: center;
+  font-size: 15px;
+  color: var(--riv-ink-soft);
 }

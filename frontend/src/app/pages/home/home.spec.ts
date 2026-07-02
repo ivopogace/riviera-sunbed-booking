@@ -145,6 +145,69 @@ describe('Home (venue discovery)', () => {
     req.flush(venues());
   });
 
+  it('renders the hero per the Liquid Glass design (chip + display headline)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+    expect(el().querySelector('.hero-chip')?.textContent).toContain('Sunbeds by the sea');
+    expect(el().querySelector('h1')?.textContent).toContain('Find your spot on the Riviera.');
+  });
+
+  it('shows the live result count with noun and date inside the filter bar', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const results = el().querySelector('[data-testid="results"]')!;
+    expect(results.closest('form')).not.toBeNull(); // inside the filter bar
+    expect(results.getAttribute('aria-live')).toBe('polite');
+    // Assert the count element exactly — a substring match on the whole block is
+    // vacuously satisfied by the digits of the year in the date label (review finding).
+    expect(results.querySelector('.count-number')?.textContent?.trim()).toBe('2');
+    expect(results.textContent).toContain('venues');
+    expect(results.textContent).toMatch(/\b\d{4}\b/); // the formatted date, year kept
+  });
+
+  it('keeps the count visible in the empty state (0 venues)', async () => {
+    listRequest().flush([]);
+    await fixture.whenStable();
+
+    const results = el().querySelector('[data-testid="results"]')!;
+    expect(results.querySelector('.count-number')?.textContent?.trim()).toBe('0');
+    expect(results.textContent).toContain('venues');
+  });
+
+  it('sizes the availability-bar fill as round(free/total*100)%', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const fills = el().querySelectorAll<HTMLElement>('.avail-fill');
+    expect(fills.length).toBe(2);
+    expect(fills[0].style.width).toBe('75%'); // 18 of 24
+    expect(fills[1].style.width).toBe('50%'); // 5 of 10
+  });
+
+  it('renders a 0% availability bar for a venue with no sets (no division by zero)', async () => {
+    const zeroSets: VenueSummary = {
+      ...venues()[0],
+      id: 3,
+      name: 'Empty Cove',
+      fromPrice: null,
+      availability: { free: 0, total: 0 },
+    };
+    listRequest().flush([zeroSets]);
+    await fixture.whenStable();
+
+    expect(el().querySelector<HTMLElement>('.avail-fill')?.style.width).toBe('0%');
+  });
+
+  it('leaves the amenity chip slot empty until T7 (#140) supplies data', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const slot = el().querySelector('[data-testid="card-chips"]');
+    expect(slot).not.toBeNull();
+    expect(slot?.textContent?.trim()).toBe('');
+  });
+
   it('shows a distinct empty state when no venues match', async () => {
     listRequest().flush([]);
     await fixture.whenStable();
