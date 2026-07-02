@@ -452,6 +452,53 @@ phase's code.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-02 | review fix: per-row sweep isolation | other bulk transition+release transactions | grep `@Transactional` in booking sweeps | only the new request sweep (abandoned sweep already per-row) | fixed — mirrored the abandoned sweep's per-row shape |
+| 2026-07-02 | review fix: accept `RuntimeException` compensation | other post-commit external calls without a catch-all | `CheckoutPort.pay` call sites | instant `CreateBookingService.collect` has the same pre-#98 latent gap | deferred — issue #125 |
+| 2026-07-02 | process: TWO scripted multi-patches silently no-op'd (SecurityConfig matchers; this very review record) | every scripted patch of the session | grep-verified each target after patching | 2 found, both re-applied | process note: assert or grep-verify every scripted replace |
+
+---
+
+## Review record (SDLC review gate, high effort — 2026-07-02)
+
+`/code-review origin/main...HEAD` at high effort + `riviera-review-overlay` bank walk (8 generic
+finder angles + the RV-* overlay angle across 5 parallel finder agents; candidates deduped and
+verified at code level). **Confirmed & fixed (commits 44e27e0, ee7eef2):**
+
+1. **SecurityConfig role gate missing for all three #98 endpoints** (RV-BE-9; Sonar S1068; 3
+   angles) — an aborted patch script had dropped the authorize matchers; the queue GET fell
+   through to the public venue GET. Data stayed protected by the in-service `assertOwns` +
+   `CurrentOperator.require` (defense-in-depth held). Fixed + pinned by
+   `RequestToBookFlowIT.pendingQueueIsOperatorGated` (anonymous → 401).
+2. **Instant-mode Stripe booking showed "Request accepted" copy** (2 angles) — view now
+   discriminates on `requestExpiresAt`; both variants pinned in `booking-view.spec.ts`.
+3. **Request-expiry sweep lacked per-row failure isolation** (2 angles) — rebuilt to the
+   abandoned sweep's shape (`RequestReleaseService` + per-row guarded transition); pinned by
+   `RespondToRequestServiceTest.expirySweepIsolatesAFailingRow`.
+4. **`checkout.pay` throw stranded an accepted request** (2 angles) — unpayable AND unsweepable;
+   accept now reverts to `PENDING_REQUEST` on any throw (idempotency-key retry re-adopts a
+   half-created intent).
+5. **A once-declined card (`FAILED`, non-terminal) hid the pay-on-accept credentials** — payable
+   now includes `FAILED`; pinned in `RequestAcceptPayIT`.
+6. **Unconditional `@EnableScheduling` could flake the race IT** (3 angles) — background sweep
+   pushed out of the IT's window (`booking.request.initial-delay=PT2H`).
+7. **staff-daily 401 handling fired a credential-less reconcile that overwrote its notice** —
+   settle-without-reload on sign-out.
+8. **Revert-compensation comments claimed "no PI exists"** — reworded honestly (double-timeout
+   residual: unregistered intent is inert; retry re-adopts it).
+9. **Sonar: 7 new issues** (S1068/S1172×2/S1192×3/S3735) — all fixed; `ApiProblem.response`
+   reused; plan-promised e2e cases (staff error copy, tourist EXPIRED panel) added.
+
+**Deferred with rationale → follow-up issues:** guest withdrawal of a pending request (#123),
+guest notification channel (#124), instant-path `pay()`-throw strand (#125, pre-existing),
+cleanup batch incl. orphan-PI reconciliation note, stale-credential Pay-now loop, interceptor
+suffix seam, N+1 guest names, reconcile-per-decision, axe-helper extraction, view/SQL/signal
+duplication, latch→forkJoin (#126). **Two-clock windows floating with config:** documented,
+consistent with the instant TTL — not changed.
+
+**Pay window not capped at the cutoff** (3 angles): *Resolved (user, 2026-07-02): keep
+uncapped* — the hold blocks both channels from request time (no double-sell; invariant #4's
+collision mechanism intact), the live staff view picks up late confirmations, and a
+late-accepted guest keeps a real window to pay. Revisit via config if it bites.
 
 ---
 
