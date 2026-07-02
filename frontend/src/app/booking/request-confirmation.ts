@@ -24,7 +24,7 @@ import { BookingService } from './booking.service';
         <h1 id="request-title">Request sent</h1>
         <p class="lead">
           {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on
-          {{ formatBookingDate(r.bookingDate) }} is a <strong>Request to Book</strong> venue. The host
+          {{ dateLabel() }} is a <strong>Request to Book</strong> venue. The host
           needs to accept before you pay — <strong>you haven’t been charged</strong>.
         </p>
 
@@ -71,7 +71,11 @@ export class RequestConfirmation {
   });
 
   protected readonly formatMoney = formatMoney;
-  protected readonly formatBookingDate = formatBookingDate;
+  /** The booking date, formatted once per request (memoized like the dialog/pay siblings). */
+  protected readonly dateLabel = computed(() => {
+    const r = this.requested();
+    return r ? formatBookingDate(r.bookingDate) : '';
+  });
 
   /** The venue's response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */
   protected deadline(iso: string): string {

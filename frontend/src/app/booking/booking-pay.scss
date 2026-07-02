@@ -19,6 +19,19 @@
   color: var(--riv-card-ink);
 }
 
+// The persistent status live region is announced, not shown (the headings carry the visual state).
+.sr-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 // ---- page containers ----
 .pay-checkout {
   position: relative;

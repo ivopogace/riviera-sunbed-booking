@@ -23,7 +23,7 @@ import { BookingService } from './booking.service';
         <h1 id="confirmation-title">You’re booked.</h1>
         <p class="lead">
           {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on
-          {{ formatBookingDate(c.bookingDate) }}.
+          {{ dateLabel() }}.
         </p>
 
         <dl class="summary">
@@ -64,5 +64,9 @@ export class BookingConfirmation {
   });
 
   protected readonly formatMoney = formatMoney;
-  protected readonly formatBookingDate = formatBookingDate;
+  /** The booking date, formatted once per confirmation (memoized like the dialog/pay siblings). */
+  protected readonly dateLabel = computed(() => {
+    const c = this.confirmation();
+    return c ? formatBookingDate(c.bookingDate) : '';
+  });
 }

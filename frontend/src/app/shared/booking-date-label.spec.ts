@@ -22,6 +22,14 @@ describe('formatBookingDate', () => {
     expect(text).not.toContain('30');
   });
 
+  it('includes the year with { withYear: true } (the map / Discover context)', () => {
+    const text = formatBookingDate('2026-07-20', { withYear: true });
+    expect(text).toContain('Mon');
+    expect(text).toContain('20');
+    expect(text).toContain('Jul');
+    expect(text).toContain('2026');
+  });
+
   it('returns an empty string for an empty or malformed input (defensive)', () => {
     expect(formatBookingDate('')).toBe('');
     expect(formatBookingDate('not-a-date')).toBe('');

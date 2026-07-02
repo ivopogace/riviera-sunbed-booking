@@ -119,4 +119,19 @@ describe('BookingPay accessibility (axe)', () => {
   it('has no violations in the start-over (missing) state', async () => {
     await expectNoAxeViolations(await renderInState('missing', { booking: undefined }));
   });
+
+  it('announces the outcome via a persistent root live region, not a late-mounted one', async () => {
+    // Regression guard (high-effort review finding): the confirmed/awaiting outcome must be
+    // announced by a single live region that already exists — a region re-created together with
+    // the confirmed section never announces its initial text, so a screen-reader user hears no
+    // confirmation after "Confirming…".
+    const host = await renderInState('confirmed');
+    const region = host.querySelector('[data-testid="pay-status"]');
+    expect(region?.getAttribute('role')).toBe('status');
+    expect(region?.getAttribute('aria-live')).toBe('polite');
+    expect(region?.textContent).toContain('confirmed');
+    // It is a persistent root sibling — NOT nested inside the swapped state section.
+    expect(host.querySelector('.pay-done [data-testid="pay-status"]')).toBeNull();
+    expect(host.querySelector('.pay-checkout [data-testid="pay-status"]')).toBeNull();
+  });
 });

@@ -160,6 +160,33 @@ for `feature/t4-…` per the riviera-sdlc cloud addendum). Created off `main@f5f
   passes `v.name`) so the gradient header can show the venue; SetView carries no venue name. — *Owner:*
   agent · *Resolves by:* Phase 1.
 
+## Review gate (high-effort, 2026-07-02)
+
+`riviera-review-overlay` + workflow-backed `/code-review high origin/main...HEAD` (money path → high
+effort). **Invariant #8 explicitly verified intact** — the finders confirmed `booking-pay.ts` still
+confirms only on the webhook-driven poll; no client-side confirmation was introduced (that concern
+was raised and **refuted**). Three findings survived verification, all fixed (each re-entered the
+loop at Implement — FE fix → `angular-developer` + angular-cli MCP + `playwright-cli` already loaded,
+no new area, so RV-PROC-1 holds; `tdd`; CI re-run; e2e re-run):
+
+- **F1 (CONFIRMED, a11y — real regression):** the confirmed/awaiting outcome sat in a freshly-mounted
+  `role="status"` region, so its initial text was never announced (live regions only announce
+  *subsequent* mutations). **Fix:** one persistent root-level live region driven by a `liveStatus()`
+  computed; per-branch late-mounted regions removed. Guarded by `booking-pay.a11y.spec.ts`
+  "announces the outcome via a persistent root live region".
+- **F2 (CONFIRMED, DRY):** `formatBookingDate` duplicated the `en-IE/UTC` formatter inlined in
+  `home.ts` + `venue-map.ts`. **Fix:** `shared/booking-date-label.ts` is now the single formatter
+  (module-singleton `Intl` instances, `withYear` option); `home`/`venue-map` adopt it (byte-identical
+  output, `withYear: true`).
+- **F3 (PLAUSIBLE, perf/consistency):** the two confirmation screens rebuilt an `Intl` formatter per
+  change-detection pass. **Fix:** module-singleton formatter (F2) + a memoized `dateLabel` computed in
+  both, matching the dialog/pay siblings.
+
+**Refuted (no action):** dialog display-vs-submit date divergence (the modal scrim blocks any map-date
+change while the dialog is open, so `date()` is constant); the `formatBookingDate` empty-string
+narrowing (intended validated passthrough); the static `[attr.aria-labelledby]` binding (a
+multi-id label reference, correct).
+
 ## Availability & concurrency (invariant #2)
 
 > Frontend-only: this slice **never writes** `availability(set_id, booking_date)`. It still touches

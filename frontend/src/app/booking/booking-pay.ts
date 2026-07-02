@@ -41,6 +41,10 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
   selector: 'app-booking-pay',
   imports: [RouterLink],
   template: `
+    <!-- One persistent live region announces every state change. A live region only announces
+         content that MUTATES after it is in the DOM — a region re-created together with the
+         confirmed/awaiting section would never announce its initial text (a11y). -->
+    <p class="sr-status" role="status" aria-live="polite" data-testid="pay-status">{{ liveStatus() }}</p>
     @if (state() === 'missing') {
       <section class="pay-standalone" aria-labelledby="pay-title">
         <h1 id="pay-title">No payment in progress</h1>
@@ -73,13 +77,6 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
         <p class="code" data-testid="booking-code">
           <span class="code-label">Booking code</span>
           <strong>{{ code }}</strong>
-        </p>
-
-        <p class="status" role="status" aria-live="polite" data-testid="pay-status">
-          @switch (state()) {
-            @case ('confirmed') { Your booking is confirmed. }
-            @case ('awaiting') { Payment received — awaiting confirmation. }
-          }
         </p>
 
         <a [routerLink]="['/booking', code]" class="btn-primary" data-testid="manage-link">
@@ -131,13 +128,9 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
               <p class="trust"><span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe</p>
             }
 
-            <!-- Status of the payment/confirmation, announced to assistive tech. -->
-            <p class="status" role="status" aria-live="polite" data-testid="pay-status">
-              @switch (state()) {
-                @case ('mounting') { Loading the secure payment form… }
-                @case ('processing') { Confirming your booking — please don’t close this page… }
-              }
-            </p>
+            @if (state() === 'mounting') {
+              <p class="status">Loading the secure payment form…</p>
+            }
 
             @if (errorMessage(); as msg) {
               <p class="form-error" role="alert" data-testid="pay-error">{{ msg }}</p>
@@ -208,6 +201,23 @@ export class BookingPay {
   protected readonly showPayButton = computed(
     () => this.state() === 'ready' || (this.state() === 'error' && !this.terminalError()),
   );
+  /** The single announcement for the persistent live region — mutates as the state advances so a
+   *  screen reader hears each transition (loading → confirming → confirmed/awaiting). */
+  protected readonly liveStatus = computed(() => {
+    switch (this.state()) {
+      case 'mounting':
+        return 'Loading the secure payment form…';
+      case 'processing':
+        return 'Confirming your booking — please don’t close this page…';
+      case 'confirmed':
+        return 'Your booking is confirmed.';
+      case 'awaiting':
+        return 'Payment received — awaiting confirmation.';
+      default:
+        return '';
+    }
+  });
+
   /** The booking total, formatted once (the awaiting summary is fixed for the page's lifetime). */
   private readonly priceText = this.booking ? formatMoney(this.booking.amount) : '';
   protected readonly payLabel = computed(() =>

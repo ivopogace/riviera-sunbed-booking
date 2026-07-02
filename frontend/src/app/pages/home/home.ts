@@ -2,7 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { formatMoney } from '../../shared/money';
-import { defaultBookingDate, parseIsoDate } from '../../venue/booking-date';
+import { formatBookingDate } from '../../shared/booking-date-label';
+import { defaultBookingDate } from '../../venue/booking-date';
 import { MoneyView, VenueSummary } from '../../venue/venue.model';
 import { VenueService } from '../../venue/venue.service';
 
@@ -157,15 +158,7 @@ export class Home {
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
-    return new Intl.DateTimeFormat('en-IE', {
-      // parseIsoDate anchors the civil day at midnight UTC, so format in UTC too — otherwise a
-      // viewer west of UTC sees the previous day (invariant #6: never rely on the default zone).
-      timeZone: 'UTC',
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }).format(parseIsoDate(this.selectedDate()));
+    return formatBookingDate(this.selectedDate(), { withYear: true });
   }
 
   /** A single accessible name carrying every card fact, so nothing is conveyed by layout alone. */
