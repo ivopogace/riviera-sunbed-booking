@@ -1,41 +1,169 @@
-import { AA_NORMAL, contrastRatio } from '../../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../../../testing/contrast';
 
 /**
- * WCAG-AA contrast guard for the venue-discovery design tokens (issue #61; gate from #38).
- * axe-core's `color-contrast` rule can't run under jsdom, so the colour pairs the page actually
- * uses are verified here by relative-luminance maths instead.
+ * WCAG-AA contrast guard for the Liquid Glass Discover page (issue #135; gate from #38).
+ * Glass surfaces are translucent, so every pair is checked as the EFFECTIVE colour — the
+ * glass rgba composited over the worst-case stops of the theme's background gradient, and
+ * alpha inks composited over that result (the `app.contrast.spec.ts` pattern from #134).
  *
- * This table mirrors every <em>text-bearing</em> `color` / `background` declaration in `home.scss`.
- * When a token changes there, update it here too — a colour edit must re-pass AA. Page-level text
- * sits on the app shell's slate-50 (#f8fafc); card/filter text sits on the white surfaces declared
- * in the scss. All pairs are normal-size text, so AA_NORMAL (4.5:1) applies throughout.
+ * This table mirrors every text-bearing token in `styles.scss` + `home.scss`; a token edit
+ * there must re-pass here. Deviations from the design file, on purpose (plan R-1/R-2, same
+ * class as T1's header): the hero and list-state panels sit on the AA-proven header glass
+ * instead of the bare gradient; the riviera card glass is 0.78 (design 0.55); the muted
+ * card inks are 0.78/0.72 (design 0.7/0.55); the teal accent is #085a6e (design #0a6e85);
+ * the field border is a dark tint (design white) for the 1.4.11 component boundary.
  *
- * Deliberately excluded: the decorative `.card-meta .star` (★) and `.card-meta .dot` (·) glyphs.
- * Both are `aria-hidden` and purely incidental — the numeric rating and the literal "·" carry no
- * information the surrounding text doesn't — so WCAG 1.4.3's incidental-text exception applies and
- * they are not held to AA (matching the venue-map contrast spec's treatment of the same glyphs).
+ * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the
+ * availability bar track+fill (`N of M free` text carries the fact), the sun disc, the
+ * ★ glyph and · separators (aria-hidden; the numeric rating carries the value), and the
+ * decorative card border.
  */
-interface TokenPair {
-  readonly fg: string;
-  readonly bg: string;
-  readonly usage: string;
+
+const WHITE = hexToRgb('ffffff');
+const INK_DARK = hexToRgb('0a2a33'); // porcelain --riv-ink AND both themes' --riv-card-ink
+const CARD_INK = hexToRgb('0c2a33'); // the rgba(12,42,51,…) muted-ink base
+const ACCENT = '#085a6e'; // --riv-accent-ink
+
+// styles.scss tokens (keep in sync)
+const RIVIERA_HEADER_GLASS = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
+const PORCELAIN_HEADER_GLASS = { color: WHITE, alpha: 0.6 };
+const RIVIERA_CARD_GLASS = { color: WHITE, alpha: 0.78 };
+const PORCELAIN_CARD_GLASS = { color: WHITE, alpha: 0.55 };
+const FIELD_FILL_ALPHA = 0.55; // select/date fill over the card glass
+const MODE_CHIP_GLASS = { color: WHITE, alpha: 0.7 };
+const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
+const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
+const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint)
+
+// Worst-case gradient stops a glass surface can sit over (mirrors app.contrast.spec.ts).
+const RIVIERA_STOPS = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);
+const PORCELAIN_STOPS = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(hexToRgb);
+
+// --riv-photo-grad stops (same in both themes; from the design's CTA hexes).
+const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);
+
+interface Theme {
+  readonly name: string;
+  readonly stops: readonly Rgb[];
+  readonly headerGlass: { color: Rgb; alpha: number };
+  readonly cardGlass: { color: Rgb; alpha: number };
+  readonly heroInk: Rgb;
+  readonly heroInkSoftAlpha: number; // --riv-ink-soft
 }
 
-const SLATE_50 = '#f8fafc'; // app shell <main> background (Tailwind bg-slate-50)
-const WHITE = '#ffffff';
-
-const TOKEN_PAIRS: readonly TokenPair[] = [
-  { fg: '#22302f', bg: SLATE_50, usage: '.page-title on the app background' },
-  { fg: '#54514b', bg: SLATE_50, usage: '.page-intro / .results / .state (muted) on the app background' },
-  { fg: '#0e7a89', bg: SLATE_50, usage: '.results strong (teal count) on the app background' },
-  { fg: '#22302f', bg: WHITE, usage: '.field-label / .card-name / .card-meta .rating on white' },
-  { fg: '#54514b', bg: WHITE, usage: '.card-location / .card-meta / .price / .availability on white' },
-  { fg: '#0e7a89', bg: WHITE, usage: '.price strong / .availability strong (teal) on white' },
-  { fg: '#0c6675', bg: '#e6f4f3', usage: '.mode-pill text on its pill background' },
+const THEMES: readonly Theme[] = [
+  {
+    name: 'riviera',
+    stops: RIVIERA_STOPS,
+    headerGlass: RIVIERA_HEADER_GLASS,
+    cardGlass: RIVIERA_CARD_GLASS,
+    heroInk: WHITE,
+    heroInkSoftAlpha: 0.86,
+  },
+  {
+    name: 'porcelain',
+    stops: PORCELAIN_STOPS,
+    headerGlass: PORCELAIN_HEADER_GLASS,
+    cardGlass: PORCELAIN_CARD_GLASS,
+    heroInk: INK_DARK,
+    heroInkSoftAlpha: 0.7,
+  },
 ];
 
-describe('Home (discovery) design-token contrast (WCAG AA)', () => {
-  it.each(TOKEN_PAIRS)('$usage meets AA ($fg on $bg)', ({ fg, bg }) => {
-    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_NORMAL);
+/** Effective surface of a glass layer over a stop. */
+function surfaceOver(glass: { color: Rgb; alpha: number }, stop: Rgb): Rgb {
+  return composite(glass.color, glass.alpha, stop);
+}
+
+function expectAaOverStops(
+  ink: Rgb,
+  inkAlpha: number,
+  glass: { color: Rgb; alpha: number },
+  stops: readonly Rgb[],
+  threshold: number = AA_NORMAL,
+): void {
+  for (const stop of stops) {
+    const surface = surfaceOver(glass, stop);
+    const effectiveInk = composite(ink, inkAlpha, surface);
+    expect(
+      contrastRatio(rgbToHex(effectiveInk), rgbToHex(surface)),
+      `over stop ${rgbToHex(stop)}`,
+    ).toBeGreaterThanOrEqual(threshold);
+  }
+}
+
+describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #135)', (theme) => {
+  it('hero headline + state text (ink) meets AA on the hero/state panel glass', () => {
+    expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
+  });
+
+  it('hero intro / state copy (ink-soft) meets AA on the hero/state panel glass', () => {
+    expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
+  });
+
+  it('card ink (names, ratings, free count) meets AA on the card glass', () => {
+    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+  });
+
+  it('card ink-soft (reviews, price copy, footer) meets AA on the card glass', () => {
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+  });
+
+  it('card ink-faint (field labels, count subline) meets AA on the card glass', () => {
+    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
+  });
+
+  it('accent ink (result count, from-price) meets AA on the card glass', () => {
+    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+  });
+
+  it('select/date text meets AA on the field fill over the card glass', () => {
+    for (const stop of theme.stops) {
+      const card = surfaceOver(theme.cardGlass, stop);
+      const field = composite(WHITE, FIELD_FILL_ALPHA, card);
+      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
+    for (const stop of theme.stops) {
+      const card = surfaceOver(theme.cardGlass, stop);
+      const field = composite(WHITE, FIELD_FILL_ALPHA, card);
+      const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+      expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+  });
+});
+
+describe('Discover photo-area contrast (theme-independent, issue #135)', () => {
+  it('mode chip text (accent) meets AA on the chip glass over the photo gradient', () => {
+    for (const stop of PHOTO_STOPS) {
+      const chip = composite(MODE_CHIP_GLASS.color, MODE_CHIP_GLASS.alpha, stop);
+      expect(
+        contrastRatio(ACCENT, rgbToHex(chip)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('location overlay (white) meets AA over the weakest scrim it can sit on', () => {
+    // The overlay sits in the scrim's bottom band; alpha there is >= 0.5. Worst case:
+    // the thinnest scrim over the lightest photo stop.
+    const SCRIM = hexToRgb('0d2828');
+    for (const stop of PHOTO_STOPS) {
+      const backdrop = composite(SCRIM, 0.5, stop);
+      expect(
+        contrastRatio(rgbToHex(WHITE), rgbToHex(backdrop)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 });
