@@ -70,6 +70,17 @@ class CreateBookingService implements CreateBooking {
 		return switch (reserved) {
 			case ReserveOutcome.Rejected rejected -> rejected.reason();
 			case ReserveOutcome.Reserved r -> collect(r, command);
+			// Request-to-Book (issue #98): the request holds the set but there is NO collect phase —
+			// no PaymentIntent, no charge, until the venue accepts (payment-request-on-accept).
+			case ReserveOutcome.RequestPending pending -> {
+				log.info("pending request {} for set {} on {} (expires {})", pending.bookingId(),
+						pending.set().setId().value(), command.bookingDate(),
+						pending.requestExpiresAt());
+				yield new BookingOutcome.Requested(
+						new BookingConfirmation(pending.code(), BookingStatus.PENDING_REQUEST,
+								pending.set(), command.bookingDate()),
+						pending.requestExpiresAt());
+			}
 		};
 	}
 

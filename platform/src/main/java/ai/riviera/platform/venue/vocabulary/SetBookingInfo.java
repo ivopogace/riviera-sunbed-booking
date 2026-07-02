@@ -11,9 +11,12 @@ import java.time.LocalTime;
  * confirmation summary (venue name + set label).
  *
  * <p>{@code pool} is the same string token the database CHECK stores ({@code "ONLINE"} /
- * {@code "WALK_IN"}). Returned via {@link SetBookingFacts#setBookingInfo} so booking never
- * reads venue's tables (invariant #11).
+ * {@code "WALK_IN"}). {@code bookingMode} (issue #98) tells the reserve flow whether the venue
+ * auto-confirms ({@code INSTANT}) or the booking starts as a pending request ({@code REQUEST}).
+ * Returned via {@link SetBookingFacts#setBookingInfo} so booking never reads venue's tables
+ * (invariant #11).
  */
 public record SetBookingInfo(SetId setId, VenueId venueId, String venueName, String rowLabel,
-		int positionNo, String pool, MoneyView price, LocalTime bookingCutoff) {
+		int positionNo, String pool, MoneyView price, LocalTime bookingCutoff,
+		BookingMode bookingMode) {
 }

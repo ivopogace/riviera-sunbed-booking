@@ -38,6 +38,15 @@ public interface Bookings {
 	OptionalLong insertAwaitingPayment(NewBooking booking);
 
 	/**
+	 * Insert a new booking in {@code PENDING_REQUEST} (Request-to-Book, issue #98) with its
+	 * venue-response deadline. Same code-collision contract as {@link #insertAwaitingPayment}:
+	 * empty means "code taken, regenerate and retry" (atomic {@code ON CONFLICT (code) DO
+	 * NOTHING}); other integrity failures throw. No payment exists yet — a PaymentIntent is
+	 * created only if the venue accepts (payment-request-on-accept).
+	 */
+	OptionalLong insertPendingRequest(NewBooking booking, Instant requestExpiresAt);
+
+	/**
 	 * Load a booking by its {@code code} (the bearer credential, invariant #7) for the view and
 	 * cancel use cases (U6), or {@code empty} if no booking has that code. Read-only — carries the
 	 * full row the caller needs (status, ids, amount, the cancellation audit) without exposing the

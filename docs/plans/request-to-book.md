@@ -91,7 +91,7 @@ adapter-level tests named alongside.
   `BookingStatus` and the `booking_status_check` CHECK constraint hold the identical set
   (`PENDING_REQUEST, AWAITING_PAYMENT, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW, DECLINED,
   EXPIRED`) — enum + migration land in lockstep (invariant #12).
-  *Pinned by:* `BookingStatusSchemaLockstepIT` (inserts every enum value; rejects a non-enum value).
+  *Pinned by:* `BookingMigrationIT.everyEnumStatusAccepted` + `unknownStatusRejected` (folded into the existing migration IT rather than a new class).
 - [ ] **AC-9:** Given an INSTANT-mode venue, when the full existing booking/cancel/webhook/sweep
   suite runs, then it is green unchanged (regression).
   *Pinned by:* existing `booking`/`payment`/`availability` suites in CI.
@@ -305,9 +305,9 @@ the mocked suite can't cover, matching the existing split.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V19 migration + statuses + booking mode vocabulary | ⏳ | |
-| 1 — Request creation path (soft-hold, no PI) + concurrency IT | | |
-| 2 — Accept/decline services + endpoints + CrossVenueDenialIT | | |
+| 0 — V19 migration + statuses + booking mode vocabulary | ✅ | (this commit) |
+| 1 — Request creation path (soft-hold, no PI) + concurrency IT | ✅ | (this commit) |
+| 2 — Accept/decline services + endpoints + CrossVenueDenialIT | ⏳ | |
 | 3 — Expiry sweep + pay-window extension of abandoned sweep | | |
 | 4 — Guest view (status/credentials) + pending-queue endpoint | | |
 | 5 — FE tourist flow + mocked e2e | | |

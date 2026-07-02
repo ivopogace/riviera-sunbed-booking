@@ -7,10 +7,22 @@ package ai.riviera.platform.booking.application.reserve;
  * thrown (riviera-java-conventions: typed outcomes for expected flows).
  */
 public sealed interface BookingOutcome
-		permits BookingOutcome.Confirmed, BookingOutcome.AwaitingPayment, BookingOutcome.Rejected {
+		permits BookingOutcome.Confirmed, BookingOutcome.AwaitingPayment, BookingOutcome.Requested,
+		BookingOutcome.Rejected {
 
 	/** The booking was created and confirmed (the synchronous stub path → {@code 201}). */
 	record Confirmed(BookingConfirmation confirmation) implements BookingOutcome {
+	}
+
+	/**
+	 * Request-to-Book (issue #98): the venue sells by request, so the booking was created
+	 * {@code PENDING_REQUEST} — the {@code (set, date)} is soft-held (invariant #2), but no
+	 * PaymentIntent exists and no card is charged until the venue accepts. The controller maps
+	 * this to {@code 202}; {@code requestExpiresAt} is the venue-response deadline
+	 * (min(now + expiry-window, evening-before cutoff)).
+	 */
+	record Requested(BookingConfirmation confirmation, java.time.Instant requestExpiresAt)
+			implements BookingOutcome {
 	}
 
 	/**

@@ -78,6 +78,33 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public OptionalLong insertPendingRequest(NewBooking b, Instant requestExpiresAt) {
+		// Request-to-Book (issue #98): same ON CONFLICT (code) DO NOTHING contract as the
+		// AWAITING_PAYMENT insert — a code collision is an empty retry signal, never a poisoned
+		// transaction. The deadline is stored on the row so accept guard + expiry sweep share it.
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status, request_expires_at)
+				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status, :expires)
+				ON CONFLICT (code) DO NOTHING
+				RETURNING id
+				""")
+				.param("code", b.code())
+				.param(PARAM_VENUE, b.venueId().value())
+				.param("set", b.setId().value())
+				.param("customer", b.customerId().value())
+				.param("date", b.bookingDate())
+				.param("amount", b.amountMinor())
+				.param("currency", b.amountCurrency())
+				.param(PARAM_STATUS, BookingStatus.PENDING_REQUEST.name())
+				.param("expires", java.sql.Timestamp.from(requestExpiresAt))
+				.query(Long.class)
+				.optional()
+				.map(OptionalLong::of)
+				.orElseGet(OptionalLong::empty);
+	}
+
+	@Override
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, booking_date,

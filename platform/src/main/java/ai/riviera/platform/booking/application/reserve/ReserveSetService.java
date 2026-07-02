@@ -1,9 +1,13 @@
 package ai.riviera.platform.booking.application.reserve;
 
 import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.request.RequestWindows;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +18,7 @@ import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
@@ -47,16 +52,20 @@ class ReserveSetService {
 	private final Bookings bookings;
 	private final BookingCodeGenerator codeGenerator;
 	private final BookingCutoff cutoff;
+	private final RequestWindows requestWindows;
+	private final Clock clock;
 
 	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability,
 			CustomerDirectory customers, Bookings bookings, BookingCodeGenerator codeGenerator,
-			BookingCutoff cutoff) {
+			BookingCutoff cutoff, RequestWindows requestWindows, Clock clock) {
 		this.setFacts = setFacts;
 		this.availability = availability;
 		this.customers = customers;
 		this.bookings = bookings;
 		this.codeGenerator = codeGenerator;
 		this.cutoff = cutoff;
+		this.requestWindows = requestWindows;
+		this.clock = clock;
 	}
 
 	/**
@@ -87,8 +96,24 @@ class ReserveSetService {
 		}
 
 		CustomerId customerId = customers.findOrCreate(command.contact());
-		Inserted inserted = insertWithUniqueCode(set, customerId, command);
+		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
+		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
+		// The deadline is capped at the same evening-before cutoff isBookable just enforced, so an
+		// accept (guarded by request_expires_at > now) can never happen after bookings close (#4).
+		if (set.bookingMode() == BookingMode.REQUEST) {
+			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
+					cutoff.closesAt(set.bookingCutoff(), command.bookingDate()));
+			Inserted pending = insertWithUniqueCode(set, customerId, command,
+					b -> bookings.insertPendingRequest(b, expiresAt));
+			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);
+		}
+		Inserted inserted = insertWithUniqueCode(set, customerId, command,
+				bookings::insertAwaitingPayment);
 		return new ReserveOutcome.Reserved(inserted.id(), inserted.code(), set);
+	}
+
+	private static Instant min(Instant a, Instant b) {
+		return a.isBefore(b) ? a : b;
 	}
 
 	/**
@@ -98,10 +123,10 @@ class ReserveSetService {
 	 * transaction. Bounded retries.
 	 */
 	private Inserted insertWithUniqueCode(SetBookingInfo set, CustomerId customerId,
-			CreateBookingCommand command) {
+			CreateBookingCommand command, Function<NewBooking, OptionalLong> insert) {
 		for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
 			String code = codeGenerator.next();
-			OptionalLong id = bookings.insertAwaitingPayment(new NewBooking(code, set.venueId(),
+			OptionalLong id = insert.apply(new NewBooking(code, set.venueId(),
 					set.setId(), customerId, command.bookingDate(), set.price().minorUnits(),
 					set.price().currency()));
 			if (id.isPresent()) {

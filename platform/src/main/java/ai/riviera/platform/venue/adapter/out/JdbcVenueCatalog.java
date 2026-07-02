@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -203,7 +204,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 		return jdbc.sql("""
 				SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
-				       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff
+				       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
+				       v.booking_mode
 				FROM set_position sp
 				JOIN venue v ON v.id = sp.venue_id
 				WHERE sp.id = :id
@@ -214,7 +216,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getString("venue_name"), rs.getString("row_label"),
 						rs.getInt("position_no"), rs.getString("pool"),
 						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
-						rs.getObject("booking_cutoff", java.time.LocalTime.class)))
+						rs.getObject("booking_cutoff", java.time.LocalTime.class),
+						BookingMode.valueOf(rs.getString("booking_mode"))))
 				.optional();
 	}
 

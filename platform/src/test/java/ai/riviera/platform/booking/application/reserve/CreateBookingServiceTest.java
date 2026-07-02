@@ -66,16 +66,24 @@ class CreateBookingServiceTest {
 	private final RecordingRelease release = new RecordingRelease();
 
 	private SetBookingInfo set(String pool) {
-		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0));
+		return set(pool, ai.riviera.platform.venue.vocabulary.BookingMode.INSTANT);
 	}
+
+	private SetBookingInfo set(String pool, ai.riviera.platform.venue.vocabulary.BookingMode mode) {
+		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), mode);
+	}
+
+	private static final ai.riviera.platform.booking.application.request.RequestWindows WINDOWS =
+			new ai.riviera.platform.booking.application.request.RequestWindows(
+					java.time.Duration.ofHours(24), java.time.Duration.ofHours(12));
 
 	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
 			CheckoutPort checkout, BookingCodeGenerator codes) {
 		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = contact -> new CustomerId(99);
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
-				codes, new BookingCutoff(CLOCK));
+				codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		return new CreateBookingService(reservation, checkout, confirmer, release, CLOCK);
 	}
 
@@ -133,6 +141,11 @@ class CreateBookingServiceTest {
 			}
 
 			@Override
+			public java.util.OptionalLong insertPendingRequest(NewBooking booking, java.time.Instant requestExpiresAt) {
+				return java.util.OptionalLong.empty();
+			}
+
+			@Override
 			public ConfirmedBooking confirm(long bookingId, java.time.Instant at) {
 				return null; // unused: the stub path confirms via the ConfirmBooking seam, not here
 			}
@@ -181,7 +194,7 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, collidingOnce, () -> codes.removeFirst(), new BookingCutoff(CLOCK));
+				customers, collidingOnce, () -> codes.removeFirst(), new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, CLOCK);
 
@@ -253,13 +266,58 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(7);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK));
+				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release, CLOCK);
 
 		assertThrows(IllegalStateException.class, () -> service.create(command()));
 		assertEquals(1, release.released.size(),
 				"a confirm failure after commit compensates by releasing the claim");
+	}
+
+	@Test
+	void requestModeCreatesPendingRequestWithoutPayment() {
+		// #98 AC-1: a REQUEST venue's booking is created PENDING_REQUEST and the payment gateway is
+		// NEVER invoked — no PaymentIntent, no charge, until the venue accepts.
+		boolean[] paymentTouched = {false};
+		CheckoutPort neverPay = (ref, money) -> {
+			paymentTouched[0] = true;
+			throw new AssertionError("a pending request must not initiate payment");
+		};
+		CreateBookingService service = service(
+				set("ONLINE", ai.riviera.platform.venue.vocabulary.BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED), neverPay, () -> "REQCODE001");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals("REQCODE001", requested.confirmation().code());
+		assertEquals(BookingStatus.PENDING_REQUEST, requested.confirmation().status());
+		assertFalse(paymentTouched[0], "no CheckoutPort call for a pending request");
+		assertEquals(0, bookings.inserted.size(), "no AWAITING_PAYMENT row for a request");
+		assertEquals(1, bookings.pendingInserted.size(), "exactly one PENDING_REQUEST row");
+		assertEquals(0, confirmer.confirmed.size(), "nothing is confirmed at request time");
+		// Deadline: now + 24h is well before the 2026-11-30 17:00Z cutoff instant, so uncapped.
+		assertEquals(Instant.parse("2026-11-02T09:00:00Z"), requested.requestExpiresAt());
+		assertEquals(requested.requestExpiresAt(), bookings.lastRequestExpiresAt,
+				"the stored deadline is the one returned to the guest");
+	}
+
+	@Test
+	void requestDeadlineCappedAtCutoff() {
+		// #98 / invariant #4: the response deadline never extends past the evening-before cutoff —
+		// for a next-day booking, min(now + 24h, cutoff) is the cutoff instant (18:00 CET = 17:00Z).
+		CreateBookingService service = service(
+				set("ONLINE", ai.riviera.platform.venue.vocabulary.BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(ref, money) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(Instant.parse("2026-11-01T17:00:00Z"), requested.requestExpiresAt(),
+				"deadline capped at the evening-before 18:00 Europe/Tirane cutoff");
 	}
 
 	@Test
@@ -340,11 +398,20 @@ class CreateBookingServiceTest {
 	/** Captures persistence calls so branches can be asserted without a database. */
 	private static final class RecordingBookings implements Bookings {
 		final List<NewBooking> inserted = new ArrayList<>();
+		final List<NewBooking> pendingInserted = new ArrayList<>();
+		Instant lastRequestExpiresAt;
 		private long nextId = 1000;
 
 		@Override
 		public java.util.OptionalLong insertAwaitingPayment(NewBooking booking) {
 			inserted.add(booking);
+			return java.util.OptionalLong.of(++nextId);
+		}
+
+		@Override
+		public java.util.OptionalLong insertPendingRequest(NewBooking booking, Instant requestExpiresAt) {
+			pendingInserted.add(booking);
+			lastRequestExpiresAt = requestExpiresAt;
 			return java.util.OptionalLong.of(++nextId);
 		}
 
