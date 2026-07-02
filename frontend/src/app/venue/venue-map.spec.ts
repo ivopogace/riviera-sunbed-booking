@@ -311,7 +311,10 @@ describe('VenueMap', () => {
     el().querySelector<HTMLButtonElement>('.set-button')!.click();
     await fixture.whenStable();
 
-    const dialogDate = el().querySelector<HTMLInputElement>('app-booking-dialog input[type="date"]');
-    expect(dialogDate?.value).toBe('2026-07-20');
+    // The dialog now shows the map's date read-only (the map owns the date, #44/#136) — assert the
+    // formatted date display instead of an editable input.
+    const dialogDate = el().querySelector('app-booking-dialog [data-testid="dialog-date"]');
+    expect(dialogDate?.textContent).toContain('20');
+    expect(dialogDate?.textContent).toContain('Jul');
   });
 });

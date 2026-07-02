@@ -233,7 +233,7 @@ stays an ISO `LocalDate` string on the wire (only its *display* is prettified).
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared friendly booking-date label | ✅ | `feat(fe): friendly booking-date label helper (#137)` |
-| 1 — Booking dialog: 2-step glass modal | | |
+| 1 — Booking dialog: 2-step glass modal | ✅ | `feat(fe): 2-step Liquid Glass booking dialog (#137)` |
 | 2 — Payment page: glass two-column + v3 states | | |
 | 3 — Confirmed + Request-sent glass cards | | |
 | 4 — Route flip + e2e alignment + full green | | |
@@ -517,6 +517,7 @@ expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContai
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-02 | Phase 1 (read-only date label) | raw `{{ …bookingDate }}` renders | grep `bookingDate` in booking/ | booking-pay, booking-confirmation, request-confirmation | Adopt `formatBookingDate` on those surfaces in Phases 2–3 (their restyle) |
 
 ---
 
