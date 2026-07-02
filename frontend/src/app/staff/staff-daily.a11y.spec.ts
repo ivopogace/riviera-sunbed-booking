@@ -80,6 +80,11 @@ describe('StaffDaily accessibility (axe)', () => {
   function expectBookings() {
     return httpMock.expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET');
   }
+  function expectRequests() {
+    return httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET',
+    );
+  }
 
   it('has no violations on the sign-in form', async () => {
     fixture = TestBed.createComponent(StaffDaily);
@@ -93,6 +98,28 @@ describe('StaffDaily accessibility (axe)', () => {
     await fixture.whenStable();
     expectMap().flush(fixtureMap());
     expectBookings().flush([{ setId: 2, code: 'ONLINE0001' }]);
+    expectRequests().flush([]);
+    await fixture.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with a populated pending-requests queue (#98)', async () => {
+    await signIn();
+    fixture = TestBed.createComponent(StaffDaily);
+    await fixture.whenStable();
+    expectMap().flush(fixtureMap());
+    expectBookings().flush([{ setId: 2, code: 'ONLINE0001' }]);
+    expectRequests().flush([
+      {
+        bookingId: 11,
+        setId: 1,
+        bookingDate: '2026-07-03',
+        guestName: 'Ana Guest',
+        amount: { minorUnits: 4500, currency: 'EUR' },
+        requestedAt: '2026-07-01T09:00:00Z',
+        requestExpiresAt: '2026-07-02T16:00:00Z',
+      },
+    ]);
     await fixture.whenStable();
     await expectNoAxeViolations(host());
   });
@@ -103,9 +130,11 @@ describe('StaffDaily accessibility (axe)', () => {
     await fixture.whenStable();
     const map = expectMap(); // pending → loading message
     const bookings = expectBookings();
+    const requests = expectRequests();
     await expectNoAxeViolations(host());
     map.flush(fixtureMap()); // settle so verify() is clean
     bookings.flush([]);
+    requests.flush([]);
   });
 
   it('has no violations in the error state', async () => {
@@ -114,6 +143,7 @@ describe('StaffDaily accessibility (axe)', () => {
     await fixture.whenStable();
     expectMap().error(new ProgressEvent('error'));
     expectBookings().flush([]);
+    expectRequests().flush([]);
     await fixture.whenStable();
     await expectNoAxeViolations(host());
   });

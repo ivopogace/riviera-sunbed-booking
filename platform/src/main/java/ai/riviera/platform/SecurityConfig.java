@@ -36,7 +36,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
  * {@code OPERATOR} (issue #109, design D-1): an operator signs in once via
  * {@code POST /api/auth/operator/login} ({@code AuthController} driving the framework
  * {@link AuthenticationManager}) and rides an {@code HttpOnly; Secure; SameSite=Lax} cookie —
- * sessions persist in Postgres via Spring Session JDBC (V19) so a restart keeps operators signed
+ * sessions persist in Postgres via Spring Session JDBC (V20) so a restart keeps operators signed
  * in. Credentials are <strong>per-operator and DB-backed</strong> (#74):
  * {@link #operatorDetailsService} loads each operator's stored hash from the {@code operator}
  * module ({@link OperatorAccounts}) and {@code DaoAuthenticationProvider} verifies it against the
@@ -63,6 +63,11 @@ class SecurityConfig {
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
+	/** The operator-only pending-requests queue (#98); must be gated BEFORE the public venue GET. */
+	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
+	/** Accept/decline a pending request (#98); operator-session POSTs, CSRF token required (issue #109). */
+	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
+	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
 	/** The operator-only weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
@@ -115,6 +120,13 @@ class SecurityConfig {
 						// Per-venue payout ledger read (U9) — operator-only venue financial data. MUST
 						// precede the public "GET /api/venues/**" below (first match wins).
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
+						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
+						// venue demand are operator data. The GET MUST precede the public venue GET below
+						// (first match wins). The ownership check itself lives in the application services
+						// (invariant #13); this is the role layer on top.
+						.requestMatchers(HttpMethod.GET, BOOKING_REQUESTS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_DECLINE_PATH).hasRole(OPERATOR_ROLE)
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)
@@ -171,7 +183,7 @@ class SecurityConfig {
 
 	/**
 	 * Where {@code AuthController} saves the authenticated context: the HTTP session — which
-	 * Spring Session transparently persists to Postgres (V19). The filter chain's default
+	 * Spring Session transparently persists to Postgres (V20). The filter chain's default
 	 * delegating repository reads the same {@code SPRING_SECURITY_CONTEXT} attribute back on
 	 * every later request, so save and load stay in lockstep.
 	 */

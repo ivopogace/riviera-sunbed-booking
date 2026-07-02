@@ -12,11 +12,19 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean beforeCutoff,
-		MoneyView refundIfCancelledNow, MoneyView refundedAmount) {
+		MoneyView refundIfCancelledNow, MoneyView refundedAmount, java.time.Instant requestExpiresAt,
+		PaymentCredentialsView payment) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
 				d.rowLabel(), d.positionNo(), d.bookingDate().toString(), d.amount(), d.cancellable(),
-				d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount());
+				d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(), d.requestExpiresAt(),
+				d.payment() == null ? null
+						: new PaymentCredentialsView(d.payment().clientSecret(),
+								d.payment().paymentIntentId()));
+	}
+
+	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT} (#98). */
+	record PaymentCredentialsView(String clientSecret, String paymentIntentId) {
 	}
 }

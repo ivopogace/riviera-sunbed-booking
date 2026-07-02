@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Pins that sessions live in <strong>Postgres</strong>, not the servlet container (issue #109
  * AC-4, design D-1): Spring Session JDBC ({@link JdbcIndexedSessionRepository} — injected here so
  * a silent fallback to the in-memory store cannot pass) writes every session to the Flyway-managed
- * {@code SPRING_SESSION} tables (V19). Restart survival follows: the JVM holds no session state, so
+ * {@code SPRING_SESSION} tables (V20). Restart survival follows: the JVM holds no session state, so
  * a Render restart/redeploy only changes the process reading the same rows — exactly like the Event
  * Publication Registry (V8). Each MockMvc request is an independent exchange authenticated purely
  * by the {@code SESSION} cookie → every authenticated request after login IS a DB round-trip.

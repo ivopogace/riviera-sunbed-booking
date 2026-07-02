@@ -56,9 +56,10 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 	}
 
 	@Override
-	public int sweep(Duration ttl) {
-		Instant cutoff = clock.instant().minus(ttl);
-		List<BookingId> stale = bookings.findExpirableAwaitingPayment(cutoff);
+	public int sweep(Duration ttl, Duration payWindow) {
+		Instant now = clock.instant();
+		List<BookingId> stale =
+				bookings.findExpirableAwaitingPayment(now.minus(ttl), now.minus(payWindow));
 		int expired = 0;
 		for (BookingId id : stale) {
 			try {

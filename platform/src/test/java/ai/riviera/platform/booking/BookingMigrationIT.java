@@ -72,6 +72,24 @@ class BookingMigrationIT {
 	}
 
 	@Test
+	void everyEnumStatusAccepted() {
+		// #98 (V19): the enum and the CHECK stay in lockstep — every BookingStatus value must be a
+		// valid status token, including the Request-to-Book states PENDING_REQUEST/DECLINED/EXPIRED.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("lockstep@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 20);
+
+		int i = 0;
+		for (ai.riviera.platform.booking.domain.BookingStatus status
+				: ai.riviera.platform.booking.domain.BookingStatus.values()) {
+			String code = "LOCKSTEP0%02d".formatted(i++);
+			assertDoesNotThrow(() -> insertBooking(venue, set, cust, code, date, status.name()),
+					"CHECK must accept enum value " + status + " (enum/schema lockstep, invariant #12).");
+		}
+	}
+
+	@Test
 	void unknownStatusRejected() {
 		long venue = anyVenueId();
 		long set = anyOnlineSetId();

@@ -24,10 +24,13 @@ class ViewBookingService implements ViewBooking {
 
 	private final Bookings bookings;
 	private final CancellationPolicy cancellationPolicy;
+	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
 
-	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy) {
+	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
+			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
+		this.checkout = checkout;
 	}
 
 	@Override
@@ -42,9 +45,16 @@ class ViewBookingService implements ViewBooking {
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
+		// Pay-on-accept (issue #98): only an AWAITING_PAYMENT booking can have an open, payable
+		// intent — the code-gated view is where the accepted guest picks up the clientSecret.
+		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
+				b.status() == BookingStatus.AWAITING_PAYMENT
+						? checkout.pendingCredentials(
+								new ai.riviera.platform.payment.vocabulary.BookingRef(b.id())).orElse(null)
+						: null;
 		return new BookingDetail(b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(),
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
 				cancellable, quote.beforeCutoff(), new MoneyView(quote.refundMinor(), b.currency()),
-				refunded);
+				refunded, b.requestExpiresAt(), payment);
 	}
 }

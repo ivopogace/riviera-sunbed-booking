@@ -182,4 +182,11 @@ export class VenueMap {
     // the Stripe Payment Element; confirmation follows the verified webhook (invariant #8).
     await this.router.navigate(['/booking/pay']);
   }
+
+  protected async onRequested(): Promise<void> {
+    this.selectedSet.set(undefined);
+    // The request-sent screen reads BookingService.lastRequested() (set by the 202 POST); nothing
+    // is charged until the venue accepts (Request-to-Book, issue #98).
+    await this.router.navigate(['/booking/requested']);
+  }
 }

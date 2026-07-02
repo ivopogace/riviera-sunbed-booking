@@ -92,6 +92,20 @@ We deliberately do **not** enable Spring's `ForwardedHeaderFilter`
 If a future need arises (e.g. app-generated absolute HTTPS URLs), enable it together with a
 trusted-proxy review and reconcile it with `ClientIpResolver`.
 
+## Single instance only (the two lockless sweeps)
+
+Run **exactly one instance** of the backend until ShedLock (or equivalent) is added.
+Two schedulers assume it (improvement-plan D3):
+
+- the **abandoned-payment sweep** (`AbandonedBookingScheduler`, `stripe` profile) — two
+  instances would race duplicate Stripe PaymentIntent cancels (the guarded
+  `UPDATE … RETURNING` keeps state correct, but the Stripe cancel call is doubled);
+- the **request-expiry sweep** (`RequestSweepScheduler`, all profiles, issue #98) — safe
+  state-wise for the same guarded-transition reason, but sized and documented for one runner.
+
+In-memory rate-limit buckets (issue #56) share the same assumption. Before any horizontal
+scale-out: ShedLock on both sweeps + move rate-limit state to Redis (improvement-plan D3).
+
 ## Not in scope (deferred)
 
 - EU-sovereign / DSGVO-conform PROD hosting migration — separate deferred issue (ADR-0004).

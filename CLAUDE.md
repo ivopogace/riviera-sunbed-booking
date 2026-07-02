@@ -37,7 +37,7 @@ layout in invariant #11.
 |---|---|---|
 | `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request) | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
-| `booking` | bookings, booking codes, lifecycle (confirmed/cancelled/completed/no-show), cancellation-policy enforcement | `Booking` |
+| `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired), request accept/decline + expiry sweep (#98), cancellation-policy enforcement | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | light tourist identity / guest-checkout contact | `Customer` |

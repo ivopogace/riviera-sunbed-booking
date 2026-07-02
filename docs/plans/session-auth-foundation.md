@@ -19,7 +19,8 @@ its existing `api/` ports (`OperatorAccounts` feeds the `UserDetailsService`,
 the 401 on the RFC-7807 contract for free. Sessions persist in Postgres
 (`spring-session-jdbc`, Flyway-managed schema) so restarts/redeploys keep users signed in.
 
-**Persistence:** JDBC only (invariant #1). New Flyway migration **V19** vendors Spring
+**Persistence:** JDBC only (invariant #1). New Flyway migration **V20** vendors Spring
+(renumbered from V19 when #98's `V19__request_to_book.sql` merged first) —
 Session's canonical PostgreSQL schema (`SPRING_SESSION`, `SPRING_SESSION_ATTRIBUTES`)
 verbatim; `spring.session.jdbc.initialize-schema=never` keeps Flyway the only DDL writer
 (invariant #12). No other schema change.
@@ -31,7 +32,7 @@ verbatim; `spring.session.jdbc.initialize-schema=never` keeps Flyway the only DD
 **Skills consulted:** `grilling` (intake gate: RFC-7807 401 conformance re-decision, V19
 not V18, CSRF-exemption inversion, #120-item-1 fold-in), `riviera-modulith` (all auth
 machinery at the platform edge, `operator` module untouched, no new module/port/event),
-`postgres` (V19 = vendored canonical Spring Session PG schema, verbatim — library issues
+`postgres` (V20 = vendored canonical Spring Session PG schema, verbatim — library issues
 fixed SQL against it; `initialize-schema=never`), `riviera-java-conventions` (records for
 DTOs, controller-based login through the one advice §6b, no per-controller
 `@ExceptionHandler`, exceptions-for-exceptional: `BadCredentialsException` is the
@@ -215,7 +216,7 @@ only.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — BE: session login/logout/me + Spring Session JDBC (V19) + 401 contract | ✅ | ed2ae5a |
+| 1 — BE: session login/logout/me + Spring Session JDBC (V20) + 401 contract | ✅ | ed2ae5a |
 | 2 — BE: migrate ITs off Basic; remove httpBasic | ✅ | 176a39a |
 | 3 — BE: CSRF cookie-to-header; exemptions inverted | ✅ | 1513f88 |
 | 4 — BE: login rate limit | ✅ | 32b1294 |
@@ -231,7 +232,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Backend (all in `platform/`):**
 - `build.gradle` — add `org.springframework.session:spring-session-jdbc`.
-- `src/main/resources/db/migration/V19__spring_session.sql` — vendored canonical schema.
+- `src/main/resources/db/migration/V20__spring_session.sql` — vendored canonical schema.
 - `src/main/resources/application.yaml` — session store type, `initialize-schema=never`,
   cookie flags (name `SESSION`, HttpOnly, Secure, SameSite=Lax).
 - `src/main/java/ai/riviera/platform/AuthController.java` — new: login/logout/me
@@ -350,7 +351,7 @@ wording).
 - [x] Refund policy untouched (invariant #10).
 - [x] Timezone untouched (invariant #6); session timestamps are framework-owned epoch millis.
 - [x] Booking codes: error bodies stay redacted (`ApiProblem` by construction) (invariant #7).
-- [x] Flyway V19 present; `initialize-schema=never` (invariant #12).
+- [x] Flyway V20 present; `initialize-schema=never` (invariant #12).
 - [x] **Frontend** standards met; no `as any` on the contract.
 - [x] Execution-status table at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).

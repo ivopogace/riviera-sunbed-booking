@@ -88,7 +88,7 @@ class StripeWebhookIT {
 
 	@Test
 	void verifiedSucceededConfirmsBooking() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7001L), "pi_hook_ok", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(7001L), "pi_hook_ok", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_ok_1", "payment_intent.succeeded", "pi_hook_ok");
 
 		postSigned(payload, sign(payload), 200);
@@ -101,7 +101,7 @@ class StripeWebhookIT {
 
 	@Test
 	void badSignatureRejectedNoConfirm() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7002L), "pi_hook_badsig", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(7002L), "pi_hook_badsig", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_badsig_1", "payment_intent.succeeded", "pi_hook_badsig");
 
 		postSigned(payload, "t=1,v1=deadbeef", 400);
@@ -115,7 +115,7 @@ class StripeWebhookIT {
 
 	@Test
 	void duplicateDeliveryIsIdempotent() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7003L), "pi_hook_dup", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(7003L), "pi_hook_dup", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_dup_1", "payment_intent.succeeded", "pi_hook_dup");
 
 		postSigned(payload, sign(payload), 200);
@@ -132,7 +132,7 @@ class StripeWebhookIT {
 	@Test
 	void outOfOrderIsSafe() throws Exception {
 		// An unknown/unrelated event type must be accepted (200) and ignored — no state change.
-		payments.register(new NewPayment(new BookingRef(7004L), "pi_hook_other", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(7004L), "pi_hook_other", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_other_1", "payment_intent.created", "pi_hook_other");
 
 		postSigned(payload, sign(payload), 200);
@@ -146,7 +146,7 @@ class StripeWebhookIT {
 
 	@Test
 	void canceledPublishesPaymentCanceled() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7005L), "pi_hook_cancel", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(7005L), "pi_hook_cancel", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_cancel_1", "payment_intent.canceled", "pi_hook_cancel");
 
 		postSigned(payload, sign(payload), 200);

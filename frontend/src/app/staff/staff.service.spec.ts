@@ -4,8 +4,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { DailyBookingItem } from './staff.model';
-import { StaffService, staffMarkErrorOf, staffReleaseErrorOf } from './staff.service';
+import { DailyBookingItem, PendingRequestItem, RequestDecision } from './staff.model';
+import {
+  StaffService,
+  staffMarkErrorOf,
+  staffReleaseErrorOf,
+  staffRequestErrorOf,
+} from './staff.service';
 
 const BASE = environment.apiBaseUrl;
 
@@ -52,6 +57,49 @@ describe('StaffService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
+
+  it('GETs the venue-wide pending booking requests (issue #98)', () => {
+    const expected: PendingRequestItem[] = [
+      {
+        bookingId: 11,
+        setId: 7,
+        bookingDate: '2026-07-03',
+        guestName: 'Ana Guest',
+        amount: { minorUnits: 4500, currency: 'EUR' },
+        requestedAt: '2026-07-01T09:00:00Z',
+        requestExpiresAt: '2026-07-02T16:00:00Z',
+      },
+    ];
+    let actual: PendingRequestItem[] | undefined;
+    service.pendingRequests(1).subscribe((r) => (actual = r));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests`);
+    expect(req.request.method).toBe('GET');
+    req.flush(expected);
+    expect(actual).toEqual(expected);
+  });
+
+  it('POSTs an accept with an empty body', () => {
+    let actual: RequestDecision | undefined;
+    service.acceptRequest(1, 11).subscribe((d) => (actual = d));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests/11/accept`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    expect(actual).toEqual({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+  });
+
+  it('POSTs a decline with an empty body', () => {
+    let actual: RequestDecision | undefined;
+    service.declineRequest(1, 11).subscribe((d) => (actual = d));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests/11/decline`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({ bookingId: 11, status: 'DECLINED' });
+    expect(actual).toEqual({ bookingId: 11, status: 'DECLINED' });
+  });
 });
 
 describe('staffMarkErrorOf', () => {
@@ -80,5 +128,28 @@ describe('staffReleaseErrorOf', () => {
 
   it('falls back to UNKNOWN otherwise', () => {
     expect(staffReleaseErrorOf(new HttpErrorResponse({ status: 500 }))).toBe('UNKNOWN');
+  });
+});
+
+describe('staffRequestErrorOf', () => {
+  function httpError(status: number, code: string): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error: { status, code } });
+  }
+
+  it('maps every accept/decline server code', () => {
+    expect(staffRequestErrorOf(httpError(404, 'NO_SUCH_REQUEST'))).toBe('NO_SUCH_REQUEST');
+    expect(staffRequestErrorOf(httpError(409, 'REQUEST_NOT_PENDING'))).toBe('REQUEST_NOT_PENDING');
+    expect(staffRequestErrorOf(httpError(409, 'REQUEST_EXPIRED'))).toBe('REQUEST_EXPIRED');
+    expect(staffRequestErrorOf(httpError(502, 'PAYMENT_INIT_FAILED'))).toBe('PAYMENT_INIT_FAILED');
+    expect(staffRequestErrorOf(httpError(403, 'NOT_VENUE_OWNER'))).toBe('NOT_VENUE_OWNER');
+  });
+
+  it('maps 401 to UNAUTHORIZED regardless of body', () => {
+    expect(staffRequestErrorOf(new HttpErrorResponse({ status: 401 }))).toBe('UNAUTHORIZED');
+  });
+
+  it('falls back to UNKNOWN for unrecognised / non-HTTP failures', () => {
+    expect(staffRequestErrorOf(new HttpErrorResponse({ status: 500 }))).toBe('UNKNOWN');
+    expect(staffRequestErrorOf(new Error('boom'))).toBe('UNKNOWN');
   });
 });

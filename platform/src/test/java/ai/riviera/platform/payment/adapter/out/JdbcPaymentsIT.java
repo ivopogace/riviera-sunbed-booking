@@ -42,7 +42,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void recordStartsRequiresPaymentAndIsFoundByIntent() {
-		payments.register(new NewPayment(new BookingRef(9001L), "pi_record_a", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9001L), "pi_record_a", 4500L, "EUR", "cs_test_secret"));
 
 		assertEquals("REQUIRES_PAYMENT", statusOf("pi_record_a"),
 				"a freshly recorded PaymentIntent awaits payment");
@@ -53,7 +53,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markStatusTransitionsThePayment() {
-		payments.register(new NewPayment(new BookingRef(9002L), "pi_mark_b", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9002L), "pi_mark_b", 4500L, "EUR", "cs_test_secret"));
 
 		payments.markStatus("pi_mark_b", PaymentStatus.SUCCEEDED);
 
@@ -68,7 +68,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void findIntentByBookingRefCorrelates() {
-		payments.register(new NewPayment(new BookingRef(9101L), "pi_by_booking", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9101L), "pi_by_booking", 4500L, "EUR", "cs_test_secret"));
 
 		Optional<String> intent = payments.findIntentByBookingRef(new BookingRef(9101L));
 
@@ -78,7 +78,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedFullMovesToRefunded() {
-		payments.register(new NewPayment(new BookingRef(9201L), "pi_refund_full", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9201L), "pi_refund_full", 4500L, "EUR", "cs_test_secret"));
 
 		payments.markRefunded(new BookingRef(9201L), 4500L, "re_full");
 
@@ -89,7 +89,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedPartialMovesToPartiallyRefunded() {
-		payments.register(new NewPayment(new BookingRef(9202L), "pi_refund_part", 4500L, "EUR"));
+		payments.register(new NewPayment(new BookingRef(9202L), "pi_refund_part", 4500L, "EUR", "cs_test_secret"));
 
 		payments.markRefunded(new BookingRef(9202L), 2250L, "re_part");
 

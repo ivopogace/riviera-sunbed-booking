@@ -18,6 +18,15 @@ public interface Payments {
 	void register(NewPayment payment);
 
 	/**
+	 * The credentials of the booking's PaymentIntent while it is still {@code REQUIRES_PAYMENT}
+	 * and a {@code client_secret} is on record (V19) — the pay-on-accept read (issue #98). Empty
+	 * once the intent succeeded/failed/was canceled, or when no secret was stored (stub profile,
+	 * pre-V19 rows).
+	 */
+	Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+			BookingRef booking);
+
+	/**
 	 * The booking a PaymentIntent collects for, or empty if no such PaymentIntent is known
 	 * (e.g. an event for an intent this app did not create) — the webhook then ignores it.
 	 */

@@ -33,6 +33,12 @@
   color: #334155; /* slate-700 on white — AA */
 }
 
+.request-note {
+  margin: -0.5rem 0 1rem;
+  color: #334155; /* slate-700 on white — AA (same token as the summary) */
+  font-size: 0.9rem;
+}
+
 .field {
   display: block;
   margin-bottom: 0.875rem;

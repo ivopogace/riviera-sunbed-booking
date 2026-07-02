@@ -31,9 +31,17 @@ model in `docs/architecture/domain-model.md`.
 - **Booking** — a tourist's reservation of a specific set for a specific date, with
   a status, a price paid, a booking code, and a cancellation deadline.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
-  by the `booking.status` CHECK constraint — keep enum and SQL in lockstep):
-  `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`. Request-to-Book
-  adds `PENDING_REQUEST` and `DECLINED` when it lands (#98) — they do **not** exist yet.
+  by the `booking.status` CHECK constraint, V19 — keep enum and SQL in lockstep):
+  `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,
+  `NO_SHOW`, `DECLINED`, `EXPIRED` (the last three are Request-to-Book, shipped by #98).
+- **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
+  decision (`PENDING_REQUEST`): it claims the same `availability(set, date)` row as any
+  online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
+  is charged until the venue accepts (payment-request-on-accept). Released on decline
+  (`DECLINED`) or when the response deadline passes (`EXPIRED`, swept). The deadline is
+  min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
+  the guest has `booking.request.pay-window` (from accept) to pay before the abandoned
+  sweep cancels.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
 - **Cutoff** — the moment online bookings for a day close (default 18:00 the
   evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.

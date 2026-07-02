@@ -34,6 +34,7 @@ class JdbcBookings implements Bookings {
 	// Named-parameter keys reused across the lifecycle SQL (keep them in lockstep, no typos).
 	private static final String PARAM_STATUS = "status";
 	private static final String PARAM_AWAITING = "awaiting";
+	private static final String PARAM_PENDING = "pending";
 	private static final String PARAM_CONFIRMED = "confirmed";
 	private static final String PARAM_VENUE = "venue";
 
@@ -43,6 +44,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_BOOKING_DATE = "booking_date";
 	private static final String COL_AMOUNT_MINOR = "amount_minor";
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
+	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
 
 	private final JdbcClient jdbc;
 
@@ -78,10 +80,141 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public OptionalLong insertPendingRequest(NewBooking b, Instant requestExpiresAt) {
+		// Request-to-Book (issue #98): same ON CONFLICT (code) DO NOTHING contract as the
+		// AWAITING_PAYMENT insert — a code collision is an empty retry signal, never a poisoned
+		// transaction. The deadline is stored on the row so accept guard + expiry sweep share it.
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status, request_expires_at)
+				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status, :expires)
+				ON CONFLICT (code) DO NOTHING
+				RETURNING id
+				""")
+				.param("code", b.code())
+				.param(PARAM_VENUE, b.venueId().value())
+				.param("set", b.setId().value())
+				.param("customer", b.customerId().value())
+				.param("date", b.bookingDate())
+				.param("amount", b.amountMinor())
+				.param("currency", b.amountCurrency())
+				.param(PARAM_STATUS, BookingStatus.PENDING_REQUEST.name())
+				.param("expires", java.sql.Timestamp.from(requestExpiresAt))
+				.query(Long.class)
+				.optional()
+				.map(OptionalLong::of)
+				.orElseGet(OptionalLong::empty);
+	}
+
+	@Override
+	public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
+			long bookingId, VenueId venueId, Instant now) {
+		// Guarded venue-scoped accept (issue #98): only a still-pending, still-unexpired request of
+		// THIS venue transitions; RETURNING yields the amount facts atomically. accepted_at is the
+		// pay-window clock (never created_at — the instant TTL would sweep an accepted request).
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :awaiting, accepted_at = :now
+				WHERE id = :id AND venue_id = :venue AND status = :pending
+				  AND request_expires_at > :now
+				RETURNING id, amount_minor, amount_currency
+				""")
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
+				.param("now", java.sql.Timestamp.from(now))
+				.param("id", bookingId)
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.AcceptedRequest(
+						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+				.optional();
+	}
+
+	@Override
+	public boolean revertAcceptToPending(long bookingId) {
+		// Compensation for a failed payment-request issuance. No REGISTERED PaymentIntent exists
+		// (a double-timeout residual at Stripe stays unregistered and inert — webhooks correlate
+		// via the payment table), so no webhook can race this back-transition. Restores the
+		// original deadline by leaving request_expires_at as-is.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :pending, accepted_at = NULL
+				WHERE id = :id AND status = :awaiting
+				""")
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.param("id", bookingId)
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
+				.update() == 1;
+	}
+
+	@Override
+	public Optional<ClaimRef> declinePending(long bookingId, VenueId venueId) {
+		// Guarded venue-scoped decline: RETURNING the (set, date) iff it transitioned, so the
+		// caller releases the soft-hold exactly once (invariant #2). No deadline guard — see port.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :declined
+				WHERE id = :id AND venue_id = :venue AND status = :pending
+				RETURNING set_id, booking_date
+				""")
+				.param("declined", BookingStatus.DECLINED.name())
+				.param("id", bookingId)
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
+	}
+
+	@Override
+	public Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> requestSnapshot(
+			long bookingId, VenueId venueId) {
+		// Venue-scoped: a foreign venue's booking reads as absent (invariant #13).
+		return jdbc.sql("""
+				SELECT status, request_expires_at
+				FROM booking
+				WHERE id = :id AND venue_id = :venue
+				""")
+				.param("id", bookingId)
+				.param(PARAM_VENUE, venueId.value())
+				.query((rs, rowNum) -> {
+					java.sql.Timestamp expires = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
+					return new ai.riviera.platform.booking.application.request.RequestSnapshot(
+							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+							expires == null ? null : expires.toInstant());
+				})
+				.optional();
+	}
+
+	@Override
+	public List<ai.riviera.platform.booking.application.request.PendingRequestRow> findPendingRequestsForVenue(
+			VenueId venueId) {
+		// Operator queue (issue #98): pending requests, most urgent deadline first. Deliberately
+		// does NOT select the code (invariant #7 — the operator acts by id). Served by
+		// booking_venue_id_idx; the PENDING_REQUEST slice per venue is tiny.
+		return jdbc.sql("""
+				SELECT id, set_id, booking_date, customer_id, amount_minor, amount_currency,
+				       created_at, request_expires_at
+				FROM booking
+				WHERE venue_id = :venue AND status = :pending
+				ORDER BY request_expires_at, id
+				""")
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.PendingRequestRow(
+						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong("customer_id")),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+						rs.getTimestamp("created_at").toInstant(),
+						rs.getTimestamp(COL_REQUEST_EXPIRES_AT).toInstant()))
+				.list();
+	}
+
+	@Override
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, booking_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
 				FROM booking
 				WHERE code = :code
 				""")
@@ -89,13 +222,15 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> {
 					java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
 					Long refundMinor = rs.getObject("refund_minor", Long.class);
+					java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 					return new BookingRecord(
 							rs.getLong("id"), rs.getString("code"),
 							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 							new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
 							rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 							rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor);
+							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
+							requestExpiresAt == null ? null : requestExpiresAt.toInstant());
 				})
 				.optional();
 	}
@@ -206,20 +341,61 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public List<BookingId> findExpirableAwaitingPayment(Instant olderThan) {
-		// Abandoned-payment TTL sweep candidates (issue #51): AWAITING_PAYMENT rows created before the
-		// cutoff. Served by booking_awaiting_created_idx (V13), a partial index on the AWAITING_PAYMENT
-		// subset. Ids only — the sweep cancels each PaymentIntent then transitions via the guarded UPDATE.
+	public List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore) {
+		// Abandoned-payment sweep candidates, two clocks (issues #51/#98): an instant booking
+		// (accepted_at IS NULL) expires on the creation clock — served by
+		// booking_awaiting_created_idx (V13); an accepted request expires on the accept clock —
+		// served by booking_awaiting_accepted_idx (V19). Never the other way around: an accepted
+		// request judged by created_at would be swept the moment it was accepted.
 		return jdbc.sql("""
 				SELECT id
 				FROM booking
-				WHERE status = :awaiting AND created_at < :cutoff
+				WHERE status = :awaiting
+				  AND ((accepted_at IS NULL AND created_at < :createdBefore)
+				    OR (accepted_at IS NOT NULL AND accepted_at < :acceptedBefore))
 				ORDER BY id
 				""")
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.param("cutoff", java.sql.Timestamp.from(olderThan))
+				.param("createdBefore", java.sql.Timestamp.from(createdBefore))
+				.param("acceptedBefore", java.sql.Timestamp.from(acceptedBefore))
 				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
 				.list();
+	}
+
+	@Override
+	public List<BookingId> findOverduePendingRequests(Instant now) {
+		// Request-expiry sweep candidates (issue #98), served by booking_pending_expires_idx
+		// (V19, partial). Ids only — each is then expired via the guarded per-row transition.
+		return jdbc.sql("""
+				SELECT id
+				FROM booking
+				WHERE status = :pending AND request_expires_at <= :now
+				ORDER BY id
+				""")
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.param("now", java.sql.Timestamp.from(now))
+				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
+				.list();
+	}
+
+	@Override
+	public Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now) {
+		// Guarded per-row expiry: RETURNING yields the (set, date) exactly when THIS statement
+		// transitioned the row, so the hold is released exactly once (invariant #2); a candidate
+		// accepted or declined since the candidate read is a 0-row empty no-op.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :expired
+				WHERE id = :id AND status = :pending AND request_expires_at <= :now
+				RETURNING set_id, booking_date
+				""")
+				.param("expired", BookingStatus.EXPIRED.name())
+				.param("id", bookingId)
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.param("now", java.sql.Timestamp.from(now))
+				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
 	}
 
 	@Override

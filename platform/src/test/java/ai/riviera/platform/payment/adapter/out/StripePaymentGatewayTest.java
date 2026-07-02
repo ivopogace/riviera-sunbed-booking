@@ -80,7 +80,7 @@ class StripePaymentGatewayTest {
 		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
 				"idempotency key is derived from the booking id (invariant #8)");
 
-		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR"));
+		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR", "pi_abc_secret_xyz"));
 	}
 
 	@Test
@@ -140,7 +140,7 @@ class StripePaymentGatewayTest {
 				"both attempts carry the booking-derived idempotency key (issue #66 recovery, invariant #8)"));
 
 		// The recovered intent is now recorded — never left orphaned-and-untracked at Stripe.
-		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_recovered", 4500L, "EUR"));
+		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_recovered", 4500L, "EUR", "pi_recovered_secret"));
 	}
 
 	@Test

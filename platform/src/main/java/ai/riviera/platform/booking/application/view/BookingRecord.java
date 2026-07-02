@@ -16,5 +16,5 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		LocalDate bookingDate, long amountMinor, String currency, Instant cancelledAt,
-		Long refundMinor) {
+		Long refundMinor, Instant requestExpiresAt) {
 }

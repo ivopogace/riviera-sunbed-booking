@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { SetView } from '../venue/venue.model';
-import { AwaitingPayment, BookingConfirmation } from './booking.model';
+import { AwaitingPayment, BookingConfirmation, RequestedBooking } from './booking.model';
 import { BookingDialog } from './booking-dialog';
 
 const SET: SetView = {
@@ -44,6 +44,19 @@ const AWAITING: AwaitingPayment = {
   amount: { minorUnits: 4500, currency: 'EUR' },
   clientSecret: 'pi_123_secret_abc',
   paymentIntentId: 'pi_123',
+};
+
+const REQUESTED: RequestedBooking = {
+  code: 'RQST234567',
+  status: 'PENDING_REQUEST',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  setId: 2,
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
+  requestExpiresAt: '2026-11-30T16:00:00Z',
 };
 
 const FOCUSABLE =
@@ -157,6 +170,43 @@ describe('BookingDialog', () => {
     // the message→DOM rendering is covered by the mapping test.
     const msg = (dialog as unknown as { errorMessage(): string | undefined }).errorMessage();
     expect(msg).toContain('just booked this set');
+  });
+
+  it('shows the request CTA and no-charge copy for a REQUEST-mode venue (#98)', async () => {
+    fixture.componentRef.setInput('mode', 'REQUEST');
+    await fixture.whenStable();
+
+    expect(host().querySelector('.panel-title')?.textContent).toContain('Request this set');
+    expect(host().querySelector('.request-note')?.textContent).toContain('won’t be charged');
+    expect(host().querySelector('button[type="submit"]')?.textContent).toContain('Request to book');
+  });
+
+  it('keeps the instant CTA and hides the request note by default', () => {
+    expect(host().querySelector('.request-note')).toBeNull();
+    expect(host().querySelector('button[type="submit"]')?.textContent).toContain('Confirm booking');
+  });
+
+  it('emits requested (not booked/awaiting) on a 202 PENDING_REQUEST response (#98)', async () => {
+    fixture.componentRef.setInput('mode', 'REQUEST');
+    await fillValid();
+    let booked = false;
+    let awaiting = false;
+    let requested: RequestedBooking | undefined;
+    dialog.booked.subscribe(() => (booked = true));
+    dialog.awaiting.subscribe(() => (awaiting = true));
+    dialog.requested.subscribe((r) => (requested = r));
+
+    submitForm();
+    await fixture.whenStable();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+      .flush(REQUESTED, { status: 202, statusText: 'Accepted' });
+    await fixture.whenStable();
+
+    expect(requested).toEqual(REQUESTED);
+    expect(booked).toBe(false);
+    expect(awaiting).toBe(false);
+    expect((dialog as unknown as { submitting(): boolean }).submitting()).toBe(false);
   });
 
   it('emits dismissed when the Cancel button is clicked', () => {

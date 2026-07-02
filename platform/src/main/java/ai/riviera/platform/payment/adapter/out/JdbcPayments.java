@@ -21,6 +21,7 @@ class JdbcPayments implements Payments {
 
 	// The PaymentIntent-id named-parameter key, reused across the correlation queries.
 	private static final String PARAM_INTENT = "intent";
+	private static final String PARAM_STATUS = "status";
 
 	private final JdbcClient jdbc;
 
@@ -31,15 +32,37 @@ class JdbcPayments implements Payments {
 	@Override
 	public void register(NewPayment payment) {
 		jdbc.sql("""
-				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status)
-				VALUES (:ref, :intent, :amount, :currency, :status)
+				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status,
+				                     client_secret)
+				VALUES (:ref, :intent, :amount, :currency, :status, :clientSecret)
 				""")
 				.param("ref", payment.bookingRef().value())
 				.param(PARAM_INTENT, payment.paymentIntentId())
 				.param("amount", payment.amountMinor())
 				.param("currency", payment.currency())
-				.param("status", PaymentStatus.REQUIRES_PAYMENT.name())
+				.param(PARAM_STATUS, PaymentStatus.REQUIRES_PAYMENT.name())
+				.param("clientSecret", payment.clientSecret())
 				.update();
+	}
+
+	@Override
+	public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+			BookingRef booking) {
+		// Pay-on-accept read (issue #98): an intent is payable while OPEN — including after a
+		// payment_intent.payment_failed, which is NOT terminal in Stripe (the guest can retry the
+		// same intent; hiding the credentials would strand an accepted guest whose card declined
+		// once). Succeeded/canceled rows (or secret-less stub/pre-V19 rows) yield empty.
+		return jdbc.sql("""
+				SELECT payment_intent_id, client_secret
+				FROM payment
+				WHERE booking_ref = :ref AND status IN (:payable) AND client_secret IS NOT NULL
+				""")
+				.param("ref", booking.value())
+				.param("payable", java.util.List.of(PaymentStatus.REQUIRES_PAYMENT.name(),
+						PaymentStatus.FAILED.name()))
+				.query((rs, rowNum) -> new ai.riviera.platform.payment.vocabulary.PaymentCredentials(
+						rs.getString("client_secret"), rs.getString("payment_intent_id")))
+				.optional();
 	}
 
 	@Override
@@ -58,7 +81,7 @@ class JdbcPayments implements Payments {
 				SET status = :status, updated_at = NOW()
 				WHERE payment_intent_id = :intent
 				""")
-				.param("status", status.name())
+				.param(PARAM_STATUS, status.name())
 				.param(PARAM_INTENT, paymentIntentId)
 				.update();
 	}

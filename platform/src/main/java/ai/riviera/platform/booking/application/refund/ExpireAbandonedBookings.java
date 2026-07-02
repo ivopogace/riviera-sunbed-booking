@@ -17,8 +17,14 @@ public interface ExpireAbandonedBookings {
 	 * booking and release its set. A booking whose payment already {@code succeeded} is left for the
 	 * confirm webhook (invariant #8).
 	 *
-	 * @param ttl how long a booking may stay {@code AWAITING_PAYMENT} before it is considered abandoned
+	 * <p>Two clocks (issue #98): an <em>instant</em> booking is abandoned {@code ttl} after
+	 * creation (the guest was at the checkout screen); an <em>accepted request</em> is abandoned
+	 * only {@code payWindow} after {@code accepted_at} — never on the creation clock, which may be
+	 * hours older than the accept.
+	 *
+	 * @param ttl how long an instant booking may stay {@code AWAITING_PAYMENT} before it is considered abandoned
+	 * @param payWindow how long an accepted request's guest has to pay, measured from accept
 	 * @return the number of bookings actually expired this run (for logging/observability)
 	 */
-	int sweep(Duration ttl);
+	int sweep(Duration ttl, Duration payWindow);
 }
