@@ -35,7 +35,11 @@
   --riv-header-glass: rgba(10, 44, 63, 0.72);
   --riv-header-border: rgba(255, 255, 255, 0.22);
 
-  --riv-cta-grad: linear-gradient(180deg, #2bb8d4, #0e8aa8);
+  /* CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
+     brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (#149, pinned by the
+     CTA_STOPS case in home.contrast.spec.ts). --riv-bar-grad stays bright — it's the availability
+     fill, decorative, text-free. */
+  --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
   /* Card surfaces (issue #135; consumed by the T2–T5 glass panels/cards). Declared in
@@ -91,7 +95,8 @@
   --riv-header-glass: rgba(255, 255, 255, 0.6);
   --riv-header-border: rgba(255, 255, 255, 0.7);
 
-  --riv-cta-grad: linear-gradient(180deg, #2bb8d4, #0e8aa8);
+  /* AA-safe CTA gradient (see the riviera block note); porcelain uses the same stops. */
+  --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
   /* Card surfaces (issue #135): only the glass alpha differs per theme — porcelain's

@@ -52,10 +52,28 @@
     </p>
   </form>
 
+  <!-- Cutoff explainer (invariant #4 — display only; the server enforces the cutoff). Backed by a
+       subtle glass pill so its ink clears WCAG AA over the bare gradient (plan R-2). &ngsp; keeps a
+       real space between the ⏰ span and the copy (epic-133 sibling-inline gotcha). -->
+  <p class="cutoff-note" data-testid="cutoff-note">
+    <span class="cutoff-icon" aria-hidden="true">⏰</span>&ngsp;
+    <span>Bookings close the evening before — book by 6&nbsp;PM the day before. Today isn’t available.</span>
+  </p>
+
   @if (failed()) {
-    <p class="state" role="alert" data-testid="error">
-      Sorry — we couldn’t load venues right now. Please try again.
-    </p>
+    <!-- Designed load-failure panel (#149). role="alert" + data-testid="error" preserve the T2
+         semantics so AT announces it; the ⚠ is decorative (the heading carries the meaning). -->
+    <div class="failure" role="alert" data-testid="error">
+      <span class="failure-icon" aria-hidden="true">⚠</span>
+      <h2 class="failure-title">We couldn’t load the beaches</h2>
+      <p class="failure-text">
+        Something went wrong reaching Riviera. Check your connection and try again — your bookings
+        are safe.
+      </p>
+      <button type="button" class="failure-retry" data-testid="retry" (click)="onRetryDiscover()">
+        Try again
+      </button>
+    </div>
   } @else if (venues(); as list) {
     @if (isEmpty()) {
       <p class="state" data-testid="empty" aria-live="polite">

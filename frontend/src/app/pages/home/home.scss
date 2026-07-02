@@ -373,7 +373,32 @@
   color: var(--riv-card-ink);
 }
 
-/* ---- loading / empty / error states (on the proven glass, see header note) ---- */
+/* ---- cutoff explainer (invariant #4, display only; issue #149) ----
+   A subtle inline glass pill: the line sits over the bare gradient, where white-ish ink fails
+   AA, so it reuses the AA-proven card glass + card-ink-soft (plan R-2; same class as the
+   hero-on-glass deviation). */
+.cutoff-note {
+  @extend %card-glass;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 2px 0;
+  padding: 8px 15px;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--riv-card-ink-soft);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+}
+
+.cutoff-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ---- loading / empty states (on the proven glass, see header note) ---- */
 
 .state {
   @extend %panel-glass;
@@ -383,4 +408,70 @@
   text-align: center;
   font-size: 15px;
   color: var(--riv-ink-soft);
+}
+
+/* ---- load-failure panel (issue #149) ----
+   Light card glass with dark card inks per the v3 design — distinct from the dark loading/empty
+   `.state` panels, but they are mutually exclusive so never shown together. */
+.failure {
+  @extend %card-glass;
+
+  margin-top: 28px;
+  padding: 52px 26px;
+  text-align: center;
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  border-radius: 26px;
+  box-shadow: 0 12px 40px rgba(7, 42, 58, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Decorative danger badge (aria-hidden; the heading carries the meaning, so the red tint is
+   1.4.11-exempt like the ★ glyph). One-off literals, not themed tokens. */
+.failure-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: rgba(200, 90, 60, 0.14);
+  border: 1px solid rgba(200, 90, 60, 0.3);
+  color: #a3372a;
+  font-size: 26px;
+}
+
+.failure-title {
+  margin: 0 0 7px;
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+  color: var(--riv-card-ink);
+}
+
+.failure-text {
+  margin: 0 auto 20px;
+  max-width: 380px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--riv-card-ink-soft);
+}
+
+.failure-retry {
+  font: inherit;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #ffffff;
+  background: var(--riv-cta-grad);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 16px;
+  padding: 12px 26px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.failure-retry:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
 }
