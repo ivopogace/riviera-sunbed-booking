@@ -65,8 +65,8 @@ process miss is treating a post-review (or post-Sonar) fix as exempt: a migratio
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. **Any strategic document the issues reference (an improvement plan, a design note) must be committed to the repo (e.g. `docs/architecture/`) before or with the issues** — an epic's one-line summary is not a durable record; a conversation-only plan gets lost between sessions. | `to-issues` |
 | **Plan** | For a grabbed issue, write the plan doc with testable ACs, the risk register, and — if booking/availability/money is touched — exactly how the relevant invariant is upheld. **When entering at an existing issue, run the Issue-intake grill gate first; then the Skill-routing gate.** | `riviera-plan-doc` (owner) + `grilling` + **the Issue-intake grill gate + the Skill-routing gate (below)** |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. **Re-run the Skill-routing gate** for each area you touch. | `implement` + `tdd` + **the Skill-routing gate (below)** |
-| **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
-| **PR** | Open a PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
+| **CI gate** | Every push/PR builds both apps, runs tests, and scans (CodeQL + Dependabot + SonarCloud). Green is required. **After any push that claims a phase green, check that push's CI run before starting the next phase** (deliberate red-TDD commits and honestly-labeled partial commits are exempt; a "phase complete" push is not). The scoped-test discipline means a full-suite-only failure (see `riviera-local-debug`) shows up **only** here — on 2026-07-02 it rode along unnoticed twice (#122: 3 red pushes / 45 min; #127: 6 red pushes / 33 min) because nothing in the loop looked at push CI before PR time. | GitHub Actions (issue #3). A red pipeline → `diagnosing-bugs` |
+| **PR** | **Merge the latest `origin/main` into the branch first** — if anything merged to `main` since the branch was cut (parallel sessions do this routinely), integrate it *now* with full phase discipline (skill-routing gate for what the integration touches, scoped tests, honest commit) rather than discovering an unmergeable PR after review. Then open the PR into `main`. Opening the PR does **not** complete the next stage. | `triage` (issue/PR lifecycle) |
 | **Review** | **Mandatory gate.** Run a review over the PR diff against the invariants; record findings; fix/triage them. **Each fix re-enters at Implement** (Skill-routing gate + `tdd` + CI gate), then the touched surface is re-reviewed. Green CI is **not** a substitute. **Run the Review gate (below).** | `riviera-review-overlay` + `/code-review` — **the Review gate (below)** |
 | **Sonar gate** | **Mandatory gate (PR-time).** SonarCloud's quality gate runs on the PR (it analyzes PRs + `main`, never a feature-branch push). Wait for it; it must pass with **no new issues** (new-code coverage ≥ 80%). **A new issue that changes implemented logic re-enters at Implement** through the Skill-routing gate (decide BE/FE, load that area's skill, `tdd`, CI, re-review) — exactly like a review finding. **Run the Sonar gate (below).** | SonarCloud (issue #3) + **the Sonar gate (below)** + `diagnosing-bugs` for a genuine defect it flags |
 | **Merge** | Only after **green CI + Review gate done + Sonar quality gate green (no new issues) + findings resolved _through the loop_** → merge; then **run the Merge close-out checklist (below)**. | **the Merge close-out (below)** |
@@ -95,6 +95,14 @@ process miss is treating a post-review (or post-Sonar) fix as exempt: a migratio
      assumptions. (E.g. example values inlined in the issue may be stale.)
    - What did we **not** think of when we wrote it — missing states, edge cases, the
      invariants in play (esp. #2 availability, #4 cutoff, #5 money, #8 webhook-as-truth)?
+   - **What else is in flight right now?** List the open PRs and active session branches
+     and check for overlap with this slice: shared files (`SecurityConfig`, shared test
+     fixtures, FE core/) and above all the **next Flyway version number** — `V<n>` must be
+     free on `main` *and* unclaimed by any open PR's diff. Two parallel sessions both
+     claimed V19 on 2026-07-02 (#122/#127): the loser's PR went unmergeable, no PR CI or
+     Sonar could run, and a large semantic integration merge had to happen at the very end
+     of the session. If a collision is possible, record in the plan doc who renumbers
+     (default: the branch that merges second) and expect a merge-from-main before the PR.
    - **Which module should own each piece of the work?** Sanity-check the intended
      placement against `RESPONSIBILITIES.md` (Job / Not-My-Job) *before* planning: does
      any step put logic in a module whose **Not My Job** list rejects it (a refund
@@ -279,7 +287,9 @@ Merging is not the last step; the close-out is. Every item, every merge:
    transcript is lost by the next session.
 4. **Plan doc final state:** execution-status table ✅ at HEAD, Open Questions empty or
    deferred with issue numbers (already required by `riviera-plan-doc` — verify, don't
-   assume).
+   assume). **Tick the PR body's Gates checkboxes** as each gate actually passes — both
+   2026-07-02 PRs merged with all three left `[ ]` despite all three passing, which makes
+   the PR record lie about the process that ran.
 5. **Substrate-doc staleness check — run `riviera-docs-freshness`.** If the slice changed
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`
    skill **states** — a module's shipped/planned status, the package shape, a canonical
@@ -332,8 +342,10 @@ ways that repeatedly cost time when rediscovered. The rules:
    (DB → API → UI → tests) and is demoable on its own — never a horizontal layer.
 2. **Branch per issue:** `feature/<slug>` or `bugfix/<slug>` off `main`; reference
    `#NN` in commits.
-3. **The CI gate is non-negotiable.** Don't merge red. A red pipeline is a
-   `diagnosing-bugs` feedback loop, not a nuisance to bypass.
+3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Don't merge red,
+   and don't stack phases on an unchecked push: after each push that claims green, confirm
+   its CI run before writing the next phase (red-TDD and labeled-partial pushes exempt).
+   A red pipeline is a `diagnosing-bugs` feedback loop, not a nuisance to bypass.
 4. **The review gate is non-negotiable too.** Green CI is not a review. Don't merge —
    and don't call a slice done — until the Review gate (above) has run on the PR diff and
    its findings are resolved or deferred. "PR opened + CI green" is the trap, not the
