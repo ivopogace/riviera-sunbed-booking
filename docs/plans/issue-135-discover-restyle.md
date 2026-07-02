@@ -111,11 +111,13 @@ branch stands in for `feature/discover-restyle` (cloud-session addendum).
 
 ## Open questions / Assumptions
 
-- **Assumption (decide-myself, recorded):** date label keeps the year (parity with
-  today); design demo omits it — treated as demo formatting.
-- **Assumption (recorded):** hero/state glass panels are a deliberate AA deviation from
-  the design's open-air text, following T1's header precedent; noted in `styles.scss`
-  and the PR body for the maintainer to veto.
+### Resolved
+
+- **Assumption (decide-myself, recorded, kept):** date label keeps the year (parity with
+  today); design demo omits it — treated as demo formatting. Shipped in 4f3a67b.
+- **Assumption (recorded, kept):** hero/state glass panels are a deliberate AA deviation
+  from the design's open-air text, following T1's header precedent; noted in
+  `styles.scss`/`home.scss` and the PR body for the maintainer to veto. Shipped in 4f3a67b.
 
 ## Availability & concurrency (invariant #2)
 
@@ -270,10 +272,10 @@ Post-fix verification: unit 264/264, lint clean, `discovery-flow` + `theme-shell
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] No JPA / no backend change (invariant #1 trivially holds).
-- [ ] Availability/Modulith/Payment sections justified N/A (frontend-only).
-- [ ] Frontend standards met; no `as any`.
-- [ ] Execution-status table at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with issue #.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] No JPA / no backend change (invariant #1 trivially holds).
+- [x] Availability/Modulith/Payment sections justified N/A (frontend-only).
+- [x] Frontend standards met; no `as any`.
+- [x] Execution-status table at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with issue #.
