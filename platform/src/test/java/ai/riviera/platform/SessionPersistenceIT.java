@@ -77,5 +77,13 @@ class SessionPersistenceIT {
 		// And a fresh request authenticated ONLY by the cookie reads it back from the DB.
 		mvc.perform(get("/api/auth/me").cookie(session))
 				.andExpect(status().isOk());
+
+		// The DB row is LOAD-BEARING, not vestigial: delete it out from under the cookie (what a
+		// restart with an emptied store or an evicted session looks like) and the same cookie no
+		// longer authenticates. This is what proves authentication reads from Postgres — a
+		// hypothetical in-memory cache over the store would keep the request green and fail here.
+		jdbc.sql("DELETE FROM spring_session WHERE principal_name = 'op-persist'").update();
+		mvc.perform(get("/api/auth/me").cookie(session))
+				.andExpect(status().isUnauthorized());
 	}
 }

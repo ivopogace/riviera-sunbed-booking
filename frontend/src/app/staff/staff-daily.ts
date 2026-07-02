@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
-import { OperatorAuth } from '../core/operator-auth';
+import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
 import { formatMoney } from '../shared/money';
 import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView, VenueMapView } from '../venue/venue.model';
@@ -142,19 +142,10 @@ export class StaffDaily {
     // Server-validated (issue #109); a success flips signedIn and the constructor effect loads.
     const result = await this.operator.signIn(this.username(), this.password());
     this.signingIn.set(false);
-    switch (result) {
-      case 'signed-in':
-        this.password.set('');
-        break;
-      case 'invalid-credentials':
-        this.notice.set('Sign-in failed. Check your username and password.');
-        break;
-      case 'rate-limited':
-        this.notice.set('Too many sign-in attempts. Please wait a minute and try again.');
-        break;
-      case 'error':
-        this.notice.set('Something went wrong signing in. Please try again.');
-        break;
+    if (result === 'signed-in') {
+      this.password.set('');
+    } else {
+      this.notice.set(signInFailureMessage(result));
     }
   }
 

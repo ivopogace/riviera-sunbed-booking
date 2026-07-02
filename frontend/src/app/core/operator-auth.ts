@@ -13,6 +13,24 @@ interface AuthPrincipal {
 /** How a sign-in attempt ended, for the surface to translate into a message. */
 export type SignInResult = 'signed-in' | 'invalid-credentials' | 'rate-limited' | 'error';
 
+/**
+ * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
+ * same thing (the venue editor, the staff view, and the customer/SSO surfaces epic #108 adds).
+ * Returns undefined for `'signed-in'` (no message). Failure wording stays generic (D-8).
+ */
+export function signInFailureMessage(result: SignInResult): string | undefined {
+  switch (result) {
+    case 'signed-in':
+      return undefined;
+    case 'invalid-credentials':
+      return 'Sign-in failed. Check your username and password.';
+    case 'rate-limited':
+      return 'Too many sign-in attempts. Please wait a minute and try again.';
+    case 'error':
+      return 'Something went wrong signing in. Please try again.';
+  }
+}
+
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
 
 /**

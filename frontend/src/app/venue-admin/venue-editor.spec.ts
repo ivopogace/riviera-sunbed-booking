@@ -287,10 +287,13 @@ describe('VenueEditor', () => {
     expect(host().querySelector('.form-error')).toBeNull();
   });
 
-  it('surfaces a 401 from the server as a sign-in error', async () => {
-    // Signed in, but the session dies before the write (expired/invalidated server-side): the
-    // 401 on the venue POST maps to the sign-in-rejected alert.
+  it('surfaces a mid-flow 401 as a session-expired error AND drops the lost session', async () => {
+    // Signed in, but the session dies before the write (expired/invalidated server-side): the 401
+    // on the venue POST surfaces the session-expired alert AND clears local auth state via
+    // sessionLost(), so the sign-in form re-renders instead of stranding the operator on the
+    // signed-in card retrying a dead session (issue #109 review fix).
     await signIn();
+    expect(auth.signedIn()).toBe(true);
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -304,7 +307,10 @@ describe('VenueEditor', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(host().querySelector('[role="alert"]')?.textContent).toContain('operator sign-in');
+    expect(host().querySelector('[role="alert"]')?.textContent).toContain('session has expired');
+    // The lost session is dropped, so the operator can sign in again (no dead-end).
+    expect(auth.signedIn()).toBe(false);
+    expect(host().querySelector('#operator-username, [name="operator-username"]')).not.toBeNull();
   });
 
   it('signs the operator in and out through the form', async () => {

@@ -11,7 +11,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import jakarta.servlet.http.Cookie;
 
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -102,21 +101,23 @@ class CsrfProtectionIT {
 
 	@Test
 	void guestBookingCreateStaysTokenless() throws Exception {
-		// Bogus set → rejected by the domain (404), NOT by CSRF (403 would mean the exemption broke).
+		// A well-formed body for an unknown set: the request must reach the domain and be rejected
+		// there as NO_SUCH_SET (404) — proving CSRF did NOT gate it (a 403 would mean the exemption
+		// broke). Field names match CreateBookingRequest (bookingDate/contact) so the request gets
+		// past body validation to the domain, not stopped at a 400.
 		mvc.perform(post("/api/bookings")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"setId": 999999, "date": "2036-08-01",
-								 "customer": {"name": "Guest", "email": "g@example.com"}}"""))
-				.andExpect(result -> assertNotEquals(403, result.getResponse().getStatus(),
-						"guest create must not be CSRF-gated"));
+								{"setId": 999999, "bookingDate": "2036-08-01",
+								 "contact": {"email": "g@example.com", "fullName": "Guest", "phone": "+355699000"}}"""))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void guestCancelStaysTokenless() throws Exception {
+		// An unknown code reaches the domain and is a 404 — not a 403, so CSRF did not gate it.
 		mvc.perform(post("/api/bookings/{code}/cancel", "NOSUCHCODE"))
-				.andExpect(result -> assertNotEquals(403, result.getResponse().getStatus(),
-						"guest cancel must not be CSRF-gated"));
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
