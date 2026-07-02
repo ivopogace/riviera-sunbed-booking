@@ -479,6 +479,17 @@ precompute — intentional, kept):
 Re-verification after fixes: build ✅ (venue-map 7.79 kB < 8 kB), unit 94/94 (venue-map 21), contrast
 26/26, a11y 3/3, e2e 20/20, lint clean.
 
+### Sonar gate outcome (PR #156)
+
+CI green (frontend/backend/CodeQL); SonarCloud quality gate failed on **one** condition —
+`new_reliability_rating` = C from a single MAJOR bug `css:S8776` "Missing scoping root" at
+`shared/_glass.scss:92` (the `&:focus-visible` nested inside the `failure-retry` mixin: the CSS
+analyzer doesn't model Sass mixin expansion, so the bare `&` reads as scoping-root-less). Coverage
+92%, duplication 0%, security A, maintainability A all passed. Fixed in code (deterministic, not a
+Sonar-UI false-positive mark): extracted the ring values into a `retry-focus-ring` mixin applied by
+each consumer under a real `.failure-retry:focus-visible` selector — restoring the pre-extraction
+structure, still DRY. Re-verified: build ✅, affected specs 66/66, lint clean.
+
 ### Risk resolutions
 R-1 pan-vs-select pinned by unit + e2e (both directions) · R-2 header-on-glass, contrast spec 26/26
 both themes · R-3 home suite 44/44 green post-extraction · R-4 booking e2e green, testids preserved ·

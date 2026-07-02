@@ -489,6 +489,9 @@
 .failure-retry {
   @include glass.failure-retry;
 }
+.failure-retry:focus-visible {
+  @include glass.retry-focus-ring;
+}
 
 .state {
   @extend %panel-surface;
