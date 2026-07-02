@@ -102,12 +102,12 @@ branch stands in for `feature/discover-restyle` (cloud-session addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | White hero/state text over the bare riviera gradient cannot clear AA (large-text 3:1 fails even over the mid stop; T1 already hit this class on the header) | certain (math) | high | hero + list-state panels sit on the **already-proven** `--riv-header-glass`/`--riv-header-border` tokens (dark glass in riviera, white glass in porcelain) — reusing the exact ink pairs `app.contrast.spec.ts` validates; recorded design deviation like T1's header | agent | |
-| R-2 | The design's fixed light-glass alphas (bar/cards white 0.55, muted ink 0.55–0.7, teal #0a6e85) fail composited AA over riviera's darkest stop | certain (math) | high | per-theme `--riv-card-glass` (riviera alpha raised, porcelain per design), muted-ink/accent alphas tuned until `home.contrast.spec.ts` (composited pairs) is green; each deviation annotated in `styles.scss` | agent | |
-| R-3 | Restyle breaks existing e2e/unit pins (testids, copy, aria-label) | med | med | testids preserved verbatim; copy changes limited to the grill-listed deltas; full FE unit + mocked e2e run locally before push | agent | |
-| R-4 | `results` now visible in the empty state changes AT announcements unexpectedly | low | low | still one `aria-live="polite"` region with meaningful text ("0 venues …"); empty message keeps its own testid/live region | agent | |
-| R-5 | Availability-bar division by zero (0-set venue) renders `NaN%` | med | low | `freePercent` guards `total === 0` → 0; unit-pinned (AC-4) | agent | |
-| R-6 | Hover lift on touch devices causes sticky-hover artifacts | low | low | lift under `@media (hover: hover)` only (AC-1) | agent | |
+| R-1 | White hero/state text over the bare riviera gradient cannot clear AA (large-text 3:1 fails even over the mid stop; T1 already hit this class on the header) | certain (math) | high | hero + list-state panels sit on the **already-proven** `--riv-header-glass`/`--riv-header-border` tokens (dark glass in riviera, white glass in porcelain) — reusing the exact ink pairs `app.contrast.spec.ts` validates; recorded design deviation like T1's header | agent | resolved 4f3a67b (panels shipped; pinned by home.contrast.spec.ts) |
+| R-2 | The design's fixed light-glass alphas (bar/cards white 0.55, muted ink 0.55–0.7, teal #0a6e85) fail composited AA over riviera's darkest stop | certain (math) | high | per-theme `--riv-card-glass` (riviera alpha raised, porcelain per design), muted-ink/accent alphas tuned until `home.contrast.spec.ts` (composited pairs) is green; each deviation annotated in `styles.scss` | agent | resolved 30f3f5e (riviera 0.78, inks 0.78/0.72, accent #085a6e, dark field border) |
+| R-3 | Restyle breaks existing e2e/unit pins (testids, copy, aria-label) | med | med | testids preserved verbatim; copy changes limited to the grill-listed deltas; full FE unit + mocked e2e run locally before push | agent | resolved daa377e (unit 262/262, mocked e2e 17/17, lint clean) |
+| R-4 | `results` now visible in the empty state changes AT announcements unexpectedly | low | low | still one `aria-live="polite"` region with meaningful text ("0 venues …"); empty message keeps its own testid/live region | agent | resolved daa377e (axe clean in all four states; &ngsp; keeps the announcement text spaced) |
+| R-5 | Availability-bar division by zero (0-set venue) renders `NaN%` | med | low | `freePercent` guards `total === 0` → 0; unit-pinned (AC-4) | agent | resolved 4f3a67b |
+| R-6 | Hover lift on touch devices causes sticky-hover artifacts | low | low | lift under `@media (hover: hover)` only (AC-1) | agent | resolved 4f3a67b |
 
 ## Open questions / Assumptions
 
@@ -156,10 +156,10 @@ N/A — no contract change (`GET /api/venues` summary consumed as-is).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Card-surface tokens + composited contrast spec | | |
-| 1 — Component restyle (template/styles/logic) + route flag flip | | |
-| 2 — e2e adjustments + full local FE suite | | |
-| 3 — Substrate patch (`riviera-frontend` skill) + plan final state | | |
+| 0 — Card-surface tokens + composited contrast spec | ✅ | 30f3f5e |
+| 1 — Component restyle (template/styles/logic) + route flag flip | ✅ | 4f3a67b |
+| 2 — e2e adjustments + full local FE suite | ✅ | daa377e |
+| 3 — Substrate patch (`riviera-frontend` skill) + plan final state | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -211,6 +211,7 @@ recorded on epic #133 as riding this PR. Plan-doc final state; push; PR; gates.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-02 | Phase 2: compiler whitespace-stripping glued `<strong>1</strong>` to "venue" → "1venue" in text content (e2e catch) | other adjacent inline elements whose combined text AT/assertions read | `grep -n "</strong>$" src/app/**/*.html` (manual scan of multi-element text runs) | only the new count block; existing templates keep separators inside one element or use literal `·`/text nodes | `&ngsp;` after the count; rule noted: text split across sibling inline elements needs an explicit space |
 
 ---
 
