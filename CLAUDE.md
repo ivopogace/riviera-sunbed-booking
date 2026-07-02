@@ -180,6 +180,12 @@ These are repo-scoped — they load when working in this repository.
   invariant #11 (and #1's JDBC-only) concrete. Load before creating/modifying any backend
   Java — which package a class belongs in is its call; pairs with `riviera-java-conventions`
   (idioms), `codebase-design` (seam depth), `postgres` (SQL).
+- **`riviera-frontend`** — the **Angular frontend STRUCTURE authority** (the FE mirror of
+  `riviera-modulith`): the `core/`/`shared/`/`pages/`/feature-folder taxonomy and one-way
+  import rules, the flat lazy-route convention, interceptor/guard/auth placement, the
+  DI-token adapter-swap pattern, environment rules, and the two-suite e2e placement. Load
+  before creating or modifying any file under `frontend/` — which folder a file lands in
+  is its call; pairs with `angular-developer` (how) and `playwright-cli` (e2e authoring).
 
 **Angular skills** (official, from `angular/skills`, installed in-repo via
 `skills add` so clones and cloud agents get them; manifest in `skills-lock.json`):
