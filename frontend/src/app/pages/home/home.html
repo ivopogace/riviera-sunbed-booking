@@ -53,16 +53,18 @@
   </form>
 
   <!-- Cutoff explainer (invariant #4 — display only; the server enforces the cutoff). Backed by a
-       subtle glass pill so its ink clears WCAG AA over the bare gradient (plan R-2). &ngsp; keeps a
-       real space between the ⏰ span and the copy (epic-133 sibling-inline gotcha). -->
+       subtle glass pill so its ink clears WCAG AA over the bare gradient (plan R-2). The ngsp
+       entity keeps a real space between the clock glyph and the copy (epic-133 sibling-inline
+       gotcha). -->
   <p class="cutoff-note" data-testid="cutoff-note">
     <span class="cutoff-icon" aria-hidden="true">⏰</span>&ngsp;
     <span>Bookings close the evening before — book by 6&nbsp;PM the day before. Today isn’t available.</span>
   </p>
 
   @if (failed()) {
-    <!-- Designed load-failure panel (#149). role="alert" + data-testid="error" preserve the T2
-         semantics so AT announces it; the ⚠ is decorative (the heading carries the meaning). -->
+    <!-- Designed load-failure panel (#149). The alert role and error test id preserve the T2
+         semantics so assistive tech announces it; the warning glyph is decorative — the heading
+         carries the meaning. -->
     <div class="failure" role="alert" data-testid="error">
       <span class="failure-icon" aria-hidden="true">⚠</span>
       <h2 class="failure-title">We couldn’t load the beaches</h2>
