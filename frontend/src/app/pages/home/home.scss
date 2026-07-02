@@ -9,6 +9,15 @@
 
 @use '../../shared/glass' as glass;
 
+// Pull each shared recipe once into a local placeholder, then @extend it — grouped output
+// (one selector list per surface) instead of the recipe inlined at every call site.
+%panel-surface {
+  @extend %panel-surface;
+}
+%card-surface {
+  @extend %card-surface;
+}
+
 :host {
   display: block;
   color: var(--riv-card-ink);
@@ -23,7 +32,7 @@
 /* ---- hero (on the shell's proven glass tokens) ---- */
 
 .hero {
-  @include glass.panel-glass;
+  @extend %panel-surface;
 
   max-width: 680px;
   padding: 24px 26px 26px;
@@ -75,7 +84,7 @@
 /* ---- glass filter bar (count block inside) ---- */
 
 .filter-bar {
-  @include glass.card-glass;
+  @extend %card-surface;
 
   display: flex;
   flex-wrap: wrap;
@@ -163,7 +172,7 @@
 }
 
 .card {
-  @include glass.card-glass;
+  @extend %card-surface;
 
   display: flex;
   flex-direction: column;
@@ -363,7 +372,7 @@
    AA, so it reuses the AA-proven card glass + card-ink-soft (plan R-2; same class as the
    hero-on-glass deviation). */
 .cutoff-note {
-  @include glass.card-glass;
+  @extend %card-surface;
 
   display: inline-flex;
   align-items: center;
@@ -386,7 +395,7 @@
 /* ---- loading / empty states (on the proven glass, see header note) ---- */
 
 .state {
-  @include glass.panel-glass;
+  @extend %panel-surface;
 
   margin-top: 24px;
   padding: 48px 20px;

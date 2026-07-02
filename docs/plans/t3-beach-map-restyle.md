@@ -222,8 +222,8 @@ integer minor units + currency; booking date stays ISO `LocalDate`.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared glass partial (rule of three) | ✅ | Phase 0 |
-| 1 — Component + template + SCSS restyle (TDD) | ⏳ | |
-| 2 — Contrast spec rewrite + a11y green | | |
+| 1 — Component + template + SCSS restyle (TDD) | ✅ | Phase 1 |
+| 2 — Contrast spec rewrite + a11y green | ⏳ | |
 | 3 — Pan-vs-select e2e + preserve booking e2e | | |
 | 4 — Route de-legacy + app.spec RESTYLED_PATHS | | |
 

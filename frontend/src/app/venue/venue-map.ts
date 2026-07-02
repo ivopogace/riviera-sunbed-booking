@@ -1,4 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
@@ -7,18 +15,58 @@ import { defaultBookingDate, parseIsoDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
 
+/**
+ * One rendered set on the map: the raw {@link SetView} plus its precomputed seat code
+ * (`A1`, `B7`), whether it is bookable (invariant #3), and its accessible name (state
+ * carried by text, not colour — WCAG AA).
+ */
+interface MapTile {
+  readonly set: SetView;
+  readonly seat: string;
+  readonly bookable: boolean;
+  /** Accessible name for a non-interactive tile (`<li>`). */
+  readonly name: string;
+  /** Accessible name for the bookable button (adds the "Select to book" affordance). */
+  readonly bookName: string;
+}
+
+/** One row of the map: its derived letter code, its per-row price, and its tiles. */
 interface MapRow {
-  readonly label: string;
-  readonly sets: readonly SetView[];
+  readonly code: string;
+  readonly price: MoneyView;
+  readonly tiles: readonly MapTile[];
+}
+
+/**
+ * Derive a row's compact display code from its **insertion index** — `0→A … 25→Z, 26→AA,
+ * 27→AB …` (bijective base-26, spreadsheet-column style). The map assigns these over the
+ * rows in the order the API returns them (ordered `grid_y, grid_x`), so two-letter codes
+ * stay in insertion order (`…Z, AA`) and are never lexicographically sorted (which would
+ * wrongly place `AA` before `B`). Pure, so it is unit-tested directly.
+ */
+export function rowCode(index: number): string {
+  let n = index;
+  let code = '';
+  do {
+    code = String.fromCharCode(65 + (n % 26)) + code;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return code;
 }
 
 /**
  * Read-only visual beach map for one venue on a chosen day (U1, issue #4; date-aware since
- * issue #44). Renders the venue header, a per-date availability summary, a date control, and the
- * positioned set grid coloured by tier and availability. The map owns the selected date: changing
- * it re-fetches that date's availability and seeds the booking dialog's date, so the two always
- * agree. Money is rendered from integer minor units; tile state is conveyed by an accessible
- * name, not colour alone (WCAG AA).
+ * issue #44; Liquid Glass restyle T3, issue #136). Renders the glass venue header (with
+ * description + cutoff explainer), a per-date availability summary, and the positioned,
+ * row-major set grid coloured by tier and availability. The map owns the selected date:
+ * changing it re-fetches that date's availability and seeds the booking dialog's date, so
+ * the two always agree. Money is rendered from integer minor units; tile state is conveyed
+ * by an accessible name, not colour alone (WCAG AA). Big venues pan horizontally by drag;
+ * a click-vs-drag threshold keeps a pan-release from opening the booking dialog.
+ *
+ * Display parity only: availability truth stays server-side (invariant #2); only free
+ * ONLINE-pool sets are bookable (invariant #3); the picker's `min` excludes today but the
+ * server remains authoritative for the real cutoff (invariant #4).
  */
 @Component({
   selector: 'app-venue-map',
@@ -31,11 +79,16 @@ export class VenueMap {
   private readonly venues = inject(VenueService);
   private readonly router = inject(Router);
 
+  /** A drag that travels beyond this many pixels is a pan, not a tap. */
+  private static readonly PAN_THRESHOLD_PX = 6;
+
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
 
   /** The day the map reflects (ISO YYYY-MM-DD); defaults to tomorrow in Europe/Tirane. */
   protected readonly selectedDate = signal(defaultBookingDate(new Date()));
+  /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display). */
+  protected readonly minDate = defaultBookingDate(new Date());
 
   private readonly venueId: number | undefined;
 
@@ -44,12 +97,29 @@ export class VenueMap {
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
   private lastTriggerId: number | undefined;
 
+  /** The horizontal pan viewport, present only once the map has rendered. */
+  private readonly panViewport = viewChild<ElementRef<HTMLElement>>('setRowsWrap');
+  /** True when the tile grid is wider than its viewport (show the drag-to-pan hint). */
+  protected readonly scrollHint = signal(false);
+
+  // --- pan gesture state (imperative; not rendered) ---
+  private panPointerDown = false;
+  private panStartX = 0;
+  private panStartScroll = 0;
+  /** Set when the current gesture crossed the drag threshold; consumed by the next select(). */
+  private panned = false;
+
   protected readonly freeCount = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
-  /** Sets grouped into rows (read order preserved) for the grid. */
+  /** Uniform column count so every row's grid aligns with the label/price side columns. */
+  protected readonly mapCols = computed(() =>
+    Math.max(1, ...this.rows().map((r) => r.tiles.length)),
+  );
+
+  /** Sets grouped into rows (read order preserved), each with a derived code + per-row price. */
   protected readonly rows = computed<readonly MapRow[]>(() => {
     const byRow = new Map<string, SetView[]>();
     for (const set of this.venue()?.sets ?? []) {
@@ -57,10 +127,25 @@ export class VenueMap {
       row.push(set);
       byRow.set(set.rowLabel, row);
     }
-    return [...byRow].map(([label, sets]) => ({ label, sets }));
+    return [...byRow.entries()].map(([label, sets], index) => {
+      const code = rowCode(index);
+      return {
+        code,
+        price: sets[0].price,
+        tiles: sets.map((set) => this.toTile(set, code, label)),
+      };
+    });
   });
 
   constructor() {
+    // Re-measure the pan overflow after each render whose map data changed (jsdom reports 0,
+    // so the hint's visibility is proven in the real-browser e2e, not a unit test).
+    afterRenderEffect(() => {
+      this.venue(); // dependency: re-run when the grid is (re)rendered
+      const el = this.panViewport()?.nativeElement;
+      this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
+    });
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!Number.isInteger(id)) {
       // Non-numeric path (e.g. /venues/abc) — fail fast instead of requesting /venues/NaN.
@@ -71,11 +156,23 @@ export class VenueMap {
     this.load();
   }
 
+  /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
+  private toTile(set: SetView, code: string, descriptiveLabel: string): MapTile {
+    const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
+    const state = set.availability === 'TAKEN' ? 'taken' : 'available';
+    const seat = `${code}${set.positionNo}`;
+    const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
+    const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${state}`;
+    return { set, seat, bookable, name, bookName: `${name}. Select to book.` };
+  }
+
   /** Fetch the map for the currently selected date. */
   private load(): void {
     if (this.venueId === undefined) {
       return;
     }
+    // A fresh attempt clears any prior failure so a recovered load renders the map.
+    this.failed.set(false);
     // Capture the requested date so a slower earlier response can't overwrite a newer one
     // (last-writer-wins across rapid date switches) — apply only if it's still the chosen date.
     const requested = this.selectedDate();
@@ -93,6 +190,16 @@ export class VenueMap {
     });
   }
 
+  /** Retry after a load failure: re-fetch the current date's map. */
+  protected retry(): void {
+    this.load();
+  }
+
+  /** Back to the discovery list. */
+  protected async onBack(): Promise<void> {
+    await this.router.navigate(['/']);
+  }
+
   /** Re-fetch availability for a newly chosen date (closing any open dialog first). */
   protected onDateChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
@@ -102,6 +209,30 @@ export class VenueMap {
     this.selectedSet.set(undefined);
     this.selectedDate.set(value);
     this.load();
+  }
+
+  // --- drag-to-pan (mouse only; touch uses native overflow scrolling) ---
+
+  protected onMapMouseDown(event: MouseEvent): void {
+    this.panPointerDown = true;
+    this.panned = false;
+    this.panStartX = event.clientX;
+    this.panStartScroll = (event.currentTarget as HTMLElement).scrollLeft;
+  }
+
+  protected onMapMouseMove(event: MouseEvent): void {
+    if (!this.panPointerDown) {
+      return;
+    }
+    const dx = event.clientX - this.panStartX;
+    if (Math.abs(dx) > VenueMap.PAN_THRESHOLD_PX) {
+      this.panned = true;
+    }
+    (event.currentTarget as HTMLElement).scrollLeft = this.panStartScroll - dx;
+  }
+
+  protected onMapMouseUp(): void {
+    this.panPointerDown = false;
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
@@ -130,29 +261,12 @@ export class VenueMap {
     return mode === 'INSTANT' ? 'Instant Book' : 'Request to Book';
   }
 
-  /** Accessible name so tile state is not conveyed by colour alone (WCAG AA, AC-8). */
-  protected setLabel(set: SetView): string {
-    const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
-    const state = set.availability === 'TAKEN' ? 'taken' : 'available';
-    return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${state}`;
-  }
-
-  /** A set is bookable online iff it is free and in the online pool (invariant #3). */
-  protected isBookable(set: SetView): boolean {
-    return set.availability === 'FREE' && set.pool === 'ONLINE';
-  }
-
-  /** Accessible name for the booking button. */
-  protected bookLabel(set: SetView): string {
-    return `${this.setLabel(set)}. Select to book.`;
-  }
-
-  /** aria-label for the tile itself — only when non-interactive (the button carries it otherwise). */
-  protected tileAriaLabel(set: SetView): string | null {
-    return this.isBookable(set) ? null : this.setLabel(set);
-  }
-
   protected select(set: SetView): void {
+    // A pan-release fires a click too; swallow it once so dragging never opens the dialog.
+    if (this.panned) {
+      this.panned = false;
+      return;
+    }
     this.lastTriggerId = set.id;
     this.selectedSet.set(set);
   }
