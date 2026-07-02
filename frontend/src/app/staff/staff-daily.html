@@ -48,6 +48,63 @@
       <output class="notice" aria-live="polite" data-testid="notice">{{ msg }}</output>
     }
 
+    <!-- Venue-wide Request-to-Book queue (issue #98): every open request, independent of the
+         date picked above. No booking codes here — the code is the guest's credential. -->
+    <section class="requests" aria-labelledby="requests-title" data-testid="requests-section">
+      <h2 id="requests-title" class="bookings-title">Pending requests</h2>
+      @if (requestRows().length) {
+        <table class="bookings-table">
+          <thead>
+            <tr>
+              <th scope="col">Guest</th>
+              <th scope="col">Set</th>
+              <th scope="col">Date</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Respond by</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of requestRows(); track r.bookingId) {
+              <tr data-testid="request-row" [attr.data-booking-id]="r.bookingId">
+                <td>{{ r.guestName }}</td>
+                <td>{{ r.setLabel }}</td>
+                <td>{{ r.bookingDate }}</td>
+                <td>{{ money(r.amount) }}</td>
+                <td>{{ requestDeadline(r.requestExpiresAt) }}</td>
+                <td>
+                  <span class="request-actions">
+                    <button
+                      type="button"
+                      class="primary"
+                      data-testid="accept-request"
+                      [disabled]="isDeciding(r.bookingId)"
+                      [attr.aria-label]="acceptLabel(r)"
+                      (click)="onAccept(r)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary"
+                      data-testid="decline-request"
+                      [disabled]="isDeciding(r.bookingId)"
+                      [attr.aria-label]="declineLabel(r)"
+                      (click)="onDecline(r)"
+                    >
+                      Decline
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="empty" data-testid="requests-empty">No pending requests.</p>
+      }
+    </section>
+
     <section class="map" aria-label="Beach map — {{ v.name }}">
       <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
 

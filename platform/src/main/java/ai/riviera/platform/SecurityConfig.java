@@ -50,6 +50,11 @@ class SecurityConfig {
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
+	/** The operator-only pending-requests queue (#98); must be gated BEFORE the public venue GET. */
+	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
+	/** Accept/decline a pending request (#98); token-less operator POSTs, CSRF-exempt like the rest. */
+	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
+	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
 	/** The operator-only weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). CSRF-exempt token-less write. */
@@ -80,7 +85,8 @@ class SecurityConfig {
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/bookings",
 						"/api/bookings/*/cancel", "/api/payments/stripe/webhook",
 						"/api/venues", "/api/venues/*/sets", SET_ITEM_PATH, SET_AVAILABILITY_PATH,
-						WEATHER_REFUND_PATH, PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH))
+						WEATHER_REFUND_PATH, PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH,
+						BOOKING_REQUEST_ACCEPT_PATH, BOOKING_REQUEST_DECLINE_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
@@ -90,6 +96,13 @@ class SecurityConfig {
 						// Per-venue payout ledger read (U9) — operator-only venue financial data. MUST
 						// precede the public "GET /api/venues/**" below (first match wins).
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
+						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
+						// venue demand are operator data. The GET MUST precede the public venue GET below
+						// (first match wins). The ownership check itself lives in the application services
+						// (invariant #13); this is the role layer on top.
+						.requestMatchers(HttpMethod.GET, BOOKING_REQUESTS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_DECLINE_PATH).hasRole(OPERATOR_ROLE)
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)

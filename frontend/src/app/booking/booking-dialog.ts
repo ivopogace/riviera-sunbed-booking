@@ -1,6 +1,7 @@
 import {
   afterNextRender,
   Component,
+  computed,
   ElementRef,
   inject,
   input,
@@ -12,8 +13,13 @@ import { email, FormField, form, required, submit } from '@angular/forms/signals
 import { firstValueFrom } from 'rxjs';
 
 import { formatMoney } from '../shared/money';
-import { SetView } from '../venue/venue.model';
-import { AwaitingPayment, BookingConfirmation, BookingErrorCode } from './booking.model';
+import { BookingMode, SetView } from '../venue/venue.model';
+import {
+  AwaitingPayment,
+  BookingConfirmation,
+  BookingErrorCode,
+  RequestedBooking,
+} from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
 /**
@@ -45,10 +51,16 @@ import { BookingService, bookingErrorOf } from './booking.service';
       (keydown.tab)="trapFocus($event, false)"
       (keydown.shift.tab)="trapFocus($event, true)"
     >
-      <h2 [id]="titleId" class="panel-title">Book this set</h2>
+      <h2 [id]="titleId" class="panel-title">{{ isRequest() ? 'Request this set' : 'Book this set' }}</h2>
       <p class="panel-summary">
         {{ set().rowLabel }} · spot {{ set().positionNo }} — <strong>{{ price() }}</strong>
       </p>
+      @if (isRequest()) {
+        <p class="request-note">
+          This venue reviews each booking. You won’t be charged unless the venue accepts your
+          request.
+        </p>
+      }
 
       <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
         <label class="field">
@@ -90,7 +102,7 @@ import { BookingService, bookingErrorOf } from './booking.service';
         <div class="actions">
           <button type="button" class="btn-secondary" (click)="requestClose()">Cancel</button>
           <button type="submit" class="btn-primary" [disabled]="bookingForm().invalid() || submitting()">
-            {{ submitting() ? 'Booking…' : 'Confirm booking' }}
+            {{ submitting() ? busyLabel() : ctaLabel() }}
           </button>
         </div>
       </form>
@@ -102,6 +114,8 @@ export class BookingDialog implements OnInit {
   readonly set = input.required<SetView>();
   /** The day the map is showing (ISO YYYY-MM-DD); seeds the form's date so the two agree. */
   readonly date = input.required<string>();
+  /** The venue's booking mode: `REQUEST` swaps the CTA/copy to Request-to-Book (issue #98). */
+  readonly mode = input<BookingMode>('INSTANT');
 
   readonly dismissed = output<void>();
   /** Emitted on a `201 CONFIRMED` (stub/Instant profile) — the booking is already paid. */
@@ -111,6 +125,11 @@ export class BookingDialog implements OnInit {
    * to collect the card; the booking is NOT confirmed until the verified webhook (invariant #8).
    */
   readonly awaiting = output<AwaitingPayment>();
+  /**
+   * Emitted on a `202 PENDING_REQUEST` (REQUEST-mode venue, issue #98) — nothing is charged; the
+   * parent routes to the request-sent screen and the venue must accept before any payment.
+   */
+  readonly requested = output<RequestedBooking>();
 
   protected readonly titleId = 'booking-dialog-title';
 
@@ -119,6 +138,10 @@ export class BookingDialog implements OnInit {
 
   protected readonly submitting = signal(false);
   private readonly errorCode = signal<BookingErrorCode | undefined>(undefined);
+
+  protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
+  protected readonly ctaLabel = computed(() => (this.isRequest() ? 'Request to book' : 'Confirm booking'));
+  protected readonly busyLabel = computed(() => (this.isRequest() ? 'Requesting…' : 'Booking…'));
 
   protected readonly model = signal({
     fullName: '',
@@ -166,7 +189,9 @@ export class BookingDialog implements OnInit {
             contact: { email: m.email, fullName: m.fullName, phone: m.phone },
           }),
         );
-        if (result.kind === 'awaiting') {
+        if (result.kind === 'requested') {
+          this.requested.emit(result.requested);
+        } else if (result.kind === 'awaiting') {
           this.awaiting.emit(result.awaiting);
         } else {
           this.booked.emit(result.confirmation);

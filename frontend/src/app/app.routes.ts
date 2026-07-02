@@ -33,6 +33,13 @@ export const routes: Routes = [
     title: 'Complete payment — Riviera',
   },
   {
+    // Static segment — must stay above the 'booking/:code' catch-all.
+    path: 'booking/requested',
+    loadComponent: () =>
+      import('./booking/request-confirmation').then((m) => m.RequestConfirmation),
+    title: 'Request sent — Riviera',
+  },
+  {
     path: 'booking/:code',
     loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
     title: 'Your booking — Riviera',

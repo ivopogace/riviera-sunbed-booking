@@ -21,7 +21,7 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
  * (trimmed, lower-cased) so case/whitespace variants resolve to one guest.
  */
 @Repository
-class JdbcCustomerDirectory implements CustomerDirectory {
+class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.customer.api.CustomerLookup {
 
 	private final JdbcClient jdbc;
 
@@ -47,5 +47,14 @@ class JdbcCustomerDirectory implements CustomerDirectory {
 				.query(Long.class)
 				.single();
 		return new CustomerId(id);
+	}
+
+	@Override
+	public java.util.Optional<GuestContact> findById(CustomerId id) {
+		return jdbc.sql("SELECT email, full_name, phone FROM customer WHERE id = :id")
+				.param("id", id.value())
+				.query((rs, rowNum) -> new GuestContact(
+						rs.getString("email"), rs.getString("full_name"), rs.getString("phone")))
+				.optional();
 	}
 }

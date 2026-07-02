@@ -82,6 +82,10 @@ class BookingController {
 			case BookingOutcome.AwaitingPayment awaiting -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(AwaitingPaymentView.of(awaiting.confirmation(), awaiting.clientSecret(),
 							awaiting.paymentIntentId()));
+			// 202: a Request-to-Book venue — created PENDING_REQUEST, no payment until the venue
+			// accepts (#98). The guest tracks status (and later pays) via the code-gated view.
+			case BookingOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
+					.body(RequestedView.of(requested.confirmation(), requested.requestExpiresAt()));
 			case BookingOutcome.Rejected rejected -> switch (rejected) {
 				case SET_TAKEN -> error(HttpStatus.CONFLICT, "SET_TAKEN",
 						"The set is already taken for this date.");

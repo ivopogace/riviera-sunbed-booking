@@ -4,12 +4,20 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
-import { DailyBookingItem, StaffMarkError, StaffReleaseError } from './staff.model';
+import {
+  DailyBookingItem,
+  PendingRequestItem,
+  RequestDecision,
+  StaffMarkError,
+  StaffReleaseError,
+  StaffRequestError,
+} from './staff.model';
 
 /**
- * Typed access to the U8 staff endpoints: read a venue's confirmed bookings for a day, and
- * mark/release a `(set, date)` walk-in. Single responsibility — HTTP only; the operator Basic
- * credential is attached by the {@link import('../core/operator-auth.interceptor').operatorAuthInterceptor},
+ * Typed access to the U8 staff endpoints: read a venue's confirmed bookings for a day,
+ * mark/release a `(set, date)` walk-in, and work the Request-to-Book queue (issue #98). Single
+ * responsibility — HTTP only; the operator Basic credential is attached by the
+ * {@link import('../core/operator-auth.interceptor').operatorAuthInterceptor},
  * not here. `date` is an ISO `YYYY-MM-DD` string (invariant #6).
  */
 @Service()
@@ -37,6 +45,29 @@ export class StaffService {
     return this.http.delete<void>(
       `${this.base}/api/venues/${venueId}/sets/${setId}/availability`,
       { params: new HttpParams().set('date', date) },
+    );
+  }
+
+  /** The venue's pending booking requests, sorted by response deadline. Operator-gated. */
+  pendingRequests(venueId: number): Observable<PendingRequestItem[]> {
+    return this.http.get<PendingRequestItem[]>(
+      `${this.base}/api/venues/${venueId}/booking-requests`,
+    );
+  }
+
+  /** Accept a pending request → `AWAITING_PAYMENT` (stripe) or `CONFIRMED` (stub profile). */
+  acceptRequest(venueId: number, bookingId: number): Observable<RequestDecision> {
+    return this.http.post<RequestDecision>(
+      `${this.base}/api/venues/${venueId}/booking-requests/${bookingId}/accept`,
+      {},
+    );
+  }
+
+  /** Decline a pending request → `DECLINED`; the soft-held set is freed server-side. */
+  declineRequest(venueId: number, bookingId: number): Observable<RequestDecision> {
+    return this.http.post<RequestDecision>(
+      `${this.base}/api/venues/${venueId}/booking-requests/${bookingId}/decline`,
+      {},
     );
   }
 }
@@ -69,6 +100,27 @@ export function staffReleaseErrorOf(error: unknown): StaffReleaseError {
     }
     if (problemCodeOf(error) === 'NOT_MARKED') {
       return 'NOT_MARKED';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** Map an HTTP failure to a known {@link StaffRequestError} (accept/decline, issue #98). */
+export function staffRequestErrorOf(error: unknown): StaffRequestError {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'NO_SUCH_REQUEST':
+      case 'REQUEST_NOT_PENDING':
+      case 'REQUEST_EXPIRED':
+      case 'PAYMENT_INIT_FAILED':
+      case 'NOT_VENUE_OWNER':
+        return code;
+      default:
+        return 'UNKNOWN';
     }
   }
   return 'UNKNOWN';

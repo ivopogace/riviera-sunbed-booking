@@ -1,6 +1,7 @@
 import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { formatDeadline } from '../shared/deadline';
 import { MoneyView } from '../venue/venue.model';
 import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
@@ -11,6 +12,12 @@ import { BookingService } from './booking.service';
  * details, and — when the booking is cancellable — offers a two-step cancel (a confirm prompt stating
  * the refund) so the action is deliberate and accessible. The refund amount is never computed or sent
  * by the client. Money is rendered from integer minor units; status is conveyed in text (WCAG AA).
+ *
+ * <p>Request-to-Book (issue #98) adds status-aware panels: `PENDING_REQUEST` shows the venue's
+ * response deadline; `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
+ * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
+ * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
+ * `DECLINED`/`EXPIRED` explain the terminal, no-charge outcome.
  */
 @Component({
   selector: 'app-booking-view',
@@ -46,13 +53,70 @@ import { BookingService } from './booking.service';
           <dd>{{ b.rowLabel }} · spot {{ b.positionNo }}</dd>
           <dt>Date</dt>
           <dd>{{ b.bookingDate }}</dd>
-          <dt>Paid</dt>
+          <dt>{{ amountLabel(b.status) }}</dt>
           <dd>{{ money(b.amount) }}</dd>
           @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
             <dt>Refunded</dt>
             <dd data-testid="refunded-amount">{{ money(b.refundedAmount) }}</dd>
           }
         </dl>
+
+        @switch (b.status) {
+          @case ('PENDING_REQUEST') {
+            <section class="request-panel" data-testid="request-pending" aria-labelledby="request-state-title">
+              <h2 id="request-state-title">Waiting for the venue</h2>
+              <p class="terms">
+                {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be
+                charged unless they accept.
+              </p>
+              @if (b.requestExpiresAt; as deadline) {
+                <p class="terms">
+                  They have until <strong>{{ deadlineLabel(deadline) }}</strong> to respond.
+                </p>
+              }
+            </section>
+          }
+          @case ('AWAITING_PAYMENT') {
+            @if (b.payment) {
+              <section class="request-panel" data-testid="request-accepted" aria-labelledby="request-state-title">
+                @if (b.requestExpiresAt) {
+                  <h2 id="request-state-title">Request accepted — complete your payment</h2>
+                  <p class="terms">
+                    {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
+                  </p>
+                } @else {
+                  <!-- An instant booking with an open payment (e.g. an interrupted checkout) was
+                       never a request — don't claim the venue "accepted" anything. -->
+                  <h2 id="request-state-title">Complete your payment</h2>
+                  <p class="terms">
+                    This booking is reserved but unpaid. Pay now to confirm your spot.
+                  </p>
+                }
+                <button type="button" class="btn primary" (click)="payNow(b)" data-testid="pay-now">
+                  Pay now
+                </button>
+              </section>
+            }
+          }
+          @case ('DECLINED') {
+            <section class="request-panel" data-testid="request-declined" aria-labelledby="request-state-title">
+              <h2 id="request-state-title">Request declined</h2>
+              <p class="terms">
+                {{ b.venueName }} couldn’t take this booking, so it was declined. You haven’t been
+                charged — pick another set or date to book again.
+              </p>
+            </section>
+          }
+          @case ('EXPIRED') {
+            <section class="request-panel" data-testid="request-expired" aria-labelledby="request-state-title">
+              <h2 id="request-state-title">Request expired</h2>
+              <p class="terms">
+                {{ b.venueName }} didn’t respond in time, so this request expired. You haven’t
+                been charged — pick another set or date to book again.
+              </p>
+            </section>
+          }
+        }
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
         <p class="result" role="status" aria-live="polite" data-testid="cancel-result">
@@ -105,6 +169,7 @@ import { BookingService } from './booking.service';
 })
 export class BookingView {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly bookings = inject(BookingService);
 
   protected readonly booking = signal<BookingDetail | undefined>(undefined);
@@ -174,6 +239,47 @@ export class BookingView {
 
   protected statusLabel(status: string): string {
     return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');
+  }
+
+  /** "Paid" once money has actually moved; "Amount" while the request/payment is still open. */
+  protected amountLabel(status: BookingDetail['status']): string {
+    switch (status) {
+      case 'PENDING_REQUEST':
+      case 'AWAITING_PAYMENT':
+      case 'DECLINED':
+      case 'EXPIRED':
+        return 'Amount';
+      default:
+        return 'Paid';
+    }
+  }
+
+  /** A response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */
+  protected deadlineLabel(iso: string): string {
+    return formatDeadline(iso);
+  }
+
+  /**
+   * Resume payment on an accepted request (issue #98): rebuild the payment hand-off from the
+   * fetched detail's open-intent credentials and route to `/booking/pay`. The pay page then polls
+   * for the webhook-driven CONFIRMED exactly as after a 202 create (invariant #8).
+   */
+  protected async payNow(b: BookingDetail): Promise<void> {
+    const payment = b.payment;
+    if (!payment) {
+      return;
+    }
+    this.bookings.beginPayment({
+      code: b.code,
+      venueName: b.venueName,
+      rowLabel: b.rowLabel,
+      positionNo: b.positionNo,
+      bookingDate: b.bookingDate,
+      amount: b.amount,
+      clientSecret: payment.clientSecret,
+      paymentIntentId: payment.paymentIntentId,
+    });
+    await this.router.navigate(['/booking/pay']);
   }
 
   /** Refund-terms copy for a still-cancellable booking. */

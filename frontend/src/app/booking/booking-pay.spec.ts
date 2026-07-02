@@ -43,6 +43,8 @@ const DETAIL: BookingDetail = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  requestExpiresAt: null,
+  payment: null,
 };
 
 const CREATE_URL = `${environment.apiBaseUrl}/api/bookings`;

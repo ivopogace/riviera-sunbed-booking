@@ -22,6 +22,16 @@ sealed interface ReserveOutcome {
 	record Reserved(long bookingId, String code, SetBookingInfo set) implements ReserveOutcome {
 	}
 
+	/**
+	 * Request-to-Book (issue #98): the venue sells by request, so the row was inserted
+	 * {@code PENDING_REQUEST} with its response deadline — the {@code (set, date)} is held
+	 * (invariant #2) but there is <strong>no collect phase</strong>: no PaymentIntent exists
+	 * until the venue accepts (payment-request-on-accept, riviera-stripe-payments).
+	 */
+	record RequestPending(long bookingId, String code, SetBookingInfo set,
+			java.time.Instant requestExpiresAt) implements ReserveOutcome {
+	}
+
 	/** Validation or the claim failed; nothing was persisted. Carries the create-level reason. */
 	record Rejected(BookingOutcome.Rejected reason) implements ReserveOutcome {
 	}

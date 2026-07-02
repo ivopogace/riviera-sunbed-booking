@@ -42,10 +42,44 @@ class PaymentServiceTest {
 		};
 	}
 
+	/** A {@link Payments} stub for the constructor — the delegation tests never read it. */
+	private static Payments noPayments() {
+		return new Payments() {
+			@Override
+			public void register(NewPayment payment) {
+			}
+
+			@Override
+			public java.util.Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
+				return java.util.Optional.empty();
+			}
+
+			@Override
+			public void markStatus(String paymentIntentId,
+					ai.riviera.platform.payment.domain.PaymentStatus status) {
+			}
+
+			@Override
+			public java.util.Optional<String> findIntentByBookingRef(BookingRef booking) {
+				return java.util.Optional.empty();
+			}
+
+			@Override
+			public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+			}
+
+			@Override
+			public java.util.Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+					BookingRef booking) {
+				return java.util.Optional.empty();
+			}
+		};
+	}
+
 	@Test
 	void delegatesToGateway() {
 		PaymentService service = new PaymentService(initiating((booking, amount) ->
-				new PaymentOutcome.Succeeded("ref-" + booking.value() + "-" + amount.minor())));
+				new PaymentOutcome.Succeeded("ref-" + booking.value() + "-" + amount.minor())), noPayments());
 
 		PaymentOutcome outcome = service.pay(new BookingRef(42L), new Money(4500L, "EUR"));
 
@@ -56,7 +90,7 @@ class PaymentServiceTest {
 	@Test
 	void passesPendingOutcomeThrough() {
 		PaymentService service = new PaymentService(
-				initiating((booking, amount) -> new PaymentOutcome.Pending("cs_test", "pi_test")));
+				initiating((booking, amount) -> new PaymentOutcome.Pending("cs_test", "pi_test")), noPayments());
 
 		PaymentOutcome outcome = service.pay(new BookingRef(1L), new Money(4500L, "EUR"));
 

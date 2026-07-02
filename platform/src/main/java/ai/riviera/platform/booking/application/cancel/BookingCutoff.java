@@ -47,8 +47,18 @@ public class BookingCutoff {
 		return isBeforeCutoff(cutoff, bookingDate);
 	}
 
+	/**
+	 * The instant at which booking (and free cancellation) for {@code bookingDate} closes — the
+	 * evening-before {@code cutoff} wall-clock time in {@code Europe/Tirane} (invariants #4/#6).
+	 * Public for the Request-to-Book deadline (issue #98): a pending request's
+	 * {@code request_expires_at} is capped at this instant, so a venue can never accept a request
+	 * after bookings for that date have closed — one rule, three jobs.
+	 */
+	public java.time.Instant closesAt(LocalTime cutoff, LocalDate bookingDate) {
+		return bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE).toInstant();
+	}
+
 	private boolean isBeforeCutoff(LocalTime cutoff, LocalDate bookingDate) {
-		ZonedDateTime closesAt = bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE);
-		return clock.instant().isBefore(closesAt.toInstant());
+		return clock.instant().isBefore(closesAt(cutoff, bookingDate));
 	}
 }
