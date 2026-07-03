@@ -11,6 +11,12 @@ export const routes: Routes = [
     title: 'Riviera — Sunbed Booking',
   },
   {
+    // Device-local guest bookings list (T6 #139) — glass from the start, no compat surface.
+    path: 'my-bookings',
+    loadComponent: () => import('./booking/my-bookings').then((m) => m.MyBookings),
+    title: 'My bookings — Riviera',
+  },
+  {
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
     title: 'Venue editor — Riviera',
