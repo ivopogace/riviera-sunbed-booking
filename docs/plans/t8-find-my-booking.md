@@ -336,6 +336,20 @@ see `riviera-local-debug`). Run recipe per phase: `npm test -- <spec filter>`.
 
 ---
 
+## Sonar-gate record (PR #167)
+
+SonarCloud quality gate ran on PR #167. The reported new-issue list (pulled from the API, not
+just the gate conclusion) carried **1 CRITICAL code smell**: `typescript:S3735` at
+`find-booking.ts:154` — "Remove this use of the void operator" (the `void this.router.navigate(...)`
+in the subscribe `next`). **Fixed in-code** (FE area — `angular-developer`/`riviera-frontend`
+already loaded): `onSubmit` became `async`, validating the code via `firstValueFrom(getByCode)` then
+**awaiting** `router.navigate` — matching the codebase's every-other-navigate idiom (venue-map,
+booking-view) and removing the `void`. Re-verified: 23 find-booking specs + 3 e2e + lint green; the
+3 error-path unit tests gained a `detectChanges()` after the now-async settle (a test-timing
+artifact — the real browser re-renders on the signal write, proven by the e2e error test). A re-run
+after the fix push confirms the reported list reaches zero. New-code coverage / duplications checked
+via the measures API after the re-analysis.
+
 ## Acceptance-criteria verification (final)
 
 > The gate before claiming done.

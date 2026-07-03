@@ -110,6 +110,7 @@ describe('FindBooking', () => {
     setCode(fixture, 'ZZZZ999999');
     submit(fixture);
     await fixture.whenStable();
+    fixture.detectChanges(); // render the error the async catch set after submit's CD
 
     expect(errorText(fixture)).toBe('No booking found for ZZZZ999999. Check the code and try again.');
     expect(navigate).not.toHaveBeenCalled();
@@ -123,6 +124,7 @@ describe('FindBooking', () => {
     setCode(fixture, 'ABCD234567');
     submit(fixture);
     await fixture.whenStable();
+    fixture.detectChanges(); // render the error the async catch set after submit's CD
 
     expect(errorText(fixture)).toBe('Too many attempts. Please wait a moment and try again.');
     expect(navigate).not.toHaveBeenCalled();
@@ -138,6 +140,7 @@ describe('FindBooking', () => {
       setCode(fixture, 'ABCD234567');
       submit(fixture);
       await fixture.whenStable();
+      fixture.detectChanges(); // render the error the async catch set after submit's CD
 
       expect(errorText(fixture)).toBe('Something went wrong. Please try again.');
       expect(navigate).not.toHaveBeenCalled();

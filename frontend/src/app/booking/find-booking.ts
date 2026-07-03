@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { FormField, form, required } from '@angular/forms/signals';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 import { BookingService } from './booking.service';
 
@@ -136,7 +137,7 @@ export class FindBooking {
     afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
   }
 
-  protected onSubmit(): void {
+  protected async onSubmit(): Promise<void> {
     if (this.submitting()) {
       return; // a lookup is already in flight — don't hit the rate-limited oracle twice (AC-7)
     }
@@ -150,13 +151,17 @@ export class FindBooking {
       return; // whitespace-only collapsed to empty — defensive, no lookup
     }
     this.submitting.set(true);
-    this.bookings.getByCode(code).subscribe({
-      next: () => void this.router.navigate(['/booking', code]),
-      error: (error: unknown) => {
-        this.lookupError.set(messageFor(error, code));
-        this.submitting.set(false);
-      },
-    });
+    try {
+      // Validate the code against the (rate-limited, #56) lookup endpoint, THEN navigate to the
+      // existing /booking/:code deep link — so an unknown/rate-limited code stays inline here
+      // without navigating. `submitting` stays true through the nav (the shell closes the modal on
+      // NavigationEnd); the destination page takes focus.
+      await firstValueFrom(this.bookings.getByCode(code));
+      await this.router.navigate(['/booking', code]);
+    } catch (error: unknown) {
+      this.lookupError.set(messageFor(error, code));
+      this.submitting.set(false);
+    }
   }
 
   protected requestClose(): void {
