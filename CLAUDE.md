@@ -1,41 +1,106 @@
-# Riviera Sunbed Booking — Project Conventions
+# CLAUDE.md
 
-This is the always-on conventions file for the riviera-sunbed-booking project. It
-is the **canonical source** for the bounded-context list and the cross-cutting
-invariants that the project skills (`riviera-plan-doc`, `riviera-review-overlay`,
-`riviera-stripe-payments`) reference by number. When a skill says "invariant #2,"
-it means the numbered list in this file.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Keep this file short and stable. Detailed, situational guidance lives in the
-skills under `.claude/skills/`, not here.
+It is the **canonical source** for the bounded-context list and the cross-cutting
+invariants that the project skills (the `riviera-*` skills under `.claude/skills/`)
+reference by number. When a skill says "invariant #2," it means the numbered list
+in this file. Keep this file short and stable; detailed, situational guidance
+lives in the skills, not here.
 
 ## What this is
 
 A two-sided marketplace web app: tourists pre-book a sunbed **set** (2 loungers +
 umbrella, full day) at an Albanian-riviera venue, pick the exact spot from a
 visual beach map, and pay in-app; the platform takes a commission per booking and
-pays venues out manually. Full design: `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`.
+pays venues out manually. Full design: `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`;
+visual design (Liquid Glass v3 tourist + v2 operator console): `docs/design/`.
+
+Current state: full stack built and deployed (frontend on GitHub Pages at
+ivopogace.github.io/riviera-sunbed-booking). The tourist Liquid Glass restyle
+(epic #133, T2–T8) is done; the operator console (epic #141) is in progress —
+O1 shell merged, O2–O8 remain.
 
 ## Tech stack (locked)
 
-- **Frontend:** Angular (mobile-friendly responsive web). Native apps deferred.
-- **Backend:** Spring Boot REST API, organized as a **Spring Modulith** with
-  hexagonal (ports/adapters) modules.
+- **Frontend:** Angular 22 (mobile-friendly responsive web), Tailwind 4, signals,
+  standalone components. Unit tests are **Vitest in jsdom** (not Karma); e2e is
+  Playwright. Native apps deferred.
+- **Backend:** Spring Boot 4 REST API on Java 25, organized as a **Spring
+  Modulith** (2.1) with hexagonal (ports/adapters) modules. No Lombok.
 - **Persistence:** PostgreSQL via **Spring Data JDBC / `JdbcTemplate` only**.
 - **Payments:** Stripe (collection only), behind a payment-gateway interface.
 - **Schema migrations:** Flyway (versioned forward migrations).
 - **Build:** Gradle (wrapper, `./gradlew`) for the backend; npm scripts for the
-  Angular app. (The skills' `./gradlew` / `npm` commands assume this.)
+  Angular app.
+
+## Commands
+
+Requires **JDK 25**, **Node 26** (`.nvmrc`), and **Docker** for the backend
+Testcontainers ITs (they skip cleanly without a daemon, `@EnabledIfDockerAvailable`).
+
+**Backend** (from `platform/`):
+
+```bash
+./gradlew build                        # compile + full test suite + JaCoCo
+./gradlew test --tests "*ClassName*"   # one test class
+./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
+  --tests "*PackageShapeArchitectureTests*"   # the structural net — run after any backend structure change
+./gradlew bootRun                      # run the API on :8080
+```
+
+**Frontend** (from `frontend/`):
+
+```bash
+npm ci
+npm start                # dev server on :4200
+npm run lint             # ESLint (angular-eslint)
+npm test                 # Vitest unit tests, runs once in jsdom
+npm run test:a11y        # axe + contrast unit specs only
+npm run test:e2e         # Playwright — CI-safe mocked suite (frontend/e2e/)
+npm run test:e2e:a11y    # Playwright a11y config
+npm run build
+```
+
+**Cloud-session caveats** (Claude Code on the web): the Gradle wrapper cannot
+self-provision behind the repo-scoped proxy, and the bare `test` task can OOM the
+sandbox. Load **`riviera-local-debug`** before the first `./gradlew`/`npm` of a
+session — it has the working recipe (system `gradle` + JDK-25 toolchain
+registration, scoped tests only; CI owns the full suite) and the known
+full-suite-only failure class (shared-state beans accumulating across tests).
+
+**CI/CD** (`.github/workflows/`): `ci.yml` runs backend build/test, frontend
+lint/test/build + e2e, and a SonarCloud scan on every PR; `codeql.yml` scans;
+`deploy.yml` deploys the frontend to GitHub Pages from `main`. The Sonar merge
+bar is stricter than the default quality gate: **0 new issues, 0 duplicated
+blocks, ≥80% new-code coverage** — review the issue list, not just the gate
+pass/fail (`riviera-sdlc` enforces this). Non-prod backend hosting is
+Render + Neon (ADR-0004; see `docs/deploy/`).
+
+## Repo map
+
+- `platform/` — the Spring Boot backend. Base package **`ai.riviera.platform`**
+  (groupId `ai.riviera`, artifactId `platform`); one package per module in the
+  table below. Flyway migrations: `platform/src/main/resources/db/migration`.
+- `frontend/` — the Angular app. Folder taxonomy and import rules are the
+  `riviera-frontend` skill's call; Angular language idioms live in the nested
+  `frontend/.claude/CLAUDE.md` (loads automatically for frontend work).
+- `frontend/e2e/` — the CI-safe mocked Playwright suite;
+  `frontend/e2e/real-backend/` — the local-only real-backend suite.
+- `docs/` — `architecture/` (domain-model diagrams, improvement plan, tracked by
+  epic #93), `adr/` (decisions), `design/` (Liquid Glass visual specs),
+  `plans/` (per-slice plan docs), `agents/` (issue-tracker conventions +
+  gradle-proxy / docker-testcontainers runbooks), `deploy/` + `runbooks/` (CD and
+  ops), `superpowers/specs/` (product design).
 
 ## Bounded contexts (Spring Modulith modules)
 
-Base package is **`ai.riviera.platform`** (groupId `ai.riviera`, artifactId
-`platform`). Each module lives at `ai.riviera.platform.<module>` with the hexagonal
-layout in invariant #11.
+Each module lives at `ai.riviera.platform.<module>` with the hexagonal layout in
+invariant #11.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
-| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request) | `Venue`, `BeachMap` |
+| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
 | `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired), request accept/decline + expiry sweep (#98), cancellation-policy enforcement | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
@@ -46,7 +111,8 @@ layout in invariant #11.
 > **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed
 > credentials): every venue-scoped application service checks `assertOwns` → `403`
 > (pinned by `CrossVenueDenialIT`), and each operator authenticates with its own hashed
-> credential. Remaining follow-up: retire the owns-all **bootstrap operator** and add
+> credential. Operator sessions are server-side in Postgres (Spring Session JDBC, #109).
+> Remaining follow-up: retire the owns-all **bootstrap operator** and add
 > creator-owns-on-create. See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
@@ -156,88 +222,68 @@ Flyway over Liquibase (shipped — the plain-SQL migrations under `db/migration`
 
 ## Project skills (`.claude/skills/`)
 
-These are repo-scoped — they load when working in this repository.
+These are repo-scoped — they load when working in this repository. Tracked in
+`skills-lock.json`.
 
-- **`riviera-plan-doc`** — pairs with `superpowers:writing-plans` /
-  `executing-plans`. Adds the riviera plan-doc template (acceptance criteria, risk
-  register, the module/event/availability sections) and per-phase discipline.
-- **`riviera-review-overlay`** — pairs with `pre-implementation-review-interview` /
-  `peer-change-review-interview`. Adds riviera-specific review bank items (the
-  invariants above, as checkable gates).
+- **`riviera-sdlc`** — the SDLC orchestrator. Load it when starting or continuing
+  feature work; it routes each stage (refine → issue → plan → implement → CI →
+  review → merge) to the right skill, including the FE/BE skill routing below.
+- **`riviera-plan-doc`** — pairs with the planning flow. Adds the riviera plan-doc
+  template (acceptance criteria, risk register, the module/event/availability
+  sections) and per-phase discipline.
+- **`riviera-review-overlay`** — pairs with any diff/PR review. Adds
+  riviera-specific review bank items (the invariants above, as checkable gates).
 - **`riviera-stripe-payments`** — the locked payment model (collect-only, no
   Connect, manual BKT payout, German entity) plus Stripe integration conventions.
   Load it for any work in the `payment` or `payout` module.
 - **`riviera-java-conventions`** — the **backend Java language idioms** (Java 25,
-  Spring Boot 4, Modulith): JDBC-only/no-JPA/no-Lombok, records for DTOs/value-objects/ids,
-  constructor injection with package-private adapters, typed outcomes, sealed types &
-  pattern matching. Load before writing/refactoring any Java; pairs with `codebase-design`
-  (seam shape) and `postgres` (SQL). The numbered invariants stay canonical in this file.
-- **`riviera-modulith`** — the **backend module STRUCTURE authority** (Spring Modulith,
-  hexagonal): per-module package layout, the `api/` `@NamedInterface` published surface,
-  `@ApplicationModule`/`allowedDependencies`, port-vs-event collaboration with id-based
-  payloads, the `ApplicationModules.verify()` contract (`ModularityTests`), the Event
-  Publication Registry, and `@ApplicationModuleTest`/`Scenario`/`Documenter`. Makes
-  invariant #11 (and #1's JDBC-only) concrete. Load before creating/modifying any backend
-  Java — which package a class belongs in is its call; pairs with `riviera-java-conventions`
-  (idioms), `codebase-design` (seam depth), `postgres` (SQL).
-- **`riviera-frontend`** — the **Angular frontend STRUCTURE authority** (the FE mirror of
-  `riviera-modulith`): the `core/`/`shared/`/`pages/`/feature-folder taxonomy and one-way
-  import rules, the flat lazy-route convention, interceptor/guard/auth placement, the
-  DI-token adapter-swap pattern, the Liquid Glass theme/token rules (`core/theme.ts` +
-  the `--riv-*` tokens, composited-contrast discipline), environment rules, and the
-  two-suite e2e placement. Load before creating or modifying any file under `frontend/` —
-  which folder a file lands in is its call; pairs with `angular-developer` (how) and
-  `playwright-cli` (e2e authoring).
+  Spring Boot 4, Modulith): JDBC-only/no-JPA/no-Lombok, records for
+  DTOs/value-objects/ids, constructor injection with package-private adapters,
+  typed outcomes, sealed types & pattern matching. Load before writing/refactoring
+  any Java. The numbered invariants stay canonical in this file.
+- **`riviera-modulith`** — the **backend module STRUCTURE authority** (Spring
+  Modulith, hexagonal): per-module package layout, the published-surface named
+  interfaces, `@ApplicationModule`/`allowedDependencies`, port-vs-event
+  collaboration with id-based payloads, the `ApplicationModules.verify()` contract
+  (`ModularityTests`), the Event Publication Registry, and
+  `@ApplicationModuleTest`/`Scenario`/`Documenter`. Load before creating/modifying
+  any backend Java — which package a class belongs in is its call.
+- **`riviera-frontend`** — the **Angular frontend STRUCTURE authority** (the FE
+  mirror of `riviera-modulith`): the `core/`/`shared/`/`pages/`/feature-folder
+  taxonomy and one-way import rules, the flat lazy-route convention (plus the O1
+  nested operator routes), interceptor/guard/auth placement, the DI-token
+  adapter-swap pattern, the Liquid Glass theme/token rules (`core/theme.ts` +
+  the `--riv-*` tokens, composited-contrast discipline, subtree theming), and the
+  two-suite e2e placement. Load before creating or modifying any file under
+  `frontend/` — which folder a file lands in is its call.
+- **`riviera-local-debug`** — the **build/test run recipes** (cloud-session Gradle
+  setup, scoped-test discipline, frontend commands). Load before the first
+  `./gradlew`/`npm` invocation of a session.
+- **`riviera-docs-freshness`** — the **substrate-doc staleness audit**: given a
+  git range, walk the substrate-doc map (this file, `CONTEXT.md`,
+  `RESPONSIBILITIES.md`, `docs/adr/`, the `riviera-*` skills) and flag/patch any
+  stated fact the diff contradicts. Runs at merge close-out step 5 and at every
+  epic close-out.
+- **`angular-new-app` / `angular-developer`** — official Angular skills
+  (scaffolding; component/service/architecture authority). The riviera frontend
+  review bank (`RV-FE-*`) checks the project-critical subset and defers to
+  `angular-developer` for full standards. In this repo the in-repo copy is
+  authoritative.
+- **`playwright-cli`** — the **Playwright e2e authority** (authoring,
+  request-mocking, spec generation). Mandatory for any user-facing frontend slice
+  (SDLC routing gate); the review overlay's `RV-FE-E2E` item owns the two-suite
+  placement rules.
+- **Vendored craft skills** (Matt Pocock, MIT — `grilling`/`grill-me`,
+  `to-issues`, `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`,
+  `domain-modeling`, `triage`, `improve-codebase-architecture`) provide the
+  generic engine; the `riviera-*` skills inject this project's invariants at the
+  plan and review gates.
+- **`postgres`** (PlanetScale database-skills, MIT, trimmed) — table/schema/index
+  design for Flyway migrations.
 
-**Angular skills** (official, from `angular/skills`, installed in-repo via
-`skills add` so clones and cloud agents get them; manifest in `skills-lock.json`):
+## Where things are written down
 
-- **`angular-new-app`** — use to **scaffold the Angular frontend** (the first FE
-  phase): `npx ng new` with the right flags + `--ai-config`, Tailwind via
-  `ng add`, and the CLI generators.
-- **`angular-developer`** — the Angular **component/service/architecture authority**
-  (signals, `resource`, forms, DI, routing, SSR, a11y, styling, testing; 37 files,
-  detail under its `references/`). The riviera frontend review bank (`RV-FE-*`)
-  checks the project-critical subset and defers to this skill for full standards.
-  (A copy also exists in the global skills for other projects; in this repo the
-  in-repo copy is authoritative.)
-
-**Frontend e2e skill:**
-
-- **`playwright-cli`** (official `@playwright/cli`, installed via `playwright-cli install
-  --skills` → `.claude/skills/playwright-cli/`) — the **Playwright e2e authority**: browser
-  automation, best-practice spec authoring, request-mocking, and spec generation, driven from
-  the `playwright-cli` binary. The SDLC routing gate makes it **mandatory for any user-facing
-  frontend slice** — used to **author** best-practice e2e tests, and in the review gate to
-  **judge** whether the tests written are accurate against it (review overlay item `RV-FE-E2E`).
-  The project-specific facts the generic skill can't know — the two-suite split (CI-safe
-  mocked-a11y vs local-only real-backend) and which suite a spec belongs in — live in the
-  review overlay's `RV-FE-E2E` item, not in a separate skill.
-
-- **`riviera-local-debug`** — the **build/test run recipes**: the cloud-session Gradle
-  setup (system Gradle + JDK-25 toolchain; the wrapper cannot self-provision behind the
-  repo-scoped proxy), the scoped-test discipline (never the bare `test` task in a cloud
-  sandbox — it can OOM; CI owns the full suite), and the frontend commands. Load before
-  the first `./gradlew`/`npm` invocation of a session.
-
-- **`riviera-docs-freshness`** — the **substrate-doc staleness audit**: given a git range
-  (a merged slice, an epic's merge span), walk the substrate-doc map (this file,
-  `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/`, the `riviera-*` skills) and flag/patch
-  any stated fact the diff contradicts. Runs at merge close-out step 5 and at every epic
-  close-out (`riviera-sdlc` delegates the sweep there).
-
-## Agent skills (SDLC workflow)
-
-This repo runs a software development life cycle loop. The **`riviera-sdlc`** skill is the
-orchestrator — load it when starting or continuing feature work; it routes each
-stage (refine → issue → plan → implement → CI → review → merge) to the right skill.
-
-- **Issue tracker / triage labels / domain-doc layout:** see `docs/agents/`.
-- **Domain glossary:** `CONTEXT.md`. **Decisions:** `docs/adr/`. **Roadmap:**
-  `docs/architecture/improvement-plan.md` (tracked by epic #93).
-- **Vendored craft skills** (Matt Pocock, MIT — `grilling`/`grill-me`, `to-issues`,
-  `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
-  `triage`, `improve-codebase-architecture`) provide the generic engine; the
-  `riviera-*` skills inject this project's invariants at the plan and review gates.
-- **`postgres`** (PlanetScale database-skills, MIT, trimmed to the generic-Postgres
-  subset) — table/schema/index design for Flyway migrations.
+- **Issue tracker / triage labels / domain-doc layout:** `docs/agents/`.
+- **Domain glossary:** `CONTEXT.md`. **Module responsibilities:** `RESPONSIBILITIES.md`.
+- **Decisions:** `docs/adr/`. **Roadmap:** `docs/architecture/improvement-plan.md`
+  (tracked by epic #93).
