@@ -222,64 +222,33 @@ Flyway over Liquibase (shipped — the plain-SQL migrations under `db/migration`
 
 ## Project skills (`.claude/skills/`)
 
-These are repo-scoped — they load when working in this repository. Tracked in
-`skills-lock.json`.
+Repo-scoped — they load when working in this repository (tracked in
+`skills-lock.json`). Each skill's frontmatter description is the authoritative
+"when to load"; this list is the map, not a paraphrase:
 
-- **`riviera-sdlc`** — the SDLC orchestrator. Load it when starting or continuing
-  feature work; it routes each stage (refine → issue → plan → implement → CI →
-  review → merge) to the right skill, including the FE/BE skill routing below.
-- **`riviera-plan-doc`** — pairs with the planning flow. Adds the riviera plan-doc
-  template (acceptance criteria, risk register, the module/event/availability
-  sections) and per-phase discipline.
-- **`riviera-review-overlay`** — pairs with any diff/PR review. Adds
-  riviera-specific review bank items (the invariants above, as checkable gates).
-- **`riviera-stripe-payments`** — the locked payment model (collect-only, no
-  Connect, manual BKT payout, German entity) plus Stripe integration conventions.
-  Load it for any work in the `payment` or `payout` module.
-- **`riviera-java-conventions`** — the **backend Java language idioms** (Java 25,
-  Spring Boot 4, Modulith): JDBC-only/no-JPA/no-Lombok, records for
-  DTOs/value-objects/ids, constructor injection with package-private adapters,
-  typed outcomes, sealed types & pattern matching. Load before writing/refactoring
-  any Java. The numbered invariants stay canonical in this file.
-- **`riviera-modulith`** — the **backend module STRUCTURE authority** (Spring
-  Modulith, hexagonal): per-module package layout, the published-surface named
-  interfaces, `@ApplicationModule`/`allowedDependencies`, port-vs-event
-  collaboration with id-based payloads, the `ApplicationModules.verify()` contract
-  (`ModularityTests`), the Event Publication Registry, and
-  `@ApplicationModuleTest`/`Scenario`/`Documenter`. Load before creating/modifying
-  any backend Java — which package a class belongs in is its call.
-- **`riviera-frontend`** — the **Angular frontend STRUCTURE authority** (the FE
-  mirror of `riviera-modulith`): the `core/`/`shared/`/`pages/`/feature-folder
-  taxonomy and one-way import rules, the flat lazy-route convention (plus the O1
-  nested operator routes), interceptor/guard/auth placement, the DI-token
-  adapter-swap pattern, the Liquid Glass theme/token rules (`core/theme.ts` +
-  the `--riv-*` tokens, composited-contrast discipline, subtree theming), and the
-  two-suite e2e placement. Load before creating or modifying any file under
-  `frontend/` — which folder a file lands in is its call.
-- **`riviera-local-debug`** — the **build/test run recipes** (cloud-session Gradle
-  setup, scoped-test discipline, frontend commands). Load before the first
-  `./gradlew`/`npm` invocation of a session.
-- **`riviera-docs-freshness`** — the **substrate-doc staleness audit**: given a
-  git range, walk the substrate-doc map (this file, `CONTEXT.md`,
-  `RESPONSIBILITIES.md`, `docs/adr/`, the `riviera-*` skills) and flag/patch any
-  stated fact the diff contradicts. Runs at merge close-out step 5 and at every
-  epic close-out.
-- **`angular-new-app` / `angular-developer`** — official Angular skills
-  (scaffolding; component/service/architecture authority). The riviera frontend
-  review bank (`RV-FE-*`) checks the project-critical subset and defers to
-  `angular-developer` for full standards. In this repo the in-repo copy is
-  authoritative.
-- **`playwright-cli`** — the **Playwright e2e authority** (authoring,
-  request-mocking, spec generation). Mandatory for any user-facing frontend slice
-  (SDLC routing gate); the review overlay's `RV-FE-E2E` item owns the two-suite
-  placement rules.
-- **Vendored craft skills** (Matt Pocock, MIT — `grilling`/`grill-me`,
-  `to-issues`, `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`,
-  `domain-modeling`, `triage`, `improve-codebase-architecture`) provide the
-  generic engine; the `riviera-*` skills inject this project's invariants at the
-  plan and review gates.
-- **`postgres`** (PlanetScale database-skills, MIT, trimmed) — table/schema/index
-  design for Flyway migrations.
+- **`riviera-sdlc`** — the SDLC orchestrator; load at the start of any feature work.
+- **`riviera-plan-doc`** — plan-doc discipline + the canonical template (plan stage).
+- **`riviera-review-overlay`** — the invariant review bank, RV-BE/FE/CT (review gate).
+- **`riviera-stripe-payments`** — the locked collect-only payment model (any
+  payment/payout/Stripe/commission work).
+- **`riviera-java-conventions`** — backend Java idioms (before writing any Java).
+- **`riviera-modulith`** — backend module STRUCTURE authority (before any backend
+  Java placement/move).
+- **`riviera-frontend`** — Angular STRUCTURE authority (before any file under `frontend/`).
+- **`riviera-local-debug`** — build/test run recipes (before the session's first
+  `./gradlew`/`npm`).
+- **`riviera-docs-freshness`** — substrate-doc staleness audit (merge close-out
+  step 5; every epic close-out).
+- **`angular-new-app` / `angular-developer`** — official Angular skills; the
+  in-repo copies are authoritative here.
+- **`playwright-cli`** — Playwright e2e authority; mandatory for any user-facing
+  frontend slice.
+- **`postgres`** (PlanetScale, MIT, trimmed) — table/schema/index design for
+  Flyway migrations.
+- **Vendored craft skills** (Matt Pocock, MIT): `grilling`/`grill-me`, `to-issues`,
+  `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
+  `triage`, `improve-codebase-architecture` — the generic engine the `riviera-*`
+  skills specialize.
 
 ## Where things are written down
 

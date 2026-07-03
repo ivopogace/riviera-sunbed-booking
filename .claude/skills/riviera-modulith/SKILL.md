@@ -1,19 +1,14 @@
 ---
 name: riviera-modulith
 description: >-
-  The Spring Modulith STRUCTURE authority for riviera-sunbed-booking — module package layout,
-  @ApplicationModule / @NamedInterface boundaries, the api/ published surface, cross-module
-  collaboration (api/ ports vs domain events with id-based payloads), the
-  ApplicationModules.verify() contract, the Event Publication Registry, and module-scoped tests
-  (@ApplicationModuleTest / Scenario / Documenter). Load it BEFORE creating or modifying ANY
-  backend Java in platform/ — a new module, an api/ port, an application service, a domain event,
-  a JDBC adapter, a controller, or anything that moves a class between packages. Trigger it even
-  when the user does not say "Modulith": "add a module", "expose this to another module", "wire an
-  event between X and Y", "where does this class go", "why does ModularityTests fail", or any work
-  in the venue / availability / booking / payment / payout / customer modules. It encodes invariant
-  #11 (and #1's JDBC-only) as concrete mechanics; it does NOT restate the numbered invariants
-  (those are canonical in CLAUDE.md). Pairs with riviera-java-conventions (Java idioms),
-  codebase-design (seam shape), and postgres (SQL).
+  The Spring Modulith STRUCTURE authority for riviera-sunbed-booking — module package layout, the
+  published surfaces (api/vocabulary/events/spi), @ApplicationModule/allowedDependencies,
+  port-vs-event collaboration, the ApplicationModules.verify() contract, the Event Publication
+  Registry, and module-scoped tests. Load BEFORE creating or modifying ANY backend Java in
+  platform/ — trigger on "add a module", "expose this to another module", "where does this class
+  go", "why does ModularityTests fail", or any work in the venue / availability / booking /
+  payment / payout / customer / operator modules. Concrete mechanics for invariants #11 and #1
+  (canonical in CLAUDE.md). Pairs with riviera-java-conventions, codebase-design, and postgres.
 ---
 
 # Riviera Spring Modulith (hexagonal, JDBC-only)
