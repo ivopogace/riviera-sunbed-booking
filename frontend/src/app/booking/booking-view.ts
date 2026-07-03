@@ -2,52 +2,12 @@ import { Component, ElementRef, effect, inject, signal, viewChild } from '@angul
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { formatBookingDate } from '../shared/booking-date-label';
+import { metaFor } from '../shared/booking-status';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { MoneyView } from '../venue/venue.model';
-import { BookingDetail, BookingStatus, Cancellation } from './booking.model';
+import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
-
-/**
- * Presentation metadata per #98 lifecycle status (design v3 `STATUS_META`): the chip `label`, its
- * CSS-modifier `chip`, and whether the amount row reads `Paid` (money has moved) or `Amount` (still
- * open/no charge). The single source of truth for all three — a 9th status is one row here.
- */
-interface StatusMeta {
-  readonly label: string;
-  readonly chip: string;
-  readonly amount: 'Paid' | 'Amount';
-}
-const STATUS_META: Record<BookingStatus, StatusMeta> = {
-  CONFIRMED: { label: 'Confirmed', chip: 'chip--confirmed', amount: 'Paid' },
-  PENDING_REQUEST: { label: 'Pending request', chip: 'chip--pending', amount: 'Amount' },
-  AWAITING_PAYMENT: { label: 'Awaiting payment', chip: 'chip--awaiting', amount: 'Amount' },
-  DECLINED: { label: 'Declined', chip: 'chip--declined', amount: 'Amount' },
-  EXPIRED: { label: 'Expired', chip: 'chip--expired', amount: 'Amount' },
-  CANCELLED: { label: 'Cancelled', chip: 'chip--cancelled', amount: 'Paid' },
-  COMPLETED: { label: 'Completed', chip: 'chip--completed', amount: 'Paid' },
-  NO_SHOW: { label: 'No-show', chip: 'chip--no-show', amount: 'Paid' },
-};
-
-/** Humanize a raw status token ("NO_SHOW" → "No show") — the graceful fallback for FE/BE skew. */
-function humanizeStatus(status: string): string {
-  return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');
-}
-
-/**
- * Presentation metadata for a status, tolerant of a status this build doesn't know (a new backend
- * lifecycle state shipped before the FE is redeployed): rather than throw, fall back to a humanized
- * label, a neutral chip, and the conservative `Amount` label (never claim money moved).
- */
-function metaFor(status: string): StatusMeta {
-  return (
-    STATUS_META[status as BookingStatus] ?? {
-      label: humanizeStatus(status),
-      chip: 'chip--expired',
-      amount: 'Amount',
-    }
-  );
-}
 
 /**
  * View a booking by its code and cancel it (U6, issue #11; Liquid Glass restyle #138). Loads the

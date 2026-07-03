@@ -3,6 +3,7 @@ import { Service, inject, signal } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { problemCodeOf } from '../shared/api-error';
 import {
   AwaitingPayment,
@@ -26,10 +27,15 @@ import {
  * via Stripe (stripe profile); `202` with `PENDING_REQUEST` → a REQUEST-mode venue must accept
  * first (issue #98). The outcomes are kept in separate hand-off signals so the confirmation
  * screen never renders an unpaid booking as "Paid" (invariant #8).
+ *
+ * <p>Every successful create — confirmed, awaiting-payment, or requested — remembers its booking
+ * code in {@link DeviceLocalBookings} so the guest's device-local "My bookings" list (#139) can
+ * find it later by code (invariant #7: the code is the only key; there is no guest list endpoint).
  */
 @Service()
 export class BookingService {
   private readonly http = inject(HttpClient);
+  private readonly device = inject(DeviceLocalBookings);
 
   private readonly confirmation = signal<BookingConfirmation | undefined>(undefined);
   /** The last confirmed booking (201 path), consumed by the confirmation route. */
@@ -52,6 +58,11 @@ export class BookingService {
       )
       .pipe(
         map((response): CreateBookingResult => {
+          // Remember the code once, from whichever outcome — guarded against a missing body (the
+          // branches below already treat `body` as nullable via `?.status`), so an empty 201/202
+          // never throws here and turns a real booking into a false "failed" (#139 review).
+          this.device.remember(response.body?.code);
+
           if (response.status === 202) {
             if (response.body?.status === 'PENDING_REQUEST') {
               const requested = response.body as RequestedBooking;

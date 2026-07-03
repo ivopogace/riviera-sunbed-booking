@@ -58,6 +58,22 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="theme-option-porcelain"]')).toBeNull();
   });
 
+  it('lists a My bookings nav entry on desktop and in the mobile menu (T6 #139)', () => {
+    const { fixture, el } = shell();
+
+    const desktopLink = el
+      .querySelector('.riv-nav-desktop')
+      ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
+    expect(desktopLink?.textContent).toContain('My bookings');
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    const mobileLink = el
+      .querySelector('[data-testid="mobile-menu"]')
+      ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
+    expect(mobileLink?.textContent).toContain('My bookings');
+  });
+
   it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
     const { fixture, el } = shell();
     const button = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
@@ -101,11 +117,13 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 });
 
 describe('app.routes legacy-surface flags (issue #134)', () => {
-  // Restyled routes render on the bare themed background; each T2–T5/operator slice
+  // Restyled routes render on the bare themed background; each T2–T6/operator slice
   // moves its route from LEGACY to this list. T2 (#135): Discover (''). T3 (#136): the beach map.
   // T4 (#137): booking/confirmation, booking/pay, booking/requested. T5 (#138): booking/:code.
+  // T6 (#139): my-bookings (new glass route, born un-legacied).
   const RESTYLED_PATHS = [
     '',
+    'my-bookings',
     'venues/:id',
     'booking/confirmation',
     'booking/pay',

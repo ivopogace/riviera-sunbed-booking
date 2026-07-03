@@ -1,4 +1,9 @@
+import { BookingStatus } from '../shared/booking-status';
 import { MoneyView } from '../venue/venue.model';
+
+// Re-exported from its canonical home in shared/ so booking-domain code keeps importing it from the
+// model (no call-site churn) while shared/ owns the exhaustive STATUS_META keyed by it (#139 review).
+export type { BookingStatus } from '../shared/booking-status';
 
 /**
  * Typed view of the U3 booking API (`POST /api/bookings`). Mirrors the backend
@@ -28,21 +33,6 @@ export interface BookingConfirmation {
   readonly bookingDate: string;
   readonly amount: MoneyView;
 }
-
-/**
- * Every lifecycle status the booking API can report (issue #98 widened the union with the
- * Request-to-Book states: `PENDING_REQUEST` → venue must respond; `DECLINED`/`EXPIRED` are the
- * terminal no-charge outcomes of a request).
- */
-export type BookingStatus =
-  | 'CONFIRMED'
-  | 'AWAITING_PAYMENT'
-  | 'PENDING_REQUEST'
-  | 'DECLINED'
-  | 'EXPIRED'
-  | 'CANCELLED'
-  | 'COMPLETED'
-  | 'NO_SHOW';
 
 /**
  * Typed view of the `202 AWAITING_PAYMENT` response (`POST /api/bookings` under the `stripe`

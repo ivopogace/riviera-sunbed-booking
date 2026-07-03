@@ -16,6 +16,7 @@
 
       <nav class="riv-nav-desktop" aria-label="Primary">
         <a routerLink="/" class="riv-nav-link">Beaches</a>
+        <a routerLink="/my-bookings" class="riv-nav-link">My bookings</a>
 
         <div class="riv-theme-picker">
           <button
@@ -75,6 +76,7 @@
         <div class="riv-backdrop" data-testid="menu-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
         <nav class="riv-pop riv-pop-in riv-mobile-menu" aria-label="Menu" data-testid="mobile-menu">
           <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
+          <a routerLink="/my-bookings" class="riv-mobile-link" (click)="closeMenus()">My bookings</a>
           <div class="riv-mobile-theme">
             <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
             <div class="riv-mobile-swatches">

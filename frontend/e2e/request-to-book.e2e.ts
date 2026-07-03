@@ -1,6 +1,7 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 
 /**
  * Real-render a11y + behaviour audit of the Request-to-Book flow (issue #98; Liquid Glass restyle
@@ -58,20 +59,6 @@ const DETAIL_BASE = {
   requestExpiresAt: '2026-11-30T16:00:00Z',
   payment: null,
 };
-
-/** Settle running entrance animations (the dialog's pop) before axe (riviera-frontend rule). Await
- *  only FINITE animations: the background gradient blobs run `infinite`, so awaiting their
- *  `.finished` would hang. */
-async function settle(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
-  );
-}
 
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));

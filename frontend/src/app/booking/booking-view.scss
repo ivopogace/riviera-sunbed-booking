@@ -80,26 +80,8 @@ h1 {
   color: var(--riv-card-ink-soft);
 }
 
-// ---- status chip (solid fills; small text needs AA 4.5:1 — all clear, see contrast spec) ----
-.chip {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  border-radius: 999px;
-  padding: 5px 12px;
-  white-space: nowrap;
-}
-.chip--confirmed { color: #0e6e46; background: #d9f2e7; border: 1px solid #bfe6d4; }
-.chip--pending { color: #8a5410; background: #fceed5; border: 1px solid #f2dcae; }
-.chip--awaiting { color: #0a5e7a; background: #d5f1f6; border: 1px solid #b6e3ec; }
-.chip--declined { color: #8a3a2a; background: #f6e5e0; border: 1px solid #ecccc2; }
-.chip--expired { color: #5a6a72; background: #eceeef; border: 1px solid #d7dbdd; }
-.chip--cancelled { color: #8a3a2a; background: #f6e5e0; border: 1px solid #ecccc2; }
-.chip--completed { color: #0a5e6e; background: #e1f5f9; border: 1px solid #c4e9ef; }
-.chip--no-show { color: #7a4a3a; background: #ece6e3; border: 1px solid #dcd2cd; }
+// ---- status chip (shared solid-fill recipe; small text AA 4.5:1 proven in the shared spec) ----
+@include glass.status-chip;
 
 // ---- status banners (solid fills; eyebrow + body + strong all AA on the fill) ----
 .banner {

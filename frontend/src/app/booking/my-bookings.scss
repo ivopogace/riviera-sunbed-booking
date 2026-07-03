@@ -1,0 +1,226 @@
+// Liquid Glass "My bookings" list (issue #139, design: riviera-sunbeds-liquid-glass-v3.dc.html →
+// My bookings list card). Card-glass row buttons on the bare themed gradient; row text uses the
+// proven --riv-card-* tokens (asserted over both themes' worst-case stops in
+// my-bookings.contrast.spec.ts). The status chip reuses the shared solid-fill recipe (#139 extract).
+
+@use '../shared/glass' as glass;
+
+:host {
+  display: block;
+  color: var(--riv-card-ink);
+}
+
+.my-bookings {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 14px;
+  color: var(--riv-accent-ink);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+}
+.back-link:hover {
+  text-decoration: underline;
+}
+
+h1 {
+  margin: 0 0 18px;
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 34px);
+  letter-spacing: -0.02em;
+  color: var(--riv-card-ink);
+}
+
+// ---- shared status-chip recipe (solid fills; AA proven in booking-status.contrast.spec.ts) ----
+@include glass.status-chip;
+
+// ---- rows ----
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  @include glass.card-glass;
+
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  border-radius: 22px;
+  padding: 16px 18px;
+  box-shadow: 0 10px 30px rgba(7, 42, 58, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.venue {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--riv-card-ink);
+}
+.meta {
+  font-size: 13px;
+  color: var(--riv-card-ink-soft);
+}
+.subline {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--riv-card-ink-soft);
+}
+.code {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--riv-accent-ink);
+}
+.row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.amount-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+// "Paid" vs "Amount" — mirrors the detail view's dt label so a no-charge row (Declined/Expired/
+// Pending/Awaiting) never reads as money already taken. --riv-card-ink-soft (proven AA).
+.amount-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riv-card-ink-soft);
+}
+.amount {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--riv-card-ink);
+}
+
+// ---- loading / failed rows ----
+.row--loading,
+.row--failed {
+  justify-content: space-between;
+}
+
+.skeleton {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(12, 42, 51, 0.1);
+}
+.skeleton-line {
+  width: 60%;
+}
+.skeleton-line.short {
+  width: 35%;
+  height: 10px;
+  margin-top: 8px;
+}
+
+// Solid #f4f6f7 fill, dark ink #0a4f5e (8.45:1) — the booking-view outline-button treatment.
+.btn-retry {
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  background: #f4f6f7;
+  color: #0a4f5e;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+// ---- empty state ----
+.empty-card {
+  @include glass.card-glass;
+
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border-radius: 28px;
+  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 40px 30px;
+  text-align: center;
+}
+.empty-card h2 {
+  margin: 0 0 8px;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--riv-card-ink);
+}
+.empty-lead {
+  margin: 0 0 20px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--riv-card-ink-soft);
+}
+
+// Reuses --riv-cta-grad (AA-safe darker teal) — white body text, pinned in the contrast spec.
+.btn-cta {
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 16px;
+  background: var(--riv-cta-grad);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 13px 26px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+// ---- focus rings (2.4.7) ----
+.row:focus-visible,
+.back-link:focus-visible,
+.btn-retry:focus-visible {
+  outline: 3px solid var(--riv-accent-ink);
+  outline-offset: 2px;
+}
+.btn-cta:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+}
+
+// Motion guards next to the motion they guard (T1 rule).
+@media (hover: hover) {
+  .row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px rgba(7, 42, 58, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}

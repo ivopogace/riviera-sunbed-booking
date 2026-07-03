@@ -2,6 +2,8 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
+import { DeviceLocalBookings } from '../core/device-local-bookings';
+
 import { environment } from '../../environments/environment';
 import {
   AwaitingPayment,
@@ -112,6 +114,36 @@ describe('BookingService', () => {
     expect(service.lastRequested()).toEqual(REQUESTED);
     expect(service.lastAwaitingPayment()).toBeUndefined();
     expect(service.lastConfirmation()).toBeUndefined();
+  });
+
+  it('remembers the booking code on every successful create outcome (device-local, #139)', () => {
+    const url = `${environment.apiBaseUrl}/api/bookings`;
+
+    service.createBooking(REQUEST).subscribe();
+    httpMock.expectOne(url).flush(CONFIRMATION, { status: 201, statusText: 'Created' });
+    service.createBooking(REQUEST).subscribe();
+    httpMock.expectOne(url).flush(AWAITING, { status: 202, statusText: 'Accepted' });
+    service.createBooking(REQUEST).subscribe();
+    httpMock.expectOne(url).flush(REQUESTED, { status: 202, statusText: 'Accepted' });
+
+    // Newest-first: the last-created (requested) code leads; all three are on-device.
+    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual([
+      REQUESTED.code,
+      AWAITING.code,
+      CONFIRMATION.code,
+    ]);
+  });
+
+  it('does not throw or remember a code when a successful create returns an empty body (#139 review)', () => {
+    let errored = false;
+    service.createBooking(REQUEST).subscribe({ error: () => (errored = true) });
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+      .flush(null, { status: 201, statusText: 'Created' });
+
+    // A null body must degrade (as it did pre-remember), not throw inside the map() pipeline.
+    expect(errored).toBe(false);
+    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual([]);
   });
 
   it('beginPayment primes the payment hand-off from a fetched booking detail (#98 Pay now)', () => {
