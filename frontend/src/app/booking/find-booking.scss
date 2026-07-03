@@ -1,0 +1,11 @@
+// Placeholder — the Liquid Glass modal styling (cloned from booking-dialog, AA-proven) lands in
+// Phase 3 alongside find-booking.contrast.spec.ts. Kept minimal so Phase 1/2 specs compile.
+:host.find-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}

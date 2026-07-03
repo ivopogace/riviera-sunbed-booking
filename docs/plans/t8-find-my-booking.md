@@ -240,8 +240,8 @@ surface.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + branch | ⏳ | |
-| 1 — `find-booking` component: form + normalize + lookup + 4 error states + navigate + close + in-flight guard (unit) | | |
+| 0 — Plan doc + branch | ✅ | 2ad9f8b |
+| 1 — `find-booking` component: form + normalize + lookup + 4 error states + navigate + close + in-flight guard (unit) | ✅ | (impl commit) |
 | 2 — `find-booking.a11y.spec.ts` (dialog role/name/label/close/alert) + focus trap/autofocus | | |
 | 3 — `find-booking.scss` glass (clone `booking-dialog`) + `find-booking.contrast.spec.ts` both themes | | |
 | 4 — Shell wiring: triggers (desktop + mobile), `findOpen`/`openFind`/`dismissFind`, close-on-nav, focus restore; `app.spec.ts` | | |
