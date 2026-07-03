@@ -333,6 +333,7 @@ see `riviera-local-debug`). Run recipe per phase: `npm test -- <spec filter>`.
 | 2026-07-03 | Phase 3 (glass modal styling) | the modal-glass recipe's consumers | `grep -rn "backdrop-filter.*blur(34px)" frontend/src` | `booking-dialog.scss` (1st) + `find-booking.scss` (2nd) | **Not** extracted — rule of three defers a shared `modal-glass` mixin to the 3rd modal; find-booking clones booking-dialog's AA-proven values with a comment pointing at the origin. |
 | 2026-07-03 | Phase 5 (e2e helper reuse) | the animation-`settle` helper | `grep -rn "getAnimations" frontend/e2e/support` | `support/booking-dialog.ts` `settle` (existing) | Reused `settle` for the modal pop-in axe timing — no new duplicate helper. |
 | 2026-07-03 | Phase 5 (font-link close-out) | Manrope / Instrument Serif consumers | `grep -rn "Manrope\|Instrument Serif" frontend/src` | `staff-daily.scss` (still uses both) + `index.html` (the link) | Keep the `<link>` — `staff-daily` (operator epic #141) is the true last consumer; T8 does not touch it. |
+| 2026-07-03 | Sonar gate (duplication fail on `b995f13`) | the modal focus-trap's consumers | `grep -rn "querySelectorAll.*a\[href\]" frontend/src` | `booking-dialog.ts` (1st) + `find-booking.ts` (2nd) — 24-line verbatim clone (Sonar 5.27% new-code dup) | **Extracted** `trapFocusWithin` to `shared/focus-trap.ts` (+ unit spec); refactored **both** modals onto it. Review [6] + Sonar duplication gate both resolved; the a11y-critical trap now has one home. (The glass *recipe* stays cloned — separate concern, still rule-of-three deferred.) |
 
 ---
 
@@ -352,10 +353,10 @@ fixed test-first in the FE area:
 | [2] | whitespace/dash-only code passed `required` but normalized to '' → silent no-op, no feedback | correctness | Empty message now keyed off `normalizedCode()` (blank AND whitespace/dash-only). Test: "shows the enter-a-code message for a whitespace/dash-only entry". |
 | [3] | stale server error lingered while the guest typed a correction | correctness | `(input)` clears `lookupError`. Test: "clears a stale lookup error when the guest edits the code". |
 | [4] | focus lost after find→nav (modal removed, `BookingView` doesn't take focus) — WCAG 2.4.3 | correctness (a11y) | The shell focuses `<main tabindex="-1">` when the find modal closes on navigation. Test: "closes … and moves focus to main". |
-| [5] | double-GET (find validate + booking-view re-fetch) can 429 near the rate ceiling | correctness (PLAUSIBLE) | **Deferred → follow-up issue.** Bounded (2 GETs vs 60/min per-code+per-IP); only a pathological near-ceiling case 429s. The clean fix (a prefetch hand-off to booking-view) is a design change; filed separately. |
+| [5] | double-GET (find validate + booking-view re-fetch) can 429 near the rate ceiling | correctness (PLAUSIBLE) | **Deferred → #168.** Bounded (2 GETs vs 60/min per-code+per-IP); only a pathological near-ceiling case 429s. The clean fix (a prefetch hand-off to booking-view) is a design change; filed as #168. |
 | [6] | `trapFocus` + autofocus verbatim-duplicated from `booking-dialog` (2nd modal) | cleanup | **Fixed** — initially deferred (rule of three), but the **Sonar gate flagged the 24-line duplicate as a hard fail** (5.27% new-code duplication > 3%; see the Sonar-gate record), so the trap was extracted to `shared/focus-trap.ts` (`trapFocusWithin`, unit-tested) and **both** modals refactored onto it. The Sonar duplication gate thus overrode the rule-of-three deferral. Follow-up #169 closed. |
 
-Refuted at verify: 1 (a duplicate framing of [1]). All fixes: 458 unit + 25 e2e + lint + prod build
+Refuted at verify: 1 (a duplicate framing of [1]). All fixes: 463 unit + 25 e2e + lint + prod build
 green.
 
 ## Sonar-gate record (PR #167)
@@ -376,39 +377,43 @@ re-analyses:
    `shared/focus-trap.ts` (unit-tested) and refactored **both** modals onto it, dropping the duplicate.
    (So the Sonar duplication gate overrode the rule-of-three deferral of [6].)
 
-Re-verified after each fix: 463 unit + 25 e2e + lint + prod build green. A final re-analysis (once
-`git push` to github.com is reachable again — a transient network outage during this session blocked
-the push of the two fix commits) confirms the gate green + reported list empty before merge.
+Re-verified after each fix: 463 unit + 25 e2e + lint + prod build green. **Final re-analysis of
+`048cc4f` (PR #167): quality gate GREEN — reported issues 0, `new_duplicated_lines_density` 0.0%,
+`new_duplicated_blocks` 0, new bugs/vulns 0, new-code coverage 96.9% (≥ 80%).** (A transient
+github.com network outage during this session forced the two fix commits to be pushed from a second
+terminal; the MCP path stayed up, so the gate was verified via the SonarCloud API.)
 
 ## Acceptance-criteria verification (final)
 
-> The gate before claiming done.
+> The gate before claiming done. All verified green (locally + CI on `048cc4f`).
 
-- [ ] **AC-1..AC-7, AC-13:** `npm test -- find-booking.spec` → green (navigate on found; inline
-  errors + no-navigate on 404/429/5xx/empty; normalization; in-flight guard; no code logged).
-- [ ] **AC-9, AC-11:** `npm test -- find-booking.a11y` → axe green (roles/name/label/close/alert).
-- [ ] **AC-12:** `npm test -- find-booking.contrast` → contrast green both themes.
-- [ ] **AC-8, AC-10:** `npm test -- app.spec` → green (trigger desktop + mobile opens modal;
-  closes on navigation; focus-restore target).
-- [ ] **AC-14:** `npm run test:e2e:a11y find-a-booking` → green (find→open→detail + unknown-code
-  error + axe both themes).
-- [ ] **AC-13 (grep):** `grep -rn "console" frontend/src/app/booking/find-booking.ts` → no code
-  logging; and no new code-in-query route in `app.routes.ts`.
+- [x] **AC-1..AC-7, AC-13:** `npm test -- find-booking.spec` → green (navigate on found; inline
+  errors + no-navigate on 404/429/5xx/empty/whitespace; normalization; in-flight guard; no code logged).
+- [x] **AC-9, AC-11:** `npm test -- find-booking.a11y` → axe green (roles/name/label/close/alert).
+- [x] **AC-12:** `npm test -- find-booking.contrast` → contrast green both themes.
+- [x] **AC-8, AC-10:** `npm test -- app.spec` → green (trigger desktop + mobile opens modal;
+  closes on navigation; focus → main; focus-restore target).
+- [x] **AC-14:** `npm run test:e2e:a11y find-a-booking` → green (find→open→detail + unknown-code
+  error + axe both themes); full mocked e2e suite (25) green.
+- [x] **AC-13 (grep):** no `console` in `find-booking.ts`; **no new code-in-query route** in
+  `app.routes.ts` (the modal adds no route). Full suite 463 unit + lint + prod build green.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc or code.
-- [ ] No JPA (N/A — FE). Availability/module/payment logic unchanged (all N/A with reasons).
-- [ ] Booking code (invariant #7): sent only to `GET /api/bookings/{code}`, in a URL only via the
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc or code.
+- [x] No JPA (N/A — FE). Availability/module/payment logic unchanged (all N/A with reasons).
+- [x] Booking code (invariant #7): sent only to `GET /api/bookings/{code}`, in a URL only via the
   existing `/booking/:code`, never logged; **no new code-bearing route/query**.
-- [ ] No new unthrottled lookup path; submit disabled in flight; ≤1 extra GET on success (#56 budget).
-- [ ] Frontend standards met; Signal Forms for the code field; no `as any`; import direction
+- [x] No new unthrottled lookup path; submit disabled in flight; ≤1 extra GET on success (#56 budget).
+- [x] Frontend standards met; Signal Forms for the code field; no `as any`; import direction
   one-way (shell→feature justified, R-6); a11y proven (axe + dialog role + focus trap + restore).
-- [ ] Contrast proven both themes; deviations commented; glass cloned (rule-of-three note present).
-- [ ] Nav trigger present desktop + mobile (added once each); opens the modal; **no new route**;
+- [x] Contrast proven both themes; deviations commented; glass cloned (rule-of-three note present);
+  the focus-trap **extracted** to `shared/focus-trap.ts` (Sonar duplication gate, review [6]).
+- [x] Nav trigger present desktop + mobile (added once each); opens the modal; **no new route**;
   e2e green.
-- [ ] Execution-status table at HEAD matches reality; Open Questions empty/deferred.
-- [ ] Close-out: tick epic #133 T8 with the squash SHA; **this closes epic #133** → run the epic
-  close-out (`riviera-docs-freshness` over T8's range **and** the epic's full merge span); keep the
-  font `<link>` (still #141); tick the PR Gates checkboxes as each gate passes.
+- [x] Execution-status table at HEAD matches reality; Open Questions empty/deferred; review findings
+  resolved (5 fixed, [5]→#168, [6] fixed); Sonar gate green + list empty.
+- [ ] **Close-out (post-merge, maintainer):** tick epic #133 T8 with the squash SHA; **this closes
+  epic #133** → run the epic close-out (`riviera-docs-freshness` over T8's range **and** the epic's
+  full merge span); keep the font `<link>` (still #141). PR Gates checkboxes ticked ✅.
