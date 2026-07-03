@@ -2,7 +2,7 @@ import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
-import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
+import { OperatorAuth, runOperatorSignIn } from '../core/operator-auth';
 import { todayBookingDate } from '../venue/booking-date';
 import { VenueService } from '../venue/venue.service';
 import { OperatorConsoleService } from './operator-console.service';
@@ -84,20 +84,14 @@ export class OperatorConsole {
     });
   }
 
-  protected async onSignIn(): Promise<void> {
-    if (!this.username() || !this.password() || this.signingIn()) {
-      return;
-    }
-    this.signingIn.set(true);
-    this.signInError.set(undefined);
-    // Server-validated (issue #109): the session is established here or the failure is known here.
-    const result = await this.operator.signIn(this.username(), this.password());
-    this.signingIn.set(false);
-    if (result === 'signed-in') {
-      this.password.set('');
-    } else {
-      this.signInError.set(signInFailureMessage(result));
-    }
+  protected onSignIn(): Promise<void> {
+    // Server-validated (issue #109): the session is established here or the generic failure is known
+    // here. Shared with the venue-editor / staff-daily sign-in via the core helper.
+    return runOperatorSignIn(this.operator, this.username(), this.password(), {
+      signingIn: this.signingIn,
+      error: this.signInError,
+      password: this.password,
+    });
   }
 
   protected async onSignOut(): Promise<void> {

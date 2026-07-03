@@ -125,9 +125,17 @@ bugs/vulns/smells/hotspots, new-code coverage 84.29%** (≥80% ✅), but **3 new
 `operator-console.ts` (11 lines — `loadVenue`/`loadRequestsCount` sharing the guard+subscribe shape).
 
 Fixed (re-entered the loop, frontend): the six tab routes are generated from one `consoleTabRoutes`
-factory; the two best-effort loaders collapse into one `load()` + a `bestEffort<T>()` helper. Behavior
-unchanged (app + operator specs + 3 e2e + build green). Merge bar (per feedback): **0 new issues · 0
-duplicated blocks · ≥80% new-code coverage** — confirmed on the re-analysis before merge.
+factory; the two best-effort loaders collapse into one `load()` + a `bestEffort<T>()` helper.
+
+Re-analysis (`dbd4d5b`): gate green, but **1 block remained** — `operator-console.ts:87-97` (`onSignIn`)
+duplicated `venue-editor.ts:132-143` (the operator sign-in, now its 3rd occurrence). Extracted
+`runOperatorSignIn` to `core/operator-auth.ts` (its natural home) and delegated from the console —
+**additive** (the legacy `venue-editor`/`staff-daily` retire onto it in O6/O8, untouched here). Added 4
+direct helper unit tests (success/failure/blank/busy) so the guard branches stay covered.
+
+Behavior unchanged throughout (full FE suite 496 + 3 e2e + lint + build green). Merge bar (per
+feedback): **0 new issues · 0 duplicated blocks · ≥80% new-code coverage** — confirmed on the final
+re-analysis before merge.
 
 ## Availability & concurrency (invariant #2)
 
