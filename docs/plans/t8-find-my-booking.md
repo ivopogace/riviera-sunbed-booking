@@ -245,7 +245,7 @@ surface.
 | 2 — `find-booking.a11y.spec.ts` (dialog role/name/label/close/alert) + focus trap/autofocus | ✅ | (impl commit) |
 | 3 — `find-booking.scss` glass (clone `booking-dialog`) + `find-booking.contrast.spec.ts` both themes | ✅ | (impl commit) |
 | 4 — Shell wiring: triggers (desktop + mobile), `findOpen`/`openFind`/`dismissFind`, close-on-nav, focus restore; `app.spec.ts` | ✅ | (impl commit) |
-| 5 — e2e CI-safe `find-a-booking.e2e.ts` (find→open→detail + unknown-code; axe both themes); font-link re-check | | |
+| 5 — e2e CI-safe `find-a-booking.e2e.ts` (find→open→detail + unknown-code; axe both themes); font-link re-check | ✅ | (impl commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window.
 
@@ -330,6 +330,9 @@ see `riviera-local-debug`). Run recipe per phase: `npm test -- <spec filter>`.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-03 | Phase 3 (glass modal styling) | the modal-glass recipe's consumers | `grep -rn "backdrop-filter.*blur(34px)" frontend/src` | `booking-dialog.scss` (1st) + `find-booking.scss` (2nd) | **Not** extracted — rule of three defers a shared `modal-glass` mixin to the 3rd modal; find-booking clones booking-dialog's AA-proven values with a comment pointing at the origin. |
+| 2026-07-03 | Phase 5 (e2e helper reuse) | the animation-`settle` helper | `grep -rn "getAnimations" frontend/e2e/support` | `support/booking-dialog.ts` `settle` (existing) | Reused `settle` for the modal pop-in axe timing — no new duplicate helper. |
+| 2026-07-03 | Phase 5 (font-link close-out) | Manrope / Instrument Serif consumers | `grep -rn "Manrope\|Instrument Serif" frontend/src` | `staff-daily.scss` (still uses both) + `index.html` (the link) | Keep the `<link>` — `staff-daily` (operator epic #141) is the true last consumer; T8 does not touch it. |
 
 ---
 
