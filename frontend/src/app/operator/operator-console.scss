@@ -1,9 +1,254 @@
-/* Operator console shell (issue #170). Porcelain-light glass chrome; the --riv-* tokens resolve to
- * the porcelain palette because the host carries data-riv-theme="porcelain" (see the component).
- * Phase 4 adds the full glass recipe + the composited-AA contrast proof; this is the layout base. */
+/* Operator console shell (issue #170, epic #141). Porcelain-light glass chrome. The --riv-* tokens
+ * resolve to the porcelain palette because the host carries data-riv-theme="porcelain" (see the
+ * component), so the console reads porcelain whatever the tourist theme is. Text-on-fill chrome
+ * (sign-in card, active tab, badge, buttons) uses OPAQUE SOLID fills — the css:S7924 treatment — so
+ * both the WCAG maths and the static analyzer compute contrast without gradient compositing. Every
+ * text pair is proven AA in operator-console.contrast.spec.ts. */
 
 :host {
   display: block;
   min-height: 100%;
   background: var(--riv-bg);
+  color: var(--riv-ink);
+  font-family: var(--riv-font);
+}
+
+/* ---- signed-out: sign-in card ---- */
+
+.oc-signin {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 72px 24px;
+}
+
+.oc-signin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(12, 42, 51, 0.1);
+  border-radius: 22px;
+  padding: 28px 26px;
+  box-shadow: 0 20px 50px rgba(7, 42, 58, 0.14);
+}
+
+.oc-signin-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--riv-ink);
+}
+
+.oc-signin-intro {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--riv-ink-soft);
+}
+
+.oc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--riv-ink-soft);
+
+  input {
+    font: inherit;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--riv-ink);
+    background: #ffffff;
+    border: 1px solid var(--riv-field-border);
+    border-radius: 12px;
+    padding: 11px 13px;
+  }
+}
+
+.oc-signin-btn {
+  margin-top: 4px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #ffffff;
+  background: var(--riv-cta-grad);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(11, 120, 150, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.75;
+  }
+}
+
+.oc-form-error {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #a3160e;
+}
+
+/* ---- signed-in: shell ---- */
+
+.oc-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.oc-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--riv-header-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  border-bottom: 1px solid var(--riv-header-border);
+}
+
+.oc-header-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.oc-brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.oc-wordmark {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--riv-ink);
+}
+
+.oc-wordmark-op {
+  font-weight: 500;
+  color: var(--riv-ink-soft);
+}
+
+.oc-venue-title {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--riv-ink-faint);
+}
+
+.oc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.oc-create-venue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--riv-ink);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.oc-signed-in-as {
+  font-size: 13px;
+  color: var(--riv-ink-soft);
+
+  strong {
+    color: var(--riv-ink);
+  }
+}
+
+.oc-signout {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--riv-ink);
+  background: #ffffff;
+  border: 1px solid rgba(12, 42, 51, 0.14);
+  border-radius: 999px;
+  padding: 7px 15px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(7, 42, 58, 0.08);
+}
+
+/* ---- pill tab nav ---- */
+
+.oc-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 14px 24px 4px;
+  box-sizing: border-box;
+}
+
+.oc-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--riv-ink-soft);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 8px 15px;
+
+  &:hover {
+    color: var(--riv-ink);
+  }
+}
+
+/* Active tab: opaque white pill + dark ink (css:S7924-safe solid fill). */
+.oc-tab--active {
+  color: var(--riv-ink);
+  background: #ffffff;
+  border-color: rgba(12, 42, 51, 0.1);
+  box-shadow: 0 2px 8px rgba(7, 42, 58, 0.1);
+}
+
+.oc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  background: #0a5f74;
+  border-radius: 999px;
+}
+
+.oc-main {
+  flex: 1;
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+  box-sizing: border-box;
 }
