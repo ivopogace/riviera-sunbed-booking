@@ -194,6 +194,12 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     expect(host().querySelector('[data-testid="oc-requests-badge"]')).toBeNull();
   });
 
+  it('exposes a reachable create-venue link to the legacy onboarding (#170, AC-5)', async () => {
+    await createSignedIn();
+    const link = host().querySelector<HTMLAnchorElement>('[data-testid="oc-create-venue"]');
+    expect(link?.getAttribute('href')).toBe('/venue-admin');
+  });
+
   it('keeps the shell working when the badge fetch fails — no badge (#170, R-4)', async () => {
     await signIn();
     fixture = TestBed.createComponent(OperatorConsole);

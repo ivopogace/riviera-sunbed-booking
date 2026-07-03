@@ -56,6 +56,11 @@
           }}</span>
         </div>
         <div class="oc-header-right">
+          <!-- Onboarding has no console screen yet; it stays at the legacy /venue-admin editor until
+               operator self-registration (#115 / O8). Keep it reachable from the console (AC-5). -->
+          <a class="oc-create-venue" data-testid="oc-create-venue" routerLink="/venue-admin"
+            >Create a venue</a
+          >
           <span class="oc-signed-in-as" data-testid="oc-signed-in-as"
             >Signed in as <strong>{{ operator.username() }}</strong></span
           >
