@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { OperatorAuth } from './operator-auth';
+import { OperatorAuth, runOperatorSignIn } from './operator-auth';
 
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
 const PROBLEM_401 = {
@@ -121,5 +122,61 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     auth.sessionLost();
 
     expect(auth.signedIn()).toBe(false); // httpMock.verify() proves no request went out
+  });
+
+  describe('runOperatorSignIn (shared operator sign-in handler, #170)', () => {
+    function form() {
+      return {
+        signingIn: signal(false),
+        error: signal<string | undefined>(undefined),
+        password: signal('pw'),
+      };
+    }
+
+    it('clears the password and leaves no error on success', async () => {
+      const auth = serviceWithRestore('signed-out');
+      const state = form();
+
+      const done = runOperatorSignIn(auth, 'operator', 'pw', state);
+      httpMock
+        .expectOne(`${AUTH_API}/operator/login`)
+        .flush({ username: 'operator', principalType: 'OPERATOR' });
+      await done;
+
+      expect(state.signingIn()).toBe(false);
+      expect(state.password()).toBe('');
+      expect(state.error()).toBeUndefined();
+    });
+
+    it('sets the generic failure message and keeps the password on a bad credential', async () => {
+      const auth = serviceWithRestore('signed-out');
+      const state = form();
+
+      const done = runOperatorSignIn(auth, 'operator', 'wrong', state);
+      httpMock.expectOne(`${AUTH_API}/operator/login`).flush({ code: 'INVALID' }, PROBLEM_401);
+      await done;
+
+      expect(state.error()).toContain('Sign-in failed');
+      expect(state.password()).toBe('pw'); // kept for a retry
+      expect(state.signingIn()).toBe(false);
+    });
+
+    it('no-ops (no HTTP) when a field is blank', async () => {
+      const auth = serviceWithRestore('signed-out');
+      const state = form();
+
+      await runOperatorSignIn(auth, '', 'pw', state);
+
+      expect(state.signingIn()).toBe(false); // httpMock.verify() proves no login went out
+    });
+
+    it('no-ops while a sign-in is already in flight', async () => {
+      const auth = serviceWithRestore('signed-out');
+      const state = { ...form(), signingIn: signal(true) };
+
+      await runOperatorSignIn(auth, 'operator', 'pw', state);
+
+      expect(state.signingIn()).toBe(true); // unchanged; httpMock.verify() proves no login went out
+    });
   });
 });

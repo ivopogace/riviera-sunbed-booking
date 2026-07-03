@@ -1,0 +1,109 @@
+@if (venueId === undefined) {
+  <main class="oc-signin">
+    <div class="oc-signin-card">
+      <h1 class="oc-signin-title" data-testid="oc-invalid-venue">Venue not found</h1>
+      <p class="oc-signin-intro">
+        This operator console link isn’t valid. Check the address, or open your venue from the
+        <a class="oc-create-venue" routerLink="/venue-admin">venue editor</a>.
+      </p>
+    </div>
+  </main>
+} @else if (operator.restoring()) {
+  <output class="oc-loading" data-testid="oc-loading">Checking your session…</output>
+} @else if (!operator.signedIn()) {
+  <main class="oc-signin">
+    <form class="oc-signin-card" (submit)="onSignIn(); $event.preventDefault()" novalidate>
+      <h1 class="oc-signin-title" id="oc-signin-title" data-testid="oc-signin-title">
+        Sign in to your venue
+      </h1>
+      <p class="oc-signin-intro">The operator console uses your Riviera account.</p>
+
+      <label class="oc-field">
+        <span>Username</span>
+        <input
+          type="text"
+          data-testid="oc-user"
+          name="operator-username"
+          autocomplete="username"
+          [value]="username()"
+          (input)="username.set($any($event.target).value)"
+        />
+      </label>
+      <label class="oc-field">
+        <span>Password</span>
+        <input
+          type="password"
+          data-testid="oc-pass"
+          name="operator-password"
+          autocomplete="current-password"
+          [value]="password()"
+          (input)="password.set($any($event.target).value)"
+        />
+      </label>
+
+      <button
+        type="submit"
+        class="oc-signin-btn"
+        data-testid="oc-signin-submit"
+        [disabled]="signingIn()"
+      >
+        {{ signingIn() ? 'Signing in…' : 'Sign in' }}
+      </button>
+
+      @if (signInError(); as msg) {
+        <p class="oc-form-error" role="alert" data-testid="oc-signin-error">{{ msg }}</p>
+      }
+    </form>
+  </main>
+} @else {
+  <div class="oc-shell">
+    <header class="oc-header" data-testid="oc-header">
+      <div class="oc-header-inner">
+        <div class="oc-brand">
+          <span class="oc-wordmark">Riviera <span class="oc-wordmark-op">Operator</span></span>
+          <span class="oc-venue-title" data-testid="oc-venue-title">{{
+            venueName() ?? 'Your venue'
+          }}</span>
+        </div>
+        <div class="oc-header-right">
+          <!-- Onboarding has no console screen yet; it stays at the legacy /venue-admin editor until
+               operator self-registration (#115 / O8). Keep it reachable from the console (AC-5). -->
+          <a class="oc-create-venue" data-testid="oc-create-venue" routerLink="/venue-admin"
+            >Create a venue</a
+          >
+          <span class="oc-signed-in-as" data-testid="oc-signed-in-as"
+            >Signed in as <strong>{{ operator.username() }}</strong></span
+          >
+          <button
+            type="button"
+            class="oc-signout"
+            data-testid="oc-signout"
+            (click)="onSignOut()"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="oc-tabs" data-testid="oc-tabs" aria-label="Operator console sections">
+      @for (tab of tabs; track tab.path) {
+        <a
+          class="oc-tab"
+          [routerLink]="['/operator', venueId, tab.path]"
+          routerLinkActive="oc-tab--active"
+          ariaCurrentWhenActive="page"
+        >
+          <span class="oc-tab-label">{{ tab.label }}</span>
+          @if (tab.badge && requestsCount() > 0) {
+            <span class="oc-badge" data-testid="oc-requests-badge">{{ requestsCount() }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <main class="oc-main">
+      <router-outlet />
+    </main>
+  </div>
+}

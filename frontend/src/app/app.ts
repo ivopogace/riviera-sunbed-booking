@@ -43,20 +43,36 @@ export class App {
       this.themes.options[0],
   );
 
-  /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
-  protected readonly legacySurface = toSignal(
+  /**
+   * The active route's chrome flags, computed once per navigation from a SINGLE root→leaf walk:
+   * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel) and
+   * `chromeless` (the operator console, `/operator/**` #170, owns a full-bleed porcelain shell → the
+   * tourist header/nav/footer + themed background are suppressed). `operatorConsole` sits on the
+   * console's PARENT route and is not inherited into a child snapshot, so it is OR-ed across the
+   * whole chain; `legacySurface` is a leaf-only flag. Defaults (pre-navigation): legacy compat on,
+   * chrome shown.
+   */
+  private readonly routeChrome = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
       map(() => {
         let route = this.router.routerState.snapshot.root;
+        let chromeless = route.data['operatorConsole'] === true;
         while (route.firstChild) {
           route = route.firstChild;
+          chromeless ||= route.data['operatorConsole'] === true;
         }
-        return route.data['legacySurface'] === true;
+        return { legacySurface: route.data['legacySurface'] === true, chromeless };
       }),
     ),
-    { initialValue: true },
+    { initialValue: { legacySurface: true, chromeless: false } },
   );
+
+  /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
+  protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);
+
+  /** True on the operator console — its porcelain shell replaces the tourist chrome (default false). */
+  protected readonly hideShellChrome = computed(() => this.routeChrome().chromeless);
 
   constructor() {
     // Any successful navigation closes the shell overlays — in particular, a found booking code

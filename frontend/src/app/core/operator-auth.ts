@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Service, computed, inject, signal } from '@angular/core';
+import { Service, WritableSignal, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
@@ -118,5 +118,40 @@ export class OperatorAuth {
     } finally {
       this.restoring.set(false);
     }
+  }
+}
+
+/** The mutable state an operator sign-in form drives: the in-flight flag, the error message, and the
+ *  password field (cleared on success). */
+export interface OperatorSignInForm {
+  readonly signingIn: WritableSignal<boolean>;
+  readonly error: WritableSignal<string | undefined>;
+  readonly password: WritableSignal<string>;
+}
+
+/**
+ * Run an operator sign-in against {@link OperatorAuth}, driving a sign-in form's in-flight / error /
+ * password state. Extracted at issue #170 so the operator-console sign-in card doesn't duplicate the
+ * venue-editor / staff-daily handler (those retire onto this in O6/O8). No-ops while a field is blank
+ * or a sign-in is already in flight; clears the password on success and sets the generic
+ * {@link signInFailureMessage} on failure.
+ */
+export async function runOperatorSignIn(
+  auth: OperatorAuth,
+  username: string,
+  password: string,
+  form: OperatorSignInForm,
+): Promise<void> {
+  if (!username || !password || form.signingIn()) {
+    return;
+  }
+  form.signingIn.set(true);
+  form.error.set(undefined);
+  const result = await auth.signIn(username, password);
+  form.signingIn.set(false);
+  if (result === 'signed-in') {
+    form.password.set('');
+  } else {
+    form.error.set(signInFailureMessage(result));
   }
 }

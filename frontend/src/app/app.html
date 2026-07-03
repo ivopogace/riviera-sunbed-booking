@@ -1,4 +1,7 @@
 <div class="riv-app">
+  <!-- The operator console (#170) owns a full-bleed porcelain shell — the tourist themed background,
+       header/nav and footer are suppressed on /operator/** so only the console chrome shows. -->
+  @if (!hideShellChrome()) {
   <div class="riv-bg" aria-hidden="true">
     <span class="riv-blob riv-blob-1"></span>
     <span class="riv-blob riv-blob-2"></span>
@@ -115,6 +118,7 @@
       }
     </div>
   </header>
+  }
 
   <!-- tabindex=-1: a programmatic focus target so closing the find modal on navigation lands
        keyboard/AT focus on the new page's content, not document.body (issue #148, review finding [4]). -->
@@ -122,9 +126,11 @@
     <router-outlet />
   </main>
 
+  @if (!hideShellChrome()) {
   <footer class="riv-footer">
     <div class="riv-footer-inner">© Riviera Sunbed Booking</div>
   </footer>
+  }
 
   <!-- Find-a-booking glass modal (issue #148): a shell-level, nav-triggered overlay. -->
   @if (findOpen()) {
