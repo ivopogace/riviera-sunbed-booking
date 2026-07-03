@@ -1,6 +1,7 @@
-import { expect, Locator, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { completeDialog, settle } from './support/booking-dialog';
 
 /**
  * Real-render a11y audit of the Instant-Book flow (issue #6; Liquid Glass restyle #137): beach map →
@@ -66,29 +67,6 @@ const AWAITING_DETAIL = {
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
 };
-
-/** Settle running entrance animations (the dialog's pop) before axe — a mid-fade opacity reads as
- *  a false contrast failure (riviera-frontend rule). Await only FINITE animations: the background
- *  gradient blobs run `infinite`, so their `.finished` never resolves (awaiting it would hang). */
-async function settle(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
-  );
-}
-
-/** Fill the Details step and advance through Review to submit (the v3 2-step dialog). */
-async function completeDialog(dialog: Locator, reviewCta: string): Promise<void> {
-  await dialog.getByLabel('Full name').fill('Holiday Guest');
-  await dialog.getByLabel('Email').fill('guest@example.com');
-  await dialog.getByLabel('Phone').fill('+355699000');
-  await dialog.getByRole('button', { name: 'Continue', exact: true }).click(); // Details → Review
-  await dialog.getByRole('button', { name: reviewCta }).click();
-}
 
 test.beforeEach(async ({ page }) => {
   // Match with or without the `?date=` query the map now appends (issue #44).

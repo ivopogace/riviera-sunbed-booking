@@ -253,7 +253,7 @@ invariant #7: the codes are the key, held on-device).
 | 4 — `my-bookings` component: rows, sub-labels, 404-drop, transient-retry, empty state (unit + axe) | ✅ | (impl commit) |
 | 5 — `my-bookings.scss` glass + `my-bookings.contrast.spec.ts` + shared chip contrast spec | ✅ | (impl commit) |
 | 6 — Route + nav entry + `app.spec.ts` (RESTYLED_PATHS + nav test) | ✅ | (impl commit) |
-| 7 — e2e (CI-safe `my-bookings.e2e.ts`); font-link re-check | | |
+| 7 — e2e (CI-safe `my-bookings.e2e.ts`); font-link re-check | ✅ | (impl commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window.
 
@@ -340,6 +340,10 @@ locally; see `riviera-local-debug`). Run recipe per phase: `npm test -- <spec fi
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-03 | Phase 1 (fake-localStorage helper) | inline Map-backed localStorage fakes | `grep -rn "installFakeStorage" frontend/src` | `theme.spec.ts` (inline copy) + the new store spec would be a 2nd copy | Extracted `testing/fake-storage.ts`; refactored `theme.spec.ts` + the new spec onto it (pre-empts a Sonar duplicated-block finding). |
+| 2026-07-03 | Phase 3 (chip extraction) | the status-chip recipe's consumers | `grep -rn "STATUS_META\|chip--" frontend/src` | `booking-view` (1st) + `my-bookings` (2nd) | Promoted the chip recipe to `shared/booking-status.ts` + `_glass.scss` `status-chip` mixin; single contrast home. Rule of three met at the 2nd consumer. |
+| 2026-07-03 | Phase 7 (e2e helpers) | duplicated `settle`/`completeDialog` in e2e specs | `grep -rn "async function settle\|completeDialog" frontend/e2e` | `booking-flow` + `request-to-book` (`settle`), `booking-flow` (`completeDialog`) — my new spec would be a 3rd | Extracted `e2e/support/booking-dialog.ts`; refactored both existing consumers + the new spec onto it (dedup; keeps the Sonar gate clean). |
+| 2026-07-03 | Phase 7 (font-link close-out) | Manrope / Instrument Serif consumers | `grep -rn "Manrope\|Instrument Serif" frontend/src` | `staff-daily.scss` (still uses both) + `index.html` (the link) | Keep the `<link>` — `staff-daily` (operator epic #141) is the true last consumer; T6 is not. |
 
 ---
 
