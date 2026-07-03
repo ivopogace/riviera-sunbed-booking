@@ -42,6 +42,14 @@ public interface Venues {
 	/** Remove a set position. Returns the number of rows deleted — {@code 0} means no such set. */
 	int deleteSet(VenueId venueId, SetId setId);
 
+	/**
+	 * Replace a venue's profile fields (amenities + distance-to-water) in one unit of work. Returns
+	 * the number of venue rows changed — {@code 0} means no such venue (the caller returns
+	 * NO_SUCH_VENUE); {@code 1} means the profile was replaced. The amenity set is fully replaced
+	 * (delete-then-insert), so it is order-insensitive and drops any amenity no longer selected.
+	 */
+	int updateVenueProfile(VenueId venueId, VenueProfileCommand command);
+
 	/** A layout-uniqueness conflict, in priority order for reporting. */
 	enum Conflict {
 		/** Another set holds the target {@code (row_label, position_no)} slot. */

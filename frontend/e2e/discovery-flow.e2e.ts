@@ -19,6 +19,10 @@ const VENUES = [
     reviewsCount: 326,
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
+    // T7 (#140): four amenities (out of catalogue order) + a distance. The card caps at 3 in
+    // catalogue order (Beach bar, Free parking, Showers) — WiFi is dropped; the map shows all four.
+    amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
+    distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
   },
   {
@@ -44,6 +48,8 @@ const VENUE_MAP = {
   reviewsCount: 326,
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
+  amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
+  distanceToWaterM: 15,
   sets: [
     { id: 1, rowLabel: 'Front row · Sea view', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'FREE' },
     { id: 2, rowLabel: 'Row 4 · Back', positionNo: 1, tier: 'STANDARD', pool: 'WALK_IN', price: { minorUnits: 2500, currency: 'EUR' }, gridX: 1, gridY: 2, availability: 'FREE' },
@@ -73,6 +79,15 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
   // year digits in the date label (review finding).
   await expect(page.getByTestId('results')).toContainText('2 venues');
+
+  // T7 (#140): the card shows the to-water chip + the first 3 amenities (catalogue order); the
+  // fourth (WiFi) is capped off on the card — but appears on the map header below.
+  const cardChips = cards.first().getByTestId('card-chips');
+  await expect(cardChips.locator('.amenity-chip')).toHaveCount(4); // to-water + 3
+  await expect(cardChips).toContainText('15m to water');
+  await expect(cardChips).toContainText('Beach bar');
+  await expect(cardChips).toContainText('Showers');
+  await expect(cardChips).not.toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'discovery list');
 
   // Filter by beach → the list narrows to the matching venue (server-side filter, mocked);
@@ -89,6 +104,13 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await cards.first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+
+  // T7 (#140): the map header shows the FULL amenity row (no ≤3 cap) + to-water — so WiFi, capped
+  // off the Discover card above, is present here.
+  const headerChips = page.getByTestId('venue-chips');
+  await expect(headerChips.locator('.amenity-chip')).toHaveCount(5); // to-water + all 4
+  await expect(headerChips).toContainText('15m to water');
+  await expect(headerChips).toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'venue beach map');
 });
 

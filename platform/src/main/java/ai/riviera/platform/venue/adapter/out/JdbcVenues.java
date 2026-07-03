@@ -7,10 +7,12 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.Venues;
 
 /**
@@ -142,6 +144,30 @@ class JdbcVenues implements Venues {
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
 				.update();
+	}
+
+	@Override
+	public int updateVenueProfile(VenueId venueId, VenueProfileCommand command) {
+		// The venue UPDATE's rows-affected is the existence check (0 ⇒ no such venue). Only when the
+		// venue exists do we replace its amenity set (delete-then-insert). Both run inside the
+		// service's @Transactional boundary, so the set is never left partially replaced.
+		int rows = jdbc.sql("UPDATE venue SET distance_to_water_m = :distance WHERE id = :id")
+				.param("distance", command.distanceToWaterM())
+				.param("id", venueId.value())
+				.update();
+		if (rows == 0) {
+			return 0;
+		}
+		jdbc.sql("DELETE FROM venue_amenity WHERE venue_id = :id")
+				.param("id", venueId.value())
+				.update();
+		for (Amenity amenity : command.amenities()) {
+			jdbc.sql("INSERT INTO venue_amenity (venue_id, amenity) VALUES (:id, :amenity)")
+					.param("id", venueId.value())
+					.param("amenity", amenity.name())
+					.update();
+		}
+		return rows;
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

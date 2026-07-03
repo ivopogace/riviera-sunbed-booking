@@ -236,6 +236,46 @@
           </ul>
         }
       </div>
+
+      <!-- Commodities (T7 #140): amenity toggles + distance-to-water on the loaded venue. Kept in the
+           editor's current (legacy) styling — the operator epic (#141) restyles this surface later. -->
+      <form class="card" (submit)="onSaveCommodities(); $event.preventDefault()" novalidate>
+        <h2>Commodities</h2>
+        <p class="hint">Shown as tags on your venue card and beach-map page.</p>
+
+        <fieldset class="chip-toggles">
+          <legend>Amenities</legend>
+          <div class="chip-toggle-row">
+            @for (code of amenityCatalogue; track code) {
+              <button
+                type="button"
+                class="chip-toggle"
+                [class.active]="isAmenityActive(code)"
+                [attr.aria-pressed]="isAmenityActive(code)"
+                [disabled]="saving()"
+                (click)="onToggleAmenity(code)"
+              >
+                {{ amenityText(code) }}
+              </button>
+            }
+          </div>
+        </fieldset>
+
+        <label class="field">
+          <span>Distance to water (metres)</span>
+          <input
+            type="text"
+            inputmode="numeric"
+            data-testid="distance-to-water"
+            [value]="distanceDraft()"
+            (input)="distanceDraft.set($any($event.target).value)"
+          />
+        </label>
+
+        <button type="submit" class="btn-primary" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save commodities' }}
+        </button>
+      </form>
     }
   }
 </section>

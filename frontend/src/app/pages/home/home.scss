@@ -312,11 +312,14 @@
 }
 
 /* T7 (#140) slot. :empty removes it from the flex flow until chips exist — otherwise a
-   zero-height item still costs an extra 8px column gap (review finding). */
+   zero-height item still costs an extra 8px column gap (review finding). Comment anchors from
+   the @if/@for don't count for :empty, so the slot still collapses when the venue has no chips. */
 .card-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+
+  @include glass.amenity-chip; // shared pill-tag recipe (T7 #140), AA-proven in amenities.contrast.spec.ts
 
   &:empty {
     display: none;

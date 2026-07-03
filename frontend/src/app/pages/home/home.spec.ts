@@ -24,6 +24,10 @@ function venues(): VenueSummary[] {
       reviewsCount: 326,
       bookingMode: 'INSTANT',
       fromPrice: { minorUnits: 2500, currency: 'EUR' },
+      // Four amenities out of catalogue order (T7 #140) → the card shows the first 3 in catalogue
+      // order (Beach bar, Free parking, Showers); WiFi is dropped. Plus a to-water distance.
+      amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
+      distanceToWaterM: 15,
       availability: { free: 18, total: 24 },
     },
     {
@@ -199,13 +203,25 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelector<HTMLElement>('.avail-fill')?.style.width).toBe('0%');
   });
 
-  it('leaves the amenity chip slot empty until T7 (#140) supplies data', async () => {
+  it('renders ≤3 amenity chips (catalogue order) + a to-water chip, and folds them into the label', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    const slot = el().querySelector('[data-testid="card-chips"]');
-    expect(slot).not.toBeNull();
-    expect(slot?.textContent?.trim()).toBe('');
+    const cards = el().querySelectorAll('[data-testid="venue-card"]');
+
+    // Venue 1: to-water chip first, then the first 3 amenities in catalogue order (WiFi dropped).
+    const firstChips = cards[0].querySelector('[data-testid="card-chips"]')!;
+    const chipTexts = [...firstChips.querySelectorAll('.amenity-chip')].map((c) => c.textContent?.trim());
+    expect(chipTexts).toEqual(['15m to water', 'Beach bar', 'Free parking', 'Showers']);
+
+    // The card content is aria-hidden, so the chip text must also reach AT via the accessible name.
+    const label = cards[0].getAttribute('aria-label') ?? '';
+    expect(label).toContain('15m to water');
+    expect(label).toContain('Amenities: Beach bar, Free parking, Showers');
+
+    // Venue 2 states no amenities/distance → its slot renders nothing (collapses).
+    const secondChips = cards[1].querySelector('[data-testid="card-chips"]');
+    expect(secondChips?.textContent?.trim()).toBe('');
   });
 
   it('shows a distinct empty state when no venues match', async () => {

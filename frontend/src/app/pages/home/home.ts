@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { defaultBookingDate } from '../../venue/booking-date';
@@ -161,11 +162,31 @@ export class Home {
     return formatBookingDate(this.selectedDate(), { withYear: true });
   }
 
+  /** The ≤3 amenities the card shows, in canonical catalogue order (T7 #140). */
+  protected cardAmenities(venue: VenueSummary): Amenity[] {
+    return orderedAmenities(venue.amenities ?? []).slice(0, 3);
+  }
+
+  /** The display label for an amenity code (template + accessible name). */
+  protected amenityText(code: Amenity): string {
+    return amenityLabel(code);
+  }
+
+  /** The "Xm to water" chip label, or null when the venue states no distance. */
+  protected toWater(venue: VenueSummary): string | null {
+    return distanceToWaterLabel(venue.distanceToWaterM ?? null);
+  }
+
   /** A single accessible name carrying every card fact, so nothing is conveyed by layout alone. */
   protected cardLabel(venue: VenueSummary): string {
     const price = venue.fromPrice ? `, from ${this.money(venue.fromPrice)} per set` : '';
+    const water = this.toWater(venue);
+    const waterText = water ? `${water}. ` : '';
+    const amenities = this.cardAmenities(venue).map((code) => this.amenityText(code));
+    const amenitiesText = amenities.length ? `Amenities: ${amenities.join(', ')}. ` : '';
     return `${venue.name}, ${venue.beach} · ${venue.region}, rated ${this.rating(venue)} out of 5${price}, `
       + `${venue.availability.free} of ${venue.availability.total} sets free on ${this.dateLabel()}. `
+      + `${waterText}${amenitiesText}`
       + `View beach map.`;
   }
 }

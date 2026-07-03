@@ -417,6 +417,82 @@ describe('VenueEditor', () => {
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
   });
 
+  it('saves the venue commodities (amenity toggles + metres) and re-reads the profile', async () => {
+    await createVenue();
+
+    // Toggle two amenities on and enter a distance, then save.
+    clickButton('Beach bar');
+    clickButton('WiFi');
+    setField('Distance to water', '20');
+    fixture.detectChanges();
+    clickButton('Save commodities');
+    await fixture.whenStable();
+
+    const patch = httpMock.expectOne(
+      (r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5`,
+    );
+    const body = patch.request.body as { amenities: string[]; distanceToWaterM: number };
+    expect(body.distanceToWaterM).toBe(20);
+    expect(body.amenities).toHaveLength(2);
+    expect(body.amenities).toEqual(expect.arrayContaining(['BEACH_BAR', 'WIFI']));
+    patch.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+
+    // The read-back carries the saved profile; the toggles re-seed (linkedSignal) to reflect it.
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/5'))
+      .flush({ ...venueView(5, []), amenities: ['BEACH_BAR', 'WIFI'], distanceToWaterM: 20 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const active = Array.from(host().querySelectorAll('.chip-toggle[aria-pressed="true"]')).map(
+      (b) => b.textContent?.trim(),
+    );
+    expect(active).toEqual(expect.arrayContaining(['Beach bar', 'WiFi']));
+  });
+
+  it('preserves in-progress commodity toggles across an unrelated set-edit read-back (#140 review)', async () => {
+    await createVenue();
+    await addSet();
+
+    // Toggle an amenity but do NOT save; then remove the set — an unrelated write that reloads venue().
+    clickButton('Beach bar');
+    fixture.detectChanges();
+    clickButton('Remove');
+    await fixture.whenStable();
+    httpMock
+      .expectOne(
+        (r) => r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
+      )
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/5'))
+      .flush(venueView(5, [])); // the reloaded venue has no persisted amenities
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The unsaved Beach bar toggle SURVIVES the read-back (not reverted to the venue's empty set).
+    const beachBar = Array.from(host().querySelectorAll('.chip-toggle')).find(
+      (b) => b.textContent?.trim() === 'Beach bar',
+    );
+    expect(beachBar?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('rejects a non-integer distance-to-water client-side without calling the server', async () => {
+    await createVenue();
+    setField('Distance to water', '1.5'); // not clean digits → must not be truncated and sent
+    fixture.detectChanges();
+    clickButton('Save commodities');
+    await fixture.whenStable();
+
+    httpMock.expectNone(
+      (r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5`,
+    );
+    fixture.detectChanges();
+    expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
+  });
+
   const addSetErrors: readonly (readonly [string, number, string])[] = [
     ['CELL_TAKEN', 409, 'already occupies that grid cell'],
     ['DUPLICATE_POSITION', 409, 'row label and position number'],

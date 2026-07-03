@@ -55,6 +55,8 @@ class SecurityConfig {
 	private static final String OPERATOR_ROLE = "OPERATOR";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
+	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
+	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/** A set's per-day staff availability (U8 mark POST / release DELETE); session + CSRF token required. */
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
@@ -141,6 +143,10 @@ class SecurityConfig {
 						// The real staff/admin identity model is deferred; for now a single configured
 						// operator credential (role OPERATOR) gates every write. GET stays public above.
 						.requestMatchers(HttpMethod.POST, "/api/venues").hasRole(OPERATOR_ROLE)
+						// Venue profile edit (T7 #140) — amenities + distance-to-water. Object-level
+						// ownership (invariant #13) is enforced in the application service; this is the
+						// role layer. `*` matches one segment, so it never shadows the /sets/* matchers.
+						.requestMatchers(HttpMethod.PATCH, VENUE_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)

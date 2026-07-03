@@ -23,6 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.SetRejection;
 
@@ -38,10 +39,11 @@ import ai.riviera.platform.venue.application.SetRejection;
  * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
  * {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
  *
- * <p>The per-set edits are venue-scoped: the controller resolves the authenticated principal to an
- * {@link OperatorId} and hands it to {@link EditBeachMap}, which asserts ownership of {@code venueId}
- * before acting (invariant #13); a mismatch is {@code 403} via {@code ApiErrorHandler}.
- * {@code create} takes no {@code venueId} and stays role-gated only.
+ * <p>The per-set edits and the profile edit ({@code PATCH /api/venues/{venueId}} — amenities +
+ * distance-to-water, T7 #140) are venue-scoped: the controller resolves the authenticated principal
+ * to an {@link OperatorId} and hands it to {@link EditBeachMap} / {@link EditVenueProfile}, which
+ * asserts ownership of {@code venueId} before acting (invariant #13); a mismatch is {@code 403} via
+ * {@code ApiErrorHandler}. {@code create} takes no {@code venueId} and stays role-gated only.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -49,12 +51,14 @@ class VenueAdminController {
 
 	private final OnboardVenue onboardVenue;
 	private final EditBeachMap editBeachMap;
+	private final EditVenueProfile editVenueProfile;
 	private final CurrentOperator currentOperator;
 
 	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
-			CurrentOperator currentOperator) {
+			EditVenueProfile editVenueProfile, CurrentOperator currentOperator) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
+		this.editVenueProfile = editVenueProfile;
 		this.currentOperator = currentOperator;
 	}
 
@@ -63,6 +67,14 @@ class VenueAdminController {
 		VenueId id = onboardVenue.onboard(request.toCommand());
 		return ResponseEntity.created(URI.create("/api/venues/" + id.value()))
 				.body(Map.of("id", id.value()));
+	}
+
+	@PatchMapping("/{venueId}")
+	ResponseEntity<?> updateProfile(Authentication authentication, @PathVariable long venueId,
+			@RequestBody UpdateVenueProfileRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		return toResponse(editVenueProfile.updateProfile(operator, new VenueId(venueId),
+				request.toCommand()));
 	}
 
 	@PostMapping("/{venueId}/sets")

@@ -158,3 +158,42 @@ button {
   background: var(--editor-danger);
   color: var(--editor-on-danger);
 }
+
+// Commodities amenity toggles (T7 #140). Pill buttons reusing the AA-proven editor token pairs —
+// inactive = secondary (like .btn-secondary), active = primary (like .btn-primary) — so no new
+// colour combination is introduced (the pairs are already asserted in venue-editor.contrast.spec.ts).
+// A <fieldset> (grouping the amenity toggles under a <legend>) with its default chrome reset.
+.chip-toggles {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+
+  legend {
+    padding: 0;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+}
+
+.chip-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip-toggle {
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+  background: var(--editor-secondary);
+  color: var(--editor-on-secondary);
+  border: 1px solid var(--editor-border);
+
+  &.active {
+    background: var(--editor-primary);
+    color: var(--editor-on-primary);
+    border-color: var(--editor-primary);
+  }
+}

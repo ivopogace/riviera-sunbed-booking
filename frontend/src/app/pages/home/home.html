@@ -109,8 +109,17 @@
                   <span class="dot">·</span> {{ venue.reviewsCount }} reviews
                 </span>
 
-                <!-- T7 (#140) slot: amenity + to-water chips render here once the data exists. -->
-                <span class="card-chips" data-testid="card-chips"></span>
+                <!-- T7 (#140): to-water chip first, then ≤3 amenity chips in catalogue order. The
+                     card body is aria-hidden, so this text is also folded into cardLabel(); the slot
+                     collapses (:empty) when the venue states neither. -->
+                <span class="card-chips" data-testid="card-chips">
+                  @if (toWater(venue); as water) {
+                    <span class="amenity-chip amenity-chip--water">{{ water }}</span>
+                  }
+                  @for (code of cardAmenities(venue); track code) {
+                    <span class="amenity-chip">{{ amenityText(code) }}</span>
+                  }
+                </span>
 
                 <span class="avail-track">
                   <span class="avail-fill" [style.width.%]="freePercent(venue)"></span>

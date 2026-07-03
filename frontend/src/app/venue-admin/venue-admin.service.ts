@@ -8,6 +8,7 @@ import {
   CreatedId,
   CreateVenueRequest,
   SetPositionRequest,
+  UpdateVenueProfileRequest,
   VenueAdminErrorCode,
 } from './venue-admin.model';
 
@@ -36,6 +37,11 @@ export class VenueAdminService {
 
   removeSet(venueId: number, setId: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/venues/${venueId}/sets/${setId}`);
+  }
+
+  /** Replace the venue's profile fields — amenities + distance-to-water (T7, #140). */
+  updateVenueProfile(venueId: number, request: UpdateVenueProfileRequest): Observable<void> {
+    return this.http.patch<void>(`${this.base}/api/venues/${venueId}`, request);
   }
 }
 
