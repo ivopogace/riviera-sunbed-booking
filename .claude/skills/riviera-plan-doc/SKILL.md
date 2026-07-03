@@ -41,7 +41,7 @@ this skill is **preventive**, built from the risks the design surfaced:
 3. **JDBC-only is a standing temptation to violate.** Spring Boot tutorials assume
    JPA. The plan records that persistence is JDBC and that no JPA starter enters
    the build.
-4. **Module boundaries blur fastest during the first build.** With six modules and
+4. **Module boundaries blur fastest during the first build.** With seven modules and
    event-based collaboration, "I'll just call that service directly" is the first
    shortcut taken. The plan lists modules touched, named interfaces, and events
    up front.
@@ -250,11 +250,9 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 - `riviera-java-conventions` — the backend Java language idioms (JDBC-only/no-JPA/no-Lombok,
   records, constructor injection, package-private adapters, Java 25 features) for any phase
   that writes Java.
-- `angular-new-app` — to scaffold the Angular app (the first frontend phase):
-  `ng new` + `--ai-config`, Tailwind, CLI generators.
-- `angular-developer` — for frontend surfaces (the beach-map seat picker, the
-  booking flow) and Angular standards; consult its `references/` for signals,
-  forms, routing, and testing detail.
+- `riviera-frontend` + `angular-developer` — for frontend surfaces (structure /
+  folder placement, then Angular standards); consult the latter's `references/`
+  for signals, forms, routing, and testing detail.
 - `tdd`, `diagnosing-bugs` — standard execution discipline (installed).
 
 **Orchestration & vendored craft skills:**

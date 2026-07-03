@@ -358,7 +358,7 @@ ways that repeatedly cost time when rediscovered. The rules:
 
 ## The substrate these skills read
 
-- **`CLAUDE.md`** — conventions + the 12 invariants (canonical rules).
+- **`CLAUDE.md`** — conventions + the 13 invariants (canonical rules).
 - **`CONTEXT.md`** — the domain glossary (ubiquitous language). Keep issue/commit/
   code vocabulary consistent with it; `domain-modeling` updates it inline.
 - **`docs/adr/`** — locked decisions + rationale. Respect them; `domain-modeling`
@@ -422,8 +422,9 @@ ways that repeatedly cost time when rediscovered. The rules:
 
 - **Riviera skills:** `riviera-plan-doc` (plan), `riviera-review-overlay` (review),
   `riviera-modulith` (backend module structure / boundaries), `riviera-java-conventions`
-  (backend Java idioms), `riviera-stripe-payments` (money),
-  `angular-new-app`/`angular-developer` (frontend).
+  (backend Java idioms), `riviera-stripe-payments` (money), `riviera-frontend` (FE
+  structure) + `angular-developer` + `playwright-cli` (frontend), `riviera-local-debug`
+  (build/test recipes), `riviera-docs-freshness` (merge close-out step 5).
 - **Vendored craft skills (Matt Pocock, MIT):** `grilling`/`grill-me`, `to-issues`,
   `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
   `triage`, `improve-codebase-architecture` (use the last one once there is code to

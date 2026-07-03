@@ -74,12 +74,13 @@ cleanly.
   **venue-scoped** endpoint or service (`/api/venues/{venueId}/**`, the payout
   ledger, staff bookings, beach-map edit, staff availability, weather refund) must
   verify the **authenticated operator owns the path `venueId`** — and that the
-  check sits in the **application service**, not the controller alone. Today the
-  code authorizes on the shared `OPERATOR` role with **no** ownership check, so an
-  operator can read/modify another venue's data by changing the id. This is OWASP
-  API #1 and the multi-operator launch blocker — default **Blocker** whenever a
-  venue-scoped surface is touched. Platform-wide `/api/admin/**` is role-gated and
-  exempt. (Authority: the improvement plan's `operator` module + per-venue auth.)
+  check sits in the **application service**, not the controller alone. The check
+  is the `operator` module's `assertOwns` consulted from the application service
+  (shipped #73/#74, pinned by `CrossVenueDenialIT`) — verify any **new**
+  venue-scoped surface calls it too, and that no driving adapter bypasses it. A
+  shared role is necessary but not sufficient (OWASP API #1, BOLA) — default
+  **Blocker** whenever a venue-scoped surface is touched. Platform-wide
+  `/api/admin/**` is role-gated and exempt. (Authority: invariant #13.)
 
 ## New-structure items (check when the published surface or domain tagging changes)
 
@@ -124,7 +125,7 @@ cleanly.
     writing the `(set, date)` state (invariant #2 / `availability` is the sole
     writer). *(ArchUnit-catchable.)*
   - **A forbidden cross-module reach.** `booking` importing the Stripe SDK or
-    `payment.infrastructure`; any module reaching into another's `domain`/`internal`
+    `payment.adapter`; any module reaching into another's `domain`/`internal`
     instead of its `api/`. *(ArchUnit-catchable.)*
   - **An event payload carrying a foreign aggregate or business field** instead of ids
     — the Need-To-Know boundary (a `payout`/`availability` listener receiving tourist
@@ -155,12 +156,10 @@ cleanly.
     packages; a thin module is `api/` + `adapter/out/`. Conversely, a module that *gained*
     a service but kept the thin shape should **graduate** to full.
 
-  Structural half → the ArchUnit package-shape rule (improvement-plan Workstream **C5**,
-  enabled after migration); the **thin-vs-full judgment** and the "is this the right
-  use-case slice" call → review. Default **Major** (Minor for a cosmetic mis-slice inside a
-  module). Note existing modules are **mid-migration** — a not-yet-migrated module still on
-  the old layout is not a finding; a *new* package added in the old shape is. Authority:
-  `ADR-0007` + `riviera-modulith`.
+  Structural half → `PackageShapeArchitectureTests` (always-on); the **thin-vs-full
+  judgment** and the "is this the right use-case slice" call → review. Default **Major**
+  (Minor for a cosmetic mis-slice inside a module). Authority: `ADR-0007` +
+  `riviera-modulith`.
 
 ## Process gate (check when a plan doc is in scope)
 

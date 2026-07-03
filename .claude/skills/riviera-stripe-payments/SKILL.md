@@ -29,8 +29,8 @@ reach Albanian venues. Surface it as an open question, don't build it.
 - **Collect-and-disburse is the standard small-marketplace fallback** and is
   trivial at v1 scale (5–15 venues): one inbound gateway, a payout ledger, a
   weekly manual transfer batch. It also keeps the app **gateway-agnostic** — the
-  domain depends on an outbound `PaymentGateway` port (in
-  `payment.application.out`), not on Stripe types.
+  domain depends on an outbound `PaymentGateway` port (internal, in
+  `payment.application`), not on Stripe types.
 - **Manual payout is a feature at this scale, not debt.** It avoids the KYC /
   onboarding / payment-institution weight of Connect for a seasonal business with
   a handful of venues. (A `Steuerberater` confirms the "collect on the venue's
@@ -44,11 +44,12 @@ numbers reference `CLAUDE.md`.
 ### Collection (the `payment` module)
 
 - **Use PaymentIntents (or Checkout Sessions) — collection only.** No Connect
-  primitives. The `payment` module exposes an **inbound** `api/` port like
-  `CheckoutPort.createCheckout(BookingId, Money)` (in `payment.api`) that `booking`
-  calls; the Stripe SDK sits behind the **outbound** `PaymentGateway` port in
-  `payment.application.out`. Keep the two ports distinct (invariant #11) — one is
-  driving, one is driven — and neither leaks payout concerns.
+  primitives. The `payment` module exposes the **inbound** `api/` port
+  `CheckoutPort` — `PaymentOutcome pay(BookingRef, Money)` (in `payment.api`) —
+  that `booking` calls; the Stripe SDK sits behind the **outbound** `PaymentGateway`
+  port (internal, in `payment.application`, implemented by
+  `adapter/out/StripePaymentGateway`). Keep the two ports distinct (invariant #11) —
+  one is driving, one is driven — and neither leaks payout concerns.
 - **Webhooks are the source of truth (invariant #8).** A booking is confirmed when
   the `payment_intent.succeeded` (or `checkout.session.completed`) webhook is
   received and **its signature is verified** — never from the browser redirect.
@@ -138,7 +139,8 @@ module). The two modes charge differently — pin this down rather than re-deriv
     `availability` marks the set taken, `payout` accrues the ledger entry.
   - A cancellation/refund publishes → `availability` frees the set, `payout`
     reverses the accrual.
-- The Stripe SDK and webhook controller live in `payment.infrastructure.*` only.
+- The Stripe SDK and webhook controller live in `payment`'s adapter layer only
+  (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`).
   The `booking`/`payout` domains never import Stripe types — they speak `Money`,
   `BookingId`, and domain events.
 

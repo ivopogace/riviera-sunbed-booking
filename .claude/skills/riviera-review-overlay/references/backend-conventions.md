@@ -59,17 +59,19 @@ missing concurrency test on a guarded path.
 ---
 
 ### RV-BE-3. Spring Modulith boundaries (invariant #11)
-**Gate:** Does any file import another module's `application.*`, `infrastructure.*`,
-or `domain.*` instead of going through its `api/` port or an event?
-- [ ] no cross-module non-`api/` import  [ ] cross-module import of `application.*` (violation)  [ ] cross-module import of `infrastructure.*` (violation)  [ ] cross-module import of another module's `domain.*` (violation)  [ ] new module without `package-info.java` `@ApplicationModule`
+**Gate:** Does any file import another module's `application.*`, `adapter.*`,
+or `domain.*` instead of going through its published surfaces or an event?
+- [ ] no cross-module import outside the published surfaces (`api`/`spi`/`vocabulary`/`events`)  [ ] cross-module import of `application.*` (violation)  [ ] cross-module import of `adapter.*` (violation)  [ ] cross-module import of another module's `domain.*` (violation)  [ ] new module without `package-info.java` `@ApplicationModule`
 
 **Follow-up:**
 - Need a synchronous answer from another module → call its `api/` query port.
 - Need to react to a state change in another module → subscribe to its domain event.
-- Module layout: `ai.riviera.platform.<module>.{api, application.in, application.out,
-  domain, infrastructure.in, infrastructure.out}`.
-- New module → top-level `package-info.java` with `@ApplicationModule`; cross-module
-  types live in `api/`.
+- Module layout: the ADR-0007 two-template shape (invariant #11) —
+  `{api?, spi?, vocabulary?, events?, application, domain, adapter/in, adapter/out}`;
+  thin module `{api, vocabulary?, adapter/out}`.
+- New module → top-level `package-info.java` with `@ApplicationModule`; published
+  types split by kind (#95): ports in `api/`, ids/values in `vocabulary/`, events in
+  `events/`.
 
 **Default severity:** **Blocker** for a cross-module non-`api/` import; Major for a
 missing `@ApplicationModule`.
@@ -77,14 +79,14 @@ missing `@ApplicationModule`.
 - Pre-impl: "Map cross-module dependencies — each is which `api/` port or which
   event?"
 - Peer-review: "Grep the diff for `import ai.riviera.platform.<other>.application` /
-  `.infrastructure` / `.domain`. Flag each."
+  `.adapter` / `.domain`. Flag each."
 
 ---
 
 ### RV-BE-3b. API vs SPI for cross-module ports (invariant #11)
 **Gate:** Is each cross-module port in the correct named interface — inbound ports
 others *call* in `api/`, and a *driven* port another module *implements* in `spi/`?
-- [ ] no new cross-module port  [ ] inbound port (others call) in `api/`  [ ] driven port implemented by ANOTHER module in `spi/` (`@NamedInterface("spi")`), not `api/`  [ ] an `api/` interface that another module *implements* rather than calls (misfiled — belongs in `spi/`)  [ ] `<provider>::spi` granted only to the implementor; call-only modules granted `<provider>::api` only  [ ] a driven port implemented by the module's OWN infra wrongly published instead of staying in `application.out`
+- [ ] no new cross-module port  [ ] inbound port (others call) in `api/`  [ ] driven port implemented by ANOTHER module in `spi/` (`@NamedInterface("spi")`), not `api/`  [ ] an `api/` interface that another module *implements* rather than calls (misfiled — belongs in `spi/`)  [ ] `<provider>::spi` granted only to the implementor; call-only modules granted `<provider>::api` only  [ ] a driven port implemented by the module's OWN adapters wrongly published instead of staying internal in `application/`
 
 **Follow-up:**
 - Default is `api/` (inbound). Promote a driven port to a named interface **only** when
@@ -100,7 +102,7 @@ others *call* in `api/`, and a *driven* port another module *implements* in `spi
 
 **Default severity:** Major for a driven cross-module port sitting in `api/` (or
 `::spi` granted too broadly); Minor for a publishable-but-internal driven port that
-leaked out of `application.out`. This is `verify()`-legal either way, so the review gate
+leaked out of `application/`. This is `verify()`-legal either way, so the review gate
 is the only thing that catches it — api-vs-spi is semantic, not mechanically detectable.
 **Skill framing:**
 - Pre-impl: "For each new cross-module interface: does the other module CALL it (→ `api`)
@@ -203,7 +205,7 @@ hardcoded commission.
 
 ---
 
-### RV-BE-9. Booking codes are unguessable (invariant #7)
+### RV-BE-14. Booking codes are unguessable (invariant #7)
 **Gate:** Are booking codes high-entropy and treated as bearer credentials?
 - [ ] random ≥8-char (e.g. base32) code  [ ] sequential / predictable id used as the code (violation)  [ ] code logged in plaintext at info level (smell)
 
@@ -217,7 +219,7 @@ hardcoded commission.
 
 ---
 
-### RV-BE-10. Pool and cutoff enforced server-side (invariants #3, #4)
+### RV-BE-15. Pool and cutoff enforced server-side (invariants #3, #4)
 **Gate:** Are the online-pool restriction and the no-same-day cutoff enforced on the
 server, not just hidden in the UI?
 - [ ] online booking restricted to online-pool sets server-side  [ ] pool only enforced in the frontend (violation)  [ ] same-day booking rejected server-side at the cutoff  [ ] cutoff only enforced in the UI (violation)
@@ -233,7 +235,7 @@ server, not just hidden in the UI?
 
 ---
 
-### RV-BE-11. Refund policy computed server-side (invariant #10)
+### RV-BE-16. Refund policy computed server-side (invariant #10)
 **Gate:** Is refund eligibility/amount decided on the server from the policy?
 - [ ] refund decision server-side from booking state + policy  [ ] client supplies the refund amount (violation)  [ ] weather refund modeled as an explicit admin action  [ ] policy thresholds hardcoded in two places (drift risk)
 
@@ -257,7 +259,7 @@ thresholds.
 
 ## Deep (opt-in)
 
-### RV-BE-12. Flyway migrations enforce the invariants (invariant #12)
+### RV-BE-17. Flyway migrations enforce the invariants (invariant #12)
 **Gate:** Do schema changes go through versioned Flyway migrations, and do the
 constraints that enforce invariants exist in SQL (not just app code)?
 - [ ] no schema change  [ ] versioned forward migration under `db/migration`  [ ] schema changed via app code / hand-run DDL (violation)  [ ] availability uniqueness exists only in app logic, not as a DB constraint (violation)  [ ] migration not tested

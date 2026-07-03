@@ -7,15 +7,15 @@ SQL/schema/index craft in `postgres`. This file covers where persistence sits in
 
 ## Default: `JdbcClient` + explicit SQL (what every existing adapter does)
 
-A driven adapter in `infrastructure/out`, package-private, implementing an `api/` or
-`application/out` port directly with named-parameter SQL in a text block. No repository interface, no
+A driven adapter in `adapter/out`, package-private, implementing an `api/` port (thin module)
+or an internal `application/` port directly with named-parameter SQL in a text block. No repository interface, no
 aggregate, no `@Id`/`@Table`. This is `JdbcVenueCatalog`, `JdbcAvailabilityClaim`,
 `JdbcCustomerDirectory`, `JdbcBookings`.
 
 ```java
-// ai.riviera.platform.<module>.infrastructure.out — package-private adapter
+// ai.riviera.platform.<module>.adapter.out — package-private adapter
 @Repository
-class JdbcBookings implements Bookings {                 // implements an application.out port
+class JdbcBookings implements Bookings {                 // implements an internal application/ port
 
     private final JdbcClient jdbc;
 

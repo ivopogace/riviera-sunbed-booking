@@ -22,8 +22,8 @@ description: >-
 api/-named-interface boundaries, and the ApplicationModules.verify() contract."*
 
 riviera-sunbed-booking is a Spring Modulith modular monolith. Base package
-**`ai.riviera.platform`**; six bounded-context modules — **venue, availability, booking, payment,
-payout, customer** (see the table in `CLAUDE.md`). Stack: **Spring Boot 4, Spring Modulith 2.1,
+**`ai.riviera.platform`**; seven bounded-context modules — **venue, availability, booking, payment,
+payout, customer, operator** (see the table in `CLAUDE.md`). Stack: **Spring Boot 4, Spring Modulith 2.1,
 Java 25, Gradle**, **Spring Data JDBC / `JdbcClient` only — no JPA**.
 
 This skill owns the **structural mechanics**. It does not repeat the numbered invariants
@@ -170,7 +170,7 @@ and is not a module.
 
 Each module declares a display name **and an explicit `allowedDependencies` deny-list** —
 this is **already true of every module in `main`** (`booking`, `availability`, `payout`,
-`venue`, `payment`, `customer` all set it), not a future tightening. Keep it that way:
+`venue`, `payment`, `customer`, `operator` all set it), not a future tightening. Keep it that way:
 
 ```java
 @org.springframework.modulith.ApplicationModule(
@@ -199,9 +199,9 @@ same change and run `ModularityTests` immediately. A failure is the design being
 unintended coupling), not the test being fussy. **Never** widen the list to silence a
 `verify()` failure without understanding the new edge.
 
-> **New module (e.g. `operator`, see below) must declare its deny-list from creation** —
-> don't ship a module with no `allowedDependencies` and "tighten later." Deny-by-default is
-> the standard here.
+> **A new module must declare its deny-list from creation** (the way `operator` did at
+> #73) — don't ship a module with no `allowedDependencies` and "tighten later."
+> Deny-by-default is the standard here.
 
 ## `api` vs `spi`: inbound ports vs cross-module driven ports
 
@@ -264,24 +264,15 @@ Publication Registry (`event_publication[_archive].event_type`) — ship a Flywa
 
 ## The `operator` module (per-venue authorization)
 
-Multi-operator launch requires per-venue ownership: every venue-scoped operation must verify the
-**authenticated operator owns the path `venueId`** (today the code authorizes on a single shared
-`OPERATOR` role with **no** ownership check — the launch blocker). This ownership concept needs a
-home, and it is **not** `venue` (layout/pricing/pools) and **not** `customer` (tourist
-guest-checkout). Introduce a dedicated **`operator`** (or `identity`) module:
-
-- Owns operator accounts and the **operator↔venue ownership mapping**.
-- Publishes a minimal `operator::api` query port — e.g. `OwnsVenue(operatorId, venueId) → boolean`
-  or `ownedVenues(operatorId) → Set<VenueId>` (id-based, invariant #11).
-- The ownership check is enforced in the **application service** of each venue-scoped command/query
-  (so no adapter can bypass it), returning `403` on mismatch — **not** in the controller alone.
-  Platform-wide admin (`/api/admin/**`) stays role-gated.
-- Declares its `allowedDependencies` from creation; venue-scoped modules that consult it add
-  `operator::api` to their deny-list.
-- Optional defence-in-depth: PostgreSQL Row-Level Security keyed on the operator's venue set.
-
-`riviera-review-overlay` gains a Blocker bank item for any venue-scoped surface whose `venueId`
-isn't checked against the operator's owned venues.
+**Shipped** (#73 module + ownership, #74 per-operator credentials). It owns operator
+accounts and the **operator↔venue ownership mapping**, publishing `operator::api` (the
+`VenueOwnership` query port) + `operator::vocabulary`. Every venue-scoped **application
+service** consults it (`assertOwns` → `403` on mismatch, pinned by `CrossVenueDenialIT`)
+so no driving adapter can bypass the check — invariant #13. Platform-wide admin
+(`/api/admin/**`) stays role-gated. When adding a **new** venue-scoped command/query:
+grant `operator::api` + `::vocabulary` in the consumer's `allowedDependencies` and put
+the ownership check in the service, not the controller. Remaining follow-up: retire the
+owns-all bootstrap operator + creator-owns-on-create (see `CLAUDE.md`).
 
 ## Choosing between an `api/` port and a domain event
 

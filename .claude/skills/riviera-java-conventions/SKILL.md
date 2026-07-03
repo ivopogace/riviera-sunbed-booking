@@ -58,7 +58,7 @@ we already made:
   an entity that lives *inside* an aggregate. Save the root; it persists its children.
 - **Cross-aggregate references are by id, never by object.** A `Booking` holds a
   `SetId`/`CustomerId`, not a `Set`/`Customer` instance — the same rule invariant #11 puts on
-  event payloads, and exactly why `SetId` lives in `venue.api`.
+  event payloads, and exactly why `SetId` lives in `venue.vocabulary` (#95).
 - **No cascade between aggregates.** Saving one aggregate must never save another — aggregates
   are autonomous. A cross-aggregate effect happens via a **domain event** or a second explicit
   `save`, not a persistence cascade. (This is the storage-level shape of the event spine:
@@ -96,14 +96,14 @@ these are the right way to use Spring Data JDBC from the start.)*
   interface, not the implementation.
 - One constructor; no `@Autowired` needed when there's a single constructor.
 
-### 4. Module seams: expose `api/`, hide `infrastructure.*` (invariant #11)
+### 4. Module seams (invariant #11) — structure is `riviera-modulith`'s call
 
-- Public surface = the module's `api/` package only (ports + record types + ids), exposed as
-  a Spring Modulith `@NamedInterface("api")` when another module must depend on it.
-- Everything in `application.*` / `infrastructure.*` / `domain` is package-private or
-  internal. Cross-module collaboration is the other module's `api/` port (queries / sync
-  commands) **or** a domain event with an id-based payload (state changes) — never an import
-  of another module's internals.
+- Cross-module collaboration is the other module's **published surface** — its `api/` port
+  (queries / sync commands) or its `events/` records (state changes, id-based payloads) —
+  never an import of another module's `application.*` / `adapter.*` / `domain`. Which
+  package a class belongs in, the api/vocabulary/events/spi split, and the ADR-0007
+  two-template shape are owned by **`riviera-modulith`** — load it before creating or
+  moving any class.
 - A single implementation behind a port is fine (a hypothetical seam) — don't invent an
   extra application-service layer just to have one (see `codebase-design`).
 

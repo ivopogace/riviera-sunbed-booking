@@ -220,7 +220,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
 - [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
 - [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`infrastructure.*` imports; event payloads id-based (invariant #11).
+- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
 - [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
 - [ ] Refund policy enforced server-side (invariant #10).
 - [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
