@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
+import static org.hamcrest.Matchers.contains;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -216,6 +217,23 @@ class VenueListControllerIT {
 		// AC-7: no auth header → 200 (the tourist read endpoint is permitted).
 		mvc.perform(get("/api/venues"))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void listCarriesAmenitiesAndDistance() throws Exception {
+		// T7 (#140), AC-2: aurora (Dhërmi — a beach unique to one fixture) gains a distance + two
+		// amenities inserted OUT of catalogue order (WIFI, BEACH_BAR); the list card carries them
+		// back catalogue-ordered. Cleaned up by the region @AfterEach (venue_amenity cascades).
+		jdbc.sql("UPDATE venue SET distance_to_water_m = 25 WHERE id = :v").param("v", aurora).update();
+		for (String amenity : new String[] { "WIFI", "BEACH_BAR" }) {
+			jdbc.sql("INSERT INTO venue_amenity (venue_id, amenity) VALUES (:v, :a)")
+					.param("v", aurora).param("a", amenity).update();
+		}
+
+		mvc.perform(get("/api/venues").param("beach", BEACH_DHERMI))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].distanceToWaterM").value(25))
+				.andExpect(jsonPath("$[0].amenities").value(contains("BEACH_BAR", "WIFI")));
 	}
 
 	@Test

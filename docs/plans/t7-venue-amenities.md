@@ -209,8 +209,8 @@ visible+accessible content directly.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Migration V21 + migration IT | ✅ | V21 + VenueAmenityMigrationIT (6 constraint tests green) |
-| 1 — BE read path (vocabulary + read views + JDBC reads) | ⏳ | |
-| 2 — BE edit path (port + service + PATCH + ownership) | | |
+| 1 — BE read path (vocabulary + read views + JDBC reads) | ✅ | Amenity enum + views + JdbcVenueCatalog; read ITs + structural net green |
+| 2 — BE edit path (port + service + PATCH + ownership) | ⏳ | |
 | 3 — FE shared amenity-chip recipe | | |
 | 4 — FE tourist chips (card + map header) + mocked e2e | | |
 | 5 — FE editor Commodities + real-backend e2e | | |

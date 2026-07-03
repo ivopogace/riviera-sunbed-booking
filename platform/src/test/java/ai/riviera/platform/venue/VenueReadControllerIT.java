@@ -15,6 +15,8 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -129,5 +131,47 @@ class VenueReadControllerIT {
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("TAKEN")));
+	}
+
+	@Test
+	void detailCarriesAmenitiesAndDistance() throws Exception {
+		// T7 (#140), AC-2: amenities inserted OUT of catalogue order (SHOWERS, BEACH_BAR,
+		// FREE_PARKING) must come back in canonical catalogue order (BEACH_BAR, FREE_PARKING,
+		// SHOWERS); the optional distance renders as an integer.
+		long id = insertVenueWithAmenities(15, "SHOWERS", "BEACH_BAR", "FREE_PARKING");
+		try {
+			mvc.perform(get("/api/venues/{id}", id))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.distanceToWaterM").value(15))
+					.andExpect(jsonPath("$.amenities")
+							.value(contains("BEACH_BAR", "FREE_PARKING", "SHOWERS")));
+		} finally {
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
+		}
+	}
+
+	@Test
+	void absentAmenitiesAreEmptyAndNullDistance() throws Exception {
+		// T7 (#140), AC-3: the seeded Miramar venue has no amenities and no stated distance, so the
+		// read renders an empty array and a null distance — the card/map look exactly like today.
+		mvc.perform(get("/api/venues/{id}", MIRAMAR))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.amenities").value(empty()))
+				.andExpect(jsonPath("$.distanceToWaterM").value(nullValue()));
+	}
+
+	private long insertVenueWithAmenities(int distanceToWaterM, String... amenities) {
+		long id = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				                   distance_to_water_m)
+				VALUES ('T7 detail venue', 'Amenity beach IT', 'T7 read IT region', 'INSTANT', 1500,
+				        'EUR', :d)
+				RETURNING id
+				""").param("d", distanceToWaterM).query(Long.class).single();
+		for (String amenity : amenities) {
+			jdbc.sql("INSERT INTO venue_amenity (venue_id, amenity) VALUES (:v, :a)")
+					.param("v", id).param("a", amenity).update();
+		}
+		return id;
 	}
 }
