@@ -71,7 +71,22 @@
       </div>
     </header>
 
-    <!-- Pill tab nav lands in Phase 2. -->
+    <nav class="oc-tabs" data-testid="oc-tabs" aria-label="Operator console sections">
+      @for (tab of tabs; track tab.path) {
+        <a
+          class="oc-tab"
+          [routerLink]="['/operator', venueId, tab.path]"
+          routerLinkActive="oc-tab--active"
+          ariaCurrentWhenActive="page"
+        >
+          <span class="oc-tab-label">{{ tab.label }}</span>
+          @if (tab.badge && requestsCount() > 0) {
+            <span class="oc-badge" data-testid="oc-requests-badge">{{ requestsCount() }}</span>
+          }
+        </a>
+      }
+    </nav>
+
     <main class="oc-main">
       <router-outlet />
     </main>

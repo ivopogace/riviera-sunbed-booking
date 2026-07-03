@@ -45,6 +45,14 @@ function flushVenue(httpMock: HttpTestingController, name: string): void {
     .flush(venueMap(name));
 }
 
+/** The Requests-badge count read the console fires once a session exists (owner-asserted server-side,
+ *  invariant #13). The exact URL is pinned here (AC-8: no new unscoped call). */
+function flushRequests(httpMock: HttpTestingController, pending: number): void {
+  httpMock
+    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+    .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
+}
+
 describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
@@ -78,11 +86,12 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     await result;
   }
 
-  async function createSignedIn(name = 'Miramar Beach Club'): Promise<void> {
+  async function createSignedIn(name = 'Miramar Beach Club', pending = 0): Promise<void> {
     await signIn();
     fixture = TestBed.createComponent(OperatorConsole);
-    await fixture.whenStable(); // the signedIn effect fires the venue-title load
+    await fixture.whenStable(); // the signedIn effect fires the venue-title + badge-count loads
     flushVenue(httpMock, name);
+    flushRequests(httpMock, pending);
     await fixture.whenStable();
   }
 
@@ -155,6 +164,49 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     // …and never writes the document-level theme (the tourist choice is preserved).
     expect(document.documentElement.getAttribute('data-riv-theme')).toBeNull();
   });
+
+  it('renders the six pill tabs linking to the tab routes (#170, AC-1)', async () => {
+    await createSignedIn();
+    const nav = host().querySelector('[data-testid="oc-tabs"]')!;
+    expect(nav).not.toBeNull();
+    const tabs: readonly [string, string][] = [
+      ['beach-map', 'Beach map'],
+      ['pricing', 'Pricing'],
+      ['daily', 'Daily view'],
+      ['requests', 'Requests'],
+      ['payouts', 'Payouts'],
+      ['venue', 'Venue & commodities'],
+    ];
+    for (const [path, label] of tabs) {
+      const link = nav.querySelector<HTMLAnchorElement>(`a[href="/operator/${VENUE}/${path}"]`);
+      expect(link, `tab '${path}'`).not.toBeNull();
+      expect(link?.textContent).toContain(label);
+    }
+  });
+
+  it('shows the Requests tab badge with the live pending count (#170, AC-2)', async () => {
+    await createSignedIn('Miramar Beach Club', 3);
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('3');
+  });
+
+  it('hides the Requests badge when there are no pending requests (#170, AC-2)', async () => {
+    await createSignedIn('Miramar Beach Club', 0);
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')).toBeNull();
+  });
+
+  it('keeps the shell working when the badge fetch fails — no badge (#170, R-4)', async () => {
+    await signIn();
+    fixture = TestBed.createComponent(OperatorConsole);
+    await fixture.whenStable();
+    flushVenue(httpMock, 'Miramar Beach Club');
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+
+    expect(host().querySelector('[data-testid="oc-header"]')).not.toBeNull();
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')).toBeNull();
+  });
 });
 
 describe('OperatorConsole — restored session (reload survival, #170 AC-3)', () => {
@@ -181,6 +233,7 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable();
     flushVenue(httpMock, 'Miramar Beach Club');
+    flushRequests(httpMock, 0);
     await fixture.whenStable();
 
     const host = fixture.nativeElement as HTMLElement;

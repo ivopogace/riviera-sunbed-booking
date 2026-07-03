@@ -124,9 +124,9 @@ Money/date on the wire: none rendered in O1.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Routing skeleton + tourist-chrome suppression | ✅ | 6d6d608 |
-| 1 — OperatorConsole shell: porcelain chrome + sign-in gate | ✅ | (phase-1) |
-| 2 — Pill tab nav + live Requests badge | ⏳ | |
-| 3 — Placeholder tab panels + legacy forward-links + onboarding link | | |
+| 1 — OperatorConsole shell: porcelain chrome + sign-in gate | ✅ | 4cd3695 |
+| 2 — Pill tab nav + live Requests badge | ✅ | (phase-2) |
+| 3 — Placeholder tab panels + legacy forward-links + onboarding link | ⏳ | |
 | 4 — Glass styling + composited AA contrast proof | | |
 | 5 — CI-safe mocked e2e (shell, tab switching, sign-in gate, axe) | | |
 
