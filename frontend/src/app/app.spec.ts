@@ -9,10 +9,12 @@ import { routes } from './app.routes';
 @Component({ template: '' })
 class BlankPage {}
 
-/** Test routes exercising the compat-surface mechanism without loading real (HTTP-bound) pages. */
+/** Test routes exercising the compat-surface + chromeless mechanisms without loading real
+ *  (HTTP-bound) pages. */
 const surfaceRoutes = [
   { path: 'legacy', component: BlankPage, data: { legacySurface: true } },
   { path: 'glass', component: BlankPage },
+  { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
 ];
 
 describe('App (Liquid Glass shell, issue #134)', () => {
@@ -169,6 +171,24 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     fixture.detectChanges();
     expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
   });
+
+  it('suppresses the tourist header/footer chrome on operator-console routes (#170, AC-7)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.querySelector('.riv-header')).not.toBeNull();
+    expect(el.querySelector('.riv-footer')).not.toBeNull();
+
+    await router.navigate(['/operator']);
+    fixture.detectChanges();
+    // The operator console owns full-bleed porcelain chrome — the tourist header/nav/footer are hidden.
+    expect(el.querySelector('.riv-header')).toBeNull();
+    expect(el.querySelector('.riv-footer')).toBeNull();
+    // Chromeless, not legacy: the compat surface is not applied on operator routes either.
+    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
+  });
 });
 
 describe('app.routes legacy-surface flags (issue #134)', () => {
@@ -186,13 +206,44 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'booking/:code',
   ];
 
-  it('marks every not-yet-restyled route with the compat surface (flipped per T2–T5/operator slice)', () => {
+  // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither
+  // a restyled tourist glass route nor a legacy compat surface — exempt from the binary below.
+  const CHROMELESS_PATHS = ['operator/:venueId'];
+
+  it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {
     for (const route of routes) {
+      if (CHROMELESS_PATHS.includes(route.path ?? '')) {
+        continue;
+      }
       const expected = !RESTYLED_PATHS.includes(route.path ?? '');
       expect(
         route.data?.['legacySurface'] === true,
         `route '${route.path}' legacySurface flag`,
       ).toBe(expected);
     }
+  });
+
+  it('keeps the two legacy operator routes on the compat surface — flags intact (#170 guardrail)', () => {
+    const legacy = routes.filter(
+      (r) => r.path === 'venue-admin' || r.path === 'venue-admin/daily/:venueId',
+    );
+    expect(legacy).toHaveLength(2);
+    for (const route of legacy) {
+      expect(route.data?.['legacySurface'], `route '${route.path}' legacySurface flag`).toBe(true);
+    }
+  });
+
+  it('adds the chromeless operator console route with its six tab children (#170)', () => {
+    const console = routes.find((r) => r.path === 'operator/:venueId');
+    expect(console?.data?.['operatorConsole']).toBe(true);
+    expect(console?.data?.['legacySurface']).toBeUndefined();
+
+    const children = console?.children ?? [];
+    const childPaths = children.map((c) => c.path);
+    for (const tab of ['beach-map', 'pricing', 'daily', 'requests', 'payouts', 'venue']) {
+      expect(childPaths, `tab route '${tab}'`).toContain(tab);
+    }
+    // A default child redirects to the first tab so `/operator/:venueId` lands on a tab.
+    expect(children.some((c) => c.path === '' && c.redirectTo === 'beach-map')).toBe(true);
   });
 });

@@ -29,6 +29,61 @@ export const routes: Routes = [
     data: { legacySurface: true },
   },
   {
+    // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
+    // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
+    // console owns a full-bleed porcelain surface. Each tab is a child route; O1 ships placeholders
+    // that the O3–O8 slices swap for the restyled tab. The legacy /venue-admin routes above stay.
+    path: 'operator/:venueId',
+    loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
+    title: 'Operator console — Riviera',
+    data: { operatorConsole: true },
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'beach-map' },
+      {
+        path: 'beach-map',
+        loadComponent: () =>
+          import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+        title: 'Beach map — Operator console',
+        data: { tab: 'beach-map' },
+      },
+      {
+        path: 'pricing',
+        loadComponent: () =>
+          import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+        title: 'Pricing — Operator console',
+        data: { tab: 'pricing' },
+      },
+      {
+        path: 'daily',
+        loadComponent: () =>
+          import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+        title: 'Daily view — Operator console',
+        data: { tab: 'daily' },
+      },
+      {
+        path: 'requests',
+        loadComponent: () =>
+          import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+        title: 'Requests — Operator console',
+        data: { tab: 'requests' },
+      },
+      {
+        path: 'payouts',
+        loadComponent: () =>
+          import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+        title: 'Payouts — Operator console',
+        data: { tab: 'payouts' },
+      },
+      {
+        path: 'venue',
+        loadComponent: () =>
+          import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+        title: 'Venue & commodities — Operator console',
+        data: { tab: 'venue' },
+      },
+    ],
+  },
+  {
     // Restyled to Liquid Glass by T3 (#136) — no compat surface.
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),

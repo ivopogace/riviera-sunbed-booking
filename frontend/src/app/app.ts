@@ -58,6 +58,29 @@ export class App {
     { initialValue: true },
   );
 
+  /**
+   * True on the operator console (`/operator/**`, issue #170): the console owns a full-bleed
+   * porcelain shell, so the tourist header/nav/footer + themed background are suppressed. The flag
+   * sits on the console's parent route (`data.operatorConsole`); checked across the whole activated
+   * chain (parent → leaf) since route data is not inherited into a child snapshot. Default false
+   * (pre-navigation the tourist chrome shows).
+   */
+  protected readonly hideShellChrome = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => {
+        let route = this.router.routerState.snapshot.root;
+        let chromeless = route.data['operatorConsole'] === true;
+        while (route.firstChild) {
+          route = route.firstChild;
+          chromeless ||= route.data['operatorConsole'] === true;
+        }
+        return chromeless;
+      }),
+    ),
+    { initialValue: false },
+  );
+
   constructor() {
     // Any successful navigation closes the shell overlays — in particular, a found booking code
     // navigates to /booking/:code, so the find modal must not linger over the detail view. No focus
