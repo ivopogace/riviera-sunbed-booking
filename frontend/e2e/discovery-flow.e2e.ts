@@ -114,6 +114,35 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expectNoSeriousAxeViolations(page, 'venue beach map');
 });
 
+test('hero panel fills the content width, matching the search bar (#153)', async ({ page }) => {
+  // The AC is about desktop: at >= 1080px the .discover column is at its max, so the hero and the
+  // filter bar directly below it share one content width. Pin the viewport so the measurement is
+  // deterministic regardless of the project's default.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
+
+  const hero = await page.locator('.hero').boundingBox();
+  const searchBar = await page.locator('.filter-bar').boundingBox();
+  if (!hero || !searchBar) throw new Error('hero / filter-bar not laid out');
+
+  // Same width and same left edge as the search bar below it. Before #153 the hero was capped at
+  // max-width: 680px (~63% of the 1080px column) and left-aligned — so the left-edge check already
+  // passed while the width check failed; this width assertion is what the fix turns green.
+  expect(Math.abs(hero.width - searchBar.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(hero.x - searchBar.x)).toBeLessThanOrEqual(1);
+  // ...and genuinely wider than the removed 680px cap — guards against it being re-introduced.
+  expect(hero.width).toBeGreaterThan(680);
+
+  // Widening the panel introduced no horizontal overflow (AC-3).
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+
+  await expectNoSeriousAxeViolations(page, 'discovery hero (full-width)');
+});
+
 test('discovery load-failure panel recovers when Retry is pressed (#149)', async ({ page }) => {
   // First list fetch fails, the next succeeds — proving Retry refetches and recovers.
   let listCalls = 0;

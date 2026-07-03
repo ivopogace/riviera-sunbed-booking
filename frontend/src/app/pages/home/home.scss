@@ -34,7 +34,8 @@
 .hero {
   @extend %panel-surface;
 
-  max-width: 680px;
+  // Fills the full .discover content width, flush with the search bar below it (issue #153).
+  // No max-width cap on purpose — a plain block panel stretches to the column; don't re-cap it.
   padding: 24px 26px 26px;
   color: var(--riv-ink);
   box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.25);
@@ -78,6 +79,8 @@
   line-height: 1.5;
   color: var(--riv-ink-soft);
   margin: 0;
+  // Kept to a comfortable reading measure even though the panel is now full-width (#153) — a
+  // full-column intro line would be too long to read; the title uses the full width, the copy doesn't.
   max-width: 520px;
 }
 
