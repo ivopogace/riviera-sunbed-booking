@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
 import { THEME_OPTIONS, ThemeService } from './theme';
 
 /** jsdom has no matchMedia; install a minimal fake reporting the given light-preference. */
@@ -13,18 +14,6 @@ function removeMatchMedia(): void {
   delete (globalThis as unknown as { matchMedia?: unknown }).matchMedia;
 }
 
-/** The test env has no localStorage global; install a Map-backed fake (real persistence is e2e-pinned). */
-function installFakeStorage(): Map<string, string> {
-  const store = new Map<string, string>();
-  (globalThis as unknown as { localStorage: unknown }).localStorage = {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => void store.set(key, String(value)),
-    removeItem: (key: string) => void store.delete(key),
-    clear: () => store.clear(),
-  };
-  return store;
-}
-
 describe('ThemeService (Liquid Glass foundation, issue #134)', () => {
   let store: Map<string, string>;
 
@@ -36,7 +25,7 @@ describe('ThemeService (Liquid Glass foundation, issue #134)', () => {
 
   afterEach(() => {
     removeMatchMedia();
-    delete (globalThis as unknown as { localStorage?: unknown }).localStorage;
+    removeFakeStorage();
   });
 
   it('offers the two launch themes as data (riviera default-dark, porcelain light)', () => {

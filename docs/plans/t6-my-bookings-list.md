@@ -246,8 +246,8 @@ invariant #7: the codes are the key, held on-device).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + branch | ⏳ | |
-| 1 — `core/device-local-bookings` store (unit red→green) | | |
+| 0 — Plan doc + branch | ✅ | 9f62725 |
+| 1 — `core/device-local-bookings` store (unit red→green) | ✅ | (impl commit) |
 | 2 — `remember` on create in `BookingService` (unit) | | |
 | 3 — Extract chip → `shared/booking-status.ts` + `_glass.scss` mixin; refactor booking-view green | | |
 | 4 — `my-bookings` component: rows, sub-labels, 404-drop, transient-retry, empty state (unit + axe) | | |
