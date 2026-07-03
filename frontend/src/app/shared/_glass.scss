@@ -57,6 +57,37 @@
   .chip--no-show { color: #7a4a3a; background: #ece6e3; border: 1px solid #dcd2cd; }
 }
 
+// --- amenity chip (shared by the Discover cards #140 and the beach-map header #140) ---
+//
+// A DISTINCT pill-tag visual from `status-chip` (softer, smaller): neutral amenity tags plus an
+// accent "to-water" tag. OPAQUE SOLID fills (the css:S7924 treatment), NOT the design's translucent
+// glass tints — so the chip reads identically and AA-safely on the light Discover card AND the dark
+// glass map header, without a per-theme composited proof. Every ink/fill pair is proven AA in
+// `shared/amenities.contrast.spec.ts` (the one home of that proof); labels come from
+// `shared/amenities.ts`. `@include` under the consuming component's scope.
+@mixin amenity-chip {
+  .amenity-chip {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    color: #2f4a54;
+    background: #eef2f4;
+    border: 1px solid #dbe4e7;
+  }
+  // The "Xm to water" accent tag — a teal solid composite of the design's rgba(43,184,212) tint.
+  .amenity-chip--water {
+    color: #0a5f74;
+    background: #d7eef4;
+    border: 1px solid #b9e0ea;
+    font-weight: 700;
+  }
+}
+
 // --- load-failure panel (shared by Discover #149 and the beach map #136) ---
 
 @mixin failure-panel {
