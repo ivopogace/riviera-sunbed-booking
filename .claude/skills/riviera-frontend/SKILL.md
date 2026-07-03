@@ -49,12 +49,18 @@ subfolders at this app size):
 
 ## Routing
 
-- **All routes live in `app.routes.ts`** — one flat array, no per-feature route
-  files until the app outgrows it (it hasn't).
+- **All routes live in `app.routes.ts`** — one array, no per-feature route
+  files until the app outgrows it (it hasn't). Mostly flat; the **operator
+  console** (`/operator/:venueId`, #170) is the one **nested child-route tree** —
+  a layout component with a child route per tab so each tab is deep-linkable and
+  each O3–O8 slice owns its tab route. Follow that shape for further tabbed sub-apps.
 - Every route is **lazy** (`loadComponent: () => import(...)`) and carries a
   `title`.
 - Order matters for parameterized paths (`booking/confirmation` before
   `booking/:code`) — keep literal segments above `:param` siblings.
+- **Child routes do NOT inherit the parent's params** under the default
+  `emptyOnly` strategy — a non-empty child (e.g. an `/operator/:venueId` tab) reads
+  `:venueId` from `route.parent`, not its own snapshot (O1 review finding).
 - Route guards are cross-cutting → they live in `core/` and are applied in
   `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components.
 
@@ -75,9 +81,16 @@ The only place providers are wired:
 ## Theming & design tokens (Liquid Glass, epic #133)
 
 - **Themes are CSS custom properties** (`--riv-*`) scoped by `data-riv-theme` on
-  `<html>`, declared per theme in `src/styles.scss`. The attribute is written
-  **only** by `core/theme.ts` (`ThemeService`: signal + localStorage +
-  `prefers-color-scheme` fallback; the theme registry lives there as data).
+  `<html>`, declared per theme in `src/styles.scss`. The **document-level**
+  attribute is written **only** by `core/theme.ts` (`ThemeService`: signal +
+  localStorage + `prefers-color-scheme` fallback; the theme registry lives there
+  as data). **Exception — a subtree may pin its own theme** by setting
+  `data-riv-theme` on its own host element (the attribute selector re-scopes the
+  `--riv-*` tokens for that subtree): the **operator console** (#170) is always
+  porcelain via a `host: { 'data-riv-theme': 'porcelain' }` binding, which does
+  **not** touch the document attribute / `ThemeService`, so the tourist theme
+  choice is preserved. Local pinning like this is fine; writing the **document**
+  attribute stays `ThemeService`-only.
 - **Components consume tokens, never palette literals** — a new palette (#143)
   is one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
   component edits. Restyle slices add page-surface tokens there (e.g. the T2
