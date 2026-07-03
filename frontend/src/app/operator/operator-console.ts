@@ -69,7 +69,9 @@ export class OperatorConsole {
 
   constructor() {
     const id = Number(this.route.snapshot.paramMap.get('venueId'));
-    if (Number.isInteger(id)) {
+    // A valid venue id is a positive integer; a non-numeric or non-positive segment leaves venueId
+    // undefined so the template shows a not-found state instead of a shell with broken tab links.
+    if (Number.isInteger(id) && id > 0) {
       this.venueId = id;
     }
     // Load the header's venue title + the Requests badge count once a session exists — covers a

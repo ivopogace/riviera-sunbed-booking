@@ -1,4 +1,14 @@
-@if (operator.restoring()) {
+@if (venueId === undefined) {
+  <main class="oc-signin">
+    <div class="oc-signin-card">
+      <h1 class="oc-signin-title" data-testid="oc-invalid-venue">Venue not found</h1>
+      <p class="oc-signin-intro">
+        This operator console link isn’t valid. Check the address, or open your venue from the
+        <a class="oc-create-venue" routerLink="/venue-admin">venue editor</a>.
+      </p>
+    </div>
+  </main>
+} @else if (operator.restoring()) {
   <output class="oc-loading" data-testid="oc-loading">Checking your session…</output>
 } @else if (!operator.signedIn()) {
   <main class="oc-signin">

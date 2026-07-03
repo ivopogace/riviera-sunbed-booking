@@ -88,6 +88,35 @@ suppresses its own header/nav/footer for `/operator/**` via a route-data flag, m
 - **Onboarding home →** stays at `/venue-admin` (legacy `VenueEditor`), reachable via a console link; retires with #115/O8. SHA: (plan commit).
 - **AC-4 direction (grill reconciliation, my call):** In O1 the "alias" between old routes and console tabs is **forward** (console tab → surviving legacy route), **not** old-route→console redirect. Reason: the issue's literal "old routes redirect to the equivalent console tab" presupposes the tabs host real function in O1, but the existing function is entangled in two monolithic components (`VenueEditor` is create-centric + bundles layout/pricing/commodities; `StaffDaily` bundles daily+requests) and **Payouts has no FE surface at all** — so redirecting into an O1 placeholder tab would regress working surfaces, and redirecting into an embedded legacy component would force removing a `legacySurface` flag (scope guardrail forbids). The old→console redirect + flag removal therefore lands **per-tab** in O5/O6/O8, which already own `StaffDaily`/`VenueEditor` retirement. Recorded here and flagged in the PR body.
 
+## Review-gate record (PR #178, high effort)
+
+`riviera-review-overlay` + `/code-review` (high — sign-in/session surface). Overlay bank items all
+clear (RV-BE-9 BOLA: only the existing owner-asserted `booking-requests` read reused, no new/unscoped
+call; RV-FE placement + one-way imports; RV-FE-E2E; RV-PROC-1 skills line covers the diff; theme
+scoping + legacy guardrails intact). The `/code-review` workflow surfaced 5 verified findings:
+
+- **F1 (CONFIRMED, correctness) — fixed:** a non-numeric/non-positive `:venueId` left `venueId`
+  undefined but still rendered the signed-in shell with broken tab `routerLink`s. Now the id parse
+  requires a positive integer and the template shows a **not-found** state (`oc-invalid-venue`) for an
+  invalid id — no shell, no venue/badge reads. Pinned by `operator-console.spec.ts` (invalid-venue-id describe).
+- **F2 (CONFIRMED, correctness) — fixed:** the placeholder forward-links were dead — a non-empty
+  child route does **not** inherit the parent's `:venueId` under the router's default `emptyOnly`
+  strategy, so Daily/Requests links resolved to `/venue-admin/daily/`. Now `ConsolePlaceholder` reads
+  `venueId` from `route.parent`. The unit spec was made faithful (param on the parent), and the e2e
+  now asserts the real-browser placeholder-link hrefs (`/venue-admin`, `/venue-admin/daily/1`).
+- **F3 (PLAUSIBLE, correctness) — deferred → #180:** `venueId` read once in the constructor; a future
+  in-app venue switcher would keep the old venue. No in-app operator→operator nav exists in O1 (full-page
+  nav reconstructs the component); same pattern as shipped `StaffDaily`.
+- **F4 (CONFIRMED, cleanup) — deferred → #179:** the header over-fetches the full beach map for
+  `venue.name`; no lighter by-id read exists (adding one is backend work, out of O1's FE-only scope).
+- **F5 (CONFIRMED, cleanup) — fixed:** `hideShellChrome` duplicated `legacySurface`'s router-events
+  walk; collapsed into one `routeChrome` `NavigationEnd` pipeline returning both flags from a single
+  root→leaf walk. `app.spec.ts` unchanged and green.
+
+Fixes re-entered the loop (Skill-routing gate: frontend → `angular-developer` + angular-cli MCP +
+`playwright-cli`, already loaded; test-first; full suite 492 + e2e 3 + lint + build green; changed
+surface re-reviewed against the overlay bank items).
+
 ## Availability & concurrency (invariant #2)
 
 **N/A — does not affect availability.** The console performs no write to `availability(set_id, booking_date)` and no booking-lifecycle transition. Its single backend read (the Requests badge) is a read-only query. Tap-to-mark, accept/decline, and every availability write remain in the untouched `StaffDaily`/backend and are out of O1 scope.

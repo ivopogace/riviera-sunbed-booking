@@ -247,3 +247,47 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
     expect(host.querySelector('[data-testid="oc-signin-title"]')).toBeNull();
   });
 });
+
+describe('OperatorConsole — invalid venue id (#170 review finding 1)', () => {
+  let fixture: ComponentFixture<OperatorConsole>;
+  let httpMock: HttpTestingController;
+
+  beforeEach(async () => {
+    document.documentElement.removeAttribute('data-riv-theme');
+    TestBed.configureTestingModule({
+      imports: [OperatorConsole],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ venueId: 'foo' }) } },
+        },
+      ],
+    });
+    TestBed.inject(OperatorAuth);
+    httpMock = TestBed.inject(HttpTestingController);
+    // Sign the operator IN, to prove even an authenticated operator sees not-found — never the
+    // broken shell whose tab routerLinks would interpolate the undefined venue id.
+    httpMock
+      .expectOne(`${BASE}/api/auth/me`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('shows a not-found state, never the tab shell, and fires no venue reads', async () => {
+    fixture = TestBed.createComponent(OperatorConsole);
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[data-testid="oc-invalid-venue"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="oc-header"]')).toBeNull();
+    expect(host.querySelector('[data-testid="oc-tabs"]')).toBeNull();
+    // venueId is invalid → the venue-title + badge reads are skipped (only the flushed /me went out).
+    httpMock.expectNone(() => true);
+  });
+});

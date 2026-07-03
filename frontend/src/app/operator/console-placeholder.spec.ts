@@ -3,6 +3,11 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 
 import { ConsolePlaceholder } from './console-placeholder';
 
+/**
+ * The placeholder is a CHILD route of `/operator/:venueId`; under the router's default `emptyOnly`
+ * inheritance the non-empty child does NOT inherit the parent's `:venueId`, so the component reads it
+ * from `route.parent`. The mock mirrors that: `data`/`tab` on the child, `venueId` on the parent.
+ */
 function render(tab: string, venueId = '1'): HTMLElement {
   TestBed.configureTestingModule({
     imports: [ConsolePlaceholder],
@@ -10,7 +15,10 @@ function render(tab: string, venueId = '1'): HTMLElement {
       provideRouter([]),
       {
         provide: ActivatedRoute,
-        useValue: { snapshot: { data: { tab }, paramMap: convertToParamMap({ venueId }) } },
+        useValue: {
+          snapshot: { data: { tab }, paramMap: convertToParamMap({}) },
+          parent: { snapshot: { paramMap: convertToParamMap({ venueId }) } },
+        },
       },
     ],
   });

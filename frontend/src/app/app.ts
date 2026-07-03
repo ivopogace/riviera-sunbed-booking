@@ -43,29 +43,16 @@ export class App {
       this.themes.options[0],
   );
 
-  /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
-  protected readonly legacySurface = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => {
-        let route = this.router.routerState.snapshot.root;
-        while (route.firstChild) {
-          route = route.firstChild;
-        }
-        return route.data['legacySurface'] === true;
-      }),
-    ),
-    { initialValue: true },
-  );
-
   /**
-   * True on the operator console (`/operator/**`, issue #170): the console owns a full-bleed
-   * porcelain shell, so the tourist header/nav/footer + themed background are suppressed. The flag
-   * sits on the console's parent route (`data.operatorConsole`); checked across the whole activated
-   * chain (parent → leaf) since route data is not inherited into a child snapshot. Default false
-   * (pre-navigation the tourist chrome shows).
+   * The active route's chrome flags, computed once per navigation from a SINGLE root→leaf walk:
+   * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel) and
+   * `chromeless` (the operator console, `/operator/**` #170, owns a full-bleed porcelain shell → the
+   * tourist header/nav/footer + themed background are suppressed). `operatorConsole` sits on the
+   * console's PARENT route and is not inherited into a child snapshot, so it is OR-ed across the
+   * whole chain; `legacySurface` is a leaf-only flag. Defaults (pre-navigation): legacy compat on,
+   * chrome shown.
    */
-  protected readonly hideShellChrome = toSignal(
+  private readonly routeChrome = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
       map(() => {
@@ -75,11 +62,17 @@ export class App {
           route = route.firstChild;
           chromeless ||= route.data['operatorConsole'] === true;
         }
-        return chromeless;
+        return { legacySurface: route.data['legacySurface'] === true, chromeless };
       }),
     ),
-    { initialValue: false },
+    { initialValue: { legacySurface: true, chromeless: false } },
   );
+
+  /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
+  protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);
+
+  /** True on the operator console — its porcelain shell replaces the tourist chrome (default false). */
+  protected readonly hideShellChrome = computed(() => this.routeChrome().chromeless);
 
   constructor() {
     // Any successful navigation closes the shell overlays — in particular, a found booking code

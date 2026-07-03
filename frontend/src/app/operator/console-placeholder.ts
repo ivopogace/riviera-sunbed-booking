@@ -38,7 +38,11 @@ export class ConsolePlaceholder {
 
   protected readonly info: TabPlaceholder = describeTab(
     String(this.route.snapshot.data['tab'] ?? ''),
-    this.route.snapshot.paramMap.get('venueId') ?? '',
+    // The child route does NOT inherit the parent's :venueId (router default emptyOnly strategy),
+    // so read it from the parent (the /operator/:venueId route); fall back to own for safety.
+    this.route.parent?.snapshot.paramMap.get('venueId') ??
+      this.route.snapshot.paramMap.get('venueId') ??
+      '',
   );
 }
 
