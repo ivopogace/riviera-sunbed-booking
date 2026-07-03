@@ -70,14 +70,27 @@ export class VenueEditor {
   // --- Commodities (T7 #140): amenity toggles + distance-to-water, edited on the loaded venue ---
   /** The full fixed catalogue, rendered as toggle chips. */
   protected readonly amenityCatalogue = AMENITY_CATALOGUE;
-  /** The working amenity set, seeded from the re-read venue (re-seeds after each reload). */
-  protected readonly amenityDraft = linkedSignal(
-    () => new Set<Amenity>(this.venue()?.amenities ?? []),
-  );
-  /** The metres field as a string, seeded from the re-read venue (blank when not stated). */
-  protected readonly distanceDraft = linkedSignal(() => {
-    const metres = this.venue()?.distanceToWaterM;
-    return metres != null ? String(metres) : '';
+  /**
+   * The working amenity set. Seeded from the venue when a DIFFERENT venue loads, but PRESERVED
+   * across an unrelated read-back of the same venue (a set add/remove/pool-toggle also reloads
+   * `venue()`) — otherwise the operator's in-progress toggles would silently revert (#140 review).
+   */
+  protected readonly amenityDraft = linkedSignal<VenueMapView | undefined, Set<Amenity>>({
+    source: this.venue,
+    computation: (venue, previous) =>
+      previous && previous.source?.id === venue?.id
+        ? previous.value
+        : new Set<Amenity>(venue?.amenities ?? []),
+  });
+  /** The metres field as a string — same re-seed-only-on-a-different-venue rule as {@link amenityDraft}. */
+  protected readonly distanceDraft = linkedSignal<VenueMapView | undefined, string>({
+    source: this.venue,
+    computation: (venue, previous) => {
+      if (previous && previous.source?.id === venue?.id) {
+        return previous.value;
+      }
+      return venue?.distanceToWaterM != null ? String(venue.distanceToWaterM) : '';
+    },
   });
 
   // --- Create-venue form ---

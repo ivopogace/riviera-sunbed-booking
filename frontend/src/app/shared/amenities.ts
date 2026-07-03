@@ -57,7 +57,9 @@ function humanizeAmenity(code: string): string {
 
 /** The display label for an amenity code; humanizes an unknown code rather than throwing. */
 export function amenityLabel(code: string): string {
-  return AMENITY_LABELS[code as Amenity] ?? humanizeAmenity(code);
+  // Object.hasOwn (not a bracket-`!== undefined` check) so a code that collides with an inherited
+  // Object.prototype member ('valueOf', 'toString', …) is treated as unknown, not as a "label".
+  return Object.hasOwn(AMENITY_LABELS, code) ? AMENITY_LABELS[code as Amenity] : humanizeAmenity(code);
 }
 
 /**
@@ -66,7 +68,9 @@ export function amenityLabel(code: string): string {
  * defensively so a stale/unknown code can never reorder the row or render an unlabelled chip.
  */
 export function orderedAmenities(codes: readonly string[]): Amenity[] {
-  const known = codes.filter((code): code is Amenity => AMENITY_LABELS[code as Amenity] !== undefined);
+  // Object.hasOwn, not bracket `!== undefined`: a code equal to an inherited Object.prototype member
+  // ('valueOf', 'hasOwnProperty', …) must be dropped as unknown, not passed through as a chip.
+  const known = codes.filter((code): code is Amenity => Object.hasOwn(AMENITY_LABELS, code));
   return [...new Set(known)].sort(
     (a, b) => AMENITY_CATALOGUE.indexOf(a) - AMENITY_CATALOGUE.indexOf(b),
   );

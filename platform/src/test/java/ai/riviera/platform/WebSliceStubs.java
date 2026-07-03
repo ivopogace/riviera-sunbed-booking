@@ -53,6 +53,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
@@ -314,5 +315,10 @@ class WebSliceStubs {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}
 		};
+	}
+
+	@Bean
+	EditVenueProfile editVenueProfile() {
+		return (operator, venueId, command) -> new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 	}
 }

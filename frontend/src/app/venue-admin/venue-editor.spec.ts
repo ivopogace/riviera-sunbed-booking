@@ -451,6 +451,34 @@ describe('VenueEditor', () => {
     expect(active).toEqual(expect.arrayContaining(['Beach bar', 'WiFi']));
   });
 
+  it('preserves in-progress commodity toggles across an unrelated set-edit read-back (#140 review)', async () => {
+    await createVenue();
+    await addSet();
+
+    // Toggle an amenity but do NOT save; then remove the set — an unrelated write that reloads venue().
+    clickButton('Beach bar');
+    fixture.detectChanges();
+    clickButton('Remove');
+    await fixture.whenStable();
+    httpMock
+      .expectOne(
+        (r) => r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
+      )
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/5'))
+      .flush(venueView(5, [])); // the reloaded venue has no persisted amenities
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The unsaved Beach bar toggle SURVIVES the read-back (not reverted to the venue's empty set).
+    const beachBar = Array.from(host().querySelectorAll('.chip-toggle')).find(
+      (b) => b.textContent?.trim() === 'Beach bar',
+    );
+    expect(beachBar?.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('rejects a non-integer distance-to-water client-side without calling the server', async () => {
     await createVenue();
     setField('Distance to water', '1.5'); // not clean digits → must not be truncated and sent

@@ -33,6 +33,16 @@ describe('amenities catalogue (shared vocabulary, T7 #140)', () => {
     ]);
   });
 
+  it('drops codes that collide with Object.prototype members (prototype-pollution guard)', () => {
+    // 'valueOf'/'toString'/'hasOwnProperty' are inherited members of AMENITY_LABELS — a bracket
+    // `!== undefined` check would wrongly pass them; Object.hasOwn drops them.
+    expect(orderedAmenities(['BEACH_BAR', 'valueOf', 'toString', 'hasOwnProperty'])).toEqual([
+      'BEACH_BAR',
+    ]);
+    // And amenityLabel humanizes such a code rather than returning the inherited function.
+    expect(amenityLabel('valueOf')).toBe('Valueof');
+  });
+
   it('renders the to-water label, or null when the distance is absent', () => {
     expect(distanceToWaterLabel(15)).toBe('15m to water');
     expect(distanceToWaterLabel(null)).toBeNull();
