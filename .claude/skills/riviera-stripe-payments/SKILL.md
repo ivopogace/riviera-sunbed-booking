@@ -5,143 +5,96 @@ description: The locked payment model and Stripe integration conventions for the
 
 # Riviera Stripe Payments
 
-## The decision, in one paragraph (do not silently reverse this)
+## The locked decision
 
-The company is registered in **Germany** (Stripe-supported). Tourists pay via
-**Stripe** (cards, Apple Pay, Google Pay, SEPA) and the money lands in the German
-business account. Venues are in **Albania, where Stripe does not operate**, so
-**Stripe Connect is NOT used** — there is no auto-split, no connected accounts, no
-Connect payouts. Instead the platform **collects everything, then pays each venue
-manually** in a weekly batch by domestic transfer from the founder's Albanian
-**BKT** account, minus commission. The app integrates **one gateway (Stripe) for
-collection only**, behind a clean interface, and runs its own payout ledger.
+Collect all tourist payments via **Stripe** into the German entity; pay venues
+**manually** in weekly BKT batches minus commission — **no Stripe Connect**. The
+locked authority is `docs/adr/0002-collect-only-payments-no-stripe-connect.md` —
+context, consequences, and rejected alternatives live there, not here.
 
 This is settled. If a task seems to want Connect (`Account`, `Transfer`,
 `application_fee`, `on_behalf_of`, destination charges), stop — that path cannot
 reach Albanian venues. Surface it as an open question, don't build it.
 
-## Why it's built this way
-
-- **Stripe Connect payouts require the connected account's country to be
-  supported. Albania isn't.** So the obvious marketplace pattern (destination
-  charges that split to each venue) is structurally impossible here. Verified
-  during design; see the spec §5.
-- **Collect-and-disburse is the standard small-marketplace fallback** and is
-  trivial at v1 scale (5–15 venues): one inbound gateway, a payout ledger, a
-  weekly manual transfer batch. It also keeps the app **gateway-agnostic** — the
-  domain depends on an outbound `PaymentGateway` port (internal, in
-  `payment.application`), not on Stripe types.
-- **Manual payout is a feature at this scale, not debt.** It avoids the KYC /
-  onboarding / payment-institution weight of Connect for a seasonal business with
-  a handful of venues. (A `Steuerberater` confirms the "collect on the venue's
-  behalf" legal framing — that's a business task, not an app concern.)
+Operationally this stays cheap: collect-and-disburse is trivial at v1 scale (5–15
+venues), and the internal `PaymentGateway` port (`payment.application`) keeps the
+app **gateway-agnostic** — the domain never touches Stripe types.
 
 ## Integration conventions
 
-These make the relevant cross-cutting invariants concrete for payments. The
-numbers reference `CLAUDE.md`.
+Invariant numbers reference `CLAUDE.md`.
 
 ### Collection (the `payment` module)
 
-- **Use PaymentIntents (or Checkout Sessions) — collection only.** No Connect
-  primitives. The `payment` module exposes the **inbound** `api/` port
-  `CheckoutPort` — `PaymentOutcome pay(BookingRef, Money)` (in `payment.api`) —
-  that `booking` calls; the Stripe SDK sits behind the **outbound** `PaymentGateway`
-  port (internal, in `payment.application`, implemented by
-  `adapter/out/StripePaymentGateway`). Keep the two ports distinct (invariant #11) —
-  one is driving, one is driven — and neither leaks payout concerns.
-- **Webhooks are the source of truth (invariant #8).** A booking is confirmed when
-  the `payment_intent.succeeded` (or `checkout.session.completed`) webhook is
-  received and **its signature is verified** — never from the browser redirect.
-  The client redirect is a UX convenience only.
-- **Idempotency everywhere money moves.** Pass a Stripe idempotency key on charge
-  and refund creation (derive it from `BookingId` + operation). Webhook handlers
-  must be idempotent: Stripe can deliver the same event more than once, so dedupe
-  on the Stripe event id and make the state transition a no-op if already applied.
-- **Money is integer minor units in EUR (invariant #5).** Convert at the Stripe
-  boundary only. Never carry a `double`/`float` amount.
-- **Store the Stripe ids, not the card data.** Persist `payment_intent` id,
-  `charge` id, and refund ids; never touch raw PAN/CVV (that's Stripe Elements'
-  job, which keeps you out of PCI scope).
+- **Use PaymentIntents (or Checkout Sessions) — collection only.** The `payment`
+  module exposes the **inbound** `api/` port `CheckoutPort` —
+  `PaymentOutcome pay(BookingRef, Money)` (in `payment.api`) — that `booking` calls;
+  the Stripe SDK sits behind the **outbound** `PaymentGateway` port (internal, in
+  `payment.application`, implemented by `adapter/out/StripePaymentGateway`). Keep
+  the two ports distinct (invariant #11) — one driving, one driven — and neither
+  leaks payout concerns.
+- **Webhooks are the source of truth (invariant #8):** confirm only on the
+  signature-verified `payment_intent.succeeded` / `checkout.session.completed`
+  event — the client redirect is a UX convenience, never a confirmation.
+- **Idempotency everywhere money moves:** derive the Stripe idempotency key from
+  `BookingId` + operation on charge/refund creation; webhook handlers dedupe on
+  the Stripe event id (Stripe re-delivers) and no-op if already applied.
+- **Money:** invariant #5; convert at the Stripe boundary only.
+- **Store Stripe ids, not card data:** persist `payment_intent`, `charge`, and
+  refund ids; raw PAN/CVV is Stripe Elements' job (keeps you out of PCI scope).
 
 ### Request-to-Book vs Instant Book (booking-mode money timing)
 
-Venues choose Instant Book or Request-to-Book per venue (CLAUDE.md, `venue`
-module). The two modes charge differently — pin this down rather than re-derive it:
+Venues choose the mode per venue (`venue` module); the two charge differently —
+pin this down rather than re-derive it:
 
-- **Instant Book:** the flow above — pay now → verified webhook → booking
-  `CONFIRMED`. The `(set, date)` row is claimed at booking time (invariant #2).
-  This is the **shipped, built** flow: `StripePaymentGateway` creates an
-  immediate-capture PaymentIntent (`setAutomaticPaymentMethods(enabled=true)`),
-  `ReserveSetService` claims and inserts `AWAITING_PAYMENT` before the Stripe call,
-  and the verified webhook confirms.
-- **Request-to-Book: payment-request-on-accept** (NOT auth-and-capture).
-  Request-to-Book is **built (issue #98)** — the model is: the tourist
-  **requests** (no card charged, no PaymentIntent yet); the `(set, date)` row is
-  soft-held in a **pending** state that blocks other reservations exactly like a
-  confirmed one (invariant #2) and is **released on decline/timeout**; on venue
-  **accept**, the booking moves to `AWAITING_PAYMENT` and a **payment request is
-  issued to the guest** — i.e. a fresh PaymentIntent is created at accept time and
-  the guest pays it, confirmed by the **same verified webhook** as Instant Book.
-  From `AWAITING_PAYMENT` onward the two flows are **byte-for-byte identical**
-  (same PaymentIntent + Elements + webhook spine), so the payment/confirmation
-  code is written once.
-- The request-expiry window (how long a venue has to accept) is a config value
-  (`booking.request.expiry-window`, capped at the evening-before cutoff); expiry
-  releases the soft-hold. The deadline sweep (`ExpireRequestsService` +
-  `RequestSweepScheduler`) is **lockless**, mirroring the existing abandoned-payment
-  sweep's posture — the guarded `UPDATE … RETURNING` transition is the concurrency
-  primitive; the single-instance constraint is documented in
-  `docs/deploy/production-hardening.md`. (An earlier version of this skill said
-  "ShedLock-guarded" — wrong: the existing sweep never used ShedLock; add ShedLock
-  to BOTH sweeps only when scaling out, per improvement-plan D3.) After accept, the
-  guest's pay window is `booking.request.pay-window` measured from `accepted_at`
-  (the abandoned sweep's second clock — never the instant TTL's creation clock).
+- **Instant Book** (shipped): pay now → verified webhook → booking `CONFIRMED`.
+  `StripePaymentGateway` creates an immediate-capture PaymentIntent
+  (`setAutomaticPaymentMethods(enabled=true)`); `ReserveSetService` claims the
+  `(set, date)` row (invariant #2) and inserts `AWAITING_PAYMENT` before the Stripe call.
+- **Request-to-Book** (built, issue #98): **payment-request-on-accept.** The tourist
+  requests — no card charged, **no PaymentIntent yet**; the `(set, date)` row is
+  soft-held pending (blocks like a confirmed booking, invariant #2; released on
+  decline/timeout). On venue **accept**, the booking moves to `AWAITING_PAYMENT` and
+  a **fresh PaymentIntent** is created for the guest, confirmed by the **same
+  verified webhook** as Instant Book — from `AWAITING_PAYMENT` onward the two flows
+  are identical, so the payment/confirmation code is written once.
+- **Windows & sweep:** venue accept deadline = `booking.request.expiry-window`
+  (capped at the evening-before cutoff); guest pay window = `booking.request.pay-window`,
+  measured from `accepted_at` — never the instant TTL's creation clock.
+  `ExpireRequestsService` + `RequestSweepScheduler` run **lockless** like the
+  abandoned-payment sweep (guarded `UPDATE … RETURNING`; single-instance posture per
+  `docs/deploy/production-hardening.md`); ShedLock only when scaling out — improvement-plan D3.
+- Do **NOT** model this as auth-and-capture — the model is payment-request-on-accept; treat any older doc implying manual capture/void as stale.
 
-> **Retraction (was wrong in an earlier version of this skill):** a prior version
-> said Request-to-Book should **"authorize at request, capture on accept"** with a
-> **manual-capture PaymentIntent** voided on decline/timeout. That is **not** the
-> model and contradicts the shipped immediate-capture Instant flow — do **not**
-> build auth-and-capture. The model is **payment-request-on-accept** as above. If a
-> task or older doc implies manual-capture/void, treat it as stale and ignore it.
+### Refunds & cancellation
 
-### Refunds & cancellation (invariant #10)
-
-- Refund **eligibility and amount are computed server-side** from the booking's
-  state and the cancellation policy (free until the evening-before cutoff →
-  full; after → non-refundable/partial; weather → manual admin full refund). The
-  client never tells the server how much to refund.
-- A refund **reverses the payout-ledger accrual** for that booking (invariant #9)
-  — the `payout` module must see the reversal so the venue isn't paid for a
-  refunded booking.
-- The weather exception is **admin-triggered** in v1 (no forecast feed). Model it
-  as an explicit admin action that issues full refunds for a venue+date.
+- Refund **eligibility and amount are computed server-side** per invariant #10's
+  cancellation policy — the client never supplies the amount.
+- A refund **reverses the payout-ledger accrual** for that booking (invariant #9).
+- The weather exception is admin-triggered in v1: model it as an explicit admin
+  action issuing full refunds for a venue+date.
 
 ### Payout (the `payout` module)
 
-- The ledger is the record of **what the platform owes each venue**: each
-  confirmed booking accrues `amount − commission` (commission rate stored per
-  venue, invariant #9); each refund reverses it. **Exactly-once** accrual per
-  booking.
-- Settlement is **out-of-app**: a weekly report lists, per venue, the net owed for
-  the period and the bookings behind it. The founder pays it via BKT and marks the
-  batch settled. v1 does NOT automate the transfer — do not build a Connect/Treasury
-  payout pipeline.
-- Keep payout **currency-aware**: collection is EUR; a venue's payout currency
-  (EUR or ALL) is a venue setting; any conversion happens outside the app at
-  transfer time. The ledger records EUR net plus the venue's payout preference.
+- The ledger records **what the platform owes each venue**: each confirmed booking
+  accrues `amount − commission` (rate stored per venue, invariant #9); each refund
+  reverses it. **Exactly-once** accrual per booking.
+- Settlement is **out-of-app**: a weekly report lists, per venue, the net owed and
+  the bookings behind it; the founder pays via BKT and marks the batch settled.
+- Payout is **currency-aware** per the CLAUDE.md provisional decision (payout
+  currency EUR vs ALL, per venue): the ledger records EUR net plus the venue's
+  preference; any conversion happens outside the app at transfer time.
 
 ## Boundary / module placement
 
-- `payment` and `payout` are **separate modules** (CLAUDE.md). They collaborate
-  with `booking` via events, not direct service calls (invariant #11):
-  - `booking` (or `payment` after a verified webhook) publishes confirmation →
-    `availability` marks the set taken, `payout` accrues the ledger entry.
-  - A cancellation/refund publishes → `availability` frees the set, `payout`
-    reverses the accrual.
+- `payment` and `payout` are **separate modules** collaborating with `booking` via
+  events, not direct calls (invariant #11): a confirmation (published after a
+  verified webhook) → `availability` marks the set taken, `payout` accrues; a
+  cancellation/refund → the set is freed, the accrual reversed.
 - The Stripe SDK and webhook controller live in `payment`'s adapter layer only
-  (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`).
-  The `booking`/`payout` domains never import Stripe types — they speak `Money`,
+  (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`); the
+  `booking`/`payout` domains never import Stripe types — they speak `Money`,
   `BookingId`, and domain events.
 
 ## Testing
@@ -157,31 +110,22 @@ module). The two modes charge differently — pin this down rather than re-deriv
 
 | Thought | Reality |
 |---|---|
-| "I'll use Stripe Connect to split the payment to the venue." | Connect can't pay out to Albanian venues. Collect-only + manual BKT batch is the model. Stop. |
+| "I'll use Stripe Connect to split the payment to the venue." | Connect can't pay out to Albanian venues (ADR-0002). Collect-only + manual BKT batch is the model. Stop. |
+| "Pay the venue straight from Stripe." | There's no Connect (ADR-0002). Payout is a ledger + a manual BKT transfer (invariant #9). |
 | "The frontend got `payment success`, so confirm the booking." | Confirm only on a signature-verified webhook (invariant #8). The redirect lies under retries/closed tabs. |
 | "Stripe delivered the event, just apply it." | Stripe re-delivers. Dedupe on event id; make the transition idempotent, or you double-accrue payouts. |
-| "I'll store the amount as a BigDecimal/float of euros." | Integer minor units only (invariant #5). |
-| "The client can pass the refund amount." | Refund amount is computed server-side from the policy (invariant #10). |
-| "Pay the venue straight from Stripe." | There's no Connect (invariant #8). Payout is a ledger + a manual BKT transfer (invariant #9). |
-| "`stripe:connect-recommend` says use a destination charge / `application_fee`." | That skill doesn't know Albania blocks Connect. This project is collect-only — ignore it (invariant #8). |
 
 ## When NOT to use this skill
 
 - Pure frontend work that doesn't touch the checkout/payment UI.
 - Tasks entirely outside the `payment`/`payout` modules with no money flow.
 
-If a task touches charging, refunding, commission, the payout ledger, or any
-Stripe call, load this skill — the cost of re-deriving (or reversing) the
-collect-only decision is far higher than reading one file.
-
 ## Integration
 
-- **`CLAUDE.md`** — the invariant list this skill makes concrete (#5, #8, #9, #10,
-  #11).
-- **`stripe:stripe-best-practices`** — generic Stripe API guidance (PaymentIntents
-  vs Checkout, webhooks, restricted keys). This skill narrows it to the riviera
-  decision; load both, but **ignore its Connect / Accounts-v2 / connected-account
-  sections** — only the collection-side guidance applies here.
+- **`CLAUDE.md`** — the invariants this skill makes concrete (#5, #8, #9, #10, #11).
+- **`stripe:stripe-best-practices`** — generic Stripe API guidance; load both, but
+  **ignore its Connect / Accounts-v2 / connected-account sections** — only the
+  collection-side guidance applies here.
 - **Do NOT load `stripe:connect-recommend` for this project.** It auto-triggers on
   marketplace / payout / commission language (which describes this whole app) and
   recommends the Connect destination-charge split this project has explicitly
@@ -189,5 +133,5 @@ collect-only decision is far higher than reading one file.
   overrides it.
 - **`stripe:test-cards`, `stripe:explain-error`** — during integration/debugging.
 - **`riviera-review-overlay`** — the review bank that checks these items on a diff.
-- **`codebase-design`** — when designing the booking↔payment↔payout module
-  interfaces and events (id-based payloads per invariant #11).
+- **`codebase-design`** — for the booking↔payment↔payout interfaces and events
+  (id-based payloads per invariant #11).

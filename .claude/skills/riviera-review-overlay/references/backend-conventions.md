@@ -4,7 +4,10 @@ Repo-specific backend bank items. Loaded by `riviera-review-overlay` and walked
 **after** the generic backend bank in `~/.claude/skills/review-question-banks/backend.md`.
 
 Item format mirrors the generic banks: gate → follow-up → default severity → skill
-framing. Invariant numbers reference `CLAUDE.md`.
+framing; items moved in from the overlay SKILL.md body (RV-BE-3c, RV-BE-9..12) keep
+their compact prose form (statement → default severity → authority). Item IDs are
+historical, not sequential — see the note at RV-BE-9. Invariant numbers reference
+`CLAUDE.md`.
 
 ## Always-run (when scope is BE or Full-stack)
 
@@ -114,6 +117,22 @@ is the only thing that catches it — api-vs-spi is semantic, not mechanically d
 
 ---
 
+### RV-BE-3c. Published-surface placement — ports vs vocabulary vs events (#95)
+
+*Check when the published surface or domain tagging changes.* Complements RV-BE-3b
+(api/spi). A typed id / value record or a published event must not be added to a
+ports `api/` surface; events belong in the events named interface, vocabulary in
+the vocabulary surface. A new method piled onto the `VenueCatalog` god-port
+(instead of the role-named `SetBookingFacts`/`VenueRates` split) is a finding.
+Default **Major**. This is enforced by `PublishedSurfacePlacementArchitectureTests`
+(landed with issue #95: api/spi = non-sealed interfaces only, events = records
+only, vocabulary = no plain interfaces, cross-module listener params in the owner's
+events surface) — verify that rule passes and judge the cases it can't (is a new
+type genuinely vocabulary?). An event class move must ship an `event_type` Flyway
+rewrite (Event Publication Registry) — see V18.
+
+---
+
 ### RV-BE-4. Domain events carry ids, not aggregates (invariant #11)
 **Gate:** Do domain-event payloads carry technical ids only?
 - [ ] no events  [ ] payload is ids (`BookingId`, `SetId`, `VenueId`, `bookingDate`)  [ ] payload embeds a full aggregate / foreign module type (violation)  [ ] payload carries mutable business fields (email, name) as identity (smell)
@@ -202,6 +221,106 @@ hardcoded commission.
 **Skill framing:**
 - Peer-review: "Confirm the accrual is idempotent per booking and that a refund
   reverses it. Trace where commission rate comes from."
+
+---
+
+> **Item IDs are historical, not sequential** — an item keeps the ID it entered the
+> bank with. RV-BE-9..12 below moved here from the overlay SKILL.md body with their
+> IDs intact; the file's earlier, unrelated 9..12 were renumbered to RV-BE-14..17.
+> Do not renumber.
+
+### RV-BE-9. Per-venue authorization / BOLA (invariant #13)
+
+Any diff that touches a **venue-scoped** endpoint or service
+(`/api/venues/{venueId}/**`, the payout ledger, staff bookings, beach-map edit,
+staff availability, weather refund) must verify the **authenticated operator owns
+the path `venueId`** — and that the check sits in the **application service**, not
+the controller alone. The check is the `operator` module's `assertOwns` consulted
+from the application service (shipped #73/#74, pinned by `CrossVenueDenialIT`) —
+verify any **new** venue-scoped surface calls it too, and that no driving adapter
+bypasses it. A shared role is necessary but not sufficient (OWASP API #1, BOLA) —
+default **Blocker** whenever a venue-scoped surface is touched. Platform-wide
+`/api/admin/**` is role-gated and exempt. (Authority: invariant #13.)
+
+---
+
+### RV-BE-10. Error contract (`riviera-java-conventions` §6b)
+
+A controller introducing a bespoke `{"error": …}` body or a per-controller
+`@ExceptionHandler` instead of the centralized `@RestControllerAdvice` /
+`ProblemDetail` contract is a finding once the contract is in place. Default
+**Minor** (Major if it diverges the wire shape clients depend on). (Authority:
+`riviera-java-conventions` §6b.)
+
+---
+
+### RV-BE-11. Module responsibility placement (`RESPONSIBILITIES.md`)
+
+*Check whenever the diff adds or moves behavior.* The backstop for a boundary that
+slipped past the plan gate — including a plan that *said* one owner and code that
+landed in another. Check that each changed file's logic belongs to **that** module
+per `RESPONSIBILITIES.md`: it serves the module's **Job** and is **not** on the
+module's **Not My Job** list. If the plan doc carries a Module-ownership table
+(plan-doc §4a), diff the code against it: *the plan claimed `booking` owns this
+refund math — did it land in `booking`, or in `payment`?*
+
+**This item is split by what's checkable.** The **structural** half is enforced by
+the always-on ArchUnit/`ModularityTests` fitness functions (below) — if those are
+green, don't re-verify by eye. The **semantic** half — a *policy*, *decision*, or
+*calculation* reimplemented in the wrong module with no illegal import — is
+**not** machine-catchable and is the reason this item needs human judgment.
+
+**Observable tells of a slip (the symptoms to scan the diff for):**
+- **A calculation or policy in an "executor" module.** Refund-amount or
+  cancellation-policy logic appearing inside `payment` (it *executes*; `booking`
+  *decides*). Commission/payout arithmetic inside `venue` or `booking` (`payout`
+  computes; `venue` only stores the *rate*). This is the highest-value tell and the
+  one no rule catches.
+- **A new writer to another module's table.** Any code outside `availability`
+  writing the `(set, date)` state (invariant #2 / `availability` is the sole
+  writer). *(ArchUnit-catchable.)*
+- **A forbidden cross-module reach.** `booking` importing the Stripe SDK or
+  `payment.adapter`; any module reaching into another's `domain`/`internal`
+  instead of its `api/`. *(ArchUnit-catchable.)*
+- **An event payload carrying a foreign aggregate or business field** instead of ids
+  — the Need-To-Know boundary (a `payout`/`availability` listener receiving tourist
+  identity, a `Customer`, or a full `Booking`). *(Partly ArchUnit-catchable.)*
+- **A capability that RESPONSIBILITIES.md assigns elsewhere** showing up in this
+  module at all — e.g. `customer` growing a login/MFA subsystem (auth is a
+  platform/edge concern, not tourist-identity domain), or `operator` sitting in every
+  request path instead of owning the mapping and answering the ownership question.
+
+**Default severity:** **Major** (Blocker when the misplacement also breaks a Blocker
+invariant — a non-`availability` writer to the set table is RV-BE-1; a missing
+ownership check is RV-BE-9). Authority: `RESPONSIBILITIES.md` (Job / Not-My-Job per
+module).
+
+---
+
+### RV-BE-12. Package-shape conformance (ADR-0007)
+
+Check any diff that adds or moves packages against the two-template layout.
+**Findings:**
+- **a `.in`/`.out` split at the *application* layer** (`application/in`, `application/out`)
+  — that split was removed; internal ports live in `application/` next to their service,
+  and direction lives at the adapter layer.
+- **`api`/`spi` nested under `application`** (or anywhere non-top-level) — the published
+  surface must stay top-level and exposed, or Modulith hides it.
+- **the adapter layer spelled by technology instead of direction** — `adapter/rest`,
+  `adapter/jdbc`, `adapter/event` at the top level instead of `adapter/in` + `adapter/out`
+  (technology, if needed, is a *sub*-package: `adapter/in/rest`).
+- **a package outside the allowed top-level set** `{api, spi, application, domain, adapter}`
+  (thin module: `{api, adapter}` only) — e.g. a lingering `infrastructure/`.
+- **an adapter dependency pointing inward's opposite** — `application`/`domain` importing
+  `adapter.*` (the hexagon runs adapter → application/domain, never back).
+- **a thin (serviceless) module grown an empty `application/` or `domain/`** — ghost
+  packages; a thin module is `api/` + `adapter/out/`. Conversely, a module that *gained*
+  a service but kept the thin shape should **graduate** to full.
+
+Structural half → `PackageShapeArchitectureTests` (always-on); the **thin-vs-full
+judgment** and the "is this the right use-case slice" call → review. Default **Major**
+(Minor for a cosmetic mis-slice inside a module). Authority: `ADR-0007` +
+`riviera-modulith`.
 
 ---
 

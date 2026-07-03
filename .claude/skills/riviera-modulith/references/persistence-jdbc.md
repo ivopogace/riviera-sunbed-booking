@@ -2,8 +2,10 @@
 
 JPA/Hibernate is forbidden (invariant #1). This project's **default** persistence is
 **`JdbcClient` + explicit text-block SQL**, not Spring Data JDBC aggregates. That is the inverse of
-most tutorials — get it right. (Language-level detail lives in `riviera-java-conventions` §1/§1a;
-SQL/schema/index craft in `postgres`. This file covers where persistence sits in the hexagon.)
+most tutorials — get it right. (Language-level detail lives in `riviera-java-conventions` §1;
+SQL/schema/index craft in `postgres`. This file covers where persistence sits in the hexagon and is
+the **canonical home of the Spring Data JDBC aggregate rules** — `riviera-java-conventions` §1a
+points here.)
 
 ## Default: `JdbcClient` + explicit SQL (what every existing adapter does)
 
@@ -57,8 +59,9 @@ Rules:
 
 Reach for an aggregate **only** when a root and its children are loaded, mutated, and saved together
 as a unit (e.g. a future `Booking` that owns line-items). Then follow Spring Data **JDBC** (not JPA)
-mapping — and keep it inside the module, behind a port. Full rules in `riviera-java-conventions` §1a;
-the essentials:
+mapping — and keep it inside the module, behind a port. These are the **canonical rules** — they keep
+the aggregate aligned with the Modulith boundaries (invariant #11), and several are the
+persistence-level form of decisions we already made:
 
 ```java
 // domain/model — Spring Data RELATIONAL annotations only (NOT jakarta.persistence)
@@ -75,12 +78,31 @@ class Booking {
 }
 ```
 
-- One `ListCrudRepository`/custom `o.s.data.repository.Repository` **per aggregate root only**
-  (Spring Data JDBC, not `JpaRepository`). Queries are **SQL** via `@Query` (not JPQL).
-- Cross-aggregate links are **ids** (`Long setId` / `AggregateReference`), never an embedded object.
-- **No cascade between aggregates** — a cross-aggregate effect is a second explicit `save` or a
-  domain event, never a persistence cascade. (This is the storage-level shape of the U5 event spine.)
-- `save` is explicit — no dirty checking.
+- **The aggregate is the consistency + transaction boundary.** One `ListCrudRepository`/custom
+  `o.s.data.repository.Repository` **per aggregate root only** (Spring Data JDBC, not
+  `JpaRepository`) — never a repository for an entity that lives *inside* an aggregate. Save the
+  root; it persists its children. Queries are **SQL** via `@Query` (not JPQL).
+- **Cross-aggregate references are by id, never by object** (`Long setId` / `AggregateReference`,
+  never an embedded instance). A `Booking` holds a `SetId`/`CustomerId`, not a `Set`/`Customer` —
+  the same rule invariant #11 puts on event payloads, and exactly why `SetId` lives in
+  `venue.vocabulary` (#95).
+- **No cascade between aggregates.** Saving one aggregate must never save another — aggregates are
+  autonomous. A cross-aggregate effect is a second explicit `save` or a domain event, never a
+  persistence cascade. (This is the storage-level shape of the U5 event spine: `BookingConfirmed` →
+  availability marks the set **and** payout accrues, as two independent writes — not one cascading
+  save.)
+- **Inside an aggregate, references go root → child only, and unidirectional.** No child→root
+  back-reference, no bidirectional object graphs; the child row carries the root's FK in the DB.
+- **Model M:N join tables explicitly** as their own type (e.g. a `ProductCategory` row). Spring
+  Data JDBC has no JPA-style hidden join table — and explicit is what we want anyway.
+- **`save` is explicit.** There is no JPA dirty-checking / autoflush: a load-then-mutate with no
+  `save` persists nothing. Write the `save`.
+- **Mind the imports** (the classic footgun): `org.springframework.data.annotation.@Id` and
+  `org.springframework.data.relational.core.mapping.@Table`/`@Column`/`@MappedCollection` — never
+  the `jakarta.persistence` annotations of the same simple name.
+
+*(Aggregate rules distilled from a JPA→Spring Data JDBC migration write-up — we have no JPA to
+migrate, but these are the right way to use Spring Data JDBC from the start.)*
 
 ## JPA anti-patterns to REFUSE (convert and say why)
 

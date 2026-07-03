@@ -130,27 +130,18 @@ The only place providers are wired:
 ## External reference
 
 [Ismaestro/angular-example-app](https://github.com/Ismaestro/angular-example-app)
-(Angular 21, standalone/signals/zoneless, actively maintained) uses the same
-`core/`/`shared/`/feature taxonomy — community validation that this layout is
-mainstream, not house idiosyncrasy. Two deltas, both deliberate: (1) it nests
-domain folders under a `features/` wrapper; we keep them flat — **adopt the
-wrapper only if the app grows past ~8–10 feature folders** (mechanical move,
-update this skill then). (2) It demos **JWT auth; do not import that** — this
-project chose server-side sessions on merits
-(`docs/architecture/auth-signin-register.md` D-1); the example repo is not an
-argument to reopen it.
+uses the same `core/`/`shared/`/feature taxonomy. Two deliberate deltas: **adopt
+its `features/` wrapper only past ~8–10 top-level feature folders** (mechanical
+move; update this skill then); and do **not** import its JWT-auth pattern — the
+auth decision is ADR'd (`docs/architecture/auth-signin-register.md` D-1).
 
 ## When NOT to apply
 
 - Generated files (`angular.json`, CI workflows) — devops conventions rule there.
-- The *content* of components/services — that's `angular-developer` +
-  `frontend/.claude/CLAUDE.md`.
+- The *content* of components/services — `angular-developer` + `frontend/.claude/CLAUDE.md` own the how.
 
 ## Integration
 
-- **`riviera-sdlc`** routes any frontend change here (Skill-routing gate) along
-  with `angular-developer` + the angular-cli MCP + `playwright-cli`.
-- **`riviera-review-overlay`** RV-FE-* verifies the outcome; a placement this
-  skill forbids is a review finding.
-- Backend structure questions → `riviera-modulith`; this skill is its mirror on
-  the Angular side.
+- **`riviera-sdlc`** routes any frontend change here (Skill-routing gate), alongside `angular-developer` + the angular-cli MCP + `playwright-cli`.
+- **`riviera-review-overlay`** RV-FE-* verifies the outcome; a placement this skill forbids is a review finding.
+- Backend structure questions → `riviera-modulith`; this skill is its Angular-side mirror.

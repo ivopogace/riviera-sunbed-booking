@@ -30,14 +30,10 @@ write Java," referencing invariants by number where they bite.
   `jakarta.persistence.@Table`, `jakarta.persistence.@Id`, `@OneToMany`/`@ManyToOne`,
   `EntityManager` — `org.hibernate.*`, `JpaRepository`, or `spring-boot-starter-data-jpa`.
   Persistence is `JdbcClient` / `JdbcTemplate` with **explicit SQL**.
-- **`@Table`/`@Id` are package-sensitive — disambiguate, don't blanket-ban.** The
-  `jakarta.persistence` ones are JPA → forbidden. But
-  `org.springframework.data.relational.core.mapping.@Table` and
-  `org.springframework.data.annotation.@Id` are **Spring Data JDBC** mapping annotations,
-  which invariant #1 explicitly permits — use them **only** on a genuine Spring Data JDBC
-  aggregate root that earns it (otherwise prefer `JdbcClient` + explicit SQL, the repo's
-  default). `JdbcOnlyArchitectureTests` enforces this precisely: it probes
-  `jakarta.persistence.*`/`org.hibernate.*`, not the annotation simple-name.
+- **`@Table`/`@Id` are package-sensitive — disambiguate, don't blanket-ban:**
+  `jakarta.persistence` = JPA = forbidden; `org.springframework.data.relational.core.mapping.@Table`
+  / `org.springframework.data.annotation.@Id` = Spring Data JDBC = permitted, but only on a genuine
+  aggregate root (§1a). `JdbcOnlyArchitectureTests` probes the packages, not annotation simple-names.
 - **No Lombok.** No `@Data`/`@Getter`/`@Builder`/`@RequiredArgsConstructor`. Records give
   you immutability + accessors + equals/hashCode with zero magic; for the rare mutable
   holder, write the constructor by hand. Lombok is not a dependency and must not become one.
@@ -45,37 +41,14 @@ write Java," referencing invariants by number where they bite.
   `JdbcVenueCatalog` / `JdbcAvailabilityClaim`. Bind with named params (`:id`), never string
   concatenation.
 
-### 1a. If a Spring Data JDBC aggregate earns it — model it correctly
+### 1a. If a Spring Data JDBC aggregate earns it
 
-The repo's default is `JdbcClient` + explicit SQL. Reach for a Spring Data JDBC **aggregate**
-only when a cluster of rows is genuinely one consistency unit (loaded, mutated, and saved
-together). When you do, follow these rules — they keep the aggregate aligned with the
-Modulith boundaries (invariant #11), and several are the persistence-level form of decisions
-we already made:
-
-- **The aggregate is the consistency + transaction boundary.** One repository
-  (`CrudRepository`/`ListCrudRepository`) **per aggregate root only** — never a repository for
-  an entity that lives *inside* an aggregate. Save the root; it persists its children.
-- **Cross-aggregate references are by id, never by object.** A `Booking` holds a
-  `SetId`/`CustomerId`, not a `Set`/`Customer` instance — the same rule invariant #11 puts on
-  event payloads, and exactly why `SetId` lives in `venue.vocabulary` (#95).
-- **No cascade between aggregates.** Saving one aggregate must never save another — aggregates
-  are autonomous. A cross-aggregate effect happens via a **domain event** or a second explicit
-  `save`, not a persistence cascade. (This is the storage-level shape of the event spine:
-  `BookingConfirmed` → availability marks the set **and** payout accrues, as two independent
-  writes — not one cascading save.)
-- **Inside an aggregate, references go root → child only, and unidirectional.** No child→root
-  back-reference, no bidirectional object graphs; the child row carries the root's FK in the DB.
-- **Model M:N join tables explicitly** as their own type (e.g. a `ProductCategory` row).
-  Spring Data JDBC has no JPA-style hidden join table — and explicit is what we want anyway.
-- **`save` is explicit.** There is no JPA dirty-checking / autoflush: a load-then-mutate with
-  no `save` persists nothing. Write the `save`.
-- **Mind the imports** (the classic footgun): `org.springframework.data.annotation.@Id` and
-  `org.springframework.data.relational.core.mapping.@Table`/`@Column`/`@MappedCollection` —
-  never the `jakarta.persistence` annotations of the same simple name (see rule 1).
-
-*(Distilled from a JPA→Spring Data JDBC migration write-up — we have no JPA to migrate, but
-these are the right way to use Spring Data JDBC from the start.)*
+Reach for an aggregate **only** when a cluster of rows is genuinely one consistency unit (loaded,
+mutated, and saved together); the repo default stays `JdbcClient` + explicit SQL. The canonical
+aggregate rules (one repository per root, id-only cross-aggregate references, no cascade between
+aggregates, root→child-only navigation, explicit M:N join types, explicit `save`, the
+jakarta-imports footgun) live in **`riviera-modulith/references/persistence-jdbc.md`** — read them
+before modeling one.
 
 ### 2. Data shapes: records for DTOs, value objects, and ids
 
@@ -156,50 +129,19 @@ these are the right way to use Spring Data JDBC from the start.)*
 
 ### 6b. Request validation & error contract (one contract, shipped by #97)
 
-Every API error is an **RFC-7807 `ProblemDetail`** (`application/problem+json`) carrying a
-stable machine-readable **`code`** extension. The shape is built in exactly two places:
+Every API error is an **RFC-7807 `ProblemDetail`** (`application/problem+json`) with a stable
+machine-readable **`code`** extension, built in exactly two places: **`ApiProblem`** (the one
+factory for the wire shape — controllers use it when a typed-outcome `switch` rejects) and
+**`ApiErrorHandler`** (the **single** `@RestControllerAdvice` for everything thrown).
+**Per-controller `@ExceptionHandler`s are forbidden** — `ErrorContractArchitectureTests` enforces.
+Never leak internals into `detail`: no booking code (invariant #7), no exception message. Full
+mechanics, the status map, and the #97 no-`@Valid` decision: `references/error-contract.md`.
 
-- **`ApiProblem`** (root package) — the one factory for the wire shape. Controllers use it
-  when an exhaustive typed-outcome `switch` rejects (typed outcomes are returned, not thrown
-  — §6 — so an advice never sees them). `detail` must be safe for any caller: never a booking
-  code (invariant #7), an exception message, or another internal echo.
-- **`ApiErrorHandler`** (root package) — the **single** `@RestControllerAdvice` for
-  everything thrown: `IllegalArgumentException` → `400 INVALID_REQUEST`,
-  `DataIntegrityViolationException` → `409 CONFLICT` (the constraint-race backstop,
-  invariant #12), `NotVenueOwnerException`/`AccessDeniedException` → `403` (invariant #13);
-  it extends `ResponseEntityExceptionHandler` so framework errors carry the same shape.
-  **Per-controller `@ExceptionHandler`s are forbidden** — machine-locked by
-  `ErrorContractArchitectureTests`. (`RateLimitFilter` mirrors the shape by hand: it rejects
-  before MVC dispatch.)
-- **Where validation lives.** Presence/shape/format checks belong at the edge (the DTO's
-  `toCommand()`), domain invariants in the value object's canonical constructor (`Money`,
-  ids) and the application service. Keep HTTP-status mapping out of the domain — the
-  controller/advice maps a typed outcome or exception to a status.
-- **Status mapping, centrally defined:** availability/uniqueness conflicts → `409`;
-  not-bookable/cutoff → `422`; unknown id → `404`; malformed body → `400`; ownership → `403`;
-  rate limit → `429`. Framework-raised errors carry a **derived stable code**: `400` →
-  `INVALID_REQUEST`, otherwise the HTTP status name (`METHOD_NOT_ALLOWED`,
-  `UNSUPPORTED_MEDIA_TYPE`, …) — pinned by `ApiErrorHandlerTest`.
-- **`instance` is redacted by construction.** Spring auto-fills a null ProblemDetail
-  `instance` with the raw request URI — on `/api/bookings/{code}` paths that is the bearer
-  credential (invariant #7). `ApiProblem` pins every body to `about:blank` (the advice
-  re-applies it to framework-built bodies); a controller may override with a known-safe URI
-  (`BookingController` uses its collection path).
+### 7. Money & time (invariants #5, #6 — canonical in CLAUDE.md)
 
-> **Decision settled at #97's plan stage:** **centralized-explicit validation** — hand-rolled
-> checks in `toCommand()` throwing `IllegalArgumentException`, mapped once by the advice.
-> `spring-boot-starter-validation`/`@Valid` was deliberately **not** adopted (three DTOs whose
-> checks are parse/cross-field logic; annotations would split validation across two
-> mechanisms; explicit code in records is the house idiom). Reversible in one dependency line
-> if the DTO count ever makes annotations pay — rationale in
-> `docs/plans/error-contract-problemdetail.md`.
-
-### 7. Money & time (invariants #5, #6 — details in CLAUDE.md)
-
-- Money is `long`/`int` **minor units** + an ISO currency string. Never `double`/`float`/
-  `BigDecimal`-as-currency, never `NUMERIC` columns for amounts.
-- `java.time` only: store UTC `Instant`; a booking *date* is a `LocalDate` (civil day,
-  reasoned in `Europe/Tirane`). Never the JVM default zone, never `java.util.Date`/`Calendar`.
+Money is integer **minor units** + ISO currency (invariant #5); time is UTC `Instant`, with booking
+dates as `LocalDate` reasoned in `Europe/Tirane` (invariant #6). Stripe-boundary currency handling
+belongs to `riviera-stripe-payments`.
 
 ### 8. Concurrency & virtual threads
 
@@ -214,9 +156,9 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
 
 - JUnit 5, plain `assertEquals`/`assertThrows` (the repo's current style) — match the
   surrounding test's assertion library, don't introduce a new one.
-- DB behaviour → **Testcontainers** integration tests (`@SpringBootTest` +
-  `@Import(TestcontainersConfiguration.class)` + `@EnabledIfDockerAvailable`), against real
-  Postgres. The highest-stakes invariant (#2) gets a real concurrency test, not a mock.
+- DB behaviour → **Testcontainers** integration tests against real Postgres; the
+  highest-stakes invariant (#2) gets a real concurrency test, not a mock. Harness annotations
+  + the Modulith test DSL: `riviera-modulith/references/testing.md`.
 - Don't mock what you can test for real cheaply; reserve test doubles for true seams.
 
 ### 10. Logging & secrets
@@ -265,9 +207,15 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
   boundaries, money/time, booking-code security).
 - **`CLAUDE.md`** — the numbered invariants this skill references; that file is canonical.
 
+## References
+
+- **`references/error-contract.md`** — `ApiProblem`/`ApiErrorHandler` mechanics, the status map,
+  `ErrorContractArchitectureTests`, and the #97 validation decision behind §6b.
+- **`riviera-modulith/references/persistence-jdbc.md`** — the canonical Spring Data JDBC
+  aggregate rules behind §1a, and the `JdbcClient` adapter pattern behind §1.
+- **`riviera-modulith/references/testing.md`** — the Modulith/Testcontainers test harness behind §9.
+
 ## Provenance
 
-Project-authored (no third-party code vendored). Informed by the *generic, non-JPA* parts of
-reputable community Java skills (e.g. Kousen's Spring Boot skill, the `java-architect`
-skill) — their JPA/Lombok defaults were deliberately **excluded** because they contradict
-invariant #1.
+Project-authored; informed by the *generic, non-JPA* parts of reputable community Java skills —
+their JPA/Lombok defaults were deliberately **excluded** (they contradict invariant #1).

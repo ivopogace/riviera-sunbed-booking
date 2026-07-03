@@ -31,7 +31,17 @@ ready. `N/A — <reason>` only for a truly single-area trivial slice.>
 ## Acceptance criteria (testable)
 
 > **Mandatory before phase 0.** Each item is "Given X, when Y, then Z" and names a
-> test class. Prose is not an AC.
+> test class. Prose is not an AC. **Write each AC against the application boundary —
+> the inner hexagon — not the outside technology.** Cockburn's 2005 ports-and-adapters
+> article: *"use cases should generally be written at the application boundary (the
+> inner hexagon), to specify the functions and events supported by the application,
+> regardless of external technology."* So phrase the AC in domain terms
+> (`AvailabilityClaim` succeeds / `BookingConfirmed` is published / the ledger
+> accrues once) rather than in terms of the Angular button, the Stripe redirect, or
+> the HTTP status alone. Tech-specific assertions belong in an adapter-level test,
+> not in the core AC — this keeps the criteria shorter, stable across
+> UI/payment-adapter churn, and reusable from any driving adapter (test harness,
+> GUI, future app-to-app).
 
 - [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Pinned by:* `<TestClassName>.<testMethodName>`
 - [ ] **AC-2:** ...
@@ -45,6 +55,21 @@ ready. `N/A — <reason>` only for a truly single-area trivial slice.>
 ## Risk register
 
 > First-class section. Each row has a mitigation, an owner, and a resolution state.
+> Fill before phase 0; use the `grilling` skill if risks aren't yet visible.
+> Categories that already matter in this project: concurrent reservation of the
+> same set (invariant #2), Stripe webhook duplicate/out-of-order delivery (#8),
+> payout double-accrual (#9), timezone/cutoff arithmetic (#4/#6), money rounding
+> (#5), module boundary leaks (#11), per-venue authorization on any venue-scoped
+> endpoint (an operator must only reach their own venue's data — BOLA; if the slice
+> touches `/api/venues/{venueId}/**`, the payout ledger, staff bookings, or
+> beach-map edit, state how ownership is verified in the application service), and
+> any temptation toward JPA or Stripe Connect. If the slice adds or changes a
+> request DTO or an endpoint's error responses, note the error-contract expectation
+> (centralized `ProblemDetail`, not a per-controller `{"error": …}` body —
+> `riviera-java-conventions` §6b). If the slice adds a Flyway migration, the plan
+> may only claim `V<n>` after verifying the number is free on `main` AND unclaimed
+> by any open PR's diff — and it names who renumbers if a parallel slice merges
+> first (default: whoever merges second).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
@@ -84,7 +109,8 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 
 > **Mandatory if any backend code is in scope. Frontend-only: `N/A — frontend-only`.**
 > Boundaries per invariant #11. Use `codebase-design` for module interfaces/seams;
-> the boundary & id-based-event rules are checked by `riviera-review-overlay`.
+> the boundary & id-based-event rules are checked by `riviera-review-overlay` and
+> the `ApplicationModules.verify()` test.
 
 **Modules touched**
 
@@ -103,6 +129,26 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 | # | Event | Published by | Payload (ids) | Subscribers | Sync/async | Pinned by test |
 |---|---|---|---|---|---|---|
 | EV-1 | `BookingConfirmed` | `booking` | `{ bookingId, setId, venueId, bookingDate }` | `availability`, `payout` | async `AFTER_COMMIT` | `<…>` |
+
+### Module ownership (§4a)
+
+> **Required whenever the slice adds or moves behavior.** For each new or changed
+> capability, state which module owns it and why, checked against
+> `RESPONSIBILITIES.md`. The justification must cite the owner's **Job** line *and*
+> confirm the capability is **not** on another module's **Not My Job** list. This
+> is the plan-time boundary gate: a capability that lands on some module's
+> Not-My-Job list, or that two modules both claim, is a boundary error to resolve
+> **before** code — catching a misplacement here is a sentence; at review it's a
+> diff. Pay special attention to the two decision-vs-execution splits (`booking`
+> decides refunds / `payment` executes; `venue` stores the commission rate /
+> `payout` computes) and the Need-To-Know rule (a subscriber gets ids, never a
+> foreign aggregate). If the slice touches only one module and adds no cross-module
+> interaction, a one-line "all in `<module>`, no boundary change" suffices.
+> `riviera-review-overlay` **RV-BE-11** re-checks this table against the diff.
+
+| Capability (what the slice adds/changes) | Owner module | Justification |
+|---|---|---|
+| e.g. "compute the late-cancel refund amount" | `booking` | `booking` Job: owns cancellation/refund **policy**; **not** `payment` (its Not-My-Job: "deciding whether/how much to refund → `booking`") |
 
 ## Payment & payout (invariants #5, #8, #9, #10)
 
