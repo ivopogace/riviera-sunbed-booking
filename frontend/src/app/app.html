@@ -116,7 +116,9 @@
     </div>
   </header>
 
-  <main class="riv-main" [class.riv-legacy-surface]="legacySurface()">
+  <!-- tabindex=-1: a programmatic focus target so closing the find modal on navigation lands
+       keyboard/AT focus on the new page's content, not document.body (issue #148, review finding [4]). -->
+  <main #mainEl tabindex="-1" class="riv-main" [class.riv-legacy-surface]="legacySurface()">
     <router-outlet />
   </main>
 

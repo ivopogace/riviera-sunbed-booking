@@ -336,6 +336,28 @@ see `riviera-local-debug`). Run recipe per phase: `npm test -- <spec filter>`.
 
 ---
 
+## Review-gate record (high effort — `riviera-review-overlay` + workflow `/code-review`)
+
+Ran on the PR #167 diff at **high effort** (invariant #7 = security-sensitive bearer credential;
+12 agents, 4 finder angles + adversarial verify). Overlay Blockers **RV-BE-1 / RV-CT-3 / RV-BE-9:
+N/A** (pure FE — no availability write, no webhook confirm, no venue-scoped endpoint). **RV-PROC-1
+✅** (Skills-consulted covers the diff; all fixes stayed FE — `angular-developer`/`riviera-frontend`/
+`playwright-cli` already loaded, no new area). **RV-FE-* / RV-FE-E2E ✅.** 7 verified findings, all
+fixed test-first in the FE area:
+
+| # | Finding | Sev | Resolution |
+|---|---|---|---|
+| [0] | booking→booking nav reuses `BookingView` (constructor read `route.snapshot` once) → shows the **wrong booking** — a trust bug the T8 find modal makes reachable on the detail page | correctness | `booking-view` now subscribes to `route.paramMap` and reloads (resetting view state) on a code change; `paramMap` emits synchronously so the initial load is unchanged. Test: "reloads and re-renders when the route code changes". |
+| [1] | success path never reset `submitting` → modal freezes on "Opening…" when the nav produces no `NavigationEnd` (same-URL / blocked / rejected chunk) | correctness | `onSubmit` checks `navigate()`'s boolean: `false` → reset `submitting` + `dismissed.emit()` (close, target already shown); a rejected nav is caught → generic error, no freeze. Test: "closes the modal without freezing when the navigation is a no-op". |
+| [2] | whitespace/dash-only code passed `required` but normalized to '' → silent no-op, no feedback | correctness | Empty message now keyed off `normalizedCode()` (blank AND whitespace/dash-only). Test: "shows the enter-a-code message for a whitespace/dash-only entry". |
+| [3] | stale server error lingered while the guest typed a correction | correctness | `(input)` clears `lookupError`. Test: "clears a stale lookup error when the guest edits the code". |
+| [4] | focus lost after find→nav (modal removed, `BookingView` doesn't take focus) — WCAG 2.4.3 | correctness (a11y) | The shell focuses `<main tabindex="-1">` when the find modal closes on navigation. Test: "closes … and moves focus to main". |
+| [5] | double-GET (find validate + booking-view re-fetch) can 429 near the rate ceiling | correctness (PLAUSIBLE) | **Deferred → follow-up issue.** Bounded (2 GETs vs 60/min per-code+per-IP); only a pathological near-ceiling case 429s. The clean fix (a prefetch hand-off to booking-view) is a design change; filed separately. |
+| [6] | `trapFocus` + autofocus verbatim-duplicated from `booking-dialog` (2nd modal) | cleanup | **Deferred → follow-up issue** (rule of three — extract a shared focus-trap directive at the 3rd modal). Added a note in `find-booking.ts` flagging the deliberate duplication (mirrors the SCSS rule-of-three note). |
+
+Refuted at verify: 1 (a duplicate framing of [1]). All fixes: 458 unit + 25 e2e + lint + prod build
+green.
+
 ## Sonar-gate record (PR #167)
 
 SonarCloud quality gate ran on PR #167. The reported new-issue list (pulled from the API, not

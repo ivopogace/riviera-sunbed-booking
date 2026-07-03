@@ -79,6 +79,7 @@ export function normalizeCode(raw: string): string {
             type="text"
             data-testid="find-code"
             [formField]="codeForm.code"
+            (input)="onCodeInput()"
             placeholder="K4TQ7M9PX2"
             autocomplete="off"
             autocapitalize="characters"
@@ -123,13 +124,17 @@ export class FindBooking {
     required(path.code, { message: 'Enter your booking code.' });
   });
 
-  /** One alert region: a server lookup error wins; otherwise the required message after a submit. */
+  /** The code that will actually be looked up (what {@link normalizeCode} yields). Empty for a blank
+   *  OR whitespace/dash-only entry — both must show the "enter a code" message (review finding [2]). */
+  private readonly normalizedCode = computed(() => normalizeCode(this.model().code));
+
+  /** One alert region: a server lookup error wins; otherwise, after a submit, the "enter a code"
+   *  message whenever the entry normalizes to empty (covers blank AND whitespace/dash-only). */
   protected readonly errorText = computed<string | undefined>(() => {
     if (this.lookupError()) {
       return this.lookupError();
     }
-    const errors = this.codeForm.code().errors();
-    return this.submitAttempted() && errors.length ? errors[0].message : undefined;
+    return this.submitAttempted() && !this.normalizedCode() ? 'Enter your booking code.' : undefined;
   });
 
   constructor() {
@@ -143,32 +148,48 @@ export class FindBooking {
     }
     this.lookupError.set(undefined);
     this.submitAttempted.set(true);
-    if (this.codeForm().invalid()) {
-      return; // empty → the required message renders; no request
-    }
-    const code = normalizeCode(this.model().code);
+    const code = this.normalizedCode();
     if (!code) {
-      return; // whitespace-only collapsed to empty — defensive, no lookup
+      return; // blank or whitespace/dash-only → errorText shows "Enter your booking code."; no request
     }
     this.submitting.set(true);
     try {
       // Validate the code against the (rate-limited, #56) lookup endpoint, THEN navigate to the
       // existing /booking/:code deep link — so an unknown/rate-limited code stays inline here
-      // without navigating. `submitting` stays true through the nav (the shell closes the modal on
-      // NavigationEnd); the destination page takes focus.
+      // without navigating.
       await firstValueFrom(this.bookings.getByCode(code));
-      await this.router.navigate(['/booking', code]);
+      const navigated = await this.router.navigate(['/booking', code]);
+      if (!navigated) {
+        // Same-URL (the guest is already on this booking) or a blocked nav produces no
+        // NavigationEnd, so the shell won't close the modal — close it here (the target is already
+        // shown) and stop the spinner, or the modal freezes on "Opening…" (review finding [1]).
+        this.submitting.set(false);
+        this.dismissed.emit();
+      }
+      // navigated === true → the shell closes the modal on NavigationEnd (component destroyed).
     } catch (error: unknown) {
+      // Lookup failure OR a rejected navigation (e.g. a lazy-chunk load error) — surface, don't freeze.
       this.lookupError.set(messageFor(error, code));
       this.submitting.set(false);
     }
+  }
+
+  /** Clear a stale server error as the guest edits the code (review finding [3]). */
+  protected onCodeInput(): void {
+    this.lookupError.set(undefined);
   }
 
   protected requestClose(): void {
     this.dismissed.emit();
   }
 
-  /** Keep keyboard focus inside the dialog (a focus trap, modal a11y) — the booking-dialog pattern. */
+  /**
+   * Keep keyboard focus inside the dialog (a focus trap, modal a11y). Cloned from
+   * {@link BookingDialog#trapFocus} — the **2nd** modal to need it. Deliberately not yet extracted to
+   * a shared `core/` focus-trap directive (rule of three, like the glass recipe in find-booking.scss);
+   * extract when a 3rd modal appears so the two copies can't drift (review finding [6], tracked as a
+   * follow-up). Until then, a change here must be mirrored in booking-dialog.
+   */
   protected trapFocus(event: Event, backwards: boolean): void {
     const focusable = Array.from(
       this.hostRef.nativeElement.querySelectorAll<HTMLElement>(

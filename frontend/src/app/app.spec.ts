@@ -114,7 +114,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
   });
 
-  it('closes the Find a booking modal on navigation (a found code routes to /booking/:code) (#148)', async () => {
+  it('closes the Find a booking modal on navigation and moves focus to main (a11y, #148)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
 
@@ -125,6 +125,8 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
     expect(el.querySelector('app-find-booking')).toBeNull();
+    // Focus lands on the main content region, not document.body (review finding [4], WCAG 2.4.3).
+    expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
   it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {

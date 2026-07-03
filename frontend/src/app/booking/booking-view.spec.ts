@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -67,7 +67,13 @@ async function render(
     providers: [
       provideRouter([]),
       { provide: BookingService, useValue: service },
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ code }) } } },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          snapshot: { paramMap: convertToParamMap({ code }) },
+          paramMap: of(convertToParamMap({ code })),
+        },
+      },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(BookingView);
@@ -373,5 +379,48 @@ describe('BookingView', () => {
     expect(hidden?.textContent).toContain('🎉');
     expect(host.querySelector('[data-testid="request-accepted"]')?.textContent).toContain('Request accepted');
     await expectNoAxeViolations(host);
+  });
+
+  // T8 review finding [0]: the find modal (#148) makes booking→booking navigation reachable; the
+  // view must reload on a route-code change, not reuse the instance and show the previous booking.
+  it('reloads and re-renders when the route code changes (booking→booking, T8 finding [0])', async () => {
+    const detailA: BookingDetail = { ...DETAIL, code: 'AAAAAAAAAA', venueName: 'Venue Alpha' };
+    const detailB: BookingDetail = { ...DETAIL, code: 'BBBBBBBBBB', venueName: 'Venue Beta' };
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: (code: string) =>
+        of(code === 'AAAAAAAAAA' ? detailA : detailB) as Observable<BookingDetail>,
+      cancel: () => of(CANCELLATION),
+      beginPayment: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('AAAAAAAAAA');
+    expect(host.textContent).toContain('Venue Alpha');
+
+    // Reuse the instance, change only the param (what Angular's default RouteReuseStrategy does).
+    paramMap$.next(convertToParamMap({ code: 'BBBBBBBBBB' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('BBBBBBBBBB');
+    expect(host.textContent).toContain('Venue Beta');
+    expect(host.textContent).not.toContain('Venue Alpha');
   });
 });

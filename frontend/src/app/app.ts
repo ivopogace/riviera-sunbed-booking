@@ -32,6 +32,7 @@ export class App {
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
   private readonly findButton = viewChild<ElementRef<HTMLButtonElement>>('findButton');
+  private readonly mainRef = viewChild<ElementRef<HTMLElement>>('mainEl');
   /** The control to hand focus back to when the find modal is dismissed (desktop trigger or, when
    *  opened from the mobile menu, the persistent hamburger button — the mobile item collapses). */
   private findReturn: HTMLElement | null = null;
@@ -67,9 +68,16 @@ export class App {
         takeUntilDestroyed(),
       )
       .subscribe(() => {
+        const wasFindOpen = this.findOpen();
         this.findOpen.set(false);
         this.menuOpen.set(false);
         this.themeOpen.set(false);
+        // A find that succeeded navigated away, destroying the modal that held focus; move focus to
+        // the main content region so a keyboard/AT guest lands on the new page rather than
+        // document.body (WCAG 2.4.3 — review finding [4]).
+        if (wasFindOpen) {
+          this.mainRef()?.nativeElement.focus();
+        }
       });
   }
 
