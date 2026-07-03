@@ -262,21 +262,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Updated in the SAME 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-9:** each verified by its pinned spec/e2e passing locally + on CI, recorded with the commit SHA before "done".
+- [x] **AC-1..AC-9:** each verified by its pinned spec/e2e — FE 496 unit + 40 operator + 3 real-Chromium e2e green locally AND on the PR #178 CI run (`c913021`); the review-fix e2e proves AC-4's placeholder links in a real browser.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders/TODO/TBD in the doc.
-- [ ] **No JPA / no backend change** — frontend-only (invariant #1 not in play).
-- [ ] **Availability** N/A justified (no availability write) (invariant #2).
-- [ ] Pool/cutoff (#3/#4) N/A — no booking write.
-- [ ] **Modulith** N/A justified — no backend Java (invariant #11).
-- [ ] **Payment/payout** N/A justified — Payouts tab inert (invariants #5/#8/#9/#10).
-- [ ] Booking codes: none rendered/logged in O1 (invariant #7).
-- [ ] **Per-venue authorization unchanged** — only the owner-asserted badge read reused, exact URL asserted (invariant #13, RV-BE-9).
-- [ ] **Frontend** v22 standards met; tabs are route-nav not ARIA tablist; AXE clean; composited AA; `data-riv-theme` scoped, `ThemeService` untouched.
-- [ ] **Scope guardrails:** both `legacySurface` flags intact; `index.html` font link untouched; onboarding reachable.
-- [ ] Execution-status table at HEAD matches reality; Open Questions empty or deferred with rationale.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders/TODO/TBD in the doc.
+- [x] **No JPA / no backend change** — frontend-only (invariant #1 not in play).
+- [x] **Availability** N/A justified (no availability write) (invariant #2).
+- [x] Pool/cutoff (#3/#4) N/A — no booking write.
+- [x] **Modulith** N/A justified — no backend Java (invariant #11).
+- [x] **Payment/payout** N/A justified — Payouts tab inert (invariants #5/#8/#9/#10).
+- [x] Booking codes: none rendered/logged in O1 (invariant #7).
+- [x] **Per-venue authorization unchanged** — only the owner-asserted badge read reused, exact URL asserted (invariant #13, RV-BE-9).
+- [x] **Frontend** v22 standards met; tabs are route-nav not ARIA tablist; AXE clean; composited AA; `data-riv-theme` scoped, `ThemeService` untouched.
+- [x] **Scope guardrails:** both `legacySurface` flags intact; `index.html` font link untouched; onboarding reachable.
+- [x] Execution-status table at HEAD matches reality; Open Questions empty or deferred with rationale (#179/#180).
 
-If any box is unchecked, the feature is not done.
+All boxes checked. Gates green (CI + review + Sonar: 0 issues / 0 dupes / 90.23% new-code coverage).
+Held at merge for the two-party review guard — maintainer merges; on merge, tick epic #141's O1 line
+with the squash SHA and run `riviera-docs-freshness` over the range.
