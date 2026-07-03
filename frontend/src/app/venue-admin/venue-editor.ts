@@ -1,8 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
+import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
 import { formatMoney } from '../shared/money';
 import { defaultBookingDate } from '../venue/booking-date';
 import { BookingMode, Pool, SetView, Tier, VenueMapView } from '../venue/venue.model';
@@ -65,6 +66,19 @@ export class VenueEditor {
   protected readonly reloadFailed = signal(false);
 
   protected readonly sets = computed<readonly SetView[]>(() => this.venue()?.sets ?? []);
+
+  // --- Commodities (T7 #140): amenity toggles + distance-to-water, edited on the loaded venue ---
+  /** The full fixed catalogue, rendered as toggle chips. */
+  protected readonly amenityCatalogue = AMENITY_CATALOGUE;
+  /** The working amenity set, seeded from the re-read venue (re-seeds after each reload). */
+  protected readonly amenityDraft = linkedSignal(
+    () => new Set<Amenity>(this.venue()?.amenities ?? []),
+  );
+  /** The metres field as a string, seeded from the re-read venue (blank when not stated). */
+  protected readonly distanceDraft = linkedSignal(() => {
+    const metres = this.venue()?.distanceToWaterM;
+    return metres != null ? String(metres) : '';
+  });
 
   // --- Create-venue form ---
   protected readonly venueModel = signal({
@@ -229,6 +243,56 @@ export class VenueEditor {
           gridY: set.gridY,
         }),
       ),
+    );
+  }
+
+  protected amenityText(code: Amenity): string {
+    return amenityLabel(code);
+  }
+
+  protected isAmenityActive(code: Amenity): boolean {
+    return this.amenityDraft().has(code);
+  }
+
+  /** Flip an amenity in the working set (persisted only on Save). */
+  protected onToggleAmenity(code: Amenity): void {
+    this.amenityDraft.update((current) => {
+      const next = new Set(current);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  }
+
+  /**
+   * Save the venue's commodities (T7 #140): the whole amenity set + the optional distance. Parses
+   * the metres field client-side (blank ⇒ null; otherwise a positive integer), PATCHes the profile
+   * (which REPLACES the set), and re-reads through the U1 API — the toggles then reflect the
+   * persisted state (the drafts re-seed from the read-back).
+   */
+  protected async onSaveCommodities(): Promise<void> {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.saving()) {
+      return;
+    }
+    const raw = this.distanceDraft().trim();
+    let distanceToWaterM: number | null;
+    if (raw === '') {
+      distanceToWaterM = null;
+    } else {
+      const parsed = parseWholeNumber(raw);
+      if (parsed === undefined || parsed <= 0) {
+        this.errorCode.set('INVALID_REQUEST');
+        return;
+      }
+      distanceToWaterM = parsed;
+    }
+    const amenities = [...this.amenityDraft()];
+    await this.run(() =>
+      firstValueFrom(this.admin.updateVenueProfile(venueId, { amenities, distanceToWaterM })),
     );
   }
 

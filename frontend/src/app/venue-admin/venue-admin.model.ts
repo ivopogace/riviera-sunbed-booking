@@ -1,3 +1,4 @@
+import { Amenity } from '../shared/amenities';
 import { BookingMode, MoneyView, Pool, Tier } from '../venue/venue.model';
 
 /**
@@ -28,6 +29,16 @@ export interface SetPositionRequest {
   readonly price: MoneyView;
   readonly gridX: number;
   readonly gridY: number;
+}
+
+/**
+ * `PATCH /api/venues/{id}` body — replace the venue's profile fields (T7, #140). The amenity set is
+ * sent whole (codes from the fixed catalogue; the server rejects an unknown code 400); a `null`
+ * distance clears it. Replaces, not merges — the editor re-sends every selected amenity.
+ */
+export interface UpdateVenueProfileRequest {
+  readonly amenities: readonly Amenity[];
+  readonly distanceToWaterM: number | null;
 }
 
 /** `201` response from a create/add — the new technical id. */

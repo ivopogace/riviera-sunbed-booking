@@ -84,6 +84,25 @@ async function addSet(page: Page, set: SetInput): Promise<void> {
   await expect(page.getByTestId('layout-row')).toHaveCount(before + 1);
 }
 
+/** Toggle amenity chips on, set the distance, save, and wait for the round-trip to persist (T7 #140). */
+async function setCommodities(
+  page: Page,
+  amenities: readonly string[],
+  metres: number,
+): Promise<void> {
+  for (const label of amenities) {
+    await page.getByRole('button', { name: label, exact: true }).click();
+  }
+  await page.getByTestId('distance-to-water').fill(String(metres));
+  await page.getByRole('button', { name: 'Save commodities' }).click();
+  // The PATCH persists and the editor re-reads; the first toggled chip renders active (aria-pressed)
+  // only once that read-back returns it — so this auto-wait proves persistence before we navigate.
+  await expect(page.getByRole('button', { name: amenities[0], exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/venue-admin');
 });
@@ -258,6 +277,25 @@ test.describe('U7 venue editor — real backend, real Postgres', () => {
     // It is the public read view, not the editor — no write controls are present.
     await expect(page.getByRole('button', { name: 'Add set', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Operator sign-in' })).toHaveCount(0);
+  });
+
+  test('sets venue commodities (amenities + distance) → the tourist beach-map shows the chips', async ({
+    page,
+  }) => {
+    // T7 (#140): the operator edits the profile via the real PATCH /api/venues/{id} (ownership-checked
+    // server-side), and the persisted amenities + to-water render on the public U1 beach-map header.
+    await signIn(page);
+    const id = await createVenue(page, venueName('commodities'));
+
+    await setCommodities(page, ['Beach bar', 'WiFi', 'Free parking'], 15);
+
+    // The public read view (U1) — a different component, served by the same real API + Postgres.
+    await page.goto(`/venues/${id}`);
+    const chips = page.getByTestId('venue-chips');
+    await expect(chips).toContainText('15m to water');
+    await expect(chips).toContainText('Beach bar');
+    await expect(chips).toContainText('Free parking');
+    await expect(chips).toContainText('WiFi'); // full row on the map (no ≤3 cap)
   });
 
   test('the editor layout state has no serious axe violations (real render)', async ({ page }) => {

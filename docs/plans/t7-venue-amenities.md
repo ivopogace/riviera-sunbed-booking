@@ -213,7 +213,7 @@ visible+accessible content directly.
 | 2 — BE edit path (port + service + PATCH + ownership) | ✅ | EditVenueProfile + PATCH /{venueId} + SecurityConfig gate; service/controller/cross-venue ITs + structural net green |
 | 3 — FE shared amenity-chip recipe | ✅ | shared/amenities.ts + _glass.scss amenity-chip mixin; 7 specs (unit + AA contrast) green |
 | 4 — FE tourist chips (card + map header) + mocked e2e | ✅ | model + home + venue-map chips (card ≤3, map full); 102 unit specs + 3 discovery-flow e2e green |
-| 5 — FE editor Commodities + real-backend e2e | ⏳ | |
+| 5 — FE editor Commodities + real-backend e2e | ✅ | venue-admin model/service + editor Commodities (linkedSignal toggles + metres → PATCH); 426 FE unit specs + lint green; real-backend e2e authored + compile-listed (local-only suite, run manually) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase's code.
 
@@ -453,7 +453,7 @@ public record UpdateVenueProfileRequest(List<String> amenities, Integer distance
 - [ ] **AC-1..6 (BE):** `./gradlew test --tests "*VenueAmenity*" --tests "*VenueRead*" --tests "*VenueList*" --tests "*VenueAdmin*" --tests "*CrossVenueDenialIT*" --tests "*Modularity*"` → all green (CI runs the full suite).
 - [ ] **AC-7..9 (FE unit/contrast):** `npm test` → green (home, venue-map, amenities, editor specs).
 - [ ] **AC-7/8 (mocked e2e):** `npm run test:e2e:a11y` → discovery-flow chip assertions + axe green.
-- [ ] **AC-10 (real-backend e2e):** local only, against a running backend — not CI.
+- [ ] **AC-10 (real-backend e2e):** authored + compile-listed (`playwright test --config playwright.config.ts --list`); local-only suite (boots `./gradlew bootRun` + docker-compose Postgres + ng serve) — run manually with `npm run test:e2e`, not CI. Its behavior is proven in pieces by `VenueAdminControllerIT` (real PATCH round-trip on Testcontainers Postgres) + `venue-editor.spec` + the mocked `discovery-flow` e2e.
 - [ ] **AC-11 (coverage):** Sonar new-code coverage ≥ 80% on the PR.
 
 ## Self-review checklist (before merge / PR)
