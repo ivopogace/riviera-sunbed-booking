@@ -212,8 +212,8 @@ visible+accessible content directly.
 | 1 — BE read path (vocabulary + read views + JDBC reads) | ✅ | Amenity enum + views + JdbcVenueCatalog; read ITs + structural net green |
 | 2 — BE edit path (port + service + PATCH + ownership) | ✅ | EditVenueProfile + PATCH /{venueId} + SecurityConfig gate; service/controller/cross-venue ITs + structural net green |
 | 3 — FE shared amenity-chip recipe | ✅ | shared/amenities.ts + _glass.scss amenity-chip mixin; 7 specs (unit + AA contrast) green |
-| 4 — FE tourist chips (card + map header) + mocked e2e | ⏳ | |
-| 5 — FE editor Commodities + real-backend e2e | | |
+| 4 — FE tourist chips (card + map header) + mocked e2e | ✅ | model + home + venue-map chips (card ≤3, map full); 102 unit specs + 3 discovery-flow e2e green |
+| 5 — FE editor Commodities + real-backend e2e | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase's code.
 

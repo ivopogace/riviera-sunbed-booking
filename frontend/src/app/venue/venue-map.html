@@ -23,8 +23,17 @@
           <p class="description">{{ v.description }}</p>
         }
 
-        <!-- T7 (#140) slot: amenity + to-water chips render here once the data exists. -->
-        <div class="head-chips" data-testid="venue-chips"></div>
+        <!-- T7 (#140): to-water chip first, then the FULL amenity row in catalogue order. The header
+             is real (not aria-hidden) content, so the chip text is read directly; the slot collapses
+             (:empty) when the venue states neither. -->
+        <div class="head-chips" data-testid="venue-chips">
+          @if (toWater(v); as water) {
+            <span class="amenity-chip amenity-chip--water">{{ water }}</span>
+          }
+          @for (code of headerAmenities(v); track code) {
+            <span class="amenity-chip">{{ amenityText(code) }}</span>
+          }
+        </div>
 
         <p class="date-field">
           <label class="date-label" for="map-date">Date</label>

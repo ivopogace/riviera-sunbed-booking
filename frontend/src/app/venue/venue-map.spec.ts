@@ -52,6 +52,10 @@ function miramar(): VenueMapView {
     reviewsCount: 326,
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
+    // Amenities out of catalogue order (T7 #140) → the header renders the FULL row catalogue-ordered
+    // (Beach bar, Free parking, WiFi); plus a to-water distance.
+    amenities: ['WIFI', 'BEACH_BAR', 'FREE_PARKING'],
+    distanceToWaterM: 8,
     sets,
   };
 }
@@ -139,6 +143,15 @@ describe('VenueMap', () => {
     expect(el().querySelector('.description')?.textContent).toContain(
       'Premium loungers on the Ksamil shoreline.',
     );
+  });
+
+  it('renders the full amenity row + a to-water chip on the map header (catalogue order)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const chips = el().querySelector('[data-testid="venue-chips"]')!;
+    const texts = [...chips.querySelectorAll('.amenity-chip')].map((c) => c.textContent?.trim());
+    // To-water first, then ALL amenities in canonical catalogue order (no ≤3 cap on the map).
+    expect(texts).toEqual(['8m to water', 'Beach bar', 'Free parking', 'WiFi']);
   });
 
   it('gives each tile an accessible name carrying its seat, descriptive row and state (not colour-only)', async () => {

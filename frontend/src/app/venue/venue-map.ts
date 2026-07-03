@@ -10,6 +10,7 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
+import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
 import { formatMoney } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { defaultBookingDate } from './booking-date';
@@ -257,6 +258,21 @@ export class VenueMap {
 
   protected bookingModeLabel(mode: VenueMapView['bookingMode']): string {
     return mode === 'INSTANT' ? 'Instant Book' : 'Request to Book';
+  }
+
+  /** The venue's full amenity row in canonical catalogue order (T7 #140) — the map shows all. */
+  protected headerAmenities(venue: VenueMapView): Amenity[] {
+    return orderedAmenities(venue.amenities ?? []);
+  }
+
+  /** The display label for an amenity code. */
+  protected amenityText(code: Amenity): string {
+    return amenityLabel(code);
+  }
+
+  /** The "Xm to water" chip label, or null when the venue states no distance. */
+  protected toWater(venue: VenueMapView): string | null {
+    return distanceToWaterLabel(venue.distanceToWaterM ?? null);
   }
 
   protected select(set: SetView, event?: Event): void {

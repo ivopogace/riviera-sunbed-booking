@@ -1,3 +1,5 @@
+import { Amenity } from '../shared/amenities';
+
 /**
  * Typed view of the U1 venue read API (`GET /api/venues/{id}`). Mirrors the backend
  * `VenueMapView` exactly — money travels as integer minor units + currency (invariant #5),
@@ -35,6 +37,14 @@ export interface VenueMapView {
   readonly reviewsCount: number;
   readonly bookingMode: BookingMode;
   readonly fromPrice: MoneyView | null;
+  /**
+   * The venue's amenities in canonical catalogue order (T7, #140), or absent/empty when none. The
+   * beach-map header renders the full row. Optional because test doubles and older payloads may omit
+   * it; the real API always sends an array (possibly empty).
+   */
+  readonly amenities?: readonly Amenity[];
+  /** Distance to the water in metres (T7, #140), or `null`/absent when not stated. */
+  readonly distanceToWaterM?: number | null;
   readonly sets: readonly SetView[];
 }
 
@@ -61,5 +71,13 @@ export interface VenueSummary {
   readonly reviewsCount: number;
   readonly bookingMode: BookingMode;
   readonly fromPrice: MoneyView | null;
+  /**
+   * The venue's amenities in canonical catalogue order (T7, #140), or absent/empty when none. The
+   * Discover card renders the first few. Optional because test doubles and older payloads may omit
+   * it; the real API always sends an array (possibly empty).
+   */
+  readonly amenities?: readonly Amenity[];
+  /** Distance to the water in metres (T7, #140), or `null`/absent when not stated. */
+  readonly distanceToWaterM?: number | null;
   readonly availability: AvailabilitySummary;
 }

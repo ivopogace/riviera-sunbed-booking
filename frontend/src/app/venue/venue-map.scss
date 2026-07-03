@@ -129,6 +129,8 @@
   gap: 7px;
   margin-top: 14px;
 
+  @include glass.amenity-chip; // shared pill-tag recipe (T7 #140), AA-proven in amenities.contrast.spec.ts
+
   &:empty {
     display: none;
   }
