@@ -226,6 +226,24 @@ N/A — no contract change. `BookingDetail` / `Cancellation` consumed exactly as
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+## Review-gate record (high effort — `riviera-review-overlay` + workflow `/code-review`)
+
+Ran on PR #161 diff (lifecycle + refund display touch invariants #4/#10 → high effort). 5 distinct
+findings, all verified, all fixed test-first (same area → `angular-developer` + `riviera-frontend`
+already loaded; no new skill-routing area, RV-PROC-1 line unchanged):
+
+| # | Finding | Sev | Fix | Test |
+|---|---|---|---|---|
+| 1 | Post-cancel reload error flips to the error card, discarding the cancellation confirmation | correctness | `load(isRefresh)` — a refresh error keeps the booking + live result | "keeps the cancellation confirmation when the post-cancel reload fails" |
+| 2 | `STATUS_META[status]` throws on a status outside the #98 union (FE/BE skew) | correctness | `metaFor()` fallback → humanized label + neutral chip + `Amount` | "renders an unmapped status gracefully…" |
+| 3 | Lost programmatic "Status:" label — bare chip announces only the value | a11y | sr-only "Booking status:" before the chip (chip testid text unchanged) | "gives the status chip a visually-hidden 'Booking status' label" |
+| 4 | 🎉 in the accepted `<h2>` read as "party popper" | a11y | `aria-hidden` decorative span (+ `&ngsp;`) | "marks the celebratory emoji decorative…" |
+| 5 | `amountLabel` a non-exhaustive second source of truth | maintainability | folded `amount:'Paid'\|'Amount'` into `STATUS_META` | covered by #2 + existing amount assertions |
+
+RV-BE-1 (availability), RV-BE-9 (BOLA), RV-CT-3/#8 (webhook-as-truth): **N/A / ✅** — no availability
+write, no venue-scoped endpoint, Pay now reuses the webhook-confirmed hand-off (no client confirm).
+RV-FE-E2E ✅ (testids preserved, real-browser axe green). RV-PROC-1 ✅ (Skills-consulted covers the diff).
+
 ---
 
 ## File structure

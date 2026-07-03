@@ -8,17 +8,46 @@ import { MoneyView } from '../venue/venue.model';
 import { BookingDetail, BookingStatus, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
 
-/** Design label + chip CSS-modifier for each #98 lifecycle status (design v3 `STATUS_META`). */
-const STATUS_META: Record<BookingStatus, { readonly label: string; readonly chip: string }> = {
-  CONFIRMED: { label: 'Confirmed', chip: 'chip--confirmed' },
-  PENDING_REQUEST: { label: 'Pending request', chip: 'chip--pending' },
-  AWAITING_PAYMENT: { label: 'Awaiting payment', chip: 'chip--awaiting' },
-  DECLINED: { label: 'Declined', chip: 'chip--declined' },
-  EXPIRED: { label: 'Expired', chip: 'chip--expired' },
-  CANCELLED: { label: 'Cancelled', chip: 'chip--cancelled' },
-  COMPLETED: { label: 'Completed', chip: 'chip--completed' },
-  NO_SHOW: { label: 'No-show', chip: 'chip--no-show' },
+/**
+ * Presentation metadata per #98 lifecycle status (design v3 `STATUS_META`): the chip `label`, its
+ * CSS-modifier `chip`, and whether the amount row reads `Paid` (money has moved) or `Amount` (still
+ * open/no charge). The single source of truth for all three — a 9th status is one row here.
+ */
+interface StatusMeta {
+  readonly label: string;
+  readonly chip: string;
+  readonly amount: 'Paid' | 'Amount';
+}
+const STATUS_META: Record<BookingStatus, StatusMeta> = {
+  CONFIRMED: { label: 'Confirmed', chip: 'chip--confirmed', amount: 'Paid' },
+  PENDING_REQUEST: { label: 'Pending request', chip: 'chip--pending', amount: 'Amount' },
+  AWAITING_PAYMENT: { label: 'Awaiting payment', chip: 'chip--awaiting', amount: 'Amount' },
+  DECLINED: { label: 'Declined', chip: 'chip--declined', amount: 'Amount' },
+  EXPIRED: { label: 'Expired', chip: 'chip--expired', amount: 'Amount' },
+  CANCELLED: { label: 'Cancelled', chip: 'chip--cancelled', amount: 'Paid' },
+  COMPLETED: { label: 'Completed', chip: 'chip--completed', amount: 'Paid' },
+  NO_SHOW: { label: 'No-show', chip: 'chip--no-show', amount: 'Paid' },
 };
+
+/** Humanize a raw status token ("NO_SHOW" → "No show") — the graceful fallback for FE/BE skew. */
+function humanizeStatus(status: string): string {
+  return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');
+}
+
+/**
+ * Presentation metadata for a status, tolerant of a status this build doesn't know (a new backend
+ * lifecycle state shipped before the FE is redeployed): rather than throw, fall back to a humanized
+ * label, a neutral chip, and the conservative `Amount` label (never claim money moved).
+ */
+function metaFor(status: string): StatusMeta {
+  return (
+    STATUS_META[status as BookingStatus] ?? {
+      label: humanizeStatus(status),
+      chip: 'chip--expired',
+      amount: 'Amount',
+    }
+  );
+}
 
 /**
  * View a booking by its code and cancel it (U6, issue #11; Liquid Glass restyle #138). Loads the
@@ -57,9 +86,13 @@ const STATUS_META: Record<BookingStatus, { readonly label: string; readonly chip
       <section class="booking-card" aria-labelledby="bv-title">
         <div class="card-head">
           <h1 id="bv-title">Your booking</h1>
-          <span class="chip {{ chipClass(b.status) }}" data-testid="booking-status">{{
-            statusLabel(b.status)
-          }}</span>
+          <span class="status-wrap">
+            <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
+            <span class="sr-only">Booking status:</span>
+            <span class="chip {{ chipClass(b.status) }}" data-testid="booking-status">{{
+              statusLabel(b.status)
+            }}</span>
+          </span>
         </div>
 
         @switch (b.status) {
@@ -71,7 +104,9 @@ const STATUS_META: Record<BookingStatus, { readonly label: string; readonly chip
                 aria-labelledby="request-state-title"
               >
                 @if (b.requestExpiresAt) {
-                  <h2 id="request-state-title" class="banner-eyebrow">Request accepted 🎉</h2>
+                  <h2 id="request-state-title" class="banner-eyebrow">
+                    Request accepted&ngsp;<span aria-hidden="true">🎉</span>
+                  </h2>
                   <p class="banner-body">
                     {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
                   </p>
@@ -237,10 +272,19 @@ export class BookingView {
     });
   }
 
-  private load(): void {
+  /**
+   * @param isRefresh a reload triggered by a completed cancellation (not the initial load). A
+   *   refresh that fails must NOT flip the page to the not-found/failed card — that would discard
+   *   the just-issued cancellation confirmation (the refund the server already actioned). The
+   *   stale-but-cancelled detail plus the live result region stay on screen instead.
+   */
+  private load(isRefresh = false): void {
     this.bookings.getByCode(this.code).subscribe({
       next: (b) => this.booking.set(b),
       error: (e: unknown) => {
+        if (isRefresh) {
+          return;
+        }
         if (typeof e === 'object' && e !== null && (e as { status?: number }).status === 404) {
           this.notFound.set(true);
         } else {
@@ -266,7 +310,7 @@ export class BookingView {
         this.cancellation.set(c);
         this.confirming.set(false);
         this.cancelling.set(false);
-        this.load(); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
+        this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
       },
       error: () => {
         this.cancelFailed.set(true);
@@ -276,26 +320,18 @@ export class BookingView {
   }
 
   /** The design label for a status (drives the header chip; matches design v3 `STATUS_META`). */
-  protected statusLabel(status: BookingStatus): string {
-    return STATUS_META[status].label;
+  protected statusLabel(status: string): string {
+    return metaFor(status).label;
   }
 
   /** The chip CSS-modifier class for a status. */
-  protected chipClass(status: BookingStatus): string {
-    return STATUS_META[status].chip;
+  protected chipClass(status: string): string {
+    return metaFor(status).chip;
   }
 
   /** "Paid" once money has actually moved; "Amount" while the request/payment is still open. */
-  protected amountLabel(status: BookingStatus): string {
-    switch (status) {
-      case 'PENDING_REQUEST':
-      case 'AWAITING_PAYMENT':
-      case 'DECLINED':
-      case 'EXPIRED':
-        return 'Amount';
-      default:
-        return 'Paid';
-    }
+  protected amountLabel(status: string): string {
+    return metaFor(status).amount;
   }
 
   /** The booking date as a friendly civil-date label (UTC-parsed, invariant #6). */

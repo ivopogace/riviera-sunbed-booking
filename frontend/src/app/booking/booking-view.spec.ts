@@ -306,4 +306,72 @@ describe('BookingView', () => {
     expect(panel?.textContent).toContain('haven’t been charged');
     await expectNoAxeViolations(host);
   });
+
+  // Review finding [2]: a status outside the #98 union (FE deployed before a new backend
+  // lifecycle state) must degrade to a humanized label, not throw in the STATUS_META lookup.
+  it('renders an unmapped status gracefully instead of crashing (FE/BE skew)', async () => {
+    const fixture = await render(
+      stubService({ detail: { ...DETAIL, status: 'ON_HOLD' as BookingStatus, cancellable: false } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('On hold');
+    // Unknown status must not claim money moved: the amount row falls back to "Amount".
+    expect(host.textContent).toContain('Amount');
+  });
+
+  // Review finding [1]: a failed post-cancel reload must NOT hide the confirmed cancellation.
+  it('keeps the cancellation confirmation when the post-cancel reload fails', async () => {
+    let calls = 0;
+    const service: Partial<BookingService> = {
+      getByCode: () =>
+        (calls++ === 0 ? of(DETAIL) : throwError(() => ({ status: 500 }))) as Observable<BookingDetail>,
+      cancel: () => of(CANCELLATION),
+      beginPayment: () => undefined,
+    };
+    const fixture = await render(service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain('refunded');
+    expect(host.textContent).not.toContain('Something went wrong');
+    expect(host.textContent).not.toContain('Couldn’t load your booking');
+  });
+
+  // Review finding [3]: the status chip carries a programmatic "status" label (the old dl row's context).
+  it('gives the status chip a visually-hidden "Booking status" label (a11y)', async () => {
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.textContent).toContain('Booking status');
+    // The chip's own text stays exactly the label (testid contract preserved).
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('Confirmed');
+  });
+
+  // Review finding [4]: the celebratory emoji is decorative (aria-hidden), not part of the heading name.
+  it('marks the celebratory emoji decorative in the accepted banner (a11y)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'AWAITING_PAYMENT',
+          cancellable: false,
+          requestExpiresAt: '2026-11-30T16:00:00Z',
+          payment: { clientSecret: 'pi_secret', paymentIntentId: 'pi_1' },
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    const hidden = host.querySelector('[data-testid="request-accepted"] [aria-hidden="true"]');
+    expect(hidden?.textContent).toContain('🎉');
+    expect(host.querySelector('[data-testid="request-accepted"]')?.textContent).toContain('Request accepted');
+    await expectNoAxeViolations(host);
+  });
 });
