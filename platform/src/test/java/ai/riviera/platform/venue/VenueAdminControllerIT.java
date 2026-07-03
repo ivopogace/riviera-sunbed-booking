@@ -270,4 +270,65 @@ class VenueAdminControllerIT {
 		// AC-6: the U1 read endpoint is unaffected by the new auth — still public.
 		mvc.perform(get("/api/venues/{id}", MIRAMAR)).andExpect(status().isOk());
 	}
+
+	@Test
+	void profileEditRoundTripsThroughReadApi() throws Exception {
+		// T7 (#140), AC-5: PATCH the venue profile, then the U1 read API reflects it. Amenities are
+		// sent OUT of catalogue order (WIFI, BEACH_BAR) and come back catalogue-ordered; a second
+		// edit REPLACES the set and clears the distance (proves replace + nullable-distance).
+		long venue = createVenue("Amenities Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[\"WIFI\",\"BEACH_BAR\"],\"distanceToWaterM\":20}"))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.distanceToWaterM").value(20))
+				.andExpect(jsonPath("$.amenities").value(
+						org.hamcrest.Matchers.contains("BEACH_BAR", "WIFI")));
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[\"SHOWERS\"],\"distanceToWaterM\":null}"))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.amenities").value(org.hamcrest.Matchers.contains("SHOWERS")))
+				.andExpect(jsonPath("$.distanceToWaterM").value(org.hamcrest.Matchers.nullValue()));
+	}
+
+	@Test
+	void unknownAmenityCodeIs400() throws Exception {
+		// T7 (#140), AC-6: an off-catalogue code is rejected at the DTO edge → 400 (error contract §6b).
+		long venue = createVenue("Bad Amenity Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[\"PING_PONG\"],\"distanceToWaterM\":null}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void nonPositiveDistanceIs400() throws Exception {
+		// T7 (#140), AC-6: distance must be a positive integer when present.
+		long venue = createVenue("Bad Distance Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[],\"distanceToWaterM\":0}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void profileEditUnknownVenueIs404() throws Exception {
+		mvc.perform(patch("/api/venues/{v}", 999_999L).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[],\"distanceToWaterM\":null}"))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));
+	}
 }

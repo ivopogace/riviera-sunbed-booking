@@ -127,6 +127,19 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void venueProfileEditByNonOwnerIs403() throws Exception {
+		// T7 (#140): editing a venue's amenities/distance is venue-scoped (invariant #13, BOLA). A
+		// does not own Miramar → 403 before any write, so Miramar's profile is left untouched.
+		actingAs(operatorA);
+		mvc.perform(patch("/api/venues/{v}", MIRAMAR).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[\"BEACH_BAR\"],\"distanceToWaterM\":15}"))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void weatherRefundByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
 		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).cookie(operatorSession)
@@ -229,6 +242,18 @@ class CrossVenueDenialIT {
 						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void ownerCanEditItsOwnVenueProfile() throws Exception {
+		// The positive counterpart to venueProfileEditByNonOwnerIs403: A owns venueOwnedByA, so
+		// editing ITS profile succeeds (204) — proving the 403 is genuinely from ownership, not an
+		// always-deny. Targets A's own throwaway venue, never Miramar, so no shared-container pollution.
+		actingAs(operatorA);
+		mvc.perform(patch("/api/venues/{v}", venueOwnedByA).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"amenities\":[\"BEACH_BAR\",\"WIFI\"],\"distanceToWaterM\":15}"))
+				.andExpect(status().isNoContent());
 	}
 
 	// ---- Exemptions: platform-wide admin + venue creation are role-gated only (no ownership) ----

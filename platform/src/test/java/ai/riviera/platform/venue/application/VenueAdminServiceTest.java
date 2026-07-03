@@ -13,6 +13,7 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
@@ -163,6 +164,39 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedSets);
 	}
 
+	@Test
+	void updateProfileByOwnerReplacesAmenitiesAndDistance() {
+		venues.venues.add(VENUE.value());
+		VenueProfileCommand command = new VenueProfileCommand(
+				Set.of(Amenity.BEACH_BAR, Amenity.WIFI), 20);
+
+		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE, command);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.updatedProfiles);
+	}
+
+	@Test
+	void updateProfileOnUnknownVenueIsRejected() {
+		// Owner passes the ownership guard, but the venue does not exist ⇒ 0 rows ⇒ NO_SUCH_VENUE.
+		VenueProfileCommand command = new VenueProfileCommand(Set.of(), null);
+
+		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE, command);
+
+		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void profileEditByANonOwnerIsDeniedBeforeAnyWrite() {
+		venues.venues.add(VENUE.value());
+		VenueProfileCommand command = new VenueProfileCommand(Set.of(Amenity.CAFE), 10);
+
+		// The ownership guard runs first: a stranger is rejected before any profile write.
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.updateProfile(STRANGER, VENUE, command));
+		assertEquals(0, venues.updatedProfiles);
+	}
+
 	/**
 	 * Stub {@link VenueOwnership}: one operator owns one venue; {@code assertOwns} throws for anyone
 	 * else. {@code ownedVenues} is unused here.
@@ -192,6 +226,7 @@ class VenueAdminServiceTest {
 		int insertedSets;
 		int updatedSets;
 		int deletedSets;
+		int updatedProfiles;
 		// Overrides to decouple the existence check from the write's rows-affected (race tests);
 		// null ⇒ derive from the seeded `sets` map.
 		Boolean forceSetExists;
@@ -236,6 +271,12 @@ class VenueAdminServiceTest {
 		public int deleteSet(VenueId venueId, SetId setId) {
 			deletedSets++;
 			return sets.containsKey(setId.value()) ? 1 : 0;
+		}
+
+		@Override
+		public int updateVenueProfile(VenueId venueId, VenueProfileCommand command) {
+			updatedProfiles++;
+			return venues.contains(venueId.value()) ? 1 : 0;
 		}
 	}
 }

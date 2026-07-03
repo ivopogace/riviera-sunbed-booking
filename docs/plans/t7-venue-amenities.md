@@ -210,8 +210,8 @@ visible+accessible content directly.
 |-------|--------|---------|
 | 0 — Migration V21 + migration IT | ✅ | V21 + VenueAmenityMigrationIT (6 constraint tests green) |
 | 1 — BE read path (vocabulary + read views + JDBC reads) | ✅ | Amenity enum + views + JdbcVenueCatalog; read ITs + structural net green |
-| 2 — BE edit path (port + service + PATCH + ownership) | ⏳ | |
-| 3 — FE shared amenity-chip recipe | | |
+| 2 — BE edit path (port + service + PATCH + ownership) | ✅ | EditVenueProfile + PATCH /{venueId} + SecurityConfig gate; service/controller/cross-venue ITs + structural net green |
+| 3 — FE shared amenity-chip recipe | ⏳ | |
 | 4 — FE tourist chips (card + map header) + mocked e2e | | |
 | 5 — FE editor Commodities + real-backend e2e | | |
 
@@ -443,6 +443,8 @@ public record UpdateVenueProfileRequest(List<String> amenities, Integer distance
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-03 | Phase 2 (edit path) | every venue-scoped write asserts ownership first | read `VenueAdminService` | addSet/editSet/removeSet/updateProfile | All 4 call `ownership.assertOwns(...)` as line 1; new `updateProfile` matches. Pinned by `CrossVenueDenialIT` + `VenueAdminServiceTest`. |
+| 2026-07-03 | Phase 2 (edit path) | shared-container test pollution of Miramar profile (full-suite-only class) | reasoned per `riviera-local-debug` | denial test (no write) + owner test (throwaway venue) | Owner-not-forbidden test edits A's own throwaway venue, never Miramar; denial is blocked before write — so `VenueReadControllerIT.absentAmenities…` stays true in the full suite. |
 
 ---
 

@@ -12,23 +12,25 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue write use cases (U7): onboard a venue and edit its beach-map layout. Package-private
- * — the public seams are the {@link OnboardVenue} / {@link EditBeachMap} ports (invariant #11);
+ * The venue write use cases: onboard a venue (U7), edit its beach-map layout (U7), and edit its
+ * profile fields — amenities + distance-to-water (T7, #140). Package-private — the public seams
+ * are the {@link OnboardVenue} / {@link EditBeachMap} / {@link EditVenueProfile} ports (invariant #11);
  * one implementation, but the ports give the web adapter a clean, mockable entry point. The hard
  * command validation lives in the command records ({@link NewVenueCommand} / {@link SetCommand});
  * this service owns the orchestration: existence checks, conflict→{@link SetRejection} mapping,
  * and the transactional write through {@link Venues}. The DB UNIQUE constraints (V2/V12) are the
  * race-safe backstop behind the pre-checks.
  *
- * <p>Each beach-map edit is venue-scoped: the first act of {@code addSet}/{@code editSet}/
- * {@code removeSet} is {@link VenueOwnership#assertOwns} on the acting {@link OperatorId}, so an
- * operator cannot touch another operator's venue (invariant #13, BOLA) — the check is here in the
- * application service, not the controller, so no driving adapter can bypass it. {@code onboard}
+ * <p>Each venue-scoped edit is guarded: the first act of {@code addSet}/{@code editSet}/
+ * {@code removeSet}/{@code updateProfile} is {@link VenueOwnership#assertOwns} on the acting
+ * {@link OperatorId}, so an operator cannot touch another operator's venue (invariant #13, BOLA) —
+ * the check is here in the application service, not the controller, so no driving adapter can
+ * bypass it. {@code onboard}
  * (venue creation) has no path {@code venueId} and stays role-gated only (creator-owns-on-create is
  * deferred to #74).
  */
 @Service
-class VenueAdminService implements OnboardVenue, EditBeachMap {
+class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile {
 
 	private final Venues venues;
 	private final VenueOwnership ownership;
@@ -42,6 +44,18 @@ class VenueAdminService implements OnboardVenue, EditBeachMap {
 	@Transactional
 	public VenueId onboard(NewVenueCommand command) {
 		return new VenueId(venues.insertVenue(command));
+	}
+
+	@Override
+	@Transactional
+	public ChangeOutcome updateProfile(OperatorId operator, VenueId venueId, VenueProfileCommand command) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		// Rows-affected on the venue UPDATE is the existence check: 0 ⇒ no such venue. The amenity
+		// set is replaced inside the same @Transactional unit (see JdbcVenues#updateVenueProfile).
+		int rows = venues.updateVenueProfile(venueId, command);
+		return rows == 0
+				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE)
+				: ChangeOutcome.Applied.APPLIED;
 	}
 
 	@Override
