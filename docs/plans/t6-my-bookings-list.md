@@ -77,10 +77,13 @@ stands in for a remote session branch).
 - [ ] **AC-4 (row opens the T5 detail):** Given a rendered row for code `C`, when it is
   activated (click/Enter), then the app navigates to `/booking/C`. *Pinned by:*
   `my-bookings.spec.ts` "a row links to its /booking/:code detail" + the e2e.
-- [ ] **AC-5 (unknown code silently dropped):** Given a remembered code the server answers
-  `404`, when the list loads, then the code is removed from `DeviceLocalBookings` and no row
-  (and no error) is shown for it. *Pinned by:* `my-bookings.spec.ts` "drops a 404 code
-  silently and forgets it".
+- [ ] **AC-5 (404 row dropped, code kept — invariant #7):** Given a remembered code the server
+  answers `404`, when the list loads, then no row (and no error) is shown for it, **but the code is
+  kept** in `DeviceLocalBookings`. *Pinned by:* `my-bookings.spec.ts` "drops a 404 row from view but
+  keeps the code". **(Revised at the review gate, finding [2]:** the original "drop + forget" risked
+  permanently losing a paid booking on a *transient* 404 — the code is the guest's only key. A 404
+  now hides the row but retains the code, so a recovered booking reappears next load; terminal
+  bookings return a 200 detail, not 404.)
 - [ ] **AC-6 (transient failure kept + retryable):** Given a remembered code whose fetch fails
   transiently (status 0/≥500), when the list loads, then the code is **not** forgotten and the
   row shows a "Couldn't load" state with a Retry control that re-fetches that one code.
@@ -120,6 +123,11 @@ stands in for a remote session branch).
   and sent only to the existing `GET /api/bookings/{code}`; it is never `console.*`-logged.
   *Pinned by:* source review + a grep gate in Phase 1 (no `console` in the store/list touching
   the code).
+- [ ] **AC-16 (amount Paid-vs-owed label — review finding [0]/[4]):** Given each status, the row
+  amount carries the `metaFor(status).amount` label — "Paid" for money-moved states
+  (CONFIRMED/COMPLETED/CANCELLED/NO_SHOW), "Amount" for open/no-charge states
+  (AWAITING_PAYMENT/PENDING_REQUEST/DECLINED/EXPIRED) — so a never-charged row never reads as
+  billed. *Pinned by:* `my-bookings.spec.ts` "labels the row amount for %s".
 
 ## Non-goals
 
@@ -346,6 +354,34 @@ locally; see `riviera-local-debug`). Run recipe per phase: `npm test -- <spec fi
 | 2026-07-03 | Phase 7 (font-link close-out) | Manrope / Instrument Serif consumers | `grep -rn "Manrope\|Instrument Serif" frontend/src` | `staff-daily.scss` (still uses both) + `index.html` (the link) | Keep the `<link>` — `staff-daily` (operator epic #141) is the true last consumer; T6 is not. |
 
 ---
+
+## Review-gate record (high effort — `riviera-review-overlay` + workflow `/code-review`)
+
+Ran on the PR #162 diff (money + lifecycle display touches invariants #4/#5/#10 → high effort;
+14 agents, 9 verified findings). Overlay Blockers **RV-BE-1 / RV-CT-3 / RV-BE-9: N/A** (pure FE — no
+availability write, no webhook confirm, no venue-scoped endpoint). **RV-PROC-1 ✅** (Skills-consulted
+covers the diff; the fix round added no new area). **RV-FE-E2E ✅.** Findings, all fixed test-first in
+the same FE area (`angular-developer` + `riviera-frontend` + `playwright-cli` already loaded):
+
+| # | Finding | Sev | Resolution |
+|---|---|---|---|
+| [1] | `remember(body.code)` throws on an empty 201/202 body → false "booking failed" + dup-charge risk | correctness | Remember once from `response.body?.code`; store `remember` tolerates a missing code. Test: "does not throw or remember … empty body". |
+| [2] | A 404 permanently forgets the guest's only key (invariant #7); a 404 can be transient | correctness | 404 drops the row from view, **keeps** the code. `forget()` kept as explicit store API. Tests updated (AC-5). |
+| [0]/[4] | Row amount had no Paid-vs-owed qualifier (a Declined row read as charged) | correctness | Show `metaFor(status).amount` label (AC-16). |
+| [3] | Lost compile-time exhaustiveness (`Record<string>` vs `Record<BookingStatus>`) | correctness | `BookingStatus` moved to `shared/booking-status.ts`; `STATUS_META` keyed by it; `booking.model` re-exports. |
+| [5] | Per-row method calls each CD; `metaFor` twice | cleanup | Fold into a `RowView` built once on load (frontend "use computed()" rule). |
+| [6] | `load/persist` duplicate ThemeService's guarded storage | cleanup | **Deferred → #163** (Sonar-clean; touches T1). |
+| [8] | Uncapped code list + unbounded fetch fan-out | cleanup | **Deferred → #164** (ties to #114). |
+| [7] | Sub-label switch in component vs shared `STATUS_META` | cleanup | **Declined** — the sub-label is list-only (single consumer, rule of three). |
+
+## Sonar-gate record
+
+SonarCloud quality gate **green** on PR #162, but the reported list carried **2 new CRITICAL code
+smells** (`typescript:S3735`, the `void`-operator arrows in `testing/fake-storage.ts` — carried over
+from `theme.spec`'s old inline copy). Fixed by converting to block-body arrows. Measures:
+new-code coverage **98.1%** (≥80% ✅), **0** new duplicated blocks (the fake-storage / e2e-helper /
+chip-contrast extractions held), 0 new bugs/vulns. (A re-run after the fix pushes verifies the list
+reaches zero.)
 
 ## Acceptance-criteria verification (final)
 
