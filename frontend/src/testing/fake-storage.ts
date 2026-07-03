@@ -11,8 +11,12 @@ export function installFakeStorage(): Map<string, string> {
   const store = new Map<string, string>();
   (globalThis as unknown as { localStorage: unknown }).localStorage = {
     getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => void store.set(key, String(value)),
-    removeItem: (key: string) => void store.delete(key),
+    setItem: (key: string, value: string) => {
+      store.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
     clear: () => store.clear(),
   };
   return store;
