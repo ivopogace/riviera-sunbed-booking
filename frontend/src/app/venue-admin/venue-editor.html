@@ -243,20 +243,23 @@
         <h2>Commodities</h2>
         <p class="hint">Shown as tags on your venue card and beach-map page.</p>
 
-        <div class="chip-toggles" role="group" aria-label="Amenities">
-          @for (code of amenityCatalogue; track code) {
-            <button
-              type="button"
-              class="chip-toggle"
-              [class.active]="isAmenityActive(code)"
-              [attr.aria-pressed]="isAmenityActive(code)"
-              [disabled]="saving()"
-              (click)="onToggleAmenity(code)"
-            >
-              {{ amenityText(code) }}
-            </button>
-          }
-        </div>
+        <fieldset class="chip-toggles">
+          <legend>Amenities</legend>
+          <div class="chip-toggle-row">
+            @for (code of amenityCatalogue; track code) {
+              <button
+                type="button"
+                class="chip-toggle"
+                [class.active]="isAmenityActive(code)"
+                [attr.aria-pressed]="isAmenityActive(code)"
+                [disabled]="saving()"
+                (click)="onToggleAmenity(code)"
+              >
+                {{ amenityText(code) }}
+              </button>
+            }
+          </div>
+        </fieldset>
 
         <label class="field">
           <span>Distance to water (metres)</span>

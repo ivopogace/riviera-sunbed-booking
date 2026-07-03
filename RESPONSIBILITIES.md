@@ -70,8 +70,9 @@ review-only.
 ---
 
 ## `venue`
-**Job:** Own venue profiles, the beach map / layout, set positions, the online-vs-walk-in
-pool assignment for each set, pricing, and the booking mode (Instant / Request).
+**Job:** Own venue profiles (incl. amenities + distance-to-water), the beach map / layout, set
+positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
+(Instant / Request).
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`** (I own the

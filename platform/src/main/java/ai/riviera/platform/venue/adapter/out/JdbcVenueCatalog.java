@@ -243,7 +243,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				""")
 				.param("id", setId.value())
 				.query((rs, rowNum) -> new SetBookingInfo(
-						new SetId(rs.getLong("set_id")), new VenueId(rs.getLong("venue_id")),
+						new SetId(rs.getLong("set_id")), new VenueId(rs.getLong(COL_VENUE_ID)),
 						rs.getString("venue_name"), rs.getString("row_label"),
 						rs.getInt("position_no"), rs.getString("pool"),
 						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),

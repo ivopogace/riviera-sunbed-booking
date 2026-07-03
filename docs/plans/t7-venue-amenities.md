@@ -476,6 +476,18 @@ RV-BE-12, RV-PROC-1, RV-FE-E2E — see the table in the review note; availabilit
   `SPRING_PROFILES_ACTIVE=stripe` set, forcing the **real** Stripe gateway into the test JVM; with the
   profile cleared the full suite is green (425/425). CI uses the stub — unaffected.
 
+**Sonar gate (PR #165):** quality gate green; new-code coverage **94.05%** (≥80), duplications **0**,
+bugs/vulns/hotspots **0**. Pulled the reported list — **3 new code smells, all fixed** (green gate is
+not the check): `typescript:S7735` (editor `distanceDraft` negated ternary → positive form),
+`Web:S6819` (Commodities `role="group"` → native `<fieldset>`+`<legend>`), `java:S1192`
+(`JdbcVenueCatalog.setBookingInfo` used the `"venue_id"` literal instead of the existing `COL_VENUE_ID`
+constant). Reported list now empty.
+
+**Substrate docs (riviera-docs-freshness, `origin/main...HEAD`):** 2 findings, both patched —
+CONTEXT.md glossary (+ Amenities, + Distance to water) and RESPONSIBILITIES.md venue Job (venue
+profiles incl. amenities + distance-to-water). CLAUDE.md's "venue profiles" module summary already
+accurate — no churn.
+
 **Fix-round loop:** each fix re-ran through Implement (skill already loaded for its area), `tdd`
 (new tests for both correctness fixes), and the full local suites (BE 425 green, FE 426+ green, lint
 + prod build green). RV-PROC-1 re-walked: fixes touched backend test config, FE, and build config —

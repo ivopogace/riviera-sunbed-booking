@@ -9,6 +9,12 @@ model in `docs/architecture/domain-model.md`.
 
 - **Venue** — a beach club / bar / hotel that owns sunbeds on its stretch of beach
   and publishes availability. Has a booking mode, a commission rate, and payout details.
+- **Amenities** — a venue's facilities, shown as tags on the discovery card and the beach-map
+  page. A **fixed platform catalogue** (Beach bar, Restaurant, Cafe, Free parking, Showers, WiFi,
+  Water sports, Pet friendly, Snack shack, Snorkelling, Quiet bay); a venue holds an
+  order-insensitive subset, validated server-side against the catalogue (an unknown tag → 400).
+- **Distance to water** — how far a venue's sunbeds sit from the shoreline: an optional positive
+  integer in metres (rendered "15m to water").
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price.

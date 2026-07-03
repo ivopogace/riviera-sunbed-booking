@@ -89,7 +89,7 @@ export class VenueEditor {
       if (previous && previous.source?.id === venue?.id) {
         return previous.value;
       }
-      return venue?.distanceToWaterM != null ? String(venue.distanceToWaterM) : '';
+      return venue?.distanceToWaterM == null ? '' : String(venue.distanceToWaterM);
     },
   });
 
