@@ -242,7 +242,7 @@ surface.
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | 2ad9f8b |
 | 1 — `find-booking` component: form + normalize + lookup + 4 error states + navigate + close + in-flight guard (unit) | ✅ | (impl commit) |
-| 2 — `find-booking.a11y.spec.ts` (dialog role/name/label/close/alert) + focus trap/autofocus | | |
+| 2 — `find-booking.a11y.spec.ts` (dialog role/name/label/close/alert) + focus trap/autofocus | ✅ | (impl commit) |
 | 3 — `find-booking.scss` glass (clone `booking-dialog`) + `find-booking.contrast.spec.ts` both themes | | |
 | 4 — Shell wiring: triggers (desktop + mobile), `findOpen`/`openFind`/`dismissFind`, close-on-nav, focus restore; `app.spec.ts` | | |
 | 5 — e2e CI-safe `find-a-booking.e2e.ts` (find→open→detail + unknown-code; axe both themes); font-link re-check | | |
