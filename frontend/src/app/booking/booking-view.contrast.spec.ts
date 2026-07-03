@@ -15,9 +15,10 @@ import {
  *  1. Card-surface text sits on the translucent card glass over the bare gradient, so each pair is
  *     the EFFECTIVE colour composited over the theme's worst-case stops (the confirmation-card
  *     pattern) — proven with `expectAaOverStops`.
- *  2. Status chips, status banners, and the cancel buttons use OPAQUE SOLID fills (the css:S7924
- *     treatment — see booking-view.scss), so their text contrast is theme-independent and asserted
- *     directly with `contrastRatio`. Values mirror booking-view.scss.
+ *  2. Status banners and the cancel buttons use OPAQUE SOLID fills (the css:S7924 treatment — see
+ *     booking-view.scss), so their text contrast is theme-independent and asserted directly with
+ *     `contrastRatio`. Values mirror booking-view.scss. (The status **chips** moved to the shared
+ *     `status-chip` mixin at #139 — their AA proof lives in `shared/booking-status.contrast.spec.ts`.)
  */
 
 const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
@@ -49,24 +50,7 @@ describe.each(THEMES)('Booking view — card-glass text (WCAG AA, issue #138) �
   });
 });
 
-// ---- theme-independent solid fills ----
-
-const CHIPS: readonly [status: string, ink: string, fill: string][] = [
-  ['CONFIRMED', '#0e6e46', '#d9f2e7'],
-  ['PENDING_REQUEST', '#8a5410', '#fceed5'],
-  ['AWAITING_PAYMENT', '#0a5e7a', '#d5f1f6'],
-  ['DECLINED', '#8a3a2a', '#f6e5e0'],
-  ['EXPIRED', '#5a6a72', '#eceeef'],
-  ['CANCELLED', '#8a3a2a', '#f6e5e0'],
-  ['COMPLETED', '#0a5e6e', '#e1f5f9'],
-  ['NO_SHOW', '#7a4a3a', '#ece6e3'],
-];
-
-describe('Booking view — status chips (solid fills, WCAG AA, issue #138)', () => {
-  it.each(CHIPS)('the %s chip ink meets AA on its solid fill', (_status, ink, fill) => {
-    expect(contrastRatio(ink, fill)).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-});
+// ---- theme-independent solid fills (banners + buttons; chips are in booking-status.contrast.spec) ----
 
 const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['awaiting', '#ddf4f8', '#0a5e7a'],
