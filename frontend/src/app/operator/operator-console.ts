@@ -1,5 +1,6 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Observable } from 'rxjs';
 
 import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
 import { todayBookingDate } from '../venue/booking-date';
@@ -78,10 +79,7 @@ export class OperatorConsole {
     // fresh sign-in AND the async /me restore (issue #109), which resolves after construction.
     effect(() => {
       if (this.operator.signedIn()) {
-        untracked(() => {
-          this.loadVenue();
-          this.loadRequestsCount();
-        });
+        untracked(() => this.load());
       }
     });
   }
@@ -109,28 +107,28 @@ export class OperatorConsole {
     this.requestsCount.set(0);
   }
 
-  /** Best-effort header title: a failed venue read leaves the fallback and never blocks the shell. */
-  private loadVenue(): void {
+  /**
+   * Load the header's venue title + the Requests badge count. Both are best-effort: a failed read
+   * leaves the fallback title / no badge and never blocks the shell.
+   */
+  private load(): void {
     if (this.venueId === undefined) {
       return;
     }
-    this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())).subscribe({
-      next: (venue) => this.venueName.set(venue.name),
-      error: () => {
-        // Best-effort — the header keeps its fallback title; the console still works.
-      },
-    });
+    this.bestEffort(this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())), (venue) =>
+      this.venueName.set(venue.name),
+    );
+    this.bestEffort(this.console.pendingRequestCount(this.venueId), (count) =>
+      this.requestsCount.set(count),
+    );
   }
 
-  /** Best-effort Requests badge count: a failed read leaves it at 0 and never blocks the shell. */
-  private loadRequestsCount(): void {
-    if (this.venueId === undefined) {
-      return;
-    }
-    this.console.pendingRequestCount(this.venueId).subscribe({
-      next: (count) => this.requestsCount.set(count),
+  /** Subscribe to a best-effort read: apply the value, or silently ignore a failure. */
+  private bestEffort<T>(source: Observable<T>, apply: (value: T) => void): void {
+    source.subscribe({
+      next: apply,
       error: () => {
-        // Best-effort — no badge shows; the console still works.
+        // best-effort — the console still works with the fallback title / no badge
       },
     });
   }

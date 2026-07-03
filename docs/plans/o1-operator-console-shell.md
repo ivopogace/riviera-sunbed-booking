@@ -117,6 +117,18 @@ Fixes re-entered the loop (Skill-routing gate: frontend → `angular-developer` 
 `playwright-cli`, already loaded; test-first; full suite 492 + e2e 3 + lint + build green; changed
 surface re-reviewed against the overlay bank items).
 
+## Sonar-gate record (PR #178)
+
+First analysis (`a1d7225`): quality gate **FAILED** on duplication — reported **0 new issues, 0
+bugs/vulns/smells/hotspots, new-code coverage 84.29%** (≥80% ✅), but **3 new duplicated blocks /
+6.90%** in `app.routes.ts` (42 lines — the six near-identical child tab route entries) and
+`operator-console.ts` (11 lines — `loadVenue`/`loadRequestsCount` sharing the guard+subscribe shape).
+
+Fixed (re-entered the loop, frontend): the six tab routes are generated from one `consoleTabRoutes`
+factory; the two best-effort loaders collapse into one `load()` + a `bestEffort<T>()` helper. Behavior
+unchanged (app + operator specs + 3 e2e + build green). Merge bar (per feedback): **0 new issues · 0
+duplicated blocks · ≥80% new-code coverage** — confirmed on the re-analysis before merge.
+
 ## Availability & concurrency (invariant #2)
 
 **N/A — does not affect availability.** The console performs no write to `availability(set_id, booking_date)` and no booking-lifecycle transition. Its single backend read (the Requests badge) is a read-only query. Tap-to-mark, accept/decline, and every availability write remain in the untouched `StaffDaily`/backend and are out of O1 scope.
