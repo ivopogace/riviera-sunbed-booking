@@ -1,20 +1,67 @@
 import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { formatBookingDate } from '../shared/booking-date-label';
 import { formatDeadline } from '../shared/deadline';
+import { formatMoney } from '../shared/money';
 import { MoneyView } from '../venue/venue.model';
-import { BookingDetail, Cancellation } from './booking.model';
+import { BookingDetail, BookingStatus, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
 
 /**
- * View a booking by its code and cancel it (U6, issue #11). Loads the booking and its
- * <strong>server-computed</strong> refund terms (invariant #10) via {@link BookingService}, shows the
- * details, and — when the booking is cancellable — offers a two-step cancel (a confirm prompt stating
- * the refund) so the action is deliberate and accessible. The refund amount is never computed or sent
- * by the client. Money is rendered from integer minor units; status is conveyed in text (WCAG AA).
+ * Presentation metadata per #98 lifecycle status (design v3 `STATUS_META`): the chip `label`, its
+ * CSS-modifier `chip`, and whether the amount row reads `Paid` (money has moved) or `Amount` (still
+ * open/no charge). The single source of truth for all three — a 9th status is one row here.
+ */
+interface StatusMeta {
+  readonly label: string;
+  readonly chip: string;
+  readonly amount: 'Paid' | 'Amount';
+}
+const STATUS_META: Record<BookingStatus, StatusMeta> = {
+  CONFIRMED: { label: 'Confirmed', chip: 'chip--confirmed', amount: 'Paid' },
+  PENDING_REQUEST: { label: 'Pending request', chip: 'chip--pending', amount: 'Amount' },
+  AWAITING_PAYMENT: { label: 'Awaiting payment', chip: 'chip--awaiting', amount: 'Amount' },
+  DECLINED: { label: 'Declined', chip: 'chip--declined', amount: 'Amount' },
+  EXPIRED: { label: 'Expired', chip: 'chip--expired', amount: 'Amount' },
+  CANCELLED: { label: 'Cancelled', chip: 'chip--cancelled', amount: 'Paid' },
+  COMPLETED: { label: 'Completed', chip: 'chip--completed', amount: 'Paid' },
+  NO_SHOW: { label: 'No-show', chip: 'chip--no-show', amount: 'Paid' },
+};
+
+/** Humanize a raw status token ("NO_SHOW" → "No show") — the graceful fallback for FE/BE skew. */
+function humanizeStatus(status: string): string {
+  return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');
+}
+
+/**
+ * Presentation metadata for a status, tolerant of a status this build doesn't know (a new backend
+ * lifecycle state shipped before the FE is redeployed): rather than throw, fall back to a humanized
+ * label, a neutral chip, and the conservative `Amount` label (never claim money moved).
+ */
+function metaFor(status: string): StatusMeta {
+  return (
+    STATUS_META[status as BookingStatus] ?? {
+      label: humanizeStatus(status),
+      chip: 'chip--expired',
+      amount: 'Amount',
+    }
+  );
+}
+
+/**
+ * View a booking by its code and cancel it (U6, issue #11; Liquid Glass restyle #138). Loads the
+ * booking and its <strong>server-computed</strong> refund terms (invariant #10) via
+ * {@link BookingService}, renders the glass detail card — a unified status chip for the whole #98
+ * union, the dashed booking-code card, the detail rows, and status banners — and, when the booking
+ * is cancellable, offers a two-step cancel (a confirm prompt stating the refund) so the action is
+ * deliberate and accessible. The refund amount is never computed or sent by the client; money is
+ * rendered from integer minor units via {@link formatMoney} (invariant #5); status is conveyed in
+ * text, not colour alone (WCAG AA).
  *
- * <p>Request-to-Book (issue #98) adds status-aware panels: `PENDING_REQUEST` shows the venue's
- * response deadline; `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
+ * <p>Request-to-Book (issue #98) status panels: `PENDING_REQUEST` shows the venue's response
+ * deadline (no withdraw control — guest request-withdraw is backend #123, not yet shipped);
+ * `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
  * `DECLINED`/`EXPIRED` explain the terminal, no-charge outcome.
@@ -24,99 +71,122 @@ import { BookingService } from './booking.service';
   imports: [RouterLink],
   template: `
     @if (notFound()) {
-      <section class="booking" aria-labelledby="bv-title">
+      <section class="state-card" aria-labelledby="bv-title">
         <h1 id="bv-title">Booking not found</h1>
         <p class="lead">We couldn’t find a booking for that code. Check the code and try again.</p>
         <a routerLink="/" class="link">Back to home</a>
       </section>
     } @else if (failed()) {
-      <section class="booking" aria-labelledby="bv-title">
+      <section class="state-card" aria-labelledby="bv-title">
         <h1 id="bv-title">Couldn’t load your booking</h1>
         <p class="lead">Something went wrong. Please try again in a moment.</p>
         <a routerLink="/" class="link">Back to home</a>
       </section>
     } @else if (booking(); as b) {
-      <section class="booking" aria-labelledby="bv-title">
-        <h1 id="bv-title">Your booking</h1>
-
-        <p class="code" data-testid="booking-code">
-          <span class="code-label">Booking code</span>
-          <strong>{{ b.code }}</strong>
-        </p>
-
-        <dl class="summary">
-          <dt>Status</dt>
-          <dd data-testid="booking-status">{{ statusLabel(b.status) }}</dd>
-          <dt>Venue</dt>
-          <dd>{{ b.venueName }}</dd>
-          <dt>Set</dt>
-          <dd>{{ b.rowLabel }} · spot {{ b.positionNo }}</dd>
-          <dt>Date</dt>
-          <dd>{{ b.bookingDate }}</dd>
-          <dt>{{ amountLabel(b.status) }}</dt>
-          <dd>{{ money(b.amount) }}</dd>
-          @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
-            <dt>Refunded</dt>
-            <dd data-testid="refunded-amount">{{ money(b.refundedAmount) }}</dd>
-          }
-        </dl>
+      <section class="booking-card" aria-labelledby="bv-title">
+        <div class="card-head">
+          <h1 id="bv-title">Your booking</h1>
+          <span class="status-wrap">
+            <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
+            <span class="sr-only">Booking status:</span>
+            <span class="chip {{ chipClass(b.status) }}" data-testid="booking-status">{{
+              statusLabel(b.status)
+            }}</span>
+          </span>
+        </div>
 
         @switch (b.status) {
-          @case ('PENDING_REQUEST') {
-            <section class="request-panel" data-testid="request-pending" aria-labelledby="request-state-title">
-              <h2 id="request-state-title">Waiting for the venue</h2>
-              <p class="terms">
-                {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be
-                charged unless they accept.
-              </p>
-              @if (b.requestExpiresAt; as deadline) {
-                <p class="terms">
-                  They have until <strong>{{ deadlineLabel(deadline) }}</strong> to respond.
-                </p>
-              }
-            </section>
-          }
           @case ('AWAITING_PAYMENT') {
             @if (b.payment) {
-              <section class="request-panel" data-testid="request-accepted" aria-labelledby="request-state-title">
+              <section
+                class="banner banner--awaiting"
+                data-testid="request-accepted"
+                aria-labelledby="request-state-title"
+              >
                 @if (b.requestExpiresAt) {
-                  <h2 id="request-state-title">Request accepted — complete your payment</h2>
-                  <p class="terms">
+                  <h2 id="request-state-title" class="banner-eyebrow">
+                    Request accepted&ngsp;<span aria-hidden="true">🎉</span>
+                  </h2>
+                  <p class="banner-body">
                     {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
                   </p>
                 } @else {
                   <!-- An instant booking with an open payment (e.g. an interrupted checkout) was
                        never a request — don't claim the venue "accepted" anything. -->
-                  <h2 id="request-state-title">Complete your payment</h2>
-                  <p class="terms">
+                  <h2 id="request-state-title" class="banner-eyebrow">Complete your payment</h2>
+                  <p class="banner-body">
                     This booking is reserved but unpaid. Pay now to confirm your spot.
                   </p>
                 }
-                <button type="button" class="btn primary" (click)="payNow(b)" data-testid="pay-now">
+                <button type="button" class="btn-cta" (click)="payNow(b)" data-testid="pay-now">
                   Pay now
                 </button>
               </section>
             }
           }
+          @case ('PENDING_REQUEST') {
+            <section
+              class="banner banner--pending"
+              data-testid="request-pending"
+              aria-labelledby="request-state-title"
+            >
+              <h2 id="request-state-title" class="banner-eyebrow">Waiting for the venue</h2>
+              <p class="banner-body">
+                {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be
+                charged unless they accept.
+              </p>
+              @if (b.requestExpiresAt; as deadline) {
+                <p class="banner-body">
+                  They have until <strong>{{ deadlineLabel(deadline) }}</strong> to respond.
+                </p>
+              }
+              <!-- Withdraw request slot: guest request-withdraw is backend issue #123 and not yet
+                   shipped, so no control is rendered here. Wire the action when #123 lands. -->
+            </section>
+          }
           @case ('DECLINED') {
-            <section class="request-panel" data-testid="request-declined" aria-labelledby="request-state-title">
-              <h2 id="request-state-title">Request declined</h2>
-              <p class="terms">
+            <section
+              class="banner banner--declined"
+              data-testid="request-declined"
+              aria-labelledby="request-state-title"
+            >
+              <h2 id="request-state-title" class="banner-eyebrow">Request declined</h2>
+              <p class="banner-body">
                 {{ b.venueName }} couldn’t take this booking, so it was declined. You haven’t been
                 charged — pick another set or date to book again.
               </p>
             </section>
           }
           @case ('EXPIRED') {
-            <section class="request-panel" data-testid="request-expired" aria-labelledby="request-state-title">
-              <h2 id="request-state-title">Request expired</h2>
-              <p class="terms">
-                {{ b.venueName }} didn’t respond in time, so this request expired. You haven’t
-                been charged — pick another set or date to book again.
+            <section
+              class="banner banner--expired"
+              data-testid="request-expired"
+              aria-labelledby="request-state-title"
+            >
+              <h2 id="request-state-title" class="banner-eyebrow">Request expired</h2>
+              <p class="banner-body">
+                {{ b.venueName }} didn’t respond in time, so this request expired. You haven’t been
+                charged — pick another set or date to book again.
               </p>
             </section>
           }
         }
+
+        <div class="code-card" data-testid="booking-code">
+          <span class="code-label">Booking code</span>
+          <div class="code">{{ b.code }}</div>
+          <p class="code-note">Show this code to staff when you arrive to claim your set.</p>
+        </div>
+
+        <dl class="details">
+          <div class="row"><dt>Venue</dt><dd>{{ b.venueName }}</dd></div>
+          <div class="row"><dt>Set</dt><dd>{{ b.rowLabel }} · spot {{ b.positionNo }}</dd></div>
+          <div class="row"><dt>Date</dt><dd>{{ dateLabel(b.bookingDate) }}</dd></div>
+          <div class="row"><dt>{{ amountLabel(b.status) }}</dt><dd class="amount">{{ formatMoney(b.amount) }}</dd></div>
+          @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
+            <div class="row"><dt>Refunded</dt><dd data-testid="refunded-amount">{{ formatMoney(b.refundedAmount) }}</dd></div>
+          }
+        </dl>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
         <p class="result" role="status" aria-live="polite" data-testid="cancel-result">
@@ -138,29 +208,29 @@ import { BookingService } from './booking.service';
                 <button
                   #confirmBtn
                   type="button"
-                  class="btn danger"
+                  class="btn-danger"
                   [disabled]="cancelling()"
                   (click)="confirmCancel()"
                   data-testid="confirm-cancel"
                 >
                   {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
                 </button>
-                <button type="button" class="btn" [disabled]="cancelling()" (click)="keepBooking()">
+                <button type="button" class="btn-outline" [disabled]="cancelling()" (click)="keepBooking()">
                   Keep booking
                 </button>
               </div>
             } @else {
-              <button type="button" class="btn danger" (click)="startCancel()" data-testid="start-cancel">
+              <button type="button" class="btn-outline danger" (click)="startCancel()" data-testid="start-cancel">
                 Cancel booking
               </button>
             }
           </section>
         }
 
-        <a routerLink="/" class="link">Back to home</a>
+        <a routerLink="/" class="link back">Back to home</a>
       </section>
     } @else {
-      <section class="booking" aria-labelledby="bv-title" aria-busy="true">
+      <section class="state-card" aria-labelledby="bv-title" aria-busy="true">
         <h1 id="bv-title">Loading your booking…</h1>
       </section>
     }
@@ -184,6 +254,9 @@ export class BookingView {
 
   private readonly code: string;
 
+  /** Money formatter (shared, minor units — invariant #5), exposed to the template. */
+  protected readonly formatMoney = formatMoney;
+
   constructor() {
     this.code = this.route.snapshot.paramMap.get('code') ?? '';
     if (this.code) {
@@ -199,10 +272,19 @@ export class BookingView {
     });
   }
 
-  private load(): void {
+  /**
+   * @param isRefresh a reload triggered by a completed cancellation (not the initial load). A
+   *   refresh that fails must NOT flip the page to the not-found/failed card — that would discard
+   *   the just-issued cancellation confirmation (the refund the server already actioned). The
+   *   stale-but-cancelled detail plus the live result region stay on screen instead.
+   */
+  private load(isRefresh = false): void {
     this.bookings.getByCode(this.code).subscribe({
       next: (b) => this.booking.set(b),
       error: (e: unknown) => {
+        if (isRefresh) {
+          return;
+        }
         if (typeof e === 'object' && e !== null && (e as { status?: number }).status === 404) {
           this.notFound.set(true);
         } else {
@@ -228,7 +310,7 @@ export class BookingView {
         this.cancellation.set(c);
         this.confirming.set(false);
         this.cancelling.set(false);
-        this.load(); // refresh to the CANCELLED detail (now shows the refunded amount)
+        this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
       },
       error: () => {
         this.cancelFailed.set(true);
@@ -237,21 +319,24 @@ export class BookingView {
     });
   }
 
+  /** The design label for a status (drives the header chip; matches design v3 `STATUS_META`). */
   protected statusLabel(status: string): string {
-    return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');
+    return metaFor(status).label;
+  }
+
+  /** The chip CSS-modifier class for a status. */
+  protected chipClass(status: string): string {
+    return metaFor(status).chip;
   }
 
   /** "Paid" once money has actually moved; "Amount" while the request/payment is still open. */
-  protected amountLabel(status: BookingDetail['status']): string {
-    switch (status) {
-      case 'PENDING_REQUEST':
-      case 'AWAITING_PAYMENT':
-      case 'DECLINED':
-      case 'EXPIRED':
-        return 'Amount';
-      default:
-        return 'Paid';
-    }
+  protected amountLabel(status: string): string {
+    return metaFor(status).amount;
+  }
+
+  /** The booking date as a friendly civil-date label (UTC-parsed, invariant #6). */
+  protected dateLabel(iso: string): string {
+    return formatBookingDate(iso, { withYear: true });
   }
 
   /** A response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */
@@ -282,13 +367,13 @@ export class BookingView {
     await this.router.navigate(['/booking/pay']);
   }
 
-  /** Refund-terms copy for a still-cancellable booking. */
+  /** Refund-terms copy for a still-cancellable booking (server-computed values, invariant #10). */
   protected refundTerms(b: BookingDetail): string {
     if (b.beforeCutoff) {
-      return `Free cancellation until the evening before — you’ll be refunded ${this.money(b.refundIfCancelledNow)} in full.`;
+      return `Free cancellation until the evening before — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)} in full.`;
     }
     if (b.refundIfCancelledNow.minorUnits > 0) {
-      return `The free-cancellation cutoff has passed — you’ll be refunded ${this.money(b.refundIfCancelledNow)}.`;
+      return `The free-cancellation cutoff has passed — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)}.`;
     }
     return 'The free-cancellation cutoff has passed — this cancellation is non-refundable.';
   }
@@ -298,14 +383,6 @@ export class BookingView {
     if (tier === 'NONE' || refund.minorUnits === 0) {
       return 'No refund applies under the cancellation policy.';
     }
-    return `${this.money(refund)} will be refunded to your card.`;
-  }
-
-  protected money(amount: MoneyView): string {
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency: amount.currency,
-      minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-    }).format(amount.minorUnits / 100);
+    return `${formatMoney(refund)} will be refunded to your card.`;
   }
 }
