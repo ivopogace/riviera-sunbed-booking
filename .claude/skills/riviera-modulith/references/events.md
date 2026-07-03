@@ -8,7 +8,7 @@ ledger entry; **`BookingCancelled`** → `availability` frees the set + `payment
 seam — `payment` → `booking` (`PaymentConfirmed`/`PaymentCanceled`) — as a **synchronous,
 in-transaction** listener (no registry; see "Synchronous in-transaction events" below). The
 **asynchronous, registry-backed spine** (`@ApplicationModuleListener` + Event Publication Registry)
-**lands in U5**.
+**landed with U5** (registry schema Flyway-owned: `V8__event_publication_registry.sql`).
 
 ## Where events live and the id-only payload rule
 
@@ -39,10 +39,6 @@ Why ids, not aggregates:
 - It keeps the payload serializable and stable for the Event Publication Registry (and any future
   broker externalization).
 
-(If a module accumulates many event types, a dedicated `@NamedInterface("events")` sub-package is a
-reasonable refinement — but our default is to keep published records in the single `api` interface,
-consistent with how typed ids and DTOs already live there.)
-
 ## Publishing
 
 Publish from inside the module — typically the application service implementing the inbound port —
@@ -55,13 +51,13 @@ publisher.publishEvent(new BookingConfirmed(bookingId, setId, venueId, bookingDa
 
 ## Listening
 
-Use **`@ApplicationModuleListener`** in the *listening* module's `infrastructure/in`. It is
+Use **`@ApplicationModuleListener`** in the *listening* module's `adapter/in`. It is
 `@Async` + `@Transactional` + `@TransactionalEventListener(AFTER_COMMIT)` — runs **after** the
 publisher commits, in its **own** transaction, asynchronously. A consumer failure does not roll back
 the producer.
 
 ```java
-// ai.riviera.platform.availability.infrastructure.in
+// ai.riviera.platform.availability.adapter.in
 @Component
 class BookingConfirmedListener {
 
@@ -88,10 +84,10 @@ call cycles: `booking` already depends on `payment::api`). So `payment` **publis
 **listens with a plain `@EventListener`**:
 
 ```java
-// publisher — ai.riviera.platform.payment.infrastructure.in.StripeWebhookController (inside @Transactional)
+// publisher — ai.riviera.platform.payment.adapter.in.StripeWebhookController (inside @Transactional)
 publisher.publishEvent(new PaymentConfirmed(bookingRef, paymentIntentId));   // payment.events record
 
-// listener — ai.riviera.platform.booking.infrastructure.in.PaymentEventListener
+// listener — ai.riviera.platform.booking.adapter.in.PaymentEventListener
 @Component
 class PaymentEventListener {
     @EventListener                                  // SYNC: runs in the publisher's thread + transaction
@@ -131,8 +127,8 @@ one transaction and an external retry (a re-delivered webhook) supplies the reli
 and marks it complete after the listener succeeds; incomplete publications are re-submitted on
 restart — **at-least-once with only a database table, no Kafka**.
 
-- It contributes its own schema — add it as a Flyway migration when the spine lands (invariant #12),
-  don't rely on auto-DDL.
+- It contributes its own schema — Flyway-owned (`V8__event_publication_registry.sql`, invariant
+  #12), never auto-DDL.
 - `spring.modulith.events.completion-mode`: `UPDATE` (default, rows kept + marked done), `DELETE`
   (removed on completion), or `ARCHIVE`. Prefer `DELETE`/`ARCHIVE` to avoid unbounded growth unless
   completed-event history is wanted.

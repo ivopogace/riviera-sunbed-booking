@@ -11,7 +11,9 @@ versions via the `spring-modulith-bom`.
 ## The structural test (the contract — already exists)
 
 `ai.riviera.platform.ModularityTests` is the one test that defines "correct structure." Keep it
-green; never weaken it to make a change pass.
+green; never weaken it to make a change pass. It is pure structural analysis — no Spring context,
+no DB, so it runs without Docker. When it fails, read the message literally — it names the
+offending class and the broken rule — and fix the **structure**, not the test.
 
 ```java
 class ModularityTests {

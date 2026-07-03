@@ -5,12 +5,14 @@ Albanian-riviera beach venue — pick the exact spot from a visual beach map and
 in-app. A two-sided marketplace: tourists are demand, venues are supply, the
 platform takes a commission per booking and pays venues out manually.
 
-> **Status: in active development.** The Spring Boot backend (`platform/`) and the
-> Angular frontend (`frontend/`) are scaffolded and building. Implemented so far:
-> the venue beach-map (U1), the availability claim (U2), and the create-booking
-> Instant flow with payment stubbed (U3); the event spine + payout accrual (U4/U5)
-> are designed but not yet built. Per-slice status lives in [`docs/plans/`](docs/plans/).
-> If you're here to contribute, start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
+> **Status: in active development.** The full stack is built and deployed — the
+> Spring Boot backend (`platform/`, seven Modulith modules) and the Angular
+> frontend (`frontend/`), live on GitHub Pages at
+> [ivopogace.github.io/riviera-sunbed-booking](https://ivopogace.github.io/riviera-sunbed-booking).
+> The tourist-facing Liquid Glass restyle (epic #133) is complete; the operator
+> console (epic #141) is in progress. Per-slice status lives in
+> [`docs/plans/`](docs/plans/). If you're here to contribute, start with
+> [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Start here
 
@@ -18,7 +20,7 @@ platform takes a commission per booking and pays venues out manually.
 |---|---|
 | Understand the product & business | [`docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`](docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md) |
 | See the architecture at a glance | [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md) — bounded contexts, aggregates, flows, state machines (rendered diagrams) |
-| Know the rules you can't break | [`CLAUDE.md`](CLAUDE.md) — conventions + the 12 invariants (canonical) |
+| Know the rules you can't break | [`CLAUDE.md`](CLAUDE.md) — conventions + the 13 invariants (canonical) |
 | Contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) — how we work, branching, the invariants in human terms |
 
 ## Tech stack (locked)
@@ -46,7 +48,7 @@ cd platform && ./gradlew build      # compile + test
 cd frontend && npm ci
 npm start                           # dev server
 npm test                            # unit tests (Vitest)
-npm run test:e2e                    # Playwright a11y e2e
+npm run test:e2e                    # Playwright e2e (CI-safe mocked suite)
 ```
 
 CI (`.github/workflows/`) runs the same backend build/test, the frontend
@@ -54,10 +56,10 @@ lint/test/build + e2e, CodeQL, and a SonarCloud scan on every PR.
 
 ## The system in one picture
 
-Six Spring-Modulith bounded contexts collaborate via **events** (state changes) and
+Seven Spring-Modulith bounded contexts collaborate via **events** (state changes) and
 **`api/` ports** (queries):
 
-`venue` · `availability` · `booking` · `payment` · `payout` · `customer`
+`venue` · `availability` · `booking` · `payment` · `payout` · `customer` · `operator`
 
 The spine flow: `PaymentSucceeded → BookingConfirmed →` the `availability` module
 marks the set taken **and** `payout` accrues a ledger entry. On `BookingCancelled →`

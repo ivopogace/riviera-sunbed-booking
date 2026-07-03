@@ -7,217 +7,97 @@ description: Use at the plan stage of riviera-sdlc, or whenever writing or execu
 
 ## Overview
 
-This skill is a project-local **plan-doc discipline** layered on whatever
-planning/execution engine is active. In this repo that engine is **`riviera-sdlc`**,
-which drives the build with Pocock's `implement` + `tdd`; the superpowers
-`writing-plans`/`executing-plans` plugin also works if you have it installed. This
-skill does NOT replace the engine — it adds the structure this specific marketplace
-needs: the booking domain has one invariant the whole business rests on (no
-double-sold set), a deliberately-unusual payment model (collect-only, no Stripe
-Connect), and a JDBC-only / Spring-Modulith backend whose boundaries are easy to
-violate under time pressure. The plan-doc template makes those concerns first-class
-sections instead of things you remember to check.
+A project-local **plan-doc discipline** layered on the active planning/execution
+engine — here `riviera-sdlc` driving Pocock's `implement` + `tdd` (superpowers
+`writing-plans`/`executing-plans` also work if installed). It does not replace the
+engine; it adds the plan-doc structure this marketplace needs, with
+`references/plan-doc-template.md` as the **single home of section guidance**.
 
-Load this skill at the **plan stage** when starting a riviera feature, and again
-when picking up a riviera plan to **execute** in a fresh session.
+Riviera is greenfield — no backlog of post-mortems — so this skill is
+**preventive**, built from the risks the design surfaced; the invariants at stake
+(#1 JDBC-only, #2 availability, #8 payments, #11 module boundaries) are canonical
+in `CLAUDE.md`.
+
+Load at the **plan stage** when starting a riviera feature, and again when picking
+up a riviera plan to **execute** in a fresh session.
 
 **Announce at start:** "I'm using the riviera-plan-doc skill to enforce
 project-specific plan-doc discipline."
-
-## Why this skill exists
-
-Unlike a mature repo with a backlog of post-mortems, riviera is greenfield — so
-this skill is **preventive**, built from the risks the design surfaced:
-
-1. **The availability invariant is subtle and fatal if wrong.** A set sold to a
-   tourist online and to a walk-in by staff is the failure that destroys trust.
-   It is a concurrency problem (two writers, one row) that must be designed, not
-   patched. Every plan that touches `availability`, `booking`, or the beach map
-   states how it upholds invariant #2.
-2. **The payment model is non-obvious and easy to "fix" wrongly.** A well-meaning
-   implementer reaches for Stripe Connect (the textbook marketplace answer) — which
-   cannot pay Albanian venues. The plan must name the collect-only model so nobody
-   reverses it mid-stream.
-3. **JDBC-only is a standing temptation to violate.** Spring Boot tutorials assume
-   JPA. The plan records that persistence is JDBC and that no JPA starter enters
-   the build.
-4. **Module boundaries blur fastest during the first build.** With six modules and
-   event-based collaboration, "I'll just call that service directly" is the first
-   shortcut taken. The plan lists modules touched, named interfaces, and events
-   up front.
-5. **Acceptance criteria drift into wishes.** "Booking should work" is not
-   testable. Each AC is "Given X, when Y, then Z" with a named test.
 
 ## Required artifacts
 
 Every riviera feature large enough to need a plan doc gets:
 
-- **A plan doc** at `docs/plans/<short-slug>.md`. Format follows
-  `references/plan-doc-template.md` in this skill directory exactly. Empty
-  sections are filled with `N/A — <reason>`, not deleted.
-- **A `Skills consulted` line** in the plan doc naming every craft skill the
-  `riviera-sdlc` Skill-routing gate triggered (`postgres` for migrations,
-  `codebase-design` + `domain-modeling` for backend modules, `angular-developer` +
-  the angular-cli MCP for frontend, `riviera-stripe-payments` for money) **and one
-  phrase on what each changed**. If the slice touches a DB table, a backend module, or
-  the frontend and that skill is absent from this line, the plan is not ready.
-- **A branch** named `<feature|bugfix>/<short-slug>`. Must exist before phase 0.
-- **An entry in the Execution-status table** updated in the same commit window as
-  each phase's code change.
+- **A plan doc** at `docs/plans/<short-slug>.md`, following
+  `references/plan-doc-template.md` exactly. Empty sections are filled with
+  `N/A — <reason>`, not deleted.
+- **A branch** named `<feature|bugfix>/<short-slug>`, existing before phase 0.
+- **An Execution-status row per phase**, updated in the **same commit window** as
+  that phase's code change (the same commit or the immediately-following one, nothing
+  unrelated between) — the rule covers every plan-doc update, incl. *Skills consulted*.
 - **An empty Open Questions / Assumptions section by the time "done" is claimed**,
   or remaining items each cite a follow-up issue.
 
-There is no Jira here — the source of intent is the **spec** in
-`docs/superpowers/specs/` and, for smaller items, a **GitHub issue**. Reference
-the issue number (`#NN`) in commits and the plan doc; no ticket-management MCP is
-involved.
+There is no Jira here — intent comes from the **spec** in `docs/superpowers/specs/`
+or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the plan doc.
 
 ## Workflow additions at plan time
 
-When planning a riviera feature, also do:
-
 0. **Run the `riviera-sdlc` Skill-routing gate FIRST — before authoring any design.**
-   Detect what the slice touches (DB table/migration → `postgres`; backend module/seam →
-   `codebase-design` + `domain-modeling`; frontend → `angular-developer` + the angular-cli
-   MCP; money → `riviera-stripe-payments`), **load those skills**, and design each section
-   *through* them — not from first principles to be "verified later." Record them in the
-   plan's **Skills consulted** line. Skipping this is the single most common way a plan
-   ships an avoidable design miss (e.g. UUIDv4 PKs the `postgres` skill would have caught,
-   or a colour-only UI the `angular-developer` a11y rules would have caught).
+   That table is the authority for which craft skills each touched area triggers; do
+   not re-derive it here. Load the matched skills and design each section *through*
+   them — an area designed from first principles "to verify later" gets the skill's
+   corrections only after the design is anchored, no longer cheap. Record every
+   loaded skill + one phrase on what it changed in **Skills consulted**, and keep it
+   current: re-run the gate whenever a phase enters an area the plan didn't anticipate.
 
-1. **Convert the spec's user stories (or the GitHub issue) into testable
-   acceptance criteria before phase 0.** Every story becomes one or more "Given X,
-   when Y, then Z" rows naming the target test class. If a stakeholder can't read
-   an AC and tell pass from fail, rewrite it. **Write each AC against the
-   application boundary — the inner hexagon — not the outside technology.** Cockburn's
-   2005 ports-and-adapters article: *"use cases should generally be written at the
-   application boundary (the inner hexagon), to specify the functions and events
-   supported by the application, regardless of external technology."* So phrase the AC
-   in domain terms (`AvailabilityClaim` succeeds / `BookingConfirmed` is published /
-   the ledger accrues once) rather than in terms of the Angular button, the Stripe
-   redirect, or the HTTP status alone. Tech-specific assertions belong in an
-   adapter-level test, not in the core AC — this keeps the criteria shorter, stable
-   across UI/payment-adapter churn, and reusable from any driving adapter (test
-   harness, GUI, future app-to-app).
-
-2. **Fill the Risk register and Open Questions sections before phase 0.** Use the
-   `grilling` skill if risks aren't yet visible. Categories that already
-   matter in this project: concurrent reservation of the same set (invariant #2),
-   Stripe webhook duplicate/out-of-order delivery (#8), payout double-accrual (#9),
-   timezone/cutoff arithmetic (#4/#6), money rounding (#5), module boundary leaks
-   (#11), **per-venue authorization on any venue-scoped endpoint (an operator must
-   only reach their own venue's data — BOLA; if the slice touches
-   `/api/venues/{venueId}/**`, the payout ledger, staff bookings, or beach-map
-   edit, state how ownership is verified in the application service)**, and any
-   temptation toward JPA or Stripe Connect. **If the slice adds or changes a request
-   DTO or an endpoint's error responses, note the error-contract expectation
-   (centralized `ProblemDetail`, not a per-controller `{"error": …}` body —
-   `riviera-java-conventions` §6b).** **If the slice adds a Flyway migration, the
-   plan may only claim `V<n>` after verifying the number is free on `main` AND
-   unclaimed by any open PR's diff** (riviera-sdlc's in-flight check; the #122/#127
-   V19 collision is the cautionary tale) — and it names who renumbers if a parallel
-   slice merges first (default: whoever merges second).
-
-3. **Fill the Availability & concurrency section if the feature touches booking,
-   the beach map, or `availability`.** State exactly how invariant #2 is upheld:
-   the unique constraint, the locking/claim strategy (`SELECT … FOR UPDATE` vs
-   `INSERT … ON CONFLICT`), and the test that proves two concurrent reservations
-   of the same `(set, date)` cannot both succeed. This is the highest-leverage
-   section in the template; do not write `N/A` unless the feature genuinely cannot
-   affect availability.
-
-4. **Fill the Spring-Modulith section if any backend code is in scope.** List
-   modules touched, any new `api/` named interfaces, and any domain events (with
-   id-based payloads). Use `codebase-design` for the module interfaces/seams; the
-   boundary and id-based-event rules are invariant #11, checked by
-   `riviera-review-overlay` and the `ApplicationModules.verify()` test.
-
-   **4a. Module-ownership table (required whenever a slice adds or moves behavior).**
-   For each new or changed capability in the slice, state **which module owns it** and
-   **why**, checked against `RESPONSIBILITIES.md`. One row each:
-
-   | Capability (what the slice adds/changes) | Owner module | Justification |
-   |---|---|---|
-   | e.g. "compute the late-cancel refund amount" | `booking` | `booking` Job: owns cancellation/refund **policy**; **not** `payment` (its Not-My-Job: "deciding whether/how much to refund → `booking`") |
-
-   The justification must cite the owner's **Job** line *and* confirm the capability
-   is **not** on another module's **Not My Job** list. This is the plan-time boundary
-   gate: a capability that lands on some module's Not-My-Job list, or that two modules
-   both claim, is a boundary error to resolve **before** code — cheap here, expensive
-   at review. Pay special attention to the two decision-vs-execution splits
-   (`booking` decides refunds / `payment` executes; `venue` stores the commission rate
-   / `payout` computes) and the Need-To-Know rule (a subscriber gets ids, never a
-   foreign aggregate). If the slice touches only one module and adds no cross-module
-   interaction, a one-line "all in `<module>`, no boundary change" suffices.
-   `riviera-review-overlay` **RV-BE-11** re-checks this table against the diff.
-
-5. **Fill the Payment & payout section if money moves.** Name the model
-   (collect-only, no Connect), the webhook-as-source-of-truth rule, idempotency,
-   and the payout-ledger effect. Load `riviera-stripe-payments`.
-
+1. **Acceptance criteria before phase 0:** convert the spec's user stories (or the
+   GitHub issue) into testable ACs per the template (Given/When/Then, named test
+   class, written at the inner hexagon).
+2. **Risk register + Open Questions before phase 0:** fill both sections per the
+   template — its blockquote carries the risk categories that already matter here.
+3. **Availability & concurrency:** if the feature touches booking, the beach map,
+   or `availability`, fill the section per the template, stating how invariant #2
+   (no double-sold set) is upheld — the highest-leverage section in the plan.
+4. **Spring Modulith:** if any backend code is in scope, fill the modules /
+   interfaces / events section per the template, with `codebase-design` for the seams.
+   **4a. Module ownership:** whenever the slice adds or moves behavior, fill the
+   template's Module-ownership table (§4a), checked against `RESPONSIBILITIES.md`
+   (Job / Not-My-Job).
+5. **Payment & payout:** if money moves, fill the section per the template — name
+   the model (collect-only, **no Stripe Connect**) — and load `riviera-stripe-payments`.
 6. **Decompose into PR-sized phases.** Each phase merges to the feature branch and
-   is independently reviewable. Prefer a TDD red-green-refactor shape per task.
+   is independently reviewable; prefer a TDD red-green-refactor shape per task.
 
 ## Workflow additions at execution time
 
-When executing a riviera plan, also do:
-
-1. **Per-phase generalization pass after every bug fix or new pattern.** Ask:
-   where else does this apply? (e.g. a fix to one availability write path probably
-   applies to the staff-mark path too.) Record the search and decision in the
-   Generalization-audit log.
-
-2. **Plan-doc update lands in the same commit window as the code change.** Either
-   the same commit or the immediately-following one with nothing unrelated between.
-
-3. **Use AskUserQuestion for forks the evidence can't settle** — anything that
+1. **Per-phase generalization pass after every bug fix or new pattern.** Ask: where
+   else does this apply? (A fix to one availability write path probably applies to the
+   staff-mark path too.) Record the search and decision in the Generalization-audit log.
+2. **Use AskUserQuestion for forks the evidence can't settle** — anything that
    changes the availability strategy, a module boundary, the payment flow, or a
    public `api/` port. Decide naming/style yourself.
-
-4. **Run the Self-review checklist before claiming done.** Unchecked items are
+3. **Run the Self-review checklist before claiming done.** Unchecked items are
    evidence the feature is not done, not "minor cleanup."
-
-5. **Scope test runs to the smallest set that proves the change.** One test class
-   for the red/green step; the touched module's package for the per-phase
-   regression; the full suite at pre-merge **via CI, not the local sandbox** — the
-   exact run recipes (cloud-session Gradle setup, the structural-net class list, the
-   never-run-bare-`test`-locally rule) live in `riviera-local-debug`; load it before
-   the session's first build/test invocation.
-
-6. **Re-run the Skill-routing gate when a phase enters a new area.** If a phase that
-   the plan called backend-only turns out to add a migration, load `postgres` then —
-   the plan-time load does not carry over to an area the plan didn't anticipate. Update
-   *Skills consulted* in the same commit window.
+4. **Scope test runs to the smallest set that proves the change** — the run recipes
+   live in `riviera-local-debug`; load it before the session's first build/test invocation.
 
 ## Resources in this skill directory
 
-- `SKILL.md` — this file.
-- `references/plan-doc-template.md` — the canonical riviera plan-doc template. Copy
-  as the starting point for every feature; keep the section structure.
+- `references/plan-doc-template.md` — the canonical riviera plan-doc template and
+  the single home of section guidance (what each section must contain lives in its
+  blockquote). Copy it as the starting point for every feature; keep the structure.
 
 ## Anti-patterns to avoid
 
 - **Don't write `N/A` in the Availability & concurrency section to save time.** If
   the feature touches booking or the map, that section is the point of the plan.
-- **Don't leave the payment model implicit.** Name "collect-only, no Connect" so
-  the next session doesn't reach for Stripe Connect.
-- **Don't claim a phase done while its Execution-status row is ⏳ or blank.**
 - **Don't write acceptance criteria as prose.** "Fast and reliable" is not an AC.
   "Given two clients reserving set 12 on 2026-07-01 concurrently, when both submit,
   then exactly one booking is `CONFIRMED` and the other gets `409 SET_TAKEN`,
   pinned by `ConcurrentReservationIT`" is.
-- **Don't anchor an AC to the outside technology.** "When the user taps *Pay* and
-  Stripe redirects back" couples the criterion to one driving adapter; write it at
-  the inner hexagon ("when checkout is confirmed, `BookingConfirmed` is published")
-  and assert the Stripe/Angular specifics in an adapter-level test.
 - **Don't resolve an Open Question by deleting it.** Move it under `### Resolved`
   with the outcome and commit SHA.
-- **Don't design an area from first principles "to verify with the skill later."**
-  That defers the gate until after the design is anchored, and the skill's corrections
-  arrive too late to be cheap. Load `postgres` / `codebase-design` / `angular-developer`
-  (+ MCP) / `riviera-stripe-payments` **before** writing that section, and list them in
-  *Skills consulted*. A plan whose *Skills consulted* line doesn't cover the areas the
-  diff touches is incomplete.
 
 ## When NOT to use this skill
 
@@ -229,37 +109,17 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 
 ## Integration
 
-**Execution engine (one of):**
-- `riviera-sdlc` → Pocock `implement` + `tdd` (installed — the default here).
-- `superpowers:writing-plans` / `superpowers:executing-plans` if that plugin is installed.
-
-**Upstream feeder skills (before planning):**
-- the design spec in `docs/superpowers/specs/` — the source of intent.
-- `grilling` / `grill-me` — relentless Q&A when requirements are genuinely ambiguous.
-
-**Frequently co-loaded:**
-- `riviera-stripe-payments` — any feature that moves money.
-- `riviera-review-overlay` — at the review gate.
-- `codebase-design`, `domain-modeling` — backend module-interface design and the
-  domain glossary/ADRs. The Spring-Modulith/Postgres specifics (boundaries, id-based
-  events, the availability `UNIQUE(set_id, booking_date)` + row-lock pattern) live in
-  `CLAUDE.md` invariants and are checked by `riviera-review-overlay` (RV-BE-1) — no
-  separate skill needed.
-- `postgres` — table/schema/index craft for any Flyway migration (the availability
-  `UNIQUE(set_id, booking_date)` constraint, the venue-map tables, the payout ledger).
-- `riviera-java-conventions` — the backend Java language idioms (JDBC-only/no-JPA/no-Lombok,
-  records, constructor injection, package-private adapters, Java 25 features) for any phase
-  that writes Java.
-- `angular-new-app` — to scaffold the Angular app (the first frontend phase):
-  `ng new` + `--ai-config`, Tailwind, CLI generators.
-- `angular-developer` — for frontend surfaces (the beach-map seat picker, the
-  booking flow) and Angular standards; consult its `references/` for signals,
-  forms, routing, and testing detail.
-- `tdd`, `diagnosing-bugs` — standard execution discipline (installed).
-
-**Orchestration & vendored craft skills:**
-- `riviera-sdlc` — the workflow orchestrator; it loads this skill at the plan stage.
-- `to-issues` (slice the plan into issues), `tdd` / `diagnosing-bugs` (build/debug),
-  `codebase-design` / `domain-modeling` (module-interface & vocabulary craft),
-  `triage` (issue/PR lifecycle). These are the generic engine; this skill supplies
-  the riviera-specific plan discipline on top.
+- **Engine:** `riviera-sdlc` (the orchestrator — loads this skill at the plan stage,
+  routes the lifecycle skills `to-issues`/`triage`/`diagnosing-bugs`) → Pocock
+  `implement` + `tdd`; superpowers `writing-plans`/`executing-plans` if present.
+- **Template:** `references/plan-doc-template.md` — every section's guidance lives there.
+- **Upstream:** the design spec in `docs/superpowers/specs/` (the source of
+  intent); `grilling` when requirements are genuinely ambiguous.
+- **Co-load per the `riviera-sdlc` Skill-routing table** (the authority): `postgres`
+  (migrations), `codebase-design` + `domain-modeling` (module seams & vocabulary),
+  `riviera-java-conventions` (backend Java idioms), `riviera-stripe-payments` (money).
+- `riviera-frontend` + `angular-developer` — for frontend surfaces (structure /
+  folder placement, then Angular standards); consult the latter's `references/`
+  for signals, forms, routing, and testing detail.
+- **At the review gate:** `riviera-review-overlay` — RV-BE-11 re-checks the
+  Module-ownership table against the diff; RV-PROC-1 re-checks *Skills consulted*.

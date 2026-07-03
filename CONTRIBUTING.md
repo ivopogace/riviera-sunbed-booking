@@ -12,7 +12,7 @@ Read these three, in order:
 2. [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md) — the
    bounded contexts, aggregates, and flows as diagrams. This is the fastest way to
    load the mental model.
-3. [`CLAUDE.md`](CLAUDE.md) — the conventions and the **12 invariants**. These are
+3. [`CLAUDE.md`](CLAUDE.md) — the conventions and the **13 invariants**. These are
    the canonical rules; everything below is the human-friendly summary.
 
 The full product design lives in
@@ -21,8 +21,9 @@ The full product design lives in
 
 ## 2. Current state & setup
 
-Both apps are scaffolded and building. The backend lives in `platform/` (Spring
-Boot, Spring Modulith) and the frontend in `frontend/` (Angular). To work locally:
+The full stack is built and deployed (the frontend is live on GitHub Pages). The
+backend lives in `platform/` (Spring Boot, Spring Modulith) and the frontend in
+`frontend/` (Angular). To work locally:
 
 ```bash
 cd platform && ./gradlew build      # backend: compile + test
@@ -31,9 +32,9 @@ cd frontend && npm ci && npm start   # frontend: install + dev server
 
 You'll need locally: **JDK 25** (the project's Gradle toolchain), **Node 26.0.0**
 (pinned in [`.nvmrc`](.nvmrc)), **Docker** (for the backend Testcontainers ITs against
-Postgres), and later a **Stripe test account**. A `riviera-local-debug` skill with the
-full set of run recipes is still pending; until it lands, the commands above plus the
-per-slice plan docs in `docs/plans/` are the source of truth.
+Postgres), and a **Stripe test account** for payment-module work. The full set of
+run recipes — including single-test and cloud-session variants — lives in the
+`riviera-local-debug` skill (`.claude/skills/riviera-local-debug/`).
 
 ## 3. How we work (spec-driven, vertical slices)
 
@@ -45,9 +46,9 @@ We build in thin **vertical slices** — one path through every layer
 |---|---|---|
 | **Spec** | The intent lives in `docs/superpowers/specs/` or a GitHub issue. | — |
 | **Plan** | A plan doc in `docs/plans/<slug>.md` with testable acceptance criteria, a risk register, and — if booking/availability is touched — exactly how invariant #2 is upheld. | `riviera-plan-doc` |
-| **Slice** | Break the plan into independently-grabbable vertical slices. | `to-issues` *(once adopted)* |
+| **Slice** | Break the plan into independently-grabbable vertical slices. | `to-issues` |
 | **Build** | Test-first, red→green→refactor, one behavior at a time. | `tdd` |
-| **Review** | The 12 invariants become checkable gates; availability & payment-source are Blockers. | `riviera-review-overlay` |
+| **Review** | The 13 invariants become checkable gates; availability & payment-source are Blockers. | `riviera-review-overlay` |
 
 Keep it right-sized: a one-line fix doesn't need a plan doc. A feature that touches
 booking, availability, or money does.
@@ -80,7 +81,7 @@ These are the rules a reviewer will block on. Canonical text + rationale in
   Stripe Connect.
 - **#11 Module boundaries.** Cross-module access only via the other module's `api/`
   port or a domain event (id-based payload). Never import its
-  `application.*`/`domain.*`/`infrastructure.*`.
+  `application.*`/`domain.*`/`adapter.*`.
 - **#12 Schema changes go through Flyway** — versioned forward migrations under
   `src/main/resources/db/migration`. No hand-run DDL.
 
