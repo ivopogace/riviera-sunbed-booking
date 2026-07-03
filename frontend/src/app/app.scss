@@ -156,6 +156,16 @@
   }
 }
 
+// The "Find a booking" nav entry is a <button> (it opens a dialog, not a route) styled to sit
+// inline with the .riv-nav-link anchors (issue #148).
+.riv-nav-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
 .riv-chip-btn {
   display: inline-flex;
   align-items: center;
@@ -314,6 +324,15 @@
   &:hover {
     background: rgba(12, 42, 51, 0.06);
   }
+}
+
+// The mobile "Find a booking" entry is a <button> (opens the dialog) sharing the .riv-mobile-link
+// visual (issue #148).
+.riv-mobile-btn {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .riv-mobile-theme {

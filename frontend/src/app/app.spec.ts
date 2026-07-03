@@ -1,3 +1,4 @@
+import { provideHttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -19,7 +20,9 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     document.documentElement.removeAttribute('data-riv-theme');
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(surfaceRoutes)],
+      // provideHttpClient: the shell renders the find-a-booking modal (#148), whose BookingService
+      // injects HttpClient — no request is made in these tests.
+      providers: [provideRouter(surfaceRoutes), provideHttpClient()],
     }).compileComponents();
   });
 
@@ -72,6 +75,56 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       .querySelector('[data-testid="mobile-menu"]')
       ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
     expect(mobileLink?.textContent).toContain('My bookings');
+  });
+
+  it('exposes a Find a booking trigger on desktop that opens the modal and restores focus on dismiss (#148)', () => {
+    const { fixture, el } = shell();
+
+    const desktopBtn = el.querySelector<HTMLButtonElement>(
+      '.riv-nav-desktop [data-testid="find-open"]',
+    )!;
+    expect(desktopBtn.textContent).toContain('Find a booking');
+    expect(el.querySelector('app-find-booking')).toBeNull();
+
+    desktopBtn.click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).not.toBeNull();
+
+    // Dismiss via the modal's close button → the modal closes and focus returns to the trigger.
+    el.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).toBeNull();
+    expect(document.activeElement).toBe(desktopBtn);
+  });
+
+  it('exposes a Find a booking entry in the mobile menu that opens the modal and closes the menu (#148)', () => {
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    const mobileBtn = el.querySelector<HTMLButtonElement>(
+      '[data-testid="mobile-menu"] [data-testid="find-open-mobile"]',
+    )!;
+    expect(mobileBtn.textContent).toContain('Find a booking');
+
+    mobileBtn.click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).not.toBeNull();
+    // Opening find collapses the mobile menu.
+    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+  });
+
+  it('closes the Find a booking modal on navigation (a found code routes to /booking/:code) (#148)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).not.toBeNull();
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).toBeNull();
   });
 
   it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
