@@ -7,8 +7,10 @@ description: >-
   Registry, and module-scoped tests. Load BEFORE creating or modifying ANY backend Java in
   platform/ — trigger on "add a module", "expose this to another module", "where does this class
   go", "why does ModularityTests fail", or any work in the venue / availability / booking /
-  payment / payout / customer / operator modules. Concrete mechanics for invariants #11 and #1
-  (canonical in CLAUDE.md). Pairs with riviera-java-conventions, codebase-design, and postgres.
+  payment / payout / customer / operator modules. In this repo prefer it over the generic
+  spring-modulith-* skills (ddd-jdbc-module, event-designer, boundary-reviewer). Concrete mechanics
+  for invariants #11 and #1 (canonical in CLAUDE.md). Pairs with riviera-java-conventions,
+  codebase-design, and postgres.
 ---
 
 # Riviera Spring Modulith (hexagonal, JDBC-only)
