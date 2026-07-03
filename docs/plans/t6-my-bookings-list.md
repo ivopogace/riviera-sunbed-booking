@@ -250,8 +250,8 @@ invariant #7: the codes are the key, held on-device).
 | 1 — `core/device-local-bookings` store (unit red→green) | ✅ | (impl commit) |
 | 2 — `remember` on create in `BookingService` (unit) | ✅ | (impl commit) |
 | 3 — Extract chip → `shared/booking-status.ts` + `_glass.scss` mixin; refactor booking-view green | ✅ | (impl commit) |
-| 4 — `my-bookings` component: rows, sub-labels, 404-drop, transient-retry, empty state (unit + axe) | | |
-| 5 — `my-bookings.scss` glass + `my-bookings.contrast.spec.ts` + shared chip contrast spec | | |
+| 4 — `my-bookings` component: rows, sub-labels, 404-drop, transient-retry, empty state (unit + axe) | ✅ | (impl commit) |
+| 5 — `my-bookings.scss` glass + `my-bookings.contrast.spec.ts` + shared chip contrast spec | ✅ | (impl commit) |
 | 6 — Route + nav entry + `app.spec.ts` (RESTYLED_PATHS + nav test) | | |
 | 7 — e2e (CI-safe `my-bookings.e2e.ts`); font-link re-check | | |
 
