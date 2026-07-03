@@ -9,14 +9,69 @@ import { formatMoney } from '../shared/money';
 import { BookingDetail } from './booking.model';
 import { BookingService } from './booking.service';
 
-/** One list row: still fetching, loaded from the server, or a transient fetch failure (retryable). */
+/** The design's per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
+function subLineOf(b: BookingDetail): string {
+  switch (b.status) {
+    case 'AWAITING_PAYMENT':
+      // No server pay-by deadline exists (only requestExpiresAt, the venue response deadline) →
+      // fall back rather than invent a cutoff (invariants #4/#6; the epic forbids a backend change).
+      return 'Payment needed';
+    case 'PENDING_REQUEST':
+      return b.requestExpiresAt
+        ? `Awaiting host · by ${formatDeadline(b.requestExpiresAt)}`
+        : 'Awaiting host reply';
+    case 'DECLINED':
+      return 'Host could not accept';
+    case 'EXPIRED':
+      return 'Request expired unanswered';
+    case 'CANCELLED':
+      return 'Booking cancelled';
+    case 'COMPLETED':
+      return 'Enjoyed · thanks for visiting';
+    case 'NO_SHOW':
+      return 'Marked as no-show';
+    default:
+      return '';
+  }
+}
+
+/** The flattened, presentation-ready row — computed once when the detail loads (not per CD pass). */
+interface RowView {
+  readonly code: string;
+  readonly venueName: string;
+  readonly setLabel: string;
+  readonly dateLabel: string;
+  readonly subLine: string;
+  readonly statusLabel: string;
+  readonly chipClass: string;
+  /** 'Paid' once money has moved; 'Amount' while open / no charge — disambiguates the figure. */
+  readonly amountLabel: string;
+  readonly amountStr: string;
+}
+
+function buildView(b: BookingDetail): RowView {
+  const meta = metaFor(b.status);
+  return {
+    code: b.code,
+    venueName: b.venueName,
+    setLabel: `${b.rowLabel} · spot ${b.positionNo}`,
+    dateLabel: formatBookingDate(b.bookingDate, { withYear: true }),
+    subLine: subLineOf(b),
+    statusLabel: meta.label,
+    chipClass: meta.chip,
+    amountLabel: meta.amount,
+    amountStr: formatMoney(b.amount),
+  };
+}
+
+/** One list row: still fetching, loaded (its view-model ready), or a transient fetch failure. */
 type Row =
   | { readonly code: string; readonly state: 'loading' }
-  | { readonly code: string; readonly state: 'loaded'; readonly detail: BookingDetail }
+  | { readonly code: string; readonly state: 'loaded'; readonly view: RowView }
   | { readonly code: string; readonly state: 'failed' };
 
-/** A booking gone from the backend (deleted / never existed) — its code is dropped from the device. */
-function isGone(error: unknown): boolean {
+/** A booking the backend does not return right now — a 404 on the per-code lookup. */
+function isNotFound(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { status?: number }).status === 404;
 }
 
@@ -28,12 +83,13 @@ function isGone(error: unknown): boolean {
  * server status (a request accepted/declined/expired elsewhere is reflected on the next load) —
  * there is deliberately no guest list endpoint.
  *
- * <p>Each row loads independently: a `404` silently drops the code from the device; a transient
- * failure keeps it and offers Retry. Rows are links to the T5 `/booking/:code` detail view. Money
- * renders from integer minor units via {@link formatMoney} (invariant #5); the PENDING_REQUEST
- * deadline via the shared {@link formatDeadline} (Europe/Tirane, invariant #6) — the component does
- * no `Date`/cutoff arithmetic. `AWAITING_PAYMENT` has no server pay-by field, so its sub-label is
- * the "Payment needed" fallback. Codes are treated as secrets — never logged.
+ * <p>Each row loads independently into a precomputed {@link RowView}. Rows are links to the T5
+ * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
+ * (invariant #5); the PENDING_REQUEST deadline via the shared {@link formatDeadline} (Europe/Tirane,
+ * invariant #6) — the component does no `Date`/cutoff arithmetic. On a `404` the row is dropped from
+ * view but the code is **kept** (invariant #7: it is the guest's only key and a 404 can be transient
+ * — a recovered booking reappears next load); a transient/offline failure shows Retry. Codes are
+ * treated as secrets — never logged.
  */
 @Component({
   selector: 'app-my-bookings',
@@ -57,28 +113,27 @@ function isGone(error: unknown): boolean {
             <li>
               @switch (row.state) {
                 @case ('loaded') {
-                  <a
-                    [routerLink]="['/booking', row.detail.code]"
-                    class="row"
-                    data-testid="booking-row"
-                  >
+                  <a [routerLink]="['/booking', row.view.code]" class="row" data-testid="booking-row">
                     <span class="row-main">
-                      <span class="venue">{{ row.detail.venueName }}</span>
-                      <span class="meta"
-                        >{{ row.detail.rowLabel }}&ngsp;· spot {{ row.detail.positionNo }}</span
-                      >
-                      <span class="meta">{{ dateLabel(row.detail.bookingDate) }}</span>
-                      @if (subLine(row.detail); as sub) {
-                        <span class="subline" data-testid="row-subline">{{ sub }}</span>
+                      <span class="venue">{{ row.view.venueName }}</span>
+                      <span class="meta">{{ row.view.setLabel }}</span>
+                      <span class="meta">{{ row.view.dateLabel }}</span>
+                      @if (row.view.subLine) {
+                        <span class="subline" data-testid="row-subline">{{ row.view.subLine }}</span>
                       }
-                      <span class="code">{{ row.detail.code }}</span>
+                      <span class="code">{{ row.view.code }}</span>
                     </span>
                     <span class="row-side">
                       <!-- Status conveyed in text (the chip label), never colour alone (WCAG AA). -->
-                      <span class="chip {{ chipClass(row.detail.status) }}" data-testid="row-status">{{
-                        statusLabel(row.detail.status)
+                      <span class="chip {{ row.view.chipClass }}" data-testid="row-status">{{
+                        row.view.statusLabel
                       }}</span>
-                      <span class="amount">{{ formatMoney(row.detail.amount) }}</span>
+                      <span class="amount-wrap">
+                        <span class="amount-label" data-testid="row-amount-label">{{
+                          row.view.amountLabel
+                        }}</span>
+                        <span class="amount">{{ row.view.amountStr }}</span>
+                      </span>
                     </span>
                   </a>
                 }
@@ -121,9 +176,6 @@ export class MyBookings {
 
   protected readonly rows = signal<readonly Row[]>([]);
 
-  /** Money formatter (shared, minor units — invariant #5), exposed to the template. */
-  protected readonly formatMoney = formatMoney;
-
   constructor() {
     // Snapshot the remembered codes once and fetch each live. Placeholder loading rows first so the
     // list keeps the device's newest-first order as the async fetches resolve into it.
@@ -139,11 +191,10 @@ export class MyBookings {
   private load(code: string): void {
     this.setRow({ code, state: 'loading' });
     this.bookings.getByCode(code).subscribe({
-      next: (detail) => this.setRow({ code, state: 'loaded', detail }),
+      next: (detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) }),
       error: (e: unknown) => {
-        if (isGone(e)) {
-          // The backend no longer recognizes this code: forget it and drop the row silently.
-          this.store.forget(code);
+        if (isNotFound(e)) {
+          // 404: drop the row from view, but keep the code (invariant #7 — see the class doc).
           this.rows.update((rows) => rows.filter((r) => r.code !== code));
         } else {
           // Transient (offline / 5xx): keep the code, offer Retry — never lose a valid booking.
@@ -155,46 +206,5 @@ export class MyBookings {
 
   private setRow(row: Row): void {
     this.rows.update((rows) => rows.map((r) => (r.code === row.code ? row : r)));
-  }
-
-  /** The design's per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
-  protected subLine(b: BookingDetail): string {
-    switch (b.status) {
-      case 'AWAITING_PAYMENT':
-        // No server pay-by deadline exists (only requestExpiresAt, the venue response deadline) →
-        // fall back rather than invent a cutoff (invariants #4/#6; epic forbids a backend change).
-        return 'Payment needed';
-      case 'PENDING_REQUEST':
-        return b.requestExpiresAt
-          ? `Awaiting host · by ${formatDeadline(b.requestExpiresAt)}`
-          : 'Awaiting host reply';
-      case 'DECLINED':
-        return 'Host could not accept';
-      case 'EXPIRED':
-        return 'Request expired unanswered';
-      case 'CANCELLED':
-        return 'Booking cancelled';
-      case 'COMPLETED':
-        return 'Enjoyed · thanks for visiting';
-      case 'NO_SHOW':
-        return 'Marked as no-show';
-      default:
-        return '';
-    }
-  }
-
-  /** The design label for a status (drives the chip; shared source of truth). */
-  protected statusLabel(status: string): string {
-    return metaFor(status).label;
-  }
-
-  /** The chip CSS-modifier class for a status. */
-  protected chipClass(status: string): string {
-    return metaFor(status).chip;
-  }
-
-  /** The booking date as a friendly civil-date label (UTC-parsed, invariant #6). */
-  protected dateLabel(iso: string): string {
-    return formatBookingDate(iso, { withYear: true });
   }
 }

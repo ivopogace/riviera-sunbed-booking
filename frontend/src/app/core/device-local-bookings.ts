@@ -24,9 +24,10 @@ export class DeviceLocalBookings {
 
   /**
    * Remember a booking code (called on every successful create — confirmed, awaiting-payment, or
-   * requested). Idempotent: a code seen again moves to the front rather than duplicating.
+   * requested). Idempotent: a code seen again moves to the front rather than duplicating. A missing
+   * code (empty / null / undefined — e.g. an empty create body) is ignored, never thrown on.
    */
-  remember(code: string): void {
+  remember(code: string | null | undefined): void {
     if (!code) {
       return;
     }
@@ -35,8 +36,10 @@ export class DeviceLocalBookings {
   }
 
   /**
-   * Forget a code — used when the backend no longer recognizes it (a `404` on the list's per-code
-   * lookup), so a deleted/expired-away booking silently drops off this device.
+   * Explicitly forget a code — for a future account-merge (#114) or a user-initiated removal. The
+   * list does **not** call this on a `404`: the code is the guest's only key (invariant #7) and a
+   * 404 can be transient, so the list hides the row but keeps the code (a recovered booking
+   * reappears on the next load).
    */
   forget(code: string): void {
     this.current.update((codes) => codes.filter((c) => c !== code));

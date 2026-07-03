@@ -137,7 +137,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(host.querySelector('[data-testid="row-subline"]')?.textContent).toContain('17:00');
   });
 
-  it('drops a 404 code silently, forgets it, and keeps the live ones', async () => {
+  it('drops a 404 row from view but keeps the code (invariant #7 — a 404 can be transient)', async () => {
     seedCodes(['GONE1234', 'LIVE5678']);
     const fixture = await render(
       stubService({
@@ -151,8 +151,26 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain('LIVE5678');
     expect(host.textContent).not.toContain('GONE1234');
-    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual(['LIVE5678']);
+    // The 404 code is NOT forgotten — it is the guest's only key and the 404 may be transient.
+    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual(['GONE1234', 'LIVE5678']);
     await expectNoAxeViolations(host);
+  });
+
+  it.each<[BookingStatus, Partial<BookingDetail>, string]>([
+    ['CONFIRMED', {}, 'Paid'],
+    ['COMPLETED', {}, 'Paid'],
+    ['CANCELLED', {}, 'Paid'],
+    ['NO_SHOW', {}, 'Paid'],
+    ['DECLINED', {}, 'Amount'],
+    ['EXPIRED', {}, 'Amount'],
+    ['AWAITING_PAYMENT', {}, 'Amount'],
+    ['PENDING_REQUEST', { requestExpiresAt: '2026-11-30T16:00:00Z' }, 'Amount'],
+  ])('labels the row amount for %s as "%s" (no-charge states not shown as Paid)', async (status, extra, label) => {
+    seedCodes(['AMNT0001']);
+    const fixture = await render(stubService({ AMNT0001: detail('AMNT0001', status, extra) }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="row-amount-label"]')?.textContent?.trim()).toBe(label);
   });
 
   it('keeps a transiently-failed code and retries it (never loses a valid booking)', async () => {
@@ -192,13 +210,14 @@ describe('MyBookings (device-local list, issue #139)', () => {
     await expectNoAxeViolations(host);
   });
 
-  it('shows the empty state when every remembered code is gone (all 404)', async () => {
+  it('shows the empty state when every remembered code 404s, but retains the codes', async () => {
     seedCodes(['X0000001']);
     const fixture = await render(stubService({ X0000001: { error: { status: 404 } } }));
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="my-bookings-empty"]')).not.toBeNull();
-    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual([]);
+    // Codes are kept (not forgotten) so a transient 404 self-heals on the next load.
+    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual(['X0000001']);
   });
 
   it('shows a loading skeleton while a row is still fetching (a11y)', async () => {

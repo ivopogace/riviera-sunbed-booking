@@ -134,6 +134,18 @@ describe('BookingService', () => {
     ]);
   });
 
+  it('does not throw or remember a code when a successful create returns an empty body (#139 review)', () => {
+    let errored = false;
+    service.createBooking(REQUEST).subscribe({ error: () => (errored = true) });
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+      .flush(null, { status: 201, statusText: 'Created' });
+
+    // A null body must degrade (as it did pre-remember), not throw inside the map() pipeline.
+    expect(errored).toBe(false);
+    expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual([]);
+  });
+
   it('beginPayment primes the payment hand-off from a fetched booking detail (#98 Pay now)', () => {
     // A stale request hand-off must not survive into the payment flow.
     service.createBooking(REQUEST).subscribe();

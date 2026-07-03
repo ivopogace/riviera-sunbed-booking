@@ -58,27 +58,29 @@ export class BookingService {
       )
       .pipe(
         map((response): CreateBookingResult => {
+          // Remember the code once, from whichever outcome — guarded against a missing body (the
+          // branches below already treat `body` as nullable via `?.status`), so an empty 201/202
+          // never throws here and turns a real booking into a false "failed" (#139 review).
+          this.device.remember(response.body?.code);
+
           if (response.status === 202) {
             if (response.body?.status === 'PENDING_REQUEST') {
               const requested = response.body as RequestedBooking;
               this.requested.set(requested);
               this.confirmation.set(undefined);
               this.awaiting.set(undefined);
-              this.device.remember(requested.code);
               return { kind: 'requested', requested };
             }
             const awaiting = response.body as AwaitingPayment;
             this.awaiting.set(awaiting);
             this.confirmation.set(undefined);
             this.requested.set(undefined);
-            this.device.remember(awaiting.code);
             return { kind: 'awaiting', awaiting };
           }
           const confirmation = response.body as BookingConfirmation;
           this.confirmation.set(confirmation);
           this.awaiting.set(undefined);
           this.requested.set(undefined);
-          this.device.remember(confirmation.code);
           return { kind: 'confirmed', confirmation };
         }),
       );
