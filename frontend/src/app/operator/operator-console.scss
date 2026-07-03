@@ -1,0 +1,9 @@
+/* Operator console shell (issue #170). Porcelain-light glass chrome; the --riv-* tokens resolve to
+ * the porcelain palette because the host carries data-riv-theme="porcelain" (see the component).
+ * Phase 4 adds the full glass recipe + the composited-AA contrast proof; this is the layout base. */
+
+:host {
+  display: block;
+  min-height: 100%;
+  background: var(--riv-bg);
+}

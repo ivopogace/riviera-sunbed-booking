@@ -104,7 +104,7 @@ suppresses its own header/nav/footer for `/operator/**` via a route-data flag, m
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `operator/operator-console.ts` (+`.html`/`.scss`) | new | standalone layout component | Signals; `computed` for gate state, badge count, venue title | Signal Forms for the sign-in card |
+| FE-1 | `operator/operator-console.ts` (+`.html`/`.scss`) | new | standalone layout component | Signals; `computed` for gate state, badge count, venue title | **Plain signals** for the sign-in card (deviation from plan's "Signal Forms" — mirrors the `venue-editor`/`staff-daily` operator sign-in for consistency; the form is trivial, required-only, generic failure copy) |
 | FE-2 | `operator/console-placeholder.ts` | new | standalone presentational | `input()` for tab name/slice/legacy link | — |
 | FE-3 | `operator/operator-requests.ts` (badge source) | new | `@Service()` (or inline in console) — wraps existing `StaffService.pendingRequests` into a count signal | Signals | — |
 | FE-4 | `app.ts` / `app.html` / `app.scss` | modified | shell chrome suppression for `/operator/**` (new `hideShellChrome` signal) | Signals (`toSignal` off `NavigationEnd`) | — |
@@ -123,9 +123,9 @@ Money/date on the wire: none rendered in O1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Routing skeleton + tourist-chrome suppression | ✅ | (phase-0) |
-| 1 — OperatorConsole shell: porcelain chrome + sign-in gate | ⏳ | |
-| 2 — Pill tab nav + live Requests badge | | |
+| 0 — Routing skeleton + tourist-chrome suppression | ✅ | 6d6d608 |
+| 1 — OperatorConsole shell: porcelain chrome + sign-in gate | ✅ | (phase-1) |
+| 2 — Pill tab nav + live Requests badge | ⏳ | |
 | 3 — Placeholder tab panels + legacy forward-links + onboarding link | | |
 | 4 — Glass styling + composited AA contrast proof | | |
 | 5 — CI-safe mocked e2e (shell, tab switching, sign-in gate, axe) | | |
