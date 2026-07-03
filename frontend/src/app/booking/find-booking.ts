@@ -11,6 +11,7 @@ import { FormField, form, required } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
+import { trapFocusWithin } from '../shared/focus-trap';
 import { BookingService } from './booking.service';
 
 /**
@@ -183,32 +184,9 @@ export class FindBooking {
     this.dismissed.emit();
   }
 
-  /**
-   * Keep keyboard focus inside the dialog (a focus trap, modal a11y). Cloned from
-   * {@link BookingDialog#trapFocus} — the **2nd** modal to need it. Deliberately not yet extracted to
-   * a shared `core/` focus-trap directive (rule of three, like the glass recipe in find-booking.scss);
-   * extract when a 3rd modal appears so the two copies can't drift (review finding [6], tracked as a
-   * follow-up). Until then, a change here must be mirrored in booking-dialog.
-   */
+  /** Keep keyboard focus inside the dialog (modal a11y) — shared trap, see {@link trapFocusWithin}. */
   protected trapFocus(event: Event, backwards: boolean): void {
-    const focusable = Array.from(
-      this.hostRef.nativeElement.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
-      ),
-    );
-    if (focusable.length === 0) {
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable.at(-1)!; // non-null: guarded by the length check above
-    const active = this.hostRef.nativeElement.ownerDocument.activeElement;
-    if (backwards && active === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!backwards && active === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapFocusWithin(this.hostRef.nativeElement, event, backwards);
   }
 }
 

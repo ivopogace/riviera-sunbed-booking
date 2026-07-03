@@ -353,24 +353,32 @@ fixed test-first in the FE area:
 | [3] | stale server error lingered while the guest typed a correction | correctness | `(input)` clears `lookupError`. Test: "clears a stale lookup error when the guest edits the code". |
 | [4] | focus lost after find→nav (modal removed, `BookingView` doesn't take focus) — WCAG 2.4.3 | correctness (a11y) | The shell focuses `<main tabindex="-1">` when the find modal closes on navigation. Test: "closes … and moves focus to main". |
 | [5] | double-GET (find validate + booking-view re-fetch) can 429 near the rate ceiling | correctness (PLAUSIBLE) | **Deferred → follow-up issue.** Bounded (2 GETs vs 60/min per-code+per-IP); only a pathological near-ceiling case 429s. The clean fix (a prefetch hand-off to booking-view) is a design change; filed separately. |
-| [6] | `trapFocus` + autofocus verbatim-duplicated from `booking-dialog` (2nd modal) | cleanup | **Deferred → follow-up issue** (rule of three — extract a shared focus-trap directive at the 3rd modal). Added a note in `find-booking.ts` flagging the deliberate duplication (mirrors the SCSS rule-of-three note). |
+| [6] | `trapFocus` + autofocus verbatim-duplicated from `booking-dialog` (2nd modal) | cleanup | **Fixed** — initially deferred (rule of three), but the **Sonar gate flagged the 24-line duplicate as a hard fail** (5.27% new-code duplication > 3%; see the Sonar-gate record), so the trap was extracted to `shared/focus-trap.ts` (`trapFocusWithin`, unit-tested) and **both** modals refactored onto it. The Sonar duplication gate thus overrode the rule-of-three deferral. Follow-up #169 closed. |
 
 Refuted at verify: 1 (a duplicate framing of [1]). All fixes: 458 unit + 25 e2e + lint + prod build
 green.
 
 ## Sonar-gate record (PR #167)
 
-SonarCloud quality gate ran on PR #167. The reported new-issue list (pulled from the API, not
-just the gate conclusion) carried **1 CRITICAL code smell**: `typescript:S3735` at
-`find-booking.ts:154` — "Remove this use of the void operator" (the `void this.router.navigate(...)`
-in the subscribe `next`). **Fixed in-code** (FE area — `angular-developer`/`riviera-frontend`
-already loaded): `onSubmit` became `async`, validating the code via `firstValueFrom(getByCode)` then
-**awaiting** `router.navigate` — matching the codebase's every-other-navigate idiom (venue-map,
-booking-view) and removing the `void`. Re-verified: 23 find-booking specs + 3 e2e + lint green; the
-3 error-path unit tests gained a `detectChanges()` after the now-async settle (a test-timing
-artifact — the real browser re-renders on the signal write, proven by the e2e error test). A re-run
-after the fix push confirms the reported list reaches zero. New-code coverage / duplications checked
-via the measures API after the re-analysis.
+Pulled the reported list from the SonarCloud API (not just the gate conclusion) across two
+re-analyses:
+
+1. **Analysis of `88742b0`** — **1 CRITICAL** `typescript:S3735` at `find-booking.ts:154`
+   ("Remove this use of the void operator" — the `void this.router.navigate(...)` in the subscribe
+   `next`). **Fixed** (commit `b995f13`): `onSubmit` became `async`, validating via
+   `firstValueFrom(getByCode)` then **awaiting** `router.navigate` — the codebase's every-other-nav
+   idiom (venue-map, booking-view), removing the `void`.
+2. **Re-analysis of `b995f13`** — issues **0** (S3735 cleared), new-code coverage **80.4%** (≥ 80% ✅),
+   new bugs/vulns 0 — **but the quality gate still FAILED on duplication**: `new_duplicated_lines_density`
+   **5.27%** (> the 3% gate threshold), **1 new duplicated block** = the 24-line `trapFocus` clone in
+   `find-booking.ts` (the same code as review finding [6]). The green issue-count was NOT the check — the
+   measures API surfaced the duplication the gate failed on. **Fixed**: extracted `trapFocusWithin` to
+   `shared/focus-trap.ts` (unit-tested) and refactored **both** modals onto it, dropping the duplicate.
+   (So the Sonar duplication gate overrode the rule-of-three deferral of [6].)
+
+Re-verified after each fix: 463 unit + 25 e2e + lint + prod build green. A final re-analysis (once
+`git push` to github.com is reachable again — a transient network outage during this session blocked
+the push of the two fix commits) confirms the gate green + reported list empty before merge.
 
 ## Acceptance-criteria verification (final)
 
