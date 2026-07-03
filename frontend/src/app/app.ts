@@ -1,8 +1,9 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { FindBooking } from './booking/find-booking';
 import { ThemeId, ThemeService } from './core/theme';
 
 /**
@@ -14,7 +15,7 @@ import { ThemeId, ThemeService } from './core/theme';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, FindBooking],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: { '(document:keydown.escape)': 'closeMenus()' },
@@ -25,9 +26,16 @@ export class App {
 
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
+  /** The "Find a booking" glass modal (issue #148) — a shell-level, nav-triggered overlay. */
+  protected readonly findOpen = signal(false);
 
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
+  private readonly findButton = viewChild<ElementRef<HTMLButtonElement>>('findButton');
+  private readonly mainRef = viewChild<ElementRef<HTMLElement>>('mainEl');
+  /** The control to hand focus back to when the find modal is dismissed (desktop trigger or, when
+   *  opened from the mobile menu, the persistent hamburger button — the mobile item collapses). */
+  private findReturn: HTMLElement | null = null;
 
   protected readonly activeTheme = computed(
     () =>
@@ -49,6 +57,45 @@ export class App {
     ),
     { initialValue: true },
   );
+
+  constructor() {
+    // Any successful navigation closes the shell overlays — in particular, a found booking code
+    // navigates to /booking/:code, so the find modal must not linger over the detail view. No focus
+    // restore here: the destination page takes focus (restore is only for an on-page dismiss).
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        const wasFindOpen = this.findOpen();
+        this.findOpen.set(false);
+        this.menuOpen.set(false);
+        this.themeOpen.set(false);
+        // A find that succeeded navigated away, destroying the modal that held focus; move focus to
+        // the main content region so a keyboard/AT guest lands on the new page rather than
+        // document.body (WCAG 2.4.3 — review finding [4]).
+        if (wasFindOpen) {
+          this.mainRef()?.nativeElement.focus();
+        }
+      });
+  }
+
+  /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
+   *  target (the desktop trigger, or the hamburger when opened from the collapsing mobile menu). */
+  protected openFind(fromMobile: boolean): void {
+    this.findReturn =
+      (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
+    this.menuOpen.set(false);
+    this.themeOpen.set(false);
+    this.findOpen.set(true);
+  }
+
+  /** Dismiss (ESC / backdrop / close button) — hide the modal and restore focus to its trigger. */
+  protected dismissFind(): void {
+    this.findOpen.set(false);
+    this.findReturn?.focus();
+  }
 
   protected toggleMenu(): void {
     this.themeOpen.set(false);

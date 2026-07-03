@@ -13,6 +13,7 @@ import { email, FormField, form, required, submit } from '@angular/forms/signals
 import { firstValueFrom } from 'rxjs';
 
 import { formatBookingDate } from '../shared/booking-date-label';
+import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
 import { BookingMode, SetView } from '../venue/venue.model';
 import {
@@ -331,28 +332,8 @@ export class BookingDialog implements OnInit {
     }
   }
 
-  /** Keep keyboard focus inside the dialog (a focus trap, modal a11y). */
+  /** Keep keyboard focus inside the dialog (modal a11y) — shared trap, see {@link trapFocusWithin}. */
   protected trapFocus(event: Event, backwards: boolean): void {
-    // Selector excludes disabled controls; we deliberately do NOT filter on offsetParent —
-    // it is null for position:fixed subtrees (our backdrop) and unavailable under jsdom, which
-    // would silently disable the trap. The dialog has no hidden focusables, so the selector is enough.
-    const focusable = Array.from(
-      this.hostRef.nativeElement.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
-      ),
-    );
-    if (focusable.length === 0) {
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable.at(-1)!; // non-null: guarded by the length check above
-    const active = this.hostRef.nativeElement.ownerDocument.activeElement;
-    if (backwards && active === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!backwards && active === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapFocusWithin(this.hostRef.nativeElement, event, backwards);
   }
 }

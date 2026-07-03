@@ -1,4 +1,5 @@
 import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -212,18 +213,32 @@ export class BookingView {
 
   private readonly confirmButton = viewChild<ElementRef<HTMLButtonElement>>('confirmBtn');
 
-  private readonly code: string;
+  private code = '';
 
   /** Money formatter (shared, minor units — invariant #5), exposed to the template. */
   protected readonly formatMoney = formatMoney;
 
   constructor() {
-    this.code = this.route.snapshot.paramMap.get('code') ?? '';
-    if (this.code) {
-      this.load();
-    } else {
-      this.notFound.set(true);
-    }
+    // React to the route `code` (not just the snapshot) so a booking→booking navigation reloads
+    // instead of reusing this instance for a different code — the T8 find modal (#148) is reachable
+    // on this page, so that navigation now happens (review finding [0]). `paramMap` emits
+    // synchronously on subscribe, so this also performs the initial load.
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.code = params.get('code') ?? '';
+      // Reset the per-booking view state before (re)loading the new code.
+      this.booking.set(undefined);
+      this.notFound.set(false);
+      this.failed.set(false);
+      this.confirming.set(false);
+      this.cancelling.set(false);
+      this.cancelFailed.set(false);
+      this.cancellation.set(undefined);
+      if (this.code) {
+        this.load();
+      } else {
+        this.notFound.set(true);
+      }
+    });
     // Move focus to the destructive confirm button when the prompt appears (a11y).
     effect(() => {
       if (this.confirming()) {

@@ -17,6 +17,15 @@
       <nav class="riv-nav-desktop" aria-label="Primary">
         <a routerLink="/" class="riv-nav-link">Beaches</a>
         <a routerLink="/my-bookings" class="riv-nav-link">My bookings</a>
+        <button
+          #findButton
+          type="button"
+          class="riv-nav-link riv-nav-btn"
+          data-testid="find-open"
+          (click)="openFind(false)"
+        >
+          Find a booking
+        </button>
 
         <div class="riv-theme-picker">
           <button
@@ -77,6 +86,14 @@
         <nav class="riv-pop riv-pop-in riv-mobile-menu" aria-label="Menu" data-testid="mobile-menu">
           <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
           <a routerLink="/my-bookings" class="riv-mobile-link" (click)="closeMenus()">My bookings</a>
+          <button
+            type="button"
+            class="riv-mobile-link riv-mobile-btn"
+            data-testid="find-open-mobile"
+            (click)="openFind(true)"
+          >
+            Find a booking
+          </button>
           <div class="riv-mobile-theme">
             <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
             <div class="riv-mobile-swatches">
@@ -99,11 +116,18 @@
     </div>
   </header>
 
-  <main class="riv-main" [class.riv-legacy-surface]="legacySurface()">
+  <!-- tabindex=-1: a programmatic focus target so closing the find modal on navigation lands
+       keyboard/AT focus on the new page's content, not document.body (issue #148, review finding [4]). -->
+  <main #mainEl tabindex="-1" class="riv-main" [class.riv-legacy-surface]="legacySurface()">
     <router-outlet />
   </main>
 
   <footer class="riv-footer">
     <div class="riv-footer-inner">© Riviera Sunbed Booking</div>
   </footer>
+
+  <!-- Find-a-booking glass modal (issue #148): a shell-level, nav-triggered overlay. -->
+  @if (findOpen()) {
+    <app-find-booking (dismissed)="dismissFind()" />
+  }
 </div>

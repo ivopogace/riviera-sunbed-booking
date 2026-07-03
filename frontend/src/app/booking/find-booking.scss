@@ -1,0 +1,162 @@
+// Liquid Glass "Find a booking" modal (issue #148, design: riviera-sunbeds-liquid-glass-v3.dc.html
+// → Find booking). This is the SECOND glass modal after booking-dialog; per the rule of three the
+// shared modal-glass recipe is NOT extracted yet — the AA-proven values below are cloned from
+// booking-dialog.scss (extract a `modal-glass` mixin into shared/_glass.scss when a 3rd modal lands).
+// Every text-bearing pair is pinned as a composited effective colour in find-booking.contrast.spec.ts.
+//
+// Deviations from the design file, on purpose (same class as booking-dialog):
+//  - panel is white 0.82 (design 0.78): the modal floats over a dark scrim + the gradient's darkest
+//    stop, and the extra opacity keeps the dark card inks (and the error red) AA there;
+//  - input border is the dark --riv-field-border (design's white border fails the 3:1 boundary);
+//  - the CTA uses the AA-safe --riv-cta-grad teal with SOLID white text.
+
+// Fixed, scrim-backed backdrop, painting ABOVE the sticky glass header (#134 stacking pin).
+:host.find-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 30, 40, 0.45);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.find-panel {
+  position: relative;
+  width: 100%;
+  max-width: 390px;
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  backdrop-filter: blur(34px) saturate(180%);
+  border: 1px solid var(--riv-card-border);
+  border-radius: 30px;
+  box-shadow: 0 40px 90px rgba(6, 30, 40, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--riv-card-ink);
+  padding: 28px 26px 24px;
+  animation: riv-pop 0.26s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+// Decorative ✕ (aria-hidden; the button's "Close" name carries the meaning), so the glyph tint is
+// 1.4.11-exempt — like booking-dialog's close chip; excluded from the contrast proof.
+.find-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--riv-card-border);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--riv-card-ink-soft);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.find-close:focus-visible {
+  outline: 3px solid var(--riv-accent-ink);
+  outline-offset: 2px;
+}
+
+.find-title {
+  margin: 0 0 5px;
+  font-weight: 700;
+  font-size: 23px;
+  letter-spacing: -0.02em;
+  color: var(--riv-card-ink);
+}
+
+.find-intro {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riv-card-ink-soft);
+}
+.find-intro strong {
+  color: var(--riv-card-ink);
+}
+
+.find-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.find-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riv-card-ink-soft);
+}
+.find-field input {
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riv-card-ink);
+  background: var(--riv-field-fill);
+  border: 1px solid var(--riv-field-border);
+  border-radius: 14px;
+  padding: 13px 15px;
+}
+.find-field input::placeholder {
+  color: var(--riv-card-ink-soft);
+  font-weight: 600;
+}
+.find-field input:focus-visible {
+  outline: 3px solid var(--riv-accent-ink);
+  outline-offset: 1px;
+}
+
+.find-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a3160e; // dark brick red — AA on the light panel over the worst gradient stop
+}
+
+.find-submit {
+  margin-top: 16px;
+  width: 100%;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--riv-cta-grad);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: filter 0.15s ease;
+}
+.find-submit:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+@media (hover: hover) {
+  .find-submit:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+.find-submit:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+}
+
+// Motion guards live next to the motion they guard (T1 rule — component-encapsulation specificity
+// beats a global guard).
+@media (prefers-reduced-motion: reduce) {
+  .find-panel {
+    animation: none;
+  }
+  .find-submit {
+    transition: none;
+  }
+}
