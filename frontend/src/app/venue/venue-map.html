@@ -54,7 +54,10 @@
         </p>
       </header>
 
-      <section class="map" aria-label="Beach map — {{ v.name }}">
+      <!-- Overview card: availability + the photo placeholder. Kept on its own card glass so the dark
+           count stays AA on both themes (the v3 design places it on the bare gradient, which fails AA
+           on the riviera theme — the same reason the header sits on glass). -->
+      <div class="map-overview">
         <div class="map-summary">
           <!-- aria-live: changing the date silently swaps the grid, so announce the new count. -->
           <p class="availability" data-testid="availability" aria-live="polite">
@@ -66,14 +69,20 @@
           </div>
         </div>
 
-        <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
-
-        <!-- Venue photos are a follow-up (#142); a gradient placeholder holds the space. -->
+        <!-- Venue photos are a follow-up (#142); a gradient placeholder holds the space. The photo
+             (the sea view) sits above the grid card's "Facing the sea" banner — the v3 design's
+             spatial order: sea ↑ / promenade ↓. -->
         <div class="photo-band" aria-hidden="true">
           <span class="photo-sun"></span>
           <span class="photo-scrim"></span>
           <span class="photo-caption">Venue photos coming soon</span>
         </div>
+      </div>
+
+      <section class="map" aria-label="Beach map — {{ v.name }}">
+        <!-- The sea banner IS the grid card's top edge (rounded via the card's overflow clip), so it
+             caps the front, sea-facing row while the promenade caps the back at the bottom. -->
+        <p class="sea-banner"><span aria-hidden="true">▲</span> Facing the sea</p>
 
         <div class="map-vport" data-riv-scroller>
           <div class="map-grid" [style.--riv-map-cols]="mapCols()">

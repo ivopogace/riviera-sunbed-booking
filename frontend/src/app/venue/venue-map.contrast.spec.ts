@@ -136,7 +136,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     }
   });
 
-  it('card ink (availability count, row code) meets AA on the map card glass', () => {
+  it('card ink (availability count) meets AA on the map card glass', () => {
     expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
   });
 
@@ -156,6 +156,13 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
 describe('Beach-map theme-independent contrast (issue #136)', () => {
   it.each(TILE_PAIRS)('$usage text meets AA ($fg on $bg)', ({ fg, bg }) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('row-label chip text (A–D) meets AA on its solid chip fill', () => {
+    // Decorative (the row-codes column is aria-hidden; each tile's name carries the seat) but proven
+    // anyway like the tiles — the v3 design's translucent rgba(12,42,51,.08) is replaced by this
+    // solid composited equivalent so the css:S7924 analyzer computes it (venue-map.scss row-code).
+    expect(contrastRatio('#0a4f5e', '#e7ecee')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('sea-banner white text meets AA on the lightest teal stop', () => {
