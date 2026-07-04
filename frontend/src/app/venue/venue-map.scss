@@ -183,8 +183,8 @@
   line-height: 1;
 }
 
-// ---- map card (light card glass, dark inks) ----
-.map {
+// ---- overview card (availability + photo placeholder; own card glass so the dark count stays AA) ----
+.map-overview {
   @extend %card-surface;
 
   margin-top: 20px;
@@ -192,7 +192,20 @@
   backdrop-filter: blur(26px) saturate(170%);
   border-radius: 28px;
   box-shadow: 0 14px 44px rgba(7, 42, 58, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  padding: 16px 16px 0; // the promenade footer is full-bleed at the bottom
+  padding: 16px;
+}
+
+// ---- grid card (light card glass, dark inks). The sea-banner (top) and promenade (bottom) are
+// full-bleed with no vertical padding, so the card's overflow clip rounds their outer corners. ----
+.map {
+  @extend %card-surface;
+
+  margin-top: 18px;
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border-radius: 28px;
+  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 0 16px; // sea-banner + promenade are full-bleed → their outer corners are rounded by the clip
   overflow: hidden;
 }
 
@@ -246,7 +259,7 @@
 .photo-band {
   position: relative;
   height: 150px;
-  margin: 0 0 18px;
+  margin: 0; // last child of the overview card — the card padding provides the spacing
   border-radius: 20px;
   overflow: hidden;
   background: var(--riv-photo-grad);
