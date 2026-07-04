@@ -321,10 +321,23 @@
   justify-content: flex-end;
   min-width: 52px;
 }
+// Row-label chips (A–D) — the v3 design's subtle side-cell pills. SOLID fill, not the design's
+// translucent rgba(12,42,51,.08): the css:S7924 treatment used for the seat tiles / failure-icon —
+// a solid fill lets the analyzer compute contrast and reads the same on either theme's light map
+// card. Decorative (the row-codes column is aria-hidden; each tile's name carries the seat), and the
+// #0a4f5e-on-#e7ecee pair is proven AA in venue-map.contrast.spec.ts anyway.
 .row-code {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #e7ecee;
+  font-size: 10.5px;
   font-weight: 700;
-  color: var(--riv-card-ink);
+  color: #0a4f5e;
 }
 .row-price {
   font-size: 12px;
