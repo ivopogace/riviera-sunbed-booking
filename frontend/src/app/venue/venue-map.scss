@@ -50,6 +50,18 @@
   padding: 8px 14px;
   border-radius: 999px;
   margin-bottom: 16px;
+  transition: filter 0.15s ease;
+}
+
+@media (hover: hover) {
+  .back-pill:hover {
+    filter: brightness(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .back-pill {
+    transition: none;
+  }
 }
 
 .back-pill:focus-visible {
@@ -519,6 +531,11 @@
 }
 .failure-retry:focus-visible {
   @include glass.retry-focus-ring;
+}
+@media (prefers-reduced-motion: reduce) {
+  .failure-retry {
+    transition: none;
+  }
 }
 
 .state {

@@ -67,6 +67,12 @@
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+  transition: filter 0.15s ease;
+}
+@media (hover: hover) {
+  .dialog-close:hover {
+    filter: brightness(1.12);
+  }
 }
 .dialog-close:focus-visible {
   outline: 3px solid #ffffff;
@@ -313,6 +319,14 @@
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+@media (hover: hover) {
+  .btn-back:hover {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(10, 79, 94, 0.45);
+    box-shadow: 0 6px 16px rgba(6, 30, 40, 0.14);
+  }
 }
 .btn-primary {
   flex: 1;
@@ -353,6 +367,10 @@
     animation: none;
   }
   .btn-primary {
+    transition: none;
+  }
+  .dialog-close,
+  .btn-back {
     transition: none;
   }
 }

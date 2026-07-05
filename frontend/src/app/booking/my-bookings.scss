@@ -157,6 +157,7 @@ h1 {
   font-size: 13px;
   padding: 8px 14px;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 // ---- empty state ----
@@ -218,9 +219,13 @@ h1 {
     transform: translateY(-2px);
     box-shadow: 0 16px 40px rgba(7, 42, 58, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
+  .btn-retry:hover {
+    background: #e7ebec;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .row {
+  .row,
+  .btn-retry {
     transition: none;
   }
 }

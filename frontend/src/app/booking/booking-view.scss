@@ -247,6 +247,7 @@ h1 {
   padding: 11px 18px;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(179, 67, 42, 0.4);
+  transition: filter 0.15s ease;
 }
 
 // outline buttons — solid #f4f6f7 fill, dark inks (Keep #0a4f5e 8.45:1 / Cancel #a3372a 6.17:1)
@@ -260,6 +261,7 @@ h1 {
   font-size: 14px;
   padding: 11px 18px;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 .btn-outline.danger {
   border-color: rgba(200, 90, 60, 0.5);
@@ -301,10 +303,18 @@ h1 {
   .btn-cta:hover {
     filter: brightness(1.06);
   }
+  .btn-danger:hover {
+    filter: brightness(1.08);
+  }
+  .btn-outline:hover {
+    background: #e7ebec;
+  }
 }
 // Motion guard next to the motion it guards (T1 rule).
 @media (prefers-reduced-motion: reduce) {
-  .btn-cta {
+  .btn-cta,
+  .btn-danger,
+  .btn-outline {
     transition: none;
   }
 }

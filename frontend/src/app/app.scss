@@ -58,6 +58,11 @@
   .riv-pop-in {
     animation: none;
   }
+  .riv-chip-btn,
+  .riv-menu-btn,
+  .riv-mobile-swatch {
+    transition: none;
+  }
 }
 
 /* ---- glass header ---- */
@@ -182,6 +187,12 @@
   border-radius: 999px;
   padding: 6px 13px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: filter 0.15s ease;
+}
+@media (hover: hover) {
+  .riv-chip-btn:hover {
+    filter: brightness(0.96);
+  }
 }
 
 .riv-swatch {
@@ -289,9 +300,15 @@
   backdrop-filter: blur(10px);
   cursor: pointer;
   padding: 0;
+  transition: filter 0.15s ease;
 
   @media (min-width: 640px) {
     display: none;
+  }
+}
+@media (hover: hover) {
+  .riv-menu-btn:hover {
+    filter: brightness(0.96);
   }
 }
 
@@ -364,6 +381,12 @@
   cursor: pointer;
   padding: 0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  transition: transform 0.12s ease;
+}
+@media (hover: hover) {
+  .riv-mobile-swatch:hover {
+    transform: scale(1.12);
+  }
 }
 
 .riv-mobile-swatch-active {

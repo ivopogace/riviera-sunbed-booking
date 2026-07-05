@@ -433,3 +433,8 @@
 .failure-retry:focus-visible {
   @include glass.retry-focus-ring;
 }
+@media (prefers-reduced-motion: reduce) {
+  .failure-retry {
+    transition: none;
+  }
+}
