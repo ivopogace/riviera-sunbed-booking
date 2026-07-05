@@ -137,32 +137,5 @@
   color: var(--riv-card-ink-soft);
 }
 
-// Reuses --riv-cta-grad (retuned AA-safe darker teal at #149) — white body-size text.
-@mixin failure-retry {
-  font: inherit;
-  font-weight: 700;
-  font-size: 14.5px;
-  color: #ffffff;
-  background: var(--riv-cta-grad);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 16px;
-  padding: 12px 26px;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transition: filter 0.15s ease;
-
-  @media (hover: hover) {
-    &:hover {
-      filter: brightness(1.06);
-    }
-  }
-}
-
-// White ring + accent halo, visible against any gradient stop (2.4.7 / 1.4.11). Applied by the
-// consumer under its own `.failure-retry:focus-visible` selector — the focus rule is NOT nested
-// with `&` inside the mixin, so the partial carries no scoping-root-less nesting selector.
-@mixin retry-focus-ring {
-  outline: 3px solid #ffffff;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
-}
+// The "Try again" button (formerly `failure-retry` + `retry-focus-ring` here) is now
+// <app-retry-button> (Tailwind twin, shared/retry-button.ts) — no mixin needed.

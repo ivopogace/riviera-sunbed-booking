@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
+import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../venue/booking-date';
 import { MoneyView, VenueSummary } from '../../venue/venue.model';
 import { VenueService } from '../../venue/venue.service';
@@ -18,7 +19,7 @@ import { VenueService } from '../../venue/venue.service';
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink],
+  imports: [RouterLink, RetryButton],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

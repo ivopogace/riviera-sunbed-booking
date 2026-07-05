@@ -72,9 +72,7 @@
         Something went wrong reaching Riviera. Check your connection and try again — your bookings
         are safe.
       </p>
-      <button type="button" class="failure-retry" data-testid="retry" (click)="onRetryDiscover()">
-        Try again
-      </button>
+      <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
     </div>
   } @else if (venues(); as list) {
     @if (isEmpty()) {

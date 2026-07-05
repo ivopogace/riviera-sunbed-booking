@@ -13,6 +13,7 @@ import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
 import { formatMoney } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
+import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
@@ -72,7 +73,7 @@ export function rowCode(index: number): string {
  */
 @Component({
   selector: 'app-venue-map',
-  imports: [BookingDialog],
+  imports: [BookingDialog, RetryButton],
   templateUrl: './venue-map.html',
   styleUrl: './venue-map.scss',
 })

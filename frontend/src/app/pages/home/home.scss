@@ -427,14 +427,5 @@
   @include glass.failure-text;
 }
 
-.failure-retry {
-  @include glass.failure-retry;
-}
-.failure-retry:focus-visible {
-  @include glass.retry-focus-ring;
-}
-@media (prefers-reduced-motion: reduce) {
-  .failure-retry {
-    transition: none;
-  }
-}
+// The "Try again" button is now <app-retry-button> (Tailwind twin, shared/retry-button.ts) — not
+// styled here.

@@ -183,9 +183,7 @@
         The live availability didn’t come through. Give it another go — no set is booked until you
         pay.
       </p>
-      <button type="button" class="failure-retry" data-testid="map-retry" (click)="retry()">
-        Try again
-      </button>
+      <app-retry-button testId="map-retry" (retry)="retry()" />
     </div>
   } @else {
     <p class="state" aria-live="polite">Loading the beach map…</p>
