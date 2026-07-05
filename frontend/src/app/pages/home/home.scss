@@ -25,27 +25,24 @@
 /* ---- hero (on the shell's proven glass tokens) ---- */
 
 .hero {
-  // Surface via appPanelGlass; radius is unbundled from that recipe, so it lives here.
-  // Fills the full .discover content width, flush with the search bar below it (issue #153).
-  // No max-width cap on purpose — a plain block panel stretches to the column; don't re-cap it.
-  padding: 24px 26px 26px;
-  border-radius: 26px;
+  // PROTOTYPE (option C): no frosted panel. Porcelain is bare (matches the design); riviera gets a
+  // soft dark scrim (below) so its white ink clears AA over the gradient's light top stops.
   color: var(--riv-ink);
-  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-// Porcelain matches the design: the hero is bare dark ink on the gradient (no card). The header-glass
-// panel above is a RIVIERA-ONLY WCAG-AA fix (plan R-1) — there the white hero ink can't clear AA on
-// the gradient's light top stops. Porcelain's dark ink IS AA on the bare gradient (proven, incl. the
-// 0.7-alpha intro at ~5:1, in home.contrast.spec.ts), so strip the panel the appPanelGlass directive
-// + the box-shadow/padding add.
-:host-context([data-riv-theme='porcelain']) .hero {
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+// Riviera: a borderless soft dark scrim — no card / rim / blur / shadow, just a dark wash that fades
+// in/out vertically, keeping white ink AA on the gradient's light top stops. Softer than the panel.
+// The fades are PX-anchored (34px top / 40px bottom) so they sit inside the padding — the text always
+// rests on the solid ~0.72 core, at any content height (2- vs 3-line title, mobile). AA-pinned below.
+:host-context([data-riv-theme='riviera']) .hero {
+  padding: 34px 26px 40px;
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 38, 52, 0) 0,
+    rgba(8, 38, 52, 0.72) 34px,
+    rgba(8, 38, 52, 0.72) calc(100% - 40px),
+    rgba(8, 38, 52, 0) 100%
+  );
 }
 
 .hero-chip {
@@ -78,6 +75,8 @@
   line-height: 1.02;
   letter-spacing: -0.025em;
   margin: 0 0 16px;
+  // Cap the headline measure so it breaks over two lines like the design (its hero was 680px-wide).
+  max-width: 680px;
   text-shadow: var(--riv-hero-shadow);
 }
 
