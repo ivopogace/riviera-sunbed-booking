@@ -47,9 +47,9 @@ at Implement", it means this paragraph.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
-| **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
+| **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what already exists — `graphify query "<idea>"` / `explain "<concept>"` (when the graph is present) so you refine against the real code, not assumptions. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. Any strategic document the issues reference must be committed to the repo before or with them (rule 10). | `to-issues` |
-| **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
+| **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) with `graphify query`/`path` — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. Re-run the Skill-routing gate for each area you touch. | `implement` + `tdd` + the Skill-routing gate (below) |
 | **CI gate** | Every push/PR builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's CI run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
 | **PR** | Merge the latest `origin/main` into the branch first — integrate anything that landed since the cut with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit) — then open the PR into `main`. Opening the PR does not complete the next stage. | `triage` (issue/PR lifecycle) |
@@ -89,8 +89,11 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
 **How the gate runs — three steps, every time:**
 
 1. **Detect.** List what the slice touches: DB? a backend module? the frontend? money?
-   An `area:fullstack` issue almost always trips DB **and** BE **and** FE — load all of
-   them; don't stop at the label.
+   Use the knowledge graph as evidence, not memory — `graphify query "<slice>"` and
+   `graphify path "<A>" "<B>"` surface the modules, call sites, and blast radius a change
+   reaches. (The graph is local/gitignored, so it's absent in a fresh clone — fall back to
+   grep there.) An `area:fullstack` issue almost always trips DB **and** BE **and** FE —
+   load all of them; don't stop at the label.
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
    so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
    `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
@@ -143,6 +146,11 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
   it (recurring: Gmail is draft-only → push is the only notification channel; GitHub is
   via the MCP tools, not `gh`). When an instruction is impossible in the current toolset,
   do the nearest honest thing and **say so in the reply** — don't silently half-do it.
+- **Knowledge graph:** `graphify-out/` is gitignored, so a fresh cloud clone starts
+  without it — the Refine/Plan/Detect graph steps have nothing to query. Either build it
+  once (`/graphify .` — code is free via AST, the doc-semantic pass costs tokens) or fall
+  back to grep/read; don't assume `graphify query` is available. The post-commit hook still
+  rebuilds code changes locally within the session once the graph exists.
 
 ## The substrate these skills read
 

@@ -262,10 +262,10 @@ Repo-scoped — they load when working in this repository (tracked in
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships. **The graph is local-only — `graphify-out/` is gitignored** (regenerable output, not committed), so it may be **absent in a fresh or cloud clone**; when it's missing, build it once with `/graphify .` (code is free via AST; the doc-semantic pass costs tokens) or just proceed without it.
 
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- Keeping the graph current: **code changes rebuild automatically** — the installed post-commit hook re-runs AST extraction on changed code after every commit (no LLM, no API cost). **Doc/ADR/plan changes are NOT covered by the hook** (it's code-only); after editing docs run `graphify update .` to fold them back in (re-extracts only changed docs, small token cost). This graph is doc-heavy, so refresh after doc-touching slices — see the riviera-sdlc merge close-out.
