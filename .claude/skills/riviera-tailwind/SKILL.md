@@ -41,6 +41,34 @@ This skill states only the few decisions and traps the *code can't show you*.
    - Gradient CSS-var background = `bg-(image:--riv-photo-grad)`; bare `bg-(--x)` is a *color*.
    - `host: { style: '--foo: …' }` for a static custom property that drives layout.
 
+## Styling across the two themes
+
+The app has two themes — `riviera` (dark, white ink) and `porcelain` (light, dark ink) —
+scoped by `data-riv-theme` on `<html>` (written only by `core/theme.ts`). Vary by theme in
+this order of preference:
+
+1. **Tokens do the switching (the norm).** Theme differences live as `--riv-*` custom
+   properties defined per theme in `styles.scss` under `[data-riv-theme='riviera'|'porcelain']`.
+   Components reference them (`var(--riv-*)`, `bg-(--riv-*)`) and stay **theme-agnostic** — they
+   never name a theme. Reach for a token first; add one to `styles.scss` if none fits.
+2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
+   background *treatment* differs — not just a token value — does a component branch on the
+   theme. The one precedent is the home-hero **scrim** (`home.scss`): a borderless feathered
+   dark wash in riviera, bare in porcelain. It's deliberately the hero **only** — every other
+   dark riviera surface keeps the `appPanelGlass` frosted panel, so don't spread the scrim by
+   reflex.
+
+**Keep content position identical across themes.** When a surface is treated-in-one-theme /
+bare-in-the-other, put the shared padding/layout on the **base** rule and make **only the
+background** theme-conditional. Otherwise the same element sits at a different
+`getBoundingClientRect().top` per theme. Verify by measuring that anchor in both themes — it
+must match. This is *layout* drift; the colour-drift rule below can't see it.
+
+> A theme-conditional, multi-stop, px-anchored gradient behind `:host-context` is one of the
+> few things still cleaner as **SCSS** than as Tailwind arbitrary values — the scrim lives in
+> `home.scss` on purpose. "SCSS is retiring" is the default, not an absolute; don't mechanically
+> port a case like this.
+
 ## No visual/colour drift (the hard rule)
 
 Prove no drift by diffing **computed styles** (`getComputedStyle` in Playwright /
@@ -59,7 +87,10 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 2. Pick scope: **narrow** (leave shared recipes as SCSS, Tailwind only the file's own
    styles) or **full** (port the recipe to a directive/component and update every consumer).
    Ask the user when the recipe is widely shared — it changes the diff size a lot.
-3. Retain test-hook classes (rule 2). New shared primitive → give it a `.spec.ts`.
+3. Retain test-hook classes (rule 2). A new shared primitive gets a `.spec.ts`; a **composited
+   or tinted surface** (glass, scrim) gets a `*.contrast.spec.ts` that **computes** AA over the
+   *actual* surface — worst-case gradient stops, then the alpha inks over that composite — with
+   the `testing/glass-tokens.ts` helpers. Don't eyeball it; the specs are pure maths.
 4. Verify: `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e:a11y` (the mocked
    suite CI runs — **not** `test:e2e`, which is the real-backend one), plus the computed-style
    diff above. Fix regressions; never retune a test to match one.
@@ -73,6 +104,8 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 | "Bundle `rounded-[26px]` into the glass directive." | Radius resolves by stylesheet order — unbundle it. |
 | "`text-sm` is 14px, close enough." | It also sets line-height → drift. Use `text-[14px]`. |
 | "border-width is 1px now — I broke it." | Chromium snaps 1.5px→"1px"; the SCSS did too. Not a regression. |
+| "Branch the component on `data-riv-theme` for this colour." | Colours switch via `--riv-*` tokens; components stay theme-agnostic. `:host-context` is only for whole-treatment differences. |
+| "Same padding, I'll just add the riviera background." | Shared layout on the base rule; theme-conditional *background* only — else content shifts between themes. |
 | "Classes look right, ship it." | Diff computed styles; contrast specs can't see drift. |
 | "`bg-(--riv-photo-grad)` for the gradient." | That's a color. Use `bg-(image:--riv-photo-grad)`. |
 
