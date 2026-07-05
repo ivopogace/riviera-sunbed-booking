@@ -188,30 +188,6 @@
   }
 }
 
-.oc-signout {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--riv-ink);
-  background: #ffffff;
-  border: 1px solid rgba(12, 42, 51, 0.14);
-  border-radius: 999px;
-  padding: 7px 15px;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(7, 42, 58, 0.08);
-  transition: background 0.15s ease;
-}
-@media (hover: hover) {
-  .oc-signout:hover {
-    background: #eef1f2;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .oc-signout {
-    transition: none;
-  }
-}
-
 /* ---- pill tab nav ---- */
 
 .oc-tabs {
