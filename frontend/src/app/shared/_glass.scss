@@ -1,40 +1,21 @@
-// The ONE home of the Liquid Glass CSS recipes (epic #133, rule of three — extracted
-// from home.scss when the beach map became the second glass page, issue #136).
+// Shared Liquid Glass SCSS recipes (epic #133). Most recipes have been ported to shared Tailwind
+// primitives (SCSS-vs-Tailwind spike) — the glass surfaces are `shared/panel-glass.ts` +
+// `shared/card-glass.ts`, the amenity pill is `shared/amenity-chip.ts`, the failure panel is
+// `shared/failure-panel.ts`, and the "Try again" button is `shared/retry-button.ts`.
 //
-// Exposed as MIXINS, not `%placeholder`s: Sass `@extend`/placeholders do not cross a
-// `@use` module boundary, but mixins do — so a component stylesheet `@use`s this file
-// and `@include`s the recipe it needs. Values mirror the design tokens in styles.scss
-// (`--riv-*`); every text pair that sits on these surfaces is proven AA by composited
-// math in each page's `*.contrast.spec.ts`.
-
-// --- core glass surfaces ---
-
-// Dark, AA-proven header glass — the surface for hero/state panels and (T3) the map
-// header, where white ink over the bare gradient's light stops would fail WCAG AA.
-@mixin panel-glass {
-  background: var(--riv-header-glass);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
-  border: 1px solid var(--riv-header-border);
-  border-radius: 26px;
-}
-
-// Light, per-theme card glass — the surface for cards, bars, and the failure panel,
-// carrying the dark card inks.
-@mixin card-glass {
-  background: var(--riv-card-glass);
-  border: 1px solid var(--riv-card-border);
-  color: var(--riv-card-ink);
-}
+// `status-chip` stays SCSS: it is a component-scoped selector-set (`@include`d under the consuming
+// component so emulated encapsulation scopes the class names), used by booking-view #138 and
+// my-bookings #139 — a different sharing shape from the surface directives. Values mirror the design
+// tokens in styles.scss; every text pair is proven AA in `shared/booking-status.contrast.spec.ts`.
 
 // --- status chip (shared by the booking detail view #138 and the my-bookings list #139) ---
 //
 // OPAQUE SOLID fills (the design's translucent status tints composited over white), not rgba — the
-// css:S7924 treatment (see `failure-icon`): a solid fill lets both the WCAG maths and the static
-// analyzer compute the small-text contrast correctly, and keeps it theme-independent. Every ink/
-// fill pair is proven AA in `shared/booking-status.contrast.spec.ts` (the one home of that proof).
-// `@include` under the consuming component's scope so emulated encapsulation scopes the class
-// names per component; the labels/modifiers come from `shared/booking-status.ts` `STATUS_META`.
+// css:S7924 treatment: a solid fill lets both the WCAG maths and the static analyzer compute the
+// small-text contrast correctly, and keeps it theme-independent. Every ink/fill pair is proven AA in
+// `shared/booking-status.contrast.spec.ts` (the one home of that proof). `@include` under the
+// consuming component's scope so emulated encapsulation scopes the class names per component; the
+// labels/modifiers come from `shared/booking-status.ts` `STATUS_META`.
 @mixin status-chip {
   .chip {
     display: inline-flex;
@@ -55,107 +36,4 @@
   .chip--cancelled { color: #8a3a2a; background: #f6e5e0; border: 1px solid #ecccc2; }
   .chip--completed { color: #0a5e6e; background: #e1f5f9; border: 1px solid #c4e9ef; }
   .chip--no-show { color: #7a4a3a; background: #ece6e3; border: 1px solid #dcd2cd; }
-}
-
-// --- amenity chip (shared by the Discover cards #140 and the beach-map header #140) ---
-//
-// A DISTINCT pill-tag visual from `status-chip` (softer, smaller): neutral amenity tags plus an
-// accent "to-water" tag. OPAQUE SOLID fills (the css:S7924 treatment), NOT the design's translucent
-// glass tints — so the chip reads identically and AA-safely on the light Discover card AND the dark
-// glass map header, without a per-theme composited proof. Every ink/fill pair is proven AA in
-// `shared/amenities.contrast.spec.ts` (the one home of that proof); labels come from
-// `shared/amenities.ts`. `@include` under the consuming component's scope.
-@mixin amenity-chip {
-  .amenity-chip {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    font-size: 11px;
-    font-weight: 600;
-    border-radius: 999px;
-    padding: 4px 10px;
-    white-space: nowrap;
-    color: #2f4a54;
-    background: #eef2f4;
-    border: 1px solid #dbe4e7;
-  }
-  // The "Xm to water" accent tag — a teal solid composite of the design's rgba(43,184,212) tint.
-  .amenity-chip--water {
-    color: #0a5f74;
-    background: #d7eef4;
-    border: 1px solid #b9e0ea;
-    font-weight: 700;
-  }
-}
-
-// --- load-failure panel (shared by Discover #149 and the beach map #136) ---
-
-@mixin failure-panel {
-  @include card-glass;
-
-  margin-top: 28px;
-  padding: 52px 26px;
-  text-align: center;
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
-  backdrop-filter: blur(24px) saturate(170%);
-  border-radius: 26px;
-  box-shadow: 0 12px 40px rgba(7, 42, 58, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-// Decorative danger badge (aria-hidden; the heading carries the meaning, so the red tint
-// is 1.4.11-exempt like the ★ glyph). Solid light-peach fill (the composite of the
-// design's rgba(200,90,60,0.14/0.3) tints over the light failure panel) rather than a
-// translucent one: #a3372a on the solid clears contrast unambiguously — a translucent
-// fill makes static CSS analysis compute the ink against the opaque base and false-positive.
-@mixin failure-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: #f7e8e4;
-  border: 1px solid #eecdc4;
-  color: #a3372a;
-  font-size: 26px;
-}
-
-@mixin failure-title {
-  margin: 0 0 7px;
-  font-weight: 700;
-  font-size: 21px;
-  letter-spacing: -0.01em;
-  color: var(--riv-card-ink);
-}
-
-@mixin failure-text {
-  margin: 0 auto 20px;
-  max-width: 380px;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--riv-card-ink-soft);
-}
-
-// Reuses --riv-cta-grad (retuned AA-safe darker teal at #149) — white body-size text.
-@mixin failure-retry {
-  font: inherit;
-  font-weight: 700;
-  font-size: 14.5px;
-  color: #ffffff;
-  background: var(--riv-cta-grad);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 16px;
-  padding: 12px 26px;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-// White ring + accent halo, visible against any gradient stop (2.4.7 / 1.4.11). Applied by the
-// consumer under its own `.failure-retry:focus-visible` selector — the focus rule is NOT nested
-// with `&` inside the mixin, so the partial carries no scoping-root-less nesting selector.
-@mixin retry-focus-ring {
-  outline: 3px solid #ffffff;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
 }

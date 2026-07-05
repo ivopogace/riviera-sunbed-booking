@@ -12,8 +12,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 
+import { CardGlass } from '../shared/card-glass';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
+import { PanelGlass } from '../shared/panel-glass';
 import { BookingService } from './booking.service';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
@@ -39,20 +41,20 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
  */
 @Component({
   selector: 'app-booking-pay',
-  imports: [RouterLink],
+  imports: [RouterLink, CardGlass, PanelGlass],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
          confirmed/awaiting section would never announce its initial text (a11y). -->
     <p class="sr-status" role="status" aria-live="polite" data-testid="pay-status">{{ liveStatus() }}</p>
     @if (state() === 'missing') {
-      <section class="pay-standalone" aria-labelledby="pay-title">
+      <section class="pay-standalone" appCardGlass aria-labelledby="pay-title">
         <h1 id="pay-title">No payment in progress</h1>
         <p class="lead">Your payment session isn’t available here anymore. Please start a new booking.</p>
         <a routerLink="/" class="link">Back to home</a>
       </section>
     } @else if (state() === 'confirmed' || state() === 'awaiting') {
-      <section class="pay-done" aria-labelledby="pay-title">
+      <section class="pay-done" appCardGlass aria-labelledby="pay-title">
         <div class="done-badge" [class.warn]="state() === 'awaiting'" aria-hidden="true">
           {{ state() === 'confirmed' ? '✓' : '⏳' }}
         </div>
@@ -87,10 +89,10 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
     } @else {
       <section class="pay-checkout" aria-labelledby="pay-title">
         @if (state() !== 'processing') {
-          <a routerLink="/" class="cancel-link" data-testid="pay-cancel">Cancel</a>
+          <a routerLink="/" class="cancel-link" appPanelGlass data-testid="pay-cancel">Cancel</a>
         }
         <div class="pay-grid">
-          <div class="pay-card">
+          <div class="pay-card" appCardGlass>
             @switch (state()) {
               @case ('processing') {
                 <div class="confirming">
@@ -141,7 +143,7 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
             }
           </div>
 
-          <aside class="pay-summary">
+          <aside class="pay-summary" appCardGlass>
             <span class="summary-label">Order summary</span>
             <dl>
               <div class="sum-row"><dt>Venue</dt><dd>{{ booking!.venueName }}</dd></div>

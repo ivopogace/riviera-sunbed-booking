@@ -51,8 +51,7 @@ h1 {
 }
 
 .row {
-  @include glass.card-glass;
-
+  // Glass base via the shared appCardGlass directive; the row's own layout/lift stays here.
   display: flex;
   align-items: center;
   gap: 14px;
@@ -157,12 +156,12 @@ h1 {
   font-size: 13px;
   padding: 8px 14px;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 // ---- empty state ----
 .empty-card {
-  @include glass.card-glass;
-
+  // Glass base via the shared appCardGlass directive.
   -webkit-backdrop-filter: blur(26px) saturate(170%);
   backdrop-filter: blur(26px) saturate(170%);
   border-radius: 28px;
@@ -218,9 +217,13 @@ h1 {
     transform: translateY(-2px);
     box-shadow: 0 16px 40px rgba(7, 42, 58, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
+  .btn-retry:hover {
+    background: #e7ebec;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .row {
+  .row,
+  .btn-retry {
     transition: none;
   }
 }

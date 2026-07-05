@@ -7,16 +7,9 @@
  * bare gradient — white ink over the riviera gradient's light top stops cannot reach
  * WCAG AA, glass or shadow notwithstanding. */
 
-@use '../../shared/glass' as glass;
-
-// Pull each shared recipe once into a local placeholder, then @extend it — grouped output
-// (one selector list per surface) instead of the recipe inlined at every call site.
-%panel-surface {
-  @include glass.panel-glass;
-}
-%card-surface {
-  @include glass.card-glass;
-}
+// Glass surfaces (panel/card), the amenity chip and the failure panel are now the shared Tailwind
+// directives in shared/ (appPanelGlass, appCardGlass, appAmenityChip, appFailure*); this stylesheet
+// keeps only Discover's own bespoke layout/one-off styles.
 
 :host {
   display: block;
@@ -32,13 +25,25 @@
 /* ---- hero (on the shell's proven glass tokens) ---- */
 
 .hero {
-  @extend %panel-surface;
-
-  // Fills the full .discover content width, flush with the search bar below it (issue #153).
-  // No max-width cap on purpose — a plain block panel stretches to the column; don't re-cap it.
-  padding: 24px 26px 26px;
+  // No frosted panel: porcelain is bare, riviera gets a soft dark scrim (below). The padding is
+  // SHARED across both themes so the headline sits at the SAME position (toggling theme never shifts
+  // it), and it's what the riviera scrim's px-anchored fade aligns to.
+  padding: 34px 26px 40px;
   color: var(--riv-ink);
-  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+// Riviera: a borderless soft dark scrim — no card / rim / blur / shadow, just a dark wash whose fades
+// are PX-anchored (34px top / 40px bottom) to the padding above, so the text always rests on the
+// solid ~0.72 core at any content height (2- vs 3-line title, mobile). White ink AA over the
+// gradient's light top stops — pinned in home.contrast.spec.ts.
+:host-context([data-riv-theme='riviera']) .hero {
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 38, 52, 0) 0,
+    rgba(8, 38, 52, 0.72) 34px,
+    rgba(8, 38, 52, 0.72) calc(100% - 40px),
+    rgba(8, 38, 52, 0) 100%
+  );
 }
 
 .hero-chip {
@@ -71,6 +76,8 @@
   line-height: 1.02;
   letter-spacing: -0.025em;
   margin: 0 0 16px;
+  // Cap the headline measure so it breaks over two lines like the design (its hero was 680px-wide).
+  max-width: 680px;
   text-shadow: var(--riv-hero-shadow);
 }
 
@@ -87,8 +94,6 @@
 /* ---- glass filter bar (count block inside) ---- */
 
 .filter-bar {
-  @extend %card-surface;
-
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -175,8 +180,6 @@
 }
 
 .card {
-  @extend %card-surface;
-
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -322,8 +325,6 @@
   flex-wrap: wrap;
   gap: 6px;
 
-  @include glass.amenity-chip; // shared pill-tag recipe (T7 #140), AA-proven in amenities.contrast.spec.ts
-
   &:empty {
     display: none;
   }
@@ -378,8 +379,6 @@
    AA, so it reuses the AA-proven card glass + card-ink-soft (plan R-2; same class as the
    hero-on-glass deviation). */
 .cutoff-note {
-  @extend %card-surface;
-
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -401,35 +400,13 @@
 /* ---- loading / empty states (on the proven glass, see header note) ---- */
 
 .state {
-  @extend %panel-surface;
-
   margin-top: 24px;
   padding: 48px 20px;
+  border-radius: 26px;
   text-align: center;
   font-size: 15px;
   color: var(--riv-ink-soft);
 }
 
-/* ---- load-failure panel (issue #149) — recipes shared via shared/_glass.scss (#136). ---- */
-.failure {
-  @include glass.failure-panel;
-}
-
-.failure-icon {
-  @include glass.failure-icon;
-}
-
-.failure-title {
-  @include glass.failure-title;
-}
-
-.failure-text {
-  @include glass.failure-text;
-}
-
-.failure-retry {
-  @include glass.failure-retry;
-}
-.failure-retry:focus-visible {
-  @include glass.retry-focus-ring;
-}
+/* ---- load-failure panel (issue #149) — now the shared appFailure* directives + <app-retry-button>
+   (Tailwind twins, shared/failure-panel.ts); nothing styled here. ---- */

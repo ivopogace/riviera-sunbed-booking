@@ -3,11 +3,9 @@
 // panels; every text-bearing pair is pinned as a composited effective colour in
 // booking-pay.contrast.spec.ts. Palette from the styles.scss tokens only.
 
-@use '../shared/glass' as glass;
-
+// Glass surfaces are the shared appCardGlass / appPanelGlass directives; %card-surface keeps only
+// the card EXTRAS (blur/shadow/radius) layered on that base.
 %card-surface {
-  @include glass.card-glass;
-
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   backdrop-filter: blur(30px) saturate(180%);
   border-radius: 28px;
@@ -52,8 +50,7 @@
 // Dark header-glass chip (like the map's back-pill): white ink clears AA over any gradient stop,
 // where a chip on the bare gradient would not.
 .cancel-link {
-  @include glass.panel-glass;
-
+  // Surface via appPanelGlass; the pill radius + own type styles stay here.
   display: inline-block;
   margin-bottom: 14px;
   padding: 8px 16px;

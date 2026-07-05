@@ -4,11 +4,10 @@
 // confirmation-card layout is shared in spirit with request-confirmation.scss — kept local per the
 // rule of three (two users; extract on the third).
 
-@use '../shared/glass' as glass;
+// The card-glass surface is now the shared appCardGlass directive; this stylesheet keeps only the
+// confirmation card's bespoke blur/shadow/radius + inner layout.
 
 .confirmation {
-  @include glass.card-glass;
-
   max-width: 400px;
   margin: 32px auto;
   padding: 36px 30px 30px;

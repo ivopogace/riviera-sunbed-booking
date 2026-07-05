@@ -23,8 +23,9 @@ import {
  *
  * This table mirrors every text-bearing token in `styles.scss` + `home.scss`; a token edit
  * there must re-pass here. Deviations from the design file, on purpose (plan R-1/R-2, same
- * class as T1's header): the hero and list-state panels sit on the AA-proven header glass
- * instead of the bare gradient; the riviera card glass is 0.78 (design 0.55); the muted
+ * class as T1's header): the list-state panels (and, in the riviera theme, the hero) sit on
+ * the AA-proven header glass instead of the bare gradient — the porcelain hero matches the
+ * design (bare dark ink); the riviera card glass is 0.78 (design 0.55); the muted
  * card inks are 0.78/0.72 (design 0.7/0.55); the teal accent is #085a6e (design #0a6e85);
  * the field border is a dark tint (design white) for the 1.4.11 component boundary; the
  * CTA-button gradient is darkened for white-text AA (#149, see CTA_STOPS below).
@@ -69,6 +70,9 @@ interface Theme {
   readonly cardGlass: Glass;
   readonly heroInk: Rgb;
   readonly heroInkSoftAlpha: number; // --riv-ink-soft
+  /** Riviera backs the hero with a soft dark SCRIM (white ink AA over the gradient's light top
+   *  stops); porcelain's hero is bare dark ink on the gradient (matches the design). null = bare. */
+  readonly heroScrim: Glass | null;
 }
 
 const THEMES: readonly Theme[] = [
@@ -80,6 +84,8 @@ const THEMES: readonly Theme[] = [
     cardGlass: RIVIERA_CARD_GLASS,
     heroInk: WHITE,
     heroInkSoftAlpha: 0.86,
+    // Riviera hero scrim (home.scss): rgba(8,38,52,0.72) = #082634 @ 0.72.
+    heroScrim: { color: hexToRgb('082634'), alpha: 0.72 },
   },
   {
     name: 'porcelain',
@@ -89,29 +95,55 @@ const THEMES: readonly Theme[] = [
     cardGlass: PORCELAIN_CARD_GLASS,
     heroInk: INK_DARK,
     heroInkSoftAlpha: 0.7,
+    heroScrim: null, // bare gradient
   },
 ];
 
 describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #135)', (theme) => {
-  it('hero headline + state text (ink) meets AA on the hero/state panel glass', () => {
-    expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
+  // The hero backdrop is theme-conditional: a soft dark SCRIM in riviera (white ink needs a dark
+  // backing to clear AA over the gradient's light top stops), the BARE gradient in porcelain, where
+  // the hero matches the design (dark ink, no backing). The px-anchored fade (home.scss) keeps the
+  // text on the solid scrim core, so the worst case is the full-strength scrim over each stop. The
+  // loading/empty .state panels keep the header glass in BOTH themes (asserted separately below).
+  const heroBackdrop = (stop: Rgb): Rgb =>
+    theme.heroScrim ? surfaceOver(theme.heroScrim, stop) : stop;
+
+  it('hero headline (ink) meets AA on the hero backdrop', () => {
+    for (const stop of theme.stops) {
+      expect(
+        contrastRatio(rgbToHex(theme.heroInk), rgbToHex(heroBackdrop(stop))),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
-  it('hero intro / state copy (ink-soft) meets AA on the hero/state panel glass', () => {
-    expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
+  it('hero intro (ink-soft) meets AA on the hero backdrop', () => {
+    for (const stop of theme.stops) {
+      const bg = heroBackdrop(stop);
+      const soft = composite(theme.heroInk, theme.heroInkSoftAlpha, bg);
+      expect(
+        contrastRatio(rgbToHex(soft), rgbToHex(bg)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
-  it('hero chip text meets AA on the chip tint over the hero panel glass', () => {
+  it('hero chip text meets AA on the chip tint over the hero backdrop', () => {
     // The thinnest pair on the page (riviera worst case ~4.53:1 over #ffe2b0) — pinned
     // here as well as in app.contrast.spec.ts because the hero relies on it directly.
     for (const stop of theme.stops) {
-      const panel = surfaceOver(theme.headerGlass, stop);
-      const chip = composite(theme.chip.color, theme.chip.alpha, panel);
+      const chip = composite(theme.chip.color, theme.chip.alpha, heroBackdrop(stop));
       expect(
         contrastRatio(rgbToHex(theme.heroInk), rgbToHex(chip)),
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
+  });
+
+  it('loading/empty state panel text (ink + ink-soft) meets AA on the header glass', () => {
+    // The .state panels keep the header glass in both themes (only the hero goes bare in porcelain).
+    expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
+    expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
   });
 
   it('card ink (names, ratings, free count) meets AA on the card glass', () => {

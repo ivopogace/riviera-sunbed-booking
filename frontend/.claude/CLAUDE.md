@@ -49,6 +49,12 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the async pipe to handle observables
 - Do not assume globals like (`new Date()`) are available.
 
+## Styling
+
+- Tailwind v4 is the go-forward for component styling; component SCSS is being retired. Load
+  the **`riviera-tailwind`** skill before writing or refactoring any Tailwind — it owns the
+  share-via-directive-not-`@apply` rule, the test-hook-class convention, and the no-drift check.
+
 ## Services
 
 - Design services around a single responsibility

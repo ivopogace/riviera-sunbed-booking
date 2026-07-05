@@ -30,6 +30,21 @@ reference `CLAUDE.md`.
 
 ---
 
+### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
+**Gate:** Does new/changed styling follow the project's Tailwind conventions?
+- [ ] Tailwind utilities (SCSS is being retired) — new component styling isn't a fresh `.scss`  [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`  [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities  [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
+
+**Follow-up:**
+- Sharing moves to the directive/component layer — Tailwind has no mixin and this repo does not `@apply`. Surface directives carry no `border-radius` (it resolves by stylesheet order, not `class` order).
+- Don't flag a `getComputedStyle` `border-width` of `"1px"` for a `1.5px` border as a regression — Chromium snaps it, identically to the old SCSS. Diff against the SCSS's own computed values.
+- Load `riviera-tailwind` for the full conventions + the SCSS→Tailwind migration checklist.
+
+**Default severity:** Minor (consistency) for an idiom slip; **Major** for a restyle shipped with no drift check, or an `@apply`/new-`.scss` sharing pattern that spreads.
+**Skill framing:**
+- Peer-review: "Is styling Tailwind? Is a reused surface a directive (not `@apply`)? Are the test-hook classes kept? For a restyle — where's the computed-style no-drift check?"
+
+---
+
 ### RV-FE-6. Forms use the modern API (Signal Forms / Reactive, never Template-driven)
 **Gate:** Do new forms (booking, venue/beach-map editor, cancellation, guest-checkout
 contact) use a modern forms API with typed, server-validated state?

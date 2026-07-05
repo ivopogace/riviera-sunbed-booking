@@ -10,7 +10,7 @@
   min-height: 100%;
   background: var(--riv-bg);
   color: var(--riv-ink);
-  font-family: var(--riv-font);
+  font-family: var(--riv-font), sans-serif;
 }
 
 /* ---- signed-out: sign-in card ---- */
@@ -80,10 +80,21 @@
   padding: 12px;
   cursor: pointer;
   box-shadow: 0 8px 22px rgba(11, 120, 150, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: filter 0.15s ease;
 
   &:disabled {
     cursor: default;
     opacity: 0.75;
+  }
+}
+@media (hover: hover) {
+  .oc-signin-btn:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oc-signin-btn {
+    transition: none;
   }
 }
 
@@ -175,19 +186,6 @@
   strong {
     color: var(--riv-ink);
   }
-}
-
-.oc-signout {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--riv-ink);
-  background: #ffffff;
-  border: 1px solid rgba(12, 42, 51, 0.14);
-  border-radius: 999px;
-  padding: 7px 15px;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(7, 42, 58, 0.08);
 }
 
 /* ---- pill tab nav ---- */
