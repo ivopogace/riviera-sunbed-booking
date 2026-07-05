@@ -81,7 +81,7 @@ class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
-			Clock clock) throws Exception {
+			Clock clock) {
 		http
 				.cors(Customizer.withDefaults())
 				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56) and,

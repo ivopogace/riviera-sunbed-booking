@@ -1,23 +1,18 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
-import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit test of the after-commit refund listener (U6): it issues the refund through {@link RefundPort}
