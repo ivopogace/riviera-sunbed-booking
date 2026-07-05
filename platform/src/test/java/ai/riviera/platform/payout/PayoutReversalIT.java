@@ -3,6 +3,7 @@ package ai.riviera.platform.payout;
 import java.time.Duration;
 import java.time.LocalDate;
 
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,11 +74,11 @@ class PayoutReversalIT {
 	}
 
 	private BookingCancelled cancelled(Ref b, long refundMinor) {
-		return cancelled(b, refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason.POLICY);
+		return cancelled(b, refundMinor, RefundReason.POLICY);
 	}
 
 	private BookingCancelled cancelled(Ref b, long refundMinor,
-			ai.riviera.platform.booking.vocabulary.RefundReason reason) {
+			RefundReason reason) {
 		return new BookingCancelled(new BookingId(b.bookingId()), new VenueId(b.venueId()),
 				new SetId(b.setId()), LocalDate.of(2030, 7, 1), refundMinor, "EUR", reason);
 	}
@@ -131,7 +132,7 @@ class PayoutReversalIT {
 		// REVERSAL (here full) records reason WEATHER so the ledger distinguishes it from a policy refund.
 		Ref b = bookingWithAccrual("REVWX001");
 
-		publishInTransaction(cancelled(b, 4500L, ai.riviera.platform.booking.vocabulary.RefundReason.WEATHER));
+		publishInTransaction(cancelled(b, 4500L, RefundReason.WEATHER));
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, reversalRows(b.bookingId())));
 		assertEquals(3825L, reversalNet(b.bookingId()), "full weather reversal nets out the accrual");

@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.application;
 
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.Test;
@@ -50,8 +51,8 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public java.util.Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
-				return java.util.Optional.empty();
+			public Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
+				return Optional.empty();
 			}
 
 			@Override
@@ -60,8 +61,8 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public java.util.Optional<String> findIntentByBookingRef(BookingRef booking) {
-				return java.util.Optional.empty();
+			public Optional<String> findIntentByBookingRef(BookingRef booking) {
+				return Optional.empty();
 			}
 
 			@Override
@@ -69,9 +70,9 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public java.util.Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+			public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
 					BookingRef booking) {
-				return java.util.Optional.empty();
+				return Optional.empty();
 			}
 		};
 	}
@@ -90,7 +91,7 @@ class PaymentServiceTest {
 	@Test
 	void passesPendingOutcomeThrough() {
 		PaymentService service = new PaymentService(
-				initiating((booking, amount) -> new PaymentOutcome.Pending("cs_test", "pi_test")), noPayments());
+				initiating((_, _) -> new PaymentOutcome.Pending("cs_test", "pi_test")), noPayments());
 
 		PaymentOutcome outcome = service.pay(new BookingRef(1L), new Money(4500L, "EUR"));
 

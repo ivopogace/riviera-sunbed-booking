@@ -6,6 +6,8 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import jakarta.servlet.http.Cookie;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,8 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public final class SessionLoginSupport {
 
 	private static final String SESSION_COOKIE = "SESSION";
-	private static final java.util.concurrent.atomic.AtomicInteger CLIENT_COUNTER =
-			new java.util.concurrent.atomic.AtomicInteger();
+	private static final AtomicInteger CLIENT_COUNTER = new AtomicInteger();
 
 	private SessionLoginSupport() {
 	}

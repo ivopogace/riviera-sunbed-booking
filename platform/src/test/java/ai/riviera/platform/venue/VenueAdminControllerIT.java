@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,8 @@ import ai.riviera.platform.TestcontainersConfiguration;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -295,8 +298,8 @@ class VenueAdminControllerIT {
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue))
-				.andExpect(jsonPath("$.amenities").value(org.hamcrest.Matchers.contains("SHOWERS")))
-				.andExpect(jsonPath("$.distanceToWaterM").value(org.hamcrest.Matchers.nullValue()));
+				.andExpect(jsonPath("$.amenities").value(Matchers.contains("SHOWERS")))
+				.andExpect(jsonPath("$.distanceToWaterM").value(Matchers.nullValue()));
 	}
 
 	@Test

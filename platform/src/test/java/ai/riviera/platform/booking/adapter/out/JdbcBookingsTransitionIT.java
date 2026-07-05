@@ -1,9 +1,13 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -117,7 +121,7 @@ class JdbcBookingsTransitionIT {
 		// NEVER on the created_at + instant-TTL clock — a request often sits pending for hours
 		// before accept, so the creation clock would sweep it the moment it was accepted.
 		SetRef set = onlineSet();
-		java.time.Instant now = java.time.Instant.now();
+		Instant now = Instant.now();
 
 		// Accepted request: created 25h ago, accepted 1h ago.
 		long acceptedRequest = insertAwaiting("SWEEPCLK01", set, LocalDate.of(2027, 9, 1));
@@ -128,24 +132,24 @@ class JdbcBookingsTransitionIT {
 		// Instant booking: created 20 minutes ago, never accepted (accepted_at NULL).
 		long instantBooking = insertAwaiting("SWEEPCLK02", set, LocalDate.of(2027, 9, 2));
 		jdbc.sql("UPDATE booking SET created_at = :created WHERE id = :id")
-				.param("created", java.sql.Timestamp.from(now.minus(java.time.Duration.ofMinutes(20))))
+				.param("created", Timestamp.from(now.minus(java.time.Duration.ofMinutes(20))))
 				.param("id", instantBooking).update();
 
 		// TTL 15m / pay-window 12h: the stale instant booking is selected; the accepted request
 		// (1h into its 12h window, though 25h old by creation) is NOT.
 		var withinPayWindow = bookings.findExpirableAwaitingPayment(
 				now.minus(java.time.Duration.ofMinutes(15)), now.minus(java.time.Duration.ofHours(12)));
-		var ids = withinPayWindow.stream().map(ai.riviera.platform.booking.vocabulary.BookingId::value).toList();
-		org.junit.jupiter.api.Assertions.assertTrue(ids.contains(instantBooking),
+		var ids = withinPayWindow.stream().map(BookingId::value).toList();
+		Assertions.assertTrue(ids.contains(instantBooking),
 				"a stale instant booking expires on the creation clock");
-		org.junit.jupiter.api.Assertions.assertFalse(ids.contains(acceptedRequest),
+		Assertions.assertFalse(ids.contains(acceptedRequest),
 				"an accepted request inside its pay-window must not be swept (accept clock)");
 
 		// Once the pay-window has elapsed (window shrunk to 30m), the accepted request IS selected.
 		var pastPayWindow = bookings.findExpirableAwaitingPayment(
-				now.minus(java.time.Duration.ofMinutes(15)), now.minus(java.time.Duration.ofMinutes(30)));
-		var lateIds = pastPayWindow.stream().map(ai.riviera.platform.booking.vocabulary.BookingId::value).toList();
-		org.junit.jupiter.api.Assertions.assertTrue(lateIds.contains(acceptedRequest),
+				now.minus(Duration.ofMinutes(15)), now.minus(Duration.ofMinutes(30)));
+		var lateIds = pastPayWindow.stream().map(BookingId::value).toList();
+		Assertions.assertTrue(lateIds.contains(acceptedRequest),
 				"an accepted request past its pay-window is expirable");
 	}
 

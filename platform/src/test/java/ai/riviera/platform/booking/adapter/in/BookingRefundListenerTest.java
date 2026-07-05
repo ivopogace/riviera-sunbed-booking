@@ -64,7 +64,7 @@ class BookingRefundListenerTest {
 
 	@Test
 	void throwsOnGatewayFailureSoTheRegistryRetries() {
-		RefundPort port = (booking, amount) -> new RefundResult.Failed("card_error");
+		RefundPort port = (_, _) -> new RefundResult.Failed("card_error");
 
 		assertThrows(IllegalStateException.class,
 				() -> new BookingRefundListener(port).on(event(42L, 2250L, "EUR")),

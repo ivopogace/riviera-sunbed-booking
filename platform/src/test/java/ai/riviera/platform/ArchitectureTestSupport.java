@@ -109,7 +109,7 @@ public final class ArchitectureTestSupport {
 	 */
 	public static String bytecode(Path classFile) {
 		try {
-			return new String(Files.readAllBytes(classFile), StandardCharsets.ISO_8859_1);
+			return Files.readString(classFile, StandardCharsets.ISO_8859_1);
 		}
 		catch (IOException e) {
 			throw new IllegalStateException("could not read " + classFile, e);
