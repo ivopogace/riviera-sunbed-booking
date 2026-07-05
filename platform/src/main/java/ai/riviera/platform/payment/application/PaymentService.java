@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.application;
 
+import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -18,7 +19,7 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
  * field (no Lombok, no field {@code @Autowired}).
  */
 @Service
-class PaymentService implements CheckoutPort, ai.riviera.platform.payment.api.PaymentCredentialsLookup {
+class PaymentService implements CheckoutPort, PaymentCredentialsLookup {
 
 	private final PaymentGateway gateway;
 	private final Payments payments;

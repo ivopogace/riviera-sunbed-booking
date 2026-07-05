@@ -2,6 +2,7 @@ package ai.riviera.platform.payment.adapter.out;
 
 import java.util.Optional;
 
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -46,7 +47,7 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+	public Optional<PaymentCredentials> findPendingCredentials(
 			BookingRef booking) {
 		// Pay-on-accept read (issue #98): an intent is payable while OPEN — including after a
 		// payment_intent.payment_failed, which is NOT terminal in Stripe (the guest can retry the

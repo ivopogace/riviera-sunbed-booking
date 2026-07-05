@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.adapter.in;
 
+import ai.riviera.platform.booking.application.request.RequestWindows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -30,11 +31,10 @@ class AbandonedBookingScheduler {
 
 	private final ExpireAbandonedBookings expireAbandonedBookings;
 	private final AbandonedPaymentProperties properties;
-	private final ai.riviera.platform.booking.application.request.RequestWindows requestWindows;
+	private final RequestWindows requestWindows;
 
 	AbandonedBookingScheduler(ExpireAbandonedBookings expireAbandonedBookings,
-			AbandonedPaymentProperties properties,
-			ai.riviera.platform.booking.application.request.RequestWindows requestWindows) {
+			AbandonedPaymentProperties properties, RequestWindows requestWindows) {
 		this.expireAbandonedBookings = expireAbandonedBookings;
 		this.properties = properties;
 		this.requestWindows = requestWindows;

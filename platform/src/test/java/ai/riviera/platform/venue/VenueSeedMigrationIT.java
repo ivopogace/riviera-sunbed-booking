@@ -4,12 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies the U1 schema + demo seed (Flyway V2/V3, issue #4): the {@code venue} and
@@ -67,8 +69,7 @@ class VenueSeedMigrationIT {
 				Integer.class);
 		assertThat(bps).isZero();
 
-		org.springframework.dao.DataIntegrityViolationException rejected = org.junit.jupiter.api.Assertions
-				.assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
+		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
 						() -> jdbc.update("UPDATE venue SET late_cancel_refund_bps = 10001 "
 								+ "WHERE name = 'Miramar Beach Club'"));
 		assertThat(rejected).isNotNull(); // venue_late_cancel_bps_check rejects > 10000

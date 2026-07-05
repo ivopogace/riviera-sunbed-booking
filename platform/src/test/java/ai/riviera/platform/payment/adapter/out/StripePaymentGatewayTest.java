@@ -13,6 +13,7 @@ import com.stripe.param.RefundCreateParams;
 import com.stripe.service.PaymentIntentService;
 import com.stripe.service.RefundService;
 
+import com.stripe.service.V1Services;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -50,7 +51,7 @@ class StripePaymentGatewayTest {
 	void createsIntentWithIdempotencyKeyAndMinorUnits() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -87,7 +88,7 @@ class StripePaymentGatewayTest {
 	void stripeFailureMapsToFailed() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -110,7 +111,7 @@ class StripePaymentGatewayTest {
 	void recoversAndRegistersWhenCreateTimesOutAfterStripeCreated() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -147,7 +148,7 @@ class StripePaymentGatewayTest {
 	void failsWhenBothCreateAttemptsTimeOut() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -171,7 +172,7 @@ class StripePaymentGatewayTest {
 	void refundUsesIdempotencyKeyAndRecordsTheRefund() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		RefundService refunds = mock(RefundService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.refunds()).thenReturn(refunds);
@@ -215,7 +216,7 @@ class StripePaymentGatewayTest {
 	void cancelVoidsACancelableIntentAndMarksItCanceled() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -238,7 +239,7 @@ class StripePaymentGatewayTest {
 	void cancelOfAnAlreadyCanceledIntentIsIdempotent() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -261,7 +262,7 @@ class StripePaymentGatewayTest {
 	void cancelOfASucceededIntentIsNotCancellable() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
@@ -299,7 +300,7 @@ class StripePaymentGatewayTest {
 	void cancelStripeFailureMapsToFailed() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
 		PaymentIntentService intents = mock(PaymentIntentService.class);
-		com.stripe.service.V1Services v1 = mock(com.stripe.service.V1Services.class);
+		V1Services v1 = mock(V1Services.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
