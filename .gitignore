@@ -24,3 +24,6 @@ replay_pid*.log
 
 # Claude Code personal/local settings (not team-wide)
 .claude/settings.local.json
+
+# graphify — generated knowledge-graph output (regenerable, rebuilt by the post-commit hook)
+/graphify-out/

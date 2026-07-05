@@ -149,7 +149,11 @@ Merging is not the last step; the close-out is. Every item, every merge:
    value set (statuses, pools), an ownership rule, a filename a skill cites as an example —
    load the **`riviera-docs-freshness`** skill and run it over the merged range; patch what
    it flags in the same PR or immediately after the merge. It also runs over every epic's
-   full merge span at epic close-out (case history: #72).
+   full merge span at epic close-out (case history: #72). **Then refresh the knowledge
+   graph for the same doc changes:** the post-commit hook rebuilds *code* only, so after a
+   doc/ADR/plan-touching slice run `graphify update .` to fold the doc edits into the graph
+   (it's gitignored — a local refresh, nothing to commit; skip if the slice touched no docs,
+   since code already rebuilt via the hook).
 6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.
 7. **Notify** per *Staying in touch* (SKILL.md): push; email only if a send-capable tool
