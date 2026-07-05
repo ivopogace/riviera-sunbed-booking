@@ -235,6 +235,9 @@ Repo-scoped — they load when working in this repository (tracked in
 - **`riviera-modulith`** — backend module STRUCTURE authority (before any backend
   Java placement/move).
 - **`riviera-frontend`** — Angular STRUCTURE authority (before any file under `frontend/`).
+- **`riviera-tailwind`** — the styling HOW authority (Tailwind v4, the locked go-forward;
+  SCSS retiring); before writing/refactoring any Tailwind under `frontend/src`. Pairs with
+  `riviera-frontend` (where files go).
 - **`riviera-local-debug`** — build/test run recipes (before the session's first
   `./gradlew`/`npm`).
 - **`riviera-docs-freshness`** — substrate-doc staleness audit (merge close-out
