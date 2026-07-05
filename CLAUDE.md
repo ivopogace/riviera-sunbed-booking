@@ -245,6 +245,8 @@ Repo-scoped — they load when working in this repository (tracked in
   frontend slice.
 - **`postgres`** (PlanetScale, MIT, trimmed) — table/schema/index design for
   Flyway migrations.
+- **`graphify`** (Graphify-Labs, MIT) — builds a queryable knowledge graph of the
+  repo (`/graphify .`); use for codebase-architecture/file-relationship questions.
 - **Vendored craft skills** (Matt Pocock, MIT): `grilling`/`grill-me`, `to-issues`,
   `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
   `triage`, `improve-codebase-architecture` — the generic engine the `riviera-*`
