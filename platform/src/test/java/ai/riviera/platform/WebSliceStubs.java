@@ -8,6 +8,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payout.domain.BatchStatus;
+import ai.riviera.platform.payout.domain.PayoutBatch;
+import ai.riviera.platform.payout.domain.PeriodKey;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -73,7 +78,7 @@ class WebSliceStubs {
 	/** #98 Request-to-Book web-slice stubs: the controller/scheduler ports with inert defaults. */
 	@Bean
 	PendingRequests pendingRequests() {
-		return (operator, venueId) -> List.of();
+		return (_, _) -> List.of();
 	}
 
 	@Bean
@@ -81,15 +86,15 @@ class WebSliceStubs {
 		return new RespondToRequest() {
 			@Override
 			public AcceptOutcome accept(OperatorId operator,
-					ai.riviera.platform.venue.vocabulary.VenueId venueId,
-					ai.riviera.platform.booking.vocabulary.BookingId bookingId) {
+					VenueId venueId,
+					BookingId bookingId) {
 				return AcceptOutcome.Rejected.NO_SUCH_REQUEST;
 			}
 
 			@Override
 			public DeclineOutcome decline(OperatorId operator,
-					ai.riviera.platform.venue.vocabulary.VenueId venueId,
-					ai.riviera.platform.booking.vocabulary.BookingId bookingId) {
+					VenueId venueId,
+					BookingId bookingId) {
 				return DeclineOutcome.Rejected.NO_SUCH_REQUEST;
 			}
 		};
@@ -111,17 +116,17 @@ class WebSliceStubs {
 
 	@Bean
 	CreateBooking createBooking() {
-		return command -> BookingOutcome.Rejected.NO_SUCH_SET;
+		return _ -> BookingOutcome.Rejected.NO_SUCH_SET;
 	}
 
 	@Bean
 	ViewBooking viewBooking() {
-		return code -> Optional.empty();
+		return _ -> Optional.empty();
 	}
 
 	@Bean
 	CancelBooking cancelBooking() {
-		return code -> new CancelOutcome.NotFound();
+		return _ -> new CancelOutcome.NotFound();
 	}
 
 	@Bean
@@ -132,7 +137,7 @@ class WebSliceStubs {
 	/** Resolve any principal to a fixed operator id — the web slices don't exercise ownership. */
 	@Bean
 	OperatorDirectory operatorDirectory() {
-		return username -> Optional.of(new OperatorId(1));
+		return _ -> Optional.of(new OperatorId(1));
 	}
 
 	/**
@@ -142,7 +147,7 @@ class WebSliceStubs {
 	 */
 	@Bean
 	OperatorAccounts operatorAccounts() {
-		return username -> Optional.empty();
+		return _ -> Optional.empty();
 	}
 
 	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */
@@ -153,37 +158,34 @@ class WebSliceStubs {
 
 	@Bean
 	ListDailyBookings listDailyBookings() {
-		return (operator, venueId, date) -> List.of();
+		return (_, _, _) -> List.of();
 	}
 
 	@Bean
 	RefundForWeather refundForWeather() {
-		return (operator, venueId, date) -> new WeatherRefundOutcome(0, 0, "EUR");
+		return (_, _, _) -> new WeatherRefundOutcome(0, 0, "EUR");
 	}
 
 	@Bean
 	ViewPayoutLedger viewPayoutLedger() {
-		return (operator, venueId) -> new VenueLedger(venueId, "EUR", 0, List.of());
+		return (_, venueId) -> new VenueLedger(venueId, "EUR", 0, List.of());
 	}
 
 	@Bean
 	PayoutReport payoutReport() {
 		return new PayoutReport() {
 			@Override
-			public List<ai.riviera.platform.payout.domain.PayoutBatch> generate(
-					ai.riviera.platform.payout.domain.PeriodKey period) {
+			public List<PayoutBatch> generate(PeriodKey period) {
 				return List.of();
 			}
 
 			@Override
-			public List<ai.riviera.platform.payout.domain.PayoutBatch> forPeriod(
-					ai.riviera.platform.payout.domain.PeriodKey period) {
+			public List<PayoutBatch> forPeriod(PeriodKey period) {
 				return List.of();
 			}
 
 			@Override
-			public BatchStatusOutcome mark(long batchId,
-					ai.riviera.platform.payout.domain.BatchStatus target) {
+			public BatchStatusOutcome mark(long batchId, BatchStatus target) {
 				return new BatchStatusOutcome.NotFound();
 			}
 		};
@@ -266,7 +268,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+			public Optional<PaymentCredentials> findPendingCredentials(
 					BookingRef booking) {
 				return Optional.empty();
 			}
@@ -284,7 +286,7 @@ class WebSliceStubs {
 
 	@Bean
 	StripeWebhookEvents stripeWebhookEvents() {
-		return (eventId, eventType) -> true;
+		return (_, _) -> true;
 	}
 
 	@Bean
@@ -294,7 +296,7 @@ class WebSliceStubs {
 
 	@Bean
 	OnboardVenue onboardVenue() {
-		return command -> new VenueId(0);
+		return _ -> new VenueId(0);
 	}
 
 	@Bean
@@ -319,6 +321,6 @@ class WebSliceStubs {
 
 	@Bean
 	EditVenueProfile editVenueProfile() {
-		return (operator, venueId, command) -> new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		return (_, _, _) -> new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 	}
 }

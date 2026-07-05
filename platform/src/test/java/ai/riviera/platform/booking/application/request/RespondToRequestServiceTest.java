@@ -2,10 +2,15 @@ package ai.riviera.platform.booking.application.request;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
+import ai.riviera.platform.customer.api.CustomerLookup;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -91,8 +96,8 @@ class RespondToRequestServiceTest {
 		assertEquals(BookingStatus.AWAITING_PAYMENT, accepted.status(),
 				"real Stripe: the webhook confirms, never the accept response (invariant #8)");
 		verify(checkout).pay(
-				eq(new ai.riviera.platform.payment.vocabulary.BookingRef(BOOKING.value())),
-				eq(new ai.riviera.platform.payment.vocabulary.Money(4500L, "EUR")));
+				eq(new BookingRef(BOOKING.value())),
+				eq(new Money(4500L, "EUR")));
 		verify(confirmBooking, never()).confirm(anyLong(), any());
 	}
 
@@ -155,7 +160,7 @@ class RespondToRequestServiceTest {
 	@Test
 	void declineReleasesHold() {
 		SetId set = new SetId(11);
-		var date = java.time.LocalDate.of(2026, 8, 1);
+		var date = LocalDate.of(2026, 8, 1);
 		when(bookings.declinePending(BOOKING.value(), VENUE))
 				.thenReturn(Optional.of(new ClaimRef(set, date)));
 
@@ -187,7 +192,7 @@ class RespondToRequestServiceTest {
 	@Test
 	void expirySweepReleasesEveryExpiredHold() {
 		// ExpireRequestsService: per-row guarded expiry (failure-isolated), each hold released.
-		var date = java.time.LocalDate.of(2026, 8, 2);
+		var date = LocalDate.of(2026, 8, 2);
 		when(bookings.findOverduePendingRequests(NOW))
 				.thenReturn(List.of(new BookingId(11), new BookingId(12)));
 		when(bookings.expirePendingRequest(11, NOW))
@@ -206,7 +211,7 @@ class RespondToRequestServiceTest {
 	@Test
 	void expirySweepIsolatesAFailingRow() {
 		// One poisoned row must not starve the batch (mirrors the abandoned sweep's isolation).
-		var date = java.time.LocalDate.of(2026, 8, 2);
+		var date = LocalDate.of(2026, 8, 2);
 		when(bookings.findOverduePendingRequests(NOW))
 				.thenReturn(List.of(new BookingId(11), new BookingId(12)));
 		when(bookings.expirePendingRequest(11, NOW))
@@ -223,8 +228,8 @@ class RespondToRequestServiceTest {
 
 	@Test
 	void pendingQueueChecksOwnershipAndResolvesGuestNames() {
-		var lookup = mock(ai.riviera.platform.customer.api.CustomerLookup.class);
-		var customerId = new ai.riviera.platform.customer.vocabulary.CustomerId(5);
+		var lookup = mock(CustomerLookup.class);
+		var customerId = new CustomerId(5);
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(new PendingRequestRow(
 				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), customerId,
 				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600))));

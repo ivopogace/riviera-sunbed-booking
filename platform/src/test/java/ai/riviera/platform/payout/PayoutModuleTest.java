@@ -136,7 +136,7 @@ class PayoutModuleTest {
 		scenario.publish(event(b))
 				.andWaitAtMost(WAIT)
 				.forStateChange(() -> accrualRows(b.bookingId()), (Long rows) -> rows == 1L)
-				.andVerify(rows -> assertEquals(4050L, netFor(b.bookingId()),
+				.andVerify(_ -> assertEquals(4050L, netFor(b.bookingId()),
 						"net = 4500 - 10% (450); the rate comes from the venue port, not the event"));
 	}
 }

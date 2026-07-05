@@ -81,7 +81,7 @@ class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
-			Clock clock) throws Exception {
+			Clock clock) {
 		http
 				.cors(Customizer.withDefaults())
 				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56) and,
@@ -168,9 +168,9 @@ class SecurityConfig {
 				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
 				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
 				.exceptionHandling(handling -> handling
-						.authenticationEntryPoint((request, response, exception) ->
+						.authenticationEntryPoint((_, response, _) ->
 								SecurityProblemResponses.writeUnauthenticated(response))
-						.accessDeniedHandler((request, response, exception) ->
+						.accessDeniedHandler((_, response, exception) ->
 								SecurityProblemResponses.writeAccessDenied(response, exception)));
 		return http.build();
 	}
@@ -183,7 +183,7 @@ class SecurityConfig {
 	 * used, now driven by {@code AuthController}'s session login. No custom filter (D-1).
 	 */
 	@Bean
-	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) {
 		return configuration.getAuthenticationManager();
 	}
 

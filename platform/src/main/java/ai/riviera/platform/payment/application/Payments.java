@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 
 /**
  * The {@code payment} module's outbound persistence port (driven seam) for the collection
@@ -23,7 +24,7 @@ public interface Payments {
 	 * once the intent succeeded/failed/was canceled, or when no secret was stored (stub profile,
 	 * pre-V19 rows).
 	 */
-	Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+	Optional<PaymentCredentials> findPendingCredentials(
 			BookingRef booking);
 
 	/**

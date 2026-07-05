@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.refund;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -58,8 +59,7 @@ class WeatherRefundService implements RefundForWeather {
 
 	@Override
 	@Transactional
-	public WeatherRefundOutcome refundForWeather(OperatorId operator, VenueId venueId,
-			java.time.LocalDate date) {
+	public WeatherRefundOutcome refundForWeather(OperatorId operator, VenueId venueId, LocalDate date) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		List<RefundableBooking> candidates = bookings.findConfirmedForWeatherRefund(venueId, date);
 

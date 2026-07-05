@@ -142,7 +142,7 @@ class WeatherRefundServiceIT {
 		LocalDate day = LocalDate.of(2020, 7, 2);
 		long venueId = venueWithOnlineSets();
 		List<Long> sets = onlineSets(venueId, 1);
-		confirmedBooking(venueId, sets.get(0), day, "WX00000003", 4500L);
+		confirmedBooking(venueId, sets.getFirst(), day, "WX00000003", 4500L);
 
 		assertEquals(1, refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), day).refundedCount(),
 				"first run refunds the confirmed booking");
