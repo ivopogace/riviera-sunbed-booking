@@ -2,8 +2,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
+import { AmenityChip } from '../../shared/amenity-chip';
+import { CardGlass } from '../../shared/card-glass';
+import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
+import { PanelGlass } from '../../shared/panel-glass';
 import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../venue/booking-date';
 import { MoneyView, VenueSummary } from '../../venue/venue.model';
@@ -19,7 +23,7 @@ import { VenueService } from '../../venue/venue.service';
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, RetryButton],
+  imports: [RouterLink, RetryButton, PanelGlass, CardGlass, AmenityChip, ...FAILURE_DIRECTIVES],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

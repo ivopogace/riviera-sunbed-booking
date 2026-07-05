@@ -51,8 +51,7 @@ h1 {
 }
 
 .row {
-  @include glass.card-glass;
-
+  // Glass base via the shared appCardGlass directive; the row's own layout/lift stays here.
   display: flex;
   align-items: center;
   gap: 14px;
@@ -162,8 +161,7 @@ h1 {
 
 // ---- empty state ----
 .empty-card {
-  @include glass.card-glass;
-
+  // Glass base via the shared appCardGlass directive.
   -webkit-backdrop-filter: blur(26px) saturate(170%);
   backdrop-filter: blur(26px) saturate(170%);
   border-radius: 28px;

@@ -1,5 +1,5 @@
 <section class="discover" aria-labelledby="discover-title">
-  <div class="hero">
+  <div class="hero" appPanelGlass>
     <p class="hero-chip"><span class="hero-chip-dash" aria-hidden="true"></span> Sunbeds by the sea</p>
     <h1 id="discover-title" class="hero-title">Find your spot on the Riviera.</h1>
     <p class="hero-intro">
@@ -8,7 +8,7 @@
     </p>
   </div>
 
-  <form class="filter-bar" (submit)="$event.preventDefault()">
+  <form class="filter-bar" appCardGlass (submit)="$event.preventDefault()">
     <p class="field">
       <label class="field-label" for="filter-beach">Beach</label>
       <select id="filter-beach" data-testid="filter-beach" [value]="beach()" (change)="onBeachChange($event)">
@@ -56,7 +56,7 @@
        subtle glass pill so its ink clears WCAG AA over the bare gradient (plan R-2). The ngsp
        entity keeps a real space between the clock glyph and the copy (epic-133 sibling-inline
        gotcha). -->
-  <p class="cutoff-note" data-testid="cutoff-note">
+  <p class="cutoff-note" appCardGlass data-testid="cutoff-note">
     <span class="cutoff-icon" aria-hidden="true">⏰</span>&ngsp;
     <span>Bookings close the evening before — book by 6&nbsp;PM the day before. Today isn’t available.</span>
   </p>
@@ -65,10 +65,10 @@
     <!-- Designed load-failure panel (#149). The alert role and error test id preserve the T2
          semantics so assistive tech announces it; the warning glyph is decorative — the heading
          carries the meaning. -->
-    <div class="failure" role="alert" data-testid="error">
-      <span class="failure-icon" aria-hidden="true">⚠</span>
-      <h2 class="failure-title">We couldn’t load the beaches</h2>
-      <p class="failure-text">
+    <div appFailurePanel role="alert" data-testid="error">
+      <span appFailureIcon aria-hidden="true">⚠</span>
+      <h2 appFailureTitle>We couldn’t load the beaches</h2>
+      <p appFailureText>
         Something went wrong reaching Riviera. Check your connection and try again — your bookings
         are safe.
       </p>
@@ -76,7 +76,7 @@
     </div>
   } @else if (venues(); as list) {
     @if (isEmpty()) {
-      <p class="state" data-testid="empty" aria-live="polite">
+      <p class="state" appPanelGlass data-testid="empty" aria-live="polite">
         No venues match these filters. Try another beach, region, or date.
       </p>
     } @else {
@@ -85,6 +85,7 @@
           <li>
             <a
               class="card"
+              appCardGlass
               data-testid="venue-card"
               [routerLink]="['/venues', venue.id]"
               [attr.aria-label]="cardLabel(venue)"
@@ -112,10 +113,10 @@
                      collapses (:empty) when the venue states neither. -->
                 <span class="card-chips" data-testid="card-chips">
                   @if (toWater(venue); as water) {
-                    <span class="amenity-chip amenity-chip--water">{{ water }}</span>
+                    <span appAmenityChip water>{{ water }}</span>
                   }
                   @for (code of cardAmenities(venue); track code) {
-                    <span class="amenity-chip">{{ amenityText(code) }}</span>
+                    <span appAmenityChip>{{ amenityText(code) }}</span>
                   }
                 </span>
 
@@ -140,6 +141,6 @@
       </ul>
     }
   } @else {
-    <p class="state" data-testid="loading" aria-live="polite">Loading venues…</p>
+    <p class="state" appPanelGlass data-testid="loading" aria-live="polite">Loading venues…</p>
   }
 </section>

@@ -28,9 +28,9 @@
   white-space: nowrap;
 }
 
+// Glass base is the shared appCardGlass directive; %card-surface keeps the card EXTRAS only.
+// (glass is still @used below for status-chip.)
 %card-surface {
-  @include glass.card-glass;
-
   -webkit-backdrop-filter: blur(26px) saturate(170%);
   backdrop-filter: blur(26px) saturate(170%);
   border-radius: 28px;

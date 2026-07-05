@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { CardGlass } from '../shared/card-glass';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
@@ -16,10 +17,10 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-request-confirmation',
-  imports: [RouterLink],
+  imports: [RouterLink, CardGlass],
   template: `
     @if (requested(); as r) {
-      <section class="confirmation" aria-labelledby="request-title">
+      <section class="confirmation" appCardGlass aria-labelledby="request-title">
         <div class="badge warn" aria-hidden="true">✉</div>
         <h1 id="request-title">Request sent</h1>
         <p class="lead">
@@ -51,7 +52,7 @@ import { BookingService } from './booking.service';
         <a routerLink="/" class="link">Back to the beach</a>
       </section>
     } @else {
-      <section class="confirmation" aria-labelledby="request-title">
+      <section class="confirmation" appCardGlass aria-labelledby="request-title">
         <h1 id="request-title">No request to show</h1>
         <p class="lead">Your booking request isn’t available here anymore.</p>
         <a routerLink="/" class="link">Start a new booking</a>

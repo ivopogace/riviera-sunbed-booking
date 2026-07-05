@@ -11,8 +11,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
+import { AmenityChip } from '../shared/amenity-chip';
+import { CardGlass } from '../shared/card-glass';
+import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { formatMoney } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
+import { PanelGlass } from '../shared/panel-glass';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
@@ -73,9 +77,15 @@ export function rowCode(index: number): string {
  */
 @Component({
   selector: 'app-venue-map',
-  imports: [BookingDialog, RetryButton],
+  imports: [BookingDialog, RetryButton, PanelGlass, CardGlass, AmenityChip, ...FAILURE_DIRECTIVES],
   templateUrl: './venue-map.html',
-  styleUrl: './venue-map.scss',
+  // Was `:host { display:block; --riv-tile: clamp(...); color: var(--riv-card-ink) }` in the deleted
+  // SCSS. --riv-tile drives the seat-tile grid columns + the label/price side-cell heights; it lives
+  // here now (one static host binding) so the grid stays row-aligned with no stylesheet.
+  host: {
+    class: 'block text-(--riv-card-ink)',
+    style: '--riv-tile: clamp(44px, 11vw, 56px)',
+  },
 })
 export class VenueMap {
   private readonly route = inject(ActivatedRoute);

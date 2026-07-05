@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { formatBookingDate } from '../shared/booking-date-label';
 import { metaFor } from '../shared/booking-status';
+import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { MoneyView } from '../venue/venue.model';
@@ -29,22 +30,22 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink],
+  imports: [RouterLink, CardGlass],
   template: `
     @if (notFound()) {
-      <section class="state-card" aria-labelledby="bv-title">
+      <section class="state-card" appCardGlass aria-labelledby="bv-title">
         <h1 id="bv-title">Booking not found</h1>
         <p class="lead">We couldn’t find a booking for that code. Check the code and try again.</p>
         <a routerLink="/" class="link">Back to home</a>
       </section>
     } @else if (failed()) {
-      <section class="state-card" aria-labelledby="bv-title">
+      <section class="state-card" appCardGlass aria-labelledby="bv-title">
         <h1 id="bv-title">Couldn’t load your booking</h1>
         <p class="lead">Something went wrong. Please try again in a moment.</p>
         <a routerLink="/" class="link">Back to home</a>
       </section>
     } @else if (booking(); as b) {
-      <section class="booking-card" aria-labelledby="bv-title">
+      <section class="booking-card" appCardGlass aria-labelledby="bv-title">
         <div class="card-head">
           <h1 id="bv-title">Your booking</h1>
           <span class="status-wrap">
@@ -191,7 +192,7 @@ import { BookingService } from './booking.service';
         <a routerLink="/" class="link back">Back to home</a>
       </section>
     } @else {
-      <section class="state-card" aria-labelledby="bv-title" aria-busy="true">
+      <section class="state-card" appCardGlass aria-labelledby="bv-title" aria-busy="true">
         <h1 id="bv-title">Loading your booking…</h1>
       </section>
     }

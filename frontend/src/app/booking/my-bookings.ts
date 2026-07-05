@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { metaFor } from '../shared/booking-status';
+import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { BookingDetail } from './booking.model';
@@ -93,14 +94,14 @@ function isNotFound(error: unknown): boolean {
  */
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink],
+  imports: [RouterLink, CardGlass],
   template: `
     <section class="my-bookings" aria-labelledby="mb-title">
       <a routerLink="/" class="back-link">← All beaches</a>
       <h1 id="mb-title">Your bookings</h1>
 
       @if (rows().length === 0) {
-        <section class="empty-card" aria-labelledby="mb-empty-title" data-testid="my-bookings-empty">
+        <section class="empty-card" appCardGlass aria-labelledby="mb-empty-title" data-testid="my-bookings-empty">
           <h2 id="mb-empty-title">No booking yet</h2>
           <p class="empty-lead">
             Pick a beach, choose your exact set on the map, and your booking code will live here.
@@ -113,7 +114,7 @@ function isNotFound(error: unknown): boolean {
             <li>
               @switch (row.state) {
                 @case ('loaded') {
-                  <a [routerLink]="['/booking', row.view.code]" class="row" data-testid="booking-row">
+                  <a [routerLink]="['/booking', row.view.code]" class="row" appCardGlass data-testid="booking-row">
                     <span class="row-main">
                       <span class="venue">{{ row.view.venueName }}</span>
                       <span class="meta">{{ row.view.setLabel }}</span>
@@ -138,7 +139,7 @@ function isNotFound(error: unknown): boolean {
                   </a>
                 }
                 @case ('failed') {
-                  <div class="row row--failed" data-testid="booking-row-failed">
+                  <div class="row row--failed" appCardGlass data-testid="booking-row-failed">
                     <span class="row-main">
                       <span class="venue">Couldn’t load this booking</span>
                       <span class="meta">Check your connection and try again.</span>
@@ -154,7 +155,7 @@ function isNotFound(error: unknown): boolean {
                   </div>
                 }
                 @default {
-                  <div class="row row--loading" aria-busy="true" data-testid="booking-row-loading">
+                  <div class="row row--loading" appCardGlass aria-busy="true" data-testid="booking-row-loading">
                     <span class="row-main">
                       <span class="skeleton skeleton-line"></span>
                       <span class="skeleton skeleton-line short"></span>
