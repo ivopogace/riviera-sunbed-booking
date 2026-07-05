@@ -13,6 +13,9 @@ Thumbs.db
 /frontend/dist/
 node_modules/
 
+# graphify knowledge-graph pipeline output (generated, regenerate with /graphify .)
+/graphify-out/
+
 # JVM crash dumps
 hs_err_pid*.log
 replay_pid*.log
