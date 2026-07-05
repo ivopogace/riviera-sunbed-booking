@@ -99,7 +99,7 @@ class PayoutLedgerViewIT {
 		List<LedgerEntryView> entries = ledger.entries();
 		assertEquals(2, entries.size(), "both entries are listed");
 
-		LedgerEntryView accrual = entries.get(0);
+		LedgerEntryView accrual = entries.getFirst();
 		assertEquals(EntryType.ACCRUAL, accrual.entryType(), "accrual comes first (oldest)");
 		assertEquals(8500L, accrual.netMinor());
 		assertEquals(8500L, accrual.runningNetMinor(), "running net owed after the accrual");

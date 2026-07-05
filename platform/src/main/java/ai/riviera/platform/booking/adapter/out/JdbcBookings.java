@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import ai.riviera.platform.booking.application.request.RequestSnapshot;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -166,7 +167,7 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> requestSnapshot(
+	public Optional<RequestSnapshot> requestSnapshot(
 			long bookingId, VenueId venueId) {
 		// Venue-scoped: a foreign venue's booking reads as absent (invariant #13).
 		return jdbc.sql("""

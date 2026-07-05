@@ -2,15 +2,13 @@ package ai.riviera.platform.booking.application.reserve;
 
 import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import ai.riviera.platform.booking.application.request.RequestWindows;
+import ai.riviera.platform.venue.vocabulary.*;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
@@ -31,17 +29,9 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
-import ai.riviera.platform.venue.vocabulary.MoneyView;
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
-import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
-import ai.riviera.platform.venue.vocabulary.VenueId;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Branch coverage for the Instant-Book orchestration (issue #6, now two-phase per issue #52) with
@@ -66,22 +56,21 @@ class CreateBookingServiceTest {
 	private final RecordingRelease release = new RecordingRelease();
 
 	private SetBookingInfo set(String pool) {
-		return set(pool, ai.riviera.platform.venue.vocabulary.BookingMode.INSTANT);
+		return set(pool, BookingMode.INSTANT);
 	}
 
-	private SetBookingInfo set(String pool, ai.riviera.platform.venue.vocabulary.BookingMode mode) {
+	private SetBookingInfo set(String pool, BookingMode mode) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), mode);
 	}
 
-	private static final ai.riviera.platform.booking.application.request.RequestWindows WINDOWS =
-			new ai.riviera.platform.booking.application.request.RequestWindows(
-					java.time.Duration.ofHours(24), java.time.Duration.ofHours(12));
+	private static final RequestWindows WINDOWS =
+			new RequestWindows(Duration.ofHours(24), Duration.ofHours(12));
 
 	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
 			CheckoutPort checkout, BookingCodeGenerator codes) {
 		SetBookingFacts catalog = new FakeCatalog(info);
-		CustomerDirectory customers = contact -> new CustomerId(99);
+		CustomerDirectory customers = _ -> new CustomerId(99);
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
 				codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		return new CreateBookingService(reservation, checkout, confirmer, release, CLOCK);
@@ -91,7 +80,7 @@ class CreateBookingServiceTest {
 		return new CreateBookingCommand(SET, DATE, GUEST);
 	}
 
-	/** A fake claim port (AvailabilityClaim is no longer single-method since U4's release). */
+	/** A fake claim port (AvailabilityClaim is no longer a single-method since U4's release). */
 	private static AvailabilityClaim claiming(ClaimOutcome outcome) {
 		return new AvailabilityClaim() {
 			@Override
@@ -110,7 +99,7 @@ class CreateBookingServiceTest {
 	void confirmsWhenClaimWinsAndPaymentSucceeds() {
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -141,11 +130,11 @@ class CreateBookingServiceTest {
 			}
 		};
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
-		CustomerDirectory customers = contact -> new CustomerId(1);
+		CustomerDirectory customers = _ -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, collidingOnce, () -> codes.removeFirst(), new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				customers, collidingOnce, codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, CLOCK);
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, CLOCK);
 
 		BookingOutcome outcome = service.create(command());
 
@@ -159,7 +148,7 @@ class CreateBookingServiceTest {
 		// confirmed synchronously — confirmation comes via the verified webhook (invariant #8).
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
+				(_, _) -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
 				() -> "CODE999999");
 
 		BookingOutcome outcome = service.create(command());
@@ -179,7 +168,7 @@ class CreateBookingServiceTest {
 		// PaymentIntent creation holds no (set, date) row lock. Capture the persisted-row count at the
 		// moment pay() is invoked to prove the ordering.
 		int[] insertedAtPayTime = {-1};
-		CheckoutPort capturingCheckout = (ref, money) -> {
+		CheckoutPort capturingCheckout = (_, _) -> {
 			insertedAtPayTime[0] = bookings.inserted.size();
 			return new PaymentOutcome.Pending("cs_secret_xyz", "pi_42");
 		};
@@ -255,11 +244,11 @@ class CreateBookingServiceTest {
 	@Test
 	void requestDeadlineCappedAtCutoff() {
 		// #98 / invariant #4: the response deadline never extends past the evening-before cutoff —
-		// for a next-day booking, min(now + 24h, cutoff) is the cutoff instant (18:00 CET = 17:00Z).
+		// for a next-day booking, min(now + 24h, cutoff) is the cutoff instant (18:00 Europe/Tirane = 17:00Z).
 		CreateBookingService service = service(
-				set("ONLINE", ai.riviera.platform.venue.vocabulary.BookingMode.REQUEST),
+				set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
@@ -273,10 +262,10 @@ class CreateBookingServiceTest {
 	void rejectsTakenSetWithoutPersisting() {
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.ALREADY_TAKEN),
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		assertSame(BookingOutcome.Rejected.SET_TAKEN, service.create(command()));
-		assertFalse(bookings.inserted.size() > 0, "a lost claim must create no booking row");
+        assertTrue(bookings.inserted.isEmpty(), "a lost claim must create no booking row");
 	}
 
 	@Test
@@ -286,19 +275,19 @@ class CreateBookingServiceTest {
 		// guarded cancel + free) — and surface the failure, never leaving an orphaned AWAITING_PAYMENT.
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Failed("stripe_error"), () -> "CODEX12345");
+				(_, _) -> new PaymentOutcome.Failed("stripe_error"), () -> "CODEX12345");
 
 		assertThrows(PaymentDeclinedException.class, () -> service.create(command()));
 		assertEquals(1, bookings.inserted.size(), "the booking was persisted before the failed payment");
 		assertEquals(1, release.released.size(), "a failed payment triggers exactly one compensating release");
-		assertFalse(confirmer.confirmed.size() > 0, "a failed payment confirms nothing");
+        assertTrue(confirmer.confirmed.isEmpty(), "a failed payment confirms nothing");
 	}
 
 	@Test
 	void rejectsWalkInPool() {
 		CreateBookingService service = service(set("WALK_IN"),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NOT_ONLINE_POOL, service.create(command()));
 	}
 
@@ -306,7 +295,7 @@ class CreateBookingServiceTest {
 	void rejectsUnknownSet() {
 		CreateBookingService service = service(null,
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 	}
 
@@ -315,7 +304,7 @@ class CreateBookingServiceTest {
 		// now (2026-11-01) is fine for DATE; use a past date to trip the cutoff.
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 10, 1), GUEST));
 		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
@@ -331,7 +320,7 @@ class CreateBookingServiceTest {
 			String code = "SECRETCODE";
 			CreateBookingService service = service(set("ONLINE"),
 					claiming(ClaimOutcome.CLAIMED),
-					(ref, money) -> new PaymentOutcome.Succeeded("ok"), () -> code);
+					(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> code);
 			service.create(command());
 
 			boolean leaked = appender.list.stream()

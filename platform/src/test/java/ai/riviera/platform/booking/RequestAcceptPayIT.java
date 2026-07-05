@@ -3,6 +3,7 @@ package ai.riviera.platform.booking;
 import java.time.Duration;
 import java.time.LocalDate;
 
+import jakarta.servlet.http.Cookie;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class RequestAcceptPayIT {
 
 	private long venueId;
 	private long setId;
-	private jakarta.servlet.http.Cookie operatorSession;
+	private Cookie operatorSession;
 
 	@BeforeEach
 	void seedRequestVenueWithOwner() throws Exception {

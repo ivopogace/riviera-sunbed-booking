@@ -3,6 +3,8 @@ package ai.riviera.platform.booking.adapter.in;
 import ai.riviera.platform.booking.application.view.BookingDetail;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
+import java.time.Instant;
+
 /**
  * The {@code 200} response body for {@code GET /api/bookings/{code}} (U6) — the booking summary plus
  * the server-computed cancellation terms the Angular app renders. Money travels as {@link MoneyView}
@@ -12,7 +14,7 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean beforeCutoff,
-		MoneyView refundIfCancelledNow, MoneyView refundedAmount, java.time.Instant requestExpiresAt,
+		MoneyView refundIfCancelledNow, MoneyView refundedAmount, Instant requestExpiresAt,
 		PaymentCredentialsView payment) {
 
 	static BookingDetailView of(BookingDetail d) {

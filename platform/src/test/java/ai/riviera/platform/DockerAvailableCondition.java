@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -13,7 +14,7 @@ import org.testcontainers.DockerClientFactory;
 class DockerAvailableCondition implements ExecutionCondition {
 
 	@Override
-	public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+	public @NonNull ConditionEvaluationResult evaluateExecutionCondition(@NonNull ExtensionContext context) {
 		try {
 			if (DockerClientFactory.instance().isDockerAvailable()) {
 				return ConditionEvaluationResult.enabled("Docker is available");

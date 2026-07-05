@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -23,6 +24,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
  * <em>before</em> the password is examined (no existence/timing oracle); an account with no
  * provisioned credential (null hash) or an unknown username is a {@link UsernameNotFoundException}.
  */
+@NullMarked
 class OperatorUserDetailsService implements UserDetailsService {
 
 	/** The single role that gates the operator write surface (kept in lockstep with {@code SecurityConfig}). */

@@ -15,6 +15,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -101,7 +103,7 @@ class OperatorOwnershipIT {
 		OperatorId owner = insertOperator("owner-c", "ACTIVE");
 		grant(owner, MIRAMAR);
 
-		assertEquals(java.util.Set.of(new VenueRef(MIRAMAR)), ownership.ownedVenues(owner));
+		assertEquals(Set.of(new VenueRef(MIRAMAR)), ownership.ownedVenues(owner));
 	}
 
 	@Test
