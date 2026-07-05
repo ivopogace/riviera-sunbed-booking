@@ -24,3 +24,12 @@ replay_pid*.log
 
 # Claude Code personal/local settings (not team-wide)
 .claude/settings.local.json
+
+ # graphify — commit the portable graph; ignore machine-specific & viewer files
+/graphify-out/.graphify_python
+/graphify-out/cost.json
+/graphify-out/.graphify_root
+/graphify-out/graph.html
+/graphify-out/cache/stat-index.json
+/graphify-out/cache/ast/
+/graphify-out/
