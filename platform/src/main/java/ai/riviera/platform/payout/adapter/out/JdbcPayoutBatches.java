@@ -3,6 +3,7 @@ package ai.riviera.platform.payout.adapter.out;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -81,7 +82,7 @@ class JdbcPayoutBatches implements PayoutBatches {
 				.update();
 	}
 
-	private static final org.springframework.jdbc.core.RowMapper<PayoutBatch> BATCH_MAPPER =
+	private static final RowMapper<PayoutBatch> BATCH_MAPPER =
 			(rs, rowNum) -> new PayoutBatch(rs.getLong("id"), new VenueId(rs.getLong("venue_id")),
 					new PeriodKey(rs.getString("period_key")), rs.getLong("total_net_minor"),
 					rs.getString("currency"), BatchStatus.valueOf(rs.getString("status")));
