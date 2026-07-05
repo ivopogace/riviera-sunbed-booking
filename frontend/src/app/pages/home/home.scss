@@ -25,17 +25,18 @@
 /* ---- hero (on the shell's proven glass tokens) ---- */
 
 .hero {
-  // PROTOTYPE (option C): no frosted panel. Porcelain is bare (matches the design); riviera gets a
-  // soft dark scrim (below) so its white ink clears AA over the gradient's light top stops.
+  // No frosted panel: porcelain is bare, riviera gets a soft dark scrim (below). The padding is
+  // SHARED across both themes so the headline sits at the SAME position (toggling theme never shifts
+  // it), and it's what the riviera scrim's px-anchored fade aligns to.
+  padding: 34px 26px 40px;
   color: var(--riv-ink);
 }
 
-// Riviera: a borderless soft dark scrim — no card / rim / blur / shadow, just a dark wash that fades
-// in/out vertically, keeping white ink AA on the gradient's light top stops. Softer than the panel.
-// The fades are PX-anchored (34px top / 40px bottom) so they sit inside the padding — the text always
-// rests on the solid ~0.72 core, at any content height (2- vs 3-line title, mobile). AA-pinned below.
+// Riviera: a borderless soft dark scrim — no card / rim / blur / shadow, just a dark wash whose fades
+// are PX-anchored (34px top / 40px bottom) to the padding above, so the text always rests on the
+// solid ~0.72 core at any content height (2- vs 3-line title, mobile). White ink AA over the
+// gradient's light top stops — pinned in home.contrast.spec.ts.
 :host-context([data-riv-theme='riviera']) .hero {
-  padding: 34px 26px 40px;
   background: linear-gradient(
     to bottom,
     rgba(8, 38, 52, 0) 0,
