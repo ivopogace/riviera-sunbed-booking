@@ -65,6 +65,8 @@ class SecurityConfig {
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
+	/** The operator-only per-venue daily online-takings read (#171, O2); gated BEFORE the public venue GET. */
+	private static final String TAKINGS_PATH = "/api/venues/*/takings";
 	/** The operator-only pending-requests queue (#98); must be gated BEFORE the public venue GET. */
 	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
 	/** Accept/decline a pending request (#98); operator-session POSTs, CSRF token required (issue #109). */
@@ -122,6 +124,10 @@ class SecurityConfig {
 						// Per-venue payout ledger read (U9) — operator-only venue financial data. MUST
 						// precede the public "GET /api/venues/**" below (first match wins).
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
+						// Per-venue daily online-takings read (#171) — operator-only venue financial data.
+						// MUST precede the public "GET /api/venues/**" below (first match wins); the
+						// per-venue ownership check itself lives in the application service (invariant #13).
+						.requestMatchers(HttpMethod.GET, TAKINGS_PATH).hasRole(OPERATOR_ROLE)
 						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
 						// venue demand are operator data. The GET MUST precede the public venue GET below
 						// (first match wins). The ownership check itself lives in the application services

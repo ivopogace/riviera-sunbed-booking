@@ -15,6 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import ai.riviera.platform.CurrentOperator;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -51,6 +52,12 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	VenueRates venues;
+
+	// #171: the console daily-takings read service (DailyTakingsService) pulls a venue's gross online
+	// takings from booking::api. In module isolation booking isn't bootstrapped, so its port is mocked
+	// to let the payout context load; the accrual listener under test doesn't use it.
+	@MockitoBean
+	DailyTakings bookingTakings;
 
 	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
 	// and the root edge (SecurityConfig + its beans) depends on operator::api too — CurrentOperator on

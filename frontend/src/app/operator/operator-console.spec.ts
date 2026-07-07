@@ -53,6 +53,25 @@ function flushRequests(httpMock: HttpTestingController, pending: number): void {
     .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
 }
 
+/**
+ * The stats-strip reads the signed-in shell now mounts (#171): the booked-online count + the daily
+ * takings. URLs pinned (owner-asserted server-side, invariant #13); both best-effort in the strip, so
+ * flushing zeros keeps every shell-rendering test green without asserting on the strip itself.
+ */
+function flushStrip(httpMock: HttpTestingController): void {
+  httpMock
+    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
+    .flush([]);
+  httpMock
+    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET')
+    .flush({
+      gross: { minorUnits: 0, currency: 'EUR' },
+      net: { minorUnits: 0, currency: 'EUR' },
+      commissionBps: 1500,
+      date: '2026-07-07',
+    });
+}
+
 describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
@@ -92,6 +111,7 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     await fixture.whenStable(); // the signedIn effect fires the venue-title + badge-count loads
     flushVenue(httpMock, name);
     flushRequests(httpMock, pending);
+    flushStrip(httpMock); // the stats strip mounts in the shell and fires its two reads (#171)
     await fixture.whenStable();
   }
 
@@ -208,6 +228,7 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
       .flush({}, { status: 500, statusText: 'Server Error' });
+    flushStrip(httpMock); // the strip still mounts and fires its reads even when the badge read fails
     await fixture.whenStable();
 
     expect(host().querySelector('[data-testid="oc-header"]')).not.toBeNull();
@@ -240,6 +261,7 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
     await fixture.whenStable();
     flushVenue(httpMock, 'Miramar Beach Club');
     flushRequests(httpMock, 0);
+    flushStrip(httpMock); // the stats strip mounts with the restored session too (#171)
     await fixture.whenStable();
 
     const host = fixture.nativeElement as HTMLElement;

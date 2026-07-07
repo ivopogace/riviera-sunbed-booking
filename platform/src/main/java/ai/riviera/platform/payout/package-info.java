@@ -4,16 +4,17 @@
  * refunds reverse it). Aggregate roots: {@code PayoutLedgerEntry}, {@code PayoutBatch}.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code application},
- * {@code domain}, {@code adapter.in/out}. Pure event subscriber — no {@code api}/{@code spi}
- * (it consumes {@code booking}/{@code venue} events and ports, exposing nothing).
+ * {@code domain}, {@code adapter.in/out}. Publishes nothing — no {@code api}/{@code spi} of its own;
+ * it consumes {@code booking}/{@code venue} events and query ports (incl. {@code booking::api} for the
+ * console's daily-takings read, #171) and re-reads {@code venue}'s commission rate.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payout",
     // U5: payout reacts to booking::events (BookingConfirmed/BookingCancelled) and re-reads the commission rate
-    // from venue::api at accrual time (invariant #11). operator::api (#73): the ledger read asserts
-    // per-venue ownership (invariant #13). Deny-by-default: three providers, each granted per
-    // surface at least privilege (issue #95) — events+vocabulary from booking, api+vocabulary
-    // from venue and operator.
-    allowedDependencies = { "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary" }
+    // from venue::api at accrual time (invariant #11). booking::api (#171): the console daily-takings read
+    // pulls a venue's gross confirmed-online takings synchronously. operator::api (#73): both reads assert
+    // per-venue ownership (invariant #13). Deny-by-default: each provider granted per surface at least
+    // privilege (issue #95) — api+events+vocabulary from booking, api+vocabulary from venue and operator.
+    allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.payout;

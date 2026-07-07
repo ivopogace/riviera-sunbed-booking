@@ -4,7 +4,8 @@
  * Aggregate root: {@code Booking}.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template, sliced by use-case):
- * {@code events} + {@code vocabulary} (the published surface — no ports, issue #95), {@code application} (shared {@code Bookings}/{@code BookingCodeGenerator} at root
+ * {@code api} (the {@code DailyTakings} query port, #171) + {@code events} + {@code vocabulary}
+ * (the published surface, issue #95), {@code application} (shared {@code Bookings}/{@code BookingCodeGenerator} at root
  * + {@code reserve/}, {@code cancel/}, {@code refund/}, {@code view/} slices), flat {@code domain},
  * {@code adapter.in/out}.
  */

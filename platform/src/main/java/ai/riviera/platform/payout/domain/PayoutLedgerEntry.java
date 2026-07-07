@@ -17,8 +17,6 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType,
 		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason) {
 
-	private static final long BPS_DENOMINATOR = 10_000L;
-
 	public PayoutLedgerEntry {
 		if (venueId == null || entryType == null || currency == null || currency.isBlank()) {
 			throw new IllegalArgumentException("venueId, entryType and currency are required");
@@ -40,9 +38,9 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	 */
 	public static PayoutLedgerEntry accrual(VenueId venueId, long bookingId, long grossMinor,
 			int commissionBps, String currency) {
-		long commission = Math.floorDiv(grossMinor * commissionBps, BPS_DENOMINATOR);
-		return new PayoutLedgerEntry(venueId, bookingId, EntryType.ACCRUAL, grossMinor, commission,
-				grossMinor - commission, currency, null);
+		CommissionSplit split = CommissionSplit.of(grossMinor, commissionBps);
+		return new PayoutLedgerEntry(venueId, bookingId, EntryType.ACCRUAL, split.grossMinor(),
+				split.commissionMinor(), split.netMinor(), currency, null);
 	}
 
 	/**

@@ -155,6 +155,15 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void takingsReadByNonOwnerIs403() throws Exception {
+		// #171: a venue's daily online takings are financial data — a non-owner must not read them.
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/takings", MIRAMAR).cookie(operatorSession))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void staffAvailabilityMarkByNonOwnerIs403_evenWhenSpoofingThePathVenue() throws Exception {
 		// A owns venueOwnedByA and puts it in the PATH, but targets a Miramar setId. The check must
 		// resolve the venue from the set (Miramar → owned by B), not the path → 403 (invariant #13, R-2).
@@ -224,6 +233,8 @@ class CrossVenueDenialIT {
 		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/venues/{v}/payout-ledger", MIRAMAR).cookie(operatorSession))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/venues/{v}/takings", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isOk());
 		// A weather refund on a day with no bookings is a no-op (200), not a 403 — the check passed.
 		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).cookie(operatorSession)

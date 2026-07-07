@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 
 import { OperatorAuth, runOperatorSignIn } from '../core/operator-auth';
 import { todayBookingDate } from '../venue/booking-date';
+import { VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
+import { ConsoleStatsStrip } from './console-stats-strip';
 import { OperatorConsoleService } from './operator-console.service';
 
 /** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
@@ -31,7 +33,7 @@ interface ConsoleTab {
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConsoleStatsStrip],
   templateUrl: './operator-console.html',
   styleUrl: './operator-console.scss',
   host: { 'data-riv-theme': 'porcelain' },
@@ -65,6 +67,8 @@ export class OperatorConsole {
 
   /** The venue name shown in the header, from the public venue read (best-effort). */
   protected readonly venueName = signal<string | undefined>(undefined);
+  /** The venue map loaded once for the header, shared with the stats strip for its free/total tile (#171). */
+  protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** The live pending-request count for the Requests tab badge (0 when none or the read fails). */
   protected readonly requestsCount = signal(0);
 
@@ -98,6 +102,7 @@ export class OperatorConsole {
     await this.operator.signOut();
     this.password.set('');
     this.venueName.set(undefined);
+    this.venue.set(undefined);
     this.requestsCount.set(0);
   }
 
@@ -109,9 +114,10 @@ export class OperatorConsole {
     if (this.venueId === undefined) {
       return;
     }
-    this.bestEffort(this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())), (venue) =>
-      this.venueName.set(venue.name),
-    );
+    this.bestEffort(this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())), (venue) => {
+      this.venueName.set(venue.name);
+      this.venue.set(venue);
+    });
     this.bestEffort(this.console.pendingRequestCount(this.venueId), (count) =>
       this.requestsCount.set(count),
     );

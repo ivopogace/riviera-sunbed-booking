@@ -13,6 +13,20 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
+function seat(id: number, availability: 'FREE' | 'TAKEN', pool: 'ONLINE' | 'WALK_IN' = 'ONLINE') {
+  return {
+    id,
+    rowLabel: 'A',
+    positionNo: id,
+    tier: 'STANDARD',
+    pool,
+    price: { minorUnits: 4000, currency: 'EUR' },
+    gridX: id,
+    gridY: 0,
+    availability,
+  };
+}
+
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
@@ -23,7 +37,22 @@ const VENUE_MAP = {
   reviewsCount: 12,
   bookingMode: 'INSTANT',
   fromPrice: null,
-  sets: [],
+  // 5 sets, 2 free / 3 taken — the stats strip's "Free today 2 / 5" tile (#171).
+  sets: [
+    seat(1, 'FREE'),
+    seat(2, 'FREE'),
+    seat(3, 'TAKEN'),
+    seat(4, 'TAKEN'),
+    seat(5, 'TAKEN', 'WALK_IN'),
+  ],
+};
+
+// The daily online-takings figure the strip renders (gross + server-computed net after commission).
+const TAKINGS = {
+  gross: { minorUnits: 11000, currency: 'EUR' },
+  net: { minorUnits: 9350, currency: 'EUR' },
+  commissionBps: 1500,
+  date: '2026-07-08',
 };
 
 // Pin the OS scheme to dark so the tourist shell boots the riviera (dark) theme deterministically —
@@ -35,7 +64,11 @@ test.use({ colorScheme: 'dark' });
  * so a reload after signing in restores the session (as the real HttpOnly cookie would); logout flips
  * it back. The venue-title + Requests-badge reads are stubbed too.
  */
-async function mockConsole(page: import('@playwright/test').Page, pending = 0): Promise<void> {
+async function mockConsole(
+  page: import('@playwright/test').Page,
+  pending = 0,
+  booked = 0,
+): Promise<void> {
   let sessionLive = false;
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
@@ -54,6 +87,11 @@ async function mockConsole(page: import('@playwright/test').Page, pending = 0): 
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })) }),
   );
+  // The stats strip's two reads (#171): confirmed online bookings today + the takings figure.
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({ json: Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })) }),
+  );
+  await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) => route.fulfill({ json: TAKINGS }));
 }
 
 async function signIn(page: import('@playwright/test').Page): Promise<void> {
@@ -105,6 +143,31 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await page.getByTestId('oc-signout').click();
   await expect(page.getByTestId('oc-signin-title')).toBeVisible();
   await expect(page.getByTestId('oc-header')).toHaveCount(0);
+});
+
+test('shows the stats strip with live free/total, walk-ins and takings, across a tab switch (#171)', async ({
+  page,
+}) => {
+  await mockConsole(page, 0, 2); // 2 confirmed online bookings today
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('oc-header')).toBeVisible();
+
+  // The four tiles, live for the venue today, above the tabs: 5 sets (2 free), 2 booked online, so
+  // 1 walk-in (the remainder), and €110 gross with the server-computed €93.50 net after 15%.
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*5/);
+  await expect(page.getByTestId('oc-stat-booked')).toHaveText('2');
+  await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');
+  await expect(page.getByTestId('oc-stat-takings')).toHaveText('€110');
+  await expect(page.getByTestId('oc-stat-net')).toContainText('€93.50 after 15% commission');
+
+  // The strip lives in the shell, not a tab — it survives a tab switch.
+  await page.getByTestId('oc-tabs').getByRole('link', { name: 'Daily view' }).click();
+  await expect(page).toHaveURL(/\/operator\/1\/daily/);
+  await expect(page.getByTestId('oc-stat-takings')).toHaveText('€110');
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator console with stats strip');
 });
 
 test('keeps the operator signed in across a reload (session restored from /me)', async ({ page }) => {
