@@ -54,13 +54,6 @@ function describeTab(tab: string, venueId: string): TabPlaceholder {
   const openDaily = 'Open the current daily view';
 
   switch (tab) {
-    case 'beach-map':
-      return {
-        title: 'Beach map',
-        note: 'The Liquid Glass layout editor arrives in a later slice (O3). For now, lay out your beach map in the current venue editor.',
-        link: editor,
-        linkLabel: openEditor,
-      };
     case 'pricing':
       return {
         title: 'Pricing',

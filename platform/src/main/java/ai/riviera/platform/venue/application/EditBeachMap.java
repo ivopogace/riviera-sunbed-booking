@@ -28,4 +28,14 @@ public interface EditBeachMap {
 
 	/** Remove a set from the venue's map. */
 	ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId);
+
+	/**
+	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction (O3, issue #172) —
+	 * the generate-grid + paint editor's bulk write. After asserting {@code operator} owns {@code venueId},
+	 * it is <em>reject-unless-unclaimed</em>: if any of the venue's existing sets has a booking (any status)
+	 * or an availability hold (any date), the replace is refused ({@link ReplaceRejection#LAYOUT_IN_USE}) and
+	 * nothing is deleted — so no claimed set is dropped and invariants #2/#3 hold. On a clear venue the
+	 * existing sets are deleted and {@code command}'s grid inserted atomically.
+	 */
+	ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, LayoutCommand command);
 }

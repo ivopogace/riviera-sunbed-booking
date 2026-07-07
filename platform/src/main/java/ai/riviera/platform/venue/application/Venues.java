@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -41,6 +42,28 @@ public interface Venues {
 
 	/** Remove a set position. Returns the number of rows deleted — {@code 0} means no such set. */
 	int deleteSet(VenueId venueId, SetId setId);
+
+	/**
+	 * The ids of every set currently on the venue's map, <strong>locking those rows</strong>
+	 * ({@code SELECT … FOR UPDATE}) for the caller's transaction (empty when the venue has no sets).
+	 * The lock is the invariant-#2 guard for the bulk layout replace: a concurrent
+	 * {@code set_availability}/{@code booking} insert takes a {@code FOR KEY SHARE} lock on the
+	 * referenced {@code set_position} row (its FK check), which conflicts with this {@code FOR UPDATE},
+	 * so it blocks until the replace commits or rolls back. That closes the check-then-delete window in
+	 * which a hold committed after the availability probe would otherwise be silently
+	 * {@code ON DELETE CASCADE}-swept by {@link #deleteAllSets}.
+	 */
+	List<SetId> lockSetsOfVenue(VenueId venueId);
+
+	/** Delete every set position of the venue. Returns the number of rows deleted. */
+	int deleteAllSets(VenueId venueId);
+
+	/**
+	 * Insert every set of a fresh layout for the venue in one unit of work (O3, issue #172). The caller
+	 * runs this inside the same {@code @Transactional} boundary as {@link #deleteAllSets}, after having
+	 * verified the venue is unclaimed, so the map is never left partially replaced.
+	 */
+	void insertSets(VenueId venueId, List<SetCommand> sets);
 
 	/**
 	 * Replace a venue's profile fields (amenities + distance-to-water) in one unit of work. Returns

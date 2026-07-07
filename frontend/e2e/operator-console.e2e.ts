@@ -118,11 +118,12 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'operator console shell');
 
-  // Default tab is Beach map; its placeholder forward-links to the surviving legacy editor. This
-  // resolves the venue id from the PARENT route (child routes don't inherit :venueId) — a real
-  // browser exercises that inheritance, which a mocked ActivatedRoute unit spec can't (finding 2).
+  // Default tab is Beach map; the O3 layout editor renders (not a placeholder). It reads :venueId
+  // from the PARENT route (child routes don't inherit it) — a real browser exercises that
+  // inheritance, which a mocked ActivatedRoute unit spec can't (finding 2); the editor loads the
+  // venue map for that id and seeds its grid.
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
-  await expect(page.getByTestId('console-placeholder-link')).toHaveAttribute('href', '/venue-admin');
+  await expect(page.getByTestId('layout-editor')).toBeVisible();
 
   // Switching to Daily view updates the URL and the active tab. Scope to the tab nav — the daily
   // placeholder also renders an "Open the current daily view" link.

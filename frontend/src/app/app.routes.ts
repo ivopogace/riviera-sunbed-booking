@@ -1,10 +1,10 @@
 import { Routes } from '@angular/router';
 
-// The six operator-console tab child routes (issue #170), built from one factory so the
+// The still-placeholder operator-console tab child routes (issue #170), built from one factory so the
 // near-identical entries aren't duplicated. Each hosts the placeholder until its O3–O8 restyle slice
-// swaps the component in; `data.tab` tells the placeholder which section it is.
+// swaps the component in; `data.tab` tells the placeholder which section it is. `beach-map` has
+// graduated to its real editor (O3 #172) and is declared explicitly below.
 const CONSOLE_TABS: readonly (readonly [string, string])[] = [
-  ['beach-map', 'Beach map'],
   ['pricing', 'Pricing'],
   ['daily', 'Daily view'],
   ['requests', 'Requests'],
@@ -12,12 +12,21 @@ const CONSOLE_TABS: readonly (readonly [string, string])[] = [
   ['venue', 'Venue & commodities'],
 ];
 
-const consoleTabRoutes: Routes = CONSOLE_TABS.map(([path, label]) => ({
-  path,
-  loadComponent: () => import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
-  title: `${label} — Operator console`,
-  data: { tab: path },
-}));
+const consoleTabRoutes: Routes = [
+  {
+    // O3 (#172): the real generate-grid + paint layout editor, replacing the beach-map placeholder.
+    path: 'beach-map',
+    loadComponent: () => import('./operator/layout-editor').then((m) => m.LayoutEditor),
+    title: 'Beach map — Operator console',
+    data: { tab: 'beach-map' },
+  },
+  ...CONSOLE_TABS.map(([path, label]) => ({
+    path,
+    loadComponent: () => import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
+    title: `${label} — Operator console`,
+    data: { tab: path },
+  })),
+];
 
 // `legacySurface: true` = pre-redesign styling: the shell wraps the route in its opaque compat
 // surface until that route's Liquid Glass slice lands (epic #133 / #141), which removes the flag

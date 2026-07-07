@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -8,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.venue.spi.BookingPresence;
+import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -34,10 +37,15 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile 
 
 	private final Venues venues;
 	private final VenueOwnership ownership;
+	private final SetAvailabilityLookup availability;
+	private final BookingPresence bookings;
 
-	VenueAdminService(Venues venues, VenueOwnership ownership) {
+	VenueAdminService(Venues venues, VenueOwnership ownership, SetAvailabilityLookup availability,
+			BookingPresence bookings) {
 		this.venues = venues;
 		this.ownership = ownership;
+		this.availability = availability;
+		this.bookings = bookings;
 	}
 
 	@Override
@@ -107,6 +115,50 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile 
 		return deleted == 0
 				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
 				: ChangeOutcome.Applied.APPLIED;
+	}
+
+	@Override
+	@Transactional
+	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, LayoutCommand command) {
+		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		if (command.isEmpty()) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.EMPTY_LAYOUT);
+		}
+		if (command.tooLarge()) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_TOO_LARGE);
+		}
+		if (!venues.venueExists(venueId)) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
+		}
+		Optional<Venues.Conflict> internal = command.duplicateWithin();
+		if (internal.isPresent()) {
+			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
+		}
+		// Reject-unless-unclaimed (issue #172): a booking (any status) pins its set via the RESTRICT FK,
+		// and an availability hold (any date) would be silently CASCADE-dropped by the delete — either
+		// destroys invariant-#2 state, so refuse the destructive replace and delete nothing.
+		//
+		// Lock the venue's set rows FOR UPDATE *before* the claim probe (invariant #2): a walk-in mark
+		// or booking racing in after the probe but before deleteAllSets would otherwise be lost — the
+		// lock makes that concurrent insert block on its FK's FOR KEY SHARE until this tx ends, so it is
+		// either seen by the probe (→ reject) or fails cleanly against the replaced layout. Never a
+		// silent cascade of a committed hold.
+		List<SetId> existing = venues.lockSetsOfVenue(venueId);
+		if (availability.anyClaims(existing) || bookings.hasBookings(venueId)) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
+		}
+		// Unclaimed: replace the whole map atomically (both writes in this @Transactional unit).
+		venues.deleteAllSets(venueId);
+		venues.insertSets(venueId, command.sets());
+		return ReplaceLayoutOutcome.Replaced.REPLACED;
+	}
+
+	private static ReplaceRejection toReplaceRejection(Venues.Conflict conflict) {
+		return switch (conflict) {
+			case DUPLICATE_POSITION -> ReplaceRejection.DUPLICATE_POSITION;
+			case CELL_TAKEN -> ReplaceRejection.CELL_TAKEN;
+		};
 	}
 
 	private static SetRejection toRejection(Venues.Conflict conflict) {

@@ -1,9 +1,10 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { TakingsView } from './operator-console.model';
+import { problemCodeOf } from '../shared/api-error';
+import { BeachMapLayoutRequest, LayoutErrorCode, TakingsView } from './operator-console.model';
 
 /**
  * The operator console's own read surface (issue #170; #171 adds the stats strip's reads).
@@ -45,4 +46,37 @@ export class OperatorConsoleService {
       params: new HttpParams().set('date', date),
     });
   }
+
+  /**
+   * Replace the venue's whole beach-map layout in one write (O3, #172). Server-side it is owner-asserted
+   * (invariant #13) and reject-unless-unclaimed (invariants #2/#3) — a `LAYOUT_IN_USE` failure means the
+   * venue has bookings or holds and its layout is locked. `204` on success.
+   */
+  replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
+    return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
+  }
+}
+
+/** Map an HTTP failure of the layout write to a known {@link LayoutErrorCode} (RFC-7807 `code`, issue #97). */
+export function layoutErrorOf(error: unknown): LayoutErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'LAYOUT_IN_USE':
+      case 'DUPLICATE_POSITION':
+      case 'CELL_TAKEN':
+      case 'EMPTY_LAYOUT':
+      case 'LAYOUT_TOO_LARGE':
+      case 'NO_SUCH_VENUE':
+      case 'INVALID_REQUEST':
+      case 'CONFLICT':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
 }

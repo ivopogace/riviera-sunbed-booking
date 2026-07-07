@@ -1,0 +1,230 @@
+<section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
+  <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">
+    <!-- Controls: Generate + Paint -->
+    <div class="flex flex-col gap-3.5">
+      <section appCardGlass class="rounded-[20px] px-[18px] py-4">
+        <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Generate layout</h2>
+        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+          Creates the full grid in one go. Rows are labelled A–…, row A faces the sea.
+        </p>
+        <div class="flex gap-2.5">
+          <label class="flex flex-1 flex-col gap-1.5">
+            <span
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              >Rows</span
+            >
+            <input
+              type="number"
+              min="1"
+              [max]="26"
+              [value]="genRows()"
+              (input)="setRows($any($event.target).value)"
+              data-testid="layout-gen-rows"
+              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+            />
+          </label>
+          <label class="flex flex-1 flex-col gap-1.5">
+            <span
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              >Positions</span
+            >
+            <input
+              type="number"
+              min="1"
+              [max]="40"
+              [value]="genCols()"
+              (input)="setCols($any($event.target).value)"
+              data-testid="layout-gen-cols"
+              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          (click)="onGenerate()"
+          data-testid="layout-generate"
+          class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] hover:brightness-105"
+        >
+          Generate {{ genTotal() }} sets
+        </button>
+        <p class="mt-2.5 text-[11.5px] leading-[1.4] text-(--riv-card-ink-soft)">
+          Regenerating replaces the current layout. Row A is priced as front row automatically.
+        </p>
+
+        @if (confirmRegen()) {
+          <div
+            class="mt-3 rounded-[12px] border border-[#e0a03a]/60 bg-[#fff4e0] px-3 py-2.5"
+            role="alertdialog"
+            aria-label="Confirm regenerate"
+            data-testid="layout-confirm-regen"
+          >
+            <p class="text-[12.5px] font-semibold text-[#7a4a08]">
+              Regenerate replaces your current layout. This can’t be undone.
+            </p>
+            <div class="mt-2 flex gap-2">
+              <button
+                type="button"
+                (click)="confirmGenerate()"
+                data-testid="layout-confirm-yes"
+                class="rounded-[10px] bg-[#0a5f74] px-3 py-1.5 text-[12.5px] font-bold text-white"
+              >
+                Replace layout
+              </button>
+              <button
+                type="button"
+                (click)="cancelGenerate()"
+                data-testid="layout-confirm-no"
+                class="rounded-[10px] border border-(--riv-card-border) px-3 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+
+      <section appCardGlass class="rounded-[20px] px-[18px] py-4">
+        <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Paint tool</h2>
+        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+          Pick a tool, then click or drag across the map to apply it.
+        </p>
+        <div class="flex flex-col gap-2" aria-label="Paint tool">
+          @for (tool of tools(); track tool.key) {
+            <button
+              type="button"
+              [attr.aria-pressed]="tool.active"
+              (click)="selectTool(tool.key)"
+              [attr.data-testid]="'layout-tool-' + tool.key"
+              class="flex w-full items-center gap-2.5 rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
+              [class]="
+                tool.active
+                  ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                  : 'border border-(--riv-card-border) bg-white/45'
+              "
+            >
+              <span
+                class="h-[18px] w-[18px] flex-shrink-0 rounded-[6px] border border-[#0c2a33]/20"
+                [class]="swatchClass(tool.key)"
+                aria-hidden="true"
+              ></span>
+              <span class="flex-1 text-left">{{ tool.label }}</span>
+              <span class="text-[11.5px] text-(--riv-card-ink-soft)" [attr.data-testid]="'layout-count-' + tool.key">{{
+                tool.count
+              }}</span>
+            </button>
+          }
+        </div>
+      </section>
+    </div>
+
+    <!-- The sea-facing grid -->
+    <section appCardGlass class="overflow-hidden rounded-[24px] px-[18px] pb-4">
+      <p
+        class="-mx-[18px] mb-3.5 bg-[linear-gradient(180deg,#0a6e85,#0a5a6e)] px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
+      >
+        ▲&nbsp;&nbsp;Facing the sea
+      </p>
+
+      @if (hasLayout()) {
+        <div class="select-none" data-testid="layout-grid" (mouseup)="onPaintEnd()" (mouseleave)="onPaintEnd()">
+          @for (row of displayRows(); track $index; let ri = $index) {
+            <div class="mb-1.5 flex items-center gap-2">
+              <span
+                class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)"
+                >{{ row.label }}</span
+              >
+              <div
+                class="grid flex-1 gap-1"
+                [style.grid-template-columns]="'repeat(' + colCount() + ', minmax(0, 1fr))'"
+              >
+                @for (cell of row.cells; track $index; let ci = $index) {
+                  <button
+                    type="button"
+                    (mousedown)="onCellDown(ri, ci)"
+                    (mouseenter)="onCellEnter(ri, ci)"
+                    (click)="paintCell(ri, ci)"
+                    [title]="cell.label"
+                    [attr.aria-label]="cell.label"
+                    [attr.data-state]="cell.state"
+                    data-testid="layout-cell"
+                    class="h-7 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                    [class]="cellClass(cell.state)"
+                  ></button>
+                }
+              </div>
+              <span
+                class="w-[58px] flex-shrink-0 text-right text-[11px] font-semibold text-(--riv-card-ink-soft)"
+                >{{ row.priceStr }}</span
+              >
+            </div>
+          }
+        </div>
+      } @else {
+        <p
+          class="px-3 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+          data-testid="layout-empty"
+        >
+          Generate a layout to begin, then paint tiers, walk-in sets and aisles.
+        </p>
+      }
+
+      <p
+        class="-mx-[18px] mt-3 border-t border-dashed border-[#0c2a33]/25 px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-(--riv-card-ink)"
+      >
+        ▼&nbsp;&nbsp;Promenade · Entrance
+      </p>
+    </section>
+  </div>
+
+  <!-- Legend -->
+  <ul
+    class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-(--riv-card-ink)"
+    aria-label="Legend"
+  >
+    <li class="flex items-center gap-[7px]">
+      <span class="h-[13px] w-[13px] rounded-[4px] border border-[#0c2a33]/15 bg-white/85" aria-hidden="true"></span>
+      Standard · online
+    </li>
+    <li class="flex items-center gap-[7px]">
+      <span
+        class="h-[13px] w-[13px] rounded-[4px] border border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]"
+        aria-hidden="true"
+      ></span>
+      Front row · premium
+    </li>
+    <li class="flex items-center gap-[7px]">
+      <span
+        class="h-[13px] w-[13px] rounded-[4px] bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]"
+        aria-hidden="true"
+      ></span>
+      Walk-in pool (not bookable online)
+    </li>
+    <li class="flex items-center gap-[7px]">
+      <span class="h-[13px] w-[13px] rounded-[4px] border-[1.5px] border-dashed border-[#0c2a33]/45" aria-hidden="true"></span>
+      Gap / aisle
+    </li>
+  </ul>
+
+  <!-- Save + notices -->
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <button
+      type="button"
+      (click)="onSave()"
+      [disabled]="saving() || !hasLayout()"
+      data-testid="layout-save"
+      class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+    >
+      {{ saving() ? 'Saving…' : 'Save layout' }}
+    </button>
+    @if (savedNotice()) {
+      <output class="text-[13px] font-semibold text-[#0a6e85]" data-testid="layout-saved">
+        Saved. The public beach map reflects your changes.
+      </output>
+    }
+    @if (errorMessage(); as message) {
+      <span class="text-[13px] font-semibold text-[#a3160e]" role="alert" data-testid="layout-error">
+        {{ message }}
+      </span>
+    }
+  </div>
+</section>
