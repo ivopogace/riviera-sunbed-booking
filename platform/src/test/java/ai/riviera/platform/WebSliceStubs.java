@@ -37,8 +37,10 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
+import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.application.VenueLedger;
+import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.application.NewPayment;
@@ -169,6 +171,12 @@ class WebSliceStubs {
 	@Bean
 	ViewPayoutLedger viewPayoutLedger() {
 		return (_, venueId) -> new VenueLedger(venueId, "EUR", 0, List.of());
+	}
+
+	/** #171 console takings read: an inert zero figure — the web slices don't exercise the amount. */
+	@Bean
+	ViewDailyTakings viewDailyTakings() {
+		return (_, _, date) -> new DailyTakingsView(0, 0, 0, 0, "EUR", date);
 	}
 
 	@Bean
