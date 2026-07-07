@@ -94,8 +94,9 @@ ai.riviera.platform.<module>/
     ├── in/                    # driving adapters: @RestController, @ApplicationModuleListener (+ request/response DTOs)
     └── out/                   # driven adapters: JdbcClient repos / port impls (package-private)
 ```
-All four published surfaces are **optional** — `payout` (pure event subscriber) has none; `booking`
-has `events/` + `vocabulary/` but **no `api/` at all**; only `venue` has `spi` today. Don't force
+All four published surfaces are **optional** — `payout` (publishes nothing, though it now consumes
+`booking::api` for the console takings read, #171) has none; `booking` publishes `api/`
+(`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; only `venue` has `spi` today. Don't force
 an empty surface onto a module. Published surfaces stay **top-level and exposed** — nesting under
 `application` would hide them from Modulith. Notes the trees can't carry:
 

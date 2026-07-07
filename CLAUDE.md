@@ -19,7 +19,7 @@ visual design (Liquid Glass v3 tourist + v2 operator console): `docs/design/`.
 Current state: full stack built and deployed (frontend on GitHub Pages at
 ivopogace.github.io/riviera-sunbed-booking). The tourist Liquid Glass restyle
 (epic #133, T2–T8) is done; the operator console (epic #141) is in progress —
-O1 shell merged, O2–O8 remain.
+O1 shell + O2 stats strip merged, O3–O8 remain.
 
 ## Tech stack (locked)
 
