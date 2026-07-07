@@ -29,7 +29,7 @@
         class="oc-stat-value text-[27px] font-bold text-(--riv-card-ink)"
         data-testid="oc-stat-booked"
       >
-        {{ bookedOnline() }}
+        {{ bookedOnline() ?? '—' }}
       </div>
     </article>
 
@@ -45,7 +45,7 @@
         class="oc-stat-value text-[27px] font-bold text-(--riv-card-ink)"
         data-testid="oc-stat-walkins"
       >
-        {{ walkIns() }}
+        {{ walkIns() ?? '—' }}
       </div>
     </article>
 

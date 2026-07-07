@@ -60,6 +60,20 @@ class DailyTakingsServiceTest {
 	}
 
 	@Test
+	void aVenueWithNoCommissionRateOwesTheFullGross() {
+		// VenueRates returns empty (no rate configured) -> 0 bps -> net == gross, no exception.
+		DailyTakingsService service = new DailyTakingsService(
+				(venue, date) -> new OnlineTakings(4000, "EUR"), noRates(), allowAll());
+
+		DailyTakingsView view = service.forVenueOn(OPERATOR, VENUE, DAY);
+
+		assertEquals(4000, view.grossMinor());
+		assertEquals(0, view.commissionMinor());
+		assertEquals(4000, view.netMinor());
+		assertEquals(0, view.commissionBps());
+	}
+
+	@Test
 	void assertsOwnershipBeforeReadingAnyFinancialData() {
 		boolean[] takingsRead = {false};
 		DailyTakings spyTakings = (venue, date) -> {
@@ -78,6 +92,20 @@ class DailyTakingsServiceTest {
 			@Override
 			public OptionalInt commissionBps(VenueId id) {
 				return OptionalInt.of(bps);
+			}
+
+			@Override
+			public OptionalInt lateCancelRefundBps(VenueId id) {
+				return OptionalInt.empty();
+			}
+		};
+	}
+
+	private static VenueRates noRates() {
+		return new VenueRates() {
+			@Override
+			public OptionalInt commissionBps(VenueId id) {
+				return OptionalInt.empty();
 			}
 
 			@Override

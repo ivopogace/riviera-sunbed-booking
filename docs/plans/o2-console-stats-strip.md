@@ -100,7 +100,7 @@ for** `feature/o2-console-stats-strip` (cloud-session addendum); sits at `origin
 | R-4 | Money rounding: aggregate `floorDiv` ≠ Σ per-booking `floorDiv` | low | low | Documented and intended (indicative figure, not the ledger); one shared `Commission.split` keeps the *formula* identical | agent | open |
 | R-5 | Mixed-currency SUM would be meaningless | low | med | v1 collection currency is EUR (invariant #5, fixed); empty/`MAX(amount_currency)` falls back to `EUR`; note the single-currency assumption in `OnlineTakings` | agent | open |
 | R-6 | `operator/` cross-feature import of `venue/`/`staff/` for count sources (FE boundary) | med | med | Count-source HTTP calls live in `operator-console.service.ts` (established duplication pattern, as `pendingRequestCount`); `MoneyView` promoted to `shared/` | agent | open |
-| R-7 | Booked-online count (`bookings().length`) diverges from map TAKEN∖online classification | low | low | Same derivation `staff-daily` already ships (invariants #2/#3 keep them consistent); reuse its logic shape | agent | open |
+| R-7 | Walk-ins count over-counts unpaid online holds (map TAKEN is state-agnostic; `bookedOnline` is CONFIRMED-only) | med | low | **Confirmed by the review gate.** Money is unaffected (gross/net use CONFIRMED). Interim: strip degrades booked/walk-ins to "—" on a bookings-read failure; the AWAITING_PAYMENT/PENDING drift is documented (matches shipped `staff-daily`) and a precise server-side `STAFF_MARKED` count is deferred | agent | **#207** (both surfaces, best with O6) |
 
 ## Open questions / Assumptions
 
@@ -366,6 +366,19 @@ Test `CommissionTest`, `DailyTakingsServiceTest`, `VenueTakingsControllerTest`, 
 - [x] **AC-5:** `VenueTakingsControllerTest.defaultsToTodayInTiraneWhenNoDate` → PASS (2026-07-08 in Tirane, not UTC).
 - [x] **AC-6:** `npm run test:e2e:a11y -- operator-console` (4 passed) + `console-stats-strip.spec.ts` → PASS (tiles live + axe).
 - [x] **AC-7:** `console-stats-strip.spec.ts` asserts `formatMoney` output (€110 / €93.50), no local math → PASS.
+
+## Review-gate note (PR #206, 2026-07-07)
+
+Ran the SDLC review gate — `riviera-review-overlay` + `/code-review` **high** (money + authorization ⇒ high, no exception) over `origin/main...HEAD`, 3 finder angles + verify. **Overlay/conventions clean** (RV-BE-9 BOLA, RV-BE-11 ownership, RV-BE JDBC/records/error-contract, Modulith #11, RV-FE, RV-PROC-1 all ✅). Findings resolved (each a review-fix re-entering at Implement, same-area skills already loaded):
+
+- **Correctness — walk-ins over-counts unpaid online holds** (map "taken" is state-agnostic incl. `BOOKED_ONLINE` reserve-time holds; `bookedOnline` is CONFIRMED-only). Money unaffected. Interim degradation to "—" on read failure shipped; precise server-side `STAFF_MARKED` count deferred to **#207** (both surfaces — matches shipped `staff-daily`). Documented in `console-stats-strip.ts`.
+- **FE (finding 5) — honest degradation:** `bookedOnline` is `number | undefined`; a failed `/bookings` renders booked + walk-ins "—", never a phantom count. New spec: `degrades booked + walk-ins to a dash …`.
+- **Reuse (finding 4):** `TakingsResponse` now reuses `venue.vocabulary.MoneyView` (one money-on-the-wire shape, not a per-controller twin); identical JSON.
+- **Test gap (finding 2):** added `DailyTakingsServiceTest.aVenueWithNoCommissionRateOwesTheFullGross` (the `orElse(0)` branch).
+- **Clarity (finding 1):** comment in `JdbcDailyTakings` — no pool filter needed; "online" is guaranteed by invariant #3 (bookings never target walk-in sets).
+- **Deferred (finding 3):** the `Europe/Tirane` "today" idiom now recurs in 5 files — a `TiraneDates.today(clock)` extraction is a codebase-wide cleanup, deferred (matches the shipped convention; no follow-up issue filed, low value).
+
+Skills consulted unchanged (fixes stayed within already-loaded areas: `riviera-frontend`, `riviera-java-conventions`, `riviera-modulith`).
 
 ## Self-review checklist (before merge / PR)
 

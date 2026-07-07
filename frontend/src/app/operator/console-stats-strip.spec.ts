@@ -75,16 +75,21 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
 
   async function render(
     venue: VenueMapView | undefined,
-    booked: number,
+    booked: number | 'fail',
     takings: TakingsView | 'fail',
   ): Promise<void> {
     fixture = TestBed.createComponent(ConsoleStatsStrip);
     fixture.componentRef.setInput('venueId', VENUE);
     fixture.componentRef.setInput('venue', venue);
     await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
-      .flush(Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })));
+    const bookingsReq = httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET',
+    );
+    if (booked === 'fail') {
+      bookingsReq.flush({}, { status: 500, statusText: 'Server Error' });
+    } else {
+      bookingsReq.flush(Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })));
+    }
     const takingsReq = httpMock.expectOne(
       (r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET',
     );
@@ -128,5 +133,24 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-booked')).toBe('0');
     expect(text('oc-stat-walkins')).toBe('0');
     expect(text('oc-stat-takings')).toBe('—');
+  });
+
+  it('degrades booked + walk-ins to a dash (not a phantom count) when the bookings read fails', async () => {
+    // 5 sets, 2 free -> 3 taken; the /bookings read fails, so booked-online is unknown. Walk-ins must
+    // NOT render "3" (it would mislabel taken-but-unknown sets as walk-ins) — both show "—".
+    const map = venueMap([
+      set(1, 'FREE'),
+      set(2, 'FREE'),
+      set(3, 'TAKEN'),
+      set(4, 'TAKEN'),
+      set(5, 'TAKEN'),
+    ]);
+
+    await render(map, 'fail', TAKINGS);
+
+    expect(text('oc-stat-free')).toBe('2 / 5'); // free/total still come from the map
+    expect(text('oc-stat-booked')).toBe('—');
+    expect(text('oc-stat-walkins')).toBe('—');
+    expect(text('oc-stat-takings')).toBe('€110'); // the independent takings read still renders
   });
 });

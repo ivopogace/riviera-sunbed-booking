@@ -35,8 +35,12 @@ export class ConsoleStatsStrip {
   /** Today in Europe/Tirane — the civil day all tiles report on (invariant #6). */
   private readonly date = todayBookingDate(new Date());
 
-  /** Confirmed online bookings for the venue today (the "Booked online" tile). */
-  protected readonly bookedOnline = signal(0);
+  /**
+   * Confirmed online bookings for the venue today (the "Booked online" tile), or `undefined` until
+   * the read resolves — a failed read stays `undefined` (rendered "—"), distinct from a real 0, so a
+   * blip never shows a misleading count nor inflates the walk-ins remainder below.
+   */
+  protected readonly bookedOnline = signal<number | undefined>(undefined);
   /** Gross + net-after-commission takings for today, or undefined until the read resolves. */
   protected readonly takings = signal<TakingsView | undefined>(undefined);
 
@@ -46,10 +50,20 @@ export class ConsoleStatsStrip {
   protected readonly free = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
   );
-  /** Walk-ins marked = taken − booked-online (taken = total − free); never negative. */
-  protected readonly walkIns = computed(() =>
-    Math.max(0, this.total() - this.free() - this.bookedOnline()),
-  );
+  /**
+   * Walk-ins marked = taken − booked-online (taken = total − free); never negative; `undefined`
+   * (rendered "—") until the booked-online count loads, so a failed read isn't shown as walk-ins.
+   *
+   * Known limitation (#171 follow-up): the map's "taken" is state-agnostic — it counts a set as taken
+   * from the moment it is claimed `BOOKED_ONLINE` at reserve (while still `AWAITING_PAYMENT`), but
+   * `bookedOnline` counts only `CONFIRMED` bookings, so an unpaid online hold is transiently counted
+   * here as a walk-in. Same derivation the shipped `staff-daily` view uses; a precise split needs a
+   * server-side `STAFF_MARKED` count (deferred with the Option-B seam) — tracked for both surfaces.
+   */
+  protected readonly walkIns = computed(() => {
+    const booked = this.bookedOnline();
+    return booked === undefined ? undefined : Math.max(0, this.total() - this.free() - booked);
+  });
 
   constructor() {
     // Load the booked-online count + takings once the venue id is known; both best-effort so a failed
@@ -73,7 +87,7 @@ export class ConsoleStatsStrip {
     this.console.dailyBookingCount(venueId, this.date).subscribe({
       next: (count) => this.bookedOnline.set(count),
       error: () => {
-        // best-effort — the "Booked online" tile stays at 0
+        // best-effort — leave bookedOnline undefined so the tile (and walk-ins) render "—", not 0
       },
     });
     this.console.dailyTakings(venueId, this.date).subscribe({

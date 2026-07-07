@@ -34,6 +34,10 @@ class JdbcDailyTakings implements DailyTakings {
 		// Gross of a venue's CONFIRMED online bookings for one service date (booking_date in
 		// Europe/Tirane, invariant #6), aggregated in SQL — not a row-sum in Java. Served by
 		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows.
+		// No pool filter is needed to make this "online": a booking row only ever exists for an
+		// online-pool set (invariant #3 — walk-ins are staff-marked availability rows, never bookings),
+		// so summing the booking table is already online-only; joining set_position for the pool would
+		// only make booking read venue's layout.
 		// COALESCE keeps an empty day a (0, 'EUR') result rather than a NULL row (invariant #5).
 		// Indicative per-service-date figure — independent of the payout ledger's ISO-week accrual.
 		return jdbc.sql("""
