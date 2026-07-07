@@ -89,7 +89,7 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Destructive replace silently drops availability holds (`set_availability.set_id` ON DELETE CASCADE) — invariant #2 state destroyed with no event | med | high | Explicit `anyClaims(setIds)` guard BEFORE any delete; replace barred on any claimed venue; IT proves the hold survives a rejected replace | agent | open |
+| R-1 | Destructive replace silently drops availability holds (`set_availability.set_id` ON DELETE CASCADE) — invariant #2 state destroyed with no event | med | high | Explicit `anyClaims(setIds)` guard BEFORE any delete; replace barred on any claimed venue; **`lockSetsOfVenue` takes `SELECT … FOR UPDATE` before the probe so a concurrent walk-in mark/booking blocks on its FK `FOR KEY SHARE` (closes the review-found TOCTOU window)**; sequential IT proves the hold survives a rejected replace, `concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold` (@RepeatedTest) proves the race | agent | closed (review) |
 | R-2 | Partial layout persisted on mid-write failure | low | high | Single `@Transactional` method; all-or-nothing delete+insert; IT | agent | open |
 | R-3 | Duplicate grid cell / position within the submitted grid | med | med | `SetCommand` validation per cell + the two `set_position` UNIQUE constraints → `DUPLICATE_POSITION`/`CELL_TAKEN` (409); intra-batch check in the layout command | agent | open |
 | R-4 | Cross-venue write (BOLA, OWASP #1, invariant #13) | med | high | `ownership.assertOwns(operator, VenueRef)` as the service method's **first statement**; `CrossVenueDenialIT` | agent | open |
@@ -404,6 +404,8 @@ Test `VenueAdminControllerLayoutTest` (`@WebMvcTest`).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-07 | Review gate — F1 (invariant #2 TOCTOU) | other check-then-delete on `set_position` without a row lock | reviewed `venue` write paths | only the bulk `replaceLayout` has a claim window; single-set `removeSet` deletes one keyed row | fixed the one site (`FOR UPDATE`); single-set path unaffected |
+| 2026-07-07 | Review gate — F4 (lossy price round-trip) | other lossy load→save collapses in the editor | reviewed `seedFrom`/`toRequest` | prices were the only lost field; walk-in-tier collapse is intentional (pool, not tier, is user-facing) | preserved prices via `priceByCoord` |
 
 ---
 

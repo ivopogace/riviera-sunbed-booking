@@ -1,4 +1,4 @@
-<section class="oc-layout mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
+<section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
   <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">
     <!-- Controls: Generate + Paint -->
     <div class="flex flex-col gap-3.5">
@@ -88,12 +88,11 @@
         <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
           Pick a tool, then click or drag across the map to apply it.
         </p>
-        <div class="flex flex-col gap-2" role="radiogroup" aria-label="Paint tool">
+        <div class="flex flex-col gap-2" aria-label="Paint tool">
           @for (tool of tools(); track tool.key) {
             <button
               type="button"
-              role="radio"
-              [attr.aria-checked]="tool.active"
+              [attr.aria-pressed]="tool.active"
               (click)="selectTool(tool.key)"
               [attr.data-testid]="'layout-tool-' + tool.key"
               class="flex w-full items-center gap-2.5 rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
@@ -127,7 +126,7 @@
       </p>
 
       @if (hasLayout()) {
-        <div class="select-none" (mouseup)="onPaintEnd()" (mouseleave)="onPaintEnd()">
+        <div class="select-none" data-testid="layout-grid" (mouseup)="onPaintEnd()" (mouseleave)="onPaintEnd()">
           @for (row of displayRows(); track $index; let ri = $index) {
             <div class="mb-1.5 flex items-center gap-2">
               <span
@@ -137,8 +136,6 @@
               <div
                 class="grid flex-1 gap-1"
                 [style.grid-template-columns]="'repeat(' + colCount() + ', minmax(0, 1fr))'"
-                role="group"
-                [attr.aria-label]="'Row ' + row.label"
               >
                 @for (cell of row.cells; track $index; let ci = $index) {
                   <button
@@ -150,7 +147,7 @@
                     [attr.aria-label]="cell.label"
                     [attr.data-state]="cell.state"
                     data-testid="layout-cell"
-                    class="layout-cell h-7 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                    class="h-7 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
                     [class]="cellClass(cell.state)"
                   ></button>
                 }
@@ -220,9 +217,9 @@
       {{ saving() ? 'Saving…' : 'Save layout' }}
     </button>
     @if (savedNotice()) {
-      <span class="text-[13px] font-semibold text-[#0a6e85]" role="status" data-testid="layout-saved">
+      <output class="text-[13px] font-semibold text-[#0a6e85]" data-testid="layout-saved">
         Saved. The public beach map reflects your changes.
-      </span>
+      </output>
     }
     @if (errorMessage(); as message) {
       <span class="text-[13px] font-semibold text-[#a3160e]" role="alert" data-testid="layout-error">

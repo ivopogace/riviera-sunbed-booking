@@ -379,7 +379,7 @@ class VenueAdminServiceTest {
 		int insertedInLayout;
 
 		@Override
-		public List<SetId> findSetIds(VenueId venueId) {
+		public List<SetId> lockSetsOfVenue(VenueId venueId) {
 			return existingSetIds.stream().map(SetId::new).toList();
 		}
 

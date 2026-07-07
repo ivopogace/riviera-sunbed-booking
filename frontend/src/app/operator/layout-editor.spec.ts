@@ -126,7 +126,7 @@ describe('LayoutEditor (#172)', () => {
     cells()[0].dispatchEvent(new MouseEvent('mousedown'));
     cells()[1].dispatchEvent(new MouseEvent('mouseenter'));
     cells()[2].dispatchEvent(new MouseEvent('mouseenter'));
-    host.querySelector('.select-none')!.dispatchEvent(new MouseEvent('mouseup'));
+    byId('layout-grid').dispatchEvent(new MouseEvent('mouseup'));
     fixture.detectChanges();
 
     expect(cells()[0].getAttribute('data-state')).toBe('gap');

@@ -11,11 +11,8 @@ import { VenueService } from '../venue/venue.service';
 import { LayoutCellRequest, LayoutErrorCode } from './operator-console.model';
 import { OperatorConsoleService, layoutErrorOf } from './operator-console.service';
 
-/** What a grid cell holds. `gap` = no set (an aisle); the three others are paint tools too. */
+/** What a grid cell holds, and the paint tools (in design order). `gap` = no set / erase to an aisle. */
 type CellState = 'premium' | 'standard' | 'walkin' | 'gap';
-
-/** A paint tool, in design order. `gap` erases a cell back to an aisle. */
-type PaintTool = CellState;
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
 const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
@@ -30,7 +27,7 @@ const STATE_DESC: Record<CellState, string> = {
   gap: 'gap or aisle',
 };
 
-const TOOL_LABEL: Record<PaintTool, string> = {
+const TOOL_LABEL: Record<CellState, string> = {
   premium: 'Front row · premium',
   standard: 'Standard set',
   walkin: 'Walk-in pool',
@@ -47,7 +44,7 @@ const CELL_CLASS: Record<CellState, string> = {
 };
 
 /** Per-tool swatch background classes (mirrors {@link CELL_CLASS}, sized by the swatch element). */
-const SWATCH_CLASS: Record<PaintTool, string> = {
+const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
   standard: 'bg-white/85',
   walkin: 'bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.35)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
@@ -88,7 +85,7 @@ export class LayoutEditor {
   /** The current grid, row-major with row 0 sea-facing. Empty until generated or loaded. */
   protected readonly grid = signal<CellState[][]>([]);
   /** The active paint tool. */
-  protected readonly activeTool = signal<PaintTool>('premium');
+  protected readonly activeTool = signal<CellState>('premium');
 
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
@@ -110,11 +107,19 @@ export class LayoutEditor {
   /** Drag state — a plain field (not reactive; only the pointer handlers read it). */
   private painting = false;
 
+  /**
+   * Prices of the sets loaded from the venue, keyed by `${gridX},${gridY}` — so a load→save round-trip
+   * preserves each set's existing price instead of resetting it to the tier default (O4 owns price
+   * editing). Newly generated cells have no entry and fall back to the tier default. Mutated only
+   * alongside a `grid.set(...)`, so the `displayRows` computed reads it consistently.
+   */
+  private readonly priceByCoord = new Map<string, MoneyView>();
+
   /** The display rows: label, per-row price string, and each cell's state + AT label. */
   protected readonly displayRows = computed(() =>
     this.grid().map((row, y) => ({
       label: rowLabel(y),
-      priceStr: rowPriceStr(row),
+      priceStr: this.rowPriceStr(row, y),
       cells: row.map((state, x) => ({
         state,
         label: `Row ${rowLabel(y)} position ${x + 1}, ${STATE_DESC[state]}`,
@@ -154,11 +159,11 @@ export class LayoutEditor {
   // ---- Generate ----
 
   protected setRows(value: string): void {
-    this.genRows.set(clamp(parseInt(value, 10) || 0, 1, MAX_ROWS));
+    this.genRows.set(clamp(Number.parseInt(value, 10) || 0, 1, MAX_ROWS));
   }
 
   protected setCols(value: string): void {
-    this.genCols.set(clamp(parseInt(value, 10) || 0, 1, MAX_COLS));
+    this.genCols.set(clamp(Number.parseInt(value, 10) || 0, 1, MAX_COLS));
   }
 
   protected onGenerate(): void {
@@ -179,6 +184,7 @@ export class LayoutEditor {
   }
 
   private generateNow(): void {
+    this.priceByCoord.clear(); // a fresh grid → tier-default prices, no carried-over set prices
     const rows = clamp(this.genRows(), 1, MAX_ROWS);
     const cols = clamp(this.genCols(), 1, MAX_COLS);
     const grid: CellState[][] = [];
@@ -196,7 +202,7 @@ export class LayoutEditor {
 
   // ---- Paint (click + drag; keyboard via the button's native click) ----
 
-  protected selectTool(tool: PaintTool): void {
+  protected selectTool(tool: CellState): void {
     this.activeTool.set(tool);
   }
 
@@ -206,7 +212,7 @@ export class LayoutEditor {
   }
 
   /** The Tailwind background classes for a paint-tool swatch. */
-  protected swatchClass(tool: PaintTool): string {
+  protected swatchClass(tool: CellState): string {
     return SWATCH_CLASS[tool];
   }
 
@@ -299,7 +305,9 @@ export class LayoutEditor {
           positionNo: x + 1,
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',
-          price: premium ? PREMIUM_PRICE : STANDARD_PRICE,
+          // Preserve a loaded set's existing price; only a newly generated/painted cell takes the
+          // tier default (O4 owns price editing — a load→save round-trip must not reset prices).
+          price: this.priceByCoord.get(coordKey(x + 1, y + 1)) ?? (premium ? PREMIUM_PRICE : STANDARD_PRICE),
           gridX: x + 1,
           gridY: y + 1,
         });
@@ -320,8 +328,10 @@ export class LayoutEditor {
   }
 
   private seedFrom(sets: readonly SetView[]): void {
-    if (sets.length === 0) {
-      return; // empty venue — leave the empty state so the operator generates
+    if (sets.length === 0 || this.hasLayout()) {
+      // Empty venue, or the async read resolved after the operator already generated/painted — don't
+      // clobber their in-progress work with the loaded layout.
+      return;
     }
     const maxY = Math.max(...sets.map((s) => s.gridY));
     const maxX = Math.max(...sets.map((s) => s.gridX));
@@ -330,10 +340,23 @@ export class LayoutEditor {
     );
     for (const s of sets) {
       grid[s.gridY - 1][s.gridX - 1] = cellStateOf(s);
+      this.priceByCoord.set(coordKey(s.gridX, s.gridY), s.price); // preserve prices for a lossless save
     }
     this.grid.set(grid);
     this.genRows.set(clamp(maxY, 1, MAX_ROWS));
     this.genCols.set(clamp(maxX, 1, MAX_COLS));
+  }
+
+  /** The per-row price string: the price the row's first set would save with (preserved or tier default). */
+  private rowPriceStr(row: readonly CellState[], y: number): string {
+    const firstSet = row.findIndex((s) => s !== 'gap');
+    if (firstSet === -1) {
+      return '';
+    }
+    const premium = row[firstSet] === 'premium';
+    const price =
+      this.priceByCoord.get(coordKey(firstSet + 1, y + 1)) ?? (premium ? PREMIUM_PRICE : STANDARD_PRICE);
+    return formatMoney(price);
   }
 }
 
@@ -345,17 +368,11 @@ function cellStateOf(set: SetView): CellState {
 }
 
 function rowLabel(index: number): string {
-  return String.fromCharCode(65 + index);
+  return String.fromCodePoint(65 + index);
 }
 
-function rowPriceStr(row: readonly CellState[]): string {
-  if (row.some((s) => s === 'premium')) {
-    return formatMoney(PREMIUM_PRICE);
-  }
-  if (row.some((s) => s !== 'gap')) {
-    return formatMoney(STANDARD_PRICE);
-  }
-  return '';
+function coordKey(gridX: number, gridY: number): string {
+  return `${gridX},${gridY}`;
 }
 
 function clamp(value: number, min: number, max: number): number {

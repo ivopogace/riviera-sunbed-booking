@@ -1,22 +1,40 @@
 package ai.riviera.platform.venue;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.LayoutCommand;
+import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
+import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -47,6 +65,8 @@ class BeachMapReplaceIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+	@Autowired
+	EditBeachMap editBeachMap;
 
 	private Cookie operatorSession;
 
@@ -213,6 +233,72 @@ class BeachMapReplaceIT {
 								cell("B", 2, "STANDARD", "ONLINE", 2000, 1, 1)))) // same grid cell (1,1)
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("CELL_TAKEN"));
+	}
+
+	/**
+	 * Invariant #2 (RV-BE-1): a walk-in mark committed concurrently with a regenerate must never be
+	 * silently lost. The replace locks the venue's {@code set_position} rows {@code FOR UPDATE} before
+	 * probing availability, so the mark's FK {@code FOR KEY SHARE} blocks until the replace ends — the
+	 * two can never both succeed. Without the lock, a mark landing in the check→delete window would be
+	 * {@code ON DELETE CASCADE}-swept while staff believe the set is held. Repeated to exercise both
+	 * interleavings; passes reliably with the lock, can fail without it.
+	 */
+	@RepeatedTest(4)
+	void concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold(RepetitionInfo info) throws Exception {
+		long venue = createVenue("Race Club " + info.getCurrentRepetition());
+		putLayout(venue, layout(
+				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1),
+				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
+		long setX = setIds(venue).getFirst();
+		OperatorId owner = seedOwner(venue);
+		LocalDate date = LocalDate.now().plusYears(2).plusDays(info.getCurrentRepetition());
+
+		CountDownLatch gate = new CountDownLatch(1);
+		Callable<Boolean> mark = () -> {
+			gate.await();
+			try {
+				jdbc.sql("""
+						INSERT INTO set_availability (set_id, booking_date, state)
+						VALUES (:s, :d, 'STAFF_MARKED')
+						""").param("s", setX).param("d", date).update();
+				return true; // the hold committed
+			} catch (DataIntegrityViolationException deletedByReplace) {
+				return false; // the set was replaced out from under the mark — a clean loss, not a silent one
+			}
+		};
+		Callable<ReplaceLayoutOutcome> replace = () -> {
+			gate.await();
+			return editBeachMap.replaceLayout(owner, new VenueId(venue), new LayoutCommand(
+					List.of(new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))));
+		};
+
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			Future<Boolean> heldF = pool.submit(mark);
+			Future<ReplaceLayoutOutcome> replacedF = pool.submit(replace);
+			gate.countDown();
+			boolean held = heldF.get(20, TimeUnit.SECONDS);
+			boolean replaced = replacedF.get(20, TimeUnit.SECONDS)
+					instanceof ReplaceLayoutOutcome.Replaced;
+
+			assertFalse(held && replaced,
+					"a committed walk-in hold was silently lost by a concurrent layout replace (invariant #2)");
+			if (held) {
+				// The hold committed ⇒ the replace must have seen it and been rejected, so it survives.
+				Long holds = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
+						.param("s", setX).query(Long.class).single();
+				assertEquals(1L, holds);
+			}
+		}
+	}
+
+	private OperatorId seedOwner(long venueId) {
+		long id = jdbc.sql("""
+				INSERT INTO operator (username, status, owns_all_venues)
+				VALUES (:u, 'ACTIVE', FALSE) RETURNING id
+				""").param("u", "race-op-" + venueId).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venueId).param("o", id).update();
+		return new OperatorId(id);
 	}
 
 	private void seedBooking(long venueId, long setId) {

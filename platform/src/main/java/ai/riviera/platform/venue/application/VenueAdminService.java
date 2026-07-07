@@ -138,7 +138,13 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile 
 		// Reject-unless-unclaimed (issue #172): a booking (any status) pins its set via the RESTRICT FK,
 		// and an availability hold (any date) would be silently CASCADE-dropped by the delete — either
 		// destroys invariant-#2 state, so refuse the destructive replace and delete nothing.
-		List<SetId> existing = venues.findSetIds(venueId);
+		//
+		// Lock the venue's set rows FOR UPDATE *before* the claim probe (invariant #2): a walk-in mark
+		// or booking racing in after the probe but before deleteAllSets would otherwise be lost — the
+		// lock makes that concurrent insert block on its FK's FOR KEY SHARE until this tx ends, so it is
+		// either seen by the probe (→ reject) or fails cleanly against the replaced layout. Never a
+		// silent cascade of a committed hold.
+		List<SetId> existing = venues.lockSetsOfVenue(venueId);
 		if (availability.anyClaims(existing) || bookings.hasBookings(venueId)) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
 		}

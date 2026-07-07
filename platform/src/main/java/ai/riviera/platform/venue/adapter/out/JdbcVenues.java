@@ -30,6 +30,14 @@ class JdbcVenues implements Venues {
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
 
+	/** The set-position INSERT column/values, shared by the single-row and bulk paths (one column list). */
+	private static final String INSERT_SET_SQL = """
+			INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
+			                          price_minor, price_currency, grid_x, grid_y)
+			VALUES (:venue, :rowLabel, :positionNo, :tier, :pool,
+			        :priceMinor, :priceCurrency, :gridX, :gridY)
+			""";
+
 	private final JdbcClient jdbc;
 
 	JdbcVenues(JdbcClient jdbc) {
@@ -109,16 +117,8 @@ class JdbcVenues implements Venues {
 
 	@Override
 	public long insertSet(VenueId venueId, SetCommand c) {
-		Map<String, Object> params = new HashMap<>(setParams(c));
-		params.put(P_VENUE, venueId.value());
-		return jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
-				                          price_minor, price_currency, grid_x, grid_y)
-				VALUES (:venue, :rowLabel, :positionNo, :tier, :pool,
-				        :priceMinor, :priceCurrency, :gridX, :gridY)
-				RETURNING id
-				""")
-				.params(params)
+		return jdbc.sql(INSERT_SET_SQL + "RETURNING id")
+				.params(insertParams(venueId, c))
 				.query(Long.class)
 				.single();
 	}
@@ -148,8 +148,11 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
-	public List<SetId> findSetIds(VenueId venueId) {
-		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue")
+	public List<SetId> lockSetsOfVenue(VenueId venueId) {
+		// FOR UPDATE locks the venue's set_position rows so a concurrent set_availability/booking
+		// insert (which needs FOR KEY SHARE on the referenced row for its FK check) blocks until this
+		// replace transaction ends — closing the invariant-#2 check-then-delete window (see Venues).
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue FOR UPDATE")
 				.param(P_VENUE, venueId.value())
 				.query(Long.class)
 				.list()
@@ -167,21 +170,20 @@ class JdbcVenues implements Venues {
 
 	@Override
 	public void insertSets(VenueId venueId, List<SetCommand> sets) {
-		// Loop of single-row INSERTs inside the caller's @Transactional boundary (JdbcClient has no
-		// batch API; mirrors the amenity-insert loop in updateVenueProfile). The whole-layout size is
-		// bounded by LayoutCommand.MAX_SETS, and this runs only on a verified-unclaimed venue.
+		// One INSERT per set inside the caller's @Transactional boundary, sharing the single-row column
+		// list (INSERT_SET_SQL). Bounded by LayoutCommand.MAX_SETS and run only on a verified-unclaimed
+		// venue, so the per-row round-trips are acceptable for this rare operator action; if it ever
+		// mattered, JdbcClient sits on NamedParameterJdbcTemplate.batchUpdate.
 		for (SetCommand c : sets) {
-			Map<String, Object> params = new HashMap<>(setParams(c));
-			params.put(P_VENUE, venueId.value());
-			jdbc.sql("""
-					INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
-					                          price_minor, price_currency, grid_x, grid_y)
-					VALUES (:venue, :rowLabel, :positionNo, :tier, :pool,
-					        :priceMinor, :priceCurrency, :gridX, :gridY)
-					""")
-					.params(params)
-					.update();
+			jdbc.sql(INSERT_SET_SQL).params(insertParams(venueId, c)).update();
 		}
+	}
+
+	/** The full insert param map for a set: the shared set fields plus the owning venue id. */
+	private static Map<String, Object> insertParams(VenueId venueId, SetCommand c) {
+		Map<String, Object> params = new HashMap<>(setParams(c));
+		params.put(P_VENUE, venueId.value());
+		return params;
 	}
 
 	@Override
