@@ -9,10 +9,12 @@
  * port implemented by venue's <em>own</em> adapter would stay internal in
  * {@code application}, not here.)
  *
- * <p>Currently holds {@link SetAvailabilityLookup}, implemented by the {@code availability}
- * module so the venue beach-map read can overlay live per-{@code (set, date)} availability
- * (issue #44) without venue depending on {@code availability}. Grant {@code venue::spi} only to
- * the implementing module; callers that merely use venue use {@code venue::api}.
+ * <p>Holds {@link SetAvailabilityLookup}, implemented by the {@code availability} module so the
+ * venue beach-map read can overlay live per-{@code (set, date)} availability (issue #44), and
+ * {@link BookingPresence}, implemented by the {@code booking} module so the bulk layout replace can
+ * refuse a venue that has bookings (O3, issue #172) — both without venue depending on those modules.
+ * Grant {@code venue::spi} only to the implementing module; callers that merely use venue use
+ * {@code venue::api}.
  */
 @org.springframework.modulith.NamedInterface("spi")
 package ai.riviera.platform.venue.spi;

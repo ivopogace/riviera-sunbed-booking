@@ -205,6 +205,17 @@ from the console shell, glass via `appCardGlass`/`appPanelGlass`, money via `sha
   reuse shared `Tier`/`Pool`/`MoneyView` from `venue.model.ts`. No `as any`.
 - **Money/date on the wire:** amounts integer minor units + `currency: "EUR"`; no dates in this contract.
 
+## Close-out
+
+- **Merged:** PR #209 → `main` `15a88f6` (squash); issue #172 closed; epic #141 O3 box ticked.
+- **CI:** all 10 check-runs green (Backend build+test, Frontend lint+test+build, CodeQL ×2, SonarCloud).
+- **Review gate:** `riviera-review-overlay` + `/code-review` (high) — 1 invariant-#2 TOCTOU Blocker + 3 more
+  findings fixed and re-verified (see the risk register R-1 + generalization-audit log).
+- **Sonar gate:** 0 new issues, 0 duplication, 85.1% new-code coverage (8 first-pass smells all fixed in-code).
+- **Docs-freshness** (`2e4ac2c..15a88f6`, 2 findings, both patched in the follow-up): `CLAUDE.md` operator-console
+  status line (O3 now merged); `venue/spi/package-info.java` inventory (now holds `BookingPresence` too). No
+  other substrate fact contradicted. Graph absent (gitignored) — code rebuilt via the post-commit hook.
+
 ## Execution status
 
 | Phase | Status | Commits |
