@@ -228,7 +228,7 @@ money via `shared/money.ts` `formatMoney`. AA/axe mandatory (tiles are text-on-g
 | 0 — booking: gross-online-takings `api/` port + SUM query | ✅ | booking `api/DailyTakings` + `JdbcDailyTakings` + IT |
 | 1 — payout: `Commission` + takings service + owner-asserted endpoint | ✅ | `CommissionSplit` + `DailyTakingsService` + `VenueTakingsController` + `SecurityConfig` gate + `CrossVenueDenialIT` (landed as `CommissionSplit.of`, not `Commission.split`) |
 | 2 — FE: stats-strip component + service + MoneyView→shared | ✅ | `ConsoleStatsStrip` + service reads + shell shares venue map; unit + contrast specs (MoneyView promotion **deferred** — see note) |
-| 3 — FE e2e (mocked) + a11y/contrast | | |
+| 3 — FE e2e (mocked) + a11y/contrast | ✅ | `operator-console.e2e.ts` extended: strip tiles (2/5, booked 2, walk-ins 1, €110 / €93.50 after 15%) + survives tab switch + axe |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase's code.
 
@@ -358,13 +358,13 @@ Test `CommissionTest`, `DailyTakingsServiceTest`, `VenueTakingsControllerTest`, 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*JdbcBookingsDailyTakingsIT*"` → PASS.
-- [ ] **AC-2:** `./gradlew test --tests "*CommissionTest*" --tests "*DailyTakingsServiceTest*"` → PASS.
-- [ ] **AC-3:** `./gradlew test --tests "*CrossVenueDenialIT*"` → PASS (403 non-owner, 200 owner).
-- [ ] **AC-4:** `DailyTakingsServiceTest.emptyDayYieldsZerosInEur` → PASS.
-- [ ] **AC-5:** `VenueTakingsControllerTest.defaultsToTiraneToday` → PASS.
-- [ ] **AC-6:** `npm run test:e2e:a11y -- operator-console` + `npm test -- console-stats-strip` → PASS.
-- [ ] **AC-7:** `console-stats-strip.spec.ts` asserts `formatMoney` output, no local math → PASS.
+- [x] **AC-1:** `gradle test --tests "*JdbcBookingsDailyTakingsIT*"` → PASS (sum 11000, excludes other status/date/venue).
+- [x] **AC-2:** `gradle test --tests "*CommissionSplitTest*" --tests "*DailyTakingsServiceTest*"` → PASS (1650/9350, floorDiv).
+- [x] **AC-3:** `gradle test --tests "*CrossVenueDenialIT*"` → PASS (403 `NOT_VENUE_OWNER` non-owner, 200 owner on `/takings`).
+- [x] **AC-4:** `DailyTakingsServiceTest.emptyDayYieldsZerosInEur` + `console-stats-strip.spec.ts` empty/failed-day → PASS.
+- [x] **AC-5:** `VenueTakingsControllerTest.defaultsToTodayInTiraneWhenNoDate` → PASS (2026-07-08 in Tirane, not UTC).
+- [x] **AC-6:** `npm run test:e2e:a11y -- operator-console` (4 passed) + `console-stats-strip.spec.ts` → PASS (tiles live + axe).
+- [x] **AC-7:** `console-stats-strip.spec.ts` asserts `formatMoney` output (€110 / €93.50), no local math → PASS.
 
 ## Self-review checklist (before merge / PR)
 
