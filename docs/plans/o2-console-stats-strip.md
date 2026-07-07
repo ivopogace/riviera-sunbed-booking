@@ -215,7 +215,7 @@ money via `shared/money.ts` `formatMoney`. AA/axe mandatory (tiles are text-on-g
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — booking: gross-online-takings `api/` port + SUM query | | |
+| 0 — booking: gross-online-takings `api/` port + SUM query | ✅ | booking `api/DailyTakings` + `JdbcDailyTakings` + IT |
 | 1 — payout: `Commission` + takings service + owner-asserted endpoint | | |
 | 2 — FE: stats-strip component + service + MoneyView→shared | | |
 | 3 — FE e2e (mocked) + a11y/contrast | | |
@@ -340,6 +340,7 @@ Test `CommissionTest`, `DailyTakingsServiceTest`, `VenueTakingsControllerTest`, 
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-07 | Phase 0 (gross SUM read) | other per-`(venue,date)` amount aggregates | `grep "SUM(amount" / "findConfirmedFor"` in booking | `findConfirmedForWeatherRefund` (per-row amounts, different use) — no other gross-sum | New read is the only aggregate; commission-math reuse handled in Phase 1 (`Commission.split`) |
 
 ---
 
