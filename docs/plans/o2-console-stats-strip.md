@@ -118,6 +118,16 @@ for** `feature/o2-console-stats-strip` (cloud-session addendum); sits at `origin
   X% commission" label) is not a leak — the operator sets it in the venue editor. Net is
   server-computed; only the rate (for the label) crosses. — *Owner:* agent · *Resolves by:* Phase 1 review.
 
+### Resolved
+
+- **`MoneyView`→`shared/` promotion — deferred (Phase 2).** The shipped code already has
+  `operator/operator-console.ts` importing `venue/` (`VenueService`, `booking-date`) and
+  `shared/money.ts` importing `MoneyView` from `venue/`; O1 shipped and passed review with those.
+  The strip follows that established convention (imports `MoneyView`/`VenueMapView` from `venue/`)
+  rather than introducing a promotion refactor that touches every `MoneyView` consumer mid-slice.
+  The `venue/`-as-shared-read-layer cleanup is a separate, codebase-wide change — filed as a
+  follow-up rather than smuggled into O2. R-6 stands relaxed: no *new* cross-feature edge is added.
+
 ## Availability & concurrency (invariant #2)
 
 **N/A — read-only; adds no write path to `availability(set_id, booking_date)`.** The new backend
@@ -217,7 +227,7 @@ money via `shared/money.ts` `formatMoney`. AA/axe mandatory (tiles are text-on-g
 |-------|--------|---------|
 | 0 — booking: gross-online-takings `api/` port + SUM query | ✅ | booking `api/DailyTakings` + `JdbcDailyTakings` + IT |
 | 1 — payout: `Commission` + takings service + owner-asserted endpoint | ✅ | `CommissionSplit` + `DailyTakingsService` + `VenueTakingsController` + `SecurityConfig` gate + `CrossVenueDenialIT` (landed as `CommissionSplit.of`, not `Commission.split`) |
-| 2 — FE: stats-strip component + service + MoneyView→shared | | |
+| 2 — FE: stats-strip component + service + MoneyView→shared | ✅ | `ConsoleStatsStrip` + service reads + shell shares venue map; unit + contrast specs (MoneyView promotion **deferred** — see note) |
 | 3 — FE e2e (mocked) + a11y/contrast | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase's code.
@@ -342,6 +352,7 @@ Test `CommissionTest`, `DailyTakingsServiceTest`, `VenueTakingsControllerTest`, 
 |---|---|---|---|---|---|
 | 2026-07-07 | Phase 0 (gross SUM read) | other per-`(venue,date)` amount aggregates | `grep "SUM(amount" / "findConfirmedFor"` in booking | `findConfirmedForWeatherRefund` (per-row amounts, different use) — no other gross-sum | New read is the only aggregate; commission-math reuse handled in Phase 1 (`CommissionSplit`) |
 | 2026-07-07 | Phase 1 (commission split) | in-app commission `floorDiv(gross*bps,10000)` sites | read `PayoutLedgerEntry` | `accrual()` (bps formula) + `reversalOf()` (proportional formula, different) | Extracted `CommissionSplit.of`; `accrual()` now routes through it, `reversalOf()` intentionally left (its share formula is not the bps split) |
+| 2026-07-07 | Phase 2 (strip mounts in shell) | specs that render the signed-in console shell | grep `createSignedIn`/signed-in render in `operator/*.spec.ts` | `operator-console.spec.ts` + `operator-console.a11y.spec.ts` | Added a `flushStrip` to every signed-in-shell render path (the strip now fires 2 reads); a11y audit now also covers the strip markup |
 
 ---
 

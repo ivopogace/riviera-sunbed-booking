@@ -86,6 +86,8 @@
       </div>
     </header>
 
+    <app-console-stats-strip [venueId]="venueId!" [venue]="venue()" />
+
     <nav class="oc-tabs" data-testid="oc-tabs" aria-label="Operator console sections">
       @for (tab of tabs; track tab.path) {
         <a

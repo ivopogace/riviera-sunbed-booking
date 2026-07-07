@@ -82,6 +82,18 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
       .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
+    // The stats strip mounts in the shell and fires its two reads (#171) — audit the shell WITH it.
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
+      .flush([]);
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET')
+      .flush({
+        gross: { minorUnits: 0, currency: 'EUR' },
+        net: { minorUnits: 0, currency: 'EUR' },
+        commissionBps: 1500,
+        date: '2026-07-07',
+      });
     await fixture.whenStable();
   }
 
