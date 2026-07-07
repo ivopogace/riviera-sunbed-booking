@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,6 +26,8 @@ import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
+import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetRejection;
 
 /**
@@ -104,6 +107,16 @@ class VenueAdminController {
 		return toResponse(editBeachMap.removeSet(operator, new VenueId(venueId), new SetId(setId)));
 	}
 
+	@PutMapping("/{venueId}/beach-map")
+	ResponseEntity<?> replaceLayout(Authentication authentication, @PathVariable long venueId,
+			@RequestBody BeachMapLayoutRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		return switch (editBeachMap.replaceLayout(operator, new VenueId(venueId), request.toCommand())) {
+			case ReplaceLayoutOutcome.Replaced ignored -> ResponseEntity.noContent().build();
+			case ReplaceLayoutOutcome.Rejected rejected -> error(rejected.reason());
+		};
+	}
+
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {
 		return switch (outcome) {
 			case ChangeOutcome.Applied ignored -> ResponseEntity.noContent().build();
@@ -121,6 +134,23 @@ class VenueAdminController {
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already has this row and position.");
+		};
+	}
+
+	private static ResponseEntity<ProblemDetail> error(ReplaceRejection reason) {
+		return switch (reason) {
+			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
+					"No such venue.");
+			case LAYOUT_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"This venue has bookings or walk-in holds, so its layout is locked.");
+			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Two sets occupy the same grid cell.");
+			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Two sets share the same row and position.");
+			case EMPTY_LAYOUT -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),
+					"A layout must have at least one set.");
+			case LAYOUT_TOO_LARGE -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),
+					"The layout exceeds the maximum grid size.");
 		};
 	}
 }

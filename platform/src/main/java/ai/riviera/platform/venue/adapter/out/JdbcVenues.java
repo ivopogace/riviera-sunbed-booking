@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.adapter.out;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -144,6 +145,43 @@ class JdbcVenues implements Venues {
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
 				.update();
+	}
+
+	@Override
+	public List<SetId> findSetIds(VenueId venueId) {
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue")
+				.param(P_VENUE, venueId.value())
+				.query(Long.class)
+				.list()
+				.stream()
+				.map(SetId::new)
+				.toList();
+	}
+
+	@Override
+	public int deleteAllSets(VenueId venueId) {
+		return jdbc.sql("DELETE FROM set_position WHERE venue_id = :venue")
+				.param(P_VENUE, venueId.value())
+				.update();
+	}
+
+	@Override
+	public void insertSets(VenueId venueId, List<SetCommand> sets) {
+		// Loop of single-row INSERTs inside the caller's @Transactional boundary (JdbcClient has no
+		// batch API; mirrors the amenity-insert loop in updateVenueProfile). The whole-layout size is
+		// bounded by LayoutCommand.MAX_SETS, and this runs only on a verified-unclaimed venue.
+		for (SetCommand c : sets) {
+			Map<String, Object> params = new HashMap<>(setParams(c));
+			params.put(P_VENUE, venueId.value());
+			jdbc.sql("""
+					INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
+					                          price_minor, price_currency, grid_x, grid_y)
+					VALUES (:venue, :rowLabel, :positionNo, :tier, :pool,
+					        :priceMinor, :priceCurrency, :gridX, :gridY)
+					""")
+					.params(params)
+					.update();
+		}
 	}
 
 	@Override

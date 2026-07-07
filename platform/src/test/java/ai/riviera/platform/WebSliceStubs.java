@@ -61,7 +61,10 @@ import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
+import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
+import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 
@@ -323,6 +326,12 @@ class WebSliceStubs {
 			@Override
 			public ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId) {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+			}
+
+			@Override
+			public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId,
+					LayoutCommand command) {
+				return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
 			}
 		};
 	}

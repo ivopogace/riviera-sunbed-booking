@@ -40,4 +40,18 @@ public interface SetAvailabilityLookup {
 	 * @return the ids of the taken sets, a (possibly empty) set
 	 */
 	Set<SetId> takenOn(Collection<SetId> setIds, LocalDate date);
+
+	/**
+	 * Whether <strong>any</strong> of {@code setIds} has an availability row on <em>any</em> date. Used by
+	 * the {@code venue} bulk-layout write (O3, issue #172) as the destructive-regenerate guard: because
+	 * {@code set_availability.set_id} is {@code ON DELETE CASCADE}, deleting a claimed set would silently
+	 * drop the hold (invariant #2), so a layout replace is refused when this returns {@code true}. Unlike
+	 * {@link #takenOn}, it is date-agnostic — a hold on any day (a future walk-in mark, a past online hold)
+	 * blocks the replace, matching the conservative reject-unless-unclaimed policy.
+	 *
+	 * @param setIds the set positions to probe (typically one venue's whole map)
+	 * @return {@code true} if at least one has an availability row; an empty input yields {@code false}
+	 *         without touching the database
+	 */
+	boolean anyClaims(Collection<SetId> setIds);
 }

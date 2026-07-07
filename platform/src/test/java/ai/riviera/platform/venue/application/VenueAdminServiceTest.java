@@ -1,8 +1,11 @@
 package ai.riviera.platform.venue.application;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -13,6 +16,8 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.venue.spi.BookingPresence;
+import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -45,8 +50,22 @@ class VenueAdminServiceTest {
 			new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 4500, "EUR", 2, 1);
 
 	private final FakeVenues venues = new FakeVenues();
+	private final FakeAvailability availability = new FakeAvailability();
+	private final FakeBookings bookings = new FakeBookings();
 	private final VenueAdminService service =
-			new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE));
+			new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE), availability, bookings);
+
+	private static LayoutCommand grid(int rows, int cols) {
+		List<SetCommand> cells = new ArrayList<>();
+		for (int y = 1; y <= rows; y++) {
+			for (int x = 1; x <= cols; x++) {
+				String tier = y == 1 ? "PREMIUM" : "STANDARD";
+				cells.add(new SetCommand(String.valueOf((char) ('A' + y - 1)), x, tier, "ONLINE",
+						2000, "EUR", x, y));
+			}
+		}
+		return new LayoutCommand(cells);
+	}
 
 	@Test
 	void onboardReturnsTheInsertedVenueId() {
@@ -197,6 +216,82 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.updatedProfiles);
 	}
 
+	// ---- Bulk layout replace (O3, issue #172) ----
+
+	@Test
+	void replacesLayoutForUnclaimedVenue() {
+		venues.venues.add(VENUE.value());
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(1, venues.deletedAllCount);
+		assertEquals(6, venues.insertedInLayout);
+	}
+
+	@Test
+	void rejectsReplaceWhenVenueHasBooking() {
+		venues.venues.add(VENUE.value());
+		bookings.hasBookings = true;
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+
+		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
+		assertEquals(0, venues.insertedInLayout);
+	}
+
+	@Test
+	void rejectsReplaceWhenVenueHasAvailabilityHold() {
+		venues.venues.add(VENUE.value());
+		availability.claimed = true;
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+
+		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+	}
+
+	@Test
+	void rejectsEmptyLayout() {
+		venues.venues.add(VENUE.value());
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, new LayoutCommand(List.of()));
+
+		assertEquals(ReplaceRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+	}
+
+	@Test
+	void rejectsDuplicateCellWithinTheBatch() {
+		venues.venues.add(VENUE.value());
+		LayoutCommand clashing = new LayoutCommand(List.of(
+				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
+				new SetCommand("B", 2, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))); // same grid cell
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, clashing);
+
+		assertEquals(ReplaceRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+	}
+
+	@Test
+	void rejectsReplaceOnUnknownVenue() {
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(1, 1));
+
+		assertEquals(ReplaceRejection.NO_SUCH_VENUE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void replaceByANonOwnerIsDeniedBeforeAnyRead() {
+		venues.venues.add(VENUE.value());
+
+		assertThrows(NotVenueOwnerException.class, () -> service.replaceLayout(STRANGER, VENUE, grid(2, 3)));
+		// Fail closed: the ownership guard fires before the claim probes and before any delete.
+		assertEquals(0, availability.anyClaimsCalls);
+		assertEquals(0, venues.deletedAllCount);
+	}
+
 	/**
 	 * Stub {@link VenueOwnership}: one operator owns one venue; {@code assertOwns} throws for anyone
 	 * else. {@code ownedVenues} is unused here.
@@ -277,6 +372,55 @@ class VenueAdminServiceTest {
 		public int updateVenueProfile(VenueId venueId, VenueProfileCommand command) {
 			updatedProfiles++;
 			return venues.contains(venueId.value()) ? 1 : 0;
+		}
+
+		final List<Long> existingSetIds = new ArrayList<>();
+		int deletedAllCount;
+		int insertedInLayout;
+
+		@Override
+		public List<SetId> findSetIds(VenueId venueId) {
+			return existingSetIds.stream().map(SetId::new).toList();
+		}
+
+		@Override
+		public int deleteAllSets(VenueId venueId) {
+			deletedAllCount++;
+			int n = existingSetIds.size();
+			existingSetIds.clear();
+			return n;
+		}
+
+		@Override
+		public void insertSets(VenueId venueId, List<SetCommand> sets) {
+			insertedInLayout += sets.size();
+		}
+	}
+
+	/** Programmable {@link SetAvailabilityLookup}: {@code claimed} drives {@code anyClaims}. */
+	private static final class FakeAvailability implements SetAvailabilityLookup {
+		boolean claimed;
+		int anyClaimsCalls;
+
+		@Override
+		public Set<SetId> takenOn(Collection<SetId> setIds, java.time.LocalDate date) {
+			return Set.of();
+		}
+
+		@Override
+		public boolean anyClaims(Collection<SetId> setIds) {
+			anyClaimsCalls++;
+			return claimed;
+		}
+	}
+
+	/** Programmable {@link BookingPresence}: {@code hasBookings} drives the guard. */
+	private static final class FakeBookings implements BookingPresence {
+		boolean hasBookings;
+
+		@Override
+		public boolean hasBookings(VenueId venueId) {
+			return hasBookings;
 		}
 	}
 }

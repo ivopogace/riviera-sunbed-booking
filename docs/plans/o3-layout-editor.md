@@ -209,14 +209,20 @@ from the console shell, glass via `appCardGlass`/`appPanelGlass`, money via `sha
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `BookingPresence` SPI + `booking` adapter | | |
-| 1 — `SetAvailabilityLookup.anyClaims` (availability) | | |
-| 2 — `EditBeachMap.replaceLayout` + guard + `Venues` batch persistence | | |
-| 3 — `PUT …/beach-map` controller + DTO + WebSliceStubs | | |
-| 4 — Testcontainers ITs (replace/guard/tourist round-trip) + `CrossVenueDenialIT` | | |
+| 0 — `BookingPresence` SPI + `booking` adapter | ✅ | (backend commit) |
+| 1 — `SetAvailabilityLookup.anyClaims` (availability) | ✅ | (backend commit) |
+| 2 — `EditBeachMap.replaceLayout` + guard + `Venues` batch persistence | ✅ | (backend commit) |
+| 3 — `PUT …/beach-map` controller + DTO + WebSliceStubs | ✅ | (backend commit) |
+| 4 — Testcontainers ITs (replace/guard/tourist round-trip) + `CrossVenueDenialIT` | ✅ | (backend commit) |
 | 5 — Angular Layout-editor (generate + paint + grid) + service + route | | |
 | 6 — a11y + contrast specs | | |
 | 7 — CI-safe mocked e2e | | |
+
+> Backend verified in-session (scoped): `VenueAdminServiceTest` (guard branches + fail-closed ordering),
+> the structural net (`ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/
+> `PublishedSurfacePlacementArchitectureTests`), and ITs `BeachMapReplaceIT` (replace round-trip, pool
+> round-trip, regenerate-replaces, both guard branches with the hold surviving) + `CrossVenueDenialIT`
+> (non-owner 403). CI owns the full suite.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 

@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -41,6 +42,19 @@ public interface Venues {
 
 	/** Remove a set position. Returns the number of rows deleted — {@code 0} means no such set. */
 	int deleteSet(VenueId venueId, SetId setId);
+
+	/** The ids of every set currently on the venue's map (empty when the venue has no sets). */
+	List<SetId> findSetIds(VenueId venueId);
+
+	/** Delete every set position of the venue. Returns the number of rows deleted. */
+	int deleteAllSets(VenueId venueId);
+
+	/**
+	 * Insert every set of a fresh layout for the venue in one unit of work (O3, issue #172). The caller
+	 * runs this inside the same {@code @Transactional} boundary as {@link #deleteAllSets}, after having
+	 * verified the venue is unclaimed, so the map is never left partially replaced.
+	 */
+	void insertSets(VenueId venueId, List<SetCommand> sets);
 
 	/**
 	 * Replace a venue's profile fields (amenities + distance-to-water) in one unit of work. Returns
