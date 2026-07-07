@@ -214,9 +214,14 @@ from the console shell, glass via `appCardGlass`/`appPanelGlass`, money via `sha
 | 2 — `EditBeachMap.replaceLayout` + guard + `Venues` batch persistence | ✅ | (backend commit) |
 | 3 — `PUT …/beach-map` controller + DTO + WebSliceStubs | ✅ | (backend commit) |
 | 4 — Testcontainers ITs (replace/guard/tourist round-trip) + `CrossVenueDenialIT` | ✅ | (backend commit) |
-| 5 — Angular Layout-editor (generate + paint + grid) + service + route | | |
-| 6 — a11y + contrast specs | | |
-| 7 — CI-safe mocked e2e | | |
+| 5 — Angular Layout-editor (generate + paint + grid) + service + route | ✅ | (frontend commit) |
+| 6 — a11y + contrast specs | ✅ | (frontend commit) |
+| 7 — CI-safe mocked e2e | ✅ | (frontend commit) |
+
+> Frontend verified in-session: `npm run lint` clean, `npm run build` clean, full Vitest suite
+> **535/535** (incl. `layout-editor.spec` 8, `.a11y.spec` 3, `.contrast.spec` 8), and the CI-safe
+> Playwright a11y suite green — `layout-editor.e2e` (generate→paint→save PUT payload + axe; LAYOUT_IN_USE
+> lock) and the updated `operator-console.e2e` (beach-map tab now renders the editor).
 
 > Backend verified in-session (scoped): `VenueAdminServiceTest` (guard branches + fail-closed ordering),
 > the structural net (`ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/
