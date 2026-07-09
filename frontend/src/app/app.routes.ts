@@ -5,7 +5,6 @@ import { Routes } from '@angular/router';
 // swaps the component in; `data.tab` tells the placeholder which section it is. `beach-map` has
 // graduated to its real editor (O3 #172) and is declared explicitly below.
 const CONSOLE_TABS: readonly (readonly [string, string])[] = [
-  ['pricing', 'Pricing'],
   ['daily', 'Daily view'],
   ['requests', 'Requests'],
   ['payouts', 'Payouts'],
@@ -19,6 +18,13 @@ const consoleTabRoutes: Routes = [
     loadComponent: () => import('./operator/layout-editor').then((m) => m.LayoutEditor),
     title: 'Beach map — Operator console',
     data: { tab: 'beach-map' },
+  },
+  {
+    // O4 (#174): the real per-row pricing tab, replacing the pricing placeholder.
+    path: 'pricing',
+    loadComponent: () => import('./operator/pricing-tab').then((m) => m.PricingTab),
+    title: 'Pricing — Operator console',
+    data: { tab: 'pricing' },
   },
   ...CONSOLE_TABS.map(([path, label]) => ({
     path,

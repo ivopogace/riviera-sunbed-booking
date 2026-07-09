@@ -4,7 +4,8 @@ import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
-import { BeachMapLayoutRequest, LayoutErrorCode, TakingsView } from './operator-console.model';
+import { MoneyView } from '../venue/venue.model';
+import { BeachMapLayoutRequest, LayoutErrorCode, RepriceErrorCode, TakingsView } from './operator-console.model';
 
 /**
  * The operator console's own read surface (issue #170; #171 adds the stats strip's reads).
@@ -55,6 +56,38 @@ export class OperatorConsoleService {
   replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
     return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
   }
+
+  /**
+   * Reprice every set in one beach-map row (O4, #174). Non-destructive and owner-asserted server-side
+   * (invariant #13); `price` is integer minor units + ISO currency (invariant #5). `204` on success.
+   */
+  repriceRow(venueId: number, rowLabel: string, price: MoneyView): Observable<void> {
+    return this.http.put<void>(
+      `${this.base}/api/venues/${venueId}/rows/${encodeURIComponent(rowLabel)}/price`,
+      { price },
+    );
+  }
+}
+
+/** Map an HTTP failure of the per-row reprice to a known {@link RepriceErrorCode} (RFC-7807 `code`). */
+export function repriceErrorOf(error: unknown): RepriceErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'NOT_VENUE_OWNER':
+      case 'NO_SUCH_ROW':
+      case 'NO_SUCH_VENUE':
+      case 'INVALID_REQUEST':
+      case 'CONFLICT':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
 }
 
 /** Map an HTTP failure of the layout write to a known {@link LayoutErrorCode} (RFC-7807 `code`, issue #97). */

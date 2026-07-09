@@ -54,13 +54,6 @@ function describeTab(tab: string, venueId: string): TabPlaceholder {
   const openDaily = 'Open the current daily view';
 
   switch (tab) {
-    case 'pricing':
-      return {
-        title: 'Pricing',
-        note: 'Per-row pricing gets its Liquid Glass tab in a later slice (O4). For now, set prices in the current venue editor.',
-        link: editor,
-        linkLabel: openEditor,
-      };
     case 'daily':
       return {
         title: 'Daily view',

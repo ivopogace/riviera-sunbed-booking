@@ -34,6 +34,20 @@ export interface BeachMapLayoutRequest {
   readonly sets: readonly LayoutCellRequest[];
 }
 
+/**
+ * A known per-row reprice failure (O4, #174), mapped from the RFC-7807 `code` (issue #97) for
+ * operator-facing copy. `NO_SUCH_ROW`/`NO_SUCH_VENUE` are the 404s; `NOT_VENUE_OWNER` the 403
+ * (invariant #13); `INVALID_REQUEST` the 400 edge rejection (§6b); `UNAUTHORIZED` the expired session.
+ */
+export type RepriceErrorCode =
+  | 'NOT_VENUE_OWNER'
+  | 'NO_SUCH_ROW'
+  | 'NO_SUCH_VENUE'
+  | 'INVALID_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'CONFLICT'
+  | 'UNKNOWN';
+
 /** A known layout-write failure, mapped from the RFC-7807 `code` (issue #97) for operator-facing copy. */
 export type LayoutErrorCode =
   | 'LAYOUT_IN_USE'

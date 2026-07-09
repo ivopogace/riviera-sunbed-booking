@@ -227,9 +227,9 @@ is fine; only the **write** is owner-asserted.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc | ✅ | 3810ca2 |
-| 1 — Backend reprice (port + adapter + endpoint + ITs) | ✅ | this commit |
-| 2 — Frontend Pricing tab (component + service + route + unit/a11y/contrast) | ⏳ | |
-| 3 — e2e (mocked + real-backend) + docs freshness | | |
+| 1 — Backend reprice (port + adapter + endpoint + ITs) | ✅ | 4c760f8 |
+| 2 — Frontend Pricing tab (component + service + route + unit/a11y/contrast) | ✅ | this commit |
+| 3 — e2e (mocked + real-backend) + docs freshness | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
