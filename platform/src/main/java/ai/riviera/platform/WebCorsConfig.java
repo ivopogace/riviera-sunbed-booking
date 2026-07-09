@@ -10,13 +10,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Cross-origin policy for the deployed frontend. The Angular app is served from a
- * different origin than the backend (GitHub Pages → Render), so the browser needs an
- * explicit {@code Access-Control-Allow-Origin} to call even the public health
- * endpoint. Allowed origins come from configuration
- * ({@code app.web.cors.allowed-origins}, overridable via the
- * {@code APP_WEB_CORS_ALLOWED_ORIGINS} env var) so no origin is hard-coded into the
- * deploy — non-prod defaults to the project's GitHub Pages origin.
+ * Cross-origin policy for browser callers. Since #110 the deployed sandbox is
+ * <strong>same-origin</strong> (Spring Boot serves the SPA), so the default origin list is
+ * empty — no cross-origin caller, so no CORS is needed there. The list is still configurable
+ * ({@code app.web.cors.allowed-origins}, overridable via the {@code CORS_ALLOWED_ORIGINS} env
+ * var, comma-separated) for environments that ARE cross-origin: local dev's Angular dev server
+ * ({@code :4200 → :8080}) sets it via the {@code dev} profile.
  *
  * <p>Consumed by {@link SecurityConfig} via {@code http.cors(...)}.
  */
@@ -26,7 +25,10 @@ class WebCorsConfig {
 	private final List<String> allowedOrigins;
 
 	WebCorsConfig(@Value("${app.web.cors.allowed-origins}") List<String> allowedOrigins) {
-		this.allowedOrigins = allowedOrigins;
+		// A blank entry (an empty property binds to [""]) must never become an "allowed origin";
+		// filter blanks so an empty config means "no cross-origin caller" (R-6), not a malformed
+		// empty-string origin that could match an empty Origin header.
+		this.allowedOrigins = allowedOrigins.stream().filter(origin -> !origin.isBlank()).toList();
 	}
 
 	@Bean

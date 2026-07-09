@@ -80,16 +80,16 @@ for the literal `feature/<slug>` per the riviera-sdlc cloud addendum).
 - [ ] **AC-3 (SPA deep links served by the backend):** Given a fresh browser, when it
   navigates directly to `https://riviera-sunbed-booking.onrender.com/operator/1`, then the
   app boots (Spring serves `index.html` for the non-`/api` path) and no hard 404 is served.
-  *Pinned by:* `SpaShellIT` (`GET /operator/1` → 200 `text/html` index shell) + post-deploy V-3.
+  *Pinned by:* `SpaShellTest` (`GET /operator/1` → 200 `text/html` index shell) + post-deploy V-3.
 - [ ] **AC-4 (the secured API is unchanged):** Given the SPA shell is now public, when an
   anonymous client hits a protected path, then authorization is **identical to before this
   slice** — `GET /api/auth/me` → 401, operator write paths → 401, `GET /api/venues/**` → 200,
   actuator hardening intact, and an unknown `/api/**` path → 401 anonymous (not the SPA
-  shell). *Pinned by:* `SpaShellIT` + the existing `AuthSessionIT` / `ActuatorHardeningIT` /
+  shell). *Pinned by:* `SpaShellTest` + the existing `AuthSessionIT` / `ActuatorHardeningIT` /
   `CrossVenueDenialIT` staying green.
 - [ ] **AC-5 (SPA shell is public):** Given an anonymous browser, when it requests `/`, a
   hashed asset (`/main-*.js`), or a deep-link route, then all return 200 (shell/asset), never
-  401 — while `/api/**` keeps its per-endpoint rules. *Pinned by:* `SpaShellIT`.
+  401 — while `/api/**` keeps its per-endpoint rules. *Pinned by:* `SpaShellTest`.
 - [ ] **AC-6 (single deploy on green CI):** Given a green CI run on `main`, when CD evaluates,
   then only the **backend** service deploys (it now carries the SPA); no separate frontend
   deploy exists. A red CI run deploys nothing. *Pinned by:* `deploy.yml` (frontend-pages job
@@ -156,7 +156,7 @@ fallback serves HTML for non-API paths; API error contracts (`ApiErrorHandler`) 
   variable, which the backend never used). — *Owner:* agent/maintainer · *Resolves by:* Phase 3.
 - **Assumption:** baking the SPA into `classpath:/static/` + Spring's default resource
   handling serves it correctly with the `PathResourceResolver` fallback for deep links.
-  Verified by `SpaShellIT` + the local image smoke check before cutover. — *Owner:* agent ·
+  Verified by `SpaShellTest` + the local image smoke check before cutover. — *Owner:* agent ·
   *Resolves by:* Phase 3.
 
 ## Availability & concurrency (invariant #2)
@@ -213,7 +213,7 @@ now addresses the backend's own origin for both the app and the API.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Probe the static-site approach (R-1 gate) | ✅ | (falsified; pivoted — see audit log) |
-| 1 — Backend: SPA-serving + security carve-out + CORS (test-first) | | |
+| 1 — Backend: SPA-serving + security carve-out + CORS (test-first) | ✅ | SpaWebConfig + 2 filter chains + CORS empty-default; SpaShellTest + WebCorsConfigEmptyOriginsTest green, all security ITs green |
 | 2 — Dockerfile (Node stage, repo-root context) + frontend env + CD + docs | | |
 | 3 — Render reconfig + deploy + sign-in probe + Pages/static-site retirement + close-out | | |
 
@@ -233,9 +233,9 @@ as each phase's change.
   default → empty.
 - `platform/src/main/resources/static/.gitkeep` — **new**; keeps the (empty) static dir; the
   SPA is injected at image build.
-- `platform/src/test/resources/static/index.html` — **new**; stub shell so `SpaShellIT` can
+- `platform/src/test/resources/static/index.html` — **new**; stub shell so `SpaShellTest` can
   assert the fallback without a real FE build.
-- `platform/src/test/java/ai/riviera/platform/SpaShellIT.java` (or `@WebMvcTest` slice) — the
+- `platform/src/test/java/ai/riviera/platform/SpaShellTest.java` (or `@WebMvcTest` slice) — the
   AC-3/4/5 pins.
 - `platform/Dockerfile` — Node build stage + repo-root COPYs; SPA into `static/` before `bootJar`.
 - `frontend/src/environments/environment.prod.ts` — `apiBaseUrl: ''`.
@@ -253,9 +253,9 @@ as each phase's change.
 
 **Files:** `SpaWebConfig.java` (new), `SecurityConfig.java`, `WebCorsConfig.java`,
 `application.properties`, `src/main/resources/static/.gitkeep`,
-`src/test/resources/static/index.html`, `SpaShellIT.java` (new).
+`src/test/resources/static/index.html`, `SpaShellTest.java` (new).
 
-- [ ] **Step 1 (red): `SpaShellIT`** pinning: `GET /` → 200 `text/html` (the stub shell);
+- [ ] **Step 1 (red): `SpaShellTest`** pinning: `GET /` → 200 `text/html` (the stub shell);
   `GET /operator/1` → 200 shell (deep-link fallback); `GET /main-x.js` for a missing asset →
   shell (SPA fallback tradeoff, documented); `GET /api/auth/me` anonymous → 401;
   `GET /api/venues` anonymous → 200; `GET /api/does-not-exist` anonymous → 401 (**not** the
@@ -271,7 +271,7 @@ as each phase's change.
 - [ ] **Step 4: `WebCorsConfig` + `application.properties`** — filter blank origins; register
   CORS only when the list is non-empty; default `app.web.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:}`.
   A `WebCorsConfig` unit test covers empty → no cross-origin caller, non-empty → allowlisted.
-- [ ] **Step 5:** scoped tests (structural net + `SpaShellIT` + touched security ITs); update
+- [ ] **Step 5:** scoped tests (structural net + `SpaShellTest` + touched security ITs); update
   Execution status in the same commit window.
 
 ## Phase 2 — Dockerfile + frontend env + CD + docs

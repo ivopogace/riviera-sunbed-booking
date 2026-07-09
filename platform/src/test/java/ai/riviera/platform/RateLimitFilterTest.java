@@ -36,6 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 @TestPropertySource(properties = {
+		// The deployed default is now empty (same-origin since #110); this preflight test needs
+		// an explicit allowed origin — declare it rather than lean on the default.
+		"app.web.cors.allowed-origins=https://ivopogace.github.io",
 		"riviera.ratelimit.enabled=true",
 		"riviera.ratelimit.per-ip.capacity=2",
 		"riviera.ratelimit.per-ip.refill-period=PT1H",
