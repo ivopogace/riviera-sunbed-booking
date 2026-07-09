@@ -7,9 +7,11 @@ name: CD
 # out of the required status checks and uses `workflow_run` so it can only start once
 # the CI workflow has already concluded.
 #
-# Each deploy job is opt-in via a repository VARIABLE so the workflow stays green as a
-# no-op until the maintainer has wired the accounts/secrets (the same opt-in-via-config
-# no-op pattern CI uses for its secret-guarded steps). See docs/deploy/cd-pipeline.md.
+# Since #110 the frontend is served SAME-ORIGIN by the backend: Spring Boot bundles the
+# built Angular SPA into its Docker image, so there is ONE deploy — the backend service.
+# The old GitHub Pages frontend job is retired. Deploy is opt-in via the
+# DEPLOY_BACKEND_RENDER repository VARIABLE so the workflow stays green as a no-op until
+# the maintainer has wired the account/secret. See docs/deploy/cd-pipeline.md.
 
 on:
   # Automatic, production path: deploy only after CI succeeds on `main`.
@@ -21,14 +23,8 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
-  # Manual path: re-deploy on demand, choosing the target.
+  # Manual path: re-deploy the backend on demand (it now also serves the SPA — issue #110).
   workflow_dispatch:
-    inputs:
-      target:
-        description: What to deploy
-        type: choice
-        options: [frontend, backend, both]
-        default: frontend
 
 # One deploy per branch at a time; a newer green run waits rather than racing.
 concurrency:
@@ -41,7 +37,7 @@ permissions:
 jobs:
   # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
   # Manual dispatch is itself an explicit opt-in, so it passes the gate directly. If
-  # the gate fails, the deploy jobs are skipped and nothing turns red.
+  # the gate fails, the deploy job is skipped and nothing turns red.
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
@@ -56,97 +52,17 @@ jobs:
           echo "event: ${{ github.event_name }}"
           echo "Proceeding to deploy."
 
-  frontend-pages:
-    name: Deploy frontend → GitHub Pages
-    needs: guard
-    # workflow_run path is opt-in via the repo variable; manual dispatch is explicit
-    # and runs regardless of the variable.
-    if: >-
-      ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_FRONTEND_PAGES == 'true')
-          || (github.event_name == 'workflow_dispatch'
-                && (inputs.target == 'frontend' || inputs.target == 'both')) }}
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    steps:
-      - name: Checkout the commit to deploy
-        uses: actions/checkout@v7
-        with:
-          # workflow_run: the exact commit CI built; otherwise the triggering ref.
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-
-      - name: Set up Node (from .nvmrc)
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build (production, repo-subpath base href)
-        working-directory: frontend
-        env:
-          BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
-          STRIPE_PUBLISHABLE_KEY: ${{ vars.STRIPE_PUBLISHABLE_KEY }}
-        run: |
-          # Rewrite the prod environment from repo variables so the backend host and the Stripe
-          # publishable key can change without a code edit. Neither is a secret — the API base URL
-          # is a public URL and the Stripe key is a publishable (pk_) key. Each falls back to the
-          # value committed in environment.prod.ts when its variable is unset.
-          if [ -n "$BACKEND_API_URL" ] || [ -n "$STRIPE_PUBLISHABLE_KEY" ]; then
-            api="${BACKEND_API_URL:-https://riviera-sunbed-booking.onrender.com}"
-            pk="${STRIPE_PUBLISHABLE_KEY:-}"
-            printf "export const environment = {\n  production: true,\n  apiBaseUrl: '%s',\n  stripePublishableKey: '%s',\n};\n" "$api" "$pk" > src/environments/environment.prod.ts
-            echo "Rewrote prod environment (apiBaseUrl=$api, stripePublishableKey set: $([ -n "$pk" ] && echo yes || echo no))"
-          fi
-          npm run build -- --base-href="/${{ github.event.repository.name }}/"
-
-      - name: SPA deep-link fallback (404 → index)
-        working-directory: frontend
-        run: cp dist/frontend/browser/index.html dist/frontend/browser/404.html
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v6
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          # Name the artifact per run+attempt. upload-pages-artifact wraps
-          # upload-artifact@v4, which does NOT overwrite by default, so a *re-run*
-          # (run_attempt > 1) would otherwise leave the previous attempt's artifact
-          # in place alongside the new one. deploy-pages then finds two artifacts
-          # named "github-pages" for the run and aborts ("Multiple artifacts named
-          # …were unexpectedly found"). A per-attempt name keeps each attempt's
-          # artifact unique, so deploy-pages resolves exactly one.
-          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
-          path: frontend/dist/frontend/browser
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
-        with:
-          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
-
   backend-render:
-    name: Deploy backend → Render
+    name: Deploy backend (serves SPA + /api) → Render
     needs: guard
     # Never runs on the temporary branch push (no secrets there); opt-in via the repo
-    # variable on the automatic path, or explicit dispatch targeting the backend.
+    # variable on the automatic path, or any explicit manual dispatch.
     if: >-
       ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
-          || (github.event_name == 'workflow_dispatch'
-                && (inputs.target == 'backend' || inputs.target == 'both')) }}
+          || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render deploy (Render git-builds the Docker image)
+      - name: Trigger Render deploy (Render git-builds the Docker image — SPA + jar)
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
@@ -159,6 +75,7 @@ jobs:
 
       - name: Wait for backend health (AC-1 / AC-2)
         env:
+          # The backend's public URL — now also the app origin. Used only for the health poll.
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
         run: |
           if [ -z "$BACKEND_API_URL" ]; then

@@ -1,0 +1,4 @@
+# Keeps the (otherwise empty) static resource directory in git. The built Angular SPA is
+# baked in here by the Docker image's Node stage (issue #110) and is NOT committed —
+# see platform/Dockerfile. Locally (bootRun) this stays empty; local dev uses the Angular
+# dev server on :4200, so GET / has no shell to serve (expected, R-8).

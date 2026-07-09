@@ -126,10 +126,13 @@ host. Per environment:
 
 - **Dev/demo (Render — this is the only thing Render is for):** GitHub Pages
   (`github.io`) and Render (`onrender.com`) are cross-site; a session cookie would
-  need `SameSite=None` and Safari's ITP would still drop it. Fix (devops slice):
-  serve the FE from a **Render static site with an `/api/*` rewrite-proxy** to the
-  backend service → same-origin, cookies work, the CORS surface shrinks.
-  ADR-0004 (non-prod hosting) gets amended by that slice.
+  need `SameSite=None` and Safari's ITP would still drop it. Fix (issue #110): the
+  **backend serves the SPA itself** — the Angular app is bundled into the Spring Boot
+  image (`classpath:/static/`), so one Render service hosts both the app and `/api/**`
+  → same-origin, cookies work, no cross-origin CORS. (A Render static-site `/api/*`
+  rewrite-proxy was tried first and abandoned: a static site cannot reverse-proxy to
+  another `*.onrender.com` service — it returns an empty `200` that never reaches the
+  backend.) ADR-0004 (non-prod hosting) is amended by this slice.
 - **Prod:** will run on a **DSGVO-conform hoster** (the ADR-0004 deferred
   follow-up; identity data makes this stricter, not looser). The same-site
   constraint is an explicit **selection criterion** for that hoster: one origin

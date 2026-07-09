@@ -5,6 +5,7 @@ import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -82,9 +83,16 @@ class SecurityConfig {
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
+	@Order(1)
+	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock) {
 		http
+				// Scope this chain to the backend surface only (issue #110): the SPA shell is a
+				// separate, PUBLIC chain below. Ordered FIRST, so /api + /actuator match here and
+				// keep the full authorization/CSRF/rate-limit posture unchanged. Every controller
+				// mapping is under /api (VenueReadController … AuthController), and actuator under
+				// /actuator, so no endpoint escapes to the permit-all SPA chain.
+				.securityMatcher("/api/**", "/actuator/**")
 				.cors(Customizer.withDefaults())
 				// Per-IP + per-code rate limiting for the public booking endpoints (issue #56) and,
 				// on its own stricter per-IP budget, the session login (issue #109, D-8): runs
@@ -181,6 +189,27 @@ class SecurityConfig {
 		return http.build();
 	}
 
+	/**
+	 * The public single-page-app shell (issue #110): every non-API, non-actuator path — the
+	 * Angular index, its hashed assets, and the client-side deep-link routes served by
+	 * {@link SpaWebConfig} — is anonymous. Before this slice these fell under the API chain's
+	 * {@code anyRequest().authenticated()} and returned 401, which is what stopped the deployed
+	 * SPA from even loading. Ordered LAST, so it only catches what the API chain's
+	 * {@code securityMatcher} did not. Serving the SPA same-origin is what makes the S1
+	 * session/CSRF cookies first-party — no auth-model change.
+	 *
+	 * <p>CSRF is left at its <strong>default (enabled)</strong>: this chain serves only safe static
+	 * GETs, which CSRF never challenges, so there is nothing to protect and nothing to disable —
+	 * every state-changing surface lives under {@code /api/**} in {@link #apiSecurityFilterChain}
+	 * with the {@code .spa()} token. Explicitly disabling CSRF here would trip
+	 * {@code java/spring-disabled-csrf-protection} (CodeQL) for no security benefit.
+	 */
+	@Bean
+	@Order(2)
+	SecurityFilterChain spaSecurityFilterChain(HttpSecurity http) {
+		http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+		return http.build();
+	}
 
 	/**
 	 * The framework authentication manager (issue #109): built by Spring Security's global
