@@ -12,6 +12,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.NewVenueCommand;
+import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.Venues;
@@ -144,6 +145,23 @@ class JdbcVenues implements Venues {
 		return jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
+				.update();
+	}
+
+	@Override
+	public int repriceRow(VenueId venueId, RowPriceCommand c) {
+		// Non-destructive per-row reprice (O4, #174): overwrite only the price columns for every set
+		// carrying the row label. The WHERE (venue_id, row_label) rides the set_position_cell_uniq
+		// UNIQUE(venue_id, row_label, position_no) index prefix. Rows-affected 0 ⇒ unknown row.
+		return jdbc.sql("""
+				UPDATE set_position
+				SET price_minor = :priceMinor, price_currency = :priceCurrency
+				WHERE venue_id = :venue AND row_label = :rowLabel
+				""")
+				.param("priceMinor", c.priceMinor())
+				.param("priceCurrency", c.priceCurrency())
+				.param(P_VENUE, venueId.value())
+				.param("rowLabel", c.rowLabel())
 				.update();
 	}
 

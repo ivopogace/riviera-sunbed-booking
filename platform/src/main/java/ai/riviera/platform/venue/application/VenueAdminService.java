@@ -119,6 +119,23 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile 
 
 	@Override
 	@Transactional
+	public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, RowPriceCommand command) {
+		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		if (!venues.venueExists(venueId)) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		}
+		// Non-destructive: the UPDATE's rows-affected is the row existence check (0 ⇒ no set carries
+		// the label). Repricing never touches availability/set identity, so — unlike replaceLayout — it
+		// needs no claim probe and is allowed on a venue with bookings/holds (see EditBeachMap#repriceRow).
+		int updated = venues.repriceRow(venueId, command);
+		return updated == 0
+				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW)
+				: ChangeOutcome.Applied.APPLIED;
+	}
+
+	@Override
+	@Transactional
 	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));

@@ -13,6 +13,8 @@ public enum SetRejection {
 	NO_SUCH_VENUE,
 	/** No set with the given id belongs to the venue. */
 	NO_SUCH_SET,
+	/** No set on the venue carries the given row label (O4 reprice, issue #174). */
+	NO_SUCH_ROW,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */
 	CELL_TAKEN,
 	/** Another set already occupies the target {@code (row_label, position_no)} slot. */

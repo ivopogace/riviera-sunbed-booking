@@ -137,6 +137,19 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void rowRepriceByNonOwnerIs403() throws Exception {
+		// O4 (#174): repricing a beach-map row is venue-scoped — a non-owner is denied before any
+		// read/write, so Miramar's prices are never touched. Ownership asserts first (invariant #13).
+		actingAs(operatorA);
+		mvc.perform(put("/api/venues/{v}/rows/{r}/price", MIRAMAR, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"price\":{\"minorUnits\":9999,\"currency\":\"EUR\"}}"))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void staffBookingsReadByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
