@@ -228,8 +228,8 @@ is fine; only the **write** is owner-asserted.
 |-------|--------|---------|
 | 0 — Plan doc | ✅ | 3810ca2 |
 | 1 — Backend reprice (port + adapter + endpoint + ITs) | ✅ | 4c760f8 |
-| 2 — Frontend Pricing tab (component + service + route + unit/a11y/contrast) | ✅ | this commit |
-| 3 — e2e (mocked + real-backend) + docs freshness | ⏳ | |
+| 2 — Frontend Pricing tab (component + service + route + unit/a11y/contrast) | ✅ | 9fccb64 |
+| 3 — e2e (mocked + real-backend) + docs freshness | ⏳ | mocked+real-backend done (this commit); docs freshness at merge close-out |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
