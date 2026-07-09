@@ -81,4 +81,13 @@ class SpaShellTest {
 		// api/ + actuator/ prefixes, and the API chain authorizes before the resource handler.
 		mvc.perform(get("/api/does-not-exist")).andExpect(status().isUnauthorized());
 	}
+
+	@Test
+	void missingAssetReturns404NotTheShell() throws Exception {
+		// A stale hashed chunk (a path WITH a file extension) that no longer exists must 404, not
+		// serve index.html — after a redeploy the old shell lazy-loads gone chunks, and returning
+		// HTML for a .js makes the browser refuse it as a module and break the page (review fix).
+		mvc.perform(get("/chunk-STALE123.js")).andExpect(status().isNotFound());
+		mvc.perform(get("/assets/gone.json")).andExpect(status().isNotFound());
+	}
 }

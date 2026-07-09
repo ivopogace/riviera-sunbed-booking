@@ -22,9 +22,11 @@ ARG STRIPE_PUBLISHABLE_KEY=""
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# Write the prod environment (same-origin; default base-href '/'). fileReplacements swaps this
-# in for the production build (angular.json). Public values only.
-RUN printf "export const environment = {\n  production: true,\n  apiBaseUrl: '',\n  stripePublishableKey: '%s',\n};\n" "$STRIPE_PUBLISHABLE_KEY" > src/environments/environment.prod.ts \
+# Inject the public Stripe publishable key into the COMMITTED prod environment (which already sets
+# apiBaseUrl: '' for same-origin; fileReplacements swaps it in for the production build). A targeted
+# replace — not a full-file overwrite — so any other committed env field survives into the bundle.
+# Public values only.
+RUN sed -i "s#stripePublishableKey: '[^']*'#stripePublishableKey: '${STRIPE_PUBLISHABLE_KEY}'#" src/environments/environment.prod.ts \
     && npm run build
 
 # --- Stage 2: build the executable jar with the JDK 25 toolchain --------------

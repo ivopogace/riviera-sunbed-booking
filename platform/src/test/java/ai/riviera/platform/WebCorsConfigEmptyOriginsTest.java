@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -26,10 +28,26 @@ class WebCorsConfigEmptyOriginsTest {
 	MockMvc mockMvc;
 
 	@Test
-	void anyCrossOriginPreflightIsRejectedWhenNoOriginsConfigured() throws Exception {
+	void crossOriginGetsNoAllowOriginHeaderWhenNoOriginsConfigured() throws Exception {
+		// Same-origin app: with no CORS mapping registered, a cross-origin request/preflight receives
+		// NO Access-Control-Allow-Origin header, so the browser blocks it. The server does NOT 403 —
+		// a blanket 403 would also reject legitimate same-origin writes behind the TLS proxy (the
+		// review-fixed bug); the browser enforces the cross-origin block via the missing header.
 		mockMvc.perform(options("/actuator/health")
-						.header("Origin", "https://ivopogace.github.io")
+						.header("Origin", "https://evil.example.com")
 						.header("Access-Control-Request-Method", "GET"))
-				.andExpect(status().isForbidden());
+				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+	}
+
+	@Test
+	void sameOriginActualRequestIsNotRejectedWhenNoOriginsConfigured() throws Exception {
+		// Behind Render's TLS-terminating proxy, Spring sees a SAME-origin request as cross-origin
+		// (internal http vs the browser's https Origin), so CorsUtils.isCorsRequest is true even for
+		// a same-origin call. With no origins configured the source registers no mapping, so an
+		// ACTUAL request must still pass (only a genuine cross-origin PREFLIGHT is denied) — else
+		// every same-origin write would 403 in production. Regression test for the review finding.
+		mockMvc.perform(get("/api/venues")
+						.header("Origin", "https://riviera-sunbed-booking.onrender.com"))
+				.andExpect(status().isOk());
 	}
 }

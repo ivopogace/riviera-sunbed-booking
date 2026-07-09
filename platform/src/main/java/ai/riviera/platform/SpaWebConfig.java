@@ -30,8 +30,8 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 @Component
 class SpaWebConfig implements WebMvcConfigurer {
 
-	/** The SPA entry document; every non-asset client route resolves here. */
-	private static final String INDEX = "static/index.html";
+	/** The SPA entry document, resolved once; every extensionless client route falls back here. */
+	private static final Resource INDEX = new ClassPathResource("static/index.html");
 	/** Backend path prefixes (relative, no leading slash) that must never be served the shell. */
 	private static final String API_PREFIX = "api/";
 	private static final String ACTUATOR_PREFIX = "actuator/";
@@ -45,9 +45,12 @@ class SpaWebConfig implements WebMvcConfigurer {
 	}
 
 	/**
-	 * Serves the requested static asset when it exists; otherwise returns {@code index.html}
-	 * so the Angular router owns the route. Returns {@code null} (→ not-found) for backend
-	 * paths so an unmapped {@code /api}/{@code /actuator} request is never masked as the shell.
+	 * Serves the requested static asset when it exists; for an extensionless CLIENT ROUTE (a deep
+	 * link like {@code /operator/1}) with no matching file, falls back to {@code index.html} so the
+	 * Angular router owns it. A missing path that looks like an ASSET (has a file extension — e.g.
+	 * a stale hashed {@code .js} chunk after a redeploy) returns {@code null} (→ 404), NOT the
+	 * shell: serving HTML for a {@code .js} makes the browser refuse it as a module and the page
+	 * breaks instead of recovering with a reload. Backend paths never fall back either.
 	 */
 	private static final class SpaFallbackResolver extends PathResourceResolver {
 		@Override
@@ -59,12 +62,22 @@ class SpaWebConfig implements WebMvcConfigurer {
 			// serve the shell for it instead of the directory. Every real asset has a non-empty path.
 			if (!resourcePath.isEmpty()) {
 				Resource requested = location.createRelative(resourcePath);
-				if (requested.exists() && requested.isReadable()) {
+				// checkResource keeps the resolved resource under static/ — the path-traversal guard
+				// the base PathResourceResolver applies by default, restored here since we override it.
+				if (requested.exists() && requested.isReadable() && checkResource(requested, location)) {
 					return requested;
 				}
+				// A missing ASSET must 404, not serve the shell (see the class/method note).
+				if (looksLikeAsset(resourcePath)) {
+					return null;
+				}
 			}
-			Resource index = new ClassPathResource(INDEX);
-			return index.exists() ? index : null;
+			return INDEX.exists() ? INDEX : null;
+		}
+
+		/** True when the last path segment carries a file extension (a static asset, not a route). */
+		private static boolean looksLikeAsset(String resourcePath) {
+			return resourcePath.indexOf('.', resourcePath.lastIndexOf('/') + 1) >= 0;
 		}
 	}
 }

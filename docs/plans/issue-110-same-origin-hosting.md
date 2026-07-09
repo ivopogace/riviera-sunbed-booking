@@ -220,6 +220,20 @@ now addresses the backend's own origin for both the app and the API.
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window
 as each phase's change.
 
+**Review gate (high-effort `/code-review` + riviera-review-overlay, 2026-07-09):** 5 findings,
+all fixed and re-entered at Implement — **(1, CONFIRMED)** empty CORS allowlist was a deny-all that
+would 403 same-origin writes behind Render's TLS-terminating proxy (Spring sees internal `http` vs
+the browser's `https` Origin → `isCorsRequest` true even same-origin). `WebCorsConfig` now registers
+**no mapping** when empty → null config → an actual request passes, a cross-origin preflight gets no
+`Access-Control-Allow-Origin` (browser blocks it); regression test added. **(2, CONFIRMED)** the SPA
+fallback returned `index.html` for missing **assets** — a stale hashed chunk after a redeploy served
+HTML and broke as a bad JS module; now only extensionless **routes** fall back, missing assets 404.
+**(3, PLAUSIBLE)** restored the `PathResourceResolver.checkResource` path-traversal guard dropped by
+the override. **(4, CONFIRMED)** the Dockerfile now `sed`-injects the Stripe key instead of
+overwriting the whole `environment.prod.ts` (drift trap). **(5)** reused the index `ClassPathResource`.
+Three low-value cleanups were refuted (whitespace-trim, duplicated prefix constant, test-origin
+constant).
+
 ---
 
 ## File structure
