@@ -30,6 +30,7 @@ class JdbcVenues implements Venues {
 	/** Named-parameter keys reused across the set queries (must match the {@code :name} SQL refs). */
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
+	private static final String P_ROW_LABEL = "rowLabel";
 
 	/** The set-position INSERT column/values, shared by the single-row and bulk paths (one column list). */
 	private static final String INSERT_SET_SQL = """
@@ -99,7 +100,7 @@ class JdbcVenues implements Venues {
 				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS cell_taken
 				""")
 				.param(P_VENUE, venueId.value())
-				.param("rowLabel", c.rowLabel())
+				.param(P_ROW_LABEL, c.rowLabel())
 				.param("positionNo", c.positionNo())
 				.param("gridX", c.gridX())
 				.param("gridY", c.gridY())
@@ -161,7 +162,7 @@ class JdbcVenues implements Venues {
 				.param("priceMinor", c.priceMinor())
 				.param("priceCurrency", c.priceCurrency())
 				.param(P_VENUE, venueId.value())
-				.param("rowLabel", c.rowLabel())
+				.param(P_ROW_LABEL, c.rowLabel())
 				.update();
 	}
 
@@ -230,7 +231,7 @@ class JdbcVenues implements Venues {
 
 	private static Map<String, Object> setParams(SetCommand c) {
 		return Map.of(
-				"rowLabel", c.rowLabel(), "positionNo", c.positionNo(), "tier", c.tier(),
+				P_ROW_LABEL, c.rowLabel(), "positionNo", c.positionNo(), "tier", c.tier(),
 				"pool", c.pool(), "priceMinor", c.priceMinor(), "priceCurrency", c.priceCurrency(),
 				"gridX", c.gridX(), "gridY", c.gridY());
 	}
