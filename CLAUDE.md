@@ -16,8 +16,9 @@ visual beach map, and pay in-app; the platform takes a commission per booking an
 pays venues out manually. Full design: `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`;
 visual design (Liquid Glass v3 tourist + v2 operator console): `docs/design/`.
 
-Current state: full stack built and deployed (frontend on GitHub Pages at
-ivopogace.github.io/riviera-sunbed-booking). The tourist Liquid Glass restyle
+Current state: full stack built and deployed. Since #110 the frontend is served
+**same-origin by the backend** (Spring bundles the Angular SPA into its Docker image) at
+riviera-sunbed-booking.onrender.com; GitHub Pages is retired. The tourist Liquid Glass restyle
 (epic #133, T2–T8) is done; the operator console (epic #141) is in progress —
 O1 shell + O2 stats strip + O3 layout editor merged, O4–O8 remain.
 
@@ -71,7 +72,7 @@ full-suite-only failure class (shared-state beans accumulating across tests).
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs backend build/test, frontend
 lint/test/build + e2e, and a SonarCloud scan on every PR; `codeql.yml` scans;
-`deploy.yml` deploys the frontend to GitHub Pages from `main`. The Sonar merge
+`deploy.yml` deploys the single backend image (which serves the SPA) to Render from `main`. The Sonar merge
 bar is stricter than the default quality gate: **0 new issues, 0 duplicated
 blocks, ≥80% new-code coverage** — review the issue list, not just the gate
 pass/fail (`riviera-sdlc` enforces this). Non-prod backend hosting is

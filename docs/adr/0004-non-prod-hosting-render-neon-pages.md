@@ -1,6 +1,7 @@
 # ADR-0004: Non-prod hosting on Render + Neon + GitHub Pages
 
-- **Status:** Accepted
+- **Status:** Accepted — **Amended 2026-07-09 (issue #110)**: the frontend moves from GitHub
+  Pages to **same-origin** hosting (the backend serves the SPA). See the amendment section.
 - **Date:** 2026-06-27
 
 ## Context
@@ -66,3 +67,40 @@ this non-prod pipeline.
   over-engineering for dummy data and slower to stand up. Correctly deferred to PROD.
 - **Bundling the Angular app into the Spring Boot jar (single deploy)** — rejected:
   loses the free static-hosting/CDN benefit of Pages and couples FE/BE release cadence.
+  *(Reversed for the dev/demo env by the #110 amendment below — the same-origin requirement
+  outweighs those benefits here.)*
+
+## Amendment (2026-07-09, issue #110): same-origin frontend (Spring serves the SPA)
+
+The **frontend → GitHub Pages** decision is superseded for the dev/demo env. Session cookies
+(S1, issue #109) require the SPA and `/api/**` to be **same-site in every deployed
+environment**; Pages (`*.github.io`) and the API (`*.onrender.com`) are cross-site, so the
+`SESSION` / `XSRF-TOKEN` cookies were dropped by the browser (Safari's ITP most aggressively)
+and sign-in failed with a **403 CSRF error before credentials were even checked**.
+
+**What changed:** the Angular app is now built in a Node stage of `platform/Dockerfile` and
+baked into the backend jar's `classpath:/static/`, so the **single Render web service** serves
+both the SPA shell and `/api/**` from one origin (`riviera-sunbed-booking.onrender.com`). The
+public-shell authorization lives in a dedicated Spring Security filter chain (`SecurityConfig`,
+ordered after the `/api/**` + `/actuator/**` chain, which keeps its rules verbatim); deep links
+are served `index.html` by `SpaWebConfig`. **No auth-model change** — `.spa()` CSRF and the
+`SameSite=Lax` cookies were already correct; they only needed same-origin. GitHub Pages is
+retired and CD collapses to the one backend deploy.
+
+**Why not a static-site rewrite-proxy (the first attempt):** a Render **static site** cannot
+reverse-proxy `/api/*` to another `*.onrender.com` service — the rewrite matches but returns an
+empty `200` that never reaches the backend (verified 2026-07-09: backend direct returns venue
+JSON, the proxied path returns `Content-Length: 0` with no backend headers; confirmed against
+Render docs + community reports). A separate Caddy/nginx proxy **web service** works but adds a
+running service; a custom domain with `app.`/`api.` subdomains needs a domain. For a dev/demo
+env, one service with no new infrastructure wins.
+
+**Consequence — loses the CDN / independent-cadence benefits** the original "Bundling…"
+rejection valued: the JVM service serves the SPA (a free-tier cold start now also delays the
+first HTML), and a frontend change rebuilds the backend image. Accepted for a demo — these are
+exactly why this stays **dev/demo-only**.
+
+**Prod-hoster selection criterion (carry-forward):** the future DSGVO-conform prod hoster
+**must** serve the SPA and `/api/**` from **one origin** (a reverse proxy) or from
+**same-registrable-domain subdomains** (`app.…` / `api.…`) — anything cross-site re-breaks the
+session cookie. This is now a hard requirement on that deferred migration, not a nicety.

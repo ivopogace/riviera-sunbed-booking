@@ -1,0 +1,29 @@
+# The Docker build context is the REPOSITORY ROOT (issue #110 — the backend image bundles
+# both platform/ and frontend/). Keep the context lean and reproducible: never ship local
+# build output, dependency caches, or VCS/IDE metadata into the build. npm ci + ng build and
+# gradle bootJar all run fresh inside the image, so host-side node_modules/dist/build must not
+# be copied in.
+
+# VCS / IDE / OS
+.git/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Node (frontend)
+**/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Gradle (backend)
+**/build/
+**/.gradle/
+platform/bin/
+
+# Local/dev-only + generated (not needed by the image build)
+*.log
+compose.yaml
+graphify-out/
+.claude/
+docs/

@@ -7,8 +7,8 @@ platform takes a commission per booking and pays venues out manually.
 
 > **Status: in active development.** The full stack is built and deployed — the
 > Spring Boot backend (`platform/`, seven Modulith modules) and the Angular
-> frontend (`frontend/`), live on GitHub Pages at
-> [ivopogace.github.io/riviera-sunbed-booking](https://ivopogace.github.io/riviera-sunbed-booking).
+> frontend (`frontend/`), served same-origin by the backend since #110 (Spring bundles
+> the SPA into its image) at [riviera-sunbed-booking.onrender.com](https://riviera-sunbed-booking.onrender.com).
 > The tourist-facing Liquid Glass restyle (epic #133) is complete; the operator
 > console (epic #141) is in progress. Per-slice status lives in
 > [`docs/plans/`](docs/plans/). If you're here to contribute, start with
