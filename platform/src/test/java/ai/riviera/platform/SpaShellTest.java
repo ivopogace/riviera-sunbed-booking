@@ -83,6 +83,16 @@ class SpaShellTest {
 	}
 
 	@Test
+	void existingAssetIsServedDirectly() throws Exception {
+		// A request for an actual bundled file (index.html here; hashed JS/CSS in production) is
+		// served as-is — exercises the resource-exists path, distinct from the deep-link fallback.
+		mvc.perform(get("/index.html"))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+				.andExpect(content().string(containsString("app-root")));
+	}
+
+	@Test
 	void missingAssetReturns404NotTheShell() throws Exception {
 		// A stale hashed chunk (a path WITH a file extension) that no longer exists must 404, not
 		// serve index.html — after a redeploy the old shell lazy-loads gone chunks, and returning

@@ -52,26 +52,26 @@ class SpaWebConfig implements WebMvcConfigurer {
 	 * shell: serving HTML for a {@code .js} makes the browser refuse it as a module and the page
 	 * breaks instead of recovering with a reload. Backend paths never fall back either.
 	 */
-	private static final class SpaFallbackResolver extends PathResourceResolver {
+	static final class SpaFallbackResolver extends PathResourceResolver {
 		@Override
 		protected Resource getResource(String resourcePath, @NonNull Resource location) throws IOException {
 			if (resourcePath.startsWith(API_PREFIX) || resourcePath.startsWith(ACTUATOR_PREFIX)) {
 				return null;
 			}
-			// An empty path (a request for "/") resolves to the static/ DIRECTORY, which "exists";
-			// serve the shell for it instead of the directory. Every real asset has a non-empty path.
 			if (!resourcePath.isEmpty()) {
-				Resource requested = location.createRelative(resourcePath);
-				// checkResource keeps the resolved resource under static/ — the path-traversal guard
-				// the base PathResourceResolver applies by default, restored here since we override it.
-				if (requested.exists() && requested.isReadable() && checkResource(requested, location)) {
-					return requested;
+				// Delegate real-asset resolution to the base resolver: it applies its own
+				// path-traversal guard (createRelative + checkResource), so a user-controlled path
+				// can never escape static/ — and the resolution sink stays in framework code.
+				Resource resolved = super.getResource(resourcePath, location);
+				if (resolved != null) {
+					return resolved;
 				}
-				// A missing ASSET must 404, not serve the shell (see the class/method note).
+				// No matching file: a missing ASSET must 404, not serve the shell (see the note).
 				if (looksLikeAsset(resourcePath)) {
 					return null;
 				}
 			}
+			// An empty path (a request for "/") or an extensionless client route → the SPA shell.
 			return INDEX.exists() ? INDEX : null;
 		}
 

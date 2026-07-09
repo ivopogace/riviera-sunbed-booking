@@ -13,7 +13,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -195,18 +194,20 @@ class SecurityConfig {
 	 * Angular index, its hashed assets, and the client-side deep-link routes served by
 	 * {@link SpaWebConfig} — is anonymous. Before this slice these fell under the API chain's
 	 * {@code anyRequest().authenticated()} and returned 401, which is what stopped the deployed
-	 * SPA from even loading. CSRF is disabled here because these are static GETs with no state
-	 * change; every state-changing surface lives under {@code /api/**} in the ordered-first
-	 * {@link #apiSecurityFilterChain}. Ordered LAST, so it only catches what the API chain's
+	 * SPA from even loading. Ordered LAST, so it only catches what the API chain's
 	 * {@code securityMatcher} did not. Serving the SPA same-origin is what makes the S1
 	 * session/CSRF cookies first-party — no auth-model change.
+	 *
+	 * <p>CSRF is left at its <strong>default (enabled)</strong>: this chain serves only safe static
+	 * GETs, which CSRF never challenges, so there is nothing to protect and nothing to disable —
+	 * every state-changing surface lives under {@code /api/**} in {@link #apiSecurityFilterChain}
+	 * with the {@code .spa()} token. Explicitly disabling CSRF here would trip
+	 * {@code java/spring-disabled-csrf-protection} (CodeQL) for no security benefit.
 	 */
 	@Bean
 	@Order(2)
 	SecurityFilterChain spaSecurityFilterChain(HttpSecurity http) {
-		http
-				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-				.csrf(AbstractHttpConfigurer::disable);
+		http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 		return http.build();
 	}
 

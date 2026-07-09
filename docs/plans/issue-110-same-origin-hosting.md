@@ -234,6 +234,15 @@ overwriting the whole `environment.prod.ts` (drift trap). **(5)** reused the ind
 Three low-value cleanups were refuted (whitespace-trim, duplicated prefix constant, test-origin
 constant).
 
+**CI gates (PR #211):** **CodeQL** flagged `java/spring-disabled-csrf-protection` (High) on the SPA
+chain's `csrf.disable()` — a false positive (that chain serves only safe static GETs; the `/api`
+chain keeps `.spa()` CSRF), fixed in-code by leaving CSRF at its **default (enabled)** rather than
+suppressing the alert. **SonarCloud** passed every condition except new-code coverage (79.2% vs the
+80% bar; 0 new issues, 0 duplication) — closed by a direct `SpaFallbackResolverTest` covering every
+resolver branch, incl. the backend-path guard a MockMvc slice can't reach; the resolver was also
+restructured to delegate real-asset resolution to the base `PathResourceResolver` (framework
+path-traversal guard, cleaner).
+
 ---
 
 ## File structure
