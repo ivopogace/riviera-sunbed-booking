@@ -1,3 +1,7 @@
+# check=skip=SecretsUsedInArgOrEnv
+# ^ STRIPE_PUBLISHABLE_KEY (below) is a PUBLIC pk_ key — it is baked into the world-readable
+#   client bundle by design and is not a secret, so the "secrets in ARG" lint is a false positive.
+#
 # Multi-stage image for the riviera-sunbed-booking backend, which ALSO serves the Angular SPA
 # same-origin (issue #110). One service hosts both the app shell and /api, so the S1 session +
 # CSRF cookies (issue #109) are first-party — the fix that GitHub Pages (cross-site) could not give.
