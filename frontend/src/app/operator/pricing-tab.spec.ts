@@ -11,8 +11,9 @@ import { PricingTab } from './pricing-tab';
  * The O4 Pricing tab (#174). Reads `:venueId` from the PARENT route (child routes don't inherit it —
  * O1 finding) and loads the venue map to build the per-row list. Drives: one row per label with its
  * tier description; the projected take summing ONLY online-pool sets from minor units; a per-row € edit
- * committing an integer-minor-unit reprice PUT and recomputing the projection; and the cross-venue
- * (403) failure copy.
+ * committing an integer-minor-unit reprice PUT and recomputing the projection; empty-input safety (no
+ * €0 reprice); a scoped revert that survives a concurrent edit; the mixed-row and load-error states;
+ * and the cross-venue (403) failure copy.
  */
 describe('PricingTab (#174)', () => {
   let fixture: ComponentFixture<PricingTab>;
@@ -27,7 +28,7 @@ describe('PricingTab (#174)', () => {
     seat(4, 'B', 1, 'STANDARD', 'ONLINE', 2000, 1, 2),
   ];
 
-  function render(sets: SetView[] = SEED): void {
+  function configure(): void {
     TestBed.configureTestingModule({
       imports: [PricingTab],
       providers: [
@@ -50,10 +51,22 @@ describe('PricingTab (#174)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
-    // The constructor loads the current layout — flush it so the rows build.
+  }
+
+  function render(sets: SetView[] = SEED): void {
+    configure();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+  }
+
+  function renderWithLoadError(): void {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -83,12 +96,10 @@ describe('PricingTab (#174)', () => {
     render();
 
     expect(rows()).toHaveLength(2);
-    // Row A: front-row (has premium sets), 3 sets, priced €35 (3500 minor / 100).
     expect(rows()[0].getAttribute('data-row')).toBe('A');
     expect(rows()[0].textContent).toContain('Front row');
     expect(rows()[0].textContent).toContain('3 sets');
     expect(input('A').value).toBe('35');
-    // Row B: standard, 1 set, priced €20.
     expect(rows()[1].textContent).toContain('Standard');
     expect(input('B').value).toBe('20');
   });
@@ -127,6 +138,41 @@ describe('PricingTab (#174)', () => {
     req.flush(null);
   });
 
+  it('ignores a cleared field instead of repricing the row to €0', () => {
+    render();
+
+    editRow('A', ''); // clear then blur — must NOT send a €0 reprice
+
+    // No PUT is issued (afterEach http.verify() also asserts this), the input is restored, and the
+    // projection is unchanged.
+    http.expectNone((r) => r.method === 'PUT');
+    expect(input('A').value).toBe('35');
+    expect(byId('pricing-projected').textContent).toContain(formatMoney({ minorUnits: 9000, currency: 'EUR' }));
+  });
+
+  it('reverts only the failing row on error, leaving a concurrent edit intact', async () => {
+    render();
+
+    // Two overlapping edits: A→€40 and B→€30, both PUTs in flight.
+    editRow('A', '40');
+    editRow('B', '30');
+    const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
+    const reqB = http.expectOne((r) => r.url.includes('/api/venues/1/rows/B/price'));
+
+    reqA.flush({ code: 'CONFLICT' }, { status: 409, statusText: 'Conflict' }); // A fails
+    reqB.flush(null); // B succeeds
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // A reverts to €35 (3500 each), B keeps €30 (3000) — B is NOT clobbered by A's revert.
+    // Projected online = 3500 + 3500 + 3000 = 10000.
+    expect(input('A').value).toBe('35');
+    expect(input('B').value).toBe('30');
+    expect(byId('pricing-projected').textContent).toContain(
+      formatMoney({ minorUnits: 10000, currency: 'EUR' }),
+    );
+  });
+
   it('shows the not-owner message and reverts the projection when the reprice is 403', async () => {
     render();
     editRow('A', '99');
@@ -137,15 +183,38 @@ describe('PricingTab (#174)', () => {
     fixture.detectChanges();
 
     expect(byId('pricing-error-A').textContent?.toLowerCase()).toContain('manage');
-    // Reverted: the projection is back to the original 9000, not the optimistic 99×2 + 2000.
     expect(byId('pricing-projected').textContent).toContain(
       formatMoney({ minorUnits: 9000, currency: 'EUR' }),
     );
   });
 
+  it('marks a heterogeneous row as mixed with a blank input rather than a single price', () => {
+    render([
+      seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 3500, 1, 1),
+      seat(2, 'A', 2, 'PREMIUM', 'ONLINE', 4000, 2, 1), // same row, different price → mixed
+    ]);
+
+    expect(rows()[0].textContent).toContain('mixed prices');
+    expect(input('A').value).toBe('');
+
+    // Editing a mixed row unifies it: the reprice PUT carries the typed price for the whole row.
+    editRow('A', '45');
+    const req = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));
+    expect(req.request.body.price.minorUnits).toBe(4500);
+    req.flush(null);
+  });
+
+  it('shows a load-error message (not a false empty state) when the venue read fails', () => {
+    renderWithLoadError();
+    expect(byId('pricing-load-error')).toBeTruthy();
+    expect(host.querySelector('[data-testid="pricing-empty"]')).toBeNull();
+    expect(rows()).toHaveLength(0);
+  });
+
   it('shows an empty state when the venue has no sets', () => {
     render([]);
     expect(byId('pricing-empty')).toBeTruthy();
+    expect(host.querySelector('[data-testid="pricing-load-error"]')).toBeNull();
     expect(rows()).toHaveLength(0);
   });
 });

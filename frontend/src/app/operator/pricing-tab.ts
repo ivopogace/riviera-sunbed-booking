@@ -1,22 +1,28 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
-import { formatMoney } from '../shared/money';
+import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
 import { todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
 
-/** One editable pricing row: its label, tier description, and the current price as a EUR input string. */
+/**
+ * One editable pricing row. {@link priceEur} is the euros string bound to the input — empty when the
+ * row's sets carry different prices ({@link mixed}), so a heterogeneous row is not misrepresented as
+ * a single value. {@link currency} is the row's ISO currency, applied to the reprice.
+ */
 interface PriceRow {
   readonly label: string;
   readonly desc: string;
   readonly priceEur: string;
   readonly currency: string;
+  readonly mixed: boolean;
 }
 
 /**
@@ -26,10 +32,10 @@ interface PriceRow {
  * <p>Reads the current layout from the public venue map (like {@link import('./layout-editor').LayoutEditor})
  * and groups sets by row label. Committing a row's € input (on {@code change}) converts the euros to
  * <strong>integer minor units at the edge</strong> (invariant #5 — no float in state or on the wire) and
- * PUTs a non-destructive per-row reprice; the projection sums only ONLINE-pool sets. The write is
- * owner-asserted server-side (invariant #13); a failure reverts the optimistic local price and shows
- * operator-facing copy. Always porcelain (inherited from the console shell); glass via {@link CardGlass};
- * money display via {@link formatMoney}.
+ * PUTs a non-destructive per-row reprice; the projection sums only ONLINE-pool sets. An empty/cleared
+ * field is ignored (never a €0 reprice). The write is owner-asserted server-side (invariant #13); a
+ * failure reverts only that row's optimistic price and shows operator-facing copy. Always porcelain
+ * (inherited from the console shell); glass via {@link CardGlass}; money display via {@link formatMoney}.
  */
 @Component({
   selector: 'app-pricing-tab',
@@ -49,9 +55,10 @@ export class PricingTab {
   private readonly sets = signal<readonly SetView[]>([]);
   /** True once the initial load settles (success or failure) — drives the empty state vs the rows. */
   protected readonly loaded = signal(false);
+  /** True when the initial venue read failed — shows an error (not a false "no sets" empty state). */
+  protected readonly loadError = signal(false);
 
-  /** The row currently being saved, the last row saved, and the last per-row error — sequential edits. */
-  protected readonly savingRow = signal<string | null>(null);
+  /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
 
@@ -66,12 +73,17 @@ export class PricingTab {
         byLabel.set(set.rowLabel, [set]);
       }
     }
-    return Array.from(byLabel, ([label, group]) => ({
-      label,
-      desc: `${group.some((s) => s.tier === 'PREMIUM') ? 'Front row' : 'Standard'} · ${group.length} ${group.length === 1 ? 'set' : 'sets'}`,
-      priceEur: eurString(group[0].price.minorUnits),
-      currency: group[0].price.currency,
-    }));
+    return Array.from(byLabel, ([label, group]) => {
+      const uniform = group.every((s) => s.price.minorUnits === group[0].price.minorUnits);
+      return {
+        label,
+        desc: `${group.some((s) => s.tier === 'PREMIUM') ? 'Front row' : 'Standard'} · ${group.length} ${group.length === 1 ? 'set' : 'sets'}`,
+        // Blank the input for a heterogeneous row so it isn't shown as one price; editing unifies it.
+        priceEur: uniform ? minorUnitsToEuros(group[0].price.minorUnits) : '',
+        currency: group[0].price.currency,
+        mixed: !uniform,
+      };
+    });
   });
 
   /** The projected full-day take: Σ prices of ONLY the online-pool sets, rendered from minor units. */
@@ -91,26 +103,34 @@ export class PricingTab {
     }
   }
 
-  /** Commit a row's € input: convert to integer minor units, reprice the row, revert on failure. */
-  protected async onPriceChange(label: string, raw: string): Promise<void> {
+  /**
+   * Commit a row's € input: convert to integer minor units and reprice the row, reverting THAT row
+   * (not a concurrent edit) on failure. An empty or non-numeric field is ignored — the input is
+   * restored to the row's shown price, never sent as a €0 reprice.
+   */
+  protected async onPriceChange(row: PriceRow, input: HTMLInputElement): Promise<void> {
     if (this.venueId === undefined) {
       return;
     }
-    const price: MoneyView = { minorUnits: toMinorUnits(raw), currency: this.currencyOf(label) };
-    const before = this.sets();
-    this.applyRowPrice(label, price); // optimistic — the projection updates immediately
-    this.savingRow.set(label);
+    const minorUnits = eurosToMinorUnits(input.value);
+    if (minorUnits === null) {
+      input.value = row.priceEur; // a cleared/invalid field is not a €0 reprice — restore the shown value
+      return;
+    }
+    const price: MoneyView = { minorUnits, currency: row.currency };
+    const previous = this.rowPrice(row.label); // for a scoped revert — never a whole-sets snapshot
+    this.applyRowPrice(row.label, price); // optimistic — the projection updates immediately
     this.savedRow.set(null);
     this.errorRow.set(null);
     try {
-      await firstValueFrom(this.console.repriceRow(this.venueId, label, price));
-      this.savingRow.set(null);
-      this.savedRow.set(label);
+      await firstValueFrom(this.console.repriceRow(this.venueId, row.label, price));
+      this.savedRow.set(row.label);
     } catch (error) {
-      this.sets.set(before); // revert so the shown price + projection match what is persisted
-      this.savingRow.set(null);
+      if (previous) {
+        this.applyRowPrice(row.label, previous); // revert only this row, leaving concurrent edits intact
+      }
       const code = repriceErrorOf(error);
-      this.errorRow.set({ label, code });
+      this.errorRow.set({ label: row.label, code });
       if (code === 'UNAUTHORIZED') {
         this.operator.sessionLost();
       }
@@ -141,7 +161,14 @@ export class PricingTab {
         this.sets.set([...venue.sets]);
         this.loaded.set(true);
       },
-      error: () => this.loaded.set(true),
+      error: (error: unknown) => {
+        // A transient read failure must NOT read as "no sets yet" (a dead-end) — show an error.
+        this.loadError.set(true);
+        this.loaded.set(true);
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.operator.sessionLost();
+        }
+      },
     });
   }
 
@@ -149,18 +176,7 @@ export class PricingTab {
     this.sets.update((sets) => sets.map((s) => (s.rowLabel === label ? { ...s, price } : s)));
   }
 
-  private currencyOf(label: string): string {
-    return this.sets().find((s) => s.rowLabel === label)?.price.currency ?? 'EUR';
+  private rowPrice(label: string): MoneyView | undefined {
+    return this.sets().find((s) => s.rowLabel === label)?.price;
   }
-}
-
-/** Integer minor units (cents) from a euros input string — the money conversion at the edge (invariant #5). */
-function toMinorUnits(raw: string): number {
-  const euros = Number.parseFloat(raw);
-  return Number.isFinite(euros) ? Math.max(0, Math.round(euros * 100)) : 0;
-}
-
-/** Integer minor units as a plain euros string for the number input (3500 → "35", 4250 → "42.5"). */
-function eurString(minorUnits: number): string {
-  return (minorUnits / 100).toString();
 }

@@ -322,6 +322,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-10 | Review fix — empty € input → €0; converter placement | other € inputs / money converters | grep `parseFloat.*100`, `formatMoney` | `layout-editor` uses tier-default constants (no user € input); no other € input | Converters → `shared/money.ts` (`eurosToMinorUnits` returns `null` on empty/NaN, never €0); layout-editor unaffected |
+| 2026-07-10 | Review fix — whole-`sets` revert clobbers concurrent edit | optimistic-write revert snapshots | grep `sets.set(before)` in `operator/` | pricing-tab only (layout-editor uses one whole-grid Save) | Scoped revert to the failing row |
+
+### Review findings resolved (workflow-backed review, xhigh)
+
+- **Fixed (correctness):** empty/non-numeric input no longer reprices to €0 (ignored + restored); optimistic revert scoped to the failing row (concurrent edits survive); load-error renders a distinct error state (not a false "no sets"); heterogeneous rows show a "mixed prices" hint + blank input.
+- **Fixed (cleanup):** removed dead `savingRow`; removed dead `PriceRow.currency` + per-edit `currencyOf` scan; moved euros↔minor converters to `shared/money.ts`.
+- **Not changed (documented):** backend omitted-`minorUnits`→€0 in `RowPriceRequest` mirrors the shipped `MoneyView`/`SetPositionRequest` primitive-`long` convention and €0 is a valid price (DB CHECK `>= 0`); the FE fix removes the operator hazard. `venueId`-from-parent-route duplication with `layout-editor` deferred (cross-tab refactor for a third tab).
 
 ---
 
