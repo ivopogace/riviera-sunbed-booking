@@ -23,6 +23,8 @@ For the **non-prod** environment we deploy to an all-free, GitHub-native stack:
 - **Frontend → GitHub Pages.** Free static hosting, published straight from a GitHub
   Actions workflow. Built with `--base-href=/riviera-sunbed-booking/` for the repo
   subpath, with a `404.html` copy of `index.html` so SPA deep links don't hard-404.
+  *(Superseded for the dev/demo env by the #110 amendment below — the frontend is now
+  served **same-origin** by the backend; GitHub Pages is retired.)*
 - **Backend → Render** free web service, deployed as a **Docker** image Render builds
   from the multi-stage `platform/Dockerfile` (JDK 25 Temurin build → slim JRE runtime).
   Simplest GitHub-connected Spring Boot deploy. Trade-off accepted: free instances
