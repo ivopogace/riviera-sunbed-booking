@@ -117,6 +117,14 @@ class VenueAdminController {
 		};
 	}
 
+	@PutMapping("/{venueId}/rows/{rowLabel}/price")
+	ResponseEntity<?> repriceRow(Authentication authentication, @PathVariable long venueId,
+			@PathVariable String rowLabel, @RequestBody RowPriceRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId),
+				request.toCommand(rowLabel)));
+	}
+
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {
 		return switch (outcome) {
 			case ChangeOutcome.Applied ignored -> ResponseEntity.noContent().build();
@@ -130,6 +138,8 @@ class VenueAdminController {
 					"No such venue.");
 			case NO_SUCH_SET -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					"No such set.");
+			case NO_SUCH_ROW -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
+					"No set on this venue has that row label.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),

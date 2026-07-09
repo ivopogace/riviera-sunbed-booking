@@ -292,6 +292,48 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedAllCount);
 	}
 
+	// ---- Per-row reprice (O4, issue #174) ----
+
+	private static final RowPriceCommand REPRICE_CMD = new RowPriceCommand("A", 4200, "EUR");
+
+	@Test
+	void repricesRowForOwnedVenue() {
+		venues.venues.add(VENUE.value());
+
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.repricedRows);
+	}
+
+	@Test
+	void repriceOnUnknownVenueIsRejectedBeforeAnyWrite() {
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.repricedRows);
+	}
+
+	@Test
+	void repriceOfARowWithNoSetsIsNotFound() {
+		// The venue exists but no set carries the row label ⇒ the UPDATE touches 0 rows ⇒ NO_SUCH_ROW.
+		venues.venues.add(VENUE.value());
+		venues.forceRepriceRows = 0;
+
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void repriceByANonOwnerIsDeniedBeforeAnyWrite() {
+		venues.venues.add(VENUE.value());
+
+		// Invariant #13: the ownership guard is the first act — a stranger is denied before the UPDATE.
+		assertThrows(NotVenueOwnerException.class, () -> service.repriceRow(STRANGER, VENUE, REPRICE_CMD));
+		assertEquals(0, venues.repricedRows);
+	}
+
 	/**
 	 * Stub {@link VenueOwnership}: one operator owns one venue; {@code assertOwns} throws for anyone
 	 * else. {@code ownedVenues} is unused here.
@@ -394,6 +436,16 @@ class VenueAdminServiceTest {
 		@Override
 		public void insertSets(VenueId venueId, List<SetCommand> sets) {
 			insertedInLayout += sets.size();
+		}
+
+		int repricedRows;
+		// null ⇒ a row edit finds its sets (1 row updated); set to 0 to model an unknown row label.
+		Integer forceRepriceRows;
+
+		@Override
+		public int repriceRow(VenueId venueId, RowPriceCommand command) {
+			repricedRows++;
+			return forceRepriceRows != null ? forceRepriceRows : 1;
 		}
 	}
 

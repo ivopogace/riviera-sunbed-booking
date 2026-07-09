@@ -32,12 +32,12 @@ describe('ConsolePlaceholder (#170)', () => {
     return el.querySelector<HTMLAnchorElement>('[data-testid="console-placeholder-link"]');
   }
 
-  it('names the Pricing section and forward-links to the surviving venue editor', () => {
-    // beach-map graduated to its real editor (O3 #172); Pricing is still a placeholder that
-    // forward-links to the legacy venue editor.
-    const el = render('pricing');
+  it('names the Venue & commodities section and forward-links to the surviving venue editor', () => {
+    // beach-map (O3 #172) and pricing (O4 #174) have graduated to their real tabs; Venue &
+    // commodities is still a placeholder that forward-links to the legacy venue editor.
+    const el = render('venue');
     expect(el.querySelector('[data-testid="console-placeholder"]')?.textContent).toContain(
-      'Pricing',
+      'Venue & commodities',
     );
     expect(link(el)?.getAttribute('href')).toBe('/venue-admin');
   });

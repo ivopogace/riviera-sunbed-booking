@@ -333,6 +333,12 @@ class WebSliceStubs {
 					LayoutCommand command) {
 				return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
 			}
+
+			@Override
+			public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId,
+					ai.riviera.platform.venue.application.RowPriceCommand command) {
+				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+			}
 		};
 	}
 

@@ -30,6 +30,17 @@ public interface EditBeachMap {
 	ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId);
 
 	/**
+	 * Reprice <strong>every set in a row</strong> (O4, issue #174) — the operator console's Pricing tab.
+	 * After asserting {@code operator} owns {@code venueId}, it applies {@code command}'s full-day price
+	 * to every set carrying {@code command.rowLabel()} in one non-destructive {@code UPDATE}: set identity,
+	 * pool, coordinates and any {@code set_availability} hold are untouched, so — unlike
+	 * {@link #replaceLayout} — repricing is allowed even when the venue has bookings or holds (a booking's
+	 * charge was snapshotted at reserve time, so a reprice never alters it). Returns {@code Applied}, or
+	 * {@code Rejected(NO_SUCH_VENUE)} / {@code Rejected(NO_SUCH_ROW)} when the venue or the row is unknown.
+	 */
+	ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, RowPriceCommand command);
+
+	/**
 	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction (O3, issue #172) —
 	 * the generate-grid + paint editor's bulk write. After asserting {@code operator} owns {@code venueId},
 	 * it is <em>reject-unless-unclaimed</em>: if any of the venue's existing sets has a booking (any status)

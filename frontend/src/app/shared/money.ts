@@ -13,3 +13,19 @@ export function formatMoney(amount: MoneyView): string {
     minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
   }).format(amount.minorUnits / 100);
 }
+
+/**
+ * Parse a euros input string to integer minor units (invariant #5 — the conversion at the edge), or
+ * `null` when the input is empty or not a number. The caller MUST treat `null` as "no change", never
+ * as €0 — a cleared field must not silently reprice to free. Negatives clamp to 0. This is the single
+ * home for the euros↔minor boundary; new price inputs reuse it rather than re-deriving the rounding.
+ */
+export function eurosToMinorUnits(raw: string): number | null {
+  const euros = Number.parseFloat(raw);
+  return Number.isFinite(euros) ? Math.max(0, Math.round(euros * 100)) : null;
+}
+
+/** Integer minor units as a plain euros string for a number input (3500 → "35", 4250 → "42.5"). */
+export function minorUnitsToEuros(minorUnits: number): string {
+  return (minorUnits / 100).toString();
+}
