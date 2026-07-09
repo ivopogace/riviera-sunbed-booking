@@ -215,7 +215,7 @@ now addresses the backend's own origin for both the app and the API.
 | 0 — Probe the static-site approach (R-1 gate) | ✅ | (falsified; pivoted — see audit log) |
 | 1 — Backend: SPA-serving + security carve-out + CORS (test-first) | ✅ | SpaWebConfig + 2 filter chains + CORS empty-default; SpaShellTest + WebCorsConfigEmptyOriginsTest green, all security ITs green |
 | 2 — Dockerfile (Node stage, repo-root context) + frontend env + CD + docs | ✅ | as committed (7c86e9d); local image build + runtime smoke GREEN — the real image (against throwaway Postgres) serves the SPA shell at `/`, deep links, and `/api/venues` same-origin, with `/api` still gated (401); SPA confirmed bundled at BOOT-INF/classes/static/ (AC-8 local half) |
-| 3 — Render reconfig + deploy + sign-in probe + Pages/static-site retirement + close-out | | |
+| 3 — Render reconfig + deploy + sign-in probe + Pages/static-site retirement + close-out | ⏳ | Render backend reconfig (root dir → repo root) done; merged #211 → CD deployed `dep-d980c73e` LIVE; **AC-2 proven live** (wrong-pw → 401 credential branch, no-CSRF-token → 403 — CSRF still enforced), serving SPA + `/api` same-origin. Docs-freshness + memory done. **Maintainer TODO:** delete `riviera-ai`/`riviera-q5hs` static sites, disable Pages, V-1 real sign-in in Firefox/Safari |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window
 as each phase's change.
