@@ -212,7 +212,8 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
 
   it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {
     for (const route of routes) {
-      if (CHROMELESS_PATHS.includes(route.path ?? '')) {
+      // Redirect-only routes (no rendered surface) carry no legacySurface flag — skip them.
+      if (CHROMELESS_PATHS.includes(route.path ?? '') || route.redirectTo !== undefined) {
         continue;
       }
       const expected = !RESTYLED_PATHS.includes(route.path ?? '');
@@ -223,14 +224,18 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     }
   });
 
-  it('keeps the two legacy operator routes on the compat surface — flags intact (#170 guardrail)', () => {
-    const legacy = routes.filter(
-      (r) => r.path === 'venue-admin' || r.path === 'venue-admin/daily/:venueId',
-    );
-    expect(legacy).toHaveLength(2);
-    for (const route of legacy) {
-      expect(route.data?.['legacySurface'], `route '${route.path}' legacySurface flag`).toBe(true);
-    }
+  it('keeps only the venue-editor legacy route on the compat surface (O6 #176 retired the daily route)', () => {
+    // O6 retired the legacy StaffDaily page + its /venue-admin/daily/:venueId route; the venue editor
+    // is the last legacy operator surface (O8 restyles it as the Venue & commodities tab).
+    const legacy = routes.filter((r) => r.data?.['legacySurface'] === true);
+    expect(legacy.map((r) => r.path)).toEqual(['venue-admin']);
+  });
+
+  it('forwards the retired daily URL to the console Daily-view tab, preserving the venue id (O6 #176)', () => {
+    // A bookmarked /venue-admin/daily/:venueId must not 404 to a blank page — it redirects to the tab.
+    const redirect = routes.find((r) => r.path === 'venue-admin/daily/:venueId');
+    expect(redirect?.redirectTo).toBe('operator/:venueId/daily');
+    expect(redirect?.data?.['legacySurface']).toBeUndefined();
   });
 
   it('adds the chromeless operator console route with its six tab children (#170)', () => {

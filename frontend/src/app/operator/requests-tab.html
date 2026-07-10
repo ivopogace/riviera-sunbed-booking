@@ -1,0 +1,161 @@
+<section class="mx-auto w-full max-w-[760px] px-5 py-4" data-testid="requests-tab">
+  <header class="mb-1.5">
+    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">Booking requests</h1>
+    <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-(--riv-card-ink-soft)">
+      Guests requested these sets on your Request-to-Book venue. Accept to send them to payment, or
+      decline. Requests expire if not answered in time.
+    </p>
+  </header>
+
+  @if (notice(); as msg) {
+    <!-- One neutral notice serves both success ("asked to pay") and failure ("you don't manage this
+         venue") copy — card-ink over the light panel is AA-proven, and a green success box would
+         misread on a failure. -->
+    <output
+      class="mt-3 block rounded-[12px] border border-(--riv-card-border) bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
+      aria-live="polite"
+      data-testid="requests-notice"
+      >{{ msg }}</output
+    >
+  }
+
+  @if (!loaded()) {
+    <p
+      class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+      aria-live="polite"
+      data-testid="requests-loading"
+    >
+      Loading requests…
+    </p>
+  } @else if (loadError()) {
+    <p
+      class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-[#a3160e]"
+      role="alert"
+      data-testid="requests-load-error"
+    >
+      Sorry — we couldn’t load this venue’s requests. Please try again.
+    </p>
+  } @else if (rows().length === 0) {
+    <div
+      class="mt-3.5 rounded-[24px] border border-(--riv-card-border) bg-white/50 px-[26px] py-[52px] text-center"
+      data-testid="requests-empty"
+    >
+      <span
+        class="mx-auto mb-3.5 flex h-[52px] w-[52px] items-center justify-center rounded-full border border-[#0e6e46]/30 bg-[#0e6e46]/12 text-[24px] text-[#0e6e46]"
+        aria-hidden="true"
+        >✓</span
+      >
+      <h2 class="text-[18px] font-bold text-(--riv-card-ink)">All caught up</h2>
+      <p class="mt-1.5 text-[13.5px] text-(--riv-card-ink-soft)">
+        No pending requests right now. New ones land here with a badge on the tab.
+      </p>
+    </div>
+  } @else {
+    <ul class="mt-3.5 flex list-none flex-col gap-3 p-0">
+      @for (row of rows(); track row.bookingId) {
+        <li>
+          <article appCardGlass class="rounded-[22px] px-5 py-[18px]" data-testid="request-card">
+            <div class="flex flex-wrap items-start gap-3.5">
+              <div class="min-w-[200px] flex-1">
+                <span class="text-[16.5px] font-bold text-(--riv-card-ink)">{{ row.guest }}</span>
+                <div class="mt-2.5 flex flex-wrap gap-3.5 text-[13px] text-(--riv-card-ink-soft)">
+                  <span
+                    >Set <strong class="text-(--riv-card-ink)">{{ row.setLabel }}</strong> ·
+                    {{ row.tierName }}</span
+                  >
+                  <span>{{ row.dateLabel }}</span>
+                  <span>Price <strong class="text-[#0a6e85]">{{ row.priceStr }}</strong></span>
+                </div>
+              </div>
+              <div class="flex-shrink-0 text-right">
+                @if (row.urgent && !isExpired(row.bookingId)) {
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full border border-[#a3160e]/25 bg-[#a3160e]/10 px-2.5 py-1 text-[12px] font-bold text-[#a3160e]"
+                    data-testid="urgency-chip"
+                  >
+                    <span aria-hidden="true">⏰</span>{{ row.timeLeft }}
+                  </span>
+                }
+                @if (!isExpired(row.bookingId)) {
+                  <span class="mt-1.5 block text-[11.5px] text-(--riv-card-ink-faint)"
+                    >Respond by {{ row.respondByStr }}</span
+                  >
+                }
+              </div>
+            </div>
+
+            @if (isExpired(row.bookingId)) {
+              <div
+                class="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-(--riv-card-border) pt-3.5"
+                data-testid="expired-race"
+              >
+                <output
+                  class="block min-w-[220px] flex-1 text-[13.5px] font-semibold text-[#a3160e]"
+                >
+                  <span aria-hidden="true">⚠</span> This request just expired — our system swept it
+                  before you responded. The guest has been told to book again.
+                </output>
+                <button
+                  type="button"
+                  class="rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
+                  data-testid="dismiss-expired"
+                  (click)="onDismissExpired(row)"
+                >
+                  Dismiss
+                </button>
+              </div>
+            } @else if (inDecline(row.bookingId)) {
+              <div
+                class="mt-3.5 border-t border-(--riv-card-border) pt-3.5"
+                data-testid="decline-confirm"
+              >
+                <p class="mb-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)">
+                  Decline this request? {{ row.guest }} will be notified and won’t be charged.
+                </p>
+                <div class="flex flex-wrap gap-2.5">
+                  <button
+                    type="button"
+                    class="rounded-[13px] bg-[#a3160e] px-5 py-[11px] text-[14px] font-bold text-white disabled:opacity-60"
+                    [disabled]="isDeciding(row.bookingId)"
+                    [attr.aria-label]="confirmDeclineLabel(row)"
+                    (click)="onConfirmDecline(row)"
+                  >
+                    Confirm decline
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-[13px] border border-(--riv-card-border) bg-white/60 px-5 py-[11px] text-[14px] font-semibold text-(--riv-card-ink)"
+                    (click)="onCancelDecline(row)"
+                  >
+                    Keep it
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="mt-3.5 flex flex-wrap gap-2.5 border-t border-(--riv-card-border) pt-3.5">
+                <button
+                  type="button"
+                  class="min-w-[130px] flex-1 rounded-[13px] bg-[#0a6e85] px-4 py-[11px] text-[14px] font-bold text-white disabled:opacity-60"
+                  [disabled]="isDeciding(row.bookingId)"
+                  [attr.aria-label]="acceptLabel(row)"
+                  (click)="onAccept(row)"
+                >
+                  Accept — send to payment
+                </button>
+                <button
+                  type="button"
+                  class="rounded-[13px] border border-[#a3160e]/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-[#a3160e] disabled:opacity-60"
+                  [disabled]="isDeciding(row.bookingId)"
+                  [attr.aria-label]="declineLabel(row)"
+                  (click)="onDecline(row)"
+                >
+                  Decline
+                </button>
+              </div>
+            }
+          </article>
+        </li>
+      }
+    </ul>
+  }
+</section>

@@ -10,31 +10,60 @@ import {
   ConsoleDailyBooking,
   LayoutErrorCode,
   MarkErrorCode,
+  PendingRequestItem,
   ReleaseErrorCode,
   RepriceErrorCode,
+  RequestDecision,
+  RequestErrorCode,
   TakingsView,
 } from './operator-console.model';
 
 /**
- * The operator console's own read surface (issue #170; #171 adds the stats strip's reads).
+ * The operator console's own read/write surface (issue #170; #171 the stats strip; #175 the daily
+ * view; #176 the Requests queue).
  *
- * <p>This deliberately parallels {@link import('../staff/staff.service').StaffService}'s
- * `pendingRequests`/`dailyBookings` rather than importing them: the one-way frontend import rule
- * forbids one feature folder (`operator/`) depending on another (`staff/`). The console is the
- * successor to `StaffDaily` — when O6 retires `StaffDaily`, the full Requests feature lands here and
- * this becomes its single home. Every endpoint is owner-asserted server-side (invariant #13); the
- * session cookie + CSRF ride the `apiSessionInterceptor`.
+ * <p>Single responsibility — HTTP only (no UI state; the badge count lives in
+ * {@link import('./pending-requests-store').PendingRequestsStore}). The console is the successor to the
+ * retired `StaffDaily` page: since O6 (#176) the full Request-to-Book client (`pendingRequests` /
+ * `acceptRequest` / `declineRequest`) lives here, not in a separate `staff` feature — the one-way
+ * frontend import rule forbids one feature folder depending on another. Every endpoint is
+ * owner-asserted server-side (invariant #13); the session cookie + CSRF ride the `apiSessionInterceptor`.
  */
 @Service()
 export class OperatorConsoleService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiBaseUrl;
 
-  /** The count of pending booking requests for the venue — the Requests tab badge. */
+  /** The venue's pending booking requests, sorted server-side by response deadline (issue #98). */
+  pendingRequests(venueId: number): Observable<PendingRequestItem[]> {
+    return this.http.get<PendingRequestItem[]>(
+      `${this.base}/api/venues/${venueId}/booking-requests`,
+    );
+  }
+
+  /** The count of pending booking requests for the venue — the Requests tab badge (issue #170). */
   pendingRequestCount(venueId: number): Observable<number> {
-    return this.http
-      .get<readonly unknown[]>(`${this.base}/api/venues/${venueId}/booking-requests`)
-      .pipe(map((requests) => requests.length));
+    return this.pendingRequests(venueId).pipe(map((requests) => requests.length));
+  }
+
+  /**
+   * Accept a pending request (issue #98) → `AWAITING_PAYMENT` (the guest is asked to pay) or
+   * `CONFIRMED` (stub payment profile). Accept only moves the guest into the pay window — the booking
+   * is confirmed by the signature-verified Stripe webhook, never by this call (invariant #8).
+   */
+  acceptRequest(venueId: number, bookingId: number): Observable<RequestDecision> {
+    return this.http.post<RequestDecision>(
+      `${this.base}/api/venues/${venueId}/booking-requests/${bookingId}/accept`,
+      {},
+    );
+  }
+
+  /** Decline a pending request (issue #98) → `DECLINED`; the soft-held set is freed server-side. */
+  declineRequest(venueId: number, bookingId: number): Observable<RequestDecision> {
+    return this.http.post<RequestDecision>(
+      `${this.base}/api/venues/${venueId}/booking-requests/${bookingId}/decline`,
+      {},
+    );
   }
 
   /** The count of confirmed online bookings for the venue on `date` — the "Booked online" tile (#171). */
@@ -79,8 +108,7 @@ export class OperatorConsoleService {
   /**
    * The venue's CONFIRMED online bookings for `date`, each as `(setId, code)` — the Daily view's
    * Arrivals list (O5, #175). Owner-asserted server-side (invariant #13); the code is display-only
-   * (invariant #7). Parallels the legacy `StaffService.dailyBookings` rather than importing it (the
-   * one-way import rule; the console is `StaffDaily`'s successor).
+   * (invariant #7) — shown for arrival verification, never logged.
    */
   dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {
     return this.http.get<ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
@@ -142,6 +170,27 @@ export function releaseErrorOf(error: unknown): ReleaseErrorCode {
     const code = problemCodeOf(error);
     switch (code) {
       case 'NOT_MARKED':
+      case 'NOT_VENUE_OWNER':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** Map an HTTP failure of an accept/decline to a known {@link RequestErrorCode} (RFC-7807 `code`; or 401). */
+export function requestErrorOf(error: unknown): RequestErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'NO_SUCH_REQUEST':
+      case 'REQUEST_NOT_PENDING':
+      case 'REQUEST_EXPIRED':
+      case 'PAYMENT_INIT_FAILED':
       case 'NOT_VENUE_OWNER':
         return code;
       default:

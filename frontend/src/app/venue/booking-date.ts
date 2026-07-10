@@ -39,6 +39,23 @@ export function parseIsoDate(isoDate: string): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+/**
+ * Render an ISO `YYYY-MM-DD` civil day (a Europe/Tirane booking date, invariant #6) as a human label
+ * like `"Tue 30 Jun 2026"`. Formatted in **UTC** because {@link parseIsoDate} anchors the day at
+ * midnight UTC — so the label is the civil day itself, free of the viewer's zone. Locale pinned like
+ * `shared/money.ts` / `shared/deadline.ts` for deterministic output. Shared by the operator console's
+ * Daily-view and Requests tabs (issue #176) so the one date format doesn't drift between them.
+ */
+export function formatCivilDate(isoDate: string): string {
+  return new Intl.DateTimeFormat('en-IE', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(parseIsoDate(isoDate));
+}
+
 /** Add one calendar day to an ISO `YYYY-MM-DD` string, returning the same format. */
 function addOneDay(isoDate: string): string {
   const next = parseIsoDate(isoDate);

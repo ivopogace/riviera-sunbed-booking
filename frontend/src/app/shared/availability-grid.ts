@@ -2,10 +2,10 @@ import { SetView } from '../venue/venue.model';
 
 /**
  * Shared logic for the operator console's per-day availability grid — the read-model derivations used
- * by both the O5 Daily view (`operator/daily-view-tab.ts`) and, until its O6 retirement, the legacy
- * staff daily view (`staff/staff-daily.ts`), plus the row grouping the Pricing tab also uses. Pure and
- * side-effect free, so it is exhaustively unit-testable and lives in exactly one place (extracted at
- * O5 #175 — three consumers, rule of three).
+ * by the O5 Daily view (`operator/daily-view-tab.ts`), plus the row grouping the Pricing tab also uses.
+ * Pure and side-effect free, so it is exhaustively unit-testable and lives in exactly one place
+ * (extracted at O5 #175 — three consumers, rule of three; the third, the legacy staff daily view, was
+ * retired at O6 #176, and the two operator tabs remain).
  */
 
 /** A set's state on a chosen day: `FREE` → tap to mark; `STAFF_MARKED` → tap to release; `BOOKED_ONLINE` → locked. */

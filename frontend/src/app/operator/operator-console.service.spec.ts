@@ -1,6 +1,17 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 
-import { markErrorOf, releaseErrorOf } from './operator-console.service';
+import { environment } from '../../environments/environment';
+import { PendingRequestItem, RequestDecision } from './operator-console.model';
+import {
+  OperatorConsoleService,
+  markErrorOf,
+  releaseErrorOf,
+  requestErrorOf,
+} from './operator-console.service';
+
+const BASE = environment.apiBaseUrl;
 
 /**
  * The Daily-view walk-in mark/release error mappers (O5 #175). They narrow an HTTP failure's RFC-7807
@@ -51,5 +62,98 @@ describe('operator-console mark/release error mappers (#175)', () => {
       expect(releaseErrorOf(problem(409, 'WHATEVER'))).toBe('UNKNOWN');
       expect(releaseErrorOf('not an http error')).toBe('UNKNOWN');
     });
+  });
+
+  describe('requestErrorOf (accept/decline, #176)', () => {
+    it('maps 401 to UNAUTHORIZED before reading the body', () => {
+      expect(requestErrorOf(problem(401, 'ANYTHING'))).toBe('UNAUTHORIZED');
+    });
+
+    it('passes through every known accept/decline code', () => {
+      for (const code of [
+        'NO_SUCH_REQUEST',
+        'REQUEST_NOT_PENDING',
+        'REQUEST_EXPIRED',
+        'PAYMENT_INIT_FAILED',
+        'NOT_VENUE_OWNER',
+      ]) {
+        expect(requestErrorOf(problem(409, code))).toBe(code);
+      }
+    });
+
+    it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
+      expect(requestErrorOf(problem(500, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
+      expect(requestErrorOf(new Error('boom'))).toBe('UNKNOWN');
+    });
+  });
+});
+
+/**
+ * The Request-to-Book client moved onto the console service (O6 #176): the queue read, accept, decline,
+ * and the badge count that reuses the same read. Owner-asserted server-side (invariant #13); the queue
+ * carries no booking code (invariant #7).
+ */
+describe('OperatorConsoleService — Request-to-Book client (#176)', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [OperatorConsoleService, provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  const REQUEST: PendingRequestItem = {
+    bookingId: 11,
+    setId: 7,
+    bookingDate: '2026-07-03',
+    guestName: 'Ana Guest',
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    requestedAt: '2026-07-01T09:00:00Z',
+    requestExpiresAt: '2026-07-02T16:00:00Z',
+  };
+
+  it('GETs the venue-wide pending booking requests', () => {
+    let actual: PendingRequestItem[] | undefined;
+    service.pendingRequests(1).subscribe((r) => (actual = r));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests`);
+    expect(req.request.method).toBe('GET');
+    req.flush([REQUEST]);
+    expect(actual).toEqual([REQUEST]);
+  });
+
+  it('derives the badge count from the same requests read', () => {
+    let actual: number | undefined;
+    service.pendingRequestCount(1).subscribe((n) => (actual = n));
+
+    httpMock.expectOne(`${BASE}/api/venues/1/booking-requests`).flush([REQUEST, { ...REQUEST, bookingId: 12 }]);
+    expect(actual).toBe(2);
+  });
+
+  it('POSTs an accept with an empty body and returns the decision', () => {
+    let actual: RequestDecision | undefined;
+    service.acceptRequest(1, 11).subscribe((d) => (actual = d));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests/11/accept`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    expect(actual).toEqual({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+  });
+
+  it('POSTs a decline with an empty body and returns the decision', () => {
+    let actual: RequestDecision | undefined;
+    service.declineRequest(1, 11).subscribe((d) => (actual = d));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests/11/decline`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({ bookingId: 11, status: 'DECLINED' });
+    expect(actual).toEqual({ bookingId: 11, status: 'DECLINED' });
   });
 });

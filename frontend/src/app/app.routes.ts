@@ -5,7 +5,6 @@ import { Routes } from '@angular/router';
 // swaps the component in; `data.tab` tells the placeholder which section it is. `beach-map` has
 // graduated to its real editor (O3 #172) and is declared explicitly below.
 const CONSOLE_TABS: readonly (readonly [string, string])[] = [
-  ['requests', 'Requests'],
   ['payouts', 'Payouts'],
   ['venue', 'Venue & commodities'],
 ];
@@ -32,6 +31,13 @@ const consoleTabRoutes: Routes = [
     title: 'Daily view — Operator console',
     data: { tab: 'daily' },
   },
+  {
+    // O6 (#176): the real Request-to-Book queue (accept/decline/expired-race), replacing the placeholder.
+    path: 'requests',
+    loadComponent: () => import('./operator/requests-tab').then((m) => m.RequestsTab),
+    title: 'Requests — Operator console',
+    data: { tab: 'requests' },
+  },
   ...CONSOLE_TABS.map(([path, label]) => ({
     path,
     loadComponent: () => import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
@@ -57,22 +63,26 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
+    // The last legacy operator surface: onboarding + venue editing (O8 restyles it as the console's
+    // Venue & commodities tab). O6 (#176) retired the sibling StaffDaily page when the Requests +
+    // Daily-view tabs replaced its last jobs.
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
     title: 'Venue editor — Riviera',
     data: { legacySurface: true },
   },
   {
+    // O6 (#176): the retired /venue-admin/daily/:venueId StaffDaily page forwards to the console's
+    // Daily-view tab (param preserved), so a bookmarked daily-ops link still lands somewhere live.
     path: 'venue-admin/daily/:venueId',
-    loadComponent: () => import('./staff/staff-daily').then((m) => m.StaffDaily),
-    title: 'Daily view — Riviera',
-    data: { legacySurface: true },
+    redirectTo: 'operator/:venueId/daily',
+    pathMatch: 'full',
   },
   {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
     // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
-    // console owns a full-bleed porcelain surface. Each tab is a child route; O1 ships placeholders
-    // that the O3–O8 slices swap for the restyled tab. The legacy /venue-admin routes above stay.
+    // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the
+    // real tabs in, O7–O8 remain. The legacy /venue-admin editor above stays until O8.
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',

@@ -2,12 +2,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
-import { OperatorAuth } from '../core/operator-auth';
+import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
+import { formatCivilDate, todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView, VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
 import { BeachGridFrame } from './beach-grid-frame';
@@ -271,7 +271,7 @@ export class DailyViewTab {
 
   private dropSessionIfUnauthorized(error: unknown): void {
     if (error instanceof HttpErrorResponse && error.status === 401) {
-      this.notice.set(SESSION_EXPIRED);
+      this.notice.set(SESSION_EXPIRED_MESSAGE);
       this.operator.sessionLost();
     }
   }
@@ -305,16 +305,7 @@ export class DailyViewTab {
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026") — memoized, recomputed per date. */
-  protected readonly dateLabel = computed(() =>
-    new Intl.DateTimeFormat('en-IE', {
-      // parseIsoDate anchors the civil day at midnight UTC, so format in UTC too (invariant #6).
-      timeZone: 'UTC',
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }).format(parseIsoDate(this.selectedDate())),
-  );
+  protected readonly dateLabel = computed(() => formatCivilDate(this.selectedDate()));
 
   /** Accessible name so tile state is not conveyed by colour alone (WCAG AA). */
   protected tileLabel(set: SetView): string {
@@ -322,9 +313,6 @@ export class DailyViewTab {
     return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
   }
 }
-
-/** The session-expired notice, shared by the mark and release failure paths. */
-const SESSION_EXPIRED = 'Your operator session has expired. Please sign in again.';
 
 /** Map a mark failure to its operator-facing notice (no nested ternaries). */
 function markFailureNotice(reason: MarkErrorCode): string {
@@ -336,7 +324,7 @@ function markFailureNotice(reason: MarkErrorCode): string {
     case 'NOT_VENUE_OWNER':
       return 'You don’t manage this venue, so you can’t mark its walk-ins.';
     case 'UNAUTHORIZED':
-      return SESSION_EXPIRED;
+      return SESSION_EXPIRED_MESSAGE;
     default:
       return 'Could not mark that set. The map has been refreshed.';
   }
@@ -350,7 +338,7 @@ function releaseFailureNotice(reason: ReleaseErrorCode): string {
     case 'NOT_VENUE_OWNER':
       return 'You don’t manage this venue, so you can’t release its walk-ins.';
     case 'UNAUTHORIZED':
-      return SESSION_EXPIRED;
+      return SESSION_EXPIRED_MESSAGE;
     default:
       return 'Could not release that set. The map has been refreshed.';
   }

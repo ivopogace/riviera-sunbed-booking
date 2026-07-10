@@ -31,6 +31,13 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
   }
 }
 
+/**
+ * The operator-facing notice when the session has expired mid-action (a `401` on a console call).
+ * One source so every operator surface — the console tabs, the venue editor — says the same thing.
+ */
+export const SESSION_EXPIRED_MESSAGE =
+  'Your operator session has expired. Please sign in again.';
+
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
 
 /**
