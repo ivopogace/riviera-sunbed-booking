@@ -253,6 +253,28 @@ explicitly so they're deterministic in unit tests.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
+### Review gate — self-review (pre-PR, riviera-review-overlay, frontend scope)
+
+Frontend-only diff, no wire-shape change → frontend bank only. Walked against the RV-FE bank + the
+three highest-stakes items. **No findings.**
+- **#8 (RV-CT-3):** Accept calls `acceptRequest` and reports "asked to pay"/"confirmed" purely from the
+  server's returned `status` — never self-confirms, reads no payment state. Held.
+- **#7:** the queue is code-less (`PendingRequestItem` has no `code`; no code binding; asserted absent
+  by unit + e2e). Held.
+- **#13 (RV-BE-9):** no backend change; the server owner-assert on `/api/venues/{venueId}/**` is intact
+  (pinned by `CrossVenueDenialIT`); 403 `NOT_VENUE_OWNER` mapped to copy. Held.
+- **RV-FE-1/7:** standalone, `inject()`, `@if`/`@for`, signals, `CardGlass` directive (no `@apply`); no
+  `ngClass`/`ngStyle`/`as any`/obsolete decorators (grep-clean). AA deviations from the design's lighter
+  ambers/gradient documented; the contrast spec is pure maths.
+- **RV-FE-2 analogue:** the stale-queue conflict path (409 `REQUEST_EXPIRED` → dismissible expired-race;
+  `REQUEST_NOT_PENDING`/`NO_SUCH_REQUEST` → drop + notice) is the graceful recovery.
+- **RV-FE-3:** money from minor units (`formatMoney`), dates UTC-anchored (`formatCivilDate`), no float math.
+- **RV-FE-E2E:** mocked-suite spec, role/label/test-id locators, per-test `page.route` isolation; no
+  coverage lost (daily-ops → `operator-daily.e2e.ts`, requests → `operator-requests.e2e.ts`).
+- **RV-PROC-1:** the *Skills consulted* line covers every touched area (FE structure/Angular/Tailwind/e2e).
+
+The formal peer review + Sonar gate run on the PR (Sonar analyzes PRs + `main`); pre-PR local gates green.
+
 ---
 
 ## File structure
@@ -388,26 +410,28 @@ Modify `app.routes.ts` (delete daily route), `app.spec.ts`, `operator/operator-c
 
 > The gate before claiming done.
 
-- [ ] **AC-1..8:** `npm test` → `requests-tab.spec.ts`, `pending-requests-store.spec.ts`,
-  `operator-console.service.spec.ts`, `operator-console.spec.ts`, `deadline.spec.ts`,
+- [x] **AC-1..8:** `requests-tab.spec.ts` (12), `pending-requests-store.spec.ts` (2),
+  `operator-console.service.spec.ts`, `operator-console.spec.ts` (badge-store seam), `deadline.spec.ts`,
   `booking-date.spec.ts` pass; `daily-view-tab.spec.ts` passes **unchanged** (dedup regression guard).
-- [ ] **AC-9:** `app.spec.ts` "one legacy operator route" passes; `grep -rn "Manrope\|Instrument
-  Serif" frontend/src` and `grep -rn "from '.*staff" frontend/src` both clean; `npm run build` clean.
-- [ ] **AC-10:** `requests-tab.a11y.spec.ts` + `.contrast.spec.ts` pass; e2e axe-clean.
-- [ ] **AC-11:** `npm run test:e2e:a11y` green incl. `operator-requests.e2e.ts`; legacy specs deleted.
-- [ ] Full gate before PR: `npm run lint` · `npm test` · `npm run build` · `npm run test:e2e:a11y`.
+- [x] **AC-9:** `app.spec.ts` "one legacy operator route" passes; `grep Manrope\|Instrument Serif
+  frontend/src` = only the (removed) link, `grep import ...staff frontend/src` clean; `npm run build` clean.
+- [x] **AC-10:** `requests-tab.a11y.spec.ts` + `.contrast.spec.ts` pass; e2e axe-clean at each stage.
+- [x] **AC-11:** full mocked suite `npm run test:e2e:a11y` 34/34 incl. `operator-requests.e2e.ts`; legacy specs deleted.
+- [x] Full gate before PR: `npm run lint` (clean) · `npm test` (585/586 — the 1 failure is the
+  pre-existing `booking.service.spec.ts` localStorage-isolation flake, byte-identical to `origin/main`,
+  out of scope) · `npm run build` (clean; only pre-existing SCSS-budget warnings) · `npm run test:e2e:a11y` (34/34).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] Availability section: no new write path; accept/decline drive the existing server flow (restyle only).
-- [ ] Pool + cutoff (invariants #3/#4) untouched; deadline/sweep/pay-window stay server-owned.
-- [ ] Modulith / Payment sections justified N/A / unchanged; **accept never self-confirms (invariant #8)**.
-- [ ] Money displayed from minor units (#5); deadlines rendered in Europe/Tirane (#6).
-- [ ] Booking codes **absent** from the queue (invariant #7) — no code binding, asserted by spec + e2e.
-- [ ] Owner-assert preserved: `/api/venues/{venueId}/**` server check unchanged (invariant #13); 403/401 copy mapped.
-- [ ] Retirement complete: `staff/` gone, daily route + `legacySurface` gone, font link gone, grep-clean.
-- [ ] Frontend standards met; no `as any`; `PendingRequestsStore` placed in `operator/` per `riviera-frontend`.
-- [ ] Badge single-source-of-truth: shell + tab both read one store; no drift (AC-6).
-- [ ] Execution-status table at HEAD matches reality; Open Questions empty.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] Availability section: no new write path; accept/decline drive the existing server flow (restyle only).
+- [x] Pool + cutoff (invariants #3/#4) untouched; deadline/sweep/pay-window stay server-owned.
+- [x] Modulith / Payment sections justified N/A / unchanged; **accept never self-confirms (invariant #8)**.
+- [x] Money displayed from minor units (#5); deadlines rendered in Europe/Tirane (#6).
+- [x] Booking codes **absent** from the queue (invariant #7) — no code binding, asserted by spec + e2e.
+- [x] Owner-assert preserved: `/api/venues/{venueId}/**` server check unchanged (invariant #13); 403/401 copy mapped.
+- [x] Retirement complete: `staff/` gone, daily route + `legacySurface` gone, font link gone, grep-clean.
+- [x] Frontend standards met; no `as any`; `PendingRequestsStore` placed in `operator/` per `riviera-frontend`.
+- [x] Badge single-source-of-truth: shell + tab both read one store; no drift (AC-6).
+- [x] Execution-status table at HEAD matches reality; Open Questions empty.
