@@ -20,7 +20,8 @@ Current state: full stack built and deployed. Since #110 the frontend is served
 **same-origin by the backend** (Spring bundles the Angular SPA into its Docker image) at
 riviera-sunbed-booking.onrender.com; GitHub Pages is retired. The tourist Liquid Glass restyle
 (epic #133, T2–T8) is done; the operator console (epic #141) is in progress —
-O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view merged, O6–O8 remain.
+O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view + O6 requests tab
+(which retired the legacy StaffDaily page) merged, O7–O8 remain.
 
 ## Tech stack (locked)
 
