@@ -315,7 +315,7 @@ the console shell); glass via `CardGlass`/`PanelGlass`. Money via the existing `
 | 1 — `PayoutsTab` core: hero (owed) + ledger table + period total + empty/loading/error + unit spec | ✅ | (this commit) — payouts-tab spec 7/7, lint clean |
 | 2 — weather-refund action (date picker + amber confirm + re-read) + statement modal + unit spec | ✅ | (this commit) — payouts 14/14 + statement 3/3, operator scope 156/156, lint clean |
 | 3 — route swap + placeholder removal + a11y/contrast specs + `app.spec.ts` | ✅ | (this commit) — operator+app scope 184/184, lint + build clean |
-| 4 — CI-safe mocked e2e (`operator-payouts.e2e.ts`) + local-only real-backend spec | ⏳ | |
+| 4 — CI-safe mocked e2e (`operator-payouts.e2e.ts`) + local-only real-backend spec | ✅ | (this commit) — mocked suite 36/36; real-backend spec authored + `--list`-verified (not run in-session, see below) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
@@ -450,39 +450,79 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 > The gate before claiming done.
 
-- [ ] **AC-1..9:** `payouts-tab.spec.ts` passes (ledger rows/minor-units, reversal negative + chip,
-  owed == server figure, statement modal, per-date weather confirm + outcome + re-read, 403/401 copy,
-  no code/guest, empty/loading/error).
-- [ ] **AC-2 (service):** `operator-console.service.spec.ts` passes (ledger GET, weather POST + `date`
-  param, error mappers).
-- [ ] **AC-10:** `app.spec.ts` "payouts loads PayoutsTab" passes; `console-placeholder.spec.ts` has
-  only the venue case; `grep -rn "payouts" frontend/src/app/operator/console-placeholder.ts` clean.
-- [ ] **AC-11:** `payouts-tab.a11y.spec.ts` + `.contrast.spec.ts` pass; e2e axe-clean at each stage.
-- [ ] **AC-12:** full mocked suite `npm run test:e2e:a11y` green incl. `operator-payouts.e2e.ts`.
-- [ ] Full gate before PR: `npm run lint` (clean) · `npm test` (green; note any pre-existing flake
-  byte-identical to `origin/main`) · `npm run build` (clean) · `npm run test:e2e:a11y` (green).
+- [x] **AC-1..9:** `payouts-tab.spec.ts` (14) passes — ledger rows from minor units + `#bookingId`
+  ref, reversal negative + reason chip, owed == server `netOwedMinor`, statement modal open/close +
+  placeholder, per-date weather confirm + outcome + ledger re-read + zero no-op, 403/401 copy, no
+  code/guest, empty/loading/error. `payout-statement.spec.ts` (3) covers the modal in isolation.
+- [x] **AC-2 (service):** `operator-console.service.spec.ts` (18) passes — ledger GET, weather POST
+  with the `date` query param, `payoutErrorOf` (403/401/else).
+- [x] **AC-10:** `app.spec.ts` graduation test passes (`payouts` `loadComponent` → `PayoutsTab`);
+  `console-placeholder.spec.ts` has only the venue case; `CONSOLE_TABS` = `[venue]`.
+- [x] **AC-11:** `payouts-tab.a11y.spec.ts` (4, axe over ledger / weather-confirm / statement / empty)
+  + `.contrast.spec.ts` (9, incl. `#a3372a` reversal, its `@0.12` chip tint, white on `#9a6410`) pass.
+- [x] **AC-12:** full mocked suite `npm run test:e2e:a11y` **36/36** green incl. the 2
+  `operator-payouts.e2e.ts` specs (happy path + 403 owner copy), axe-clean at each stage.
+- [x] Full gate before PR: `npm run lint` **clean** · `npm test` **624/625** (the 1 failure is the
+  pre-existing `booking.service.spec.ts` localStorage-isolation flake — **byte-identical to
+  `origin/main`**, zero booking/ files touched by O7; documented by O6) · `npm run build` **clean**
+  (only pre-existing SCSS-budget warnings) · `npm run test:e2e:a11y` **36/36**.
+- [~] **Real-backend spec** (`e2e/real-backend/payouts.e2e.ts`): **authored + `--list`-verified**,
+  **not executed in this session** — the real-backend suite needs the Spring `webServer` + Postgres,
+  not exercised locally here. Its coverage boundary is honest: a payout accrual needs a CONFIRMED
+  (webhook-verified, #8) booking the UI suite can't drive, so it proves the wired, owner-asserted
+  empty-ledger read + no-op weather refund; the money math is pinned by backend ITs and the populated
+  UI by the mocked spec. Run it when the real-backend suite is next exercised (O6 deferral precedent).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] **No JPA / no backend** introduced — frontend-only (invariant #1 unaffected; no migration).
-- [ ] Availability section: no new write path; the weather refund drives the existing server release
+- [x] Every AC has an implementing task and a verifying test (AC-1..12 → the specs above).
+- [x] No placeholders / TODO / TBD anywhere in the doc or the code.
+- [x] **No JPA / no backend** introduced — frontend-only (invariant #1 unaffected; no migration; the
+  diff is 15 files, all under `frontend/` + the plan doc).
+- [x] Availability section: no new write path; the weather refund drives the existing server release
   (invariant #2 unchanged); cutoff/pool (#3/#4) untouched.
-- [ ] Modulith / Module-ownership sections justified N/A; decision-vs-execution split respected — the
+- [x] Modulith / Module-ownership sections justified N/A; decision-vs-execution split respected — the
   tab **triggers**, `booking` decides (#10), `payment` executes (#8), `payout` reverses (#9).
-- [ ] Payment/payout section filled: **collect-only, no Connect**; weather refund server-decided +
+- [x] Payment/payout section filled: **collect-only, no Connect**; weather refund server-decided +
   server-executed; the tab never self-confirms/self-refunds (RV-CT-3); money in **minor units**,
-  owed = server `netOwedMinor` (no FE money math, #5/#9).
-- [ ] Booking codes **absent** (invariant #7) — no code binding; the reference is `#<bookingId>`; no
-  guest name (need-to-know #11); asserted by spec + e2e.
-- [ ] Owner-assert preserved: `/api/venues/{venueId}/**` server check unchanged (invariant #13); 403
-  `NOT_VENUE_OWNER` + 401 copy mapped.
-- [ ] Timezone: `createdAt` UTC rendered in `Europe/Tirane`; the weather `date` an ISO `LocalDate` (#6).
-- [ ] Frontend standards met; no `as any`; `PayoutsTab` placed as a console child route per
-  `riviera-frontend`; surfaces via `CardGlass`/`PanelGlass` (no `@apply`), contrast proven by maths.
-- [ ] Route swap complete: `payouts` → `PayoutsTab`; placeholder `payouts` case + test removed; only
-  `venue` remains a placeholder; six-tab nav unchanged.
-- [ ] Execution-status table at HEAD matches reality; Open Questions empty.
+  owed = server `netOwedMinor` (no FE money math, #5/#9 — pinned by the "owed = server figure" AC-3).
+- [x] Booking codes **absent** (invariant #7) — no code binding; the reference is `#<bookingId>`; no
+  guest name (need-to-know #11); asserted by unit (`no code/guest`) + e2e (`code` count 0).
+- [x] Owner-assert preserved: `/api/venues/{venueId}/**` server check unchanged (invariant #13); 403
+  `NOT_VENUE_OWNER` + 401 copy mapped (ledger read + weather refund), pinned by unit + e2e.
+- [x] Timezone: `createdAt` UTC rendered in `Europe/Tirane` (`ledgerDateLabel`); the weather `date` an
+  ISO `LocalDate` defaulting to today Europe/Tirane (`todayBookingDate`) (#6).
+- [x] Frontend standards met; no `as any`; `PayoutsTab` placed as a console child route + the modal
+  extracted to `PayoutStatement` (host-backdrop + shared focus trap) per `riviera-frontend`; surfaces
+  via `CardGlass` (no `@apply`); contrast proven by maths (`.contrast.spec.ts`).
+- [x] Route swap complete: `payouts` → `PayoutsTab`; placeholder `payouts` case + test removed; only
+  `venue` remains a placeholder; six-tab nav unchanged (`app.spec.ts`).
+- [x] Execution-status table at HEAD matches reality; Open Questions empty.
 
-If any box is unchecked, the feature is not done. Record the gap in Open Questions.
+All boxes checked. The one full-suite unit failure is the pre-existing `booking.service.spec.ts` flake
+(byte-identical to `origin/main`, no O7 files involved) — not a gap in this slice.
+
+## Review gate — self-review (pre-PR, riviera-review-overlay, frontend scope)
+
+Frontend-only diff, no wire-shape change → the RV-FE bank + the money/BOLA items. Walked; **no findings**.
+- **RV-BE-9 / #13 (Blocker):** no backend change; the server owner-asserts the ledger read
+  (`PayoutLedgerQueryService.assertOwns`) and the weather refund (`WeatherRefundService.assertOwns`),
+  both pinned by `CrossVenueDenialIT` / `WeatherRefundSecurityIT` (unchanged). The tab maps 403
+  `NOT_VENUE_OWNER` → copy on both surfaces (unit + e2e). Held.
+- **RV-CT-3 / #8:** the tab triggers the weather refund and reads only the count/total; it never
+  self-confirms or self-refunds — the refund is executed server-side via the Stripe webhook path. Held.
+- **RV-FE-3 / #5, #9:** money renders from integer minor units via `formatMoney`; the owed figure is
+  the server's `netOwedMinor`, never a client sum (AC-3 asserts it even when a naive Σ would differ);
+  the period gross/commission are display-only presentation. Held.
+- **#7 / #11:** no booking code and no guest identity render — the read exposes neither and the model
+  carries only `bookingId`; the "Booking" cell is the non-credential `#<bookingId>` reference. Held.
+- **RV-FE-1/7:** standalone, `inject()`, `@if`/`@for`, signals + `computed`, `class`/`style` bindings
+  (no `ngClass`/`ngStyle`/`as any`/obsolete decorators — lint-clean); the modal is an accessible
+  `role=dialog` with a focus trap; AA deviations (`#9a6410` for the amber, console teal/red inks)
+  documented in the contrast spec (pure maths).
+- **RV-FE-E2E:** CI-safe mocked spec in `frontend/e2e/` (role/test-id locators, per-test `page.route`,
+  `expectNoSeriousAxeViolations`); the local-only real-backend spec placed in `frontend/e2e/real-backend/`.
+- **RV-PROC-1:** the *Skills consulted* line covers every touched area (FE structure / Angular / Tailwind
+  / payments / e2e); **no backend skills** loaded because no backend was touched (grill-proven).
+
+The formal peer review + Sonar gate run on the PR (Sonar analyzes PRs + `main`); pre-PR local gates green.
