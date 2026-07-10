@@ -1,0 +1,136 @@
+<section class="mx-auto w-full max-w-[920px] px-5 py-4" data-testid="payouts-tab">
+  <header class="mb-1.5">
+    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">Payouts</h1>
+    <p class="mt-1 max-w-[560px] text-[13px] leading-[1.5] text-(--riv-card-ink-soft)">
+      What the platform owes your venue — each confirmed booking accrues its net after commission;
+      refunds reverse it. Settled manually by bank transfer at the end of each period.
+    </p>
+  </header>
+
+  @if (!loaded()) {
+    <p
+      class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+      aria-live="polite"
+      data-testid="payouts-loading"
+    >
+      Loading payouts…
+    </p>
+  } @else if (loadErrorMsg(); as msg) {
+    <p
+      class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-[#a3160e]"
+      role="alert"
+      data-testid="payouts-load-error"
+    >
+      {{ msg }}
+    </p>
+  } @else {
+    <!-- "Owed to you" hero — the SERVER's net owed, rendered as-is (invariant #9, never recomputed). -->
+    <section appCardGlass class="rounded-[24px] px-6 py-5" data-testid="payout-hero">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span
+            class="text-[11px] font-bold uppercase tracking-[0.12em] text-(--riv-card-ink-faint)"
+            >Owed to you</span
+          >
+          <div
+            class="mt-1 text-[34px] font-bold leading-none tracking-[-0.02em] text-[#0a6e85]"
+            data-testid="payout-owed"
+          >
+            {{ owedStr() }}
+          </div>
+          <span
+            class="mt-1.5 block text-[12.5px] text-(--riv-card-ink-soft)"
+            data-testid="payout-counts"
+            >Net after commission · {{ countsLabel() }}</span
+          >
+        </div>
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <div
+        class="mt-3.5 rounded-[24px] border border-(--riv-card-border) bg-white/50 px-[26px] py-[52px] text-center"
+        data-testid="payouts-empty"
+      >
+        <h2 class="text-[18px] font-bold text-(--riv-card-ink)">Nothing owed yet</h2>
+        <p class="mt-1.5 text-[13.5px] text-(--riv-card-ink-soft)">
+          Confirmed bookings will accrue here. You’re paid by bank transfer at the end of the period.
+        </p>
+      </div>
+    } @else {
+      <section appCardGlass class="mt-3.5 overflow-hidden rounded-[24px] px-1.5 py-1.5">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px]" data-testid="ledger-table">
+            <caption class="sr-only">Payout ledger — accruals and refund reversals</caption>
+            <thead>
+              <tr class="text-[10.5px] uppercase tracking-[0.08em] text-(--riv-card-ink-faint)">
+                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Date</th>
+                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Booking</th>
+                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Gross</th>
+                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Commission</th>
+                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track $index) {
+                <tr class="border-t border-(--riv-card-border)" data-testid="ledger-row">
+                  <td class="whitespace-nowrap px-3.5 py-3 text-(--riv-card-ink-soft)">
+                    {{ row.dateLabel }}
+                  </td>
+                  <td class="px-3.5 py-3">
+                    <span class="font-bold tracking-[0.03em] text-(--riv-card-ink)">{{
+                      row.ref
+                    }}</span>
+                    @if (row.isReversal) {
+                      <span
+                        class="ml-2 inline-flex rounded-[7px] border border-[#a3372a]/28 bg-[#a3372a]/12 px-1.5 py-0.5 text-[11px] font-bold text-[#a3372a]"
+                        data-testid="ledger-reason"
+                        >{{ row.reasonLabel }}</span
+                      >
+                    }
+                  </td>
+                  <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink)">
+                    {{ row.grossStr }}
+                  </td>
+                  <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink-soft)">
+                    {{ row.commissionStr }}
+                  </td>
+                  <td
+                    class="whitespace-nowrap px-3.5 py-3 text-right font-bold"
+                    [class]="row.netClass"
+                  >
+                    {{ row.netStr }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="border-t-2 border-(--riv-card-border)" data-testid="period-total">
+                <td class="px-3.5 py-3"></td>
+                <td class="px-3.5 py-3 font-bold text-(--riv-card-ink)">
+                  Period total (owed to you)
+                </td>
+                <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink-soft)">
+                  {{ grossTotalStr() }}
+                </td>
+                <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink-soft)">
+                  {{ commissionTotalStr() }}
+                </td>
+                <td
+                  class="whitespace-nowrap px-3.5 py-3 text-right text-[16px] font-bold text-[#0a6e85]"
+                  data-testid="period-owed"
+                >
+                  {{ owedStr() }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+      <p class="mx-1 mt-2 text-[12px] leading-[1.45] text-(--riv-card-ink-faint)">
+        Refund reversals are shown as negative lines. Payouts are settled manually via bank transfer
+        at the end of each period.
+      </p>
+    }
+  }
+</section>
