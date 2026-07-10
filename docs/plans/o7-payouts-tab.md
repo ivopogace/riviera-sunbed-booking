@@ -311,8 +311,8 @@ the console shell); glass via `CardGlass`/`PanelGlass`. Money via the existing `
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — service + model: `payoutLedger` / `weatherRefund` + error mappers + types + specs | | |
-| 1 — `PayoutsTab` core: hero (owed) + ledger table + period total + empty/loading/error + unit spec | | |
+| 0 — service + model: `payoutLedger` / `weatherRefund` + error mapper + types + specs | ✅ | (this commit) — service spec 18/18, operator scope 139/139 green |
+| 1 — `PayoutsTab` core: hero (owed) + ledger table + period total + empty/loading/error + unit spec | ⏳ | |
 | 2 — weather-refund action (date picker + amber confirm + re-read) + statement modal + unit spec | | |
 | 3 — route swap + placeholder removal + a11y/contrast specs + `app.spec.ts` | | |
 | 4 — CI-safe mocked e2e (`operator-payouts.e2e.ts`) + local-only real-backend spec | | |
@@ -441,6 +441,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-11 | Phase 0 (two endpoints, identical error surface) | per-endpoint error mappers on `OperatorConsoleService` (`markErrorOf`/`releaseErrorOf`/`requestErrorOf`/`repriceErrorOf`/`layoutErrorOf`) | read `operator-console.service.ts` | ledger read + weather refund both fail only 403 `NOT_VENUE_OWNER` / 401 / else | Collapsed to **one** `payoutErrorOf` + one `PayoutErrorCode` for both (vs the plan's two mappers) — the surfaces are identical, so two would be Sonar-duplication. Plan updated to note the single mapper. |
 
 ---
 

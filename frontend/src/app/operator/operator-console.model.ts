@@ -60,6 +60,65 @@ export interface ConsoleDailyBooking {
   readonly code: string;
 }
 
+/** The kind of payout-ledger entry (O7 #173; mirrors backend `EntryType`): a confirmed booking accrues,
+ *  a refund reverses. */
+export type PayoutEntryType = 'ACCRUAL' | 'REVERSAL';
+
+/** Why a reversal happened (O7 #173; mirrors backend `RefundReason`); `null` on an ACCRUAL. */
+export type RefundReasonCode = 'WEATHER' | 'POLICY' | 'CONFLICT';
+
+/**
+ * One row of the per-venue payout ledger (`GET /api/venues/{id}/payout-ledger`, O7 #173, invariant #9).
+ * Mirrors the backend `PayoutLedgerView.Entry`: money in integer minor units (invariant #5), `reason`
+ * `null` on an ACCRUAL, `createdAt` a UTC instant (invariant #6), `runningNetMinor` the balance after
+ * this entry. Carries only {@link bookingId} — **NO booking code, NO guest identity**: the `payout`
+ * module holds no tourist identity (need-to-know, invariant #11), and the code is a bearer credential
+ * (invariant #7); the console renders a non-credential `#<bookingId>` reference.
+ */
+export interface PayoutLedgerEntryView {
+  readonly type: PayoutEntryType;
+  readonly bookingId: number;
+  readonly grossMinor: number;
+  readonly commissionMinor: number;
+  readonly netMinor: number;
+  readonly currency: string;
+  readonly reason: RefundReasonCode | null;
+  readonly createdAt: string; // ISO-8601 UTC instant
+  readonly runningNetMinor: number;
+}
+
+/**
+ * A venue's payout ledger (`GET /api/venues/{id}/payout-ledger`, O7 #173, invariant #9). {@link
+ * netOwedMinor} is the **server-authoritative** net owed (Σ ACCRUAL.net − Σ REVERSAL.net) in integer
+ * minor units — the console **renders** it, never recomputes it (invariants #5/#9). Entries are
+ * oldest-first, each carrying its running net owed.
+ */
+export interface PayoutLedgerView {
+  readonly venueId: number;
+  readonly currency: string;
+  readonly netOwedMinor: number;
+  readonly entries: readonly PayoutLedgerEntryView[];
+}
+
+/**
+ * The outcome of an admin weather refund (`POST /api/venues/{id}/weather-refund?date=`, O7 #173,
+ * invariant #10). Mirrors the backend `WeatherRefundView`: how many CONFIRMED bookings were cancelled +
+ * fully refunded for the venue+date and the total in integer minor units (invariant #5). A {@link
+ * refundedCount} of 0 is a valid **no-op** (no confirmed bookings that day), not an error.
+ */
+export interface WeatherRefundResult {
+  readonly refundedCount: number;
+  readonly totalRefundedMinor: number;
+  readonly currency: string;
+}
+
+/**
+ * A known Payouts-tab failure (O7 #173), mapped from the RFC-7807 `code` (issue #97) for operator copy.
+ * One type for both the ledger read and the weather refund — their meaningful surface is identical:
+ * `NOT_VENUE_OWNER` = the 403 cross-venue denial (invariant #13); `UNAUTHORIZED` = the expired session.
+ */
+export type PayoutErrorCode = 'NOT_VENUE_OWNER' | 'UNAUTHORIZED' | 'UNKNOWN';
+
 /**
  * One pending Request-to-Book entry in the operator queue (issue #98,
  * `GET /api/venues/{venueId}/booking-requests`). Deliberately carries **NO booking code** — a pending
