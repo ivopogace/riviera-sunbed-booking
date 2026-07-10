@@ -228,15 +228,16 @@ export class RequestsTab {
     });
   }
 
-  /** Accessible name for an Accept button — names the guest + set + date, not just "Accept". */
+  // The accessible names lead with the button's visible text (WCAG 2.5.3 Label in Name) and add the
+  // guest + set to disambiguate the repeated per-card buttons for a screen-reader.
   protected acceptLabel(row: RequestRow): string {
-    return `Accept booking request from ${row.guest} for ${row.setLabel} on ${row.dateLabel}`;
+    return `Accept — send to payment: request from ${row.guest} for ${row.setLabel} on ${row.dateLabel}`;
   }
   protected declineLabel(row: RequestRow): string {
-    return `Decline booking request from ${row.guest} for ${row.setLabel} on ${row.dateLabel}`;
+    return `Decline: request from ${row.guest} for ${row.setLabel} on ${row.dateLabel}`;
   }
   protected confirmDeclineLabel(row: RequestRow): string {
-    return `Confirm declining the request from ${row.guest} for ${row.setLabel}`;
+    return `Confirm decline: request from ${row.guest} for ${row.setLabel}`;
   }
 }
 

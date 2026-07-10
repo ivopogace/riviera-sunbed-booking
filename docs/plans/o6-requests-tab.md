@@ -249,7 +249,7 @@ explicitly so they're deterministic in unit tests.
 | 1 — `RequestsTab` (queue, accept, decline-confirm, expired-race, empty, badge writes) + unit spec | ✅ | (this commit) — 12 tab specs + daily-view regression green, lint clean |
 | 2 — a11y + contrast specs; route swap; shell badge ← store; placeholder `requests` case removed | ✅ | (this commit) — 51 specs (shell/placeholder/app/a11y/contrast/tab) green, lint clean |
 | 3 — retirement: delete `staff/` + daily route + `legacySurface`; `app.spec.ts`; doc-comments; grep-clean → font link; delete legacy e2e | ✅ | (this commit) — 60 specs green, build + lint clean; `grep Manrope\|Instrument Serif frontend/src` + `staff` imports clean |
-| 4 — CI-safe mocked e2e `operator-requests.e2e.ts` (+ local real-backend spec) | | |
+| 4 — CI-safe mocked e2e `operator-requests.e2e.ts` (real-backend spec deferred — see note) | ✅ | (this commit) — full mocked suite 34/34 green |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
@@ -276,6 +276,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 - `frontend/e2e/operator-requests.e2e.ts` — CI-safe mocked e2e.
 - **Deleted:** `frontend/src/app/staff/**`, `frontend/e2e/staff-daily.e2e.ts`,
   `frontend/e2e/staff-requests.e2e.ts`.
+- **Deferred:** `frontend/e2e/real-backend/requests.e2e.ts` — the accept/decline endpoints are
+  **unchanged** from what StaffDaily used (backend request-lifecycle ITs cover them), and the
+  local-only real-backend suite (never in CI) can't be driven in this session; the CI-safe mocked
+  spec is the verified FE coverage. Add it if/when the real-backend suite is next exercised locally.
 
 ---
 
