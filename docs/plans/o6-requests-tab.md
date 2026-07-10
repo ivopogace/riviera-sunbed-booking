@@ -310,6 +310,20 @@ commit (each re-entered at Implement, test-first):
 Post-fix: `npm test` (affected specs 83/83), `npm run lint` + `npm run build` clean, e2e 6/6. Re-check
 CI + Sonar on the fix push before merge.
 
+### Merge close-out
+
+- **Merged** as squash PR #217 → `main` `9ce6196` (user-authorized). #176 auto-closed. Epic #141
+  checklist ticked O6 #176 (#217 · 9ce6196) — and corrected the prior close-out gap on O4/O5 (they'd
+  merged unticked). Deferred cleanups filed as #218.
+- **CI (final):** Backend + Frontend (lint/test/build) + CodeQL all green. **Sonar gate green with an
+  empty reported list:** 0 new bugs/vulns/smells/hotspots, 0 duplicated blocks, **89.13% new-code
+  coverage** (the 2 initial `Web:S6819` smells fixed; the review-fix code added no new smell).
+- **Docs-freshness (step 5)** over `9ce6196`: 2 findings, both **patched** —
+  `CLAUDE.md:23` (epic-#141 status: O5-merged → **O6 merged, O7–O8 remain** + StaffDaily-retired note);
+  `.claude/skills/riviera-frontend/SKILL.md:23` (feature-folder example listed the deleted `staff/` →
+  **`operator/`**). `CONTEXT.md` / `RESPONSIBILITIES.md` / `docs/adr` clean (the CLAUDE.md "staff
+  tap-to-mark" mentions are domain concepts, still true). Then `graphify update .` for the doc edits.
+
 ---
 
 ## File structure
