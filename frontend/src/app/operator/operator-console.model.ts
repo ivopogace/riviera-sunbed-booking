@@ -120,6 +120,25 @@ export interface WeatherRefundResult {
 export type PayoutErrorCode = 'NOT_VENUE_OWNER' | 'UNAUTHORIZED' | 'UNKNOWN';
 
 /**
+ * One rendered payout-ledger row (O7 #173) — a **presentational** view model: all money already
+ * formatted from integer minor units (invariant #5), a reversal carrying a negative net + a reason
+ * label. Shared by the ledger table and the statement modal ({@link PayoutStatement}) so the one row
+ * shape doesn't drift between them. `ref` is the non-credential `#<bookingId>` reference (#7/#11).
+ */
+export interface LedgerRow {
+  readonly bookingId: number;
+  readonly ref: string;
+  readonly dateLabel: string;
+  readonly isReversal: boolean;
+  readonly reasonLabel: string | null;
+  readonly grossStr: string;
+  readonly commissionStr: string;
+  readonly netStr: string;
+  /** The net cell's colour class — teal for an accrual, refund-red for a reversal. */
+  readonly netClass: string;
+}
+
+/**
  * One pending Request-to-Book entry in the operator queue (issue #98,
  * `GET /api/venues/{venueId}/booking-requests`). Deliberately carries **NO booking code** — a pending
  * request isn't confirmed/paid yet and the code is the guest's unguessable bearer credential

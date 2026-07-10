@@ -5,27 +5,17 @@ import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
+import { formatCivilDate, todayBookingDate } from '../venue/booking-date';
 import {
+  LedgerRow,
   PayoutErrorCode,
   PayoutLedgerEntryView,
   PayoutLedgerView,
   RefundReasonCode,
+  WeatherRefundResult,
 } from './operator-console.model';
 import { OperatorConsoleService, payoutErrorOf } from './operator-console.service';
-
-/** One rendered ledger row — the entry's presentational strings (all money already formatted, #5). */
-interface LedgerRow {
-  readonly bookingId: number;
-  readonly ref: string;
-  readonly dateLabel: string;
-  readonly isReversal: boolean;
-  readonly reasonLabel: string | null;
-  readonly grossStr: string;
-  readonly commissionStr: string;
-  readonly netStr: string;
-  /** The net cell's colour class — teal for an accrual, refund-red for a reversal. */
-  readonly netClass: string;
-}
+import { PayoutStatement } from './payout-statement';
 
 /**
  * The O7 Payouts tab (issue #173, epic #141) — the operator console's payout ledger. Renders the
@@ -45,7 +35,7 @@ interface LedgerRow {
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass],
+  imports: [CardGlass, PayoutStatement],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {
@@ -61,6 +51,19 @@ export class PayoutsTab {
   protected readonly loaded = signal(false);
   /** The load-error message (owner / session / generic), or undefined when the read succeeded. */
   protected readonly loadErrorMsg = signal<string | undefined>(undefined);
+
+  /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane (#6).
+   *  The refund is per-DATE (whole-day, invariant #10) — the design's per-row buttons don't map to the
+   *  per-date endpoint, and the ledger carries no service-date (O7 decision, plan Resolved). */
+  protected readonly selectedDate = signal(todayBookingDate(new Date()));
+  /** True while the amber "Issue full weather refund" confirm is open (a two-step, no accidental refund). */
+  protected readonly weatherConfirm = signal(false);
+  /** True while a weather refund is in flight — disables the confirm button (no double-issue, R-7). */
+  protected readonly refunding = signal(false);
+  /** A transient action notice (weather-refund outcome, or a failure). */
+  protected readonly notice = signal<string | undefined>(undefined);
+  /** True while the display-only payout-statement modal is open. */
+  protected readonly statementOpen = signal(false);
 
   constructor() {
     const id = parentVenueId(this.route);
@@ -103,6 +106,9 @@ export class PayoutsTab {
   /** The "Owed to you" figure — the SERVER's net owed, rendered as-is (invariant #9, R-1). */
   protected readonly owedStr = computed(() => money(this.ledger()?.netOwedMinor ?? 0, this.currency()));
 
+  /** The ledger's ISO currency, for the statement header/footnote (EUR collection currency, #5). */
+  protected readonly statementCurrency = computed(() => this.currency());
+
   private readonly accrualCount = computed(
     () => this.entries().filter((e) => e.type === 'ACCRUAL').length,
   );
@@ -125,6 +131,85 @@ export class PayoutsTab {
   protected readonly commissionTotalStr = computed(() =>
     money(signedSum(this.entries(), (e) => e.commissionMinor), this.currency()),
   );
+
+  /** The selected weather-refund date as a human label (e.g. `Sat 5 Jul 2026`) — for the confirm copy. */
+  protected readonly selectedDateLabel = computed(() => formatCivilDate(this.selectedDate()));
+
+  /** Change the washed-out date; reset any open confirm + notice so they never apply to the wrong day. */
+  protected onDateChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (!value) {
+      return;
+    }
+    this.selectedDate.set(value);
+    this.weatherConfirm.set(false);
+    this.notice.set(undefined);
+  }
+
+  /** Open the amber weather-refund confirm (two-step — the actual refund is server-decided + executed). */
+  protected onWeatherRefund(): void {
+    this.notice.set(undefined);
+    this.weatherConfirm.set(true);
+  }
+
+  protected onCancelWeather(): void {
+    this.weatherConfirm.set(false);
+  }
+
+  /**
+   * Issue the per-date weather refund. The server cancels + fully refunds every CONFIRMED booking for
+   * the day (invariant #10), executes the refund via the Stripe webhook path (#8) and posts the payout
+   * reversal (#9) — this only triggers it and re-renders. The reversal is posted by an AFTER_COMMIT
+   * listener, so after the outcome lands the ledger is re-read to pull it in (eventually-consistent, R-2).
+   */
+  protected onConfirmWeather(): void {
+    if (this.venueId === undefined || this.refunding()) {
+      return;
+    }
+    this.refunding.set(true);
+    this.notice.set(undefined);
+    const date = this.selectedDate();
+    const dateLabel = formatCivilDate(date);
+    this.console.weatherRefund(this.venueId, date).subscribe({
+      next: (result) => {
+        this.refunding.set(false);
+        this.weatherConfirm.set(false);
+        this.notice.set(weatherSuccessNotice(result, dateLabel));
+        this.reloadLedger();
+      },
+      error: (e: unknown) => {
+        this.refunding.set(false);
+        this.weatherConfirm.set(false);
+        const reason = payoutErrorOf(e);
+        if (reason === 'UNAUTHORIZED') {
+          this.operator.sessionLost();
+        }
+        this.notice.set(weatherFailureNotice(reason));
+      },
+    });
+  }
+
+  protected openStatement(): void {
+    this.statementOpen.set(true);
+  }
+
+  protected closeStatement(): void {
+    this.statementOpen.set(false);
+  }
+
+  /** Re-read the ledger after a weather refund so the reversal(s) appear; a re-read failure keeps the
+   *  current view (the action notice already reported the outcome). */
+  private reloadLedger(): void {
+    if (this.venueId === undefined) {
+      return;
+    }
+    this.console.payoutLedger(this.venueId).subscribe({
+      next: (l) => this.ledger.set(l),
+      error: () => {
+        /* keep the current view; the outcome was already reported */
+      },
+    });
+  }
 
   private load(): void {
     if (this.venueId === undefined) {
@@ -178,6 +263,30 @@ function reasonLabel(reason: RefundReasonCode | null): string {
       return 'Conflict';
     default:
       return 'Refund';
+  }
+}
+
+/** The operator-facing notice for a successful weather refund — count + total, or a no-op for 0. */
+function weatherSuccessNotice(result: WeatherRefundResult, dateLabel: string): string {
+  if (result.refundedCount === 0) {
+    return `No confirmed bookings for ${dateLabel} — nothing to refund.`;
+  }
+  const total = money(result.totalRefundedMinor, result.currency);
+  return (
+    `Weather refund issued for ${dateLabel} — ${plural(result.refundedCount, 'booking')},` +
+    ` ${total} returned to guests.`
+  );
+}
+
+/** Map a weather-refund failure to its operator-facing notice (no nested ternaries). */
+function weatherFailureNotice(reason: PayoutErrorCode): string {
+  switch (reason) {
+    case 'NOT_VENUE_OWNER':
+      return 'You don’t manage this venue, so you can’t issue its refunds.';
+    case 'UNAUTHORIZED':
+      return SESSION_EXPIRED_MESSAGE;
+    default:
+      return 'Could not issue the weather refund. Please try again.';
   }
 }
 
