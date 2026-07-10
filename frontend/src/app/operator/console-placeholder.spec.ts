@@ -33,21 +33,13 @@ describe('ConsolePlaceholder (#170)', () => {
   }
 
   it('names the Venue & commodities section and forward-links to the surviving venue editor', () => {
-    // beach-map (O3 #172), pricing (O4 #174), daily view (O5 #175) and requests (O6 #176) have all
-    // graduated to their real tabs; Venue & commodities is still a placeholder forward-linking to the
-    // legacy venue editor.
+    // beach-map (O3 #172), pricing (O4 #174), daily view (O5 #175), requests (O6 #176) and payouts
+    // (O7 #173) have all graduated to their real tabs; Venue & commodities is the last placeholder,
+    // forward-linking to the legacy venue editor until O8 (#177).
     const el = render('venue');
     expect(el.querySelector('[data-testid="console-placeholder"]')?.textContent).toContain(
       'Venue & commodities',
     );
     expect(link(el)?.getAttribute('href')).toBe('/venue-admin');
-  });
-
-  it('notes that Payouts arrives in a later slice and shows no legacy link', () => {
-    const el = render('payouts');
-    expect(el.querySelector('[data-testid="console-placeholder"]')?.textContent).toContain(
-      'Payouts',
-    );
-    expect(link(el)).toBeNull();
   });
 });

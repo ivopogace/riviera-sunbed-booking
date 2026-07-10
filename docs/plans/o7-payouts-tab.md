@@ -314,8 +314,8 @@ the console shell); glass via `CardGlass`/`PanelGlass`. Money via the existing `
 | 0 — service + model: `payoutLedger` / `weatherRefund` + error mapper + types + specs | ✅ | (this commit) — service spec 18/18, operator scope 139/139 green |
 | 1 — `PayoutsTab` core: hero (owed) + ledger table + period total + empty/loading/error + unit spec | ✅ | (this commit) — payouts-tab spec 7/7, lint clean |
 | 2 — weather-refund action (date picker + amber confirm + re-read) + statement modal + unit spec | ✅ | (this commit) — payouts 14/14 + statement 3/3, operator scope 156/156, lint clean |
-| 3 — route swap + placeholder removal + a11y/contrast specs + `app.spec.ts` | ⏳ | |
-| 4 — CI-safe mocked e2e (`operator-payouts.e2e.ts`) + local-only real-backend spec | | |
+| 3 — route swap + placeholder removal + a11y/contrast specs + `app.spec.ts` | ✅ | (this commit) — operator+app scope 184/184, lint + build clean |
+| 4 — CI-safe mocked e2e (`operator-payouts.e2e.ts`) + local-only real-backend spec | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
