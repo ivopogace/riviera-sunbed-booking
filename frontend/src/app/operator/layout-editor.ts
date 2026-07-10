@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
+import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
@@ -149,8 +150,8 @@ export class LayoutEditor {
   });
 
   constructor() {
-    const id = Number(this.route.parent?.snapshot.paramMap.get('venueId'));
-    if (Number.isInteger(id) && id > 0) {
+    const id = parentVenueId(this.route);
+    if (id !== undefined) {
       this.venueId = id;
       this.loadExisting(id);
     }
