@@ -188,7 +188,7 @@ signals + `computed`, no `as any` on the contract. Tile state conveyed by access
 | 2 — `BeachGridFrame` extraction + migrate `LayoutEditor` (O3 specs stay green) | ✅ | (this commit) |
 | 3 — `DailyViewTab` (grid + date + arrivals) via the frame, unit specs | ✅ | (this commit) |
 | 4 — a11y + contrast specs; route swap; placeholder `daily` case removed | ✅ | (this commit) |
-| 5 — CI-safe mocked e2e (+ local real-backend spec) | | |
+| 5 — CI-safe mocked e2e (+ local real-backend spec) | ✅ | (this commit) — full mocked e2e suite 35/35 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 

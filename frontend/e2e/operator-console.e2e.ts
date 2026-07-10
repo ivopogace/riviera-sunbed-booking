@@ -125,8 +125,9 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
   await expect(page.getByTestId('layout-editor')).toBeVisible();
 
-  // Switching to Daily view updates the URL and the active tab. Scope to the tab nav — the daily
-  // placeholder also renders an "Open the current daily view" link.
+  // Switching to Daily view updates the URL and the active tab, rendering the O5 daily view tab
+  // (not a placeholder). It reads :venueId from the PARENT route (child routes don't inherit it) —
+  // a real browser exercises that inheritance, which a mocked ActivatedRoute unit spec can't.
   const tabs = page.getByTestId('oc-tabs');
   await tabs.getByRole('link', { name: 'Daily view' }).click();
   await expect(page).toHaveURL(/\/operator\/1\/daily/);
@@ -134,11 +135,7 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
     'aria-current',
     'page',
   );
-  // The daily placeholder forward-link carries the venue id from the parent route (finding 2).
-  await expect(page.getByTestId('console-placeholder-link')).toHaveAttribute(
-    'href',
-    '/venue-admin/daily/1',
-  );
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
   // Sign out → back to the sign-in card.
   await page.getByTestId('oc-signout').click();
