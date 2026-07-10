@@ -186,8 +186,8 @@ signals + `computed`, no `as any` on the contract. Tile state conveyed by access
 | 0 — `parentVenueId` helper + migrate the 2 existing consumers | ✅ | (this commit) |
 | 1 — console service/model: `dailyBookings`/`markSet`/`releaseSet` + error mappers | ✅ | (this commit) — verified via the tab spec (phase 3) |
 | 2 — `BeachGridFrame` extraction + migrate `LayoutEditor` (O3 specs stay green) | ✅ | (this commit) |
-| 3 — `DailyViewTab` (grid + date + arrivals) via the frame, unit specs | | |
-| 4 — a11y + contrast specs; route swap; placeholder `daily` case removed | | |
+| 3 — `DailyViewTab` (grid + date + arrivals) via the frame, unit specs | ✅ | (this commit) |
+| 4 — a11y + contrast specs; route swap; placeholder `daily` case removed | ✅ | (this commit) |
 | 5 — CI-safe mocked e2e (+ local real-backend spec) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.

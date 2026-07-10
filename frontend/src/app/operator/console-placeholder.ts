@@ -54,13 +54,6 @@ function describeTab(tab: string, venueId: string): TabPlaceholder {
   const openDaily = 'Open the current daily view';
 
   switch (tab) {
-    case 'daily':
-      return {
-        title: 'Daily view',
-        note: 'The restyled daily view arrives in a later slice (O5). For now, mark walk-ins and see arrivals in the current daily view.',
-        link: daily,
-        linkLabel: openDaily,
-      };
     case 'requests':
       return {
         title: 'Requests',

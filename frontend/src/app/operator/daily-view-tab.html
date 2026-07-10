@@ -1,0 +1,154 @@
+@if (!loaded()) {
+  <p class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)" aria-live="polite">
+    Loading the daily view…
+  </p>
+} @else if (loadError()) {
+  <p
+    class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-[#a3160e]"
+    role="alert"
+    data-testid="daily-load-error"
+  >
+    Sorry — we couldn’t load this venue’s day. Please try again.
+  </p>
+} @else {
+  <section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="daily-view-tab">
+    <!-- Date + live availability summary -->
+    <section appCardGlass class="mb-3.5 rounded-[20px] px-[18px] py-4">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <label class="flex flex-col gap-1.5">
+          <span
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+            >Date</span
+          >
+          <input
+            type="date"
+            data-testid="daily-date"
+            [value]="selectedDate()"
+            (change)="onDateChange($event)"
+            class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+          />
+        </label>
+        <p
+          class="text-[13px] text-(--riv-card-ink-soft)"
+          data-testid="daily-availability"
+          aria-live="polite"
+        >
+          <strong class="text-(--riv-card-ink)">{{ markedCount() }}</strong> walk-in marked ·
+          <strong class="text-(--riv-card-ink)">{{ freeCount() }}</strong> of {{ totalCount() }} sets
+          free on {{ dateLabel() }}
+        </p>
+      </div>
+      @if (notice(); as msg) {
+        <output
+          class="mt-3 block text-[13px] font-semibold text-[#a3160e]"
+          aria-live="polite"
+          data-testid="daily-notice"
+          >{{ msg }}</output
+        >
+      }
+    </section>
+
+    <!-- The sea-facing availability grid -->
+    <app-beach-grid-frame testid="daily-grid-frame">
+      @for (row of rows(); track row.label) {
+        <div class="mb-1.5 flex items-center gap-2">
+          <span class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)">{{
+            row.label
+          }}</span>
+          <ul
+            class="grid flex-1 list-none gap-1 p-0"
+            [style.grid-template-columns]="columns(row)"
+          >
+            @for (set of row.sets; track set.id) {
+              <li
+                class="set-tile"
+                data-testid="daily-tile"
+                [class.premium]="set.tier === 'PREMIUM'"
+              >
+                @if (isActionable(set)) {
+                  <button
+                    type="button"
+                    [attr.data-set-id]="set.id"
+                    [attr.data-state]="stateOf(set)"
+                    [attr.aria-label]="tileLabel(set)"
+                    [disabled]="isPending(set)"
+                    (click)="onTile(set)"
+                    class="h-8 w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
+                    [class]="tileClass(set)"
+                  >
+                    <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                  </button>
+                } @else {
+                  <span
+                    role="img"
+                    [attr.data-set-id]="set.id"
+                    [attr.data-state]="stateOf(set)"
+                    [attr.aria-label]="tileLabel(set)"
+                    class="flex h-8 w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
+                    [class]="tileClass(set)"
+                  >
+                    <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </app-beach-grid-frame>
+
+    <!-- Legend -->
+    <ul
+      class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-(--riv-card-ink)"
+      aria-label="Legend"
+    >
+      <li class="flex items-center gap-[7px]">
+        <span
+          class="h-[13px] w-[13px] rounded-[4px] border border-[#0c2a33]/15 bg-white/85"
+          aria-hidden="true"
+        ></span>
+        Free (tap to mark)
+      </li>
+      <li class="flex items-center gap-[7px]">
+        <span class="h-[13px] w-[13px] rounded-[4px] bg-[#0a6e85]" aria-hidden="true"></span>
+        Walk-in marked
+      </li>
+      <li class="flex items-center gap-[7px]">
+        <span
+          class="h-[13px] w-[13px] rounded-[4px] bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)]"
+          aria-hidden="true"
+        ></span>
+        Booked online (locked)
+      </li>
+    </ul>
+
+    <!-- Arrivals: the day's confirmed bookings with their arrival codes -->
+    <section appCardGlass class="mt-4 rounded-[20px] px-[18px] py-4" aria-labelledby="arrivals-title">
+      <h2 id="arrivals-title" class="text-[15px] font-bold text-(--riv-card-ink)">Arrivals</h2>
+      <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+        Verify the booking code on arrival.
+      </p>
+      @if (arrivals().length) {
+        <ul class="flex list-none flex-col gap-1.5 p-0">
+          @for (a of arrivals(); track a.setId) {
+            <li
+              class="flex items-center justify-between rounded-[12px] border border-(--riv-card-border) bg-white/45 px-3 py-2"
+              data-testid="daily-arrival-row"
+            >
+              <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">{{ a.label }}</span>
+              <code
+                class="rounded-[8px] bg-(--riv-chip-bg) px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-(--riv-card-ink)"
+                data-testid="daily-arrival-code"
+                >{{ a.code }}</code
+              >
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-[13px] text-(--riv-card-ink-soft)" data-testid="daily-arrivals-empty">
+          No online bookings for {{ dateLabel() }}.
+        </p>
+      }
+    </section>
+  </section>
+}
