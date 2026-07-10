@@ -246,7 +246,7 @@ explicitly so they're deterministic in unit tests.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — service/model request client + `requestErrorOf`; `PendingRequestsStore`; deadline + civil-date helpers | ✅ | (this commit) — 29/29 scoped specs green, lint clean |
-| 1 — `RequestsTab` (queue, accept, decline-confirm, expired-race, empty, badge writes) + unit spec | | |
+| 1 — `RequestsTab` (queue, accept, decline-confirm, expired-race, empty, badge writes) + unit spec | ✅ | (this commit) — 12 tab specs + daily-view regression green, lint clean |
 | 2 — a11y + contrast specs; route swap; shell badge ← store; placeholder `requests` case removed | | |
 | 3 — retirement: delete `staff/` + daily route + `legacySurface`; `app.spec.ts`; doc-comments; grep-clean → font link; delete legacy e2e | | |
 | 4 — CI-safe mocked e2e `operator-requests.e2e.ts` (+ local real-backend spec) | | |
@@ -376,6 +376,7 @@ Modify `app.routes.ts` (delete daily route), `app.spec.ts`, `operator/operator-c
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-10 | Phase 1 (civil-date label needed on the Requests cards) | the UTC-anchored `Intl.DateTimeFormat('en-IE', { timeZone: 'UTC', weekday, day, month, year })` block | read `daily-view-tab.ts` `dateLabel` | 2 consumers: `DailyViewTab.dateLabel` (inline) + the new `RequestsTab` rows | Extracted `formatCivilDate(iso)` to `venue/booking-date.ts` (next to `parseIsoDate`) and refactored **both** onto it — proactively dedups the identical formatter O5 inlined, pre-empting the Sonar duplication that bit O5's verbatim port. `daily-view-tab.spec.ts` passes unchanged. |
 
 ---
 

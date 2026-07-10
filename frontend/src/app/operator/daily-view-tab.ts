@@ -7,7 +7,7 @@ import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } fr
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
+import { formatCivilDate, todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView, VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
 import { BeachGridFrame } from './beach-grid-frame';
@@ -305,16 +305,7 @@ export class DailyViewTab {
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026") — memoized, recomputed per date. */
-  protected readonly dateLabel = computed(() =>
-    new Intl.DateTimeFormat('en-IE', {
-      // parseIsoDate anchors the civil day at midnight UTC, so format in UTC too (invariant #6).
-      timeZone: 'UTC',
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }).format(parseIsoDate(this.selectedDate())),
-  );
+  protected readonly dateLabel = computed(() => formatCivilDate(this.selectedDate()));
 
   /** Accessible name so tile state is not conveyed by colour alone (WCAG AA). */
   protected tileLabel(set: SetView): string {
