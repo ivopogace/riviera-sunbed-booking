@@ -231,6 +231,14 @@ First analysis failed all three bars (1 issue, 9.66% duplication, 74.9% new-code
   `markErrorOf`/`releaseErrorOf` branches; added component tests for the mark/release failure notices.
 
 Verified: `npm run lint` clean, targeted specs 52/52, `npm run build` clean, affected e2e 6/6.
+**Re-analysis (PR #215) confirmed all three bars cleared: 0 new issues · 0.0% new-duplication · 88.13%
+new-code coverage** (up from 74.9%).
+
+### Docs-freshness (merge close-out step 5)
+
+Ran `riviera-docs-freshness` over the O5 merge range. One finding: `CLAUDE.md` epic-#141 status line
+(O1–O4 → **O1–O5** merged, O6–O8 remain) — patched via the docs close-out PR. No skill/substrate
+references to the removed `StaffTileState` or to `staff-daily` as an example. Otherwise clean.
 
 ---
 
