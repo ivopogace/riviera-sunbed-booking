@@ -10,12 +10,15 @@ import {
   ConsoleDailyBooking,
   LayoutErrorCode,
   MarkErrorCode,
+  PayoutErrorCode,
+  PayoutLedgerView,
   PendingRequestItem,
   ReleaseErrorCode,
   RepriceErrorCode,
   RequestDecision,
   RequestErrorCode,
   TakingsView,
+  WeatherRefundResult,
 } from './operator-console.model';
 
 /**
@@ -137,6 +140,48 @@ export class OperatorConsoleService {
       params: new HttpParams().set('date', date),
     });
   }
+
+  /**
+   * The venue's payout ledger (O7 #173) — accruals + reversals with the server-authoritative net owed
+   * (`netOwedMinor`, invariant #9). Owner-asserted server-side (invariant #13); money is integer minor
+   * units (invariant #5) rendered by the tab, never computed; carries no booking code / guest identity
+   * (invariants #7/#11).
+   */
+  payoutLedger(venueId: number): Observable<PayoutLedgerView> {
+    return this.http.get<PayoutLedgerView>(`${this.base}/api/venues/${venueId}/payout-ledger`);
+  }
+
+  /**
+   * Issue a **full weather refund** for every CONFIRMED booking on `venueId`+`date` (O7 #173, invariant
+   * #10) — admin-triggered, whole-day, regardless of the cutoff. The server decides + executes the
+   * refund (via the Stripe webhook path, invariant #8) and posts the payout reversal (#9); this only
+   * triggers it. `date` is a required query param (no implicit "today"). Owner-asserted (invariant #13);
+   * idempotent server-side (a re-run refunds nothing already cancelled).
+   */
+  weatherRefund(venueId: number, date: string): Observable<WeatherRefundResult> {
+    return this.http.post<WeatherRefundResult>(
+      `${this.base}/api/venues/${venueId}/weather-refund`,
+      null,
+      { params: new HttpParams().set('date', date) },
+    );
+  }
+}
+
+/**
+ * Map a Payouts-tab failure — a ledger read or a weather refund — to a known {@link PayoutErrorCode}
+ * (RFC-7807 `code`, #97; or 401). One mapper for both: 403 `NOT_VENUE_OWNER` (invariant #13) and 401 are
+ * the only outcomes the tab distinguishes; everything else is generic operator copy.
+ */
+export function payoutErrorOf(error: unknown): PayoutErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    if (problemCodeOf(error) === 'NOT_VENUE_OWNER') {
+      return 'NOT_VENUE_OWNER';
+    }
+  }
+  return 'UNKNOWN';
 }
 
 /** Map an HTTP failure of a walk-in mark to a known {@link MarkErrorCode} (RFC-7807 `code`, #97; or 401). */

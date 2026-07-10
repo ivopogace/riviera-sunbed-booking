@@ -5,7 +5,6 @@ import { Routes } from '@angular/router';
 // swaps the component in; `data.tab` tells the placeholder which section it is. `beach-map` has
 // graduated to its real editor (O3 #172) and is declared explicitly below.
 const CONSOLE_TABS: readonly (readonly [string, string])[] = [
-  ['payouts', 'Payouts'],
   ['venue', 'Venue & commodities'],
 ];
 
@@ -37,6 +36,13 @@ const consoleTabRoutes: Routes = [
     loadComponent: () => import('./operator/requests-tab').then((m) => m.RequestsTab),
     title: 'Requests — Operator console',
     data: { tab: 'requests' },
+  },
+  {
+    // O7 (#173): the real payout ledger + statement + weather refund, replacing the placeholder.
+    path: 'payouts',
+    loadComponent: () => import('./operator/payouts-tab').then((m) => m.PayoutsTab),
+    title: 'Payouts — Operator console',
+    data: { tab: 'payouts' },
   },
   ...CONSOLE_TABS.map(([path, label]) => ({
     path,

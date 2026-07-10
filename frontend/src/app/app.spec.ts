@@ -251,4 +251,13 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     // A default child redirects to the first tab so `/operator/:venueId` lands on a tab.
     expect(children.some((c) => c.path === '' && c.redirectTo === 'beach-map')).toBe(true);
   });
+
+  it('graduates the payouts tab from the placeholder to the real PayoutsTab (O7 #173)', async () => {
+    const console = routes.find((r) => r.path === 'operator/:venueId');
+    const payouts = (console?.children ?? []).find((c) => c.path === 'payouts');
+    const load = payouts?.loadComponent as (() => Promise<{ name: string }>) | undefined;
+    const component = await load?.();
+    // The bundler may prefix the emitted class name (e.g. `_PayoutsTab`) — match on the class, not ===.
+    expect(component?.name).toContain('PayoutsTab');
+  });
 });

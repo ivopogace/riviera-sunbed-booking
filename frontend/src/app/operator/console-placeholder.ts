@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 /** What a placeholder tab shows: its title, an upcoming-slice note, and an optional forward-link to
- *  the surviving legacy surface (Payouts has none — it is new in O7). */
+ *  the surviving legacy surface. After O7 only Venue & commodities remains a placeholder (O8). */
 interface TabPlaceholder {
   readonly title: string;
   readonly note: string;
@@ -39,32 +39,21 @@ export class ConsolePlaceholder {
   protected readonly info: TabPlaceholder = describeTab(String(this.route.snapshot.data['tab'] ?? ''));
 }
 
-/** Per-tab copy + the legacy surface each forward-links to while its restyle slice is pending. */
+/** Per-tab copy + the legacy surface each forward-links to while its restyle slice is pending. After
+ *  O7 only `venue` remains a placeholder, so this is a single branch (not a switch) until O8 retires it. */
 function describeTab(tab: string): TabPlaceholder {
-  const editor: readonly string[] = ['/venue-admin'];
-  const openEditor = 'Open the current venue editor';
-
-  switch (tab) {
-    case 'payouts':
-      return {
-        title: 'Payouts',
-        note: 'The payout ledger, period statement and weather refunds arrive in a later slice (O7).',
-        link: null,
-        linkLabel: null,
-      };
-    case 'venue':
-      return {
-        title: 'Venue & commodities',
-        note: 'The restyled venue details + commodities tab arrives in a later slice (O8). For now, edit venue details in the current venue editor.',
-        link: editor,
-        linkLabel: openEditor,
-      };
-    default:
-      return {
-        title: 'Operator console',
-        note: 'This section is being restyled.',
-        link: null,
-        linkLabel: null,
-      };
+  if (tab === 'venue') {
+    return {
+      title: 'Venue & commodities',
+      note: 'The restyled venue details + commodities tab arrives in a later slice (O8). For now, edit venue details in the current venue editor.',
+      link: ['/venue-admin'],
+      linkLabel: 'Open the current venue editor',
+    };
   }
+  return {
+    title: 'Operator console',
+    note: 'This section is being restyled.',
+    link: null,
+    linkLabel: null,
+  };
 }
