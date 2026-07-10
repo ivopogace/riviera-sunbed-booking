@@ -185,7 +185,7 @@ signals + `computed`, no `as any` on the contract. Tile state conveyed by access
 |-------|--------|---------|
 | 0 — `parentVenueId` helper + migrate the 2 existing consumers | ✅ | (this commit) |
 | 1 — console service/model: `dailyBookings`/`markSet`/`releaseSet` + error mappers | ✅ | (this commit) — verified via the tab spec (phase 3) |
-| 2 — `BeachGridFrame` extraction + migrate `LayoutEditor` (O3 specs stay green) | | |
+| 2 — `BeachGridFrame` extraction + migrate `LayoutEditor` (O3 specs stay green) | ✅ | (this commit) |
 | 3 — `DailyViewTab` (grid + date + arrivals) via the frame, unit specs | | |
 | 4 — a11y + contrast specs; route swap; placeholder `daily` case removed | | |
 | 5 — CI-safe mocked e2e (+ local real-backend spec) | | |
@@ -221,6 +221,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-10 | Phase 2 (grid extraction, R-2) | shared sea-facing grid chrome vs per-row tile scaffold | read `layout-editor.html` + `staff-daily.html` grid bodies | 2 grids: O3 paint grid (CSS-grid equal-cols + right price col) vs daily grid (price-header + flex set-grid) | Shared the **frame chrome only** (`BeachGridFrame` = card + ▲/▼ banners via `<ng-content>`); left the per-row tile scaffold per-consumer because the two tile-track layouts genuinely differ. Sharing the row scaffold too would force one abstraction over two layouts (R-2). |
 
 ---
 
