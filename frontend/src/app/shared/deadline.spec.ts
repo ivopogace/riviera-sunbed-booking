@@ -1,4 +1,4 @@
-import { formatDeadline } from './deadline';
+import { formatDeadline, isUrgent, timeLeftLabel } from './deadline';
 
 describe('formatDeadline', () => {
   it('renders a UTC instant in Europe/Tirane winter time (UTC+1)', () => {
@@ -14,5 +14,41 @@ describe('formatDeadline', () => {
     expect(text).toContain('2');
     expect(text).toContain('Jul');
     expect(text).toContain('18:00');
+  });
+});
+
+/**
+ * The Requests-tab urgency helpers (issue #176). Pure functions taking `now` as a millisecond epoch,
+ * so the 8-hour boundary is deterministic without mocking the clock.
+ */
+describe('isUrgent', () => {
+  const now = Date.UTC(2026, 6, 2, 8, 0, 0); // 2026-07-02T08:00:00Z
+
+  it('is true when the deadline is under 8h away', () => {
+    // +7h59m → inside the window.
+    expect(isUrgent('2026-07-02T15:59:00Z', now)).toBe(true);
+  });
+
+  it('is false at or beyond the 8h window', () => {
+    expect(isUrgent('2026-07-02T16:00:00Z', now)).toBe(false); // exactly 8h
+    expect(isUrgent('2026-07-03T08:00:00Z', now)).toBe(false); // 24h
+  });
+
+  it('is false for a deadline already in the past (the sweep owns it)', () => {
+    expect(isUrgent('2026-07-02T07:59:00Z', now)).toBe(false);
+  });
+});
+
+describe('timeLeftLabel', () => {
+  const now = Date.UTC(2026, 6, 2, 8, 0, 0);
+
+  it('renders hours once an hour or more remains', () => {
+    expect(timeLeftLabel('2026-07-02T11:00:00Z', now)).toBe('3h left');
+    expect(timeLeftLabel('2026-07-02T09:30:00Z', now)).toBe('1h left'); // 90m floors to 1h
+  });
+
+  it('renders minutes below an hour, floored at 1m', () => {
+    expect(timeLeftLabel('2026-07-02T08:45:00Z', now)).toBe('45m left');
+    expect(timeLeftLabel('2026-07-02T08:00:30Z', now)).toBe('1m left'); // 30s rounds up to 1m
   });
 });

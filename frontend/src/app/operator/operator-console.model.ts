@@ -61,6 +61,45 @@ export interface ConsoleDailyBooking {
 }
 
 /**
+ * One pending Request-to-Book entry in the operator queue (issue #98,
+ * `GET /api/venues/{venueId}/booking-requests`). Deliberately carries **NO booking code** — a pending
+ * request isn't confirmed/paid yet and the code is the guest's unguessable bearer credential
+ * (invariant #7), shown to staff only at arrival (in the Daily-view arrivals list), never at request
+ * time. Moved here from the retired `staff` feature — the console is `StaffDaily`'s successor (O6 #176).
+ */
+export interface PendingRequestItem {
+  readonly bookingId: number;
+  readonly setId: number;
+  readonly bookingDate: string; // ISO YYYY-MM-DD (Europe/Tirane civil day, invariant #6)
+  readonly guestName: string;
+  readonly amount: MoneyView;
+  readonly requestedAt: string; // ISO-8601 UTC instant
+  readonly requestExpiresAt: string; // ISO-8601 UTC instant (the response deadline)
+}
+
+/** The outcome of an accept/decline (issue #98): `AWAITING_PAYMENT` or `CONFIRMED` (accept), `DECLINED`. */
+export interface RequestDecision {
+  readonly bookingId: number;
+  readonly status: string;
+}
+
+/**
+ * A known accept/decline failure (O6 #176), mapped from the RFC-7807 `code` (issue #97) for
+ * operator-facing copy. `REQUEST_EXPIRED` = the sweep won the race (the dismissible expired-race card);
+ * `REQUEST_NOT_PENDING` = already handled; `NO_SUCH_REQUEST` = the 404; `PAYMENT_INIT_FAILED` = accept
+ * couldn't open the guest's pay window; `NOT_VENUE_OWNER` = the 403 (invariant #13); `UNAUTHORIZED` =
+ * the expired session.
+ */
+export type RequestErrorCode =
+  | 'NO_SUCH_REQUEST'
+  | 'REQUEST_NOT_PENDING'
+  | 'REQUEST_EXPIRED'
+  | 'PAYMENT_INIT_FAILED'
+  | 'NOT_VENUE_OWNER'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
+
+/**
  * A known staff walk-in **mark** failure (O5 #175), mapped from the RFC-7807 `code` (issue #97) for
  * operator-facing copy. `ALREADY_TAKEN` = the 409 (the set was just taken by the other channel);
  * `DATE_IN_PAST` = the 422 cutoff (invariant #4); `NO_SUCH_SET`/`NO_SUCH_VENUE` = the 404s;

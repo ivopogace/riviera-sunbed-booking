@@ -245,7 +245,7 @@ explicitly so they're deterministic in unit tests.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — service/model request client + `requestErrorOf`; `PendingRequestsStore`; deadline + civil-date helpers | | |
+| 0 — service/model request client + `requestErrorOf`; `PendingRequestsStore`; deadline + civil-date helpers | ✅ | (this commit) — 29/29 scoped specs green, lint clean |
 | 1 — `RequestsTab` (queue, accept, decline-confirm, expired-race, empty, badge writes) + unit spec | | |
 | 2 — a11y + contrast specs; route swap; shell badge ← store; placeholder `requests` case removed | | |
 | 3 — retirement: delete `staff/` + daily route + `legacySurface`; `app.spec.ts`; doc-comments; grep-clean → font link; delete legacy e2e | | |

@@ -1,4 +1,4 @@
-import { defaultBookingDate, todayBookingDate } from './booking-date';
+import { defaultBookingDate, formatCivilDate, todayBookingDate } from './booking-date';
 
 /**
  * Pins the map/dialog default date (issue #44): tomorrow in Europe/Tirane, as ISO YYYY-MM-DD,
@@ -39,5 +39,16 @@ describe('todayBookingDate', () => {
   it('uses the Tirane civil day, not UTC, late in the evening', () => {
     // 23:30 UTC on 2026-06-30 is already 01:30 on 2026-07-01 in Tirane (UTC+2 in summer).
     expect(todayBookingDate(new Date('2026-06-30T23:30:00Z'))).toBe('2026-07-01');
+  });
+});
+
+/**
+ * Pins the shared civil-day label (issue #176) — the human "Tue 30 Jun 2026" the console's Daily-view
+ * and Requests tabs render. UTC-anchored, so the same ISO day formats identically regardless of the
+ * viewer's zone (invariant #6).
+ */
+describe('formatCivilDate', () => {
+  it('renders an ISO civil day as a UTC-anchored weekday/day/month/year label', () => {
+    expect(formatCivilDate('2026-06-30')).toBe('Tue 30 Jun 2026');
   });
 });
