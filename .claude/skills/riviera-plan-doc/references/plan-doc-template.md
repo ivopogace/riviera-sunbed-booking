@@ -52,6 +52,27 @@ ready. `N/A — <reason>` only for a truly single-area trivial slice.>
 
 - <thing the feature might imply but we are not doing>
 
+## Behavior-parity ledger (retirement / replacement slices only)
+
+> **Mandatory when the slice retires or replaces an existing surface** (a page, component,
+> endpoint, or flow); otherwise `N/A — new behavior, replaces nothing`. A "restyle / refactor
+> only, no behavior change" claim is **aspirational until verified** — the cheapest place to
+> catch a silently-dropped behavior is here, not at the review gate. List **every** behavior of
+> the OLD surface (re-reads/reconciles, each error path, retries, empty/loading states, the
+> exact 401/403 handling, redirects, background refreshes) and mark each **preserved / changed
+> (with reason) / dropped (with reason)**. A `dropped` row with no reason is a bug in waiting;
+> a `preserved` row names how the new surface does it (so review can check, not re-derive).
+
+| Old-surface behavior | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone |
+|---|---|---|
+| e.g. "re-reads the whole queue after every accept/decline (reconcile)" | dropped → **restored** | was replaced by a local-only card removal; add it back |
+
+> Case history — **O6 #176**: the plan said "restyle only," but the new Requests tab replaced
+> StaffDaily's post-action **reconcile** with a local card removal — a *dropped* behavior that
+> read as *preserved*. The workflow review found it plus 5 siblings (stale queue, frozen clock,
+> badge races) as **14 findings**, ~40% of the build effort spent re-fixing. One ledger row at
+> plan time would have pre-empted the whole class.
+
 ## Risk register
 
 > First-class section. Each row has a mitigation, an owner, and a resolution state.
