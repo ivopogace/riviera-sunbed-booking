@@ -212,8 +212,25 @@ High-effort workflow-backed review (4 finders + adversarial verify) surfaced 8 d
 - **F5 (cleanup):** new date label shown over the old day's counts/codes during load. **Fixed** (new-day reset).
 - **F6 (cleanup):** duplicated session-expired literal. **Fixed** — uses the `SESSION_EXPIRED` constant.
 - **F7 (cleanup):** `dateLabel()` rebuilt an `Intl.DateTimeFormat` every call. **Fixed** — memoized `computed`.
-- **F8 (PLAUSIBLE, cleanup):** row-grouping duplicated. **Deferred** — see the Generalization-audit log
-  (only 2 true consumers; rule-of-three not met).
+- **F8 (PLAUSIBLE, cleanup):** row-grouping duplicated. **Resolved after all** — the Sonar gate (below)
+  forced a real de-duplication that made this a genuine 3-consumer extraction (`groupSetsByRow`).
+
+### Sonar gate — findings resolved
+
+First analysis failed all three bars (1 issue, 9.66% duplication, 74.9% new-code coverage). Root cause:
+`daily-view-tab.ts` was a large verbatim port of `StaffDaily`. Fixed:
+
+- **Issue `Web:S6819`** (`role="img"` on the locked tile): replaced with an `sr-only` text alternative —
+  satisfies both axe (accessible name) and Sonar (no img role).
+- **Duplication (9.66%):** extracted the shared grid logic (`groupSetsByRow`, `deriveTileStates`,
+  `tileTapAction`, `TileState`) to `shared/availability-grid.ts` and refactored **all three** consumers
+  onto it — `DailyViewTab`, `StaffDaily` (removing its inline copies), and `PricingTab` (row grouping).
+  The `DailyViewTab` tap flow was consolidated into one `onTile` (killing the third duplicated block).
+- **Coverage (74.9% → target ≥80%):** the shared helpers are pure and fully covered by
+  `availability-grid.spec.ts`; a new `operator-console.service.spec.ts` exhaustively covers the
+  `markErrorOf`/`releaseErrorOf` branches; added component tests for the mark/release failure notices.
+
+Verified: `npm run lint` clean, targeted specs 52/52, `npm run build` clean, affected e2e 6/6.
 
 ---
 

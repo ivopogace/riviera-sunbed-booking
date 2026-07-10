@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { groupSetsByRow } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
 import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -64,28 +65,19 @@ export class PricingTab {
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
 
   /** One row per label (in read order), with its tier description and current price as a EUR string. */
-  protected readonly rows = computed<PriceRow[]>(() => {
-    const byLabel = new Map<string, SetView[]>();
-    for (const set of this.sets()) {
-      const group = byLabel.get(set.rowLabel);
-      if (group) {
-        group.push(set);
-      } else {
-        byLabel.set(set.rowLabel, [set]);
-      }
-    }
-    return Array.from(byLabel, ([label, group]) => {
-      const uniform = group.every((s) => s.price.minorUnits === group[0].price.minorUnits);
+  protected readonly rows = computed<PriceRow[]>(() =>
+    groupSetsByRow(this.sets()).map(({ label, sets }) => {
+      const uniform = sets.every((s) => s.price.minorUnits === sets[0].price.minorUnits);
       return {
         label,
-        desc: `${group.some((s) => s.tier === 'PREMIUM') ? 'Front row' : 'Standard'} · ${group.length} ${group.length === 1 ? 'set' : 'sets'}`,
+        desc: `${sets.some((s) => s.tier === 'PREMIUM') ? 'Front row' : 'Standard'} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`,
         // Blank the input for a heterogeneous row so it isn't shown as one price; editing unifies it.
-        priceEur: uniform ? minorUnitsToEuros(group[0].price.minorUnits) : '',
-        currency: group[0].price.currency,
+        priceEur: uniform ? minorUnitsToEuros(sets[0].price.minorUnits) : '',
+        currency: sets[0].price.currency,
         mixed: !uniform,
       };
-    });
-  });
+    }),
+  );
 
   /** The projected full-day take: Σ prices of ONLY the online-pool sets, rendered from minor units. */
   protected readonly projected = computed(() => {

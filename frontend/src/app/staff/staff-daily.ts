@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
+import { SetRow, TileState, deriveTileStates, groupSetsByRow } from '../shared/availability-grid';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { parseIsoDate, todayBookingDate } from '../venue/booking-date';
@@ -13,7 +14,6 @@ import {
   StaffMarkError,
   StaffReleaseError,
   StaffRequestError,
-  StaffTileState,
 } from './staff.model';
 import {
   StaffService,
@@ -21,11 +21,6 @@ import {
   staffReleaseErrorOf,
   staffRequestErrorOf,
 } from './staff.service';
-
-interface MapRow {
-  readonly label: string;
-  readonly sets: readonly SetView[];
-}
 
 interface BookingRow {
   readonly setId: number;
@@ -85,7 +80,7 @@ export class StaffDaily {
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
 
   /** Optimistic per-set overrides applied on tap, cleared once a reconcile confirms server truth. */
-  private readonly overrides = signal<ReadonlyMap<number, StaffTileState>>(new Map());
+  private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
   /** Sets with an in-flight mark/release — disabled until it settles. */
   protected readonly pending = signal<ReadonlySet<number>>(new Set());
 
@@ -108,34 +103,18 @@ export class StaffDaily {
   }
 
   /** Sets grouped into rows (read order preserved) for the grid. */
-  protected readonly rows = computed<readonly MapRow[]>(() => {
-    const byRow = new Map<string, SetView[]>();
-    for (const set of this.venue()?.sets ?? []) {
-      const row = byRow.get(set.rowLabel) ?? [];
-      row.push(set);
-      byRow.set(set.rowLabel, row);
-    }
-    return [...byRow].map(([label, sets]) => ({ label, sets }));
-  });
+  protected readonly rows = computed<readonly SetRow[]>(() =>
+    groupSetsByRow(this.venue()?.sets ?? []),
+  );
 
   /** The effective tile state per set id: optimistic override, else derived from server truth. */
-  private readonly tileState = computed<ReadonlyMap<number, StaffTileState>>(() => {
-    const onlineHeld = new Set(this.bookings().map((b) => b.setId));
-    const overrides = this.overrides();
-    const state = new Map<number, StaffTileState>();
-    for (const set of this.venue()?.sets ?? []) {
-      const override = overrides.get(set.id);
-      if (override) {
-        state.set(set.id, override);
-      } else if (set.availability === 'FREE') {
-        state.set(set.id, 'FREE');
-      } else {
-        // A TAKEN set is online-held when a confirmed booking holds it, otherwise it is a staff mark.
-        state.set(set.id, onlineHeld.has(set.id) ? 'BOOKED_ONLINE' : 'STAFF_MARKED');
-      }
-    }
-    return state;
-  });
+  private readonly tileState = computed<ReadonlyMap<number, TileState>>(() =>
+    deriveTileStates(
+      this.venue()?.sets ?? [],
+      new Set(this.bookings().map((b) => b.setId)),
+      this.overrides(),
+    ),
+  );
 
   /** The confirmed-bookings table rows, each labelled with its set's position. */
   protected readonly bookingRows = computed<readonly BookingRow[]>(() => {
@@ -204,7 +183,7 @@ export class StaffDaily {
   }
 
   /** State of one tile (defaults to FREE before the map loads). */
-  protected stateOf(set: SetView): StaffTileState {
+  protected stateOf(set: SetView): TileState {
     return this.tileState().get(set.id) ?? 'FREE';
   }
 
@@ -321,7 +300,7 @@ export class StaffDaily {
   }
 
   /** Optimistically flip a tile and mark it pending. */
-  private applyOverride(setId: number, state: StaffTileState): void {
+  private applyOverride(setId: number, state: TileState): void {
     this.notice.set(undefined);
     this.overrides.update((m) => new Map(m).set(setId, state));
     this.pending.update((s) => new Set(s).add(setId));
@@ -492,7 +471,7 @@ function decisionFailureNotice(action: 'accept' | 'decline', reason: StaffReques
 }
 
 /** The accessibility action phrase for a tile's state. */
-function tileAction(state: StaffTileState): string {
+function tileAction(state: TileState): string {
   switch (state) {
     case 'FREE':
       return 'free — tap to mark a walk-in';

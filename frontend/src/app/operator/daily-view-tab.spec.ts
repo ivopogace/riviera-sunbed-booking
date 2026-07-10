@@ -212,6 +212,39 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('daily-notice').textContent?.toLowerCase()).toContain('manage');
   });
 
+  it('surfaces the just-taken notice when a mark returns 409 ALREADY_TAKEN', () => {
+    render();
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'))
+      .flush({ code: 'ALREADY_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    flushLoad();
+    expect(byId('daily-notice').textContent?.toLowerCase()).toContain('just taken');
+  });
+
+  it('surfaces the not-a-walk-in notice when a release returns 409 NOT_MARKED', () => {
+    render();
+    (tile(3) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'DELETE' && r.url.includes('/api/venues/1/sets/3/availability'))
+      .flush({ code: 'NOT_MARKED' }, { status: 409, statusText: 'Conflict' });
+    flushLoad();
+    expect(byId('daily-notice').textContent?.toLowerCase()).toContain('not a walk-in');
+  });
+
+  it('drops the session and shows the expiry notice when a mark returns 401', () => {
+    render();
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'))
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    flushLoad();
+    expect(byId('daily-notice').textContent?.toLowerCase()).toContain('session');
+  });
+
   it('shows a load-error (not a false empty state) when the venue read fails', () => {
     configure();
     http

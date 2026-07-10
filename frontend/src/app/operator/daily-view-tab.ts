@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -12,18 +13,6 @@ import { VenueService } from '../venue/venue.service';
 import { BeachGridFrame } from './beach-grid-frame';
 import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';
 import { OperatorConsoleService, markErrorOf, releaseErrorOf } from './operator-console.service';
-
-/**
- * A set's state on the chosen day: `FREE` → tap to mark a walk-in; `STAFF_MARKED` → tap to release;
- * `BOOKED_ONLINE` → locked (held by a confirmed online booking — staff cannot release it here).
- */
-type DailyTileState = 'FREE' | 'STAFF_MARKED' | 'BOOKED_ONLINE';
-
-/** Sets grouped into a beach-map row (read order preserved). */
-interface MapRow {
-  readonly label: string;
-  readonly sets: readonly SetView[];
-}
 
 /** One arrivals row: the confirmed booking's set label + its display-only arrival code (invariant #7). */
 interface ArrivalRow {
@@ -80,7 +69,7 @@ export class DailyViewTab {
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
 
   /** Optimistic per-set overrides applied on tap, cleared once a reconcile confirms server truth. */
-  private readonly overrides = signal<ReadonlyMap<number, DailyTileState>>(new Map());
+  private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
   /** Sets with an in-flight mark/release — disabled until it settles. */
   protected readonly pendingSets = signal<ReadonlySet<number>>(new Set());
 
@@ -96,34 +85,18 @@ export class DailyViewTab {
   }
 
   /** Sets grouped into rows (read order preserved) for the grid. */
-  protected readonly rows = computed<readonly MapRow[]>(() => {
-    const byRow = new Map<string, SetView[]>();
-    for (const set of this.venue()?.sets ?? []) {
-      const row = byRow.get(set.rowLabel) ?? [];
-      row.push(set);
-      byRow.set(set.rowLabel, row);
-    }
-    return [...byRow].map(([label, sets]) => ({ label, sets }));
-  });
+  protected readonly rows = computed<readonly SetRow[]>(() =>
+    groupSetsByRow(this.venue()?.sets ?? []),
+  );
 
   /** The effective tile state per set id: optimistic override, else derived from server truth. */
-  private readonly tileState = computed<ReadonlyMap<number, DailyTileState>>(() => {
-    const onlineHeld = new Set(this.bookings().map((b) => b.setId));
-    const overrides = this.overrides();
-    const state = new Map<number, DailyTileState>();
-    for (const set of this.venue()?.sets ?? []) {
-      const override = overrides.get(set.id);
-      if (override) {
-        state.set(set.id, override);
-      } else if (set.availability === 'FREE') {
-        state.set(set.id, 'FREE');
-      } else {
-        // A TAKEN set is online-held when a confirmed booking holds it, otherwise it is a staff mark.
-        state.set(set.id, onlineHeld.has(set.id) ? 'BOOKED_ONLINE' : 'STAFF_MARKED');
-      }
-    }
-    return state;
-  });
+  private readonly tileState = computed<ReadonlyMap<number, TileState>>(() =>
+    deriveTileStates(
+      this.venue()?.sets ?? [],
+      new Set(this.bookings().map((b) => b.setId)),
+      this.overrides(),
+    ),
+  );
 
   /** The arrivals rows, each labelled with its set's position (else the raw set id). */
   protected readonly arrivals = computed<readonly ArrivalRow[]>(() => {
@@ -144,12 +117,12 @@ export class DailyViewTab {
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
   /** The per-row grid-template-columns value (one equal column per set). */
-  protected columns(row: MapRow): string {
+  protected columns(row: SetRow): string {
     return `repeat(${row.sets.length}, minmax(0, 1fr))`;
   }
 
   /** State of one tile (defaults to FREE before the map loads). */
-  protected stateOf(set: SetView): DailyTileState {
+  protected stateOf(set: SetView): TileState {
     return this.tileState().get(set.id) ?? 'FREE';
   }
 
@@ -159,45 +132,37 @@ export class DailyViewTab {
 
   /** A tile is actionable when free (→ mark) or staff-marked (→ release); online-held is locked. */
   protected isActionable(set: SetView): boolean {
-    const state = this.stateOf(set);
-    return state === 'FREE' || state === 'STAFF_MARKED';
+    return tileTapAction(this.stateOf(set)) !== undefined;
   }
 
-  /** Tap a tile: mark a free set, or release a staff-marked one. Online-held tiles do nothing. */
+  /**
+   * Tap a tile: mark a free set (optimistic STAFF_MARKED) or release a staff-marked one (optimistic
+   * FREE), then reconcile to server truth. Online-held tiles are locked. One write path for both
+   * directions — only the endpoint and the error mapper differ.
+   */
   protected onTile(set: SetView): void {
     if (this.venueId === undefined || this.isPending(set)) {
       return;
     }
-    switch (this.stateOf(set)) {
-      case 'FREE':
-        this.mark(set);
-        break;
-      case 'STAFF_MARKED':
-        this.release(set);
-        break;
-      default:
-        break; // BOOKED_ONLINE — not staff-actionable
+    const action = tileTapAction(this.stateOf(set));
+    if (action === undefined) {
+      return; // BOOKED_ONLINE — locked
     }
-  }
-
-  private mark(set: SetView): void {
-    this.applyOverride(set.id, 'STAFF_MARKED');
-    this.console.markSet(this.venueId!, set.id, this.selectedDate()).subscribe({
+    const marking = action === 'mark';
+    this.applyOverride(set.id, marking ? 'STAFF_MARKED' : 'FREE');
+    const write = marking
+      ? this.console.markSet(this.venueId, set.id, this.selectedDate())
+      : this.console.releaseSet(this.venueId, set.id, this.selectedDate());
+    write.subscribe({
       next: () => this.reconcile(set.id),
       error: (e: unknown) => {
-        const reason = markErrorOf(e);
-        this.onWriteError(set.id, markFailureNotice(reason), reason === 'UNAUTHORIZED');
-      },
-    });
-  }
-
-  private release(set: SetView): void {
-    this.applyOverride(set.id, 'FREE');
-    this.console.releaseSet(this.venueId!, set.id, this.selectedDate()).subscribe({
-      next: () => this.reconcile(set.id),
-      error: (e: unknown) => {
-        const reason = releaseErrorOf(e);
-        this.onWriteError(set.id, releaseFailureNotice(reason), reason === 'UNAUTHORIZED');
+        if (marking) {
+          const reason = markErrorOf(e);
+          this.onWriteError(set.id, markFailureNotice(reason), reason === 'UNAUTHORIZED');
+        } else {
+          const reason = releaseErrorOf(e);
+          this.onWriteError(set.id, releaseFailureNotice(reason), reason === 'UNAUTHORIZED');
+        }
       },
     });
   }
@@ -231,7 +196,7 @@ export class DailyViewTab {
   }
 
   /** Optimistically flip a tile and mark it pending. */
-  private applyOverride(setId: number, state: DailyTileState): void {
+  private applyOverride(setId: number, state: TileState): void {
     this.notice.set(undefined);
     this.overrides.update((m) => new Map(m).set(setId, state));
     this.pendingSets.update((s) => new Set(s).add(setId));
@@ -392,7 +357,7 @@ function releaseFailureNotice(reason: ReleaseErrorCode): string {
 }
 
 /** The accessibility action phrase for a tile's state. */
-function tileAction(state: DailyTileState): string {
+function tileAction(state: TileState): string {
   switch (state) {
     case 'FREE':
       return 'free — tap to mark a walk-in';

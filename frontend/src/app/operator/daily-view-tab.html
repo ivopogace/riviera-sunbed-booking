@@ -80,13 +80,14 @@
                   </button>
                 } @else {
                   <span
-                    role="img"
                     [attr.data-set-id]="set.id"
                     [attr.data-state]="stateOf(set)"
-                    [attr.aria-label]="tileLabel(set)"
                     class="flex h-8 w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
                     [class]="tileClass(set)"
                   >
+                    <!-- Locked tile: an sr-only text alternative names the state (so it isn't colour-only)
+                         without an img role — the glyph itself is decorative. -->
+                    <span class="sr-only">{{ tileLabel(set) }}</span>
                     <span aria-hidden="true">{{ tileGlyph(set) }}</span>
                   </span>
                 }
