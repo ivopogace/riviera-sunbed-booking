@@ -537,3 +537,18 @@ new bugs 0 · new vulns 0 · new code smells 1 · new duplicated blocks 0 · dup
 **new-code coverage 88.46%** (≥80). Fixed test-first (re-entry at Implement, frontend): refactored
 `describeTab` to an `if` (behavior identical) + added a fallback-branch test; lint + placeholder spec
 green. Re-checked CI + Sonar after the fix push. **No deferred findings.**
+
+## Merge close-out
+
+- **Merged** as squash PR #221 → `main` `c2dfc27` (user-authorized). #173 auto-closed (`completed`).
+- **Epic #141 checklist ticked** — O7 #173 (#221 · c2dfc27), noted frontend-only; O8 (#177) remains.
+- **CI (final):** Backend + Frontend (lint/test/build) + CodeQL ×2 all green. **Sonar gate green with the
+  reported list cleared:** the first pass flagged 1 new code smell (`typescript:S1301`, single-case
+  switch in `console-placeholder.ts`) which the green gate hid — fixed test-first, re-run reported
+  **0 issues** (0 bugs/vulns/smells, 0 duplicated blocks) and **88.59% new-code coverage**.
+- **Deferred findings:** none (review gate + Sonar both clean).
+- **Docs-freshness (step 5)** over `94ee3d7..c2dfc27`: **1 finding, patched** — `CLAUDE.md:22–24`
+  (epic-#141 status: "O6 … merged, O7–O8 remain" → **"… + O7 payouts tab … merged, O8 remains"**).
+  `CONTEXT.md` / `RESPONSIBILITIES.md` / `docs/adr` / the `riviera-*` skills clean — O7 added no backend
+  module/port/event/endpoint and renamed no substrate-cited identifier. Then `graphify update .` for the
+  doc edits.
