@@ -63,22 +63,19 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
+    // The last legacy operator surface: onboarding + venue editing (O8 restyles it as the console's
+    // Venue & commodities tab). O6 (#176) retired the sibling /venue-admin/daily/:venueId route when
+    // the Requests + Daily-view tabs replaced the StaffDaily page's last jobs.
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
     title: 'Venue editor — Riviera',
     data: { legacySurface: true },
   },
   {
-    path: 'venue-admin/daily/:venueId',
-    loadComponent: () => import('./staff/staff-daily').then((m) => m.StaffDaily),
-    title: 'Daily view — Riviera',
-    data: { legacySurface: true },
-  },
-  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
     // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
-    // console owns a full-bleed porcelain surface. Each tab is a child route; O1 ships placeholders
-    // that the O3–O8 slices swap for the restyled tab. The legacy /venue-admin routes above stay.
+    // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the
+    // real tabs in, O7–O8 remain. The legacy /venue-admin editor above stays until O8.
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',

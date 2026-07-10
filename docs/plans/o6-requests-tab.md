@@ -248,7 +248,7 @@ explicitly so they're deterministic in unit tests.
 | 0 — service/model request client + `requestErrorOf`; `PendingRequestsStore`; deadline + civil-date helpers | ✅ | (this commit) — 29/29 scoped specs green, lint clean |
 | 1 — `RequestsTab` (queue, accept, decline-confirm, expired-race, empty, badge writes) + unit spec | ✅ | (this commit) — 12 tab specs + daily-view regression green, lint clean |
 | 2 — a11y + contrast specs; route swap; shell badge ← store; placeholder `requests` case removed | ✅ | (this commit) — 51 specs (shell/placeholder/app/a11y/contrast/tab) green, lint clean |
-| 3 — retirement: delete `staff/` + daily route + `legacySurface`; `app.spec.ts`; doc-comments; grep-clean → font link; delete legacy e2e | | |
+| 3 — retirement: delete `staff/` + daily route + `legacySurface`; `app.spec.ts`; doc-comments; grep-clean → font link; delete legacy e2e | ✅ | (this commit) — 60 specs green, build + lint clean; `grep Manrope\|Instrument Serif frontend/src` + `staff` imports clean |
 | 4 — CI-safe mocked e2e `operator-requests.e2e.ts` (+ local real-backend spec) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
