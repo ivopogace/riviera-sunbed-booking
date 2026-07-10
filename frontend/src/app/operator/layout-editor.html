@@ -118,13 +118,7 @@
     </div>
 
     <!-- The sea-facing grid -->
-    <section appCardGlass class="overflow-hidden rounded-[24px] px-[18px] pb-4">
-      <p
-        class="-mx-[18px] mb-3.5 bg-[linear-gradient(180deg,#0a6e85,#0a5a6e)] px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
-      >
-        ▲&nbsp;&nbsp;Facing the sea
-      </p>
-
+    <app-beach-grid-frame testid="layout-grid-frame">
       @if (hasLayout()) {
         <div class="select-none" data-testid="layout-grid" (mouseup)="onPaintEnd()" (mouseleave)="onPaintEnd()">
           @for (row of displayRows(); track $index; let ri = $index) {
@@ -167,13 +161,7 @@
           Generate a layout to begin, then paint tiers, walk-in sets and aisles.
         </p>
       }
-
-      <p
-        class="-mx-[18px] mt-3 border-t border-dashed border-[#0c2a33]/25 px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-(--riv-card-ink)"
-      >
-        ▼&nbsp;&nbsp;Promenade · Entrance
-      </p>
-    </section>
+    </app-beach-grid-frame>
   </div>
 
   <!-- Legend -->

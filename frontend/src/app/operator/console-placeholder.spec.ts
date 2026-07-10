@@ -33,8 +33,8 @@ describe('ConsolePlaceholder (#170)', () => {
   }
 
   it('names the Venue & commodities section and forward-links to the surviving venue editor', () => {
-    // beach-map (O3 #172) and pricing (O4 #174) have graduated to their real tabs; Venue &
-    // commodities is still a placeholder that forward-links to the legacy venue editor.
+    // beach-map (O3 #172), pricing (O4 #174) and daily view (O5 #175) have graduated to their real
+    // tabs; Venue & commodities is still a placeholder that forward-links to the legacy venue editor.
     const el = render('venue');
     expect(el.querySelector('[data-testid="console-placeholder"]')?.textContent).toContain(
       'Venue & commodities',
@@ -42,8 +42,10 @@ describe('ConsolePlaceholder (#170)', () => {
     expect(link(el)?.getAttribute('href')).toBe('/venue-admin');
   });
 
-  it('forward-links the Daily view placeholder to the legacy daily route with the venue id', () => {
-    const el = render('daily', '7');
+  it('forward-links the Requests placeholder to the legacy daily route with the venue id (until O6)', () => {
+    // The Requests tab is still a placeholder (O6 #176); it points at the legacy daily view, where
+    // accept/decline lives today, with the parent venue id.
+    const el = render('requests', '7');
     expect(link(el)?.getAttribute('href')).toBe('/venue-admin/daily/7');
   });
 

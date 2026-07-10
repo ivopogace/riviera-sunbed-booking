@@ -5,7 +5,15 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
 import { MoneyView } from '../venue/venue.model';
-import { BeachMapLayoutRequest, LayoutErrorCode, RepriceErrorCode, TakingsView } from './operator-console.model';
+import {
+  BeachMapLayoutRequest,
+  ConsoleDailyBooking,
+  LayoutErrorCode,
+  MarkErrorCode,
+  ReleaseErrorCode,
+  RepriceErrorCode,
+  TakingsView,
+} from './operator-console.model';
 
 /**
  * The operator console's own read surface (issue #170; #171 adds the stats strip's reads).
@@ -67,6 +75,80 @@ export class OperatorConsoleService {
       { price },
     );
   }
+
+  /**
+   * The venue's CONFIRMED online bookings for `date`, each as `(setId, code)` — the Daily view's
+   * Arrivals list (O5, #175). Owner-asserted server-side (invariant #13); the code is display-only
+   * (invariant #7). Parallels the legacy `StaffService.dailyBookings` rather than importing it (the
+   * one-way import rule; the console is `StaffDaily`'s successor).
+   */
+  dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {
+    return this.http.get<ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
+      params: new HttpParams().set('date', date),
+    });
+  }
+
+  /**
+   * Mark `(setId, date)` as a staff walk-in (`STAFF_MARKED`) — the second writer to the availability
+   * source of truth (invariant #2), unchanged from the legacy staff view. Owner-asserted server-side
+   * (invariant #13); `409 ALREADY_TAKEN` if the set is already held, `422 DATE_IN_PAST` past cutoff.
+   */
+  markSet(venueId: number, setId: number, date: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/api/venues/${venueId}/sets/${setId}/availability`, {
+      date,
+    });
+  }
+
+  /**
+   * Release a staff mark on `(setId, date)`. Owner-asserted server-side (invariant #13); the server
+   * deletes only a `STAFF_MARKED` row (an online-held set is never freed here), so a mis-tap is a
+   * safe no-op (`409 NOT_MARKED`).
+   */
+  releaseSet(venueId: number, setId: number, date: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/venues/${venueId}/sets/${setId}/availability`, {
+      params: new HttpParams().set('date', date),
+    });
+  }
+}
+
+/** Map an HTTP failure of a walk-in mark to a known {@link MarkErrorCode} (RFC-7807 `code`, #97; or 401). */
+export function markErrorOf(error: unknown): MarkErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'ALREADY_TAKEN':
+      case 'DATE_IN_PAST':
+      case 'NO_SUCH_SET':
+      case 'NO_SUCH_VENUE':
+      case 'NOT_VENUE_OWNER':
+      case 'INVALID_REQUEST':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** Map an HTTP failure of a staff release to a known {@link ReleaseErrorCode} (RFC-7807 `code`; or 401). */
+export function releaseErrorOf(error: unknown): ReleaseErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'NOT_MARKED':
+      case 'NOT_VENUE_OWNER':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
 }
 
 /** Map an HTTP failure of the per-row reprice to a known {@link RepriceErrorCode} (RFC-7807 `code`). */

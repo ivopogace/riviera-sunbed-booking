@@ -33,12 +33,6 @@ export interface RequestDecision {
   readonly status: string;
 }
 
-/**
- * A set's state on the chosen day in the staff view. `FREE` → tap to mark a walk-in; `STAFF_MARKED`
- * → tap to release; `BOOKED_ONLINE` → locked (held by an online booking, staff cannot release it).
- */
-export type StaffTileState = 'FREE' | 'STAFF_MARKED' | 'BOOKED_ONLINE';
-
 /** Known mark failures (the RFC-7807 `code` extension, issue #97), plus the auth/transport cases. */
 export type StaffMarkError =
   | 'ALREADY_TAKEN'
