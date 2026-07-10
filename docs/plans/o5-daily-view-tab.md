@@ -105,15 +105,18 @@ tap semantics stay per-consumer, because the two grids are semantically differen
 
 ## Open questions / Assumptions
 
-- **Assumption:** The Daily view tab shows the availability grid + date + arrivals only; pending-requests
-  and the legacy-page retirement are O6. — *Basis:* #176 body ("with Daily view #175 done, this tab
-  removes the old page's last job"). *Resolves by:* phase 0 (settled at the intake grill).
-- **Assumption:** Daily read/write goes on `OperatorConsoleService` (not a cross-import of `StaffService`).
-  — *Basis:* the service's own class doc states this is the intended successor home. *Resolves by:* phase 1.
-- **Assumption:** `BeachGridFrame` lives in `operator/` (both consumers are operator tabs). — *Resolves
-  by:* phase 2.
+_None outstanding — all assumptions resolved below._
 
 ### Resolved
+- **Scope vs O6:** the Daily view tab is availability grid + date + arrivals only; the Request-to-Book
+  queue AND the legacy-page retirement are O6 (#176). Confirmed at the intake grill against #176's body.
+- **Daily read/write home:** landed on `OperatorConsoleService` (not a cross-import of `StaffService`),
+  matching the service's own class doc ("the console is `StaffDaily`'s successor… this becomes its single
+  home"). Commit `[phase 1]`.
+- **`BeachGridFrame` placement:** `operator/` — both consumers are operator tabs in the same feature
+  folder, so no promotion to `shared/` (that's for cross-feature primitives). Commit `[phase 2]`.
+- **Shared-grid depth:** frame chrome only (card + ▲/▼ banners), tiles per-consumer — see the
+  Generalization-audit log (R-2). O3's specs pass unchanged (AC-7).
 - **Are the endpoints present?** Yes — `GET /api/venues/{id}/bookings?date`, `POST`/`DELETE
   /api/venues/{id}/sets/{setId}/availability` are live and owner-asserted (used today by `StaffDaily` via
   `StaffService`, and `dailyBookingCount` already on `OperatorConsoleService`). Frontend-only confirmed at
@@ -227,22 +230,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..8:** `npm test` (Vitest) → the `daily-view-tab.spec.ts` + `beach-grid-frame.spec.ts`
-  + `parent-venue-id.spec.ts` cases pass; the **unchanged** `layout-editor.*spec.ts` pass.
-- [ ] **AC-9:** `npm test` a11y+contrast specs pass; `npm run test:e2e:a11y` axe-clean.
-- [ ] **AC-10:** `npm run test:e2e:a11y` runs `operator-daily.e2e.ts` green.
-- [ ] Full gate before PR: `npm run lint` · `npm test` · `npm run build` · `npm run test:e2e:a11y`.
+- [x] **AC-1..8:** `npm test` → `daily-view-tab.spec.ts` (10) + `beach-grid-frame.spec.ts` (3) +
+  `parent-venue-id.spec.ts` (5) pass; `layout-editor.*spec.ts` pass **unchanged** (AC-7 regression guard).
+- [x] **AC-9:** `daily-view-tab.a11y.spec.ts` + `.contrast.spec.ts` pass; `operator-daily.e2e.ts` axe-clean.
+- [x] **AC-10:** full mocked e2e suite green (35/35) incl. `operator-daily.e2e.ts`.
+- [x] Full gate before PR: `npm run lint` (clean) · `npm test` (577/578 — the 1 failure is the
+  pre-existing `booking.service.spec.ts` localStorage-isolation flake, A/B-proved identical on clean
+  `origin/main`, out of scope) · `npm run build` (clean; 2 pre-existing SCSS-budget warnings) ·
+  `npm run test:e2e:a11y` (35/35).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] Availability section: no new write path; optimistic+reconcile preserves invariant #2 (restyle only).
-- [ ] Pool + cutoff (invariants #3/#4) untouched.
-- [ ] Modulith / Payment sections justified N/A (frontend-only, no money moves).
-- [ ] Timezone: selected date is the Tirane civil day; label UTC-anchored (invariant #6).
-- [ ] Booking codes render display-only, never logged (invariant #7).
-- [ ] Owner-assert preserved: `/api/venues/{venueId}/**` server check unchanged (invariant #13); 403/401 copy mapped.
-- [ ] Frontend standards met; no `as any`; `BeachGridFrame` placed per `riviera-frontend`.
-- [ ] O3 regression: `layout-editor.*spec.ts` pass unchanged (AC-7).
-- [ ] Execution-status table at HEAD matches reality; Open Questions empty or deferred with an issue #.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] Availability section: no new write path; optimistic+reconcile preserves invariant #2 (restyle only).
+- [x] Pool + cutoff (invariants #3/#4) untouched.
+- [x] Modulith / Payment sections justified N/A (frontend-only, no money moves).
+- [x] Timezone: selected date is the Tirane civil day (`todayBookingDate`); label UTC-anchored (invariant #6).
+- [x] Booking codes render display-only (`<code>` chip), never logged (invariant #7).
+- [x] Owner-assert preserved: `/api/venues/{venueId}/**` server check unchanged (invariant #13); 403/401 copy mapped.
+- [x] Frontend standards met; no `as any`; `BeachGridFrame` placed in `operator/` per `riviera-frontend`.
+- [x] O3 regression: `layout-editor.*spec.ts` pass unchanged (AC-7).
+- [x] Execution-status table at HEAD matches reality; Open Questions empty.
