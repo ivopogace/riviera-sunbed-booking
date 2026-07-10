@@ -39,25 +39,21 @@ export class ConsolePlaceholder {
   protected readonly info: TabPlaceholder = describeTab(String(this.route.snapshot.data['tab'] ?? ''));
 }
 
-/** Per-tab copy + the legacy surface each forward-links to while its restyle slice is pending. */
+/** Per-tab copy + the legacy surface each forward-links to while its restyle slice is pending. After
+ *  O7 only `venue` remains a placeholder, so this is a single branch (not a switch) until O8 retires it. */
 function describeTab(tab: string): TabPlaceholder {
-  const editor: readonly string[] = ['/venue-admin'];
-  const openEditor = 'Open the current venue editor';
-
-  switch (tab) {
-    case 'venue':
-      return {
-        title: 'Venue & commodities',
-        note: 'The restyled venue details + commodities tab arrives in a later slice (O8). For now, edit venue details in the current venue editor.',
-        link: editor,
-        linkLabel: openEditor,
-      };
-    default:
-      return {
-        title: 'Operator console',
-        note: 'This section is being restyled.',
-        link: null,
-        linkLabel: null,
-      };
+  if (tab === 'venue') {
+    return {
+      title: 'Venue & commodities',
+      note: 'The restyled venue details + commodities tab arrives in a later slice (O8). For now, edit venue details in the current venue editor.',
+      link: ['/venue-admin'],
+      linkLabel: 'Open the current venue editor',
+    };
   }
+  return {
+    title: 'Operator console',
+    note: 'This section is being restyled.',
+    link: null,
+    linkLabel: null,
+  };
 }

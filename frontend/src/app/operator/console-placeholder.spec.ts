@@ -42,4 +42,12 @@ describe('ConsolePlaceholder (#170)', () => {
     );
     expect(link(el)?.getAttribute('href')).toBe('/venue-admin');
   });
+
+  it('falls back to a generic "being restyled" placeholder with no link for an unknown tab', () => {
+    const el = render('something-else');
+    expect(el.querySelector('[data-testid="console-placeholder"]')?.textContent).toContain(
+      'being restyled',
+    );
+    expect(link(el)).toBeNull();
+  });
 });

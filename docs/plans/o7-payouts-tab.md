@@ -526,3 +526,14 @@ Frontend-only diff, no wire-shape change → the RV-FE bank + the money/BOLA ite
   / payments / e2e); **no backend skills** loaded because no backend was touched (grill-proven).
 
 The formal peer review + Sonar gate run on the PR (Sonar analyzes PRs + `main`); pre-PR local gates green.
+
+## Sonar gate (PR #221)
+
+CI all green (Backend, Frontend, CodeQL ×2, SonarCloud). The Sonar **quality gate passed**, but the
+reported list was **not** empty — pulled from the API (not the gate conclusion): **1 new code smell**,
+`typescript:S1301` at `console-placeholder.ts:47` ("replace this single-case `switch` by `if`"),
+introduced by removing the `payouts` case (the switch was left with one case + default). Metrics:
+new bugs 0 · new vulns 0 · new code smells 1 · new duplicated blocks 0 · duplicated density 0.0% ·
+**new-code coverage 88.46%** (≥80). Fixed test-first (re-entry at Implement, frontend): refactored
+`describeTab` to an `if` (behavior identical) + added a fallback-branch test; lint + placeholder spec
+green. Re-checked CI + Sonar after the fix push. **No deferred findings.**
