@@ -8,6 +8,7 @@ import { VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { OperatorConsoleService } from './operator-console.service';
+import { PendingRequestsStore } from './pending-requests-store';
 
 /** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
 interface ConsoleTab {
@@ -42,6 +43,7 @@ export class OperatorConsole {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly console = inject(OperatorConsoleService);
+  private readonly requests = inject(PendingRequestsStore);
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this console manages, read once from the route param (like StaffDaily). */
@@ -69,8 +71,10 @@ export class OperatorConsole {
   protected readonly venueName = signal<string | undefined>(undefined);
   /** The venue map loaded once for the header, shared with the stats strip for its free/total tile (#171). */
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
-  /** The live pending-request count for the Requests tab badge (0 when none or the read fails). */
-  protected readonly requestsCount = signal(0);
+  /** The live pending-request count for the Requests tab badge — the shared store the Requests tab
+   *  writes after every accept/decline, so the badge stays in sync with the queue (#176). The shell
+   *  seeds it from its own count read below; a failed read leaves it at 0 (no badge). */
+  protected readonly requestsCount = this.requests.count;
 
   constructor() {
     const id = Number(this.route.snapshot.paramMap.get('venueId'));
@@ -103,7 +107,7 @@ export class OperatorConsole {
     this.password.set('');
     this.venueName.set(undefined);
     this.venue.set(undefined);
-    this.requestsCount.set(0);
+    this.requests.reset();
   }
 
   /**
@@ -119,7 +123,7 @@ export class OperatorConsole {
       this.venue.set(venue);
     });
     this.bestEffort(this.console.pendingRequestCount(this.venueId), (count) =>
-      this.requestsCount.set(count),
+      this.requests.set(count),
     );
   }
 

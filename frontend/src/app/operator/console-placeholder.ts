@@ -36,31 +36,15 @@ interface TabPlaceholder {
 export class ConsolePlaceholder {
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly info: TabPlaceholder = describeTab(
-    String(this.route.snapshot.data['tab'] ?? ''),
-    // The child route does NOT inherit the parent's :venueId (router default emptyOnly strategy),
-    // so read it from the parent (the /operator/:venueId route); fall back to own for safety.
-    this.route.parent?.snapshot.paramMap.get('venueId') ??
-      this.route.snapshot.paramMap.get('venueId') ??
-      '',
-  );
+  protected readonly info: TabPlaceholder = describeTab(String(this.route.snapshot.data['tab'] ?? ''));
 }
 
 /** Per-tab copy + the legacy surface each forward-links to while its restyle slice is pending. */
-function describeTab(tab: string, venueId: string): TabPlaceholder {
+function describeTab(tab: string): TabPlaceholder {
   const editor: readonly string[] = ['/venue-admin'];
-  const daily: readonly string[] = ['/venue-admin/daily', venueId];
   const openEditor = 'Open the current venue editor';
-  const openDaily = 'Open the current daily view';
 
   switch (tab) {
-    case 'requests':
-      return {
-        title: 'Requests',
-        note: 'A dedicated Requests tab arrives in a later slice (O6). For now, accept or decline booking requests in the daily view — new requests show a badge on this tab.',
-        link: daily,
-        linkLabel: openDaily,
-      };
     case 'payouts':
       return {
         title: 'Payouts',

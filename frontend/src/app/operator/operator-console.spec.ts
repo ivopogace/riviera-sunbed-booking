@@ -7,6 +7,7 @@ import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
 import { VenueMapView } from '../venue/venue.model';
 import { OperatorConsole } from './operator-console';
+import { PendingRequestsStore } from './pending-requests-store';
 
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;
@@ -212,6 +213,15 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
   it('hides the Requests badge when there are no pending requests (#170, AC-2)', async () => {
     await createSignedIn('Miramar Beach Club', 0);
     expect(host().querySelector('[data-testid="oc-requests-badge"]')).toBeNull();
+  });
+
+  it('binds the badge to the shared store so the Requests tab keeps it in sync (#176)', async () => {
+    await createSignedIn('Miramar Beach Club', 1);
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('1');
+    // The Requests tab writes this store after each accept/decline — the shell badge must follow live.
+    TestBed.inject(PendingRequestsStore).set(4);
+    fixture.detectChanges();
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('4');
   });
 
   it('exposes a reachable create-venue link to the legacy onboarding (#170, AC-5)', async () => {
