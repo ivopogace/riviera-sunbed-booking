@@ -184,7 +184,7 @@ signals + `computed`, no `as any` on the contract. Tile state conveyed by access
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `parentVenueId` helper + migrate the 2 existing consumers | ✅ | (this commit) |
-| 1 — console service/model: `dailyBookings`/`markSet`/`releaseSet` + error mappers | | |
+| 1 — console service/model: `dailyBookings`/`markSet`/`releaseSet` + error mappers | ✅ | (this commit) — verified via the tab spec (phase 3) |
 | 2 — `BeachGridFrame` extraction + migrate `LayoutEditor` (O3 specs stay green) | | |
 | 3 — `DailyViewTab` (grid + date + arrivals) via the frame, unit specs | | |
 | 4 — a11y + contrast specs; route swap; placeholder `daily` case removed | | |
