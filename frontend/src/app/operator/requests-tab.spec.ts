@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 
 import { MoneyView, Pool, SetView, Tier } from '../venue/venue.model';
 import { PendingRequestsStore } from './pending-requests-store';
@@ -110,6 +111,14 @@ describe('RequestsTab (#176)', () => {
     ) as HTMLButtonElement;
   }
 
+  /** Flush the queue re-read a post-action (or poll) reconcile fires, with the fresh server queue. */
+  function flushReconcile(queue: PendingRequest[]): void {
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
+      .flush(queue);
+    fixture.detectChanges();
+  }
+
   it('lists each pending request with guest, set + tier, date, price and respond-by — and no code (#7)', () => {
     render([request({ requestExpiresAt: inHours(30) })]);
     expect(cards()).toHaveLength(1);
@@ -146,10 +155,41 @@ describe('RequestsTab (#176)', () => {
     expect(req.request.body).toEqual({});
     req.flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
     fixture.detectChanges();
+    // The action reconciles: re-read the queue (server truth = the one remaining request).
+    flushReconcile([request({ bookingId: 12, setId: 2 })]);
 
     expect(cards()).toHaveLength(1);
     expect(store.count()).toBe(1);
     expect(byId('requests-notice')?.textContent?.toLowerCase()).toContain('asked to pay');
+  });
+
+  it('reconciles the whole queue after an action, dropping a card the sweep expired meanwhile', () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+    button(/Accept/).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    // The reconcile re-reads the queue; the #98 sweep expired request 12 too → server returns [].
+    flushReconcile([]);
+    expect(cards()).toHaveLength(0);
+    expect(store.count()).toBe(0);
+  });
+
+  it('polls the queue on the interval, dropping a swept card without any operator action', () => {
+    vi.useFakeTimers();
+    try {
+      render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+      expect(cards()).toHaveLength(2);
+      // 60s later the poll fires a reconcile; request 12 expired server-side meanwhile.
+      vi.advanceTimersByTime(60_000);
+      flushReconcile([request({ bookingId: 11 })]);
+      expect(cards()).toHaveLength(1);
+      expect(store.count()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('decline is confirm-gated: Decline opens the confirm (no POST); Confirm decline round-trips', () => {
@@ -166,6 +206,7 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/booking-requests/11/decline'))
       .flush({ bookingId: 11, status: 'DECLINED' });
     fixture.detectChanges();
+    flushReconcile([]); // the post-decline reconcile re-reads the now-empty queue
     expect(cards()).toHaveLength(0);
     expect(store.count()).toBe(0);
     expect(byId('requests-notice')?.textContent?.toLowerCase()).toContain('declined');
@@ -211,6 +252,7 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
       .flush({ code: 'REQUEST_NOT_PENDING' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
+    flushReconcile([]); // the already-handled path also reconciles the rest of the queue
     expect(byId('expired-race')).toBeNull();
     expect(cards()).toHaveLength(0);
     expect(byId('requests-notice')?.textContent?.toLowerCase()).toContain('already handled');

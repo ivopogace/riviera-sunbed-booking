@@ -108,8 +108,9 @@ designated-branch case).
   + a client move, not a semantics change.
 - **Exposing the booking code on request cards.** Resolved code-less — see Open questions / Resolved.
 - **Any backend change:** no new endpoint, controller, service, SQL or Flyway edit.
-- **A live countdown timer.** Urgency/time-left are computed at load (and recomputed on each queue
-  reload), not ticked by a timer — simpler, testable, and no a11y live-region churn.
+- **A per-second live countdown ticker.** Urgency/time-left refresh on a **60s poll** + after every
+  action (the review reversed the original load-only snapshot — see the review-findings note), not a
+  per-second timer; no a11y live-region churn on the chip.
 - **Retiring the venue editor** (`/venue-admin`) — that legacy route stays (O8 restyles it as the
   Venue & commodities tab); only the daily route retires here.
 - **`shared/availability-grid.ts`** — it stays (used by `DailyViewTab` + `PricingTab`); only its stale
@@ -274,6 +275,40 @@ three highest-stakes items. **No findings.**
 - **RV-PROC-1:** the *Skills consulted* line covers every touched area (FE structure/Angular/Tailwind/e2e).
 
 The formal peer review + Sonar gate run on the PR (Sonar analyzes PRs + `main`); pre-PR local gates green.
+
+### Review gate — workflow-backed review findings resolved (PR #217, xhigh)
+
+The formal `/code-review` (6 finders + 13 verifiers, xhigh) surfaced **14 verified findings → 9 reported**
+(0 refuted) — real regressions from simplifying away StaffDaily's reconcile. Resolved in the review-fix
+commit (each re-entered at Implement, test-first):
+
+- **F1 (Major, correctness) — queue never re-synced after an action.** My local-only `removeCard`
+  replaced StaffDaily's post-decision queue re-read, so a request the #98 sweep expired (or another
+  device handled) lingered as a phantom actionable card + badge count. **Fixed** — `reconcile()`
+  (re-read queue + refresh clock) runs after every accept/decline **and** on a 60s poll; pinned by
+  `requests-tab.spec.ts › reconciles the whole queue / polls the queue on the interval`.
+- **F2 (Major, correctness) — frozen urgency clock.** `nowMs` captured once at load, so the amber chip
+  never appeared as deadlines approached and expired cards showed positive "Xh left" + an active
+  Accept. **Fixed** — `nowMs` refreshes on the same reconcile/poll; the chip is also suppressed on an
+  expired-race card (`!isExpired` guard).
+- **F3 (Major, correctness) — cross-venue badge leak.** The root-singleton store was only reset on
+  sign-out, so venue A's count could show on venue B if B's seed blipped. **Fixed** — the shell
+  `reset()`s the store on every console mount; pinned by the store spec + shell seam test.
+- **F4 (correctness, PLAUSIBLE) — late seed clobbers a decrement.** The shell's async seed could
+  overwrite the tab's post-accept count. **Fixed** — store split into `seed()` (shell, yields) vs
+  `set()` (tab, authoritative); pinned by `pending-requests-store.spec.ts`.
+- **F5 (Major, correctness) — deleted daily URL 404s.** **Fixed** — `venue-admin/daily/:venueId`
+  redirects to `operator/:venueId/daily` (param preserved); pinned by `app.spec.ts`.
+- **F6 (correctness) — `timeLeftLabel` overstated ~59m as "1h left".** **Fixed** — floor both branches,
+  hour cutoff on ms; pinned by a new `deadline.spec.ts` boundary case.
+- **F8 (cleanup) — `SESSION_EXPIRED` duplicated across tabs.** **Fixed** — extracted to
+  `core/operator-auth.SESSION_EXPIRED_MESSAGE`, consumed by both console tabs.
+- **F7 / F9 (cleanup, DEFERRED → issue #218):** the set-label helper (2 consumers — rule-of-three not
+  met, per O5's `groupSetsByRow` precedent) and the tier-label mapping (a pre-existing 6-way scatter
+  with casing drift O6 shouldn't refactor unilaterally). Filed as a follow-up.
+
+Post-fix: `npm test` (affected specs 83/83), `npm run lint` + `npm run build` clean, e2e 6/6. Re-check
+CI + Sonar on the fix push before merge.
 
 ---
 

@@ -64,12 +64,19 @@ export const routes: Routes = [
   },
   {
     // The last legacy operator surface: onboarding + venue editing (O8 restyles it as the console's
-    // Venue & commodities tab). O6 (#176) retired the sibling /venue-admin/daily/:venueId route when
-    // the Requests + Daily-view tabs replaced the StaffDaily page's last jobs.
+    // Venue & commodities tab). O6 (#176) retired the sibling StaffDaily page when the Requests +
+    // Daily-view tabs replaced its last jobs.
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
     title: 'Venue editor — Riviera',
     data: { legacySurface: true },
+  },
+  {
+    // O6 (#176): the retired /venue-admin/daily/:venueId StaffDaily page forwards to the console's
+    // Daily-view tab (param preserved), so a bookmarked daily-ops link still lands somewhere live.
+    path: 'venue-admin/daily/:venueId',
+    redirectTo: 'operator/:venueId/daily',
+    pathMatch: 'full',
   },
   {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist

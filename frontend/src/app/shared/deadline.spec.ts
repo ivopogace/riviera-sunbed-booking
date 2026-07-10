@@ -42,13 +42,15 @@ describe('isUrgent', () => {
 describe('timeLeftLabel', () => {
   const now = Date.UTC(2026, 6, 2, 8, 0, 0);
 
-  it('renders hours once an hour or more remains', () => {
+  it('renders hours once a full hour or more remains', () => {
     expect(timeLeftLabel('2026-07-02T11:00:00Z', now)).toBe('3h left');
     expect(timeLeftLabel('2026-07-02T09:30:00Z', now)).toBe('1h left'); // 90m floors to 1h
   });
 
-  it('renders minutes below an hour, floored at 1m', () => {
+  it('renders minutes below an hour, floored (never overstating) at min 1m', () => {
     expect(timeLeftLabel('2026-07-02T08:45:00Z', now)).toBe('45m left');
-    expect(timeLeftLabel('2026-07-02T08:00:30Z', now)).toBe('1m left'); // 30s rounds up to 1m
+    // Just under an hour must NOT round up to "1h left" — it reads "59m left".
+    expect(timeLeftLabel('2026-07-02T08:59:30Z', now)).toBe('59m left');
+    expect(timeLeftLabel('2026-07-02T08:00:30Z', now)).toBe('1m left'); // 30s floors to the 1m minimum
   });
 });

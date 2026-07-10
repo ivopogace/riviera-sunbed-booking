@@ -68,7 +68,7 @@
                 </div>
               </div>
               <div class="flex-shrink-0 text-right">
-                @if (row.urgent) {
+                @if (row.urgent && !isExpired(row.bookingId)) {
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full border border-[#a3160e]/25 bg-[#a3160e]/10 px-2.5 py-1 text-[12px] font-bold text-[#a3160e]"
                     data-testid="urgency-chip"

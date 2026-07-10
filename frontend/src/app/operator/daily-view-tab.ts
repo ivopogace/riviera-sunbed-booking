@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
-import { OperatorAuth } from '../core/operator-auth';
+import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
@@ -271,7 +271,7 @@ export class DailyViewTab {
 
   private dropSessionIfUnauthorized(error: unknown): void {
     if (error instanceof HttpErrorResponse && error.status === 401) {
-      this.notice.set(SESSION_EXPIRED);
+      this.notice.set(SESSION_EXPIRED_MESSAGE);
       this.operator.sessionLost();
     }
   }
@@ -314,9 +314,6 @@ export class DailyViewTab {
   }
 }
 
-/** The session-expired notice, shared by the mark and release failure paths. */
-const SESSION_EXPIRED = 'Your operator session has expired. Please sign in again.';
-
 /** Map a mark failure to its operator-facing notice (no nested ternaries). */
 function markFailureNotice(reason: MarkErrorCode): string {
   switch (reason) {
@@ -327,7 +324,7 @@ function markFailureNotice(reason: MarkErrorCode): string {
     case 'NOT_VENUE_OWNER':
       return 'You don’t manage this venue, so you can’t mark its walk-ins.';
     case 'UNAUTHORIZED':
-      return SESSION_EXPIRED;
+      return SESSION_EXPIRED_MESSAGE;
     default:
       return 'Could not mark that set. The map has been refreshed.';
   }
@@ -341,7 +338,7 @@ function releaseFailureNotice(reason: ReleaseErrorCode): string {
     case 'NOT_VENUE_OWNER':
       return 'You don’t manage this venue, so you can’t release its walk-ins.';
     case 'UNAUTHORIZED':
-      return SESSION_EXPIRED;
+      return SESSION_EXPIRED_MESSAGE;
     default:
       return 'Could not release that set. The map has been refreshed.';
   }

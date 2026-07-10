@@ -1,8 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
-import { OperatorAuth } from '../core/operator-auth';
+import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
@@ -44,6 +44,11 @@ interface RequestRow {
  * don't inherit it — the O1 finding), like the sibling console tabs. Always porcelain (inherited from
  * the console shell); cards via {@link CardGlass}. The shell's Requests badge stays in sync through the
  * shared {@link PendingRequestsStore}, which this tab writes after load and every action.
+ *
+ * <p>The queue is <strong>reconciled with server truth</strong> — re-read after every accept/decline
+ * and on a low-frequency poll — so a request the #98 sweep expires (or another operator device handles)
+ * leaves the list rather than lingering as a phantom card, and the urgency clock stays current on this
+ * long-open working surface. The reconcile is read-only; it changes no request-lifecycle state.
  */
 @Component({
   selector: 'app-requests-tab',
@@ -55,6 +60,7 @@ export class RequestsTab {
   private readonly venues = inject(VenueService);
   private readonly console = inject(OperatorConsoleService);
   private readonly badge = inject(PendingRequestsStore);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly operator = inject(OperatorAuth);
 
   private readonly venueId: number | undefined;
@@ -70,7 +76,8 @@ export class RequestsTab {
   /** A transient action notice (accept/decline outcome, or a non-race failure). */
   protected readonly notice = signal<string | undefined>(undefined);
 
-  /** "Now" captured once at load for the urgency window (never an ambient clock in the template). */
+  /** "Now" for the urgency window — refreshed at load, on every reconcile, and on the poll (never an
+   *  ambient clock in the template) so the amber chips don't freeze on this long-open surface. */
   private readonly nowMs = signal(0);
 
   /** Requests with an in-flight accept/decline — their buttons are disabled until it settles. */
@@ -85,6 +92,10 @@ export class RequestsTab {
     if (id !== undefined) {
       this.venueId = id;
       this.load();
+      // Poll so a request the #98 sweep expires (or another operator device handles) leaves the list,
+      // and the urgency clock stays current, without the operator refreshing this long-open surface.
+      const poll = setInterval(() => this.reconcile(), REFRESH_MS);
+      this.destroyRef.onDestroy(() => clearInterval(poll));
     } else {
       this.loaded.set(true);
       this.loadError.set(true);
@@ -160,7 +171,8 @@ export class RequestsTab {
       next: (decision) => {
         this.stopDeciding(bookingId);
         this.notice.set(decisionNotice(action, decision.status));
-        this.removeCard(bookingId);
+        this.removeCard(bookingId); // instant optimistic removal…
+        this.reconcile(); // …then re-sync the rest of the queue with server truth
       },
       error: (e: unknown) => this.onDecisionError(bookingId, action, e),
     });
@@ -172,15 +184,17 @@ export class RequestsTab {
     const reason = requestErrorOf(e);
     switch (reason) {
       case 'REQUEST_EXPIRED':
+        // Keep the card, flipped to the dismissible expired-race copy — do NOT reconcile it away.
         this.expired.update((s) => new Set(s).add(bookingId));
         break;
       case 'REQUEST_NOT_PENDING':
       case 'NO_SUCH_REQUEST':
         this.notice.set('That request was already handled — the queue has moved on.');
         this.removeCard(bookingId);
+        this.reconcile(); // other cards may be stale too
         break;
       case 'UNAUTHORIZED':
-        this.notice.set(SESSION_EXPIRED);
+        this.notice.set(SESSION_EXPIRED_MESSAGE);
         this.operator.sessionLost();
         break;
       default:
@@ -203,29 +217,69 @@ export class RequestsTab {
     if (this.venueId === undefined) {
       return;
     }
-    this.nowMs.set(Date.now());
-    // Best-effort: the map only supplies set labels/tiers; a failure degrades to "Set {id}" / "Standard".
+    this.refreshNow();
+    // Best-effort: the map only supplies set labels/tiers (date-independent); a failure degrades to
+    // "Set {id}" / "Standard" and never blocks the queue. Read once — labels don't change under the tab.
     this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())).subscribe({
       next: (v) => this.venue.set(v),
       error: () => {
-        /* labels degrade gracefully; the queue read below owns the error/loaded state */
+        /* labels degrade gracefully; the queue read owns the error/loaded state */
       },
     });
+    this.fetchQueue(true);
+  }
+
+  /** Re-read the queue + refresh the urgency clock — after every action and on the poll — so the list
+   *  and the amber chips reflect server truth, not the load-time snapshot. Read-only, no lifecycle change. */
+  private reconcile(): void {
+    this.refreshNow();
+    this.fetchQueue(false);
+  }
+
+  private refreshNow(): void {
+    this.nowMs.set(Date.now());
+  }
+
+  /**
+   * Fetch the pending queue and re-sync the badge. `initial` distinguishes the first load (which owns
+   * the loading/error state) from a reconcile/poll (a transient blip there must NOT wipe the working
+   * queue or flash the error card — only surface a lost session).
+   */
+  private fetchQueue(initial: boolean): void {
+    if (this.venueId === undefined) {
+      return;
+    }
     this.console.pendingRequests(this.venueId).subscribe({
       next: (r) => {
         this.requests.set(r);
         this.badge.set(r.length);
-        this.loaded.set(true);
+        this.pruneTransient(r);
+        if (initial) {
+          this.loaded.set(true);
+        }
       },
       error: (e: unknown) => {
-        this.loadError.set(true);
-        this.loaded.set(true);
+        if (initial) {
+          this.loadError.set(true);
+          this.loaded.set(true);
+        }
         if (e instanceof HttpErrorResponse && e.status === 401) {
-          this.notice.set(SESSION_EXPIRED);
+          this.notice.set(SESSION_EXPIRED_MESSAGE);
           this.operator.sessionLost();
         }
       },
     });
+  }
+
+  /** Drop stale ids from the transient sets once their card leaves the freshly-read queue (e.g. a poll
+   *  removed a sweep-expired request), so the sets don't accumulate over a long-open session. */
+  private pruneTransient(fresh: readonly PendingRequestItem[]): void {
+    const ids = new Set(fresh.map((r) => r.bookingId));
+    const keep = (s: ReadonlySet<number>): ReadonlySet<number> =>
+      new Set([...s].filter((id) => ids.has(id)));
+    this.deciding.update(keep);
+    this.declineConfirm.update(keep);
+    this.expired.update(keep);
   }
 
   // The accessible names lead with the button's visible text (WCAG 2.5.3 Label in Name) and add the
@@ -241,8 +295,8 @@ export class RequestsTab {
   }
 }
 
-/** The session-expired notice, shared by the decision-failure and load-failure paths. */
-const SESSION_EXPIRED = 'Your operator session has expired. Please sign in again.';
+/** How often the open Requests tab re-reads the queue + refreshes the urgency clock (60s). */
+const REFRESH_MS = 60_000;
 
 function tierName(set: SetView): string {
   return set.tier === 'PREMIUM' ? 'Front row' : 'Standard';

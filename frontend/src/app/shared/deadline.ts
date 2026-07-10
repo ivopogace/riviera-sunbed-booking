@@ -32,11 +32,15 @@ export function isUrgent(deadlineIso: string, nowMs: number): boolean {
 
 /**
  * A compact "time left until the deadline" label for the urgency chip, e.g. `"3h left"` or
- * `"45m left"` — hour-granularity once an hour or more remains (the chip is a hint, not a live
- * countdown), minute-granularity below, floored at `"1m left"`. Pure (see {@link isUrgent}).
+ * `"45m left"` — hour-granularity once a full hour or more remains (the chip is a hint, not a live
+ * countdown), minute-granularity below, floored at `"1m left"`. Both branches **floor** so the label
+ * never overstates the time left (e.g. 59m30s reads `"59m left"`, not `"1h left"`). Pure (see
+ * {@link isUrgent}).
  */
 export function timeLeftLabel(deadlineIso: string, nowMs: number): string {
-  const remainingMs = new Date(deadlineIso).getTime() - nowMs;
-  const minutes = Math.max(1, Math.ceil(remainingMs / 60_000));
-  return minutes >= 60 ? `${Math.floor(minutes / 60)}h left` : `${minutes}m left`;
+  const remainingMs = Math.max(0, new Date(deadlineIso).getTime() - nowMs);
+  if (remainingMs >= 60 * 60 * 1000) {
+    return `${Math.floor(remainingMs / (60 * 60 * 1000))}h left`;
+  }
+  return `${Math.max(1, Math.floor(remainingMs / 60_000))}m left`;
 }

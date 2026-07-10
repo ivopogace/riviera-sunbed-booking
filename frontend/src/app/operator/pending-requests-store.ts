@@ -13,17 +13,35 @@ import { Service, signal } from '@angular/core';
 @Service()
 export class PendingRequestsStore {
   private readonly _count = signal(0);
+  /** True once an authoritative (Requests-tab) update has landed — the shell seed then yields to it. */
+  private live = false;
 
   /** The live pending-request count (0 when none, unknown, or signed out). */
   readonly count = this._count.asReadonly();
 
-  /** Set the count from an authoritative read (the shell's seed, or the tab's queue length). */
+  /**
+   * Authoritative live count from the Requests tab (its queue length after load / every action). Takes
+   * over from the shell's seed and wins any later seed — the tab is the source of truth while active.
+   */
   set(count: number): void {
+    this.live = true;
     this._count.set(count);
   }
 
-  /** Clear the count — on sign-out, so a stale badge never survives a session. */
+  /**
+   * Best-effort initial seed from the shell (its `pendingRequestCount` read). Ignored once the tab has
+   * taken authority, so a slow seed resolving AFTER the operator has already accepted/declined can't
+   * clobber the tab's decremented count back up.
+   */
+  seed(count: number): void {
+    if (!this.live) {
+      this._count.set(count);
+    }
+  }
+
+  /** Clear the count and authority — on console (re)mount and sign-out, so no stale/leaked count survives. */
   reset(): void {
+    this.live = false;
     this._count.set(0);
   }
 }

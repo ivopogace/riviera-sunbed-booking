@@ -118,12 +118,16 @@ export class OperatorConsole {
     if (this.venueId === undefined) {
       return;
     }
+    // Fresh console mount starts the badge at 0, so a slow/failed seed never shows a stale count — nor
+    // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
+    // visited, takes authority over this store via `set`; the shell only ever seeds it.
+    this.requests.reset();
     this.bestEffort(this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())), (venue) => {
       this.venueName.set(venue.name);
       this.venue.set(venue);
     });
     this.bestEffort(this.console.pendingRequestCount(this.venueId), (count) =>
-      this.requests.set(count),
+      this.requests.seed(count),
     );
   }
 
