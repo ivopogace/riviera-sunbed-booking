@@ -147,13 +147,22 @@ Merging is not the last step; the close-out is. Every item, every merge:
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`
    skill **states** — a module's shipped/planned status, the package shape, a canonical
    value set (statuses, pools), an ownership rule, a filename a skill cites as an example —
-   load the **`riviera-docs-freshness`** skill and run it over the merged range; patch what
-   it flags in the same PR or immediately after the merge. It also runs over every epic's
-   full merge span at epic close-out (case history: #72). **Then refresh the knowledge
-   graph for the same doc changes:** the post-commit hook rebuilds *code* only, so after a
-   doc/ADR/plan-touching slice run `graphify update .` to fold the doc edits into the graph
-   (it's gitignored — a local refresh, nothing to commit; skip if the slice touched no docs,
-   since code already rebuilt via the hook).
+   load the **`riviera-docs-freshness`** skill and run it. **Split it by what it needs:**
+   - **Staleness patches (a renamed/removed file a skill cites, an epic's "in progress"
+     line, a changed mechanism phrase) don't need the merge SHA — run the staleness grep
+     `pre-merge` (the skill's "pre-merge smoke" mode over `origin/main...HEAD`) and fold
+     those patches into the *code PR itself***. Don't spin up a whole second docs PR + CI
+     cycle for edits the code PR could have carried (case history: O6 shipped a near-empty
+     docs PR #219 for two one-line patches).
+   - **Only the merge-SHA-dependent notes are inherently post-merge** — the epic tick
+     (step 2, needs the merge commit), the "merged as `<sha>`" plan-doc line. These are a
+     **one-line follow-up** (a commit on `main` behind the same close-out authorization, or
+     even a comment) — not a full PR.
+   - It also runs over every epic's full merge span at epic close-out (case history: #72).
+   **Then refresh the knowledge graph for the same doc changes:** the post-commit hook
+   rebuilds *code* only, so after a doc/ADR/plan-touching slice run `graphify update .` to
+   fold the doc edits into the graph (it's gitignored — a local refresh, nothing to commit;
+   skip if the slice touched no docs, since code already rebuilt via the hook).
 6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.
 7. **Notify** per *Staying in touch* (SKILL.md): push; email only if a send-capable tool
