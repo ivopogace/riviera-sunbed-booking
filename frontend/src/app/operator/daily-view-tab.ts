@@ -183,10 +183,10 @@ export class DailyViewTab {
   private mark(set: SetView): void {
     this.applyOverride(set.id, 'STAFF_MARKED');
     this.console.markSet(this.venueId!, set.id, this.selectedDate()).subscribe({
-      next: () => this.reconcile(),
+      next: () => this.reconcile(set.id),
       error: (e: unknown) => {
         const reason = markErrorOf(e);
-        this.onWriteError(markFailureNotice(reason), reason === 'UNAUTHORIZED');
+        this.onWriteError(set.id, markFailureNotice(reason), reason === 'UNAUTHORIZED');
       },
     });
   }
@@ -194,22 +194,22 @@ export class DailyViewTab {
   private release(set: SetView): void {
     this.applyOverride(set.id, 'FREE');
     this.console.releaseSet(this.venueId!, set.id, this.selectedDate()).subscribe({
-      next: () => this.reconcile(),
+      next: () => this.reconcile(set.id),
       error: (e: unknown) => {
         const reason = releaseErrorOf(e);
-        this.onWriteError(releaseFailureNotice(reason), reason === 'UNAUTHORIZED');
+        this.onWriteError(set.id, releaseFailureNotice(reason), reason === 'UNAUTHORIZED');
       },
     });
   }
 
   /** Shared mark/release failure path: surface the notice, drop the lost session on 401, reconcile. */
-  private onWriteError(message: string, unauthorized: boolean): void {
+  private onWriteError(setId: number, message: string, unauthorized: boolean): void {
     this.notice.set(message);
     if (unauthorized) {
       // The server already rejected the session — clear local state without a logout round-trip.
       this.operator.sessionLost();
     }
-    this.reconcile();
+    this.reconcile(setId);
   }
 
   protected onDateChange(event: Event): void {
@@ -218,8 +218,15 @@ export class DailyViewTab {
       return;
     }
     this.selectedDate.set(value);
+    // Reset to the new day's loading state: never show the previous day's grid, counts or codes under
+    // the new date label, and carry no stale optimistic/pending state across the switch.
     this.overrides.set(new Map());
+    this.pendingSets.set(new Set());
     this.notice.set(undefined);
+    this.loadError.set(false);
+    this.loaded.set(false);
+    this.venue.set(undefined);
+    this.bookings.set([]);
     this.load();
   }
 
@@ -230,15 +237,27 @@ export class DailyViewTab {
     this.pendingSets.update((s) => new Set(s).add(setId));
   }
 
-  /** Re-read the map + bookings for the current date, then clear settled overrides (server truth wins). */
-  private reconcile(): void {
+  /**
+   * Re-read the map + bookings, then clear ONLY this set's settled override/pending — server truth
+   * now wins for it. A global clear would wipe the in-flight optimistic state of a DIFFERENT tile the
+   * operator tapped while this reload was outstanding (which would re-enable it and duplicate its write).
+   */
+  private reconcile(setId: number): void {
     this.load(() => {
-      this.overrides.set(new Map());
-      this.pendingSets.set(new Set());
+      this.overrides.update((m) => {
+        const next = new Map(m);
+        next.delete(setId);
+        return next;
+      });
+      this.pendingSets.update((s) => {
+        const next = new Set(s);
+        next.delete(setId);
+        return next;
+      });
     });
   }
 
-  /** Fetch the map + bookings for the selected date; `onSettled` runs after both resolve. */
+  /** Fetch the map + bookings for the selected date; `onSettled` runs after BOTH resolve. */
   private load(onSettled?: () => void): void {
     if (this.venueId === undefined) {
       return;
@@ -246,8 +265,10 @@ export class DailyViewTab {
     const requested = this.selectedDate();
     let remaining = 2;
     const settle = () => {
-      this.loaded.set(true);
+      // Flip `loaded` only once both reads have settled, so the grid never renders with a resolved
+      // bookings list but a still-undefined venue (a "0 of 0 free" flash).
       if (--remaining === 0) {
+        this.loaded.set(true);
         onSettled?.();
       }
     };
@@ -260,8 +281,9 @@ export class DailyViewTab {
         settle();
       },
       error: (error: unknown) => {
-        if (this.selectedDate() === requested) {
-          // A transient read failure must NOT read as "no sets" (a dead-end) — show an error.
+        // Wipe to the error card only when there is no grid to preserve (initial / date-change load).
+        // A transient failure of a post-write reconcile keeps the working grid the operator is using.
+        if (this.selectedDate() === requested && this.venue() === undefined) {
           this.loadError.set(true);
         }
         this.dropSessionIfUnauthorized(error);
@@ -284,7 +306,7 @@ export class DailyViewTab {
 
   private dropSessionIfUnauthorized(error: unknown): void {
     if (error instanceof HttpErrorResponse && error.status === 401) {
-      this.notice.set('Your operator session has expired. Please sign in again.');
+      this.notice.set(SESSION_EXPIRED);
       this.operator.sessionLost();
     }
   }
@@ -317,17 +339,17 @@ export class DailyViewTab {
     }
   }
 
-  /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
-  protected dateLabel(): string {
-    return new Intl.DateTimeFormat('en-IE', {
+  /** The selected date rendered for display (e.g. "Tue 30 Jun 2026") — memoized, recomputed per date. */
+  protected readonly dateLabel = computed(() =>
+    new Intl.DateTimeFormat('en-IE', {
       // parseIsoDate anchors the civil day at midnight UTC, so format in UTC too (invariant #6).
       timeZone: 'UTC',
       weekday: 'short',
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-    }).format(parseIsoDate(this.selectedDate()));
-  }
+    }).format(parseIsoDate(this.selectedDate())),
+  );
 
   /** Accessible name so tile state is not conveyed by colour alone (WCAG AA). */
   protected tileLabel(set: SetView): string {

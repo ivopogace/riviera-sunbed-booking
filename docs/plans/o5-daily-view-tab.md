@@ -195,6 +195,26 @@ signals + `computed`, no `as any` on the contract. Tile state conveyed by access
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 
+### Review gate — findings resolved
+
+High-effort workflow-backed review (4 finders + adversarial verify) surfaced 8 distinct findings, all in
+`daily-view-tab.ts`. Resolved in the post-review fix commit:
+
+- **F1 (Major, correctness):** `reconcile()` cleared ALL overrides/pendingSets → a concurrent second tap
+  lost its optimistic/pending state and could fire a duplicate mark POST. **Fixed** — `reconcile(setId)`
+  now clears only the settled set; pinned by a new concurrency test.
+- **F3 (correctness):** date change didn't clear `pendingSets` → a set stayed disabled on the new day.
+  **Fixed** (full new-day reset in `onDateChange`).
+- **F4 (correctness):** `loaded` flipped after the first of two parallel reads → empty-grid flash if
+  bookings resolved first. **Fixed** — flips only when both settle.
+- **F2 (cleanup):** a transient reconcile read-blip wiped the working grid to the error card. **Fixed** —
+  `loadError` is set only when there's no grid to preserve (`venue() === undefined`).
+- **F5 (cleanup):** new date label shown over the old day's counts/codes during load. **Fixed** (new-day reset).
+- **F6 (cleanup):** duplicated session-expired literal. **Fixed** — uses the `SESSION_EXPIRED` constant.
+- **F7 (cleanup):** `dateLabel()` rebuilt an `Intl.DateTimeFormat` every call. **Fixed** — memoized `computed`.
+- **F8 (PLAUSIBLE, cleanup):** row-grouping duplicated. **Deferred** — see the Generalization-audit log
+  (only 2 true consumers; rule-of-three not met).
+
 ---
 
 ## File structure
@@ -225,6 +245,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME c
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-10 | Phase 2 (grid extraction, R-2) | shared sea-facing grid chrome vs per-row tile scaffold | read `layout-editor.html` + `staff-daily.html` grid bodies | 2 grids: O3 paint grid (CSS-grid equal-cols + right price col) vs daily grid (price-header + flex set-grid) | Shared the **frame chrome only** (`BeachGridFrame` = card + ▲/▼ banners via `<ng-content>`); left the per-row tile scaffold per-consumer because the two tile-track layouts genuinely differ. Sharing the row scaffold too would force one abstraction over two layouts (R-2). |
+| 2026-07-10 | Review finding F8 (group-sets-by-row duplication) | `new Map<…>()` group-by-`rowLabel` across operator components | inspected `PricingTab.rows`, `DailyViewTab.rows`, `LayoutEditor.displayRows` | Only **2** true label-grouping consumers (`PricingTab`, `DailyViewTab`); `LayoutEditor.displayRows` is grid-**coordinate** based (2D array), a different pattern | **Deferred** (finding was PLAUSIBLE, not a defect). Rule-of-three not met for the identical pattern — extracting now is premature and would drag `PricingTab` back through review for no correctness gain. Revisit if a 3rd label-grouping consumer lands. |
 
 ---
 

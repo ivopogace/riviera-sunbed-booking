@@ -126,6 +126,35 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(3).getAttribute('data-state')).toBe('FREE');
   });
 
+  it('keeps a concurrent tap optimistic while another tap reconciles (no lost pending / duplicate write)', () => {
+    render();
+    // Tap set 1 (mark) — POST A in flight.
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const postA = http.expectOne(
+      (r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'),
+    );
+    // Tap set 4 (mark) before A settles — POST B in flight.
+    (tile(4) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const postB = http.expectOne(
+      (r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/4/availability'),
+    );
+
+    // A completes and reconciles (a full reload) while B is still outstanding — must NOT wipe set 4's
+    // optimistic override + pending flag. Set 4 still reads server-FREE here; its override must win.
+    postA.flush(null);
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)]);
+    expect(tile(4).getAttribute('data-state')).toBe('STAFF_MARKED'); // override preserved
+    expect((tile(4) as HTMLButtonElement).disabled).toBe(true); // still pending — no second tap possible
+
+    // B settles → its own reconcile clears set 4; the server now confirms it staff-marked.
+    postB.flush(null);
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), SEED[1], SEED[2], seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'TAKEN')]);
+    expect(tile(4).getAttribute('data-state')).toBe('STAFF_MARKED');
+    expect((tile(4) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('does nothing when an online-booked tile is tapped (locked)', () => {
     render();
     tile(2).click(); // it's a span, but click anyway — must not send a write
