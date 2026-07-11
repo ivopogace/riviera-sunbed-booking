@@ -134,11 +134,20 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 
 	@Override
 	@Transactional
-	public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, RowPriceCommand command) {
+	public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowPriceCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		}
+		// #226 optimistic lock — bump the venue's set_version (the SAME token replaceLayout bumps, so a
+		// replace and a reprice off the same value cannot both win) BEFORE the reprice UPDATE. Existence is
+		// checked above, so 0 rows here is unambiguously a stale version. Order matches replaceLayout
+		// (venue row before its set rows) → no deadlock (R-1); a NO_SUCH_ROW below may still have bumped —
+		// safe (only makes other tabs reload; R-2).
+		if (venues.bumpSetVersion(venueId, expectedVersion) == 0) {
+			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
 		}
 		// Non-destructive: the UPDATE's rows-affected is the row existence check (0 ⇒ no set carries
 		// the label). Repricing never touches availability/set identity, so — unlike replaceLayout — it

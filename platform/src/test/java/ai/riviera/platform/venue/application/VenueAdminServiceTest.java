@@ -363,7 +363,7 @@ class VenueAdminServiceTest {
 	void repricesRowForOwnedVenue() {
 		venues.venues.add(VENUE.value());
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.repricedRows);
@@ -371,7 +371,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void repriceOnUnknownVenueIsRejectedBeforeAnyWrite() {
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.repricedRows);
@@ -383,9 +383,23 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.forceRepriceRows = 0;
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void repriceWithStaleSetVersionIsStaleWrite() {
+		// #226, AC-2 (unit): the venue exists but the conditional set_version bump finds no row at the
+		// loaded token (another writer bumped it) ⇒ 0 rows ⇒ STALE_WRITE, and the reprice UPDATE is never
+		// attempted (the bump precedes it).
+		venues.venues.add(VENUE.value());
+		venues.forceBumpRows = 0; // set_version no longer matches the loaded token
+
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
+
+		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.repricedRows);
 	}
 
 	@Test
@@ -393,8 +407,10 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 
 		// Invariant #13: the ownership guard is the first act — a stranger is denied before the UPDATE.
-		assertThrows(NotVenueOwnerException.class, () -> service.repriceRow(STRANGER, VENUE, REPRICE_CMD));
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.repriceRow(STRANGER, VENUE, 0L, REPRICE_CMD));
 		assertEquals(0, venues.repricedRows);
+		assertEquals(0, venues.bumpedSetVersions); // fail closed before the bump too (#226)
 	}
 
 	/**

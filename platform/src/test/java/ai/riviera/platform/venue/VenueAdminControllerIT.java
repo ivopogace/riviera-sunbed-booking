@@ -461,6 +461,63 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void repriceWithoutVersionIs400() throws Exception {
+		// #226, AC-5: a per-row reprice body without expectedVersion is 400 INVALID_REQUEST — never a
+		// silent 0. requiredExpectedVersion() throws before venue/row existence or the price command.
+		long venue = createVenue("No Reprice Version Club");
+
+		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"price\":{\"minorUnits\":4200,\"currency\":\"EUR\"}}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void profileWriteLeavesSetVersion() throws Exception {
+		// #226, AC-4 (token independence): a profile PATCH bumps the profile version but leaves set_version
+		// untouched — a profile/amenity edit must NOT falsely stale an open layout or pricing tab.
+		long venue = createVenue("Independent Profile Club");
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.version").value(0));
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.setVersion").value(0));
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Independent Profile Club", "INSTANT", "18:00", "[\"WIFI\"]", "15", 0)))
+				.andExpect(status().isNoContent());
+
+		// Profile version bumped to 1; set_version still 0.
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.version").value(1));
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.setVersion").value(0));
+	}
+
+	@Test
+	void setWriteLeavesProfileVersion() throws Exception {
+		// #226, AC-4 (token independence): a beach-map replace bumps set_version but leaves the profile
+		// version untouched — the two optimistic locks are independent counters.
+		long venue = createVenue("Independent Layout Club");
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.version").value(0));
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sets":[{"rowLabel":"A","positionNo":1,"tier":"PREMIUM","pool":"ONLINE",
+								 "price":{"minorUnits":3500,"currency":"EUR"},"gridX":1,"gridY":1}],
+								 "expectedVersion":0}
+								"""))
+				.andExpect(status().isNoContent());
+
+		// set_version bumped to 1; the profile version is untouched (still 0).
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.setVersion").value(1));
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.version").value(0));
+	}
+
+	@Test
 	void getProfileRequiresOperatorAuth() throws Exception {
 		// O8 (#177), AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
 		// unauthenticated caller is 401 — commission never leaks to an anonymous request.

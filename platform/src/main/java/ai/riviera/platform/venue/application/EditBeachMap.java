@@ -37,8 +37,17 @@ public interface EditBeachMap {
 	 * {@link #replaceLayout} — repricing is allowed even when the venue has bookings or holds (a booking's
 	 * charge was snapshotted at reserve time, so a reprice never alters it). Returns {@code Applied}, or
 	 * {@code Rejected(NO_SUCH_VENUE)} / {@code Rejected(NO_SUCH_ROW)} when the venue or the row is unknown.
+	 *
+	 * <p>Optimistic concurrency (#226): the caller passes the {@code expectedVersion} (the venue's
+	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer
+	 * having bumped it since the load yields {@link SetRejection#STALE_WRITE} (→ 409). It bumps the
+	 * <strong>same</strong> token {@link #replaceLayout} does — so a replace and a reprice racing off the
+	 * same value cannot both win (they write overlapping columns) — and the bump precedes the reprice
+	 * {@code UPDATE}, so a rejected {@code NO_SUCH_ROW} may still bump it (safe, only makes other tabs
+	 * reload; R-2).
 	 */
-	ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, RowPriceCommand command);
+	ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowPriceCommand command);
 
 	/**
 	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction (O3, issue #172) —

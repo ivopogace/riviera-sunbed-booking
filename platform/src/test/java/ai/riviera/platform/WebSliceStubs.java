@@ -337,7 +337,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId,
+			public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
 					ai.riviera.platform.venue.application.RowPriceCommand command) {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}

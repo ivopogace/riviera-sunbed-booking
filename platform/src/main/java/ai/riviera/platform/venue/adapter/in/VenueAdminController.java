@@ -154,8 +154,10 @@ class VenueAdminController {
 	ResponseEntity<?> repriceRow(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String rowLabel, @RequestBody RowPriceRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
+		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
+		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest prices and re-apply.
 		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId),
-				request.toCommand(rowLabel)));
+				request.requiredExpectedVersion(), request.toCommand(rowLabel)));
 	}
 
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {
@@ -173,6 +175,8 @@ class VenueAdminController {
 					"No such set.");
 			case NO_SUCH_ROW -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					"No set on this venue has that row label.");
+			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"These prices were changed by someone else. Reload the latest and try again.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),

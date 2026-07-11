@@ -46,24 +46,26 @@ NOT NULL DEFAULT 0`. No new tables. `set_position` unchanged.
   `set_version = V`, when both submit `replaceLayout`, then exactly one returns `Replaced` and the
   other `STALE_WRITE` (no exception, no double-clobber), and the row ends at `set_version = V+1`.
   *Pinned by:* `BeachMapReplaceConcurrencyIT.exactlyOneReplaceWins` ✅ (Phase 1)
-- [ ] **AC-2 (reprice race):** Given two operators loaded at `set_version = V`, when both submit
+- [x] **AC-2 (reprice race):** Given two operators loaded at `set_version = V`, when both submit
   `repriceRow` for the same row, then exactly one returns `APPLIED` and the other `STALE_WRITE`, and
-  `set_version = V+1`. *Pinned by:* `VenueRepriceConcurrencyIT.exactlyOneRepriceWins`
-- [ ] **AC-3 (shared token — cross-write race):** Given both loaded at `set_version = V`, when a
+  `set_version = V+1`. *Pinned by:* `VenueRepriceConcurrencyIT.exactlyOneRepriceWins` ✅ (Phase 2)
+- [x] **AC-3 (shared token — cross-write race):** Given both loaded at `set_version = V`, when a
   `replaceLayout` and a `repriceRow` race, then exactly one applies and the other is `STALE_WRITE`
-  (proving replace and reprice share one token). *Pinned by:* `VenueSetWriteConcurrencyIT.replaceAndRepriceCannotBothWin`
-- [ ] **AC-4 (token independence):** Given a venue-profile write, when it commits, then `set_version`
+  (proving replace and reprice share one token). *Pinned by:*
+  `VenueSetWriteConcurrencyIT.replaceAndRepriceCannotBothWin` ✅ (Phase 2)
+- [x] **AC-4 (token independence):** Given a venue-profile write, when it commits, then `set_version`
   is unchanged; and given a `replaceLayout`/`repriceRow`, when it commits, then the profile `version`
-  is unchanged. *Pinned by:* `VenueAdminServiceTest.profileWriteLeavesSetVersion` +
-  `VenueAdminServiceTest.setWriteLeavesProfileVersion` (or IT equivalents).
-- [~] **AC-5 (token required):** Given a `replaceLayout`/`repriceRow` request with no
+  is unchanged. *Pinned by (IT equivalents):* `VenueAdminControllerIT.profileWriteLeavesSetVersion` +
+  `VenueAdminControllerIT.setWriteLeavesProfileVersion` ✅ (Phase 2) — the real column-independence is a
+  SQL fact, so proven end-to-end against Postgres, not the in-memory fake.
+- [x] **AC-5 (token required):** Given a `replaceLayout`/`repriceRow` request with no
   `expectedVersion`, when submitted, then `400 INVALID_REQUEST` (never a silent `0`).
   *Pinned by:* `VenueAdminControllerIT.replaceWithoutVersionIs400` ✅ (Phase 1) +
-  `…repriceWithoutVersionIs400` (reprice half — Phase 2)
-- [~] **AC-6 (stale → 409 with code):** Given a stale `expectedVersion`, when submitted to either
+  `…repriceWithoutVersionIs400` ✅ (Phase 2)
+- [x] **AC-6 (stale → 409 with code):** Given a stale `expectedVersion`, when submitted to either
   write, then `409` with an RFC-7807 `ProblemDetail` whose `code` is `STALE_WRITE`.
   *Pinned by:* `BeachMapReplaceIT.staleReplaceIs409StaleWrite` ✅ (Phase 1) +
-  `VenueRepriceIT.staleRepriceIs409StaleWrite` (reprice half — Phase 2)
+  `VenueRepriceIT.staleRepriceIs409StaleWrite` ✅ (Phase 2)
 - [x] **AC-7 (read carries the token):** Given the venue map read, then the response carries
   `setVersion`. *Pinned by:* `VenueReadControllerIT.mapReadCarriesSetVersion` ✅ (Phase 0)
 - [x] **AC-8 (invariant #2 preserved):** Given a `replaceLayout` on a venue with a booking or
@@ -210,20 +212,21 @@ falsely rejected. Mocked-a11y e2e per user-facing flow (RV-FE-E2E) in `frontend/
 > Session-recovery anchor. Re-read before acting after any compaction/fresh session; update in the same
 > commit window as the change it records, at every phase + stage boundary.
 
-**Stage pointer:** `implement` — Phase 0 ✅ + Phase 1 ✅ done; Phase 2 next (backend `repriceRow` guard +
-cross-write race), test-first.
+**Stage pointer:** `implement` — Phases 0 ✅ + 1 ✅ + 2 ✅ done (backend complete; AC-1..8 all pinned green);
+Phase 3 next (FE beach-map editor), test-first. **Load the FE routing gate before writing** —
+`riviera-frontend` + `angular-developer` + angular-cli MCP + `playwright-cli`.
 
-**Next action:** Start Phase 2 — failing `VenueRepriceConcurrencyIT.exactlyOneRepriceWins` (AC-2) +
-`VenueSetWriteConcurrencyIT.replaceAndRepriceCannotBothWin` (AC-3) + `VenueRepriceIT.staleRepriceIs409StaleWrite`
-(AC-6) + `…repriceWithoutVersionIs400` (AC-5) + `VenueAdminServiceTest`/IT token-independence (AC-4); then
-widen `repriceRow` with the shared `bumpSetVersion` (assertOwns → venueExists → bump [STALE_WRITE] → reprice
-UPDATE [NO_SUCH_ROW]); `SetRejection.STALE_WRITE`; `requiredExpectedVersion()` on `RowPriceRequest`; controller arm.
+**Next action:** Start Phase 3 — failing `layout-editor.spec.ts` (a `409 STALE_WRITE` on `replaceLayout`
+sets the stale banner, preserves the grid, Reload re-loads; success advances the token `+1`); then add
+`setVersion` to the FE `VenueMapView`, `expectedVersion` to the layout request (model + service), capture
+`loadedSetVersion`, refuse save without it, STALE_WRITE banner + `reloadAfterStale()`, advance token on save;
+mocked-a11y `beach-map-stale-write.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Migration `V23` + `setVersion` on the map read | ✅ | `feat: add venue.set_version + surface it on the map read (#226)` |
 | 1 — Backend `replaceLayout` guard (`bumpSetVersion`, order, STALE_WRITE, required token) | ✅ | `feat: optimistic-lock the beach-map replace on set_version (#226)` |
-| 2 — Backend `repriceRow` guard (+ cross-write race) | | |
+| 2 — Backend `repriceRow` guard (+ cross-write race) | ✅ | `feat: optimistic-lock the per-row reprice on set_version (#226)` |
 | 3 — FE beach-map editor (capture/echo/handle STALE_WRITE + reload) | | |
 | 4 — FE pricing tab (same) | | |
 
@@ -327,18 +330,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `VenueAdminController` · Test `VenueRepriceConcurrencyIT`, `VenueSetWriteConcurrencyIT` (new),
 `VenueRepriceIT`, `VenueAdminControllerIT`, `VenueAdminServiceTest`
 
-- [ ] **Step 1:** Failing tests — `VenueRepriceConcurrencyIT.exactlyOneRepriceWins` (AC-2);
+- [x] **Step 1:** Failing tests — `VenueRepriceConcurrencyIT.exactlyOneRepriceWins` (AC-2);
   `VenueSetWriteConcurrencyIT.replaceAndRepriceCannotBothWin` (AC-3);
-  `VenueRepriceIT.staleRepriceIs409StaleWrite` (AC-6); `…repriceWithoutVersionIs400` (AC-5);
-  `VenueAdminServiceTest` token-independence (AC-4).
-- [ ] **Step 2:** Run each → FAIL.
-- [ ] **Step 3:** Widen `repriceRow` to take `expectedVersion`; order assertOwns → venueExists →
-  `bumpSetVersion` [STALE_WRITE if 0] → reprice UPDATE [NO_SUCH_ROW if 0]; add `STALE_WRITE` to
-  `SetRejection`; `requiredExpectedVersion()` on `RowPriceRequest`; controller 409 arm.
-- [ ] **Step 4:** Targeted classes → PASS; `--tests "*venue*"` module scope.
-- [ ] **Step 5:** Generalization pass — verify replace + reprice share one `bumpSetVersion` helper.
-- [ ] **Step 6:** Commit `feat: optimistic-lock the per-row reprice on set_version (#226)`.
-- [ ] **Step 7:** Update Execution status.
+  `VenueRepriceIT.staleRepriceIs409StaleWrite` (AC-6); `VenueAdminControllerIT.repriceWithoutVersionIs400`
+  (AC-5); token-independence ITs (AC-4); unit `VenueAdminServiceTest.repriceWithStaleSetVersionIsStaleWrite`.
+- [x] **Step 2:** RED confirmed — temporarily disabled the reprice guard, ran `VenueAdminServiceTest` →
+  `repriceWithStaleSetVersionIsStaleWrite` FAILED (1/31), rest green; restored the guard.
+- [x] **Step 3:** Widened `EditBeachMap.repriceRow` to take `expectedVersion` (the outbound
+  `Venues.repriceRow` stays 2-arg — the bump is the shared `bumpSetVersion`); order assertOwns →
+  venueExists → `bumpSetVersion` [STALE_WRITE if 0] → reprice UPDATE [NO_SUCH_ROW if 0]; added
+  `STALE_WRITE` to `SetRejection`; `requiredExpectedVersion()` on `RowPriceRequest`; controller 409 arm.
+  Updated callers (controller, `WebSliceStubs`, `VenueAdminServiceTest`, `VenueRepriceIT` bodies).
+- [x] **Step 4:** Targeted classes → PASS; structural net (`ModularityTests`/`JdbcOnly`/`PackageShape`/
+  `PublishedSurfacePlacement`) + `--tests "*venue*"` → BUILD SUCCESSFUL.
+- [x] **Step 5:** Generalization pass — confirmed replace + reprice call ONE shared
+  `Venues.bumpSetVersion` (grep: 2 call sites, both writes). `requiredExpectedVersion()` is now a 3rd
+  identical copy (profile/layout/price requests) — left duplicated on purpose: a trivial null-check,
+  records can't share a base, and it matches #224's per-record idiom; extracting a util would touch the
+  #224 profile request for marginal gain. Logged.
+- [x] **Step 6:** Commit `feat: optimistic-lock the per-row reprice on set_version (#226)`.
+- [x] **Step 7:** Update Execution status.
 
 ## Phase 3 — FE beach-map editor
 
@@ -382,6 +393,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 | 2026-07-11 | Phase 0 | `VenueMapView` construction sites | `grep "new VenueMapView("` | 1 (`JdbcVenueCatalog`) | None — single site; no duplication to fold. Profile read intentionally omits `set_version`. |
 | 2026-07-11 | Phase 1 | `replaceLayout(` call sites (signature widen) | `grep "replaceLayout\("` | 6 test + 3 prod | All updated to the 4-arg signature (incl. `WebSliceStubs`). `bumpSetVersion` is one shared port method (reprice reuses in Phase 2); `requiredExpectedVersion()` left duplicated per record (matches #224). |
+| 2026-07-11 | Phase 2 | `repriceRow(` call sites + `bumpSetVersion`/`requiredExpectedVersion` spread | `grep "repriceRow\("` / `grep "requiredExpectedVersion\|bumpSetVersion"` | `EditBeachMap.repriceRow` widened (5 call sites); `bumpSetVersion` = 1 shared method, 2 call sites (both writes); `requiredExpectedVersion()` = 3 identical copies | Widened all `repriceRow` callers. `bumpSetVersion` confirmed shared (no dup). `requiredExpectedVersion()` left duplicated (trivial null-check; matches #224 idiom; records can't share a base). |
 
 ---
 
