@@ -280,6 +280,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-9 | review (CONFIRMED) | Operator slot preview used raw `<img [src]>` against the NgOptimizedImage mandate. Fix: `ngSrc` + `NgOptimizedImage` import in the venue tab. | fixed |
 | F-10 | review (cleanup, CONFIRMED) | `actualDimensions()` full-raster-decoded each rendered variant just for width/height. Fix: reuse the header-only `readHeaderDimensions` on our own fresh JPEG; helper deleted. | fixed |
 | F-11 | review (cleanup, CONFIRMED) | `present` was derivable lock-step state (`≡ previewUrl != null`) across `PhotoSlotView`, the wire `SlotPhoto`, and the FE model. Fix: dropped everywhere; emptiness is the null `previewUrl`. | fixed |
+| F-12 | CI (PR #241 first run, red) | The full-suite-only class (#122/#127 kin, reproduced locally with the bare `test` task): the `@WebMvcTest` slices (`RateLimit*`, `SpaShell`, `WebCors*`) register every `@RestController` and stub each controller port in `WebSliceStubs` — the new `VenuePhotoController` introduced the `VenuePhotos` port nobody stubbed → 24 context-load failures. Scoped local runs never boot those slices, so only CI (or a full local run) could show it. Fix: an inert `VenuePhotos` stub bean (upload→Rejected, delete→false, serve→empty) in `WebSliceStubs`; full local suite green. Rule for next time: a new controller ⇒ a new `WebSliceStubs` bean. | fixed |
 
 ---
 
