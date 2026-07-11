@@ -358,6 +358,8 @@ minimal impl → pass → generalization-audit → commit (`… (#177)`) → upd
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-11 | Phase 4 (full FE suite) | localStorage leaks between suites | fake-storage.ts contract check | `booking.service.spec` (writer, no install) | Added `installFakeStorage`/`removeFakeStorage` per the contract; siblings only read fixtures → unaffected. |
+| 2026-07-11 | CI backend fail (full-suite-only) | new controller ctor dep needs a `@WebMvcTest` stub | `grep -rln WebSliceStubs platform/src/test` | 6 web-slice tests | Added a `ViewVenueProfile` `@Bean` to `WebSliceStubs` — my new `VenueAdminController` dep was missing → context-load fail only in the full suite. Verified the 6 slices green locally. |
 
 ---
 

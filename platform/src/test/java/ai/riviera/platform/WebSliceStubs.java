@@ -67,6 +67,7 @@ import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
  * Shared collaborators for {@code @WebMvcTest} slices that load the whole web layer (the CORS/security
@@ -345,5 +346,11 @@ class WebSliceStubs {
 	@Bean
 	EditVenueProfile editVenueProfile() {
 		return (_, _, _) -> new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+	}
+
+	/** O8 (#177): the venue admin-profile read the web slices register with {@code VenueAdminController}. */
+	@Bean
+	ViewVenueProfile viewVenueProfile() {
+		return (_, _) -> Optional.empty();
 	}
 }
