@@ -35,6 +35,12 @@ class JdbcVenues implements Venues {
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
+	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
+	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
+	private static final String COL_NAME = "name";
+	private static final String COL_BEACH = "beach";
+	private static final String COL_REGION = "region";
+	private static final String COL_DESCRIPTION = "description";
 
 	/** The set-position INSERT column/values, shared by the single-row and bulk paths (one column list). */
 	private static final String INSERT_SET_SQL = """
@@ -58,10 +64,10 @@ class JdbcVenues implements Venues {
 				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff)
 				RETURNING id
 				""")
-				.param("name", c.name())
-				.param("beach", c.beach())
-				.param("region", c.region())
-				.param("description", c.description())
+				.param(COL_NAME, c.name())
+				.param(COL_BEACH, c.beach())
+				.param(COL_REGION, c.region())
+				.param(COL_DESCRIPTION, c.description())
 				.param("mode", c.bookingMode())
 				.param("bps", c.commissionBps())
 				.param("currency", c.payoutCurrency())
@@ -224,10 +230,10 @@ class JdbcVenues implements Venues {
 				    booking_mode = :mode, booking_cutoff = :cutoff, distance_to_water_m = :distance
 				WHERE id = :id
 				""")
-				.param("name", command.name())
-				.param("beach", command.beach())
-				.param("region", command.region())
-				.param("description", command.description())
+				.param(COL_NAME, command.name())
+				.param(COL_BEACH, command.beach())
+				.param(COL_REGION, command.region())
+				.param(COL_DESCRIPTION, command.description())
 				.param("mode", command.bookingMode())
 				.param("cutoff", command.bookingCutoff())
 				.param("distance", command.distanceToWaterM())
@@ -261,8 +267,8 @@ class JdbcVenues implements Venues {
 				""")
 				.param("id", venueId.value())
 				.query((rs, rowNum) -> new ProfileRow(
-						rs.getString("name"), rs.getString("beach"), rs.getString("region"),
-						rs.getString("description"),
+						rs.getString(COL_NAME), rs.getString(COL_BEACH), rs.getString(COL_REGION),
+						rs.getString(COL_DESCRIPTION),
 						BookingMode.valueOf(rs.getString("booking_mode")),
 						rs.getObject("booking_cutoff", LocalTime.class),
 						rs.getInt("commission_bps"), rs.getString("payout_currency"),
