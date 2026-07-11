@@ -222,9 +222,12 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 ## FE↔BE contract
 
-- **`PUT /api/venues/{venueId}/photos/{slot}`** — `multipart/form-data` (one image file);
-  `slot ∈ {cover,sunbeds,bar}`. → `200` with the new photo metadata (per-surface URLs);
-  `400` `ProblemDetail` (invalid image / too large); `403` cross-venue; `401` unauthenticated.
+- **`POST /api/venues/{venueId}/photos/{slot}`** — `multipart/form-data` part `file` (one image);
+  `slot ∈ {cover,sunbeds,bar}`. → `200` `PhotoUploadResponse` (per-surface URLs);
+  `400` `ProblemDetail` (invalid image → reason code; too large → `TOO_LARGE`); `413` for a >30 MB
+  multipart; `403` cross-venue; `401` unauthenticated. **POST, not PUT** — multipart parsing is
+  reliable on POST across servlet containers; the slot upload is an idempotent replace either way.
+  CSRF: rides the `.spa()` XSRF header (not exempt).
 - **`DELETE /api/venues/{venueId}/photos/{slot}`** → `204`; `403` cross-venue.
 - **`GET /api/venues/{venueId}/photos/{hash}`** — **public**; → `200` image bytes with
   `Cache-Control: public, max-age=31536000, immutable` + strong `ETag`; `304` on matching
@@ -238,7 +241,7 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phases 0–1 DONE (schema+port; PhotoProcessor green). Phase 2 (service + controller + serving + security) next.`
+**Stage pointer:** `implement — Phase 2a CORE done (VenuePhotoService + VenuePhotoController + serving + SecurityConfig + multipart + 413; service unit test + structural/error-contract nets green). NEXT: serving IT (cache/304) + HTTP BOLA (CrossVenueDenialIT), then Phase 2b read-model URLs.`
 
 **Next action:** begin **Phase 2** — build `VenuePhotoService` (`assertOwns` BOLA → process → storage)
 + the venue-scoped `VenuePhotoController` (PUT/DELETE write, public immutable-cached GET serving) +
@@ -248,7 +251,7 @@ read-model URLs + the `SecurityConfig` public-GET rule; then run `/security-revi
 |-------|--------|---------|
 | 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | ✅ | Phase-0 commit (this window) |
 | 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | ✅ | Phase-1 commit (this window) |
-| 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | | |
+| 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ⏳ | 2a core (this window); ITs + 2b next |
 | 3 — FE operator upload UI + service + e2e | | |
 | 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | | |
 | 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | | |

@@ -1,0 +1,67 @@
+package ai.riviera.platform.venue.application;
+
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+
+/**
+ * Orchestrates the venue-photo use cases: for the two writes it asserts per-venue ownership
+ * <strong>first</strong> (invariant #13, so no driving adapter can bypass it), then runs the pure
+ * {@link PhotoProcessor} and persists via the {@link PhotoStorage} port; the public {@link #serve}
+ * read skips ownership. Package-private {@code @Service}; callers depend on the {@link VenuePhotos}
+ * port (invariant #11). No JPA — persistence is entirely behind {@code PhotoStorage} (invariant #1).
+ */
+@Service
+class VenuePhotoService implements VenuePhotos {
+
+	private final VenueOwnership ownership;
+	private final PhotoProcessor processor;
+	private final PhotoStorage storage;
+
+	VenuePhotoService(VenueOwnership ownership, PhotoProcessor processor, PhotoStorage storage) {
+		this.ownership = ownership;
+		this.processor = processor;
+		this.storage = storage;
+	}
+
+	@Override
+	@Transactional
+	public PhotoUploadResult upload(OperatorId operator, VenueId venueId, PhotoSlot slot, byte[] image) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST, before any work
+		return switch (processor.process(image, slot)) {
+			case PhotoProcessingResult.Processed(var photo) -> {
+				storage.replace(venueId, slot, photo);
+				yield new PhotoUploadResult.Stored(metadataOf(slot, photo));
+			}
+			case PhotoProcessingResult.Rejected(var reason) -> new PhotoUploadResult.Rejected(reason);
+		};
+	}
+
+	@Override
+	@Transactional
+	public boolean delete(OperatorId operator, VenueId venueId, PhotoSlot slot) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST
+		return storage.delete(venueId, slot);
+	}
+
+	@Override
+	public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
+		// Public tourist read — deliberately NO ownership check (the serving endpoint is permitAll).
+		return storage.loadBytes(venueId, hash);
+	}
+
+	/** The stored photo's blob-free metadata (for the operator's immediate preview after upload). */
+	private static PhotoMetadata metadataOf(PhotoSlot slot, ProcessedPhoto photo) {
+		return new PhotoMetadata(slot, photo.variants().stream()
+				.map(v -> new VariantMeta(v.surface(), v.hash(), v.contentType(), v.width(), v.height()))
+				.toList());
+	}
+}

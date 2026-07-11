@@ -13,6 +13,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
@@ -75,6 +76,16 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(IllegalArgumentException.class)
 	ProblemDetail onInvalidRequest(IllegalArgumentException e) {
 		return ApiProblem.of(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Request validation failed.");
+	}
+
+	/**
+	 * A multipart upload beyond {@code spring.servlet.multipart.max-*-size} (#142) → {@code 413}.
+	 * The common oversize case is caught earlier by the photo processor's content cap as a friendlier
+	 * {@code 400 TOO_LARGE}; this is the backstop for a genuinely huge request. No value is echoed.
+	 */
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ProblemDetail onUploadTooLarge(MaxUploadSizeExceededException e) {
+		return ApiProblem.of(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE", "The upload is too large.");
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
