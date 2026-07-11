@@ -54,6 +54,9 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
 @RequestMapping("/api/venues")
 class VenueAdminController {
 
+	/** The 404 problem detail shared by every NO_SUCH_VENUE outcome (profile write + beach-map edits). */
+	private static final String NO_SUCH_VENUE_DETAIL = "No such venue.";
+
 	private final OnboardVenue onboardVenue;
 	private final EditBeachMap editBeachMap;
 	private final EditVenueProfile editVenueProfile;
@@ -101,7 +104,7 @@ class VenueAdminController {
 				request.requiredExpectedVersion(), request.toCommand())) {
 			case APPLIED -> ResponseEntity.noContent().build();
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
-					"No such venue.");
+					NO_SUCH_VENUE_DETAIL);
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, "STALE_WRITE",
 					"This venue was changed by someone else. Reload the latest values and try again.");
 		};
@@ -162,7 +165,7 @@ class VenueAdminController {
 	private static ResponseEntity<ProblemDetail> error(SetRejection reason) {
 		return switch (reason) {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
-					"No such venue.");
+					NO_SUCH_VENUE_DETAIL);
 			case NO_SUCH_SET -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					"No such set.");
 			case NO_SUCH_ROW -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
@@ -177,7 +180,7 @@ class VenueAdminController {
 	private static ResponseEntity<ProblemDetail> error(ReplaceRejection reason) {
 		return switch (reason) {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
-					"No such venue.");
+					NO_SUCH_VENUE_DETAIL);
 			case LAYOUT_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"This venue has bookings or walk-in holds, so its layout is locked.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
