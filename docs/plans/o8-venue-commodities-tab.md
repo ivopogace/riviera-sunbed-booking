@@ -366,7 +366,12 @@ minimal impl → pass → generalization-audit → commit (`… (#177)`) → upd
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-9:** each run via its pinned test/e2e; record commit SHAs here at close-out.
+- [x] **AC-1..AC-9** all verified by their pinned tests (backend ITs `9a86d61`, FE `a22e0ec`, e2e
+  `b561dad`, review fixes `16dffd6`). Backend structural net + venue ITs green (Testcontainers); 630 FE
+  unit + lint + build + 38 mocked e2e green; the full backend suite is CI's (PR #223) — the
+  `WebSliceStubs` full-suite-only failure (`9cba56f`) fixed. R-8 (stale-tab LWW) deferred → #224.
+- [x] **Docs-freshness** (merge close-out step 5) over `origin/main..HEAD`: 1 finding — the CLAUDE.md
+  epic-#141 status line — patched; RESPONSIBILITIES/CONTEXT/skills clean.
 
 ## Self-review checklist (before merge / PR)
 
