@@ -117,7 +117,7 @@ re-pinned by the existing tests (updated only to carry the new required `expecte
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Two concurrent profile writes off the same version both succeed (double-clobber) | med | high | Conditional `UPDATE … WHERE id AND version=:expected` under READ COMMITTED — winner bumps version, loser re-evals qual → 0 rows → STALE_WRITE. `VenueProfileConcurrencyIT` (RepeatedTest, start-gate) proves exactly-one, mirroring `ConcurrentReservationIT` | Ivo | open |
+| R-1 | Two concurrent profile writes off the same version both succeed (double-clobber) | med | high | Conditional `UPDATE … WHERE id AND version=:expected` under READ COMMITTED — winner bumps version, loser re-evals qual → 0 rows → STALE_WRITE. `VenueProfileConcurrencyIT` (RepeatedTest, start-gate) proves exactly-one, mirroring `ConcurrentReservationIT` | Ivo | **resolved** — `VenueProfileConcurrencyIT.exactlyOneWriteWins` green ×5 (1 APPLIED / 1 STALE_WRITE, version→1, winner's name survives) |
 | R-2 | 0-rows-affected is ambiguous (no-such-venue vs stale) → wrong status | med | med | Service checks `venueExists` **first** (matching the sibling `editSet`/`reprice` style); after that, `rows == 0` unambiguously means stale. A concurrent delete in the gap reports STALE_WRITE (tab reloads, finds it gone) — acceptable | Ivo | open |
 | R-3 | A client omits `expectedVersion` → Jackson primitive default `0` matches a fresh venue → LWW hole re-opens | med | high | `expectedVersion` typed `Long`; `requiredExpectedVersion()` throws `IllegalArgumentException` → `400 INVALID_REQUEST` when null (AC-6) | Ivo | open |
 | R-4 | Ownership bypass: version validation throws (400) before the ownership check (403) for a non-owner | low | med | Accepted parse-then-authorize contract (§6b; already how `toCommand()` behaves). A 400 leaks nothing about ownership. `CrossVenueDenialIT` sends a **valid** body (incl. `expectedVersion`) so the 403 genuinely comes from ownership (AC-7) | Ivo | open |
@@ -214,7 +214,7 @@ only Reload re-seeds (preserve-edits UX). Contrast/axe specs cover the new banne
 | 0 — Plan doc | ✅ | afa153f |
 | 1 — Migration + read carries the token | ✅ | 4190650 |
 | 2 — Conditional write + 409 STALE_WRITE (+ WebSliceStubs & IT bodies) | ✅ | (this commit) |
-| 3 — Concurrency IT (headline) | | |
+| 3 — Concurrency IT (headline) | ✅ | (this commit) |
 | 4 — Frontend: send version, handle 409, preserve edits + Reload | | |
 | 5 — e2e (mocked CI-safe + real-backend) | | |
 
