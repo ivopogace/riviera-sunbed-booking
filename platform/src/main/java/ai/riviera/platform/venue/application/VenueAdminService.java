@@ -33,7 +33,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * deferred to #74).
  */
 @Service
-class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile {
+class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile {
 
 	private final Venues venues;
 	private final VenueOwnership ownership;
@@ -64,6 +64,15 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile 
 		return rows == 0
 				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE)
 				: ChangeOutcome.Applied.APPLIED;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<VenueProfileView> profileFor(OperatorId operator, VenueId venueId) {
+		// Ownership first — an operator may only read their own venue's profile (which carries the
+		// commission rate + payout currency); a mismatch throws NotVenueOwnerException → 403 (#13, BOLA).
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		return venues.findProfile(venueId);
 	}
 
 	@Override

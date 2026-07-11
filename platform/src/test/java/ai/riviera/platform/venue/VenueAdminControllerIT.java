@@ -64,6 +64,19 @@ class VenueAdminControllerIT {
 				""".formatted(rowLabel, positionNo, tier, pool, minor, currency, gridX, gridY);
 	}
 
+	/**
+	 * A full widened venue-profile PATCH body (O8 #177): the editable core is fixed and the amenity
+	 * array + distance vary per test. The write REPLACES the whole profile, so every field is required
+	 * (except description/distance) — a partial body no longer suffices.
+	 */
+	private static String profileBody(String name, String mode, String cutoff, String amenitiesJson,
+			String distanceJson) {
+		return """
+				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"edited",
+				 "bookingMode":"%s","bookingCutoff":"%s","amenities":%s,"distanceToWaterM":%s}
+				""".formatted(name, mode, cutoff, amenitiesJson, distanceJson);
+	}
+
 	/** Create a venue as the operator and return its id (parsed from the JSON body). */
 	private long createVenue(String name) throws Exception {
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
@@ -267,14 +280,15 @@ class VenueAdminControllerIT {
 
 	@Test
 	void profileEditRoundTripsThroughReadApi() throws Exception {
-		// T7 (#140), AC-5: PATCH the venue profile, then the U1 read API reflects it. Amenities are
+		// T7 (#140), AC-6: PATCH the venue profile, then the U1 read API reflects it. Amenities are
 		// sent OUT of catalogue order (WIFI, BEACH_BAR) and come back catalogue-ordered; a second
 		// edit REPLACES the set and clears the distance (proves replace + nullable-distance).
 		long venue = createVenue("Amenities Club");
 
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[\"WIFI\",\"BEACH_BAR\"],\"distanceToWaterM\":20}"))
+						.content(profileBody("Amenities Club", "INSTANT", "18:00",
+								"[\"WIFI\",\"BEACH_BAR\"]", "20")))
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -285,7 +299,7 @@ class VenueAdminControllerIT {
 
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[\"SHOWERS\"],\"distanceToWaterM\":null}"))
+						.content(profileBody("Amenities Club", "INSTANT", "18:00", "[\"SHOWERS\"]", "null")))
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -294,12 +308,89 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void widenedProfileEditPersistsCoreFieldsAndReadsBack() throws Exception {
+		// O8 (#177), AC-1/AC-2/AC-6: the widened write persists name/beach/region/description/mode/cutoff.
+		// The tourist read reflects the new name + mode; the owner profile read reflects the cutoff too.
+		long venue = createVenue("Before Name");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("After Name", "REQUEST", "12:30", "[\"WIFI\"]", "35")))
+				.andExpect(status().isNoContent());
+
+		// Tourist surface re-renders the edited name + mode (live read).
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.name").value("After Name"))
+				.andExpect(jsonPath("$.bookingMode").value("REQUEST"));
+
+		// Owner profile read carries the full edited profile, cutoff as "HH:mm".
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("After Name"))
+				.andExpect(jsonPath("$.beach").value("Ksamil"))
+				.andExpect(jsonPath("$.region").value("Riviera"))
+				.andExpect(jsonPath("$.description").value("edited"))
+				.andExpect(jsonPath("$.bookingMode").value("REQUEST"))
+				.andExpect(jsonPath("$.bookingCutoff").value("12:30"))
+				.andExpect(jsonPath("$.distanceToWaterM").value(35))
+				.andExpect(jsonPath("$.amenities").value(Matchers.contains("WIFI")));
+	}
+
+	@Test
+	void getProfileReturnsCommissionAndPayoutCurrency() throws Exception {
+		// O8 (#177), AC-2: the owner profile read exposes the read-only display fields the form shows —
+		// commission (bps) + payout currency — which the PUBLIC tourist read must NOT carry (AC-3).
+		long venue = createVenue("Commission Club"); // created with 1500 bps / EUR
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.commissionBps").value(1500))
+				.andExpect(jsonPath("$.payoutCurrency").value("EUR"));
+
+		// The public tourist read must not leak commission / payout currency.
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.commissionBps").doesNotExist())
+				.andExpect(jsonPath("$.payoutCurrency").doesNotExist());
+	}
+
+	@Test
+	void getProfileRequiresOperatorAuth() throws Exception {
+		// O8 (#177), AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
+		// unauthenticated caller is 401 — commission never leaks to an anonymous request.
+		long venue = createVenue("Auth Profile Club");
+		mvc.perform(get("/api/venues/{v}/profile", venue))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void patchIgnoresReadOnlyCommissionAndCurrency() throws Exception {
+		// O8 (#177), AC-5: commission + payout currency are read-only. Even if a crafted body carries
+		// them, the write cannot touch them (the DTO/command has no such field, so they are ignored).
+		long venue = createVenue("Read Only Club"); // 1500 bps / EUR
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"name":"Still Mine","beach":"Ksamil","region":"Riviera","description":"x",
+								 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":[],
+								 "distanceToWaterM":null,"commissionBps":9999,"payoutCurrency":"USD"}
+								"""))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.commissionBps").value(1500))   // unchanged
+				.andExpect(jsonPath("$.payoutCurrency").value("EUR")) // unchanged
+				.andExpect(jsonPath("$.name").value("Still Mine"));   // editable field did change
+	}
+
+	@Test
 	void unknownAmenityCodeIs400() throws Exception {
-		// T7 (#140), AC-6: an off-catalogue code is rejected at the DTO edge → 400 (error contract §6b).
+		// T7 (#140), AC-7: an off-catalogue code is rejected at the DTO edge → 400 (error contract §6b).
 		long venue = createVenue("Bad Amenity Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[\"PING_PONG\"],\"distanceToWaterM\":null}"))
+						.content(profileBody("Bad Amenity Club", "INSTANT", "18:00", "[\"PING_PONG\"]", "null")))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
@@ -307,11 +398,44 @@ class VenueAdminControllerIT {
 
 	@Test
 	void nonPositiveDistanceIs400() throws Exception {
-		// T7 (#140), AC-6: distance must be a positive integer when present.
+		// T7 (#140), AC-7: distance must be a positive integer when present.
 		long venue = createVenue("Bad Distance Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[],\"distanceToWaterM\":0}"))
+						.content(profileBody("Bad Distance Club", "INSTANT", "18:00", "[]", "0")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void blankNameIs400() throws Exception {
+		// O8 (#177): the widened write requires a non-blank name — a blank one is 400 (error contract §6b).
+		long venue = createVenue("Blank Name Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("   ", "INSTANT", "18:00", "[]", "null")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void malformedBookingModeIs400() throws Exception {
+		// O8 (#177): an unknown booking mode is rejected at the command edge → 400.
+		long venue = createVenue("Bad Mode Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Bad Mode Club", "MAYBE", "18:00", "[]", "null")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void malformedCutoffIs400() throws Exception {
+		// O8 (#177): a non-time cutoff is rejected at the DTO edge → 400.
+		long venue = createVenue("Bad Cutoff Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Bad Cutoff Club", "INSTANT", "not-a-time", "[]", "null")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
@@ -320,7 +444,7 @@ class VenueAdminControllerIT {
 	void profileEditUnknownVenueIs404() throws Exception {
 		mvc.perform(patch("/api/venues/{v}", 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[],\"distanceToWaterM\":null}"))
+						.content(profileBody("Ghost", "INSTANT", "18:00", "[]", "null")))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));

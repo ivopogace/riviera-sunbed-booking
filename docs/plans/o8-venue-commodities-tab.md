@@ -260,12 +260,22 @@ copy that references #142.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Widened profile write (command + DTO + JDBC + validators) | | |
-| 1 — Owner-asserted profile read (port + view + JDBC + controller + SecurityConfig) | | |
-| 2 — Booking-mode/cutoff round-trip ITs (AC-4) | | |
+| 0 — Widened profile write (command + DTO + JDBC + validators) | ✅ | (this commit) |
+| 1 — Owner-asserted profile read (port + view + JDBC + controller + SecurityConfig) | ✅ | (this commit) |
+| 2 — Booking-mode/cutoff round-trip ITs (AC-4) | ✅ | (this commit) |
 | 3 — VenueTab UI + OperatorConsoleService wiring + unit/a11y/contrast | | |
 | 4 — Route swap + VenueEditor retirement | | |
 | 5 — e2e (mocked + real-backend) | | |
+
+> **AC pin adjustments (recorded at build):** the service-level AC-1 orchestration is pinned by
+> `VenueAdminServiceTest.updateProfileByOwnerAppliesTheWrite`; field persistence by
+> `VenueAdminControllerIT.widenedProfileEditPersistsCoreFieldsAndReadsBack`. AC-2 by
+> `getProfileReturnsCommissionAndPayoutCurrency` + `CrossVenueDenialIT.venueProfileReadByNonOwnerIs403`
+> / `ownerCanReadItsOwnVenueProfile`. AC-3 by `getProfileRequiresOperatorAuth` + the tourist-read
+> `commissionBps/payoutCurrency doesNotExist` assertions (in lieu of a dedicated `SecurityConfigPathMatrixTest`).
+> AC-4 by `BookingModeSwitchIT.editingBookingModeToRequestIsVisibleToBooking`. AC-5 by
+> `patchIgnoresReadOnlyCommissionAndCurrency`. AC-7 by `unknownAmenityCodeIs400`. All green locally
+> (Testcontainers) 2026-07-11; CI owns the full suite.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as each phase.
 

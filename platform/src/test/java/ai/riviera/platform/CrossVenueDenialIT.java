@@ -156,14 +156,33 @@ class CrossVenueDenialIT {
 				.andExpect(status().isForbidden());
 	}
 
+	/** A full, VALID widened profile body (O8 #177): valid so {@code toCommand()} passes and the 403
+	 *  comes from the service's ownership check, not from body validation (parse-then-authorize). */
+	private static final String FULL_PROFILE_BODY = """
+			{"name":"Edited","beach":"Ksamil","region":"Riviera","description":"x",
+			 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":["BEACH_BAR"],
+			 "distanceToWaterM":15}
+			""";
+
 	@Test
 	void venueProfileEditByNonOwnerIs403() throws Exception {
-		// T7 (#140): editing a venue's amenities/distance is venue-scoped (invariant #13, BOLA). A
-		// does not own Miramar → 403 before any write, so Miramar's profile is left untouched.
+		// T7 (#140) / O8 (#177): editing a venue's profile is venue-scoped (invariant #13, BOLA). A
+		// does not own Miramar → 403 before any write, so Miramar's profile is left untouched. The body
+		// is VALID so the 403 is genuinely from ownership, not from request validation.
 		actingAs(operatorA);
 		mvc.perform(patch("/api/venues/{v}", MIRAMAR).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[\"BEACH_BAR\"],\"distanceToWaterM\":15}"))
+						.contentType(MediaType.APPLICATION_JSON).content(FULL_PROFILE_BODY))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void venueProfileReadByNonOwnerIs403() throws Exception {
+		// O8 (#177): the owner profile read carries the commission rate + payout currency — venue
+		// financial data — so a non-owner must be denied (invariant #13, BOLA). A does not own Miramar.
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/profile", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
@@ -292,9 +311,18 @@ class CrossVenueDenialIT {
 		// always-deny. Targets A's own throwaway venue, never Miramar, so no shared-container pollution.
 		actingAs(operatorA);
 		mvc.perform(patch("/api/venues/{v}", venueOwnedByA).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"amenities\":[\"BEACH_BAR\",\"WIFI\"],\"distanceToWaterM\":15}"))
+						.contentType(MediaType.APPLICATION_JSON).content(FULL_PROFILE_BODY))
 				.andExpect(status().isNoContent());
+	}
+
+	@Test
+	void ownerCanReadItsOwnVenueProfile() throws Exception {
+		// The positive counterpart to venueProfileReadByNonOwnerIs403: A owns venueOwnedByA, so reading
+		// ITS profile succeeds (200), proving the read 403 is genuinely from ownership, not always-deny.
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/profile", venueOwnedByA).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.commissionBps").value(1500));
 	}
 
 	// ---- Exemptions: platform-wide admin + venue creation are role-gated only (no ownership) ----

@@ -19,6 +19,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
@@ -31,6 +32,7 @@ import ai.riviera.platform.venue.application.Venues;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Branch coverage for the venue write orchestration (U7, issue #7) with an in-memory fake
@@ -183,13 +185,18 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedSets);
 	}
 
-	@Test
-	void updateProfileByOwnerReplacesAmenitiesAndDistance() {
-		venues.venues.add(VENUE.value());
-		VenueProfileCommand command = new VenueProfileCommand(
-				Set.of(Amenity.BEACH_BAR, Amenity.WIFI), 20);
+	/** A valid widened profile command (O8 #177) with the given amenities + distance; core fields fixed. */
+	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM) {
+		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
+				LocalTime.of(18, 0), amenities, distanceToWaterM);
+	}
 
-		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE, command);
+	@Test
+	void updateProfileByOwnerAppliesTheWrite() {
+		venues.venues.add(VENUE.value());
+
+		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE,
+				profile(Set.of(Amenity.BEACH_BAR, Amenity.WIFI), 20));
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.updatedProfiles);
@@ -198,9 +205,7 @@ class VenueAdminServiceTest {
 	@Test
 	void updateProfileOnUnknownVenueIsRejected() {
 		// Owner passes the ownership guard, but the venue does not exist ⇒ 0 rows ⇒ NO_SUCH_VENUE.
-		VenueProfileCommand command = new VenueProfileCommand(Set.of(), null);
-
-		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE, command);
+		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE, profile(Set.of(), null));
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
 	}
@@ -208,12 +213,37 @@ class VenueAdminServiceTest {
 	@Test
 	void profileEditByANonOwnerIsDeniedBeforeAnyWrite() {
 		venues.venues.add(VENUE.value());
-		VenueProfileCommand command = new VenueProfileCommand(Set.of(Amenity.CAFE), 10);
 
-		// The ownership guard runs first: a stranger is rejected before any profile write.
+		// The ownership guard runs first: a stranger is rejected before any profile write (invariant #13).
 		assertThrows(NotVenueOwnerException.class,
-				() -> service.updateProfile(STRANGER, VENUE, command));
+				() -> service.updateProfile(STRANGER, VENUE, profile(Set.of(Amenity.CAFE), 10)));
 		assertEquals(0, venues.updatedProfiles);
+	}
+
+	// ---- Owner-asserted profile READ (O8, issue #177) ----
+
+	@Test
+	void profileForByOwnerReturnsTheView() {
+		venues.venues.add(VENUE.value());
+
+		VenueProfileView view = service.profileFor(OWNER, VENUE).orElseThrow();
+
+		assertEquals("Sunset", view.name());
+		assertEquals(1500, view.commissionBps()); // read-only display field is present in the view
+	}
+
+	@Test
+	void profileForByNonOwnerIsDeniedBeforeAnyRead() {
+		venues.venues.add(VENUE.value());
+
+		// Invariant #13: an operator cannot read another operator's venue profile (commission is sensitive).
+		assertThrows(NotVenueOwnerException.class, () -> service.profileFor(STRANGER, VENUE));
+	}
+
+	@Test
+	void profileForUnknownVenueIsEmpty() {
+		// Owner passes the (fake) ownership guard, but the venue does not exist ⇒ empty ⇒ controller 404.
+		assertTrue(service.profileFor(OWNER, VENUE).isEmpty());
 	}
 
 	// ---- Bulk layout replace (O3, issue #172) ----
@@ -414,6 +444,15 @@ class VenueAdminServiceTest {
 		public int updateVenueProfile(VenueId venueId, VenueProfileCommand command) {
 			updatedProfiles++;
 			return venues.contains(venueId.value()) ? 1 : 0;
+		}
+
+		@Override
+		public Optional<VenueProfileView> findProfile(VenueId venueId) {
+			return venues.contains(venueId.value())
+					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
+							BookingMode.INSTANT, LocalTime.of(18, 0), 1500, "EUR",
+							List.of(Amenity.WIFI), 20))
+					: Optional.empty();
 		}
 
 		final List<Long> existingSetIds = new ArrayList<>();
