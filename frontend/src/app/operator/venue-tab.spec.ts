@@ -157,6 +157,27 @@ describe('VenueTab (#177)', () => {
     req.flush(null);
   });
 
+  it('a second consecutive save sends the bumped version without a reload (#224)', async () => {
+    render(); // loaded at version 7
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    // Let the first submit fully settle: Signal Forms no-ops a submit() while one is still "in
+    // progress", and its submitting() flag resets a promise-turn after the action — past whenStable().
+    // A real operator saving twice has ample wall-clock time; the test just flushes a macrotask.
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+
+    // Edit again and save; the tab must now send 8 (the write bumped the row), not the stale 7 —
+    // the same operator saving twice in a row must not spuriously 409.
+    setValue('venue-name', 'Second Edit');
+    await save();
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(req.request.body.expectedVersion).toBe(8);
+    req.flush(null);
+  });
+
   it('shows the stale-write banner and PRESERVES the operator’s edits on a 409 (#224)', async () => {
     render();
 

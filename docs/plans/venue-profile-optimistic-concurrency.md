@@ -216,7 +216,18 @@ only Reload re-seeds (preserve-edits UX). Contrast/axe specs cover the new banne
 | 2 — Conditional write + 409 STALE_WRITE (+ WebSliceStubs & IT bodies) | ✅ | (this commit) |
 | 3 — Concurrency IT (headline) | ✅ | (this commit) |
 | 4 — Frontend: send version, handle 409, preserve edits + Reload | ✅ | (this commit) |
-| 5 — e2e (mocked CI-safe + real-backend) | | |
+| 5 — e2e (mocked CI-safe + real-backend) | ✅ | (this commit) |
+
+> **Phase 5 note:** the mocked stale-write e2e (`operator-venue.e2e.ts`) is CI-safe and was run
+> green locally (`test:e2e:a11y`, 3/3, + axe over the banner). The real-backend spec
+> (`real-backend/venue.e2e.ts`, a two-page concurrent-writer flow) lives in the **local-only**
+> suite (never wired into CI, per the two-suite split) — authored and type/lint-clean, executed
+> against a running stack locally, not in this session.
+>
+> **FE behavior added (beyond the literal plan, for correctness):** on a successful save the tab
+> advances `loadedVersion` by one (the conditional write bumps the row by exactly one), so the same
+> operator saving twice in a row is not spuriously rejected as stale. Pinned by
+> `venue-tab.spec.ts` (`a second consecutive save sends the bumped version without a reload`).
 
 > **Sequencing note (execution):** the FE `VenueProfileView` model change (`version: number`)
 > is consolidated into **Phase 4** with the rest of the frontend, rather than split into Phase 1

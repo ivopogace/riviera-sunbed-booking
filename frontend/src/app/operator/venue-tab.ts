@@ -204,6 +204,9 @@ export class VenueTab {
       try {
         await firstValueFrom(this.console.updateVenueProfile(venueId, request));
         this.saved.set(true);
+        // The conditional write bumped the row's version by exactly one (#224); advance our token so a
+        // second consecutive save by the same operator isn't spuriously rejected as a stale write.
+        this.loadedVersion.set(expectedVersion + 1);
       } catch (error) {
         const code = venueProfileErrorOf(error);
         this.errorCode.set(code);
