@@ -209,13 +209,34 @@ detail in the in-repo `angular-developer` skill's `references/`.)
 
 ## Execution status
 
+> **This section is the session-recovery anchor.** Long sessions get compacted
+> (summarized) and lose fine-grained state; a fresh session starts with none.
+> Everything a resuming session needs lives HERE, committed — never only in the
+> conversation. After a context compaction, in a fresh session, or whenever unsure
+> where the work stands: re-read this section (plus the current stage's
+> `riviera-sdlc` reference file) before acting. Update it in the SAME commit window
+> as the change it records — at every phase boundary AND every SDLC stage
+> transition (plan → implement → CI → PR → review → sonar → merge).
+
+**Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
+`review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>
+
+**Next action:** <one line — the very next thing a resuming session should do>
+
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — <name> | ⏳ | |
 | 1 — <name> | | |
 
-Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit
-window as each phase's code.
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
+Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
+Skill-routing gate for what the fix touches *before* editing).
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| F-1 | <…> | <…> | open / fixed-in-`<sha>` / deferred → issue #NN |
 
 ---
 
@@ -294,7 +315,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] Booking codes unguessable (invariant #7).
 - [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
 - [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution-status table at HEAD matches reality.
+- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+      findings register (no finding row left `open` without a decision).
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
