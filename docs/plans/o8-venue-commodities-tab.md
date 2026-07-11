@@ -265,7 +265,14 @@ copy that references #142.
 | 2 — Booking-mode/cutoff round-trip ITs (AC-4) | ✅ | (this commit) |
 | 3 — VenueTab UI + OperatorConsoleService wiring + unit/a11y/contrast | ✅ | (this commit) |
 | 4 — Route swap + VenueEditor retirement | ✅ | (this commit) |
-| 5 — e2e (mocked + real-backend) | | |
+| 5 — e2e (mocked + real-backend) | ✅ | (this commit) |
+
+> **Phase 5 note:** the CI-safe mocked `operator-venue.e2e.ts` (edit → save → PATCH shape → tourist
+> re-render → 403 copy) runs under `test:e2e:a11y` (what CI runs) — all 38 mocked e2e green locally.
+> The real-backend `venue-editor.e2e.ts` was rewritten to onboarding-only (its editing tests targeted
+> the retired UI) and a new `real-backend/venue.e2e.ts` drives the console tab's real round-trip;
+> both are local-only (need `bootRun` + Postgres) and authored to match the new UI. Coverage gap
+> noted: the O3 console LayoutEditor has no real-backend spec (was the retired editor's; out of O8's scope).
 
 > **Generalization-audit (Phase 4):** the full FE suite exposed a *pre-existing* test-isolation leak —
 > `booking/booking.service.spec.ts` writes booking codes to `DeviceLocalBookings` (localStorage) but
