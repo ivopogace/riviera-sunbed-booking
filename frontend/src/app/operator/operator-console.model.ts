@@ -1,4 +1,5 @@
-import { MoneyView, Pool, Tier } from '../venue/venue.model';
+import { Amenity } from '../shared/amenities';
+import { BookingMode, MoneyView, Pool, Tier } from '../venue/venue.model';
 
 /**
  * The operator console's "online takings today" read (`GET /api/venues/{id}/takings`, #171). Mirrors
@@ -210,4 +211,55 @@ export type LayoutErrorCode =
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'CONFLICT'
+  | 'UNKNOWN';
+
+/**
+ * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`, O8 #177).
+ * Mirrors the backend `VenueProfileResponse`: the editable core plus the two read-only display
+ * fields — {@link commissionBps} (the platform's cut, invariant #9; the form shows it as a %) and
+ * {@link payoutCurrency} (standing provisional). {@link bookingCutoff} is `"HH:mm"` (Europe/Tirane,
+ * invariant #4/#6). NOT the public tourist `VenueMapView` — this carries commission, so its endpoint
+ * is operator-gated (never the anonymous read).
+ */
+export interface VenueProfileView {
+  readonly name: string;
+  readonly beach: string;
+  readonly region: string;
+  readonly description: string;
+  readonly bookingMode: BookingMode;
+  readonly bookingCutoff: string;
+  readonly commissionBps: number;
+  readonly payoutCurrency: string;
+  readonly amenities: readonly Amenity[];
+  readonly distanceToWaterM: number | null;
+}
+
+/**
+ * The widened venue-profile write body (`PATCH /api/venues/{id}`, O8 #177). Replaces the whole
+ * editable profile — the form re-sends every field. **Commission + payout currency are read-only and
+ * deliberately absent**: the write can never touch the platform's cut (invariant #9). A `null`
+ * distance clears it; an unknown amenity code is rejected 400 server-side (existing contract).
+ */
+export interface VenueProfileUpdate {
+  readonly name: string;
+  readonly beach: string;
+  readonly region: string;
+  readonly description: string;
+  readonly bookingMode: BookingMode;
+  readonly bookingCutoff: string;
+  readonly amenities: readonly Amenity[];
+  readonly distanceToWaterM: number | null;
+}
+
+/**
+ * A known venue-details save/load failure (O8 #177), mapped from the RFC-7807 `code` (#97) for
+ * operator-facing copy. `NOT_VENUE_OWNER` = the 403 cross-venue denial (invariant #13);
+ * `NO_SUCH_VENUE` = the 404; `INVALID_REQUEST` = the 400 edge rejection (§6b); `UNAUTHORIZED` = the
+ * expired session.
+ */
+export type VenueProfileErrorCode =
+  | 'NOT_VENUE_OWNER'
+  | 'NO_SUCH_VENUE'
+  | 'INVALID_REQUEST'
+  | 'UNAUTHORIZED'
   | 'UNKNOWN';

@@ -13,8 +13,7 @@ const PRIMARY = '#0a5c2f';
 const ON_PRIMARY = '#ffffff';
 const SECONDARY = '#e4e4e7';
 const ON_SECONDARY = '#1a1a1a';
-const DANGER = '#9a1414';
-const ON_DANGER = '#ffffff';
+const DANGER = '#9a1414'; // error/field-error text only — the danger button retired with the editing UI (O8 #177)
 
 describe('VenueEditor colour contrast (WCAG AA)', () => {
   it('body text on the page and card backgrounds meets AA', () => {
@@ -32,6 +31,5 @@ describe('VenueEditor colour contrast (WCAG AA)', () => {
   it('button label text meets AA on every button colour', () => {
     expect(contrastRatio(ON_PRIMARY, PRIMARY)).toBeGreaterThanOrEqual(AA_NORMAL);
     expect(contrastRatio(ON_SECONDARY, SECONDARY)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio(ON_DANGER, DANGER)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });

@@ -1,0 +1,231 @@
+<section class="mx-auto w-full max-w-[920px] px-5 py-4" data-testid="venue-tab">
+  @if (venueId === undefined) {
+    <p
+      appCardGlass
+      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+      role="alert"
+      data-testid="venue-invalid"
+    >
+      This console link is missing a valid venue. Open the console from your venue list.
+    </p>
+  } @else if (loadError()) {
+    <p
+      appCardGlass
+      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-[#a3160e]"
+      role="alert"
+      data-testid="venue-load-error"
+    >
+      We couldn’t load this venue’s details. Refresh the page to try again.
+    </p>
+  } @else if (loaded()) {
+    <div class="grid gap-4 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
+      <!-- Left: the venue-details form -->
+      <section appCardGlass class="rounded-[24px] px-[22px] py-5">
+        <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Venue details</h2>
+        <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+          What tourists see on your venue card and beach-map page.
+        </p>
+
+        <form class="flex flex-col gap-3" (submit)="onSave(); $event.preventDefault()" novalidate>
+          <label class="flex flex-col gap-1">
+            <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Name</span>
+            <input
+              type="text"
+              [formField]="detailsForm.name"
+              data-testid="venue-name"
+              class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+            />
+            @if (detailsForm.name().touched() && detailsForm.name().errors().length) {
+              <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+                detailsForm.name().errors()[0].message
+              }}</span>
+            }
+          </label>
+
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1">
+              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Beach</span>
+              <input
+                type="text"
+                [formField]="detailsForm.beach"
+                data-testid="venue-beach"
+                class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              />
+              @if (detailsForm.beach().touched() && detailsForm.beach().errors().length) {
+                <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+                  detailsForm.beach().errors()[0].message
+                }}</span>
+              }
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Region</span>
+              <input
+                type="text"
+                [formField]="detailsForm.region"
+                data-testid="venue-region"
+                class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              />
+              @if (detailsForm.region().touched() && detailsForm.region().errors().length) {
+                <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+                  detailsForm.region().errors()[0].message
+                }}</span>
+              }
+            </label>
+          </div>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Description</span>
+            <input
+              type="text"
+              [formField]="detailsForm.description"
+              data-testid="venue-description"
+              class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+            />
+          </label>
+
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1">
+              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Booking mode</span>
+              <select
+                [formField]="detailsForm.bookingMode"
+                data-testid="venue-booking-mode"
+                class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              >
+                <option value="INSTANT">Instant Book</option>
+                <option value="REQUEST">Request to Book</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+                >Booking cutoff (Europe/Tirane)</span
+              >
+              <input
+                type="time"
+                [formField]="detailsForm.bookingCutoff"
+                data-testid="venue-cutoff"
+                class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              />
+              @if (detailsForm.bookingCutoff().touched() && detailsForm.bookingCutoff().errors().length) {
+                <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+                  detailsForm.bookingCutoff().errors()[0].message
+                }}</span>
+              }
+            </label>
+          </div>
+
+          <!-- Read-only display fields: commission (the platform's cut) + payout currency. -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Commission</span>
+              <output
+                data-testid="venue-commission"
+                class="rounded-[11px] border border-dashed border-(--riv-card-border) bg-(--riv-chip-bg) px-3 py-2 text-[14px] font-semibold text-[#0a6e85]"
+                >{{ commissionPct() }}</output
+              >
+              <span class="text-[11px] text-(--riv-card-ink-soft)">Set by Riviera.</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Payout currency</span>
+              <output
+                data-testid="venue-payout-currency"
+                class="rounded-[11px] border border-dashed border-(--riv-card-border) bg-(--riv-chip-bg) px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink)"
+                >{{ payoutCurrency() }}</output
+              >
+              <span class="text-[11px] text-(--riv-card-ink-soft)">Settled at payout time.</span>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="mt-1 self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+            data-testid="venue-save"
+            [disabled]="detailsForm().invalid() || saving()"
+          >
+            {{ saving() ? 'Saving…' : 'Save changes' }}
+          </button>
+
+          @if (saved()) {
+            <output
+              class="text-[11.5px] font-semibold text-[#0a6e85]"
+              role="status"
+              data-testid="venue-saved"
+              >Saved. Your venue card and beach-map page now show these details.</output
+            >
+          }
+          @if (errorMessage(); as msg) {
+            <span
+              class="text-[11.5px] font-semibold text-[#a3160e]"
+              role="alert"
+              data-testid="venue-error"
+              >{{ msg }}</span
+            >
+          }
+        </form>
+      </section>
+
+      <!-- Right rail: photo placeholders + commodities -->
+      <div class="flex flex-col gap-4">
+        <section appCardGlass class="rounded-[24px] px-[22px] py-5">
+          <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Photos</h2>
+          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+            Shown to tourists on your venue card and beach-map page.
+          </p>
+          <div class="flex flex-col gap-2.5">
+            @for (slot of photoSlots; track slot.key) {
+              <div
+                class="flex min-h-[64px] items-center justify-center rounded-[14px] border border-dashed border-(--riv-card-border) bg-(--riv-chip-bg) px-4 py-3 text-center text-[12.5px] text-(--riv-card-ink-soft)"
+                data-testid="photo-slot"
+                [attr.data-slot]="slot.key"
+                aria-hidden="true"
+              >
+                {{ slot.label }}
+              </div>
+            }
+          </div>
+          <p class="mt-3 text-[11.5px] text-(--riv-card-ink-soft)" data-testid="photos-deferred">
+            Photo uploads are coming in a later update (#142).
+          </p>
+        </section>
+
+        <section appCardGlass class="rounded-[24px] px-[22px] py-5">
+          <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Commodities</h2>
+          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+            Shown as tags on your venue card and beach-map page.
+          </p>
+
+          <fieldset class="border-0 p-0">
+            <legend class="mb-2 text-[12.5px] font-semibold text-(--riv-card-ink)">Amenities</legend>
+            <div class="flex flex-wrap gap-2">
+              @for (code of amenityCatalogue; track code) {
+                <button
+                  type="button"
+                  class="amenity-chip rounded-full border px-[15px] py-2 text-[12.5px] font-semibold [transition:background_0.15s_ease,border-color_0.15s_ease] [&.active]:border-[#0e8aa8] [&.active]:bg-[#2bb8d4]/[0.22] [&.active]:text-[#0a4f5e] [&:not(.active)]:border-(--riv-card-border) [&:not(.active)]:bg-white/50 [&:not(.active)]:text-(--riv-card-ink-soft)"
+                  [class.active]="isAmenityActive(code)"
+                  [attr.aria-pressed]="isAmenityActive(code)"
+                  [attr.data-testid]="'amenity-toggle-' + code"
+                  (click)="onToggleAmenity(code)"
+                >
+                  {{ amenityText(code) }}
+                </button>
+              }
+            </div>
+          </fieldset>
+
+          <label class="mt-4 flex flex-col gap-1">
+            <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+              >Distance to water (metres)</span
+            >
+            <input
+              type="text"
+              inputmode="numeric"
+              data-testid="venue-distance"
+              [value]="distanceDraft()"
+              (input)="onDistanceInput($any($event.target).value)"
+              class="w-[140px] rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+            />
+          </label>
+        </section>
+      </div>
+    </div>
+  }
+</section>

@@ -1,13 +1,10 @@
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
-import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
-import { formatMoney } from '../shared/money';
-import { defaultBookingDate } from '../venue/booking-date';
-import { BookingMode, Pool, SetView, Tier, VenueMapView } from '../venue/venue.model';
-import { VenueService } from '../venue/venue.service';
+import { BookingMode } from '../venue/venue.model';
 import { VenueAdminErrorCode } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
@@ -16,82 +13,33 @@ function parseWholeNumber(raw: string): number | undefined {
   return /^\d+$/.test(raw.trim()) ? Number.parseInt(raw, 10) : undefined;
 }
 
-/** A fresh, empty add-set form model. A factory so the initial value and the reset share one source. */
-function emptySetModel() {
-  return {
-    rowLabel: '',
-    positionNo: '',
-    tier: 'PREMIUM',
-    pool: 'ONLINE',
-    priceMinor: '',
-    priceCurrency: 'EUR',
-    gridX: '',
-    gridY: '',
-  };
-}
-
 /**
- * Operator beach-map editor (U7, issue #7). Sign in as the operator, create a venue, then lay out
- * its beach map by adding set positions (tier, pool, price in minor units, grid coordinates),
- * removing them, or moving one between the online/walk-in pools. Every change posts through
- * {@link VenueAdminService} and then the editor **re-reads the venue through the U1 read API**
- * ({@link VenueService}) — so what it renders is literally the round-trip, the core integration AC.
- *
- * <p>Forms are Signal Forms (`@angular/forms/signals`); numeric fields are kept as strings and
- * parsed on submit (the server re-validates ranges/tokens, invariants #3/#5/#12). The sign-in
- * inputs are plain signals — they need no field-level validation messaging.
+ * Venue onboarding (U7) — sign in as an operator and **create** a venue. This is all that remains of
+ * the legacy in-page venue editor: editing an existing venue's beach-map layout (O3 #172), row
+ * pricing (O4 #174) and details/commodities (O8 #177) now lives in the operator console's tabs, so
+ * this page's editing role is retired (issue #177). It stays the reachable "Create a venue" entry
+ * point (linked from the console header); on success it links the operator into the console for the
+ * new venue to lay out its map. Signal Forms for the create form; the sign-in inputs are plain
+ * signals. The server re-validates every field (invariants #3/#5/#12); numeric fields are parsed on submit.
  */
 @Component({
   selector: 'app-venue-editor',
-  imports: [FormField],
+  imports: [FormField, RouterLink],
   templateUrl: './venue-editor.html',
   styleUrl: './venue-editor.scss',
 })
 export class VenueEditor {
   private readonly admin = inject(VenueAdminService);
-  private readonly venues = inject(VenueService);
   protected readonly operator = inject(OperatorAuth);
 
   /** Operator sign-in (plain signals — trivial, no per-field validation messaging). */
   protected readonly username = signal('');
   protected readonly password = signal('');
 
-  /** The created venue's id (undefined until the create form succeeds). */
+  /** The created venue's id (undefined until the create form succeeds) — then we link to its console. */
   protected readonly venueId = signal<number | undefined>(undefined);
-  /** The venue as re-read through the U1 read API after each change (the round-trip source). */
-  protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly saving = signal(false);
   private readonly errorCode = signal<VenueAdminErrorCode | undefined>(undefined);
-  /** Set when a write succeeded but the follow-up read-back failed — distinct from a write error. */
-  protected readonly reloadFailed = signal(false);
-
-  protected readonly sets = computed<readonly SetView[]>(() => this.venue()?.sets ?? []);
-
-  // --- Commodities (T7 #140): amenity toggles + distance-to-water, edited on the loaded venue ---
-  /** The full fixed catalogue, rendered as toggle chips. */
-  protected readonly amenityCatalogue = AMENITY_CATALOGUE;
-  /**
-   * The working amenity set. Seeded from the venue when a DIFFERENT venue loads, but PRESERVED
-   * across an unrelated read-back of the same venue (a set add/remove/pool-toggle also reloads
-   * `venue()`) — otherwise the operator's in-progress toggles would silently revert (#140 review).
-   */
-  protected readonly amenityDraft = linkedSignal<VenueMapView | undefined, Set<Amenity>>({
-    source: this.venue,
-    computation: (venue, previous) =>
-      previous && previous.source?.id === venue?.id
-        ? previous.value
-        : new Set<Amenity>(venue?.amenities ?? []),
-  });
-  /** The metres field as a string — same re-seed-only-on-a-different-venue rule as {@link amenityDraft}. */
-  protected readonly distanceDraft = linkedSignal<VenueMapView | undefined, string>({
-    source: this.venue,
-    computation: (venue, previous) => {
-      if (previous && previous.source?.id === venue?.id) {
-        return previous.value;
-      }
-      return venue?.distanceToWaterM == null ? '' : String(venue.distanceToWaterM);
-    },
-  });
 
   // --- Create-venue form ---
   protected readonly venueModel = signal({
@@ -113,17 +61,6 @@ export class VenueEditor {
     required(path.bookingCutoff, { message: 'Cutoff time is required' });
   });
 
-  // --- Add-set form ---
-  protected readonly setModel = signal(emptySetModel());
-  protected readonly setForm = form(this.setModel, (path) => {
-    required(path.rowLabel, { message: 'Row label is required' });
-    required(path.positionNo, { message: 'Position number is required' });
-    required(path.priceMinor, { message: 'Price (minor units) is required' });
-    required(path.priceCurrency, { message: 'Currency is required' });
-    required(path.gridX, { message: 'Grid column is required' });
-    required(path.gridY, { message: 'Grid row is required' });
-  });
-
   /** True while the sign-in POST is in flight (button disabled, no double submit). */
   protected readonly signingIn = signal(false);
   /** A sign-in failure message, distinct from the write-flow errors in {@link errorMessage}. */
@@ -135,8 +72,7 @@ export class VenueEditor {
     }
     this.signingIn.set(true);
     this.signInError.set(undefined);
-    // Server-validated (issue #109): the session is established here or the failure is known
-    // here — no more capture-and-discover-on-first-write.
+    // Server-validated (issue #109): the session is established here or the failure is known here.
     const result = await this.operator.signIn(this.username(), this.password());
     this.signingIn.set(false);
     if (result === 'signed-in') {
@@ -176,158 +112,18 @@ export class VenueEditor {
           }),
         );
         this.venueId.set(created.id);
-        await this.safeReload();
       } catch (error) {
         this.failWrite(error);
       } finally {
         this.saving.set(false);
       }
     });
-  }
-
-  protected onAddSet(): void {
-    const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
-    this.errorCode.set(undefined);
-    submit(this.setForm, async () => {
-      const m = this.setModel();
-      const positionNo = parseWholeNumber(m.positionNo);
-      const gridX = parseWholeNumber(m.gridX);
-      const gridY = parseWholeNumber(m.gridY);
-      const minorUnits = parseWholeNumber(m.priceMinor);
-      if (
-        positionNo === undefined ||
-        gridX === undefined ||
-        gridY === undefined ||
-        minorUnits === undefined
-      ) {
-        this.errorCode.set('INVALID_REQUEST');
-        return;
-      }
-      this.saving.set(true);
-      try {
-        await firstValueFrom(
-          this.admin.addSet(venueId, {
-            rowLabel: m.rowLabel,
-            positionNo,
-            tier: m.tier as Tier,
-            pool: m.pool as Pool,
-            price: { minorUnits, currency: m.priceCurrency },
-            gridX,
-            gridY,
-          }),
-        );
-        this.resetSetForm();
-        await this.safeReload();
-      } catch (error) {
-        this.failWrite(error);
-      } finally {
-        this.saving.set(false);
-      }
-    });
-  }
-
-  protected async onRemoveSet(set: SetView): Promise<void> {
-    const venueId = this.venueId();
-    if (venueId === undefined || this.saving()) {
-      return;
-    }
-    await this.run(() => firstValueFrom(this.admin.removeSet(venueId, set.id)));
-  }
-
-  /** Move a set between the online and walk-in pools — the editable pool split (invariant #3). */
-  protected async onTogglePool(set: SetView): Promise<void> {
-    const venueId = this.venueId();
-    if (venueId === undefined || this.saving()) {
-      return;
-    }
-    const pool: Pool = set.pool === 'ONLINE' ? 'WALK_IN' : 'ONLINE';
-    await this.run(() =>
-      firstValueFrom(
-        this.admin.updateSet(venueId, set.id, {
-          rowLabel: set.rowLabel,
-          positionNo: set.positionNo,
-          tier: set.tier,
-          pool,
-          price: set.price,
-          gridX: set.gridX,
-          gridY: set.gridY,
-        }),
-      ),
-    );
-  }
-
-  protected amenityText(code: Amenity): string {
-    return amenityLabel(code);
-  }
-
-  protected isAmenityActive(code: Amenity): boolean {
-    return this.amenityDraft().has(code);
-  }
-
-  /** Flip an amenity in the working set (persisted only on Save). */
-  protected onToggleAmenity(code: Amenity): void {
-    this.amenityDraft.update((current) => {
-      const next = new Set(current);
-      if (next.has(code)) {
-        next.delete(code);
-      } else {
-        next.add(code);
-      }
-      return next;
-    });
-  }
-
-  /**
-   * Save the venue's commodities (T7 #140): the whole amenity set + the optional distance. Parses
-   * the metres field client-side (blank ⇒ null; otherwise a positive integer), PATCHes the profile
-   * (which REPLACES the set), and re-reads through the U1 API — the toggles then reflect the
-   * persisted state (the drafts re-seed from the read-back).
-   */
-  protected async onSaveCommodities(): Promise<void> {
-    const venueId = this.venueId();
-    if (venueId === undefined || this.saving()) {
-      return;
-    }
-    const raw = this.distanceDraft().trim();
-    let distanceToWaterM: number | null;
-    if (raw === '') {
-      distanceToWaterM = null;
-    } else {
-      const parsed = parseWholeNumber(raw);
-      if (parsed === undefined || parsed <= 0) {
-        this.errorCode.set('INVALID_REQUEST');
-        return;
-      }
-      distanceToWaterM = parsed;
-    }
-    const amenities = [...this.amenityDraft()];
-    await this.run(() =>
-      firstValueFrom(this.admin.updateVenueProfile(venueId, { amenities, distanceToWaterM })),
-    );
-  }
-
-  /** Run a write, then re-read the venue through the read API; map a WRITE failure to a message. */
-  private async run(write: () => Promise<unknown>): Promise<void> {
-    this.errorCode.set(undefined);
-    this.saving.set(true);
-    try {
-      await write();
-      await this.safeReload();
-    } catch (error) {
-      this.failWrite(error);
-    } finally {
-      this.saving.set(false);
-    }
   }
 
   /**
    * Map a write failure to its message and, on a 401, drop the lost session so the sign-in form
-   * re-renders (issue #109 review): the server session can expire/invalidate mid-edit, and without
+   * re-renders (issue #109): the server session can expire/invalidate mid-create, and without
    * clearing local auth state the operator is stuck on the signed-in card retrying a dead session.
-   * Mirrors StaffDaily's `sessionLost()` handling.
    */
   private failWrite(error: unknown): void {
     const code = venueAdminErrorOf(error);
@@ -337,66 +133,20 @@ export class VenueEditor {
     }
   }
 
-  /**
-   * Re-read the venue through the U1 read API. A read-back failure is kept SEPARATE from a write
-   * failure ({@link reloadFailed} vs {@link errorCode}): the write already succeeded, so showing it
-   * as an error would wrongly invite a duplicate retry — instead the operator is told the preview is
-   * stale.
-   */
-  private async safeReload(): Promise<void> {
-    this.reloadFailed.set(false);
-    try {
-      await this.reload();
-    } catch {
-      this.reloadFailed.set(true);
-    }
-  }
-
-  private async reload(): Promise<void> {
-    const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
-    const venue = await firstValueFrom(
-      this.venues.getVenueMap(venueId, defaultBookingDate(new Date())),
-    );
-    this.venue.set(venue);
-  }
-
-  private resetSetForm(): void {
-    this.setModel.set(emptySetModel());
-  }
-
-  protected money(set: SetView): string {
-    return formatMoney(set.price);
-  }
-
-  /** Accessible name for a laid-out set (state not by position alone). */
-  protected setLabel(set: SetView): string {
-    const tier = set.tier === 'PREMIUM' ? 'premium' : 'standard';
-    const pool = set.pool === 'ONLINE' ? 'online pool' : 'walk-in pool';
-    return `${set.rowLabel} position ${set.positionNo}, ${tier}, ${pool}, ${this.money(set)}, cell ${set.gridX}×${set.gridY}`;
-  }
-
   protected errorMessage(): string | undefined {
-    switch (this.errorCode()) {
+    const code = this.errorCode();
+    if (code === undefined) {
+      return undefined;
+    }
+    switch (code) {
       case 'UNAUTHORIZED':
         return 'Your operator session has expired. Please sign in again.';
-      case 'CELL_TAKEN':
-      case 'CONFLICT':
-        return 'Another set already occupies that grid cell. Pick a different column/row.';
-      case 'DUPLICATE_POSITION':
-        return 'Another set already has that row label and position number.';
       case 'NO_SUCH_VENUE':
         return 'That venue no longer exists.';
-      case 'NO_SUCH_SET':
-        return 'That set no longer exists.';
       case 'INVALID_REQUEST':
         return 'Please check the form values and try again.';
-      case 'UNKNOWN':
-        return 'Something went wrong. Please try again.';
       default:
-        return undefined;
+        return 'Something went wrong. Please try again.';
     }
   }
 }

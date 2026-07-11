@@ -1,6 +1,8 @@
-// Venue editor (U7). Colour tokens are duplicated as constants in venue-editor.contrast.spec.ts
+// Venue onboarding (U7). Colour tokens are duplicated as constants in venue-editor.contrast.spec.ts
 // and asserted to meet WCAG AA — keep the two in lockstep (issue #38 pattern). Deliberately
-// high-contrast, simple tokens so state never rests on colour alone (the labels carry it).
+// high-contrast, simple tokens so state never rests on colour alone (the labels carry it). The
+// in-page beach-map/pricing/commodities editing was retired to the operator console tabs (O8 #177);
+// only the sign-in + create-venue form styling remains.
 
 :host {
   --editor-text: #1a1a1a;
@@ -13,7 +15,6 @@
   --editor-secondary: #e4e4e7;
   --editor-on-secondary: #1a1a1a;
   --editor-danger: #9a1414;
-  --editor-on-danger: #ffffff;
 
   display: block;
   color: var(--editor-text);
@@ -87,49 +88,12 @@ h2 {
   font-weight: 600;
 }
 
-// A write succeeded but the read-back failed — informational, uses the high-contrast body colour
-// (already AA-verified in the contrast spec), not the danger colour.
-.form-notice {
-  color: var(--editor-text);
-  font-weight: 600;
-  margin: 0;
-}
-
 .created {
   background: var(--editor-card);
 }
 
-.set-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.set-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid var(--editor-border);
-  border-radius: 0.35rem;
-  background: var(--editor-bg);
-}
-
-.set-name {
-  flex: 1 1 16rem;
-}
-
-.set-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-button {
+button,
+a.btn-primary {
   padding: 0.5rem 0.9rem;
   border-radius: 0.35rem;
   border: 1px solid transparent;
@@ -143,6 +107,14 @@ button {
   }
 }
 
+// The "Open the console" link in the created card renders as a primary button.
+a.btn-primary {
+  align-self: flex-start;
+  display: inline-block;
+  margin-top: 0.5rem;
+  text-decoration: none;
+}
+
 .btn-primary {
   background: var(--editor-primary);
   color: var(--editor-on-primary);
@@ -152,48 +124,4 @@ button {
   background: var(--editor-secondary);
   color: var(--editor-on-secondary);
   border-color: var(--editor-border);
-}
-
-.btn-danger {
-  background: var(--editor-danger);
-  color: var(--editor-on-danger);
-}
-
-// Commodities amenity toggles (T7 #140). Pill buttons reusing the AA-proven editor token pairs —
-// inactive = secondary (like .btn-secondary), active = primary (like .btn-primary) — so no new
-// colour combination is introduced (the pairs are already asserted in venue-editor.contrast.spec.ts).
-// A <fieldset> (grouping the amenity toggles under a <legend>) with its default chrome reset.
-.chip-toggles {
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-inline-size: 0;
-
-  legend {
-    padding: 0;
-    margin-bottom: 0.4rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
-}
-
-.chip-toggle-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.chip-toggle {
-  border-radius: 999px;
-  padding: 0.4rem 0.85rem;
-  font-size: 0.9rem;
-  background: var(--editor-secondary);
-  color: var(--editor-on-secondary);
-  border: 1px solid var(--editor-border);
-
-  &.active {
-    background: var(--editor-primary);
-    color: var(--editor-on-primary);
-    border-color: var(--editor-primary);
-  }
 }

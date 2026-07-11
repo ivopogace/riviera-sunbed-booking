@@ -3,8 +3,8 @@
     <div class="oc-signin-card">
       <h1 class="oc-signin-title" data-testid="oc-invalid-venue">Venue not found</h1>
       <p class="oc-signin-intro">
-        This operator console link isn’t valid. Check the address, or open your venue from the
-        <a class="oc-create-venue" routerLink="/venue-admin">venue editor</a>.
+        This operator console link isn’t valid. Check the address, or
+        <a class="oc-create-venue" routerLink="/venue-admin">create a venue</a>.
       </p>
     </div>
   </main>
@@ -66,8 +66,8 @@
           }}</span>
         </div>
         <div class="oc-header-right">
-          <!-- Onboarding has no console screen yet; it stays at the legacy /venue-admin editor until
-               operator self-registration (#115 / O8). Keep it reachable from the console (AC-5). -->
+          <!-- Onboarding (create a venue) has no console tab; it stays at the /venue-admin page where
+               O1 placed it (operator self-registration is #115). Keep it reachable (AC-5). -->
           <a class="oc-create-venue" data-testid="oc-create-venue" routerLink="/venue-admin"
             >Create a venue</a
           >

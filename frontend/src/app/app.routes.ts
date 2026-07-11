@@ -1,13 +1,9 @@
 import { Routes } from '@angular/router';
 
-// The still-placeholder operator-console tab child routes (issue #170), built from one factory so the
-// near-identical entries aren't duplicated. Each hosts the placeholder until its O3–O8 restyle slice
-// swaps the component in; `data.tab` tells the placeholder which section it is. `beach-map` has
-// graduated to its real editor (O3 #172) and is declared explicitly below.
-const CONSOLE_TABS: readonly (readonly [string, string])[] = [
-  ['venue', 'Venue & commodities'],
-];
-
+// The operator-console tab child routes (issue #170). Every tab has now graduated to its real
+// component (O3 beach-map through O8 venue — no placeholders remain); `data.tab` identifies the
+// section. A child reads `:venueId` from the PARENT route (child routes don't inherit it under the
+// router's default `emptyOnly` strategy — the O1 finding).
 const consoleTabRoutes: Routes = [
   {
     // O3 (#172): the real generate-grid + paint layout editor, replacing the beach-map placeholder.
@@ -44,12 +40,15 @@ const consoleTabRoutes: Routes = [
     title: 'Payouts — Operator console',
     data: { tab: 'payouts' },
   },
-  ...CONSOLE_TABS.map(([path, label]) => ({
-    path,
-    loadComponent: () => import('./operator/console-placeholder').then((m) => m.ConsolePlaceholder),
-    title: `${label} — Operator console`,
-    data: { tab: path },
-  })),
+  {
+    // O8 (#177): the real Venue & commodities tab — details form + amenity toggle-chips + photo
+    // placeholders — replacing the last placeholder. Closes epic #141 and retires the legacy
+    // /venue-admin in-page editor (now onboarding-only).
+    path: 'venue',
+    loadComponent: () => import('./operator/venue-tab').then((m) => m.VenueTab),
+    title: 'Venue & commodities — Operator console',
+    data: { tab: 'venue' },
+  },
 ];
 
 // `legacySurface: true` = pre-redesign styling: the shell wraps the route in its opaque compat
@@ -69,13 +68,13 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
-    // The last legacy operator surface: onboarding + venue editing (O8 restyles it as the console's
-    // Venue & commodities tab). O6 (#176) retired the sibling StaffDaily page when the Requests +
-    // Daily-view tabs replaced its last jobs.
+    // Venue onboarding (create a venue), reached from the console header. O8 (#177) retired this
+    // page's in-page editing — layout/pricing/details/commodities are console tabs now — so it is no
+    // longer a legacy compat surface: the `legacySurface` flag is dropped (its self-styled form
+    // renders on the bare themed background). Onboarding stays here, where O1 placed it.
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
-    title: 'Venue editor — Riviera',
-    data: { legacySurface: true },
+    title: 'Create a venue — Riviera',
   },
   {
     // O6 (#176): the retired /venue-admin/daily/:venueId StaffDaily page forwards to the console's

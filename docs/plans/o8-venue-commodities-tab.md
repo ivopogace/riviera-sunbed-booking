@@ -263,9 +263,17 @@ copy that references #142.
 | 0 — Widened profile write (command + DTO + JDBC + validators) | ✅ | (this commit) |
 | 1 — Owner-asserted profile read (port + view + JDBC + controller + SecurityConfig) | ✅ | (this commit) |
 | 2 — Booking-mode/cutoff round-trip ITs (AC-4) | ✅ | (this commit) |
-| 3 — VenueTab UI + OperatorConsoleService wiring + unit/a11y/contrast | | |
-| 4 — Route swap + VenueEditor retirement | | |
+| 3 — VenueTab UI + OperatorConsoleService wiring + unit/a11y/contrast | ✅ | (this commit) |
+| 4 — Route swap + VenueEditor retirement | ✅ | (this commit) |
 | 5 — e2e (mocked + real-backend) | | |
+
+> **Generalization-audit (Phase 4):** the full FE suite exposed a *pre-existing* test-isolation leak —
+> `booking/booking.service.spec.ts` writes booking codes to `DeviceLocalBookings` (localStorage) but
+> never installed/removed the fake store per the `testing/fake-storage.ts` contract, so its
+> "remembers 3 codes" test leaked into its "empty body" test once O8's new spec files re-sharded the
+> Vitest workers. Fixed at the root (added `installFakeStorage`/`removeFakeStorage` to that suite's
+> `beforeEach`/`afterEach`). Sibling booking specs that only use the codes as HTTP fixtures don't
+> write to the store, so they're unaffected. All 626 FE unit specs green; `lint` + `build` clean.
 
 > **AC pin adjustments (recorded at build):** the service-level AC-1 orchestration is pinned by
 > `VenueAdminServiceTest.updateProfileByOwnerAppliesTheWrite`; field persistence by
