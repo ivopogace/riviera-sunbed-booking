@@ -230,15 +230,20 @@ class BeachMapReplaceIT {
 
 		// AC-6/AC-8: a venue with a booking is locked — the replace is 409 LAYOUT_IN_USE and nothing changes.
 		// The token is current (not stale), so the reject is LAYOUT_IN_USE — the in-use guard, not STALE_WRITE.
+		long tokenBefore = currentSetVersion(venue);
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
+						.content(layout(tokenBefore, cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"));
 
-		// The original two sets are untouched (no partial delete).
-		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(2));
+		// The original two sets are untouched (no partial delete), and — #226 review fix — the LAYOUT_IN_USE
+		// reject did NOT advance set_version (no spurious bump), so the acting tab's token still matches and
+		// a retry after the lock clears would not falsely 409 STALE_WRITE.
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets.length()").value(2))
+				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore));
 	}
 
 	@Test

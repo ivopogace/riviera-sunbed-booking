@@ -154,27 +154,57 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-projected').textContent).toContain(formatMoney({ minorUnits: 9000, currency: 'EUR' }));
   });
 
-  it('reverts only the failing row on error, leaving a concurrent edit intact', async () => {
+  it('reverts the failing row on error without touching other rows (sequential edits)', async () => {
     render();
 
-    // Two overlapping edits: A→€40 and B→€30, both PUTs in flight.
+    // Edit A → €40; it fails (CONFLICT) and reverts to €35. A failed write does NOT advance the token.
     editRow('A', '40');
-    editRow('B', '30');
     const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
-    const reqB = http.expectOne((r) => r.url.includes('/api/venues/1/rows/B/price'));
-
-    reqA.flush({ code: 'CONFLICT' }, { status: 409, statusText: 'Conflict' }); // A fails
-    reqB.flush(null); // B succeeds
+    reqA.flush({ code: 'CONFLICT' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // A reverts to €35 (3500 each), B keeps €30 (3000) — B is NOT clobbered by A's revert.
+    // Then edit B → €30; it succeeds. B carries the SAME token (A's failure did not advance it).
+    editRow('B', '30');
+    const reqB = http.expectOne((r) => r.url.includes('/api/venues/1/rows/B/price'));
+    expect(reqB.request.body.expectedVersion).toBe(0);
+    reqB.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // A reverted to €35 (3500 each), B keeps €30 (3000) — B is NOT clobbered by A's revert.
     // Projected online = 3500 + 3500 + 3000 = 10000.
     expect(input('A').value).toBe('35');
     expect(input('B').value).toBe('30');
     expect(byId('pricing-projected').textContent).toContain(
       formatMoney({ minorUnits: 10000, currency: 'EUR' }),
     );
+  });
+
+  it('serializes reprices: a second edit while one is in flight is ignored, not a concurrent PUT', async () => {
+    // #226 review fix (#4): the single shared set_version token cannot admit two concurrent reprices, so a
+    // save disables the inputs; a change that still slips through mid-flight is ignored (no overlap race).
+    render(SEED, 5);
+
+    // Start editing A — its PUT is in flight (not yet flushed).
+    editRow('A', '40');
+    const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
+    expect(reqA.request.body.expectedVersion).toBe(5);
+
+    // A second edit (row B) while A is in flight is ignored — no concurrent PUT, B's input is restored.
+    editRow('B', '30');
+    http.expectNone((r) => r.url.includes('/api/venues/1/rows/B/price'));
+    expect(input('B').value).toBe('20');
+
+    // A completes → token advances to 6; a subsequent B edit now sends the fresh token and succeeds.
+    reqA.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    editRow('B', '30');
+    const reqB = http.expectOne((r) => r.url.includes('/api/venues/1/rows/B/price'));
+    expect(reqB.request.body.expectedVersion).toBe(6);
+    reqB.flush(null);
+    await fixture.whenStable();
   });
 
   it('shows the not-owner message and reverts the projection when the reprice is 403', async () => {

@@ -273,6 +273,7 @@ class VenueAdminServiceTest {
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
 		assertEquals(1, venues.deletedAllCount);
 		assertEquals(6, venues.insertedInLayout);
+		assertEquals(1, venues.incrementedSetVersions); // #226: token advanced exactly once, on success
 	}
 
 	@Test
@@ -285,6 +286,9 @@ class VenueAdminServiceTest {
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
 		assertEquals(0, venues.insertedInLayout);
+		// #226 review fix: a LAYOUT_IN_USE reject must NOT advance the token (no spurious bump), so the
+		// acting operator's own retry after the lock clears still works off the same loaded token.
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
@@ -296,6 +300,7 @@ class VenueAdminServiceTest {
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.incrementedSetVersions); // no spurious bump on the in-use reject
 	}
 
 	@Test
@@ -330,17 +335,18 @@ class VenueAdminServiceTest {
 
 	@Test
 	void replaceWithStaleSetVersionIsStaleWrite() {
-		// #226, AC-1 (unit): the venue exists but the conditional set_version bump finds no row at the
-		// loaded token (another writer bumped it) ⇒ 0 rows ⇒ STALE_WRITE, and the layout is left untouched
-		// — the bump precedes the delete, so a stale replace deletes/inserts nothing.
+		// #226, AC-1 (unit): the venue exists but the locked set_version no longer matches the loaded token
+		// (another writer advanced it) ⇒ STALE_WRITE, and the layout is left untouched — the version check
+		// precedes the delete, and the token is never advanced on the stale path.
 		venues.venues.add(VENUE.value());
-		venues.forceBumpRows = 0; // set_version no longer matches the loaded token
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
 		assertEquals(0, venues.insertedInLayout);
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
@@ -349,9 +355,9 @@ class VenueAdminServiceTest {
 
 		assertThrows(NotVenueOwnerException.class,
 				() -> service.replaceLayout(STRANGER, VENUE, 0L, grid(2, 3)));
-		// Fail closed: the ownership guard fires before the claim probes, the bump, and any delete.
+		// Fail closed: the ownership guard fires before the claim probes, the version read/write, any delete.
 		assertEquals(0, availability.anyClaimsCalls);
-		assertEquals(0, venues.bumpedSetVersions);
+		assertEquals(0, venues.incrementedSetVersions);
 		assertEquals(0, venues.deletedAllCount);
 	}
 
@@ -367,6 +373,7 @@ class VenueAdminServiceTest {
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.repricedRows);
+		assertEquals(1, venues.incrementedSetVersions); // #226: token advanced once, on success
 	}
 
 	@Test
@@ -386,20 +393,24 @@ class VenueAdminServiceTest {
 		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+		// #226 review fix: a NO_SUCH_ROW reject must NOT advance the token (no spurious bump), so the
+		// acting operator's own next edit of a real row off the same loaded token still works.
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
 	void repriceWithStaleSetVersionIsStaleWrite() {
-		// #226, AC-2 (unit): the venue exists but the conditional set_version bump finds no row at the
-		// loaded token (another writer bumped it) ⇒ 0 rows ⇒ STALE_WRITE, and the reprice UPDATE is never
-		// attempted (the bump precedes it).
+		// #226, AC-2 (unit): the venue exists but the locked set_version no longer matches the loaded token
+		// (another writer advanced it) ⇒ STALE_WRITE, the reprice UPDATE is never attempted, and the token
+		// is not advanced.
 		venues.venues.add(VENUE.value());
-		venues.forceBumpRows = 0; // set_version no longer matches the loaded token
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
 
 		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.repricedRows);
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
@@ -410,7 +421,7 @@ class VenueAdminServiceTest {
 		assertThrows(NotVenueOwnerException.class,
 				() -> service.repriceRow(STRANGER, VENUE, 0L, REPRICE_CMD));
 		assertEquals(0, venues.repricedRows);
-		assertEquals(0, venues.bumpedSetVersions); // fail closed before the bump too (#226)
+		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too (#226)
 	}
 
 	/**
@@ -462,17 +473,22 @@ class VenueAdminServiceTest {
 			return venues.contains(venueId.value());
 		}
 
-		int bumpedSetVersions;
-		// #226: null ⇒ the set_version bump matches the loaded token (1 row, proceeds); set 0 to model a
-		// stale token (another replace/reprice bumped it since the load ⇒ STALE_WRITE).
-		Integer forceBumpRows;
+		int incrementedSetVersions;
+		// #226: what lockAndReadSetVersion returns. The set-write tests pass expectedVersion 0, so the
+		// default 0 models a token match (proceed); set it to a different value to model a stale token
+		// (another replace/reprice advanced it since the load ⇒ STALE_WRITE).
+		long setVersionOnLock;
 
 		@Override
-		public int bumpSetVersion(VenueId venueId, long expectedVersion) {
-			bumpedSetVersions++;
-			// The service checks venueExists first, so this is only reached for an existing venue; the
-			// default 1 models a token match. forceBumpRows = 0 models a stale-token loss.
-			return forceBumpRows != null ? forceBumpRows : 1;
+		public long lockAndReadSetVersion(VenueId venueId) {
+			return setVersionOnLock;
+		}
+
+		@Override
+		public void incrementSetVersion(VenueId venueId) {
+			// Counted so a test can assert the token is advanced ONLY on the success path — never on a
+			// STALE_WRITE / LAYOUT_IN_USE / NO_SUCH_ROW reject (no spurious bump).
+			incrementedSetVersions++;
 		}
 
 		@Override

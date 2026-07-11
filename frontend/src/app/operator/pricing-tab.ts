@@ -60,6 +60,10 @@ export class PricingTab {
   /** True when the initial venue read failed — shows an error (not a false "no sets" empty state). */
   protected readonly loadError = signal(false);
 
+  /** True while a reprice PUT is in flight. The single shared `set_version` token cannot admit two
+   *  concurrent reprices (the second would false-conflict), so a save serializes edits: the row inputs
+   *  are disabled while it runs, and a `change` that still slips through is ignored (review finding). */
+  protected readonly saving = signal(false);
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
@@ -112,6 +116,13 @@ export class PricingTab {
     if (this.venueId === undefined) {
       return;
     }
+    if (this.saving()) {
+      // A reprice is already in flight; the shared set_version token would false-conflict a second
+      // concurrent write, so serialize — ignore this edit and restore the shown value. The row inputs are
+      // disabled during a save, so this guard is the defensive backstop for a change that slips through.
+      input.value = row.priceEur;
+      return;
+    }
     const minorUnits = eurosToMinorUnits(input.value);
     if (minorUnits === null) {
       input.value = row.priceEur; // a cleared/invalid field is not a €0 reprice — restore the shown value
@@ -130,6 +141,7 @@ export class PricingTab {
     this.savedRow.set(null);
     this.errorRow.set(null);
     this.staleConflict.set(false);
+    this.saving.set(true); // synchronous, before the await — disables the inputs so no overlap starts
     try {
       await firstValueFrom(this.console.repriceRow(this.venueId, row.label, price, expectedVersion));
       this.savedRow.set(row.label);
@@ -150,6 +162,8 @@ export class PricingTab {
       if (code === 'UNAUTHORIZED') {
         this.operator.sessionLost();
       }
+    } finally {
+      this.saving.set(false);
     }
   }
 

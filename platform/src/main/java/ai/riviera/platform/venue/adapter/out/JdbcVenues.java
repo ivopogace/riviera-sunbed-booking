@@ -85,20 +85,25 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
-	public int bumpSetVersion(VenueId venueId, long expectedVersion) {
-		// Conditional on the loaded set_version (#226): WHERE id AND set_version = :expected. The caller
-		// has already verified the venue exists, so 0 rows-affected means the token no longer matches
-		// (a concurrent replace/reprice bumped it) — a stale write. On a match the row's set_version is
-		// bumped by one, so the other writer off the same value loses (READ COMMITTED re-evaluates its
-		// WHERE after the winner commits → no match). Self-serializing on the PK row (no FOR UPDATE), and
-		// deliberately acquired BEFORE lockSetsOfVenue in the replace path (venue row before its set rows
-		// in BOTH set-writes → one consistent acquisition order → no deadlock, R-1).
-		return jdbc.sql("""
-				UPDATE venue SET set_version = set_version + 1
-				WHERE id = :id AND set_version = :expected
-				""")
+	public long lockAndReadSetVersion(VenueId venueId) {
+		// FOR UPDATE takes the venue row's write lock and reads the current set_version (#226). This is the
+		// FIRST lock both set-writes acquire (before their set_position locks) → consistent venue→sets order
+		// → no deadlock (R-1). The caller compares the value to the loaded expectedVersion (mismatch ⇒
+		// STALE_WRITE) and advances it via incrementSetVersion ONLY on success — so a rejected write never
+		// spuriously bumps the token. A concurrent writer blocks here until this tx ends, then re-reads the
+		// (possibly incremented) value. Existence is pre-checked by the caller, so exactly one row.
+		return jdbc.sql("SELECT set_version FROM venue WHERE id = :id FOR UPDATE")
 				.param("id", venueId.value())
-				.param("expected", expectedVersion)
+				.query(Long.class)
+				.single();
+	}
+
+	@Override
+	public void incrementSetVersion(VenueId venueId) {
+		// Advance the token by one (#226) — called only after the set-write commits. The caller holds the
+		// venue row lock from lockAndReadSetVersion, so this is race-free.
+		jdbc.sql("UPDATE venue SET set_version = set_version + 1 WHERE id = :id")
+				.param("id", venueId.value())
 				.update();
 	}
 

@@ -214,6 +214,11 @@
         {{ message }}
       </span>
     }
+    @if (loadFailed()) {
+      <span class="text-[13px] font-semibold text-[#a3160e]" role="alert" data-testid="layout-load-failed">
+        Couldn’t load the current layout, so it can’t be saved yet. Refresh the page and try again.
+      </span>
+    }
   </div>
 
   <!-- #226: a stale-write 409 is a distinct, recoverable conflict — not a plain error. Keep the
@@ -230,12 +235,18 @@
       </span>
       <button
         type="button"
-        class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90"
+        class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 disabled:opacity-50"
         data-testid="layout-stale-reload"
+        [disabled]="reloading()"
         (click)="reloadAfterStale()"
       >
-        Reload latest
+        {{ reloading() ? 'Reloading…' : 'Reload latest' }}
       </button>
+      @if (reloadFailed()) {
+        <span class="text-[12px] font-semibold text-[#a3160e]" role="alert" data-testid="layout-reload-failed">
+          Couldn’t reload — your changes are still here. Check your connection and try again.
+        </span>
+      }
     </div>
   }
 </section>

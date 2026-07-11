@@ -104,7 +104,7 @@ re-asserted by AC-8 and the existing `BeachMapReplaceIT`/`VenueRepriceIT` suites
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **Deadlock**: replace locks `set_position` (`lockSetsOfVenue`) then venue (bump); reprice locks venue (bump) then `set_position` (reprice UPDATE) → opposite order on the same two resources | med | high | Acquire the **venue row first in BOTH paths**: do the conditional `set_version` bump **before** `lockSetsOfVenue`. Consistent order (venue → its set rows) makes deadlock impossible; the second txn blocks on the venue row and re-reads a bumped `set_version` → `STALE_WRITE`. Proven by AC-3 (replace-vs-reprice race). | Ivo | **Resolved** — bump-first implemented in both writes; `VenueSetWriteConcurrencyIT` green (@RepeatedTest(6)). |
-| R-2 | **Spurious `set_version` bump** on a `LAYOUT_IN_USE` (replace) or `NO_SUCH_ROW` (reprice) reject, since the bump now precedes the in-use probe / the reprice UPDATE and the txn commits on a value-outcome | med | low | Accepted: safe (only makes other tabs reload) and rare (an error/blocked path). Documented. Zero-spurious-bump would need an extra pre-probe read; deferred unless review objects. | Ivo | **Accepted** — behaviour shipped (bump precedes probe); noted in `bumpSetVersion` service comments + Open questions. Revisit if RV flags it. |
+| R-2 | **Spurious `set_version` bump** on a `LAYOUT_IN_USE` (replace) or `NO_SUCH_ROW` (reprice) reject, since the bump preceded the in-use probe / the reprice UPDATE and the txn commits on a value-outcome | med | ~~low~~ **med** | ~~Accepted as safe~~ — **the review (F-4) showed it is NOT safe**: the acting tab advances its token only on success, so a reject that bumped the server token false-conflicts the operator's own next save. | Ivo | **Resolved (review-fix, F-4)** — the "extra pre-probe read" the plan deferred is now the design: `lockAndReadSetVersion` (FOR UPDATE, R-1 order) checks the version, and `incrementSetVersion` runs ONLY after the write commits. No spurious bump; regression ITs (`rejectsWhenVenueHasBooking`, `unknownRowIsNotFound`) assert `set_version` is unchanged on a reject. |
 | R-3 | **Wire-contract break**: `expectedVersion` now **required** on two existing endpoints → `400` for a client that omits it | low | med | Same-slice FE update sends it; the SPA is same-origin & bundled with the backend (no external API consumers). `Long` (not primitive) so absent = `null` = 400, never a silent `0` (mirrors #224). | Ivo | **Resolved** — FE (Phases 3/4) sends `expectedVersion` on both writes; `…WithoutVersionIs400` ITs green. No external consumers. |
 | R-4 | **Flyway collision** on `V23` | low | high | Verified `V23` free on `main` (latest is V22) **and** no open PRs claim it. If a parallel slice merges first, this branch renumbers (default: merges second) + merge-from-main before PR. | Ivo | **Resolved** — `V23__venue_set_version.sql` added; `git log` confirms latest on `main` is V22; migration IT green. Re-check before merge if a parallel Flyway slice lands first. |
 | R-5 | **Invariant-#2 regression** from reordering: the `FOR UPDATE` claim-probe now runs after the venue-row lock | low | high | `lockSetsOfVenue` + the claim/bookings probe still run **before** any `deleteAllSets`; existing `BeachMapReplaceIT` invariant-#2 (concurrent-hold) scenarios must stay green (AC-8). | Ivo | **Resolved** — the claim probe still precedes `deleteAllSets`; `BeachMapReplaceIT` in-use + `concurrentWalkInMarkAndReplace…` (@RepeatedTest) stay green with the bump-first order. |
@@ -146,11 +146,18 @@ re-asserted by AC-8 and the existing `BeachMapReplaceIT`/`VenueRepriceIT` suites
   1. **Invariant #2 (existing, preserved):** `lockSetsOfVenue()` `SELECT … FOR UPDATE` on the venue's
      `set_position` rows closes the check-then-delete window so a concurrent booking/availability insert
      can't be silently `ON DELETE CASCADE`-swept.
-  2. **#226 (new):** the conditional `UPDATE venue SET set_version = set_version + 1 WHERE id = :id AND
-     set_version = :expected` self-serializes operator layout/price edits on the venue PK row.
-  - **Ordering rule (R-1):** the `set_version` bump (venue row) is acquired **before** `lockSetsOfVenue`
-    (set rows) in `replaceLayout`, matching `repriceRow`'s order (venue row via bump, then `set_position`
-    via the reprice UPDATE). One consistent order → no deadlock.
+  2. **#226 (new, revised at the review gate — F-4):** `lockAndReadSetVersion()` =
+     `SELECT set_version FROM venue WHERE id = :id FOR UPDATE` takes the venue PK-row write lock and reads
+     the current token; the service compares it to `expectedVersion` (mismatch ⇒ STALE_WRITE). The token
+     is advanced by a **separate** `incrementSetVersion()` (`UPDATE venue SET set_version = set_version + 1
+     WHERE id`) **only on the success path** — so a rejected write (LAYOUT_IN_USE / NO_SUCH_ROW) never
+     spuriously advances it and self-conflicts the acting tab's retry. (The original single conditional
+     `UPDATE … WHERE set_version = :expected` bumped even on a reject — the R-2 defect the review caught.)
+  - **Ordering rule (R-1):** `lockAndReadSetVersion` (venue row FOR UPDATE) is acquired **before**
+    `lockSetsOfVenue` (set rows) in `replaceLayout`, matching `repriceRow`'s order (venue row first, then
+    `set_position` via the reprice UPDATE). One consistent order → no deadlock. STALE_WRITE still holds
+    under READ COMMITTED: the loser blocks on the venue FOR UPDATE lock, then reads the winner's advanced
+    token → mismatch.
 - **Pool rule (#3) / cutoff (#4):** N/A — not affected.
 - **Pinning tests:** invariant #2 → existing `BeachMapReplaceIT` concurrent-hold scenarios (AC-8);
   the new `set_version` races → `BeachMapReplaceConcurrencyIT` / `VenueRepriceConcurrencyIT` /
@@ -221,8 +228,13 @@ PR issues, 310 new lines. Run 1 caught F-3 (`CrossVenueDenialIT`) — fixed + re
 `*CrossVenueDenialIT*` (+ cross-cutting `platform`-package ITs) whenever a venue-scoped request contract
 changes — the `*venue*` filter doesn't match them.
 
-**Next stage: `review`** — `riviera-review-overlay` + `/code-review` on the diff; flag the open item
-(token on the public map read). Then **merge** (outward — the user's call, after review).
+**Stage: `review` ✅ done** — `/code-review` high (workflow, 16 agents) + `riviera-review-overlay`. 6
+correctness findings, 0 refuted (F-4). Owner chose "fix all 4": backend increment-on-success (no spurious
+bump, R-2 resolved) + 3 FE robustness fixes (reload-then-replace, load-failed feedback, pricing
+serialization) + regression tests. All green locally (unit + concurrency/reject ITs + structural net + FE
+unit/lint/build/e2e). Open item (setVersion on the public map read): the review did NOT object — a
+non-sensitive counter on the already-public read; kept. Cleanup findings (triplicated banner/helper,
+unreachable CONFLICT) deferred with rationale. **Next: re-push → re-green CI → squash-merge PR #228 + close #226.**
 
 **Next action:** Push `feature/set-version-concurrency` + open the PR (refs #226; follow-up to #224/PR #225).
 Watch CI: (1) the full backend suite may surface a shared-state failure a scoped run can't (riviera-local-debug);
@@ -247,6 +259,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | Phase 1 local test run | `SetBookingInfoIT.resolvesBookingInfoForOnlineSet` was order-dependent — its `SELECT … WHERE pool='ONLINE' ORDER BY price_minor DESC LIMIT 1` took the GLOBAL max-priced ONLINE set (shared Testcontainers DB); the new `BeachMapReplaceConcurrencyIT` leaves ~7000-priced ONLINE sets (as would VenueRepriceIT's 5000 reprice), so a class-ordering shift picked one of theirs. | Fixed — scoped the query to `v.name = 'Miramar Beach Club'` (the venue the test already asserts on); order-independent. |
 | F-2 | Phase 3 (planning deviation) | The plan's File-structure lists new `beach-map-stale-write.e2e.ts` / `pricing-stale-write.e2e.ts`. #224 instead co-located its stale-write e2e in the surface's existing spec (`operator-venue.e2e.ts`), reusing its `page.route` mock harness. A separate file would duplicate the whole sign-in + venue-map + PUT mock. | Deviation accepted — co-located the stale-write test in `layout-editor.e2e.ts` (Phase 3) and will do the same in `operator-pricing.e2e.ts` (Phase 4). Made each `mock*` harness stateful on `setVersion` (a `bump()`), mirroring #224. No new e2e files. |
 | F-3 | CI (backend full suite, PR #228 run 1) | `CrossVenueDenialIT.beachMapLayoutReplaceByNonOwnerIs403` + `.rowRepriceByNonOwnerIs403` FAILED (2/542): their non-owner bodies omit `expectedVersion`, so `requiredExpectedVersion()` throws **400** before the service's `assertOwns` (parse-then-authorize) → the test's expected **403** never fires. `CrossVenueDenialIT` is in the `platform` package, so my `*venue*` scoped runs missed it (the plan named it as the #13 pin — my miss). | Fixed — added `"expectedVersion":0` to both bodies so they parse and the 403 is genuinely from ownership, mirroring `#224`'s `FULL_PROFILE_BODY`. `CrossVenueDenialIT` green locally; grep confirmed only 4 test files hit these endpoints (the other 3 already updated). Re-pushed. |
+| F-4 | Review gate (`/code-review` high, workflow) | 6 correctness findings (0 refuted). **Dominant:** the bump-first-then-reject (R-2) persisted the `set_version` bump on a `LAYOUT_IN_USE`/`NO_SUCH_ROW` reject (the `@Transactional` method commits on the value-return), and the FE advances its token only on success — so the **acting operator's own next save** falsely 409s STALE_WRITE (R-2's "only makes other tabs reload" was wrong). Plus FE: `reloadAfterStale` cleared the grid before the async reload (data loss on a failed reload), Save silently no-op'd on a null token (failed initial load), and the pricing tab had no in-flight guard (rapid two-row edits race). Also cleanup (triplicated banner/helper, unreachable CONFLICT). | **Fixed all 4** (owner chose "fix all"): backend now **increments `set_version` only on the success path** (`lockAndReadSetVersion` FOR UPDATE first for R-1 order + version check, `incrementSetVersion` after the write) — no spurious bump; regression ITs assert a reject leaves `set_version` unchanged. FE: `reloadAfterStale` reloads-then-replaces (keeps grid + token + banner on failure, retry hint), Save surfaces a load-failed message on a null token, pricing serializes reprices (inputs disabled in-flight + guard). Cleanup deferred (documented). Re-pushed. |
 
 ---
 

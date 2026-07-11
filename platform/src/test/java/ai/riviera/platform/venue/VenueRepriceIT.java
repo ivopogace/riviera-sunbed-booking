@@ -200,11 +200,17 @@ class VenueRepriceIT {
 		long venue = seedVenue("Unknown Row Club");
 		// Token is current (loaded from the map) so the request passes the version gate and reaches the
 		// NO_SUCH_ROW rule — proving the unknown-row path, not a stale-write.
+		long tokenBefore = currentSetVersion(venue);
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "Z").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, currentSetVersion(venue))))
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, tokenBefore)))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NO_SUCH_ROW"));
+
+		// #226 review fix: a NO_SUCH_ROW reject must NOT advance set_version (no spurious bump), so the
+		// acting tab's next edit of a real row off the same loaded token still works.
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore));
 	}
 
 	@Test
