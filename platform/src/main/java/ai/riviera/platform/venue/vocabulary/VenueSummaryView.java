@@ -16,9 +16,12 @@ import java.util.List;
  * <p>{@code amenities} are this venue's amenities in canonical catalogue order ({@link Amenity}),
  * possibly empty — the Discover card renders the first few. {@code distanceToWaterM} is the
  * optional distance to the water in metres, or {@code null} when not stated (T7, issue #140).
+ *
+ * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs (#142), or {@code null}
+ * when no cover photo is uploaded — the card then renders its gradient fallback.
  */
 public record VenueSummaryView(long id, String name, String beach, String region,
 		int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
-		AvailabilitySummary availability) {
+		AvailabilitySummary availability, CoverPhotoView coverPhoto) {
 }

@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
+import { apiPhotoUrl } from '../venue/photo-url';
 import { MoneyView } from '../venue/venue.model';
 import {
   BeachMapLayoutRequest,
@@ -17,6 +18,7 @@ import {
   RepriceErrorCode,
   RequestDecision,
   RequestErrorCode,
+  SlotPhotoView,
   TakingsView,
   VenueProfileErrorCode,
   VenueProfileUpdate,
@@ -182,7 +184,17 @@ export class OperatorConsoleService {
    * #13); the endpoint sits ABOVE the public venue GET so commission never leaks to the tourist read.
    */
   venueProfile(venueId: number): Observable<VenueProfileView> {
-    return this.http.get<VenueProfileView>(`${this.base}/api/venues/${venueId}/profile`);
+    return this.http.get<VenueProfileView>(`${this.base}/api/venues/${venueId}/profile`).pipe(
+      // Preview paths resolve against the API origin (#142 review F-7; no-op same-origin prod).
+      map((profile) => ({
+        ...profile,
+        photos: {
+          cover: resolveSlotPhoto(profile.photos.cover),
+          sunbeds: resolveSlotPhoto(profile.photos.sunbeds),
+          bar: resolveSlotPhoto(profile.photos.bar),
+        },
+      })),
+    );
   }
 
   /**
@@ -193,6 +205,11 @@ export class OperatorConsoleService {
   updateVenueProfile(venueId: number, request: VenueProfileUpdate): Observable<void> {
     return this.http.patch<void>(`${this.base}/api/venues/${venueId}`, request);
   }
+}
+
+/** {@link apiPhotoUrl} over one slot's preview; an empty slot (`null` URL) passes through. */
+function resolveSlotPhoto(slot: SlotPhotoView): SlotPhotoView {
+  return { previewUrl: slot.previewUrl === null ? null : apiPhotoUrl(slot.previewUrl) };
 }
 
 /** Map a venue-details load/save failure to a known {@link VenueProfileErrorCode} (RFC-7807 `code`; or 401). */

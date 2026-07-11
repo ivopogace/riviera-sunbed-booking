@@ -58,6 +58,9 @@ class SecurityConfig {
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
+	// A single venue photo slot (#142): POST upload / DELETE remove, operator-only. The public GET
+	// serving path /api/venues/*/photos/(hash) falls under "GET /api/venues/**" below.
+	private static final String PHOTO_ITEM_PATH = "/api/venues/*/photos/*";
 	/** A set's per-day staff availability (U8 mark POST / release DELETE); session + CSRF token required. */
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
@@ -175,6 +178,12 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						// Venue photo upload/remove (#142) — operator-only writes. Object-level ownership
+						// (invariant #13) is enforced in VenuePhotoService; this is the role layer. The
+						// serving GET stays public via "GET /api/venues/**" above. Non-GET, so it never
+						// shadows that public read.
+						.requestMatchers(HttpMethod.POST, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.DELETE, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
 						// View a booking by its code (U6) — the code is the bearer credential
 						// (invariant #7), so knowing it authorizes the read. One path segment only.

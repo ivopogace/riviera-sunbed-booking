@@ -22,7 +22,10 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
 - **Status mapping, centrally defined:** availability/uniqueness conflicts → `409`;
   not-bookable/cutoff → `422`; unknown id → `404`; malformed body → `400`; ownership → `403`;
   rate limit → `429`. Framework-raised errors carry a **derived stable code**: `400` →
-  `INVALID_REQUEST`, otherwise the HTTP status name (`METHOD_NOT_ALLOWED`,
+  `INVALID_REQUEST`, `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the multipart backstop,
+  #142: the base class's `MaxUploadSizeExceededException` handler is `final`, so no same-advice
+  `@ExceptionHandler`, and the 413 `HttpStatus` constant name is unstable across framework
+  versions), otherwise the HTTP status name (`METHOD_NOT_ALLOWED`,
   `UNSUPPORTED_MEDIA_TYPE`, …) — pinned by `ApiErrorHandlerTest`.
 - **`instance` is redacted by construction.** Spring auto-fills a null ProblemDetail
   `instance` with the raw request URI — on `/api/bookings/{code}` paths that is the bearer

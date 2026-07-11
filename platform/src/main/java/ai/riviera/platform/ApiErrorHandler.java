@@ -49,6 +49,9 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(ApiErrorHandler.class);
 
+	/** 413 by value — the {@code HttpStatus} constant for it is deprecated/renamed across versions. */
+	private static final int PAYLOAD_TOO_LARGE_STATUS = 413;
+
 	@ExceptionHandler(NotVenueOwnerException.class)
 	ProblemDetail onNotVenueOwner(NotVenueOwnerException e) {
 		return ApiProblem.of(HttpStatus.FORBIDDEN, "NOT_VENUE_OWNER", "You do not manage this venue.");
@@ -105,10 +108,18 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	 * Framework-raised errors: client-input faults share {@code INVALID_REQUEST}; the rest carry
 	 * the HTTP status name ({@code METHOD_NOT_ALLOWED}, {@code NOT_ACCEPTABLE}, …) — derived, so
 	 * stable, and documented in §6b as part of the contract's vocabulary.
+	 *
+	 * <p>413 is pinned literally: the multipart max-size backstop (#142) is handled by the
+	 * {@code ResponseEntityExceptionHandler} base class (its handler is {@code final}, so declaring
+	 * our own would be an ambiguous duplicate), and its {@code HttpStatus} constant name is mid-rename
+	 * across framework versions — the wire code must not drift with it.
 	 */
 	private static String defaultCode(HttpStatusCode statusCode) {
 		if (statusCode.equals(HttpStatus.BAD_REQUEST)) {
 			return "INVALID_REQUEST";
+		}
+		if (statusCode.value() == PAYLOAD_TOO_LARGE_STATUS) {
+			return "PAYLOAD_TOO_LARGE";
 		}
 		HttpStatus status = HttpStatus.resolve(statusCode.value());
 		return status != null ? status.name() : "ERROR";

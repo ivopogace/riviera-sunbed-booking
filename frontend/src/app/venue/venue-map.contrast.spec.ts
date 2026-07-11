@@ -56,11 +56,6 @@ const TILE_PAIRS: readonly { readonly fg: string; readonly bg: string; readonly 
   { fg: '#696459', bg: '#ece8e0', usage: 'taken tile' },
 ];
 
-// --riv-photo-grad stops (theme-independent) for the "photos coming soon" caption pill.
-const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);
-const PHOTO_CAPTION_SCRIM = hexToRgb('092028'); // rgba(9,32,40,…)
-const PHOTO_CAPTION_ALPHA = 0.62;
-
 interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
@@ -175,13 +170,7 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
     }
   });
 
-  it('photo "coming soon" caption (white) meets AA on its dark pill over the photo gradient', () => {
-    for (const stop of PHOTO_STOPS) {
-      const pill = composite(PHOTO_CAPTION_SCRIM, PHOTO_CAPTION_ALPHA, stop);
-      expect(
-        contrastRatio(rgbToHex(WHITE), rgbToHex(pill)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
+  // The "photos coming soon" caption pill test is gone with the pill itself (#142): the banner
+  // now renders the real cover photo (or the bare gradient as the empty state) and carries no
+  // text — the scrim there is decorative depth on an aria-hidden band, with no AA duty.
 });

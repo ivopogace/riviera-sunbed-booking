@@ -66,9 +66,15 @@ import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.application.PhotoProcessingResult;
+import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.StoredBytes;
+import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
+import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 
 /**
  * Shared collaborators for {@code @WebMvcTest} slices that load the whole web layer (the CORS/security
@@ -353,5 +359,27 @@ class WebSliceStubs {
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
 		return (_, _) -> Optional.empty();
+	}
+
+	/** #142: the photo port {@code VenuePhotoController} registers with — inert not-found defaults. */
+	@Bean
+	VenuePhotos venuePhotos() {
+		return new VenuePhotos() {
+			@Override
+			public PhotoUploadResult upload(OperatorId operator, VenueId venueId, PhotoSlot slot,
+					byte[] image) {
+				return new PhotoUploadResult.Rejected(PhotoProcessingResult.Reason.UNREADABLE);
+			}
+
+			@Override
+			public boolean delete(OperatorId operator, VenueId venueId, PhotoSlot slot) {
+				return false;
+			}
+
+			@Override
+			public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
+				return Optional.empty();
+			}
+		};
 	}
 }

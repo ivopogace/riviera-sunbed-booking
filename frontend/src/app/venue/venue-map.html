@@ -90,13 +90,17 @@
           </div>
         </div>
 
-        <!-- Venue photos are a follow-up (#142); a gradient placeholder holds the space. The photo
-             (the sea view) sits above the grid card's "Facing the sea" banner — the v3 design's
-             spatial order: sea ↑ / promenade ↓. -->
+        <!-- The venue's cover photo (#142) when uploaded; the gradient + sun as the empty state
+             (the "coming soon" pill is gone — photos have shipped). The photo (the sea view) sits
+             above the grid card's "Facing the sea" banner — the v3 design's spatial order:
+             sea ↑ / promenade ↓. Decorative (aria-hidden): the header already names the venue. -->
         <div class="photo-band relative h-[150px] rounded-[20px] overflow-hidden bg-(image:--riv-photo-grad)" aria-hidden="true">
-          <span class="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)] blur-[0.5px] opacity-[0.85]"></span>
+          @if (v.coverPhoto; as cover) {
+            <img [ngSrc]="cover.banner" fill class="object-cover" alt="" data-testid="map-banner-img" />
+          } @else {
+            <span class="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)] blur-[0.5px] opacity-[0.85]"></span>
+          }
           <span class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
-          <span class="absolute left-1/2 bottom-4 -translate-x-1/2 bg-[rgba(9,32,40,0.62)] text-white text-[12px] font-semibold tracking-[0.06em] uppercase px-3 py-[5px] rounded-full whitespace-nowrap">Venue photos coming soon</span>
         </div>
       </div>
 

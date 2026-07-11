@@ -22,8 +22,10 @@ riviera-sunbed-booking.onrender.com; GitHub Pages is retired. The tourist Liquid
 (epic #133, T2–T8) is done; the operator console (epic #141) is **complete** —
 O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view + O6 requests tab
 (which retired the legacy StaffDaily page) + O7 payouts tab (ledger + statement + weather refund)
-+ O8 venue & commodities tab (details form + amenity chips + photo placeholders; retired the legacy
-venue-editor page — now onboarding-only) all merged.
++ O8 venue & commodities tab (details form + amenity chips; retired the legacy
+venue-editor page — now onboarding-only) all merged. Venue photos (#142) are real end-to-end:
+operator upload/replace/delete per slot in the O8 tab, tourists see the cover on the Discover
+card + beach-map banner (ADR-0008 `bytea`-behind-port storage, Flyway V24).
 
 ## Tech stack (locked)
 
@@ -104,7 +106,7 @@ invariant #11.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
-| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water | `Venue`, `BeachMap` |
+| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water, venue photos (#142, ADR-0008) | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
 | `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired), request accept/decline + expiry sweep (#98), cancellation-policy enforcement | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |

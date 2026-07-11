@@ -15,6 +15,18 @@ model in `docs/architecture/domain-model.md`.
   order-insensitive subset, validated server-side against the catalogue (an unknown tag → 400).
 - **Distance to water** — how far a venue's sunbeds sit from the shoreline: an optional positive
   integer in metres (rendered "15m to water").
+- **Venue photo** — venue profile media (#142): one image per photo slot, uploaded by the venue's
+  operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
+  guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
+  discarded — ADR-0008). Only the **cover** slot is tourist-surfaced.
+- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (shown on the Discover
+  card + beach-map banner), `SUNBEDS`, `BAR` (stored, operator-preview only). At most one photo
+  per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
+  transaction.
+- **Photo variant** — one stored rendition of a venue photo for a display surface: `CARD`
+  (≤640×384), `BANNER` (≤1280×480), `PREVIEW` (≤480×360) — fit-within-resized progressive JPEGs,
+  each served by its **content hash** at an immutable, long-cached public URL
+  (`/api/venues/{venueId}/photos/{hash}`); a replace mints new hashes → new URLs.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price.

@@ -248,6 +248,19 @@ export interface VenueProfileView {
   readonly distanceToWaterM: number | null;
   /** The row's optimistic-concurrency token (#224); echoed back as {@link VenueProfileUpdate.expectedVersion}. */
   readonly version: number;
+  /** Every photo slot's presence + preview URL (#142) — always all three keys, occupied or not. */
+  readonly photos: Readonly<Record<PhotoSlotKey, SlotPhotoView>>;
+}
+
+/** A photo slot key as the REST path + the profile's `photos` map speak it (#142). */
+export type PhotoSlotKey = 'cover' | 'sunbeds' | 'bar';
+
+/**
+ * One slot on the owner profile (#142): the PREVIEW variant's content-addressed serving URL, or
+ * `null` when the slot is empty — emptiness IS the null URL (review F-11, no derivable boolean).
+ */
+export interface SlotPhotoView {
+  readonly previewUrl: string | null;
 }
 
 /**

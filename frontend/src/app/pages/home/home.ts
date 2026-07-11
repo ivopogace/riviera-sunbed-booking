@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -16,14 +17,22 @@ import { VenueService } from '../../venue/venue.service';
 /**
  * Tourist venue discovery — the app's landing page (`/`, issue #61; Liquid Glass restyle #135).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
- * cards (gradient photo area with mode chip, rating, availability bar), each a link to the beach
- * map at `/venues/:id`. The date drives the per-venue availability count (invariant #2). Money is
+ * cards (the cover photo when uploaded (#142), else the gradient placeholder; mode chip, rating,
+ * availability bar), each a link to the beach map at `/venues/:id`. The date drives the per-venue availability count (invariant #2). Money is
  * rendered from integer minor units (invariant #5); every card fact is conveyed as text, not
  * colour alone (WCAG AA). Loading, empty, and error states are distinct.
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, RetryButton, PanelGlass, CardGlass, AmenityChip, ...FAILURE_DIRECTIVES],
+  imports: [
+    NgOptimizedImage,
+    RouterLink,
+    RetryButton,
+    PanelGlass,
+    CardGlass,
+    AmenityChip,
+    ...FAILURE_DIRECTIVES,
+  ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
