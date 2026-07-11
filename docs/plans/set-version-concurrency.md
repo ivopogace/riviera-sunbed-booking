@@ -214,10 +214,11 @@ falsely rejected. Mocked-a11y e2e per user-facing flow (RV-FE-E2E) in `frontend/
 > Session-recovery anchor. Re-read before acting after any compaction/fresh session; update in the same
 > commit window as the change it records, at every phase + stage boundary.
 
-**Stage pointer:** `implement` ✅ **complete** — all 5 phases done, AC-1..9 pinned green locally
-(backend: scoped ITs + structural net; FE: unit + a11y + lint + build + mocked e2e). **Next stage: CI**
-(push the branch, open the PR; CI owns the full backend suite + the frontend lint/test/build/e2e + Sonar),
-then the **review** gate (`riviera-review-overlay` — flag the one open item: token on the public map read).
+**Stage pointer:** `CI` — PR #228 open. Run 1: Frontend + CodeQL green, Backend **failed** (F-3:
+`CrossVenueDenialIT` non-owner bodies missing the new token → 400 not 403). Fixed + re-pushed; awaiting
+run 2. Next: green CI → **review** gate (`riviera-review-overlay` — flag the open item: token on the
+public map read). Lesson: run `*CrossVenueDenialIT*` (and other cross-cutting `platform`-package ITs)
+whenever a venue-scoped request contract changes — the `*venue*` filter doesn't match them.
 
 **Next action:** Push `feature/set-version-concurrency` + open the PR (refs #226; follow-up to #224/PR #225).
 Watch CI: (1) the full backend suite may surface a shared-state failure a scoped run can't (riviera-local-debug);
@@ -241,6 +242,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | Phase 1 local test run | `SetBookingInfoIT.resolvesBookingInfoForOnlineSet` was order-dependent — its `SELECT … WHERE pool='ONLINE' ORDER BY price_minor DESC LIMIT 1` took the GLOBAL max-priced ONLINE set (shared Testcontainers DB); the new `BeachMapReplaceConcurrencyIT` leaves ~7000-priced ONLINE sets (as would VenueRepriceIT's 5000 reprice), so a class-ordering shift picked one of theirs. | Fixed — scoped the query to `v.name = 'Miramar Beach Club'` (the venue the test already asserts on); order-independent. |
 | F-2 | Phase 3 (planning deviation) | The plan's File-structure lists new `beach-map-stale-write.e2e.ts` / `pricing-stale-write.e2e.ts`. #224 instead co-located its stale-write e2e in the surface's existing spec (`operator-venue.e2e.ts`), reusing its `page.route` mock harness. A separate file would duplicate the whole sign-in + venue-map + PUT mock. | Deviation accepted — co-located the stale-write test in `layout-editor.e2e.ts` (Phase 3) and will do the same in `operator-pricing.e2e.ts` (Phase 4). Made each `mock*` harness stateful on `setVersion` (a `bump()`), mirroring #224. No new e2e files. |
+| F-3 | CI (backend full suite, PR #228 run 1) | `CrossVenueDenialIT.beachMapLayoutReplaceByNonOwnerIs403` + `.rowRepriceByNonOwnerIs403` FAILED (2/542): their non-owner bodies omit `expectedVersion`, so `requiredExpectedVersion()` throws **400** before the service's `assertOwns` (parse-then-authorize) → the test's expected **403** never fires. `CrossVenueDenialIT` is in the `platform` package, so my `*venue*` scoped runs missed it (the plan named it as the #13 pin — my miss). | Fixed — added `"expectedVersion":0` to both bodies so they parse and the 403 is genuinely from ownership, mirroring `#224`'s `FULL_PROFILE_BODY`. `CrossVenueDenialIT` green locally; grep confirmed only 4 test files hit these endpoints (the other 3 already updated). Re-pushed. |
 
 ---
 
