@@ -26,6 +26,12 @@ const INITIAL_PROFILE = {
   amenities: ['WIFI', 'BEACH_BAR'],
   distanceToWaterM: 20,
   version: 7, // the optimistic-concurrency token the tab loads and echoes back (#224)
+  // The per-slot photo map (#142) — empty here; the photo flows live in operator-venue-photos.e2e.ts.
+  photos: {
+    cover: { present: false, previewUrl: null },
+    sunbeds: { present: false, previewUrl: null },
+    bar: { present: false, previewUrl: null },
+  },
 };
 
 function venueMap(name: string, bookingMode: string) {
@@ -167,9 +173,10 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   await expect(page.getByTestId('venue-commission')).toHaveText('15%');
   await expect(page.getByTestId('venue-payout-currency')).toHaveText('EUR');
   await expect(page.getByTestId('amenity-toggle-WIFI')).toHaveAttribute('aria-pressed', 'true');
-  // Photo upload slots are visual placeholders only, tied to #142 — no upload control.
+  // The three photo slots are real upload controls now (#142) — all empty here, so each offers
+  // Add photo; the full pick → upload → preview → remove flows live in operator-venue-photos.e2e.ts.
   await expect(page.getByTestId('photo-slot')).toHaveCount(3);
-  await expect(page.getByTestId('photos-deferred')).toContainText('#142');
+  await expect(page.getByTestId('photo-pick-cover')).toHaveText(/Add photo/);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'venue tab');
 

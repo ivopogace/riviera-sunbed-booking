@@ -241,18 +241,26 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phase 2 DONE (2b read-model URLs: CoverPhotoView on VenueSummaryView+VenueMapView, per-slot PhotoSlotView on VenueProfileView, photos map on VenueProfileResponse, PhotoServingUrls single URL-format point; VenuePhotoReadModelIT red→green; blob-select grep clean; structural net + photo/venue ITs green). NEXT: Phase 3 FE operator upload UI (load riviera-frontend + angular-developer + angular-cli MCP + riviera-tailwind + playwright-cli first).`
+**Stage pointer:** `implement — Phase 3 DONE (venue-photo.service.ts typed client + photoErrorOf; venue-tab real slots: pick=upload=replace multipart, preview from returned PREVIEW variant, remove, per-slot busy/error, 401 session drop; photos map on the FE VenueProfileView; specs + a11y updated; operator-venue-photos.e2e.ts new + operator-venue.e2e.ts placeholder assertions replaced; lint + 651 unit + build + 44 mocked-e2e green). NEXT: Phase 4 tourist display (home card + venue-map banner via NgOptimizedImage + gradient fallback; PRESERVE --riv-photo-scrim; re-check contrast specs; e2e).`
 
-**Next action:** **Phase 3** — typed `venue-photo.service.ts` + venue-tab slot upload UI (pick →
-preview → upload/replace/delete, pending + error states) + unit/a11y specs + mocked e2e
-(`file_upload`). `/security-review` on the full diff at the gate.
+**Next action:** **Phase 4** — render the cover card image on the Discover card (`pages/home`) and
+the banner on the beach map (`venue/venue-map`) when `coverPhoto` is present, gradient fallback
+(drop the "coming soon" pill on the photo state), keep the scrim; re-run
+`home.contrast.spec.ts` / `venue-map.contrast.spec.ts`; `discover-photos.e2e.ts`. Then Phase 5 +
+gates (`/security-review` on the full diff).
+
+**Windows-session note:** the CI-safe mocked Playwright suite here is **`npm run test:e2e:a11y`**
+(`playwright.a11y.config.ts`, testMatch `e2e/*.e2e.ts`, no backend); the bare `test:e2e` config
+boots the real backend via `./gradlew bootRun` and fails on this box. e2e spec naming is
+`*.e2e.ts`, so the plan's `operator-venue-photos.spec.ts` shipped as `operator-venue-photos.e2e.ts`
+(and `discover-photos.spec.ts` → `discover-photos.e2e.ts`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | ✅ | Phase-0 commit (this window) |
 | 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | ✅ | Phase-1 commit (this window) |
 | 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ✅ | 2a core `0a3e8d5`; ITs + F-1 `c2b6848`; 2b read-model (this window) |
-| 3 — FE operator upload UI + service + e2e | | |
+| 3 — FE operator upload UI + service + e2e | ✅ | this window |
 | 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | | |
 | 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | | |
 
@@ -380,10 +388,18 @@ read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
 **Files:** Create `venue-photo.service.ts` (+ spec) · Modify `operator/venue-tab.*` · Test
 `venue-tab.spec.ts`, `venue-tab.a11y.spec.ts`, `frontend/e2e/operator-venue-photos.spec.ts`.
 
-- [ ] Load `riviera-frontend` (placement) + `angular-developer` + angular-cli MCP + `playwright-cli`.
-- [ ] TDD: typed service (three endpoints); replace the placeholder slots with pick→preview→
-  upload/replace/delete + error + pending states; unit + a11y specs; mocked e2e using `file_upload`.
-- [ ] Commit `feat(venue): operator photo upload UI (#142)`, update status.
+- [x] Loaded `riviera-frontend` (placement: service in `operator/`, model additions in
+  `operator-console.model.ts`) + `angular-developer` + angular-cli MCP + `riviera-tailwind` +
+  `playwright-cli`.
+- [x] Typed `venue-photo.service.ts` (upload = one multipart `file` part POST, remove = DELETE;
+  `photoErrorOf` narrows the RFC-7807 codes incl. the four processor rejections + 413) + spec.
+  Venue tab: real slots (pick=upload=replace via hidden labelled file input, preview from the
+  returned PREVIEW variant, Remove, per-slot busy/error signals, 401 → sessionLost); placeholder
+  pill dropped. Unit specs (5 new photo tests) + a11y fixture updated (axe caught the unlabelled
+  file input — aria-label added); `operator-venue-photos.e2e.ts` (pick→upload→preview→remove + axe,
+  AC-5 rejection copy, 403 BOLA copy) + `operator-venue.e2e.ts` updated. lint/651-unit/build/44-e2e
+  green.
+- [x] Commit `feat(venue): operator photo upload UI (#142)`, status updated.
 
 ## Phase 4 — Frontend tourist display
 

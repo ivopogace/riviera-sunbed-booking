@@ -10,9 +10,9 @@ import { VenueTab } from './venue-tab';
 /**
  * Structural a11y audit for the O8 Venue & commodities tab (#177). Every field is a labelled control;
  * the amenity chips are `aria-pressed` toggle buttons with text; commission + payout currency are
- * read-only `<output>`s; the photo placeholders are `aria-hidden` decorative cards. axe runs over the
- * loaded form and the load-error state. (Colour contrast is proven by `venue-tab.contrast.spec.ts` —
- * axe can't measure it under jsdom.)
+ * read-only `<output>`s; the photo slots (#142) are labelled buttons with an `alt`-texted preview
+ * image. axe runs over the loaded form and the load-error state. (Colour contrast is proven by
+ * `venue-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */
 describe('VenueTab a11y (#177)', () => {
   let fixture: ComponentFixture<VenueTab>;
@@ -30,6 +30,11 @@ describe('VenueTab a11y (#177)', () => {
     amenities: ['WIFI', 'BEACH_BAR'],
     distanceToWaterM: 20,
     version: 7,
+    photos: {
+      cover: { present: true, previewUrl: '/api/venues/1/photos/cc03' },
+      sunbeds: { present: false, previewUrl: null },
+      bar: { present: false, previewUrl: null },
+    },
   };
 
   function configure(): void {

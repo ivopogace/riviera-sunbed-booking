@@ -13,7 +13,8 @@ import { VenueTab } from './venue-tab';
  * commission (as a %) + payout currency, the amenity toggle set, and the distance. Drives: the
  * widened owner-asserted save (commission + payout currency are NEVER in the body); the amenity
  * toggle reflected in the save; the required-name guard disabling save; the 403 / load-error copy;
- * and the photo placeholders referencing the deferred #142.
+ * and the real photo slots (#142): seeding from the profile, multipart upload with the returned
+ * preview, delete, server-side validation copy, and the 401 session drop.
  */
 describe('VenueTab (#177)', () => {
   let fixture: ComponentFixture<VenueTab>;
@@ -32,6 +33,11 @@ describe('VenueTab (#177)', () => {
     amenities: ['WIFI', 'BEACH_BAR'],
     distanceToWaterM: 20,
     version: 7, // a non-zero token so tests prove it's echoed from the load, not hardcoded
+    photos: {
+      cover: { present: true, previewUrl: '/api/venues/1/photos/cc03' },
+      sunbeds: { present: false, previewUrl: null },
+      bar: { present: false, previewUrl: null },
+    },
   };
 
   function configure(parentVenueId: Record<string, string> = { venueId: '1' }): void {
@@ -328,12 +334,105 @@ describe('VenueTab (#177)', () => {
     expect(host.querySelector('form')).toBeNull();
   });
 
-  it('renders three photo placeholders referencing the deferred #142 and no upload control', () => {
+  // ---- Photo slots (#142): pick = upload = replace; server-validated; per-slot state ----
+
+  /** Simulate the operator picking `file` in a slot's (hidden) file input — jsdom has no picker. */
+  function pickFile(slot: string, file: File): void {
+    const input = byId(`photo-input-${slot}`) as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  const JPEG = () => new File(['jpeg-bytes'], 'beach.jpg', { type: 'image/jpeg' });
+
+  it('seeds the slots from the profile: occupied cover shows preview + Replace/Remove, empty slots offer Add photo', () => {
     render();
 
-    expect(host.querySelectorAll('[data-testid="photo-slot"]')).toHaveLength(3);
-    expect(byId('photos-deferred').textContent).toContain('#142');
-    expect(host.querySelector('input[type="file"]')).toBeNull();
+    const preview = byId('photo-preview-cover') as HTMLImageElement;
+    expect(preview.getAttribute('src')).toBe('/api/venues/1/photos/cc03');
+    expect(preview.alt).not.toBe(''); // the preview image is named for AT
+    expect(byId('photo-pick-cover').textContent).toContain('Replace');
+    expect(byId('photo-remove-cover')).toBeTruthy();
+
+    expect(host.querySelector('[data-testid="photo-preview-sunbeds"]')).toBeNull();
+    expect(byId('photo-pick-sunbeds').textContent).toContain('Add photo');
+    expect(host.querySelector('[data-testid="photo-remove-sunbeds"]')).toBeNull();
+  });
+
+  it('uploads a picked file as one multipart "file" part and shows the returned preview', async () => {
+    render();
+
+    pickFile('sunbeds', JPEG());
+    await fixture.whenStable();
+
+    const req = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/sunbeds'),
+    );
+    expect(req.request.body).toBeInstanceOf(FormData);
+    expect((req.request.body as FormData).get('file')).toBeInstanceOf(File);
+    req.flush({
+      slot: 'sunbeds',
+      variants: [{ surface: 'preview', url: '/api/venues/1/photos/dd04', width: 480, height: 360 }],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((byId('photo-preview-sunbeds') as HTMLImageElement).getAttribute('src')).toBe(
+      '/api/venues/1/photos/dd04',
+    );
+    expect(byId('photo-pick-sunbeds').textContent).toContain('Replace');
+  });
+
+  it('Remove DELETEs the slot and clears the preview back to Add photo', async () => {
+    render();
+
+    byId('photo-remove-cover').click();
+    await fixture.whenStable();
+
+    http
+      .expectOne((r) => r.method === 'DELETE' && r.url.endsWith('/api/venues/1/photos/cover'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="photo-preview-cover"]')).toBeNull();
+    expect(byId('photo-pick-cover').textContent).toContain('Add photo');
+  });
+
+  it('shows slot-level copy for a server-side validation rejection and keeps the old preview', async () => {
+    render();
+
+    pickFile('cover', JPEG());
+    await fixture.whenStable();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/cover'))
+      .flush({ code: 'UNSUPPORTED_FORMAT' }, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('photo-error-cover').textContent).toContain('JPEG, PNG, or WebP');
+    // The rejected upload never touches the existing photo — the old preview survives.
+    expect((byId('photo-preview-cover') as HTMLImageElement).getAttribute('src')).toBe(
+      '/api/venues/1/photos/cc03',
+    );
+  });
+
+  it('drops the lost session on a 401 photo upload', async () => {
+    render();
+    const auth = TestBed.inject(OperatorAuth);
+    const lost = vi.spyOn(auth, 'sessionLost');
+
+    pickFile('bar', JPEG());
+    await fixture.whenStable();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/bar'))
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(lost).toHaveBeenCalled();
+    expect(byId('photo-error-bar').textContent?.toLowerCase()).toContain('session');
   });
 
   it('shows an invalid-link state when the parent route has no venue id', () => {
