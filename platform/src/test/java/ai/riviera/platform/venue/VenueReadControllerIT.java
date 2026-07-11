@@ -85,6 +85,17 @@ class VenueReadControllerIT {
 	}
 
 	@Test
+	void mapReadCarriesSetVersion() throws Exception {
+		// #226, AC-7: the venue map read carries the layout's optimistic-concurrency stamp
+		// (set_version), distinct from the profile version (#224). A fresh/seeded venue starts at 0 (the
+		// V23 column DEFAULT); the operator layout + pricing tabs echo it back on the next beach-map
+		// replace / per-row reprice so a stale write is rejected (409) rather than clobbering the layout.
+		mvc.perform(get("/api/venues/{id}", MIRAMAR))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.setVersion").value(0));
+	}
+
+	@Test
 	void endpointIsPublic() throws Exception {
 		// No auth header → still 200, not 401: the tourist read endpoint is permitted.
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))

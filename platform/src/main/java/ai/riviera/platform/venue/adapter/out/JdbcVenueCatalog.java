@@ -65,7 +65,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m
+				       distance_to_water_m, set_version
 				FROM venue
 				WHERE id = :id
 				""")
@@ -75,7 +75,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getString(COL_REGION), rs.getString("description"),
 						rs.getInt("rating_tenths"), rs.getInt("reviews_count"),
 						rs.getString(COL_BOOKING_MODE),
-						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class)))
+						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
+						rs.getLong("set_version")))
 				.optional();
 
 		if (venue.isEmpty()) {
@@ -122,7 +123,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
-				fromPrice, amenities, v.distanceToWaterM(), sets));
+				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion()));
 	}
 
 	@Override
@@ -254,7 +255,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	private record VenueRow(long id, String name, String beach, String region,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
-			Integer distanceToWaterM) {
+			Integer distanceToWaterM, long setVersion) {
 	}
 
 	/** The static set-position layout, before availability is overlaid for the chosen date. */

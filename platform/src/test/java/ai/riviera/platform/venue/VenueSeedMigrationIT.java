@@ -76,6 +76,21 @@ class VenueSeedMigrationIT {
 	}
 
 	@Test
+	void seedsTheSetVersionOptimisticConcurrencyColumn() {
+		// #226 (V23): venue.set_version is the SEPARATE optimistic-concurrency token for the beach-map
+		// replace + per-row reprice writes (distinct from the #224 profile version). NOT NULL DEFAULT 0,
+		// so the seeded Miramar venue starts at 0 and the map read always has a token to hand out.
+		Long setVersion = jdbc.queryForObject(
+				"SELECT set_version FROM venue WHERE name = 'Miramar Beach Club'", Long.class);
+		assertThat(setVersion).isZero();
+
+		// NOT NULL: an explicit NULL is rejected by the column constraint.
+		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.update("UPDATE venue SET set_version = NULL WHERE name = 'Miramar Beach Club'"));
+		assertThat(rejected).isNotNull();
+	}
+
+	@Test
 	void enforcesOneSetPerGridCell() {
 		// invariant #12: the layout UNIQUE(venue_id, row_label, position_no) constraint exists.
 		Integer duplicateCells = jdbc.queryForObject(

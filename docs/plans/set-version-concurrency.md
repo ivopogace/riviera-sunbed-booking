@@ -62,8 +62,8 @@ NOT NULL DEFAULT 0`. No new tables. `set_position` unchanged.
 - [ ] **AC-6 (stale → 409 with code):** Given a stale `expectedVersion`, when submitted to either
   write, then `409` with an RFC-7807 `ProblemDetail` whose `code` is `STALE_WRITE`.
   *Pinned by:* `BeachMapReplaceIT.staleReplaceIs409StaleWrite` + `VenueRepriceIT.staleRepriceIs409StaleWrite`
-- [ ] **AC-7 (read carries the token):** Given the venue map read, then the response carries
-  `setVersion`. *Pinned by:* `VenueReadControllerIT.mapReadCarriesSetVersion`
+- [x] **AC-7 (read carries the token):** Given the venue map read, then the response carries
+  `setVersion`. *Pinned by:* `VenueReadControllerIT.mapReadCarriesSetVersion` ✅ (Phase 0)
 - [ ] **AC-8 (invariant #2 preserved):** Given a `replaceLayout` on a venue with a booking or
   availability hold, then it is rejected `LAYOUT_IN_USE` (409) and the layout is unchanged — the
   reject-unless-unclaimed guard and its `FOR UPDATE` claim-probe are intact.
@@ -208,13 +208,15 @@ falsely rejected. Mocked-a11y e2e per user-facing flow (RV-FE-E2E) in `frontend/
 > Session-recovery anchor. Re-read before acting after any compaction/fresh session; update in the same
 > commit window as the change it records, at every phase + stage boundary.
 
-**Stage pointer:** `plan` — plan doc authored, awaiting go-ahead to start `implement (phase 0)`.
+**Stage pointer:** `implement` — Phase 0 ✅ done; Phase 1 next (backend `replaceLayout` guard), test-first.
 
-**Next action:** On approval, start Phase 0 (V23 migration + `setVersion` on the map read), test-first.
+**Next action:** Start Phase 1 — failing `BeachMapReplaceConcurrencyIT.exactlyOneReplaceWins` (AC-1) +
+`BeachMapReplaceIT.staleReplaceIs409StaleWrite` (AC-6) + `VenueAdminControllerIT.replaceWithoutVersionIs400`
+(AC-5); then `bumpSetVersion` + bump-first ordering + required token.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Migration `V23` + `setVersion` on the map read | | |
+| 0 — Migration `V23` + `setVersion` on the map read | ✅ | `feat: add venue.set_version + surface it on the map read (#226)` |
 | 1 — Backend `replaceLayout` guard (`bumpSetVersion`, order, STALE_WRITE, required token) | | |
 | 2 — Backend `repriceRow` guard (+ cross-write race) | | |
 | 3 — FE beach-map editor (capture/echo/handle STALE_WRITE + reload) | | |
@@ -272,16 +274,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `V23__venue_set_version.sql` · Modify `VenueMapView.java`, `JdbcVenueCatalog.java` · Test `VenueReadControllerIT`, migration IT
 
-- [ ] **Step 1:** Failing test — `VenueReadControllerIT.mapReadCarriesSetVersion` asserts `GET
-  /api/venues/{seededId}` JSON has `setVersion` (0 for the Miramar seed). Migration IT asserts the column
-  exists NOT NULL DEFAULT 0.
-- [ ] **Step 2:** Run `./gradlew test --tests "*VenueReadControllerIT*"` → FAIL (no `setVersion`).
-- [ ] **Step 3:** Add V23; add `long setVersion` to `VenueMapView`; select `set_version` in
-  `JdbcVenueCatalog.findVenueMap` and thread it through.
-- [ ] **Step 4:** Run the two targeted classes → PASS. End-of-phase: `--tests "*venue*"` module scope.
-- [ ] **Step 5:** Generalization pass (see log).
-- [ ] **Step 6:** Commit `feat: add venue.set_version + surface it on the map read (#226)`.
-- [ ] **Step 7:** Update Execution status.
+- [x] **Step 1:** Failing test — `VenueReadControllerIT.mapReadCarriesSetVersion` asserts `GET
+  /api/venues/{seededId}` JSON has `setVersion` (0 for the Miramar seed). Migration assertion
+  (`VenueSeedMigrationIT.seedsTheSetVersionOptimisticConcurrencyColumn`) asserts the column exists NOT
+  NULL DEFAULT 0 (seed = 0; explicit NULL rejected).
+- [x] **Step 2:** Ran the two targeted classes → FAIL (2 failed / 15: `$.setVersion` absent + PSQLException
+  no `set_version` column).
+- [x] **Step 3:** Added V23; added `long setVersion` to `VenueMapView` (version-last, mirroring
+  `VenueProfileView`); selected `set_version` in `JdbcVenueCatalog.findVenueMap` and threaded it through.
+- [x] **Step 4:** Two targeted classes → PASS; end-of-phase `--tests "*venue*"` module scope → BUILD SUCCESSFUL.
+- [x] **Step 5:** Generalization pass — no new duplicated pattern; the read-model addition is a single site
+  (only `JdbcVenueCatalog` constructs `VenueMapView`). The profile read (`findProfile`) deliberately does
+  NOT carry `set_version` — the operator tabs source it from the map read (design). Logged.
+- [x] **Step 6:** Commit `feat: add venue.set_version + surface it on the map read (#226)`.
+- [x] **Step 7:** Update Execution status.
 
 ## Phase 1 — Backend `replaceLayout` guard
 
@@ -362,7 +368,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-07-11 | Phase 0 | `VenueMapView` construction sites | `grep "new VenueMapView("` | 1 (`JdbcVenueCatalog`) | None — single site; no duplication to fold. Profile read intentionally omits `set_version`. |
 
 ---
 
