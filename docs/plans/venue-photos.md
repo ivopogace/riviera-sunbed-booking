@@ -138,12 +138,12 @@ query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
   tourists; sunbeds/bar are stored + operator-preview only.
 - **Assumption:** Upload transport is `multipart/form-data` (`MultipartFile`), one file per
   request per slot.
-- **OQ-3 (Sonar S6218):** `StoredVariant` / `StoredBytes` are records with a `byte[]` component
-  (pure carriers, never compared by value). Watch for Sonar `java:S6218` at the gate; if flagged, fix
-  with a documented deep `equals`/`hashCode` (or narrow the carrier). — *Owner:* impl · *Resolves by:*
-  Sonar gate.
+- *(OQ-3 resolved at the Sonar gate — see **### Resolved**.)*
 
 ### Resolved
+- **OQ-3 (Sonar S6218):** flagged as predicted on `StoredBytes` + `StoredVariant`; fixed with
+  content-aware `equals`/`hashCode` (`Arrays.equals`/`hashCode` via record deconstruction) and a
+  `toString` that renders the byte COUNT, never the payload (Sonar gate, 2026-07-11).
 - Storage backend — Postgres `bytea` behind `PhotoStorage` port (**ADR-0008**, grill 2026-07-11).
 - Upload limits — JPEG/PNG/WebP, ≤25 MB, EXIF stripped, ~50 MP guard (grill 2026-07-11).
 - Moderation — deferred; GDPR erasure — operator delete/replace only, automation → #101; scale —
@@ -281,6 +281,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-10 | review (cleanup, CONFIRMED) | `actualDimensions()` full-raster-decoded each rendered variant just for width/height. Fix: reuse the header-only `readHeaderDimensions` on our own fresh JPEG; helper deleted. | fixed |
 | F-11 | review (cleanup, CONFIRMED) | `present` was derivable lock-step state (`≡ previewUrl != null`) across `PhotoSlotView`, the wire `SlotPhoto`, and the FE model. Fix: dropped everywhere; emptiness is the null `previewUrl`. | fixed |
 | F-12 | CI (PR #241 first run, red) | The full-suite-only class (#122/#127 kin, reproduced locally with the bare `test` task): the `@WebMvcTest` slices (`RateLimit*`, `SpaShell`, `WebCors*`) register every `@RestController` and stub each controller port in `WebSliceStubs` — the new `VenuePhotoController` introduced the `VenuePhotos` port nobody stubbed → 24 context-load failures. Scoped local runs never boot those slices, so only CI (or a full local run) could show it. Fix: an inert `VenuePhotos` stub bean (upload→Rejected, delete→false, serve→empty) in `WebSliceStubs`; full local suite green. Rule for next time: a new controller ⇒ a new `WebSliceStubs` bean. | fixed |
+| F-13 | Sonar gate (PR #241: gate ERROR on new_reliability_rating; 6 reported new issues; coverage 83.5% ✅, duplication 0.0 ✅) | All six in-code-fixed to reach a literally-empty list: 2× `java:S6218` BUG (`StoredBytes`/`StoredVariant` — OQ-3 as predicted → content-aware equals/hashCode + byte-count toString); `java:S1192` CRITICAL (`"venueIds"` ×3 → `P_VENUE_IDS` constant, house COL_*/P_* pattern); `java:S125` + `css:S125` (comments that read as commented-out code → rephrased in prose); `Web:S6851` (redundant "photo" in the preview img alt → role-free alt text). | fixed |
 
 ---
 

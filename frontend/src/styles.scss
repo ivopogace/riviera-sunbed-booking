@@ -60,11 +60,12 @@
   --riv-field-fill: rgba(255, 255, 255, 0.55);
   --riv-card-track: rgba(12, 42, 51, 0.12);
   --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
-  /* 0.68 @75% (design: none): the location overlay's text band (81–91% of the photo) must
-     sit on scrim >= 0.68 for white ink to clear AA over ANY cover photo — since #142 the band
-     backs a real image, so the worst case is a pure-white photo, not the gradient's light stop
-     (which the earlier 0.5 floor was derived from; #135 review finding history). The geometry
-     is asserted by home.contrast.spec.ts. */
+  /* The scrim reaches alpha 0.68 at its three-quarter stop (the design file has no scrim): the
+     location overlay's text band, sitting in the lower tenth of the photo, needs a backing of at
+     least 0.68 for white ink to clear AA over ANY cover photo — since issue 142 the band backs a
+     real image, so the worst case is a pure-white photo, not the gradient's light stop (which the
+     earlier 0.5 floor came from; see the issue-135 review history). Geometry is asserted by
+     home.contrast.spec.ts. */
   --riv-photo-scrim: linear-gradient(
     180deg,
     rgba(13, 40, 40, 0) 42%,

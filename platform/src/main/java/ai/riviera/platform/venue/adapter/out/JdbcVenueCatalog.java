@@ -56,6 +56,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_DISTANCE_TO_WATER = "distance_to_water_m";
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_AMENITY = "amenity";
+	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
+	private static final String P_VENUE_IDS = "venueIds";
 	// The two tourist-surfaced cover variants (#142) — kept in lockstep with the PhotoSurface enum
 	// tokens the V24 CHECK constraint lists.
 	private static final String SURFACE_CARD = "CARD";
@@ -169,7 +171,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				FROM set_position
 				WHERE venue_id IN (:venueIds)
 				""")
-				.param("venueIds", venueIds)
+				.param(P_VENUE_IDS, venueIds)
 				.query((rs, rowNum) -> new SetPriceRow(
 						rs.getLong("id"), rs.getLong(COL_VENUE_ID),
 						rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)))
@@ -187,7 +189,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		Map<Long, List<Amenity>> amenitiesByVenue = jdbc.sql("""
 				SELECT venue_id, amenity FROM venue_amenity WHERE venue_id IN (:venueIds)
 				""")
-				.param("venueIds", venueIds)
+				.param(P_VENUE_IDS, venueIds)
 				.query((rs, rowNum) -> new AmenityRow(
 						rs.getLong(COL_VENUE_ID), Amenity.valueOf(rs.getString(COL_AMENITY))))
 				.list().stream()
@@ -220,7 +222,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				WHERE vp.venue_id IN (:venueIds) AND vp.slot = 'COVER'
 				  AND vv.surface IN ('CARD', 'BANNER')
 				""")
-				.param("venueIds", venueIds)
+				.param(P_VENUE_IDS, venueIds)
 				.query((rs, rowNum) -> new CoverVariantRow(
 						rs.getLong(COL_VENUE_ID), rs.getString("surface"), rs.getString("content_hash")))
 				.list().stream()
@@ -229,7 +231,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 								.servingUrl(r.venueId(), new ContentHash(r.hash())))));
 		// Only a COMPLETE pair becomes a CoverPhotoView (#142 review F-8): a cover missing one of
 		// its CARD/BANNER rows (manual data fix, future surface-set change) must read as "no cover"
-		// — the FE's @if(coverPhoto) guard would otherwise pass and bind null into NgOptimizedImage.
+		// — otherwise the frontend's presence check passes and NgOptimizedImage receives a null URL.
 		Map<Long, CoverPhotoView> covers = new HashMap<>();
 		urlsByVenue.forEach((venueId, urls) -> {
 			String card = urls.get(SURFACE_CARD);

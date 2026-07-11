@@ -202,9 +202,11 @@
                 <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">{{ slot.label }}</span>
 
                 @if (slotUi()[slot.key].previewUrl; as previewUrl) {
+                  <!-- alt avoids the words image/photo (Web:S6851 — screen readers announce the
+                       role); the slot label itself names it for AT. -->
                   <img
                     [ngSrc]="previewUrl"
-                    [alt]="slot.label + ' — current photo'"
+                    [alt]="'Current upload in the ' + slot.key + ' slot'"
                     width="240"
                     height="180"
                     class="h-[90px] w-[120px] rounded-[10px] object-cover"
