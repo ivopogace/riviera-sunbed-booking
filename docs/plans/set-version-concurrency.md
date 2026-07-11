@@ -103,13 +103,13 @@ re-asserted by AC-8 and the existing `BeachMapReplaceIT`/`VenueRepriceIT` suites
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Deadlock**: replace locks `set_position` (`lockSetsOfVenue`) then venue (bump); reprice locks venue (bump) then `set_position` (reprice UPDATE) → opposite order on the same two resources | med | high | Acquire the **venue row first in BOTH paths**: do the conditional `set_version` bump **before** `lockSetsOfVenue`. Consistent order (venue → its set rows) makes deadlock impossible; the second txn blocks on the venue row and re-reads a bumped `set_version` → `STALE_WRITE`. Proven by AC-3 (replace-vs-reprice race). | Ivo | open |
-| R-2 | **Spurious `set_version` bump** on a `LAYOUT_IN_USE` (replace) or `NO_SUCH_ROW` (reprice) reject, since the bump now precedes the in-use probe / the reprice UPDATE and the txn commits on a value-outcome | med | low | Accepted: safe (only makes other tabs reload) and rare (an error/blocked path). Documented. Zero-spurious-bump would need an extra pre-probe read; deferred unless review objects. | Ivo | open |
-| R-3 | **Wire-contract break**: `expectedVersion` now **required** on two existing endpoints → `400` for a client that omits it | low | med | Same-slice FE update sends it; the SPA is same-origin & bundled with the backend (no external API consumers). `Long` (not primitive) so absent = `null` = 400, never a silent `0` (mirrors #224). | Ivo | open |
-| R-4 | **Flyway collision** on `V23` | low | high | Verified `V23` free on `main` (latest is V22) **and** no open PRs claim it. If a parallel slice merges first, this branch renumbers (default: merges second) + merge-from-main before PR. | Ivo | open |
-| R-5 | **Invariant-#2 regression** from reordering: the `FOR UPDATE` claim-probe now runs after the venue-row lock | low | high | `lockSetsOfVenue` + the claim/bookings probe still run **before** any `deleteAllSets`; existing `BeachMapReplaceIT` invariant-#2 (concurrent-hold) scenarios must stay green (AC-8). | Ivo | open |
-| R-6 | **BOLA / invariant #13** on the venue-scoped writes | low | high | Unchanged: `assertOwns` stays the first act of both `replaceLayout` and `repriceRow` (application service, not controller). The new map read carrying `setVersion` is the already-public tourist read (a non-sensitive counter) — no authz change. Pinned by existing `CrossVenueDenialIT`. | Ivo | open |
-| R-7 | **Error-contract drift**: new 409s must be centralized `ProblemDetail` with `code = STALE_WRITE`, not a per-controller body (§6b) | low | med | Reuse `ApiProblem.response(CONFLICT, "STALE_WRITE", <friendly msg>)`; the FE reads `code` via `problemCodeOf` (not status alone), exactly as `venue-tab` does. | Ivo | open |
+| R-1 | **Deadlock**: replace locks `set_position` (`lockSetsOfVenue`) then venue (bump); reprice locks venue (bump) then `set_position` (reprice UPDATE) → opposite order on the same two resources | med | high | Acquire the **venue row first in BOTH paths**: do the conditional `set_version` bump **before** `lockSetsOfVenue`. Consistent order (venue → its set rows) makes deadlock impossible; the second txn blocks on the venue row and re-reads a bumped `set_version` → `STALE_WRITE`. Proven by AC-3 (replace-vs-reprice race). | Ivo | **Resolved** — bump-first implemented in both writes; `VenueSetWriteConcurrencyIT` green (@RepeatedTest(6)). |
+| R-2 | **Spurious `set_version` bump** on a `LAYOUT_IN_USE` (replace) or `NO_SUCH_ROW` (reprice) reject, since the bump now precedes the in-use probe / the reprice UPDATE and the txn commits on a value-outcome | med | low | Accepted: safe (only makes other tabs reload) and rare (an error/blocked path). Documented. Zero-spurious-bump would need an extra pre-probe read; deferred unless review objects. | Ivo | **Accepted** — behaviour shipped (bump precedes probe); noted in `bumpSetVersion` service comments + Open questions. Revisit if RV flags it. |
+| R-3 | **Wire-contract break**: `expectedVersion` now **required** on two existing endpoints → `400` for a client that omits it | low | med | Same-slice FE update sends it; the SPA is same-origin & bundled with the backend (no external API consumers). `Long` (not primitive) so absent = `null` = 400, never a silent `0` (mirrors #224). | Ivo | **Resolved** — FE (Phases 3/4) sends `expectedVersion` on both writes; `…WithoutVersionIs400` ITs green. No external consumers. |
+| R-4 | **Flyway collision** on `V23` | low | high | Verified `V23` free on `main` (latest is V22) **and** no open PRs claim it. If a parallel slice merges first, this branch renumbers (default: merges second) + merge-from-main before PR. | Ivo | **Resolved** — `V23__venue_set_version.sql` added; `git log` confirms latest on `main` is V22; migration IT green. Re-check before merge if a parallel Flyway slice lands first. |
+| R-5 | **Invariant-#2 regression** from reordering: the `FOR UPDATE` claim-probe now runs after the venue-row lock | low | high | `lockSetsOfVenue` + the claim/bookings probe still run **before** any `deleteAllSets`; existing `BeachMapReplaceIT` invariant-#2 (concurrent-hold) scenarios must stay green (AC-8). | Ivo | **Resolved** — the claim probe still precedes `deleteAllSets`; `BeachMapReplaceIT` in-use + `concurrentWalkInMarkAndReplace…` (@RepeatedTest) stay green with the bump-first order. |
+| R-6 | **BOLA / invariant #13** on the venue-scoped writes | low | high | Unchanged: `assertOwns` stays the first act of both `replaceLayout` and `repriceRow` (application service, not controller). The new map read carrying `setVersion` is the already-public tourist read (a non-sensitive counter) — no authz change. Pinned by existing `CrossVenueDenialIT`. | Ivo | **Resolved** — `assertOwns` unchanged as the first act; unit tests assert `bumpedSetVersions == 0` on a non-owner (fail-closed before the bump). `CrossVenueDenialIT` confirmed on CI (full suite). |
+| R-7 | **Error-contract drift**: new 409s must be centralized `ProblemDetail` with `code = STALE_WRITE`, not a per-controller body (§6b) | low | med | Reuse `ApiProblem.response(CONFLICT, "STALE_WRITE", <friendly msg>)`; the FE reads `code` via `problemCodeOf` (not status alone), exactly as `venue-tab` does. | Ivo | **Resolved** — both 409 arms use `ApiProblem.response(CONFLICT, "STALE_WRITE", …)`; FE maps via `layoutErrorOf`/`repriceErrorOf` (`problemCodeOf`, not status). `ErrorContractArchitectureTests` green (CI). |
 
 ## Open questions / Assumptions
 
@@ -421,25 +421,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..4** (concurrency + independence): `./gradlew test --tests "*ConcurrencyIT*" --tests "*VenueSetWrite*" --tests "*VenueAdminServiceTest*"` → PASS.
-- [ ] **AC-5/6** (required + stale): `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*BeachMapReplaceIT*" --tests "*VenueRepriceIT*"` → PASS.
-- [ ] **AC-7** (read token): `./gradlew test --tests "*VenueReadControllerIT*"` → PASS.
-- [ ] **AC-8** (invariant #2 preserved): existing `BeachMapReplaceIT` in-use scenarios → PASS.
-- [ ] **AC-9** (FE): `npm test` + `npm run test:e2e` (the two stale-write specs) → PASS.
+All run locally (Docker available, so the Testcontainers ITs executed); CI re-runs the full suite.
+
+- [x] **AC-1..4** (concurrency + independence): `*ConcurrencyIT*` (`BeachMapReplace`/`VenueReprice`/
+  `VenueProfile`), `*VenueSetWriteConcurrencyIT*`, `*VenueAdminServiceTest*`, token-independence in
+  `*VenueAdminControllerIT*` → PASS.
+- [x] **AC-5/6** (required + stale): `*VenueAdminControllerIT*` (`replace`/`repriceWithoutVersionIs400`),
+  `*BeachMapReplaceIT*` (`staleReplaceIs409StaleWrite`), `*VenueRepriceIT*` (`staleRepriceIs409StaleWrite`) → PASS.
+- [x] **AC-7** (read token): `*VenueReadControllerIT*` (`mapReadCarriesSetVersion`) + `*VenueSeedMigrationIT*` → PASS.
+- [x] **AC-8** (invariant #2 preserved): existing `BeachMapReplaceIT` in-use + concurrent-hold scenarios (stay green with the bump-first order) → PASS.
+- [x] **AC-9** (FE): `npm test` (`layout-editor.spec.ts` 10, `pricing-tab.spec.ts` 12; operator folder 196) +
+  `npm run test:e2e:a11y` (the two co-located stale-write specs, incl. axe) → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] Type & method-signature consistency across phases (the widened `EditBeachMap` signatures).
-- [ ] **No JPA** introduced (invariant #1) — `JdbcClient` + text-block SQL only.
-- [ ] **Availability** section filled; invariant #2 unchanged and its concurrent-hold test stays green.
-- [ ] Pool + cutoff rules unaffected (invariants #3, #4).
-- [ ] **Modulith** section filled; all-in-`venue`, no cross-module `application.*`/`adapter.*` imports; `ModularityTests` green.
-- [ ] **Payment/payout** N/A justified; money stays integer minor units (#5).
-- [ ] Timezone unaffected (#6); booking codes unaffected (#7).
-- [ ] Flyway `V23` present; the new column tested (invariant #12); number verified free.
-- [ ] Per-venue authorization intact (invariant #13) — `assertOwns` first on both writes; `CrossVenueDenialIT` green.
-- [ ] **Frontend** standards met; STALE_WRITE via `problemCodeOf`; no `as any`; mocked-a11y e2e for both flows.
-- [ ] Execution status at HEAD matches reality; findings register has no undecided `open` row.
-- [ ] Risk register has no stale `open` rows at merge; Open Questions empty or deferred with an issue #.
+- [x] Every AC has an implementing task and a verifying test (AC-1..9 pinned; see AC-verification-final).
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] Type & method-signature consistency across phases (widened `EditBeachMap.replaceLayout`/`repriceLayout`
+  + FE `repriceRow`; all callers updated, backend compiles + FE builds clean).
+- [x] **No JPA** introduced (invariant #1) — `JdbcClient` + text-block SQL only (`JdbcOnlyArchitectureTests` green).
+- [x] **Availability** section filled; invariant #2 unchanged and its concurrent-hold test (`concurrentWalkInMarkAndReplace…`) stays green.
+- [x] Pool + cutoff rules unaffected (invariants #3, #4).
+- [x] **Modulith** section filled; all-in-`venue`, no cross-module `application.*`/`adapter.*` imports; `ModularityTests`/`PackageShape`/`PublishedSurfacePlacement` green.
+- [x] **Payment/payout** N/A justified; money stays integer minor units (#5).
+- [x] Timezone unaffected (#6); booking codes unaffected (#7).
+- [x] Flyway `V23` present; the new column tested (`VenueSeedMigrationIT`, invariant #12); number verified free (latest on `main` is V22).
+- [x] Per-venue authorization intact (invariant #13) — `assertOwns` first on both writes (unit: no bump on non-owner); `CrossVenueDenialIT` green (CI full suite).
+- [x] **Frontend** standards met; STALE_WRITE via `problemCodeOf` (the `*ErrorOf` mappers); no `as any` (lint clean); mocked-a11y e2e for both flows.
+- [x] Execution status at HEAD matches reality; findings register has no undecided `open` row (F-1 fixed, F-2 accepted).
+- [x] Risk register has no stale `open` rows (R-1..R-7 all Resolved/Accepted); Open Questions: the map-read-vs-`/layout` choice is **deferred to the review gate** (to flag), not an issue # — the rest are resolved/non-goals.
