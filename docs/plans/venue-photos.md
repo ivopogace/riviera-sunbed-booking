@@ -243,10 +243,10 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `GATES: local review RUN (riviera-review-overlay + /code-review high, 21-agent workflow) → 10 findings F-2..F-11, ALL FIXED through the loop (re-entry: postgres/java-conventions/modulith/FE skills; red-first where pinnable; backend photo suite + structural nets + FE lint/653-unit/build/45-e2e green — one unrelated operator-requests e2e flake, passes in isolation). /security-review RUN: no high-confidence findings. BLOCKED on maintainer confirmation to push (CI) → PR → Sonar (watch OQ-3 S6218) → merge (+ close-out incl. graphify update).`
+**Stage pointer:** `DONE — merged to main as squash 7538940 (PR #241, 2026-07-11). All gates cleared: review (F-1..F-11 fixed), /security-review clean, CI green (F-12 WebSliceStubs fix after the first red run), Sonar gate green WITH the list cleared (F-13 + coverage round): 0 new issues / 0.0% duplication / 84.3% new-code coverage. Issue #142 closed; moderation follow-up #230; close-out complete.`
 
-**Next action:** maintainer confirms → push `feature/venue-photos` → verify CI green → open PR →
-Sonar gate (pull the new-issue list) → merge + close-out checklist.
+**Next action:** none — slice complete. (Historical record; see the findings register for the
+full gate trail.)
 
 **Windows-session note:** the CI-safe mocked Playwright suite here is **`npm run test:e2e:a11y`**
 (`playwright.a11y.config.ts`, testMatch `e2e/*.e2e.ts`, no backend); the bare `test:e2e` config
@@ -261,7 +261,7 @@ boots the real backend via `./gradlew bootRun` and fails on this box. e2e spec n
 | 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ✅ | 2a core `0a3e8d5`; ITs + F-1 `c2b6848`; 2b read-model (this window) |
 | 3 — FE operator upload UI + service + e2e | ✅ | this window |
 | 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | ✅ | this window |
-| 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | ⏳ | docs this window; close-out after merge |
+| 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | ✅ | docs `955ff8c`; merged as `7538940`; close-out done 2026-07-11 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -453,25 +453,27 @@ read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1…AC-8 — backend test classes green (`--tests` scoped per class; CI full suite).
-- [ ] AC-9, AC-10 — `npm test` + `npm run test:e2e` + `npm run test:a11y` green.
+- [x] AC-1…AC-8 — backend test classes green (scoped locally + the full suite on CI, PR #241).
+- [x] AC-9, AC-10 — `npm test` (653) + `npm run test:e2e:a11y` (45, the CI-safe mocked suite —
+  the bare `test:e2e` config is the real-backend one) green locally and on CI.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** (invariant #1); `bytea` via `JdbcClient` `setBytes`/`getBytes`.
-- [ ] Availability section justified **N/A** with reason (invariant #2).
-- [ ] **Modulith** section filled; `PhotoStorage`/`PhotoProcessor` internal (not `api/`); no new
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** (invariant #1); `bytea` via `JdbcClient` `setBytes`/`getBytes`.
+- [x] Availability section justified **N/A** with reason (invariant #2).
+- [x] **Modulith** section filled; `PhotoStorage`/`PhotoProcessor` internal (not `api/`); no new
   event; `allowedDependencies` unchanged; no cross-module `application.*`/`adapter.*` imports (#11).
-- [ ] Payment/payout **N/A**.
-- [ ] BOLA: `assertOwns` first in the service; `CrossVenueDenialIT` covers the photo routes (#13).
-- [ ] Security: magic-byte + size + megapixel validation; EXIF stripped; public GET / authed
-  write; `/security-review` run on the diff.
-- [ ] Flyway **V24** present; `UNIQUE(venue_id, slot)` + cascade tested (invariant #12).
-- [ ] Serving: immutable cache + `ETag` + `304`; `bytea` never in a list query.
-- [ ] **Frontend** standards met; `NgOptimizedImage` for real URLs; contrast specs still pass; no
-  `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; findings register current.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Payment/payout **N/A**.
+- [x] BOLA: `assertOwns` first in the service; `CrossVenueDenialIT` covers the photo routes (#13).
+- [x] Security: magic-byte + size + megapixel validation; EXIF stripped; public GET / authed
+  write; `/security-review` run on the diff (no high-confidence findings).
+- [x] Flyway **V24** present; `UNIQUE(venue_id, slot)` + cascade tested (invariant #12).
+- [x] Serving: immutable cache + `ETag` + `304`; `bytea` never in a list query (grep-verified).
+- [x] **Frontend** standards met; `NgOptimizedImage` for real URLs (incl. the operator preview,
+  F-9); contrast specs re-derived for real photos and passing; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; findings register current (F-1..F-13).
+- [x] Risk register has no stale `open` rows; Open Questions empty (OQ-3 resolved at the Sonar
+  gate; moderation → #230, erasure automation → #101).
