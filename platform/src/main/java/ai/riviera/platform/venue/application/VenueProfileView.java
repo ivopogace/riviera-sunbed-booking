@@ -17,8 +17,13 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * <p>This is deliberately NOT the public tourist {@code VenueMapView}: it carries commission +
  * payout currency, which must never reach the anonymous read (that is why the read endpoint is
  * gated to the owning operator, not permitted like {@code GET /api/venues/*}).
+ *
+ * <p>{@code version} is the row's optimistic-concurrency token (#224): the tab loads it here and
+ * echoes it back on the next profile {@code PATCH}, so a stale write is rejected with 409 rather
+ * than clobbering {@code bookingMode}/{@code bookingCutoff}. Read-only for the operator — the write
+ * never sets it directly; the conditional {@code UPDATE} bumps it.
  */
 public record VenueProfileView(String name, String beach, String region, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-		List<Amenity> amenities, Integer distanceToWaterM) {
+		List<Amenity> amenities, Integer distanceToWaterM, long version) {
 }

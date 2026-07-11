@@ -12,10 +12,13 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * consumes — booking mode + amenity codes as their token strings, and the cutoff as {@code "HH:mm"}
  * (matching {@code CreateVenueRequest.bookingCutoff}), so the round-trip to the widened
  * {@code PATCH} is symmetric. {@code commissionBps} and {@code payoutCurrency} are display-only.
+ *
+ * <p>{@code version} is the row's optimistic-concurrency token (#224): the tab echoes it back as
+ * {@code expectedVersion} on the next {@code PATCH}, so a stale write is rejected with 409.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, int commissionBps, String payoutCurrency,
-		List<String> amenities, Integer distanceToWaterM) {
+		List<String> amenities, Integer distanceToWaterM, long version) {
 
 	/** {@code "HH:mm"} to match the write DTO's cutoff shape (drops the always-zero seconds of a TIME). */
 	private static final DateTimeFormatter CUTOFF = DateTimeFormatter.ofPattern("HH:mm");
@@ -24,6 +27,6 @@ record VenueProfileResponse(String name, String beach, String region, String des
 		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.commissionBps(),
 				v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
-				v.distanceToWaterM());
+				v.distanceToWaterM(), v.version());
 	}
 }

@@ -31,6 +31,7 @@ describe('VenueTab (#177)', () => {
     payoutCurrency: 'EUR',
     amenities: ['WIFI', 'BEACH_BAR'],
     distanceToWaterM: 20,
+    version: 7, // a non-zero token so tests prove it's echoed from the load, not hardcoded
   };
 
   function configure(parentVenueId: Record<string, string> = { venueId: '1' }): void {
@@ -117,6 +118,7 @@ describe('VenueTab (#177)', () => {
       bookingCutoff: '18:00',
       amenities: ['WIFI', 'BEACH_BAR'],
       distanceToWaterM: 20,
+      expectedVersion: 7, // the loaded optimistic-concurrency token (#224)
     });
     // Read-only fields must not be on the wire.
     expect(req.request.body.commissionBps).toBeUndefined();
@@ -142,6 +144,87 @@ describe('VenueTab (#177)', () => {
     expect(req.request.body.amenities).toContain('RESTAURANT');
     expect(req.request.body.amenities).toContain('BEACH_BAR');
     expect(req.request.body.amenities).not.toContain('WIFI');
+    req.flush(null);
+  });
+
+  it('save sends the loaded expectedVersion token (#224)', async () => {
+    render(); // loaded at version 7
+
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(req.request.body.expectedVersion).toBe(7);
+    req.flush(null);
+  });
+
+  it('a second consecutive save sends the bumped version without a reload (#224)', async () => {
+    render(); // loaded at version 7
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    // Let the first submit fully settle: Signal Forms no-ops a submit() while one is still "in
+    // progress", and its submitting() flag resets a promise-turn after the action — past whenStable().
+    // A real operator saving twice has ample wall-clock time; the test just flushes a macrotask.
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+
+    // Edit again and save; the tab must now send 8 (the write bumped the row), not the stale 7 —
+    // the same operator saving twice in a row must not spuriously 409.
+    setValue('venue-name', 'Second Edit');
+    await save();
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(req.request.body.expectedVersion).toBe(8);
+    req.flush(null);
+  });
+
+  it('shows the stale-write banner and PRESERVES the operator’s edits on a 409 (#224)', async () => {
+    render();
+
+    setValue('venue-name', 'Edited Locally');
+    await save();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The dedicated conflict banner + Reload action is shown — not the generic error span.
+    expect(byId('venue-stale-banner')).toBeTruthy();
+    expect(byId('venue-stale-reload')).toBeTruthy();
+    expect(host.querySelector('[data-testid="venue-error"]')).toBeNull();
+    // The operator’s edit survives — never silently discarded.
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Edited Locally');
+  });
+
+  it('reload re-seeds from the server, clears the banner, and sends the fresh version next save (#224)', async () => {
+    render();
+
+    setValue('venue-name', 'Edited Locally');
+    await save();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-stale-banner')).toBeTruthy();
+
+    // Reload pulls the latest server profile (new name + bumped version) and clears the banner.
+    byId('venue-stale-reload').click();
+    const reloaded: VenueProfileView = { ...PROFILE, name: 'Server Name', version: 8 };
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
+      .flush(reloaded);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="venue-stale-banner"]')).toBeNull();
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Server Name');
+
+    // The next save now carries the reloaded version (8), never the stale 7.
+    await save();
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(req.request.body.expectedVersion).toBe(8);
     req.flush(null);
   });
 
