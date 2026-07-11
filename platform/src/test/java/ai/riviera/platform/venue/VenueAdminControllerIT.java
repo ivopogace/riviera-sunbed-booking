@@ -65,16 +65,27 @@ class VenueAdminControllerIT {
 	}
 
 	/**
-	 * A full widened venue-profile PATCH body (O8 #177): the editable core is fixed and the amenity
-	 * array + distance vary per test. The write REPLACES the whole profile, so every field is required
-	 * (except description/distance) — a partial body no longer suffices.
+	 * A full widened venue-profile PATCH body (O8 #177, versioned by #224): the editable core is fixed
+	 * and the amenity array + distance vary per test. The write REPLACES the whole profile, so every
+	 * field is required (except description/distance) — a partial body no longer suffices — and it
+	 * carries the required optimistic-concurrency {@code expectedVersion} the tab loaded.
 	 */
 	private static String profileBody(String name, String mode, String cutoff, String amenitiesJson,
-			String distanceJson) {
+			String distanceJson, long expectedVersion) {
 		return """
 				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"edited",
-				 "bookingMode":"%s","bookingCutoff":"%s","amenities":%s,"distanceToWaterM":%s}
-				""".formatted(name, mode, cutoff, amenitiesJson, distanceJson);
+				 "bookingMode":"%s","bookingCutoff":"%s","amenities":%s,"distanceToWaterM":%s,
+				 "expectedVersion":%d}
+				""".formatted(name, mode, cutoff, amenitiesJson, distanceJson, expectedVersion);
+	}
+
+	/** The venue's current optimistic-concurrency token, read from the owner profile endpoint (#224). */
+	private long currentVersion(long venueId) throws Exception {
+		MvcResult result = mvc.perform(get("/api/venues/{v}/profile", venueId).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andReturn();
+		String json = result.getResponse().getContentAsString();
+		return Long.parseLong(com.jayway.jsonpath.JsonPath.read(json, "$.version").toString());
 	}
 
 	/** Create a venue as the operator and return its id (parsed from the JSON body). */
@@ -288,7 +299,7 @@ class VenueAdminControllerIT {
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(profileBody("Amenities Club", "INSTANT", "18:00",
-								"[\"WIFI\",\"BEACH_BAR\"]", "20")))
+								"[\"WIFI\",\"BEACH_BAR\"]", "20", 0)))
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -297,9 +308,12 @@ class VenueAdminControllerIT {
 				.andExpect(jsonPath("$.amenities").value(
 						org.hamcrest.Matchers.contains("BEACH_BAR", "WIFI")));
 
+		// #224: the first PATCH bumped the version, so the second edit must load it afresh (mirrors the
+		// FE load-then-save) — re-using the stale 0 would now be rejected as a stale write.
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("Amenities Club", "INSTANT", "18:00", "[\"SHOWERS\"]", "null")))
+						.content(profileBody("Amenities Club", "INSTANT", "18:00", "[\"SHOWERS\"]", "null",
+								currentVersion(venue))))
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -315,7 +329,7 @@ class VenueAdminControllerIT {
 
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("After Name", "REQUEST", "12:30", "[\"WIFI\"]", "35")))
+						.content(profileBody("After Name", "REQUEST", "12:30", "[\"WIFI\"]", "35", 0)))
 				.andExpect(status().isNoContent());
 
 		// Tourist surface re-renders the edited name + mode (live read).
@@ -366,6 +380,69 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void profileWriteWithCurrentVersionSucceedsAndBumps() throws Exception {
+		// #224, AC-4: a PATCH echoing the loaded version applies (204) and bumps the row's version, so a
+		// subsequent read shows version = V+1 with the edited values.
+		long venue = createVenue("Bump Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Bump Club", "REQUEST", "17:00", "[\"WIFI\"]", "12", 0)))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.version").value(1))
+				.andExpect(jsonPath("$.bookingMode").value("REQUEST"))
+				.andExpect(jsonPath("$.bookingCutoff").value("17:00"));
+	}
+
+	@Test
+	void staleVersionPatchIs409() throws Exception {
+		// #224, AC-5: the venue moved to V+1 (a first PATCH), then a second PATCH still carrying the
+		// stale V=0 is 409 STALE_WRITE — and booking_mode/booking_cutoff are left at the winner's values,
+		// never clobbered back (the exact #224 auto-charge-reversal scenario).
+		long venue = createVenue("Stale Club");
+
+		// The venue is switched to REQUEST at version 0 → now at version 1.
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Stale Club", "REQUEST", "18:00", "[]", "null", 0)))
+				.andExpect(status().isNoContent());
+
+		// A stale tab (still at version 0) tries to save back INSTANT → rejected, not applied.
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Stale Club", "INSTANT", "18:00", "[]", "null", 0)))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+
+		// The safety fields survive at the winner's values — the stale INSTANT never landed.
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.bookingMode").value("REQUEST"))
+				.andExpect(jsonPath("$.version").value(1));
+	}
+
+	@Test
+	void patchMissingExpectedVersionIs400() throws Exception {
+		// #224, AC-6: a body without expectedVersion is 400 INVALID_REQUEST — it is never treated as 0
+		// (which would match a fresh venue and re-open the last-write-wins hole).
+		long venue = createVenue("No Version Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"name":"No Version Club","beach":"Ksamil","region":"Riviera","description":"x",
+								 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":[],
+								 "distanceToWaterM":null}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void getProfileRequiresOperatorAuth() throws Exception {
 		// O8 (#177), AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
 		// unauthenticated caller is 401 — commission never leaks to an anonymous request.
@@ -385,7 +462,8 @@ class VenueAdminControllerIT {
 						.content("""
 								{"name":"Still Mine","beach":"Ksamil","region":"Riviera","description":"x",
 								 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":[],
-								 "distanceToWaterM":null,"commissionBps":9999,"payoutCurrency":"USD"}
+								 "distanceToWaterM":null,"commissionBps":9999,"payoutCurrency":"USD",
+								 "expectedVersion":0}
 								"""))
 				.andExpect(status().isNoContent());
 
@@ -401,7 +479,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Bad Amenity Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("Bad Amenity Club", "INSTANT", "18:00", "[\"PING_PONG\"]", "null")))
+						.content(profileBody("Bad Amenity Club", "INSTANT", "18:00", "[\"PING_PONG\"]", "null", 0)))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
@@ -413,7 +491,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Bad Distance Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("Bad Distance Club", "INSTANT", "18:00", "[]", "0")))
+						.content(profileBody("Bad Distance Club", "INSTANT", "18:00", "[]", "0", 0)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
@@ -424,7 +502,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Blank Name Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("   ", "INSTANT", "18:00", "[]", "null")))
+						.content(profileBody("   ", "INSTANT", "18:00", "[]", "null", 0)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
@@ -435,7 +513,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Bad Mode Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("Bad Mode Club", "MAYBE", "18:00", "[]", "null")))
+						.content(profileBody("Bad Mode Club", "MAYBE", "18:00", "[]", "null", 0)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
@@ -446,7 +524,7 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Bad Cutoff Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("Bad Cutoff Club", "INSTANT", "not-a-time", "[]", "null")))
+						.content(profileBody("Bad Cutoff Club", "INSTANT", "not-a-time", "[]", "null", 0)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
@@ -455,7 +533,7 @@ class VenueAdminControllerIT {
 	void profileEditUnknownVenueIs404() throws Exception {
 		mvc.perform(patch("/api/venues/{v}", 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(profileBody("Ghost", "INSTANT", "18:00", "[]", "null")))
+						.content(profileBody("Ghost", "INSTANT", "18:00", "[]", "null", 0)))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));

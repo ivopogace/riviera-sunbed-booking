@@ -95,8 +95,16 @@ class VenueAdminController {
 	ResponseEntity<?> updateProfile(Authentication authentication, @PathVariable long venueId,
 			@RequestBody UpdateVenueProfileRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		return toResponse(editVenueProfile.updateProfile(operator, new VenueId(venueId),
-				request.toCommand()));
+		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
+		// never a silent 0 (#224). STALE_WRITE → 409 lets the tab reload the latest values and re-apply.
+		return switch (editVenueProfile.updateProfile(operator, new VenueId(venueId),
+				request.requiredExpectedVersion(), request.toCommand())) {
+			case APPLIED -> ResponseEntity.noContent().build();
+			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+					"No such venue.");
+			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, "STALE_WRITE",
+					"This venue was changed by someone else. Reload the latest values and try again.");
+		};
 	}
 
 	@PostMapping("/{venueId}/sets")

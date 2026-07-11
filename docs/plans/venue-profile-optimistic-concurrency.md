@@ -212,8 +212,8 @@ only Reload re-seeds (preserve-edits UX). Contrast/axe specs cover the new banne
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc | ✅ | afa153f |
-| 1 — Migration + read carries the token | ✅ | (this commit) |
-| 2 — Conditional write + 409 STALE_WRITE (+ WebSliceStubs & IT bodies) | | |
+| 1 — Migration + read carries the token | ✅ | 4190650 |
+| 2 — Conditional write + 409 STALE_WRITE (+ WebSliceStubs & IT bodies) | ✅ | (this commit) |
 | 3 — Concurrency IT (headline) | | |
 | 4 — Frontend: send version, handle 409, preserve edits + Reload | | |
 | 5 — e2e (mocked CI-safe + real-backend) | | |
@@ -451,6 +451,7 @@ ResponseEntity<?> updateProfile(Authentication authentication, @PathVariable lon
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-11 | Phase 1 (VenueProfileView gains `version`) | `new VenueProfileView(` construction sites | `grep "new VenueProfileView\("` | 2 real (`JdbcVenues.findProfile`, `VenueAdminServiceTest` fake) + the plan doc | Both real sites updated to pass `version`; no other constructor. |
+| 2026-07-11 | Phase 2 (`EditVenueProfile`/`Venues.updateVenueProfile` signature change) | every `updateProfile(` / `updateVenueProfile(` caller | `grep "updateProfile\(|updateVenueProfile\("` | port + impl + controller + service + `WebSliceStubs` stub + 4 `VenueAdminServiceTest` calls + fake | All updated to the 4-arg (`expectedVersion`) / 3-arg forms and `ProfileUpdateOutcome`; `WebSliceStubs` (the @WebMvcTest slice, R-5) confirmed green. |
 
 ---
 

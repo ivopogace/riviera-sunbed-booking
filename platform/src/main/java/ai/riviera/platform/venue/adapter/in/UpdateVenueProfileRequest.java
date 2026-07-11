@@ -25,9 +25,23 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  *
  * <p><strong>The edit REPLACES the profile</strong> (the form always re-sends every field), so a
  * null/absent {@code amenities} clears them and a null {@code distanceToWaterM} clears the distance.
+ *
+ * <p>{@code expectedVersion} is the required optimistic-concurrency token (#224) — the {@code version}
+ * the tab loaded with the profile. It is typed {@link Long} (not primitive) so an absent field is
+ * {@code null}, not a silent {@code 0}: {@link #requiredExpectedVersion()} rejects the null with a
+ * {@code 400} rather than letting it match a fresh venue and re-open the last-write-wins hole.
  */
 record UpdateVenueProfileRequest(String name, String beach, String region, String description,
-		String bookingMode, String bookingCutoff, List<String> amenities, Integer distanceToWaterM) {
+		String bookingMode, String bookingCutoff, List<String> amenities, Integer distanceToWaterM,
+		Long expectedVersion) {
+
+	/** The loaded concurrency token, required — a missing {@code expectedVersion} is a 400, never a 0 (#224). */
+	long requiredExpectedVersion() {
+		if (expectedVersion == null) {
+			throw new IllegalArgumentException("expectedVersion is required");
+		}
+		return expectedVersion;
+	}
 
 	VenueProfileCommand toCommand() {
 		Set<Amenity> parsed = (amenities == null ? List.<String>of() : amenities).stream()

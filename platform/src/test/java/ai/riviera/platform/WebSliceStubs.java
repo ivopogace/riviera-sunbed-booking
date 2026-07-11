@@ -63,6 +63,7 @@ import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetCommand;
@@ -345,7 +346,7 @@ class WebSliceStubs {
 
 	@Bean
 	EditVenueProfile editVenueProfile() {
-		return (_, _, _) -> new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		return (_, _, _, _) -> ProfileUpdateOutcome.NO_SUCH_VENUE;
 	}
 
 	/** O8 (#177): the venue admin-profile read the web slices register with {@code VenueAdminController}. */

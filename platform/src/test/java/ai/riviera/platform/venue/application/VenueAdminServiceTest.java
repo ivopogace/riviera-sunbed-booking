@@ -192,22 +192,38 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void updateProfileByOwnerAppliesTheWrite() {
+	void updateProfileWithCurrentVersionApplies() {
+		// #224: the venue exists and the conditional UPDATE matches the loaded version ⇒ 1 row ⇒ APPLIED.
 		venues.venues.add(VENUE.value());
 
-		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE,
+		ProfileUpdateOutcome outcome = service.updateProfile(OWNER, VENUE, 0L,
 				profile(Set.of(Amenity.BEACH_BAR, Amenity.WIFI), 20));
 
-		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(ProfileUpdateOutcome.APPLIED, outcome);
 		assertEquals(1, venues.updatedProfiles);
 	}
 
 	@Test
-	void updateProfileOnUnknownVenueIsRejected() {
-		// Owner passes the ownership guard, but the venue does not exist ⇒ 0 rows ⇒ NO_SUCH_VENUE.
-		ChangeOutcome outcome = service.updateProfile(OWNER, VENUE, profile(Set.of(), null));
+	void updateProfileWithStaleVersionIsStaleWrite() {
+		// #224, AC-1: the venue exists but the conditional UPDATE finds no row at the loaded version
+		// (another writer bumped it) ⇒ 0 rows ⇒ STALE_WRITE, and no profile column is reported changed.
+		venues.venues.add(VENUE.value());
+		venues.forceProfileUpdateRows = 0; // version no longer matches
 
-		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
+		ProfileUpdateOutcome outcome = service.updateProfile(OWNER, VENUE, 0L,
+				profile(Set.of(Amenity.BEACH_BAR), 20));
+
+		assertEquals(ProfileUpdateOutcome.STALE_WRITE, outcome);
+	}
+
+	@Test
+	void updateProfileOnUnknownVenueIsNoSuchVenue() {
+		// Owner passes the ownership guard, but the venue does not exist ⇒ NO_SUCH_VENUE, and the
+		// conditional UPDATE is never attempted (existence is checked first, so 0 rows is unambiguously stale).
+		ProfileUpdateOutcome outcome = service.updateProfile(OWNER, VENUE, 0L, profile(Set.of(), null));
+
+		assertEquals(ProfileUpdateOutcome.NO_SUCH_VENUE, outcome);
+		assertEquals(0, venues.updatedProfiles);
 	}
 
 	@Test
@@ -216,7 +232,7 @@ class VenueAdminServiceTest {
 
 		// The ownership guard runs first: a stranger is rejected before any profile write (invariant #13).
 		assertThrows(NotVenueOwnerException.class,
-				() -> service.updateProfile(STRANGER, VENUE, profile(Set.of(Amenity.CAFE), 10)));
+				() -> service.updateProfile(STRANGER, VENUE, 0L, profile(Set.of(Amenity.CAFE), 10)));
 		assertEquals(0, venues.updatedProfiles);
 	}
 
@@ -398,6 +414,9 @@ class VenueAdminServiceTest {
 		// null ⇒ derive from the seeded `sets` map.
 		Boolean forceSetExists;
 		Integer forceUpdateRows;
+		// #224: null ⇒ the profile UPDATE matches the loaded version (1 row, APPLIED); set 0 to model a
+		// stale version (another writer bumped it since the load ⇒ STALE_WRITE).
+		Integer forceProfileUpdateRows;
 
 		@Override
 		public long insertVenue(NewVenueCommand command) {
@@ -441,9 +460,11 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
-		public int updateVenueProfile(VenueId venueId, VenueProfileCommand command) {
+		public int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command) {
 			updatedProfiles++;
-			return venues.contains(venueId.value()) ? 1 : 0;
+			// The service checks venueExists first, so this is only reached for an existing venue; the
+			// default 1 models a version match. forceProfileUpdateRows = 0 models a stale-version loss.
+			return forceProfileUpdateRows != null ? forceProfileUpdateRows : 1;
 		}
 
 		@Override
