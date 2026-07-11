@@ -78,6 +78,9 @@ export class VenueTab {
   /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
    *  the operator at the right field instead of a generic form-wide message. */
   protected readonly distanceError = signal(false);
+  /** The optimistic-concurrency token loaded with the profile (#224), echoed back on Save; a `409
+   *  STALE_WRITE` means the venue moved on since — the tab keeps the edits and offers Reload. */
+  protected readonly loadedVersion = signal<number | null>(null);
 
   /** Read-only display fields (from the loaded profile); never edited, never written. */
   protected readonly commissionBps = signal<number | null>(null);
@@ -179,6 +182,12 @@ export class VenueTab {
         }
         distanceToWaterM = parsed;
       }
+      const expectedVersion = this.loadedVersion();
+      if (expectedVersion === null) {
+        // The form is only interactable after a successful load seeds the version, so this is
+        // defensive — never save without the token the server needs to detect a stale write (#224).
+        return;
+      }
       const m = this.details();
       const request: VenueProfileUpdate = {
         name: m.name,
@@ -189,6 +198,7 @@ export class VenueTab {
         bookingCutoff: m.bookingCutoff,
         amenities: [...this.amenityDraft()],
         distanceToWaterM,
+        expectedVersion,
       };
       this.saving.set(true);
       try {
@@ -251,6 +261,22 @@ export class VenueTab {
     this.distanceDraft.set(profile.distanceToWaterM == null ? '' : String(profile.distanceToWaterM));
     this.commissionBps.set(profile.commissionBps);
     this.payoutCurrency.set(profile.payoutCurrency);
+    this.loadedVersion.set(profile.version);
     this.loaded.set(true);
+  }
+
+  /**
+   * Recover from a `409 STALE_WRITE` (#224): re-load the latest server profile — re-seeding every
+   * field and the version — and clear the conflict banner. The preserve-edits UX is deliberate: a 409
+   * itself never touches the form (so the operator keeps their work); only this explicit Reload
+   * discards it in favour of the current server state, from which they re-apply and Save.
+   */
+  protected reloadAfterStale(): void {
+    const venueId = this.venueId;
+    if (venueId === undefined) {
+      return;
+    }
+    this.errorCode.set(null);
+    this.load(venueId);
   }
 }

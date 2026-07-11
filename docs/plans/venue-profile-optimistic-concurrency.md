@@ -215,7 +215,7 @@ only Reload re-seeds (preserve-edits UX). Contrast/axe specs cover the new banne
 | 1 — Migration + read carries the token | ✅ | 4190650 |
 | 2 — Conditional write + 409 STALE_WRITE (+ WebSliceStubs & IT bodies) | ✅ | (this commit) |
 | 3 — Concurrency IT (headline) | ✅ | (this commit) |
-| 4 — Frontend: send version, handle 409, preserve edits + Reload | | |
+| 4 — Frontend: send version, handle 409, preserve edits + Reload | ✅ | (this commit) |
 | 5 — e2e (mocked CI-safe + real-backend) | | |
 
 > **Sequencing note (execution):** the FE `VenueProfileView` model change (`version: number`)
