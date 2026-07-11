@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -98,6 +99,21 @@ class ApiErrorHandlerTest {
 	}
 
 	/**
+	 * The multipart max-size backstop (#142): {@code MaxUploadSizeExceededException} is handled by
+	 * the {@code ResponseEntityExceptionHandler} base class (its handler is {@code final}, so a
+	 * same-advice {@code @ExceptionHandler} would be an ambiguous duplicate), and the advice stamps
+	 * the pinned wire code — stable even if the 413 {@code HttpStatus} constant is renamed.
+	 */
+	@Test
+	void uploadBeyondTheMultipartLimitIs413WithStableCode() throws Exception {
+		mvc.perform(get("/throw/too-large"))
+				.andExpect(status().is(413))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
+				.andExpect(jsonPath("$.instance").value("about:blank"));
+	}
+
+	/**
 	 * Framework-raised errors (here: 405) bypass {@code ApiProblem}, so the advice re-applies both
 	 * the {@code code} stamp — the HTTP status name, part of the documented vocabulary (§6b) — and
 	 * the instance redaction.
@@ -133,6 +149,11 @@ class ApiErrorHandlerTest {
 		@GetMapping("/throw/race")
 		void race() {
 			throw new DataIntegrityViolationException("duplicate key value violates unique constraint");
+		}
+
+		@GetMapping("/throw/too-large")
+		void tooLarge() {
+			throw new MaxUploadSizeExceededException(30L * 1024 * 1024);
 		}
 
 		@GetMapping("/throw/typed/{id}")

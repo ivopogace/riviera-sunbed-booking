@@ -241,11 +241,11 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phase 2a CORE done (VenuePhotoService + VenuePhotoController + serving + SecurityConfig + multipart + 413; service unit test + structural/error-contract nets green). NEXT: serving IT (cache/304) + HTTP BOLA (CrossVenueDenialIT), then Phase 2b read-model URLs.`
+**Stage pointer:** `implement — Phase 2a done incl. HTTP ITs (VenuePhotoServingIT: 200/ETag/304-without-blob-read/hex-guard/venue-scoped; CrossVenueDenialIT photo routes + owner-positive; F-1 413-advice fix). NEXT: Phase 2b read-model URL threading (VenueSummaryView/VenueMapView cover card+banner, VenueProfileView per-slot presence, read-model IT), then Phase 3 FE.`
 
-**Next action:** begin **Phase 2** — build `VenuePhotoService` (`assertOwns` BOLA → process → storage)
-+ the venue-scoped `VenuePhotoController` (PUT/DELETE write, public immutable-cached GET serving) +
-read-model URLs + the `SecurityConfig` public-GET rule; then run `/security-review` on the diff.
+**Next action:** **Phase 2b** — thread cover card+banner URLs into the discovery + map read models
+(blob-free, via the COVER slot's variants) and per-slot `{present, previewUrl}` into the operator
+profile view; `VenuePhotoReadModelIT`. Then `/security-review` on the full diff at the gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -262,7 +262,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | local IT (first web-context boot after 2a) | The 2a `@ExceptionHandler(MaxUploadSizeExceededException)` duplicated the `ResponseEntityExceptionHandler` base handler (final since FW 6.1) → ambiguous mapping, Spring context failed to start for every MockMvc IT. Fix: handler removed; 413 flows through `handleExceptionInternal`, `code` pinned to `PAYLOAD_TOO_LARGE` in `defaultCode` (literal 413 — the enum constant is mid-rename). Pinned by `ApiErrorHandlerTest.uploadBeyondTheMultipartLimitIs413WithStableCode` (red→green). Side effect: the compile-time deprecation NOTE on `ApiErrorHandler` is gone — it was the removed handler's own `HttpStatus.PAYLOAD_TOO_LARGE` reference (new code, not pre-existing). | fixed |
 
 ---
 
@@ -357,11 +357,12 @@ Test `JdbcPhotoStorageIT`.
 read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
 `VenuePhotoReadModelIT`, extend `CrossVenueDenialIT`.
 
-- [ ] **Step 1 — failing tests (service, fakes):** `assertOwns` first (AC-4 path throws before
+- [x] **Step 1 — tests (service, fakes):** `assertOwns` first (AC-4 path throws before
   storage); upload stores capped variants (AC-1); replace overwrites (AC-2); delete erases (AC-3).
-  **Serving IT:** immutable cache headers + `ETag` + `304` (AC-7). **Read-model IT:** discovery
-  exposes cover card+banner URLs, `null` when absent, no blob selected (AC-8). **BOLA IT:** photo
-  routes added to `CrossVenueDenialIT`.
+  **Serving IT (done):** immutable cache headers + `ETag` + `304` **without a blob read** (pinned by
+  deleting the rows and re-revalidating), hex guard, venue-scoped, public (AC-7) — `VenuePhotoServingIT`.
+  **BOLA IT (done):** photo POST/DELETE routes + owner-positive (real-JPEG fixture) added to
+  `CrossVenueDenialIT` (AC-4). **Read-model IT:** → Phase 2b.
 - [ ] **Steps 2–4 — implement:** service (`assertOwns` → `PhotoProcessor` → `PhotoStorage`; serving
   read); controller (`PUT`/`DELETE` venue-scoped `MultipartFile`, `GET` public bytes+headers);
   `SecurityConfig` permit public GET on `/api/venues/*/photos/**`; read-model SQL/DTO additions

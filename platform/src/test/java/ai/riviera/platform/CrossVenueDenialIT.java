@@ -1,5 +1,11 @@
 package ai.riviera.platform;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -19,6 +26,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -235,6 +243,32 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void photoUploadByNonOwnerIs403() throws Exception {
+		// #142: the photo slot upload is venue-scoped (invariant #13, BOLA). The file is a VALID
+		// JPEG so the 403 is genuinely from ownership, not from image validation — and the service
+		// asserts ownership BEFORE processing, so Miramar's slot is never touched.
+		actingAs(operatorA);
+		mvc.perform(multipart("/api/venues/{v}/photos/{slot}", MIRAMAR, "cover")
+						.file(new MockMultipartFile("file", "photo.jpg", "image/jpeg", tinyJpeg()))
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void photoDeleteByNonOwnerIs403() throws Exception {
+		// #142: deleting a photo slot is venue-scoped — denied before the slot is even looked at,
+		// so a non-owner gets 403 (not the owner's 404-when-empty).
+		actingAs(operatorA);
+		mvc.perform(delete("/api/venues/{v}/photos/{slot}", MIRAMAR, "cover")
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void pendingRequestsQueueByNonOwnerIs403() throws Exception {
 		// #98: the pending-requests queue is venue-scoped operator data (guest names, demand).
 		actingAs(operatorA);
@@ -309,6 +343,29 @@ class CrossVenueDenialIT {
 						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void ownerCanUploadAndDeleteItsOwnPhoto() throws Exception {
+		// The positive counterpart to the photo denials: A owns venueOwnedByA, so uploading and
+		// deleting ITS cover photo succeed — proving the 403s are genuinely from ownership, not an
+		// always-deny. Targets A's own throwaway venue, never Miramar (no shared-container pollution).
+		actingAs(operatorA);
+		mvc.perform(multipart("/api/venues/{v}/photos/{slot}", venueOwnedByA, "cover")
+						.file(new MockMultipartFile("file", "photo.jpg", "image/jpeg", tinyJpeg()))
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isOk());
+		mvc.perform(delete("/api/venues/{v}/photos/{slot}", venueOwnedByA, "cover")
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isNoContent());
+	}
+
+	/** A small but genuinely valid JPEG (the ownership 403s must not be masked by a 400). */
+	private static byte[] tinyJpeg() throws IOException {
+		var image = new BufferedImage(80, 60, BufferedImage.TYPE_INT_RGB);
+		var out = new ByteArrayOutputStream();
+		ImageIO.write(image, "jpg", out);
+		return out.toByteArray();
 	}
 
 	@Test
