@@ -332,12 +332,12 @@ class WebSliceStubs {
 
 			@Override
 			public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId,
-					LayoutCommand command) {
+					long expectedVersion, LayoutCommand command) {
 				return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
 			}
 
 			@Override
-			public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId,
+			public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
 					ai.riviera.platform.venue.application.RowPriceCommand command) {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}

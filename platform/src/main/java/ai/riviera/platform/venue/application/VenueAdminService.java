@@ -134,24 +134,36 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 
 	@Override
 	@Transactional
-	public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, RowPriceCommand command) {
+	public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowPriceCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
+		// #226 optimistic lock — take the venue row lock and read set_version (the SAME token replaceLayout
+		// guards, so a replace and a reprice off the same value cannot both win) BEFORE the reprice UPDATE.
+		// A mismatch is a stale version. Order matches replaceLayout (venue row before its set rows) → no
+		// deadlock (R-1). The token is advanced ONLY after a successful reprice below, so a NO_SUCH_ROW
+		// reject leaves it untouched — the acting tab's own next edit off the same token still works.
+		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
+			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
+		}
 		// Non-destructive: the UPDATE's rows-affected is the row existence check (0 ⇒ no set carries
 		// the label). Repricing never touches availability/set identity, so — unlike replaceLayout — it
 		// needs no claim probe and is allowed on a venue with bookings/holds (see EditBeachMap#repriceRow).
 		int updated = venues.repriceRow(venueId, command);
-		return updated == 0
-				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW)
-				: ChangeOutcome.Applied.APPLIED;
+		if (updated == 0) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
+		}
+		venues.incrementSetVersion(venueId); // advance the token iff a row was actually repriced
+		return ChangeOutcome.Applied.APPLIED;
 	}
 
 	@Override
 	@Transactional
-	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, LayoutCommand command) {
+	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, long expectedVersion,
+			LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (command.isEmpty()) {
@@ -167,6 +179,16 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 		if (internal.isPresent()) {
 			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
 		}
+		// #226 optimistic lock — take the venue row lock and read set_version BEFORE lockSetsOfVenue's
+		// FOR UPDATE. Both set-writes acquire the venue row first, then their set rows: one consistent order
+		// → no deadlock (R-1). A mismatch means another replace/reprice advanced it since the load →
+		// STALE_WRITE. The token is advanced by incrementSetVersion ONLY on the success path below, so a
+		// LAYOUT_IN_USE reject (or any early return) leaves it untouched — the acting tab's own retry off the
+		// same token still works, and it is the SAME token repriceRow guards, so a replace and a reprice
+		// racing off the same value cannot both win.
+		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
+		}
 		// Reject-unless-unclaimed (issue #172): a booking (any status) pins its set via the RESTRICT FK,
 		// and an availability hold (any date) would be silently CASCADE-dropped by the delete — either
 		// destroys invariant-#2 state, so refuse the destructive replace and delete nothing.
@@ -180,9 +202,11 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 		if (availability.anyClaims(existing) || bookings.hasBookings(venueId)) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
 		}
-		// Unclaimed: replace the whole map atomically (both writes in this @Transactional unit).
+		// Unclaimed: replace the whole map atomically (both writes in this @Transactional unit), then
+		// advance the token — the increment commits with the write, so the token moves iff the layout did.
 		venues.deleteAllSets(venueId);
 		venues.insertSets(venueId, command.sets());
+		venues.incrementSetVersion(venueId);
 		return ReplaceLayoutOutcome.Replaced.REPLACED;
 	}
 

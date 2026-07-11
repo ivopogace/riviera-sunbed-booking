@@ -268,11 +268,12 @@ class VenueAdminServiceTest {
 	void replacesLayoutForUnclaimedVenue() {
 		venues.venues.add(VENUE.value());
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
 		assertEquals(1, venues.deletedAllCount);
 		assertEquals(6, venues.insertedInLayout);
+		assertEquals(1, venues.incrementedSetVersions); // #226: token advanced exactly once, on success
 	}
 
 	@Test
@@ -280,11 +281,14 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		bookings.hasBookings = true;
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
 		assertEquals(0, venues.insertedInLayout);
+		// #226 review fix: a LAYOUT_IN_USE reject must NOT advance the token (no spurious bump), so the
+		// acting operator's own retry after the lock clears still works off the same loaded token.
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
@@ -292,17 +296,18 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		availability.claimed = true;
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.incrementedSetVersions); // no spurious bump on the in-use reject
 	}
 
 	@Test
 	void rejectsEmptyLayout() {
 		venues.venues.add(VENUE.value());
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, new LayoutCommand(List.of()));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, new LayoutCommand(List.of()));
 
 		assertEquals(ReplaceRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -315,7 +320,7 @@ class VenueAdminServiceTest {
 				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
 				new SetCommand("B", 2, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))); // same grid cell
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, clashing);
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, clashing);
 
 		assertEquals(ReplaceRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -323,18 +328,36 @@ class VenueAdminServiceTest {
 
 	@Test
 	void rejectsReplaceOnUnknownVenue() {
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(1, 1));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
 
 		assertEquals(ReplaceRejection.NO_SUCH_VENUE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void replaceWithStaleSetVersionIsStaleWrite() {
+		// #226, AC-1 (unit): the venue exists but the locked set_version no longer matches the loaded token
+		// (another writer advanced it) ⇒ STALE_WRITE, and the layout is left untouched — the version check
+		// precedes the delete, and the token is never advanced on the stale path.
+		venues.venues.add(VENUE.value());
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+
+		assertEquals(ReplaceRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.insertedInLayout);
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
 	void replaceByANonOwnerIsDeniedBeforeAnyRead() {
 		venues.venues.add(VENUE.value());
 
-		assertThrows(NotVenueOwnerException.class, () -> service.replaceLayout(STRANGER, VENUE, grid(2, 3)));
-		// Fail closed: the ownership guard fires before the claim probes and before any delete.
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.replaceLayout(STRANGER, VENUE, 0L, grid(2, 3)));
+		// Fail closed: the ownership guard fires before the claim probes, the version read/write, any delete.
 		assertEquals(0, availability.anyClaimsCalls);
+		assertEquals(0, venues.incrementedSetVersions);
 		assertEquals(0, venues.deletedAllCount);
 	}
 
@@ -346,15 +369,16 @@ class VenueAdminServiceTest {
 	void repricesRowForOwnedVenue() {
 		venues.venues.add(VENUE.value());
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.repricedRows);
+		assertEquals(1, venues.incrementedSetVersions); // #226: token advanced once, on success
 	}
 
 	@Test
 	void repriceOnUnknownVenueIsRejectedBeforeAnyWrite() {
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.repricedRows);
@@ -366,9 +390,27 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.forceRepriceRows = 0;
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, REPRICE_CMD);
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+		// #226 review fix: a NO_SUCH_ROW reject must NOT advance the token (no spurious bump), so the
+		// acting operator's own next edit of a real row off the same loaded token still works.
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void repriceWithStaleSetVersionIsStaleWrite() {
+		// #226, AC-2 (unit): the venue exists but the locked set_version no longer matches the loaded token
+		// (another writer advanced it) ⇒ STALE_WRITE, the reprice UPDATE is never attempted, and the token
+		// is not advanced.
+		venues.venues.add(VENUE.value());
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
+
+		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
+
+		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.repricedRows);
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
@@ -376,8 +418,10 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 
 		// Invariant #13: the ownership guard is the first act — a stranger is denied before the UPDATE.
-		assertThrows(NotVenueOwnerException.class, () -> service.repriceRow(STRANGER, VENUE, REPRICE_CMD));
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.repriceRow(STRANGER, VENUE, 0L, REPRICE_CMD));
 		assertEquals(0, venues.repricedRows);
+		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too (#226)
 	}
 
 	/**
@@ -427,6 +471,24 @@ class VenueAdminServiceTest {
 		@Override
 		public boolean venueExists(VenueId venueId) {
 			return venues.contains(venueId.value());
+		}
+
+		int incrementedSetVersions;
+		// #226: what lockAndReadSetVersion returns. The set-write tests pass expectedVersion 0, so the
+		// default 0 models a token match (proceed); set it to a different value to model a stale token
+		// (another replace/reprice advanced it since the load ⇒ STALE_WRITE).
+		long setVersionOnLock;
+
+		@Override
+		public long lockAndReadSetVersion(VenueId venueId) {
+			return setVersionOnLock;
+		}
+
+		@Override
+		public void incrementSetVersion(VenueId venueId) {
+			// Counted so a test can assert the token is advanced ONLY on the success path — never on a
+			// STALE_WRITE / LAYOUT_IN_USE / NO_SUCH_ROW reject (no spurious bump).
+			incrementedSetVersions++;
 		}
 
 		@Override

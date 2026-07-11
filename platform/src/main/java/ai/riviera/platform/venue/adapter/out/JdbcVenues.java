@@ -85,6 +85,29 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
+	public long lockAndReadSetVersion(VenueId venueId) {
+		// FOR UPDATE takes the venue row's write lock and reads the current set_version (#226). This is the
+		// FIRST lock both set-writes acquire (before their set_position locks) → consistent venue→sets order
+		// → no deadlock (R-1). The caller compares the value to the loaded expectedVersion (mismatch ⇒
+		// STALE_WRITE) and advances it via incrementSetVersion ONLY on success — so a rejected write never
+		// spuriously bumps the token. A concurrent writer blocks here until this tx ends, then re-reads the
+		// (possibly incremented) value. Existence is pre-checked by the caller, so exactly one row.
+		return jdbc.sql("SELECT set_version FROM venue WHERE id = :id FOR UPDATE")
+				.param("id", venueId.value())
+				.query(Long.class)
+				.single();
+	}
+
+	@Override
+	public void incrementSetVersion(VenueId venueId) {
+		// Advance the token by one (#226) — called only after the set-write commits. The caller holds the
+		// venue row lock from lockAndReadSetVersion, so this is race-free.
+		jdbc.sql("UPDATE venue SET set_version = set_version + 1 WHERE id = :id")
+				.param("id", venueId.value())
+				.update();
+	}
+
+	@Override
 	public boolean setExists(VenueId venueId, SetId setId) {
 		return jdbc.sql("""
 				SELECT EXISTS(SELECT 1 FROM set_position WHERE id = :setId AND venue_id = :venue)

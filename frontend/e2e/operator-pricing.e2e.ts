@@ -6,9 +6,10 @@ import { settle } from './support/booking-dialog';
 /**
  * Real-render CI-safe e2e for the O4 Pricing tab (#174). Drives sign-in → open the Pricing tab →
  * see one row per label with its tier description and price → edit a row's € input → assert the
- * owner-asserted per-row reprice PUT (path + integer-minor-unit body) and the recomputed projected
- * take. Also the cross-venue (403) failure copy. API mocked via `page.route` (no backend); axe over
- * the tab.
+ * owner-asserted per-row reprice PUT (path + integer-minor-unit body + #226 token) and the recomputed
+ * projected take. Also the cross-venue (403) failure copy and the #226 stale-write conflict (409
+ * STALE_WRITE reverts the row + offers Reload — co-located here as the venue tab does in
+ * operator-venue.e2e.ts). API mocked via `page.route` (no backend); axe over the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -58,10 +59,19 @@ const VENUE_MAP = {
 
 test.use({ colorScheme: 'dark' });
 
-/** Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403. */
-async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[] }> {
+/**
+ * Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403. STATEFUL
+ * on the #226 `setVersion`: the map GET hands out the current token, the reprice PUT enforces it (a
+ * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
+ * prices on behind the tab's back, so a subsequent stale reprice is genuinely rejected.
+ */
+async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[]; bump: () => void }> {
   const puts: Request[] = [];
   let sessionLive = false;
+  let serverSetVersion = 0;
+  const bump = () => {
+    serverSetVersion += 1;
+  };
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
       ? route.fulfill({ json: PRINCIPAL })
@@ -75,19 +85,33 @@ async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[] 
     sessionLive = false;
     return route.fulfill({ status: 204, body: '' });
   });
-  // The per-row reprice PUT — captured; 204 normally, 403 NOT_VENUE_OWNER when denied.
+  // The per-row reprice PUT — captured; 403 NOT_VENUE_OWNER when denied; else the optimistic-concurrency
+  // guard (#226): a stale expectedVersion is 409 STALE_WRITE, a match is 204 and bumps the server token.
   await page.route(/\/api\/venues\/1\/rows\/[^/]+\/price$/, (route) => {
     puts.push(route.request());
-    return deny
-      ? route.fulfill({
-          status: 403,
-          contentType: 'application/problem+json',
-          json: { code: 'NOT_VENUE_OWNER', detail: '' },
-        })
-      : route.fulfill({ status: 204, body: '' });
+    if (deny) {
+      return route.fulfill({
+        status: 403,
+        contentType: 'application/problem+json',
+        json: { code: 'NOT_VENUE_OWNER', detail: '' },
+      });
+    }
+    const body = route.request().postDataJSON() as { expectedVersion?: number };
+    if (body.expectedVersion !== serverSetVersion) {
+      return route.fulfill({
+        status: 409,
+        contentType: 'application/problem+json',
+        json: { code: 'STALE_WRITE', detail: '' },
+      });
+    }
+    serverSetVersion += 1;
+    return route.fulfill({ status: 204, body: '' });
   });
-  // The venue map (tab source + shell header/stats). Keep below the reprice route (disjoint anyway).
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
+  // The venue map (tab source + shell header/stats) — carries the current setVersion. Keep below the
+  // reprice route (disjoint anyway).
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } }),
+  );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
@@ -100,7 +124,7 @@ async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[] 
       },
     }),
   );
-  return { puts };
+  return { puts, bump };
 }
 
 async function signInAndOpenPricing(page: Page): Promise<void> {
@@ -136,7 +160,11 @@ test('lists rows, projects the online-only take, and commits a minor-unit repric
 
   expect(puts).toHaveLength(1);
   expect(puts[0].url()).toMatch(/\/api\/venues\/1\/rows\/A\/price$/);
-  expect(puts[0].postDataJSON()).toEqual({ price: { minorUnits: 4250, currency: 'EUR' } });
+  // The body carries the price AND the #226 token loaded from the map read (0 for the fresh mock).
+  expect(puts[0].postDataJSON()).toEqual({
+    price: { minorUnits: 4250, currency: 'EUR' },
+    expectedVersion: 0,
+  });
 
   // Projected recomputes from the new online prices: 4250 + 4250 + 2000 = 10500 → €105.
   await expect(page.getByTestId('pricing-projected')).toHaveText('€105');
@@ -155,4 +183,37 @@ test('shows the not-owner message and reverts the projection when the reprice is
   await expect(page.getByTestId('pricing-error-A')).toContainText(/manage/i);
   // Reverted: the projection is back to the original €90, not the optimistic €200.
   await expect(page.getByTestId('pricing-projected')).toHaveText('€90');
+});
+
+test('a stale reprice is rejected 409, reverts the row + shows Reload, then recovers (#226, + axe)', async ({
+  page,
+}) => {
+  const { bump } = await mockPricing(page);
+  await page.goto('/operator/1');
+  await signInAndOpenPricing(page); // the tab loads the map at setVersion 0
+
+  // A concurrent writer moves the prices on (→ setVersion 1) behind this still-open tab.
+  bump();
+
+  // The operator edits row A off the now-stale setVersion 0 → 409 STALE_WRITE.
+  await page.getByTestId('pricing-input-A').fill('99');
+  await page.getByTestId('pricing-input-A').blur();
+
+  // The conflict banner + Reload is shown; the optimistic value reverts (projection back to €90), and
+  // the per-row inline error does NOT fire (a venue-level conflict, not a per-row failure).
+  await expect(page.getByTestId('pricing-stale-banner')).toBeVisible();
+  await expect(page.getByTestId('pricing-stale-reload')).toBeVisible();
+  await expect(page.getByTestId('pricing-input-A')).toHaveValue('35');
+  await expect(page.getByTestId('pricing-projected')).toHaveText('€90');
+  await expect(page.getByTestId('pricing-error-A')).toBeHidden();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'pricing tab stale-write banner');
+
+  // Reload pulls the latest map (setVersion 1) and clears the banner; re-applying now succeeds.
+  await page.getByTestId('pricing-stale-reload').click();
+  await expect(page.getByTestId('pricing-stale-banner')).toBeHidden();
+
+  await page.getByTestId('pricing-input-A').fill('42.5');
+  await page.getByTestId('pricing-input-A').blur();
+  await expect(page.getByTestId('pricing-saved-A')).toBeVisible();
 });

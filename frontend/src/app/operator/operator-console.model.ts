@@ -30,21 +30,30 @@ export interface LayoutCellRequest {
   readonly gridY: number;
 }
 
-/** The bulk beach-map replace body (`PUT /api/venues/{id}/beach-map`, O3, #172): the whole desired grid. */
+/**
+ * The bulk beach-map replace body (`PUT /api/venues/{id}/beach-map`, O3, #172): the whole desired grid.
+ * {@link expectedVersion} is the required optimistic-concurrency token (#226) — the `setVersion` the tab
+ * loaded from the map read; the server rejects a write whose token no longer matches with `409
+ * STALE_WRITE` (and a missing token with `400`), so a stale layout tab can't clobber the map.
+ */
 export interface BeachMapLayoutRequest {
   readonly sets: readonly LayoutCellRequest[];
+  readonly expectedVersion: number;
 }
 
 /**
  * A known per-row reprice failure (O4, #174), mapped from the RFC-7807 `code` (issue #97) for
  * operator-facing copy. `NO_SUCH_ROW`/`NO_SUCH_VENUE` are the 404s; `NOT_VENUE_OWNER` the 403
- * (invariant #13); `INVALID_REQUEST` the 400 edge rejection (§6b); `UNAUTHORIZED` the expired session.
+ * (invariant #13); `INVALID_REQUEST` the 400 edge rejection (§6b); `STALE_WRITE` the 409
+ * optimistic-concurrency loss (#226) — the layout/prices moved on since the tab loaded, so the tab
+ * reverts the row and offers a Reload; `UNAUTHORIZED` the expired session.
  */
 export type RepriceErrorCode =
   | 'NOT_VENUE_OWNER'
   | 'NO_SUCH_ROW'
   | 'NO_SUCH_VENUE'
   | 'INVALID_REQUEST'
+  | 'STALE_WRITE'
   | 'UNAUTHORIZED'
   | 'CONFLICT'
   | 'UNKNOWN';
@@ -200,7 +209,11 @@ export type MarkErrorCode =
  */
 export type ReleaseErrorCode = 'NOT_MARKED' | 'NOT_VENUE_OWNER' | 'UNAUTHORIZED' | 'UNKNOWN';
 
-/** A known layout-write failure, mapped from the RFC-7807 `code` (issue #97) for operator-facing copy. */
+/**
+ * A known layout-write failure, mapped from the RFC-7807 `code` (issue #97) for operator-facing copy.
+ * `STALE_WRITE` = the 409 optimistic-concurrency loss (#226) — the layout was changed elsewhere since
+ * the tab loaded it, so the editor keeps the operator's edits and offers a Reload (never a clobber).
+ */
 export type LayoutErrorCode =
   | 'LAYOUT_IN_USE'
   | 'DUPLICATE_POSITION'
@@ -208,6 +221,7 @@ export type LayoutErrorCode =
   | 'EMPTY_LAYOUT'
   | 'LAYOUT_TOO_LARGE'
   | 'NO_SUCH_VENUE'
+  | 'STALE_WRITE'
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'CONFLICT'

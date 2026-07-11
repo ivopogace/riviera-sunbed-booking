@@ -60,9 +60,20 @@ export class PricingTab {
   /** True when the initial venue read failed — shows an error (not a false "no sets" empty state). */
   protected readonly loadError = signal(false);
 
+  /** True while a reprice PUT is in flight. The single shared `set_version` token cannot admit two
+   *  concurrent reprices (the second would false-conflict), so a save serializes edits: the row inputs
+   *  are disabled while it runs, and a `change` that still slips through is ignored (review finding). */
+  protected readonly saving = signal(false);
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
+  /** The optimistic-concurrency token loaded with the map (#226 `setVersion`), echoed back on each
+   *  reprice and advanced on success; a `409 STALE_WRITE` sets {@link staleConflict}. */
+  protected readonly loadedSetVersion = signal<number | null>(null);
+  /** True after a reprice lost the optimistic-concurrency race (409 STALE_WRITE) — a venue-level
+   *  conflict (the whole `set_version` moved), so it drives a recover-and-reload banner, not the
+   *  per-row inline error. Cleared by {@link reloadAfterStale}. */
+  protected readonly staleConflict = signal(false);
 
   /** One row per label (in read order), with its tier description and current price as a EUR string. */
   protected readonly rows = computed<PriceRow[]>(() =>
@@ -105,9 +116,23 @@ export class PricingTab {
     if (this.venueId === undefined) {
       return;
     }
+    if (this.saving()) {
+      // A reprice is already in flight; the shared set_version token would false-conflict a second
+      // concurrent write, so serialize — ignore this edit and restore the shown value. The row inputs are
+      // disabled during a save, so this guard is the defensive backstop for a change that slips through.
+      input.value = row.priceEur;
+      return;
+    }
     const minorUnits = eurosToMinorUnits(input.value);
     if (minorUnits === null) {
       input.value = row.priceEur; // a cleared/invalid field is not a €0 reprice — restore the shown value
+      return;
+    }
+    const expectedVersion = this.loadedSetVersion();
+    if (expectedVersion === null) {
+      // Defensive (#226): rows only render after a successful load seeds the token, so the only null case
+      // is a failed read (which shows the load-error state instead). Never reprice without the token.
+      input.value = row.priceEur;
       return;
     }
     const price: MoneyView = { minorUnits, currency: row.currency };
@@ -115,18 +140,30 @@ export class PricingTab {
     this.applyRowPrice(row.label, price); // optimistic — the projection updates immediately
     this.savedRow.set(null);
     this.errorRow.set(null);
+    this.staleConflict.set(false);
+    this.saving.set(true); // synchronous, before the await — disables the inputs so no overlap starts
     try {
-      await firstValueFrom(this.console.repriceRow(this.venueId, row.label, price));
+      await firstValueFrom(this.console.repriceRow(this.venueId, row.label, price, expectedVersion));
       this.savedRow.set(row.label);
+      // The conditional write bumped set_version by one (#226); advance our token so a following
+      // sequential row edit isn't spuriously rejected as a stale write.
+      this.loadedSetVersion.set(expectedVersion + 1);
     } catch (error) {
       if (previous) {
         this.applyRowPrice(row.label, previous); // revert only this row, leaving concurrent edits intact
       }
       const code = repriceErrorOf(error);
-      this.errorRow.set({ label: row.label, code });
+      if (code === 'STALE_WRITE') {
+        // A venue-level conflict, not a per-row failure — the recover-and-reload banner owns it.
+        this.staleConflict.set(true);
+      } else {
+        this.errorRow.set({ label: row.label, code });
+      }
       if (code === 'UNAUTHORIZED') {
         this.operator.sessionLost();
       }
+    } finally {
+      this.saving.set(false);
     }
   }
 
@@ -148,10 +185,27 @@ export class PricingTab {
     }
   }
 
+  /**
+   * Recover from a `409 STALE_WRITE` (#226): re-load the venue map — re-seeding every row's price and the
+   * `setVersion` token — and clear the conflict banner. The optimistic value already reverted when the
+   * reprice failed, so this simply pulls the current server prices for the operator to re-apply.
+   */
+  protected reloadAfterStale(): void {
+    const venueId = this.venueId;
+    if (venueId === undefined) {
+      return;
+    }
+    this.staleConflict.set(false);
+    this.errorRow.set(null);
+    this.savedRow.set(null);
+    this.load(venueId);
+  }
+
   private load(venueId: number): void {
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         this.sets.set([...venue.sets]);
+        this.loadedSetVersion.set(venue.setVersion ?? null); // #226: the token for the next reprice
         this.loaded.set(true);
       },
       error: (error: unknown) => {

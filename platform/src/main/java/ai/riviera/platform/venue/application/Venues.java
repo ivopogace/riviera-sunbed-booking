@@ -21,6 +21,30 @@ public interface Venues {
 	/** Whether a venue with this id exists. */
 	boolean venueExists(VenueId venueId);
 
+	/**
+	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token (#226) —
+	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
+	 * for the two operator set-position writes (beach-map replace + per-row reprice), distinct from the
+	 * profile {@code version} (#224). The caller (having pre-checked existence) compares the returned value
+	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
+	 * STALE_WRITE. This is the <strong>first</strong> lock both set-writes take — before
+	 * {@link #lockSetsOfVenue}'s / {@link #repriceRow}'s {@code set_position} locks — so both acquire the
+	 * venue row before its set rows (one consistent order → no deadlock, R-1). Crucially it does NOT
+	 * increment: the token is advanced by {@link #incrementSetVersion} <strong>only on the success path</strong>,
+	 * so a rejected write (LAYOUT_IN_USE / NO_SUCH_ROW) never spuriously advances it and self-conflicts the
+	 * acting tab's own retry (review finding; the earlier bump-first-then-reject persisted the bump).
+	 */
+	long lockAndReadSetVersion(VenueId venueId);
+
+	/**
+	 * Advance the venue's {@code set_version} by one (#226) — {@code UPDATE venue SET set_version =
+	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced /
+	 * the row repriced). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
+	 * so this is race-free; a concurrent writer blocked on that lock re-reads the advanced value and gets
+	 * STALE_WRITE.
+	 */
+	void incrementSetVersion(VenueId venueId);
+
 	/** Whether the set with this id belongs to the venue. */
 	boolean setExists(VenueId venueId, SetId setId);
 

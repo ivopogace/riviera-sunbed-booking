@@ -46,6 +46,13 @@ export interface VenueMapView {
   /** Distance to the water in metres (T7, #140), or `null`/absent when not stated. */
   readonly distanceToWaterM?: number | null;
   readonly sets: readonly SetView[];
+  /**
+   * The layout's optimistic-concurrency stamp (#226): the venue's `set_version`, echoed back by the
+   * operator layout + pricing tabs on the next beach-map replace / per-row reprice so a stale write is
+   * rejected `409 STALE_WRITE` instead of clobbering. Tourists ignore it. Optional because test doubles
+   * and older payloads may omit it; the real API always sends it (a number ≥ 0).
+   */
+  readonly setVersion?: number;
 }
 
 /**

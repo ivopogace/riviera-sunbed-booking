@@ -51,6 +51,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * reject-unless-unclaimed guard refuses a replace when the venue has a booking or an availability hold,
  * leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2 / R-1: the
  * {@code set_availability} CASCADE must never silently fire).
+ *
+ * <p>Since #226 the replace is optimistic-locked on the venue's {@code set_version}: every replace body
+ * carries the required {@code expectedVersion} the tab loaded from the map read, and a stale token is
+ * rejected 409 {@code STALE_WRITE} without clobbering the current layout
+ * ({@link #staleReplaceIs409StaleWrite}). The bump is acquired before the invariant-#2 lock (R-1), so the
+ * concurrent-hold scenarios above still hold.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -83,8 +89,26 @@ class BeachMapReplaceIT {
 				""".formatted(rowLabel, positionNo, tier, pool, minor, gridX, gridY);
 	}
 
-	private static String layout(String... cells) {
-		return "{\"sets\":[" + String.join(",", cells) + "]}";
+	/**
+	 * The versioned replace body (#226): the sets array plus the required optimistic-concurrency token
+	 * ({@code expectedVersion} = the {@code setVersion} the tab loaded from the map read).
+	 */
+	private static String layout(long expectedVersion, String... cells) {
+		return "{\"sets\":[" + String.join(",", cells) + "],\"expectedVersion\":" + expectedVersion + "}";
+	}
+
+	/** The venue's current layout token, read from the public map read (mirrors the FE load-then-save). */
+	private long currentSetVersion(long venueId) throws Exception {
+		MvcResult result = mvc.perform(get("/api/venues/{id}", venueId))
+				.andExpect(status().isOk()).andReturn();
+		String json = result.getResponse().getContentAsString();
+		return Long.parseLong(com.jayway.jsonpath.JsonPath.read(json, "$.setVersion").toString());
+	}
+
+	/** The venue's current {@code set_version} straight from the row (for the direct-service-call race). */
+	private long setVersionOf(long venueId) {
+		return jdbc.sql("SELECT set_version FROM venue WHERE id = :v")
+				.param("v", venueId).query(Long.class).single();
 	}
 
 	private long createVenue(String name) throws Exception {
@@ -116,8 +140,9 @@ class BeachMapReplaceIT {
 	void replaceThenTouristMapReflectsGrid() throws Exception {
 		long venue = createVenue("Generate Club");
 
-		// A 2x3 grid: row A (sea-facing) priced front-row premium, row B standard. One PUT.
-		putLayout(venue, layout(
+		// A 2x3 grid: row A (sea-facing) priced front-row premium, row B standard. One PUT off the fresh
+		// venue's set_version (0).
+		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
 				cell("A", 3, "PREMIUM", "ONLINE", 3500, 3, 1),
@@ -141,12 +166,13 @@ class BeachMapReplaceIT {
 	@Test
 	void regenerateReplacesThePreviousLayout() throws Exception {
 		long venue = createVenue("Regenerate Club");
-		putLayout(venue, layout(
+		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204);
 
-		// AC-1: regenerate to a smaller grid replaces (not appends) — the old sets are gone.
-		putLayout(venue, layout(cell("A", 1, "PREMIUM", "ONLINE", 4000, 1, 1)), 204);
+		// AC-1: regenerate to a smaller grid replaces (not appends) — the old sets are gone. The first
+		// replace bumped set_version to 1, so this one must load it afresh (a stale 0 would be 409).
+		putLayout(venue, layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 4000, 1, 1)), 204);
 
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(jsonPath("$.sets.length()").value(1))
@@ -154,11 +180,37 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
+	void staleReplaceIs409StaleWrite() throws Exception {
+		// #226, AC-6: two tabs both loaded set_version 0; the first replace bumps it to 1, then a second
+		// replace still carrying the stale 0 is 409 STALE_WRITE (RFC-7807, code STALE_WRITE) — the winner's
+		// layout survives, never clobbered by the stale tab.
+		long venue = createVenue("Stale Layout Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204); // set_version 0 -> 1
+
+		// A stale tab (still at 0) tries to overwrite with a different, smaller layout — rejected.
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(0, cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+
+		// The winner's two-set layout survives untouched — the stale single-cell replace never landed, and
+		// the token is unchanged (a rejected stale write does not bump).
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets.length()").value(2))
+				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(3500))
+				.andExpect(jsonPath("$.setVersion").value(1));
+	}
+
+	@Test
 	void poolFlagPersistsAndReadsBack() throws Exception {
 		long venue = createVenue("Pool Club");
 
 		// AC-4: an ONLINE and a WALK_IN set in one layout — both pools round-trip distinctly (#3).
-		putLayout(venue, layout(
+		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "STANDARD", "WALK_IN", 2000, 2, 1)), 204);
 
@@ -170,28 +222,34 @@ class BeachMapReplaceIT {
 	@Test
 	void rejectsWhenVenueHasBooking() throws Exception {
 		long venue = createVenue("Booked Club");
-		putLayout(venue, layout(
+		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
 		long bookedSet = setIds(venue).getFirst();
 		seedBooking(venue, bookedSet);
 
-		// AC-6: a venue with a booking is locked — the replace is 409 LAYOUT_IN_USE and nothing changes.
+		// AC-6/AC-8: a venue with a booking is locked — the replace is 409 LAYOUT_IN_USE and nothing changes.
+		// The token is current (not stale), so the reject is LAYOUT_IN_USE — the in-use guard, not STALE_WRITE.
+		long tokenBefore = currentSetVersion(venue);
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
+						.content(layout(tokenBefore, cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"));
 
-		// The original two sets are untouched (no partial delete).
-		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(2));
+		// The original two sets are untouched (no partial delete), and — #226 review fix — the LAYOUT_IN_USE
+		// reject did NOT advance set_version (no spurious bump), so the acting tab's token still matches and
+		// a retry after the lock clears would not falsely 409 STALE_WRITE.
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets.length()").value(2))
+				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore));
 	}
 
 	@Test
 	void rejectsWhenVenueHasWalkInHoldAndHoldSurvives() throws Exception {
 		long venue = createVenue("Held Club");
-		putLayout(venue, layout(
+		putLayout(venue, layout(0,
 				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
 		long heldSet = setIds(venue).getFirst();
@@ -200,10 +258,10 @@ class BeachMapReplaceIT {
 				VALUES (:s, DATE '2035-07-01', 'STAFF_MARKED')
 				""").param("s", heldSet).update();
 
-		// AC-6 / R-1: the guard consults availability BEFORE any delete, so the CASCADE never fires.
+		// AC-6/AC-8 / R-1: the guard consults availability BEFORE any delete, so the CASCADE never fires.
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
+						.content(layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"));
 
@@ -217,8 +275,10 @@ class BeachMapReplaceIT {
 	@Test
 	void rejectsEmptyLayout() throws Exception {
 		long venue = createVenue("Empty Club");
+		// Token present (0) so the request passes the required-token check and reaches the EMPTY_LAYOUT
+		// rule — proving the empty-layout guard, not the missing-token 400.
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content("{\"sets\":[]}"))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"sets\":[],\"expectedVersion\":0}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("EMPTY_LAYOUT"));
 	}
@@ -228,7 +288,7 @@ class BeachMapReplaceIT {
 		long venue = createVenue("Dup Club");
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(
+						.content(layout(0,
 								cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 								cell("B", 2, "STANDARD", "ONLINE", 2000, 1, 1)))) // same grid cell (1,1)
 				.andExpect(status().isConflict())
@@ -246,11 +306,14 @@ class BeachMapReplaceIT {
 	@RepeatedTest(4)
 	void concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold(RepetitionInfo info) throws Exception {
 		long venue = createVenue("Race Club " + info.getCurrentRepetition());
-		putLayout(venue, layout(
+		putLayout(venue, layout(0,
 				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
 		long setX = setIds(venue).getFirst();
 		OperatorId owner = seedOwner(venue);
+		// The seed replace bumped set_version to 1; the racing replace loads it so it passes the token gate
+		// and exercises the invariant-#2 lock path (not STALE_WRITE — the mark never touches set_version).
+		long loadedSetVersion = setVersionOf(venue);
 		LocalDate date = LocalDate.now().plusYears(2).plusDays(info.getCurrentRepetition());
 
 		CountDownLatch gate = new CountDownLatch(1);
@@ -268,7 +331,7 @@ class BeachMapReplaceIT {
 		};
 		Callable<ReplaceLayoutOutcome> replace = () -> {
 			gate.await();
-			return editBeachMap.replaceLayout(owner, new VenueId(venue), new LayoutCommand(
+			return editBeachMap.replaceLayout(owner, new VenueId(venue), loadedSetVersion, new LayoutCommand(
 					List.of(new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))));
 		};
 

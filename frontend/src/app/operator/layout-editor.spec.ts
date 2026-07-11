@@ -16,7 +16,7 @@ describe('LayoutEditor (#172)', () => {
   let http: HttpTestingController;
   let host: HTMLElement;
 
-  function render(initialSets: SetView[] = []): void {
+  function configure(): void {
     TestBed.configureTestingModule({
       imports: [LayoutEditor],
       providers: [
@@ -40,10 +40,25 @@ describe('LayoutEditor (#172)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
-    // The constructor loads the current layout — flush it so the grid seeds (or stays empty).
+  }
+
+  function render(initialSets: SetView[] = [], setVersion = 0): void {
+    configure();
+    // The constructor loads the current layout — flush it so the grid seeds (or stays empty) and the
+    // optimistic-concurrency token (#226 setVersion) is captured for the next save.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: initialSets });
+      .flush({ id: 1, name: 'V', sets: initialSets, setVersion });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+  }
+
+  /** The initial map read FAILS — no #226 token is captured (loadFailed), so Save must not silently no-op. */
+  function renderWithFailedLoad(): void {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -162,10 +177,110 @@ describe('LayoutEditor (#172)', () => {
       gridY: 1,
     });
     expect(req.request.body.sets[0].price.minorUnits).toBe(3500);
+    // #226: the loaded optimistic-concurrency token rides the write body (0 for the fresh render mock).
+    expect(req.request.body.expectedVersion).toBe(0);
     req.flush(null);
     await fixture.whenStable(); // onSave awaits the PUT — settle the notice
     fixture.detectChanges();
     expect(byId('layout-saved')).toBeTruthy();
+  });
+
+  it('keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server', async () => {
+    // #226, AC-9: a stale-write conflict must NOT discard the operator's in-progress edits — it shows a
+    // banner and offers an explicit Reload that re-seeds from the latest server layout.
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3); // loaded at set_version 3
+    expect(cells()).toHaveLength(1);
+    // Paint the loaded cell to walk-in — an in-progress edit that must survive the 409.
+    byId('layout-tool-walkin').click();
+    fixture.detectChanges();
+    cells()[0].click();
+    fixture.detectChanges();
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin');
+
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The stale banner is shown and the walk-in edit is preserved (no silent discard / clobber).
+    expect(byId('layout-stale-banner')).toBeTruthy();
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin');
+
+    // Reload discards the edits in favour of the latest server layout (a standard cell) and clears the banner.
+    byId('layout-stale-reload').click();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [seat(1, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 4 });
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-stale-banner"]')).toBeNull();
+    expect(cells()[0].getAttribute('data-state')).toBe('standard');
+  });
+
+  it('keeps the grid + banner and shows a retry hint when the Reload GET fails (no data loss)', async () => {
+    // #226 review fix: reloadAfterStale must not clear the grid until the reload succeeds — a failed
+    // reload keeps the painted work, the stale token, and the banner, and shows a retry hint.
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+    byId('layout-tool-walkin').click();
+    fixture.detectChanges();
+    cells()[0].click(); // paint an edit
+    fixture.detectChanges();
+
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-stale-banner')).toBeTruthy();
+
+    // Reload, but the GET fails.
+    byId('layout-stale-reload').click();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+
+    // The painted grid, the banner, and the token are all preserved; a retry hint is shown.
+    expect(byId('layout-stale-banner')).toBeTruthy();
+    expect(byId('layout-reload-failed')).toBeTruthy();
+    expect(cells()).toHaveLength(1);
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin');
+  });
+
+  it('shows a load-failed message (not a silent no-op) when Save is pressed after a failed initial load', () => {
+    // #226 review fix: with no token (the initial map read failed), Save must surface an error prompting a
+    // refresh — not silently do nothing (the pre-fix behaviour).
+    renderWithFailedLoad();
+    generate('1', '1');
+
+    byId('layout-save').click();
+    fixture.detectChanges();
+
+    http.expectNone((r) => r.method === 'PUT'); // no unsafe save without the token
+    expect(byId('layout-load-failed')).toBeTruthy();
+  });
+
+  it('advances the loaded token on a successful save so a second save is not falsely stale', async () => {
+    // #226: the conditional write bumps set_version by exactly one; the editor advances its token so a
+    // second consecutive save by the same operator sends the new value, not the stale one.
+    render([], 5); // loaded at set_version 5, empty venue
+    generate('1', '1');
+
+    byId('layout-save').click();
+    const first = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'));
+    expect(first.request.body.expectedVersion).toBe(5);
+    first.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    byId('layout-save').click();
+    const second = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'));
+    expect(second.request.body.expectedVersion).toBe(6); // advanced, not the stale 5
+    second.flush(null);
+    await fixture.whenStable();
   });
 
   it('shows the layout-locked message when the server rejects LAYOUT_IN_USE', async () => {

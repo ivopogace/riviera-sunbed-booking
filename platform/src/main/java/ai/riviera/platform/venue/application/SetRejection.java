@@ -5,7 +5,8 @@ package ai.riviera.platform.venue.application;
  * failures shared by {@link AddSetOutcome} and {@link ChangeOutcome}. A lost layout (a taken
  * cell, a duplicate position) is normal flow, returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
- * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}→404, {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409.
+ * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}→404, {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}/
+ * {@code STALE_WRITE}→409.
  */
 public enum SetRejection {
 
@@ -15,6 +16,14 @@ public enum SetRejection {
 	NO_SUCH_SET,
 	/** No set on the venue carries the given row label (O4 reprice, issue #174). */
 	NO_SUCH_ROW,
+	/**
+	 * The venue's {@code set_version} was bumped by another writer (a concurrent reprice or replace) since
+	 * the tab loaded the map, so the conditional bump matched no row — the reprice is rejected rather than
+	 * clobbering the current prices (optimistic-concurrency loss, #226). Reprice-only, like
+	 * {@link #NO_SUCH_ROW} (the shared {@code addSet}/{@code editSet}/{@code removeSet} paths never reach
+	 * it). Maps to 409 {@code STALE_WRITE}.
+	 */
+	STALE_WRITE,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */
 	CELL_TAKEN,
 	/** Another set already occupies the target {@code (row_label, position_no)} slot. */

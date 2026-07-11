@@ -39,6 +39,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       hold and the set id intact — invariant #2 is never engaged (no delete, no cascade, no lock).</li>
  *   <li><strong>AC-5</strong>: an unknown row / venue is {@code 404}.</li>
  *   <li><strong>AC-4</strong>: a negative or non-numeric price is {@code 400 INVALID_REQUEST} (§6b).</li>
+ *   <li><strong>#226</strong>: the reprice is optimistic-locked on the venue's {@code set_version} — every
+ *       body carries the required {@code expectedVersion} the tab loaded, and a stale token is 409
+ *       {@code STALE_WRITE} without clobbering the current prices ({@link #staleRepriceIs409StaleWrite}).</li>
  * </ul>
  * The cross-venue {@code 403} (invariant #13) lives in the {@code CrossVenueDenialIT} matrix.
  */
@@ -71,8 +74,18 @@ class VenueRepriceIT {
 				""".formatted(rowLabel, positionNo, tier, pool, minor, gridX, gridY);
 	}
 
-	private static String priceBody(long minor) {
-		return "{\"price\":{\"minorUnits\":%d,\"currency\":\"EUR\"}}".formatted(minor);
+	/** The reprice body (#226): the price plus the required optimistic-concurrency token. */
+	private static String priceBody(long minor, long expectedVersion) {
+		return "{\"price\":{\"minorUnits\":%d,\"currency\":\"EUR\"},\"expectedVersion\":%d}"
+				.formatted(minor, expectedVersion);
+	}
+
+	/** The venue's current layout token, read from the public map read (mirrors the FE load-then-save). */
+	private long currentSetVersion(long venueId) throws Exception {
+		MvcResult result = mvc.perform(get("/api/venues/{id}", venueId))
+				.andExpect(status().isOk()).andReturn();
+		String json = result.getResponse().getContentAsString();
+		return Long.parseLong(com.jayway.jsonpath.JsonPath.read(json, "$.setVersion").toString());
 	}
 
 	private long createVenue(String name) throws Exception {
@@ -91,11 +104,13 @@ class VenueRepriceIT {
 	/** Seed a venue with row A (two ONLINE + one WALK_IN, all 3500) and row B (one ONLINE, 2000). */
 	private long seedVenue(String name) throws Exception {
 		long venue = createVenue(name);
+		// The seed replace runs off the fresh venue's set_version (0) and bumps it to 1 (#226); reprice
+		// bodies below therefore load the current token rather than assume 0.
 		String layout = "{\"sets\":[" + String.join(",",
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
 				cell("A", 3, "PREMIUM", "WALK_IN", 3500, 3, 1),
-				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)) + "]}";
+				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)) + "],\"expectedVersion\":0}";
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(layout))
 				.andExpect(status().isNoContent());
@@ -111,9 +126,10 @@ class VenueRepriceIT {
 	void repricesEverySetInTheRowAndReadReflectsIt() throws Exception {
 		long venue = seedVenue("Reprice Club");
 
-		// AC-1: reprice row A to €42.00 — one PUT, applied to every A set (both pools).
+		// AC-1: reprice row A to €42.00 — one PUT, applied to every A set (both pools). Loads the current
+		// set_version (the seed replace bumped it to 1).
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200)))
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, currentSetVersion(venue))))
 				.andExpect(status().isNoContent());
 
 		// AC-2/AC-8: the U1 read (tourist map source) shows all three A sets at 4200, WALK_IN preserved,
@@ -142,7 +158,7 @@ class VenueRepriceIT {
 				""").param("s", a1).update();
 
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(priceBody(5000)))
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(5000, currentSetVersion(venue))))
 				.andExpect(status().isNoContent());
 
 		// The hold survives, the set id is unchanged, and the price was updated.
@@ -155,19 +171,53 @@ class VenueRepriceIT {
 	}
 
 	@Test
+	void staleRepriceIs409StaleWrite() throws Exception {
+		// #226, AC-6: two tabs both loaded set_version V (post-seed); the first reprice bumps it to V+1,
+		// then a second reprice still carrying the stale V is 409 STALE_WRITE (RFC-7807, code STALE_WRITE)
+		// — the winner's prices survive, never clobbered by the stale tab.
+		long venue = seedVenue("Stale Reprice Club");
+		long stale = currentSetVersion(venue); // the loaded token (= 1 after the seed replace)
+
+		// First reprice off the loaded token succeeds and bumps set_version.
+		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, stale)))
+				.andExpect(status().isNoContent());
+
+		// A stale tab still at the old token tries to reprice to 9999 — rejected, prices unchanged.
+		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(9999, stale)))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+
+		// The winner's 4200 survives (row A, first rendered set) — the stale 9999 never landed.
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(4200));
+	}
+
+	@Test
 	void unknownRowIsNotFound() throws Exception {
 		long venue = seedVenue("Unknown Row Club");
+		// Token is current (loaded from the map) so the request passes the version gate and reaches the
+		// NO_SUCH_ROW rule — proving the unknown-row path, not a stale-write.
+		long tokenBefore = currentSetVersion(venue);
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "Z").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200)))
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, tokenBefore)))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NO_SUCH_ROW"));
+
+		// #226 review fix: a NO_SUCH_ROW reject must NOT advance set_version (no spurious bump), so the
+		// acting tab's next edit of a real row off the same loaded token still works.
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore));
 	}
 
 	@Test
 	void unknownVenueIsNotFound() throws Exception {
+		// Unknown venue → NO_SUCH_VENUE before the bump, so the token value is immaterial (0 present).
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", 999_999L, "A").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200)))
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, 0)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));
 	}
@@ -175,8 +225,10 @@ class VenueRepriceIT {
 	@Test
 	void rejectsNegativePrice() throws Exception {
 		long venue = seedVenue("Negative Club");
+		// Token present (current) so the request reaches the price validation — proving the negative-price
+		// rejection, not the missing-token 400.
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(priceBody(-1)))
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(-1, currentSetVersion(venue))))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
@@ -188,11 +240,12 @@ class VenueRepriceIT {
 
 	@Test
 	void rejectsNonNumericPrice() throws Exception {
-		// A non-numeric minorUnits never reaches the command — Jackson rejects the body first.
+		// A non-numeric minorUnits never reaches the command — Jackson rejects the body first (the
+		// expectedVersion is irrelevant here: binding fails before any of our validation).
 		long venue = seedVenue("Non Numeric Club");
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"price\":{\"minorUnits\":\"abc\",\"currency\":\"EUR\"}}"))
+						.content("{\"price\":{\"minorUnits\":\"abc\",\"currency\":\"EUR\"},\"expectedVersion\":0}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
@@ -202,7 +255,7 @@ class VenueRepriceIT {
 		long venue = seedVenue("Bad Currency Club");
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"price\":{\"minorUnits\":4200,\"currency\":\"ABC\"}}"))
+						.content("{\"price\":{\"minorUnits\":4200,\"currency\":\"ABC\"},\"expectedVersion\":0}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
 				.andExpect(jsonPath("$.detail").value(Matchers.not(Matchers.containsString("ABC"))));

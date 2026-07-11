@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -97,6 +98,17 @@ export class LayoutEditor {
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a destructive regenerate over an existing grid. */
   protected readonly confirmRegen = signal(false);
+  /** The optimistic-concurrency token loaded with the map (#226 `setVersion`), echoed back on Save; a
+   *  `409 STALE_WRITE` means the layout moved on since — the editor keeps the grid and offers Reload. */
+  protected readonly loadedSetVersion = signal<number | null>(null);
+  /** True while a `reloadAfterStale()` GET is in flight (disables the Reload button, shows "Reloading…"). */
+  protected readonly reloading = signal(false);
+  /** True when the last Reload GET failed — the painted grid + stale token are kept, so surface a retry
+   *  hint instead of silently leaving a blank editor (review finding: no data loss on a failed reload). */
+  protected readonly reloadFailed = signal(false);
+  /** True when the initial map read failed (no `setVersion` token loaded). Save cannot proceed without the
+   *  token, so instead of a silent no-op the editor prompts a refresh (review finding). */
+  protected readonly loadFailed = signal(false);
 
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
@@ -253,12 +265,22 @@ export class LayoutEditor {
       this.errorCode.set('EMPTY_LAYOUT');
       return;
     }
+    const expectedVersion = this.loadedSetVersion();
+    if (expectedVersion === null) {
+      // The initial map read failed, so we never got the concurrency token; a save would be unsafe. Don't
+      // silently no-op (review finding) — surface it and prompt a refresh, which re-loads the token.
+      this.loadFailed.set(true);
+      return;
+    }
     this.saving.set(true);
     this.errorCode.set(undefined);
     this.savedNotice.set(false);
     try {
-      await firstValueFrom(this.console.replaceLayout(this.venueId, { sets }));
+      await firstValueFrom(this.console.replaceLayout(this.venueId, { sets, expectedVersion }));
       this.savedNotice.set(true);
+      // The conditional write bumped set_version by exactly one (#226); advance our token so a second
+      // consecutive save by the same operator isn't spuriously rejected as a stale write.
+      this.loadedSetVersion.set(expectedVersion + 1);
     } catch (error) {
       const code = layoutErrorOf(error);
       this.errorCode.set(code);
@@ -287,11 +309,52 @@ export class LayoutEditor {
         return 'Two sets overlap on the grid. Please adjust and try again.';
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
+      case 'STALE_WRITE':
+        // Rendered by the dedicated recover-and-reload banner in the template, not this inline message.
+        return undefined;
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:
         return 'Something went wrong saving the layout. Please try again.';
     }
+  }
+
+  /**
+   * Recover from a `409 STALE_WRITE` (#226): re-fetch the latest server layout and — ONLY on a successful
+   * reload — discard the in-progress grid for it, re-seeding every cell, its prices, and the `setVersion`
+   * token, and clear the conflict banner. If the reload GET fails, the painted grid, the stale token, and
+   * the banner are all KEPT and a retry hint is shown — the operator never loses work to a failed reload
+   * (review finding). The 409 itself never touched the grid, so until a successful Reload the operator's
+   * work is intact.
+   */
+  protected reloadAfterStale(): void {
+    const venueId = this.venueId;
+    if (venueId === undefined || this.reloading()) {
+      return;
+    }
+    this.reloading.set(true);
+    this.reloadFailed.set(false);
+    this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
+      next: (venue) => {
+        // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
+        this.priceByCoord.clear();
+        this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
+        this.loadedSetVersion.set(venue.setVersion ?? null);
+        this.loadFailed.set(false);
+        this.seedFrom(venue.sets);
+        this.errorCode.set(undefined);
+        this.savedNotice.set(false);
+        this.reloading.set(false);
+      },
+      error: (error: unknown) => {
+        // Failure: keep the painted grid, the stale token, and the banner; show a retry hint — no data loss.
+        this.reloadFailed.set(true);
+        this.reloading.set(false);
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.operator.sessionLost();
+        }
+      },
+    });
   }
 
   private toRequest(): LayoutCellRequest[] {
@@ -319,12 +382,21 @@ export class LayoutEditor {
   }
 
   private loadExisting(venueId: number): void {
-    // Best-effort: seed the grid from the venue's current layout so the operator paints on it. A failed
-    // read (or an empty venue) leaves the empty state, from which Generate builds a fresh grid.
+    // Best-effort: seed the grid from the venue's current layout so the operator paints on it. An empty
+    // venue leaves the empty state, from which Generate builds a fresh grid. Always capture the
+    // optimistic-concurrency token (#226 setVersion) so a later Save can echo it back; a failed read leaves
+    // the token null and sets loadFailed so Save surfaces a refresh prompt (never a silent no-op).
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
-      next: (venue) => this.seedFrom(venue.sets),
-      error: () => {
-        // best-effort — start from the empty state
+      next: (venue) => {
+        this.loadFailed.set(false);
+        this.loadedSetVersion.set(venue.setVersion ?? null);
+        this.seedFrom(venue.sets);
+      },
+      error: (error: unknown) => {
+        this.loadFailed.set(true);
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.operator.sessionLost();
+        }
       },
     });
   }

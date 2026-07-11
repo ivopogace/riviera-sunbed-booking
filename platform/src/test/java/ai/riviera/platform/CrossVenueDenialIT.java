@@ -123,11 +123,14 @@ class CrossVenueDenialIT {
 	@Test
 	void beachMapLayoutReplaceByNonOwnerIs403() throws Exception {
 		// #172: the bulk layout replace is venue-scoped — a non-owner is denied before any read/write,
-		// so Miramar's layout is never touched. Ownership asserts first (invariant #13, BOLA).
+		// so Miramar's layout is never touched. Ownership asserts first (invariant #13, BOLA). The body is
+		// VALID — including the #226 required expectedVersion — so requiredExpectedVersion() passes and the
+		// 403 is genuinely from ownership, not a 400 (parse-then-authorize; mirrors FULL_PROFILE_BODY).
 		actingAs(operatorA);
 		String layoutBody = """
 				{"sets":[{"rowLabel":"A","positionNo":1,"tier":"PREMIUM","pool":"ONLINE",
-				 "price":{"minorUnits":3500,"currency":"EUR"},"gridX":1,"gridY":1}]}
+				 "price":{"minorUnits":3500,"currency":"EUR"},"gridX":1,"gridY":1}],
+				 "expectedVersion":0}
 				""";
 		mvc.perform(put("/api/venues/{v}/beach-map", MIRAMAR).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(layoutBody))
@@ -139,11 +142,13 @@ class CrossVenueDenialIT {
 	@Test
 	void rowRepriceByNonOwnerIs403() throws Exception {
 		// O4 (#174): repricing a beach-map row is venue-scoped — a non-owner is denied before any
-		// read/write, so Miramar's prices are never touched. Ownership asserts first (invariant #13).
+		// read/write, so Miramar's prices are never touched. Ownership asserts first (invariant #13). The
+		// body is VALID — including the #226 required expectedVersion — so the 403 is genuinely from
+		// ownership, not a 400 (parse-then-authorize; mirrors FULL_PROFILE_BODY).
 		actingAs(operatorA);
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", MIRAMAR, "A").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"price\":{\"minorUnits\":9999,\"currency\":\"EUR\"}}"))
+						.content("{\"price\":{\"minorUnits\":9999,\"currency\":\"EUR\"},\"expectedVersion\":0}"))
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));

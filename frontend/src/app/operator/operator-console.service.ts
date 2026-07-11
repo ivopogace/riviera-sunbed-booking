@@ -102,12 +102,19 @@ export class OperatorConsoleService {
 
   /**
    * Reprice every set in one beach-map row (O4, #174). Non-destructive and owner-asserted server-side
-   * (invariant #13); `price` is integer minor units + ISO currency (invariant #5). `204` on success.
+   * (invariant #13); `price` is integer minor units + ISO currency (invariant #5). `expectedVersion` is
+   * the required optimistic-concurrency token (#226 `setVersion`) the tab loaded — a stale token is
+   * rejected `409 STALE_WRITE`, a missing one `400`. `204` on success.
    */
-  repriceRow(venueId: number, rowLabel: string, price: MoneyView): Observable<void> {
+  repriceRow(
+    venueId: number,
+    rowLabel: string,
+    price: MoneyView,
+    expectedVersion: number,
+  ): Observable<void> {
     return this.http.put<void>(
       `${this.base}/api/venues/${venueId}/rows/${encodeURIComponent(rowLabel)}/price`,
-      { price },
+      { price, expectedVersion },
     );
   }
 
@@ -298,6 +305,7 @@ export function repriceErrorOf(error: unknown): RepriceErrorCode {
       case 'NO_SUCH_ROW':
       case 'NO_SUCH_VENUE':
       case 'INVALID_REQUEST':
+      case 'STALE_WRITE':
       case 'CONFLICT':
         return code;
       default:
@@ -321,6 +329,7 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
       case 'EMPTY_LAYOUT':
       case 'LAYOUT_TOO_LARGE':
       case 'NO_SUCH_VENUE':
+      case 'STALE_WRITE':
       case 'INVALID_REQUEST':
       case 'CONFLICT':
         return code;
