@@ -145,6 +145,10 @@ query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
   tourists; sunbeds/bar are stored + operator-preview only.
 - **Assumption:** Upload transport is `multipart/form-data` (`MultipartFile`), one file per
   request per slot.
+- **OQ-3 (Sonar S6218):** `StoredVariant` / `StoredBytes` are records with a `byte[]` component
+  (pure carriers, never compared by value). Watch for Sonar `java:S6218` at the gate; if flagged, fix
+  with a documented deep `equals`/`hashCode` (or narrow the carrier). — *Owner:* impl · *Resolves by:*
+  Sonar gate.
 
 ### Resolved
 - Storage backend — Postgres `bytea` behind `PhotoStorage` port (**ADR-0008**, grill 2026-07-11).
@@ -229,14 +233,15 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `plan — drafted, pending maintainer look; ADR-0008 + this plan committed next`
+**Stage pointer:** `implement — Phase 0 DONE (schema + storage port; red→green + structural net GREEN). Phase 1 (PhotoProcessor) next.`
 
-**Next action:** commit ADR-0008 + this plan doc on `feature/venue-photos`; then begin **Phase 0**
-(Flyway V24 + tables + vocabulary + `PhotoStorage` port/adapter/fake), test-first.
+**Next action:** begin **Phase 1** — `PhotoProcessor` (validate → EXIF-strip → resize → encode),
+test-first; resolve OQ-1 (codec) + OQ-2 (image lib), add the lib to `platform/build.gradle`, and pin
+the resize targets against the card/banner/preview geometry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | | |
+| 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | ✅ | Phase-0 commit (this window) |
 | 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | | |
 | 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | | |
 | 3 — FE operator upload UI + service + e2e | | |
@@ -295,25 +300,29 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `PhotoStorage`, `JdbcPhotoStorage`, `InMemoryPhotoStorage`, `StoredVariant`/`ProcessedPhoto` ·
 Test `JdbcPhotoStorageIT`.
 
-- [ ] **Step 1 — failing test:** `JdbcPhotoStorageIT` (Testcontainers Postgres) — store a photo
-  with three variants for `(V, cover)`; assert `list(V)` returns the metadata (no bytes),
-  `loadBytes(V, hash)` returns the stored bytes, a second store to `(V, cover)` **replaces** (one
-  row per slot), and `delete(V, cover)` removes metadata + variants (cascade).
-- [ ] **Step 2 — run, verify fail** — `.\platform\gradlew.bat -p platform test --tests "*JdbcPhotoStorageIT*"` → FAIL (no table / no adapter). *(Skips cleanly if Docker is down; CI runs it.)*
-- [ ] **Step 3 — implement:** V24 migration + `JdbcClient` adapter + the value/id types + fake.
-  - `venue_photo`: `id UUID PK`, `venue_id UUID NOT NULL REFERENCES venue(id) ON DELETE CASCADE`,
-    `slot TEXT NOT NULL CHECK (slot IN ('cover','sunbeds','bar'))`, `created_at TIMESTAMPTZ`,
-    `updated_at TIMESTAMPTZ`, `UNIQUE (venue_id, slot)`, `INDEX (venue_id)`.
-  - `venue_photo_variant`: `id UUID PK`, `photo_id UUID NOT NULL REFERENCES venue_photo(id) ON
-    DELETE CASCADE`, `surface TEXT NOT NULL CHECK (surface IN ('card','banner','preview'))`,
-    `content_hash TEXT NOT NULL`, `content_type TEXT NOT NULL`, `width INT NOT NULL`,
-    `height INT NOT NULL`, `byte_size INT NOT NULL`, `bytes BYTEA NOT NULL`,
-    `UNIQUE (photo_id, surface)`, `UNIQUE (venue_id, content_hash)` (carry `venue_id` for the
-    scoped serving lookup + hash uniqueness within a venue), `INDEX (photo_id)`.
-- [ ] **Step 4 — run, verify pass**; broaden to `--tests "*venue*"` for the module.
-- [ ] **Step 5 — generalization pass** — n/a (new capability); record "none".
-- [ ] **Step 6 — commit** — `feat(venue): V24 venue_photo + PhotoStorage bytea port (#142)`.
-- [ ] **Step 7 — update Execution status** in the same commit window.
+- [x] **Step 1 — failing test:** `JdbcPhotoStorageIT` (Testcontainers Postgres) — variants
+  round-trip, `listMetadata` is blob-free, `loadBytes` finds by hash, a re-upload **replaces** the
+  slot (one photo per `(venue, slot)`), and `delete` erases metadata + variant bytes (cascade).
+- [x] **Step 2 — ran, RED confirmed** — `--tests "*JdbcPhotoStorageIT*"` → 4× `BadSqlGrammarException` (`relation "venue_photo" does not exist`); proves the IT hits real persistence.
+- [x] **Step 3 — implemented (as shipped, corrects the pre-code sketch):** V24 + `JdbcClient` adapter + value types + fake.
+  - `venue_photo`: `id BIGINT GENERATED ALWAYS AS IDENTITY PK`, `venue_id BIGINT NOT NULL REFERENCES
+    venue(id) ON DELETE CASCADE`, `slot TEXT CHECK (slot IN ('COVER','SUNBEDS','BAR'))`, `created_at
+    TIMESTAMPTZ`, `UNIQUE (venue_id, slot)`, index on `venue_id`.
+  - `venue_photo_variant`: `id BIGINT … IDENTITY PK`, `photo_id BIGINT REFERENCES venue_photo(id) ON
+    DELETE CASCADE`, `venue_id BIGINT REFERENCES venue(id) ON DELETE CASCADE` (denormalised for the
+    scoped serving lookup), `surface TEXT CHECK ('CARD','BANNER','PREVIEW')`, `content_hash TEXT`,
+    `content_type TEXT`, `width/height/byte_size INT`, `bytes BYTEA`, `UNIQUE (photo_id, surface)`,
+    `UNIQUE (venue_id, content_hash)` (leading `venue_id` also indexes the FK), index on `photo_id`.
+  - **Corrections vs the pre-code sketch:** PKs are `BIGINT` identity, **not** UUID (matches
+    venue/set_position); enum tokens are **UPPERCASE** in the DB `CHECK` (mirrors `booking_mode`/
+    `pool`); the REST path carries the lower-case slot form (mapped in the Phase-2 controller);
+    `venue_photo` keeps only `created_at` (replace = new row, so no `updated_at`).
+- [x] **Step 4 — ran, GREEN** — `--tests "*JdbcPhotoStorageIT*"` BUILD SUCCESSFUL (4/4); structural
+  net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`,
+  `*PublishedSurfacePlacementArchitectureTests*`) also GREEN.
+- [x] **Step 5 — generalization pass** — new capability, no existing pattern to generalise; **none**.
+- [x] **Step 6 — commit** — `feat(venue): V24 venue_photo + PhotoStorage bytea port (#142)`.
+- [x] **Step 7 — update Execution status** in the same commit window.
 
 > Run `--tests "*ModularityTests*" "*JdbcOnlyArchitectureTests*" "*PackageShapeArchitectureTests*"`
 > at the end of phase 0 (new packages/types) and again after phase 2 (new controller/adapters).

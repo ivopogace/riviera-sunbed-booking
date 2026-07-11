@@ -1,0 +1,15 @@
+package ai.riviera.platform.venue.vocabulary;
+
+/**
+ * The three designed venue photo slots (#142): the {@code COVER} (sea view — the one surfaced to
+ * tourists on Discover cards + the beach-map banner), plus {@code SUNBEDS} and {@code BAR} shown
+ * only in the operator console. At most one photo per {@code (venue, slot)} — a re-upload replaces.
+ *
+ * <p>The enum name is the wire + DB token (DB {@code CHECK (slot IN ('COVER','SUNBEDS','BAR'))},
+ * mirroring {@code BookingMode} / {@code Amenity}); the REST path carries the lower-case form.
+ */
+public enum PhotoSlot {
+	COVER,
+	SUNBEDS,
+	BAR
+}
