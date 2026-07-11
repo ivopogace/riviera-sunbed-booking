@@ -120,15 +120,15 @@ query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Decompression bomb / huge decode OOMs the free-tier instance | med | high | Hard ~50 MP / 12 000-px **dimension guard** decided *before* full decode (read header dims first) + 25 MB byte cap + bounded upload concurrency; `PhotoProcessorTest` guard tests (per-side + megapixel) | impl | mitigated (Phase 1) |
-| R-2 | Cross-venue write (BOLA, invariant #13) | med | high | `assertOwns(operator, venueId)` as the **first** line of every write service method (reuses `venue`→`operator::api`); `CrossVenueDenialIT` extended to photo routes | impl | open |
-| R-3 | `bytea` leaks into list/metadata queries → fat responses, Neon load | med | med | Blob isolated in `venue_photo_variant`; read-model + list SQL select metadata columns only, **never** `SELECT *`; review check (RV-BE) | impl | open |
-| R-4 | Tourist read puts Neon in the hot path | med | high | Content-hash URL + `Cache-Control: immutable` + `ETag` + `304`; blob read only on cache miss; `VenuePhotoServingIT` | impl | open |
+| R-2 | Cross-venue write (BOLA, invariant #13) | med | high | `assertOwns(operator, venueId)` as the **first** line of every write service method (reuses `venue`→`operator::api`); `CrossVenueDenialIT` extended to photo routes | impl | mitigated (Phase 2: service-level `VenuePhotoServiceTest` + HTTP `CrossVenueDenialIT` photo routes + owner-positive) |
+| R-3 | `bytea` leaks into list/metadata queries → fat responses, Neon load | med | med | Blob isolated in `venue_photo_variant`; read-model + list SQL select metadata columns only, **never** `SELECT *`; review check (RV-BE) | impl | mitigated (Phase 2b: `bytes` selected only in `loadBytes`, grep-verified; review re-checks) |
+| R-4 | Tourist read puts Neon in the hot path | med | high | Content-hash URL + `Cache-Control: immutable` + `ETag` + `304`; blob read only on cache miss; `VenuePhotoServingIT` | impl | mitigated (Phase 2: serving IT incl. 304-without-blob-read pin) |
 | R-5 | Flyway V24 collision (case #122/#127) | low | high | Verified **V24 free on `main`, no open PRs**; if a parallel slice merges V24 first, **this branch renumbers** (merges-second rule) | impl | verified-free |
 | R-6 | `Content-Type` header spoofed | med | med | Validate **actual bytes** via image decode + magic-byte sniff; ignore the client header for the trust decision | impl | mitigated (Phase 1: magic sniff + `rejectsNonImageBytesByMagicNotContentType`) |
 | R-7 | WebP **encoding** needs a native lib (awkward in the JDK/Docker build) | med | low | Default variant output to **progressive JPEG** (native `ImageIO`); revisit WebP only if a clean pure-JVM encoder is confirmed (OQ-1) | impl | closed — JPEG output chosen |
 | R-8 | EXIF-orientation lost on re-encode → sideways photos | med | med | Thumbnailator `useExifOrientation(true)` applies orientation to pixels, then JPEG re-encode drops all metadata; `PhotoProcessorTest.stripsExifMetadataFromEveryVariant` | impl | mitigated (Phase 1) |
-| R-9 | Ad-hoc `{"error":…}` body instead of the central contract | low | med | Errors as centralized `ProblemDetail` (`riviera-java-conventions` §6b) | impl | open |
-| R-10 | Public serving route breaks the `/api/**` security rules | med | high | `SecurityConfig`: permit **GET** `/api/venues/*/photos/**` publicly, keep **PUT/DELETE** authenticated; a shared-file change → `/security-review` + review flag | impl | open |
+| R-9 | Ad-hoc `{"error":…}` body instead of the central contract | low | med | Errors as centralized `ProblemDetail` (`riviera-java-conventions` §6b) | impl | mitigated (Phase 2: all photo errors via `ApiProblem`/advice; 413 code pinned by `ApiErrorHandlerTest` after F-1) |
+| R-10 | Public serving route breaks the `/api/**` security rules | med | high | `SecurityConfig`: permit **GET** `/api/venues/*/photos/**` publicly, keep **POST/DELETE** authenticated; a shared-file change → `/security-review` + review flag | impl | mitigated (Phase 2: POST/DELETE role-gated, GET public — pinned by serving IT [no session] + `CrossVenueDenialIT`); `/security-review` still due at the gate |
 
 ## Open questions / Assumptions
 
@@ -241,17 +241,17 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phase 2a done incl. HTTP ITs (VenuePhotoServingIT: 200/ETag/304-without-blob-read/hex-guard/venue-scoped; CrossVenueDenialIT photo routes + owner-positive; F-1 413-advice fix). NEXT: Phase 2b read-model URL threading (VenueSummaryView/VenueMapView cover card+banner, VenueProfileView per-slot presence, read-model IT), then Phase 3 FE.`
+**Stage pointer:** `implement — Phase 2 DONE (2b read-model URLs: CoverPhotoView on VenueSummaryView+VenueMapView, per-slot PhotoSlotView on VenueProfileView, photos map on VenueProfileResponse, PhotoServingUrls single URL-format point; VenuePhotoReadModelIT red→green; blob-select grep clean; structural net + photo/venue ITs green). NEXT: Phase 3 FE operator upload UI (load riviera-frontend + angular-developer + angular-cli MCP + riviera-tailwind + playwright-cli first).`
 
-**Next action:** **Phase 2b** — thread cover card+banner URLs into the discovery + map read models
-(blob-free, via the COVER slot's variants) and per-slot `{present, previewUrl}` into the operator
-profile view; `VenuePhotoReadModelIT`. Then `/security-review` on the full diff at the gate.
+**Next action:** **Phase 3** — typed `venue-photo.service.ts` + venue-tab slot upload UI (pick →
+preview → upload/replace/delete, pending + error states) + unit/a11y specs + mocked e2e
+(`file_upload`). `/security-review` on the full diff at the gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | ✅ | Phase-0 commit (this window) |
 | 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | ✅ | Phase-1 commit (this window) |
-| 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ⏳ | 2a core (this window); ITs + 2b next |
+| 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ✅ | 2a core `0a3e8d5`; ITs + F-1 `c2b6848`; 2b read-model (this window) |
 | 3 — FE operator upload UI + service + e2e | | |
 | 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | | |
 | 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | | |
@@ -363,12 +363,17 @@ read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
   deleting the rows and re-revalidating), hex guard, venue-scoped, public (AC-7) — `VenuePhotoServingIT`.
   **BOLA IT (done):** photo POST/DELETE routes + owner-positive (real-JPEG fixture) added to
   `CrossVenueDenialIT` (AC-4). **Read-model IT:** → Phase 2b.
-- [ ] **Steps 2–4 — implement:** service (`assertOwns` → `PhotoProcessor` → `PhotoStorage`; serving
-  read); controller (`PUT`/`DELETE` venue-scoped `MultipartFile`, `GET` public bytes+headers);
-  `SecurityConfig` permit public GET on `/api/venues/*/photos/**`; read-model SQL/DTO additions
-  (metadata columns only). Errors as `ProblemDetail` (R-9).
-- [ ] **Steps 5–7 —** generalization pass (does any other venue read leak a blob? — confirm the
-  `SELECT`-columns discipline), run the structural net + `*CrossVenueDenialIT*`, commit, update status.
+- [x] **Steps 2–4 — implemented:** service (`assertOwns` → `PhotoProcessor` → `PhotoStorage`; serving
+  read); controller (**POST**/`DELETE` venue-scoped `MultipartFile`, `GET` public bytes+headers);
+  `SecurityConfig` POST/DELETE role-gate + public GET; read-model additions: `CoverPhotoView`
+  (vocabulary) on `VenueSummaryView`+`VenueMapView`, `PhotoSlotView` list on `VenueProfileView`,
+  lower-case `photos` map on `VenueProfileResponse`, assembled blob-free in `JdbcVenueCatalog`
+  (bulk IN-clause, no N+1) + `JdbcVenues.findProfile`; `PhotoServingUrls` = the one URL-format
+  point (also used by `PhotoUploadResponse`). Errors as `ProblemDetail`; 413 backstop via the
+  advice base class (F-1).
+- [x] **Steps 5–7 —** generalization pass done: `bytes` column selected ONLY in
+  `JdbcPhotoStorage.loadBytes` (grep-verified), no `SELECT *` anywhere; structural net +
+  `CrossVenueDenialIT` + photo ITs + `VenueAdminControllerIT` green; committed; status updated.
 
 ## Phase 3 — Frontend operator upload
 

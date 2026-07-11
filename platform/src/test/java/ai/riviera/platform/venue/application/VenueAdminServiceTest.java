@@ -534,7 +534,7 @@ class VenueAdminServiceTest {
 			return venues.contains(venueId.value())
 					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
 							BookingMode.INSTANT, LocalTime.of(18, 0), 1500, "EUR",
-							List.of(Amenity.WIFI), 20, 0))
+							List.of(Amenity.WIFI), 20, 0, List.of()))
 					: Optional.empty();
 		}
 

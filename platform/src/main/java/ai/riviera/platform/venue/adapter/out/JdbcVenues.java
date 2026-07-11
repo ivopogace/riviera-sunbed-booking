@@ -1,9 +1,11 @@
 package ai.riviera.platform.venue.adapter.out;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -12,9 +14,13 @@ import java.time.LocalTime;
 
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.NewVenueCommand;
+import ai.riviera.platform.venue.application.PhotoServingUrls;
+import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
@@ -315,7 +321,33 @@ class JdbcVenues implements Venues {
 				.toList();
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.commissionBps(), v.payoutCurrency(),
-				amenities, v.distanceToWaterM(), v.version()));
+				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId)));
+	}
+
+	/**
+	 * Every {@link PhotoSlot} in declaration order with its presence + PREVIEW serving URL (#142) —
+	 * a stable three-slot grid for the console's Venue tab. Blob-free: only the hash travels; the
+	 * {@code bytea} column is never selected outside the serving path (R-3, ADR-0008).
+	 */
+	private List<PhotoSlotView> slotPhotos(VenueId venueId) {
+		record SlotPreviewRow(PhotoSlot slot, String hash) {
+		}
+		Map<PhotoSlot, String> previewBySlot = jdbc.sql("""
+				SELECT vp.slot, vv.content_hash
+				FROM venue_photo vp
+				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
+				WHERE vp.venue_id = :id AND vv.surface = 'PREVIEW'
+				""")
+				.param("id", venueId.value())
+				.query((rs, rowNum) -> new SlotPreviewRow(
+						PhotoSlot.valueOf(rs.getString("slot")), rs.getString("content_hash")))
+				.list().stream()
+				.collect(Collectors.toMap(SlotPreviewRow::slot,
+						r -> PhotoServingUrls.servingUrl(venueId.value(), new ContentHash(r.hash()))));
+		return Arrays.stream(PhotoSlot.values())
+				.map(slot -> new PhotoSlotView(slot, previewBySlot.containsKey(slot),
+						previewBySlot.get(slot)))
+				.toList();
 	}
 
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */

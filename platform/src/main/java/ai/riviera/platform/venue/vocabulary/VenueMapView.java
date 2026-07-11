@@ -16,9 +16,12 @@ import java.util.List;
  * per-row reprice, so a stale write is rejected with 409 rather than clobbering another writer's layout
  * or prices. It is <strong>date-independent</strong> (a property of the static map, not the availability
  * overlay) and separate from the profile {@code version} (#224); tourists ignore it.
+ *
+ * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs (#142), or {@code null}
+ * when no cover photo is uploaded — the map banner then renders its gradient fallback.
  */
 public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
-		List<SetView> sets, long setVersion) {
+		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto) {
 }

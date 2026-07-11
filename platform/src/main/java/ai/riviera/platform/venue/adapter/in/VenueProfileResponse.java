@@ -1,8 +1,12 @@
 package ai.riviera.platform.venue.adapter.in;
 
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
+import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.VenueProfileView;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 
@@ -15,18 +19,30 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  *
  * <p>{@code version} is the row's optimistic-concurrency token (#224): the tab echoes it back as
  * {@code expectedVersion} on the next {@code PATCH}, so a stale write is rejected with 409.
+ *
+ * <p>{@code photos} keys every slot (lower-case, matching the REST path vocabulary) to its
+ * presence + PREVIEW serving URL (#142) — always all three, so the tab renders a stable grid.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, int commissionBps, String payoutCurrency,
-		List<String> amenities, Integer distanceToWaterM, long version) {
+		List<String> amenities, Integer distanceToWaterM, long version,
+		Map<String, SlotPhoto> photos) {
+
+	record SlotPhoto(boolean present, String previewUrl) {
+	}
 
 	/** {@code "HH:mm"} to match the write DTO's cutoff shape (drops the always-zero seconds of a TIME). */
 	private static final DateTimeFormatter CUTOFF = DateTimeFormatter.ofPattern("HH:mm");
 
 	static VenueProfileResponse from(VenueProfileView v) {
+		Map<String, SlotPhoto> photos = new LinkedHashMap<>(); // slot declaration order, stable on the wire
+		for (PhotoSlotView slot : v.photos()) {
+			photos.put(slot.slot().name().toLowerCase(Locale.ROOT),
+					new SlotPhoto(slot.present(), slot.previewUrl()));
+		}
 		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.commissionBps(),
 				v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
-				v.distanceToWaterM(), v.version());
+				v.distanceToWaterM(), v.version(), photos);
 	}
 }

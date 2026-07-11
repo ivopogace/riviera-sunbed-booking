@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import ai.riviera.platform.venue.application.PhotoMetadata;
+import ai.riviera.platform.venue.application.PhotoServingUrls;
 
 /**
  * Wire response for a successful photo upload (#142): the slot plus each stored variant's serving URL
@@ -20,7 +21,7 @@ record PhotoUploadResponse(String slot, List<Variant> variants) {
 		List<Variant> variants = metadata.variants().stream()
 				.map(v -> new Variant(
 						v.surface().name().toLowerCase(Locale.ROOT),
-						"/api/venues/" + venueId + "/photos/" + v.hash().value(),
+						PhotoServingUrls.servingUrl(venueId, v.hash()),
 						v.width(),
 						v.height()))
 				.toList();

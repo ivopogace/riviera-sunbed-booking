@@ -12,9 +12,12 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -52,6 +55,10 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_DISTANCE_TO_WATER = "distance_to_water_m";
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_AMENITY = "amenity";
+	// The two tourist-surfaced cover variants (#142) — kept in lockstep with the PhotoSurface enum
+	// tokens the V24 CHECK constraint lists.
+	private static final String SURFACE_CARD = "CARD";
+	private static final String SURFACE_BANNER = "BANNER";
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
@@ -121,9 +128,11 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.sorted() // enum natural order == declaration order == canonical catalogue order
 				.toList();
 
+		CoverPhotoView coverPhoto = coverPhotosByVenue(List.of(id.value())).get(id.value());
+
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
-				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion()));
+				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto));
 	}
 
 	@Override
@@ -184,14 +193,46 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.collect(Collectors.groupingBy(AmenityRow::venueId,
 						Collectors.mapping(AmenityRow::amenity, Collectors.toList())));
 
+		// One cover-photo read for ALL matched venues, blob-free (only the hashes travel; the
+		// bytea column is never selected here — R-3/ADR-0008), bucketed by venue like the rest.
+		Map<Long, CoverPhotoView> coverByVenue = coverPhotosByVenue(venueIds);
+
 		return venues.stream()
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
-						amenitiesByVenue.getOrDefault(v.id(), List.of())))
+						amenitiesByVenue.getOrDefault(v.id(), List.of()),
+						coverByVenue.get(v.id())))
 				.toList();
 	}
 
+	/**
+	 * The COVER slot's card + banner serving URLs per venue, in one blob-free query — a venue
+	 * without a cover photo is simply absent from the map ({@code null} on the view → the FE
+	 * gradient fallback).
+	 */
+	private Map<Long, CoverPhotoView> coverPhotosByVenue(List<Long> venueIds) {
+		record CoverVariantRow(long venueId, String surface, String hash) {
+		}
+		Map<Long, Map<String, String>> urlsByVenue = jdbc.sql("""
+				SELECT vp.venue_id, vv.surface, vv.content_hash
+				FROM venue_photo vp
+				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
+				WHERE vp.venue_id IN (:venueIds) AND vp.slot = 'COVER'
+				  AND vv.surface IN ('CARD', 'BANNER')
+				""")
+				.param("venueIds", venueIds)
+				.query((rs, rowNum) -> new CoverVariantRow(
+						rs.getLong(COL_VENUE_ID), rs.getString("surface"), rs.getString("content_hash")))
+				.list().stream()
+				.collect(Collectors.groupingBy(CoverVariantRow::venueId,
+						Collectors.toMap(CoverVariantRow::surface, r -> PhotoServingUrls
+								.servingUrl(r.venueId(), new ContentHash(r.hash())))));
+		return urlsByVenue.entrySet().stream()
+				.collect(Collectors.toMap(Map.Entry::getKey, e -> new CoverPhotoView(
+						e.getValue().get(SURFACE_CARD), e.getValue().get(SURFACE_BANNER))));
+	}
+
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities) {
+			List<Amenity> amenities, CoverPhotoView coverPhoto) {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
@@ -201,7 +242,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		List<Amenity> ordered = amenities.stream().sorted().toList(); // canonical catalogue order
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
-				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total));
+				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
+				coverPhoto);
 	}
 
 	@Override
