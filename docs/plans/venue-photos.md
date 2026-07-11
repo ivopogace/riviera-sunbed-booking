@@ -1,0 +1,413 @@
+# Venue Photos — operator upload + tourist display Implementation Plan
+
+> **For agentic workers:** implement with `implement` + `tdd`, task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** An operator can upload / replace / delete a photo in each of their venue's three
+slots (cover / sunbeds / bar); tourists see the **cover** photo on Discover cards and the
+beach-map banner — replacing the gradient placeholders — served off an immutable, cached
+endpoint that hits the database ≈once per image.
+
+**Architecture:** Photos are stored as **resized, EXIF-stripped, capped variants in Postgres
+`bytea`, behind a swappable `PhotoStorage` port** (ADR-0008) — the `PaymentGateway` mirror
+(real `bytea` adapter + in-memory fake; object-store deferred as a one-adapter swap). A second,
+**pure** `PhotoProcessor` deep module (validate → strip EXIF → resize → encode) sits between the
+controller and the port so no I/O or Stripe-style profile branching touches the image logic. All
+of it lives in the **`venue`** module; the tourist read is public, the write path is
+venue-scoped (`assertOwns` first, invariant #13).
+
+**Persistence:** JDBC only (invariant #1). New Flyway **V24** — `venue_photo` (lean metadata)
++ `venue_photo_variant` (metadata + the `bytea`); `bytea` never appears in a list/metadata
+query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
+
+**Source of intent:** GitHub issue **#142**; design placeholders in `docs/design/`
+(`riviera-sunbeds-liquid-glass-v3.dc.html`, `riviera-operator-console-v2.dc.html`, intake note
+`2026-07-02-liquid-glass-redesign-note.md`); storage decision **ADR-0008**.
+
+**Skills consulted** (routing-gate output):
+- `riviera-sdlc` — routed the gate; `riviera-plan-doc` — this doc's discipline.
+- `domain-modeling` — wrote **ADR-0008** (bytea-behind-port; flip threshold); new glossary
+  terms (venue photo / photo variant / photo slot) land in `CONTEXT.md` at phase 5.
+- `riviera-modulith` — placement: `PhotoStorage`/`PhotoProcessor` are **module-internal**
+  driven ports in `venue/application/` (**not** `api/` — nobody outside `venue` calls them);
+  **no** new `api`/`spi`/`events`; `operator::api` grant already present → `allowedDependencies`
+  unchanged; a photo change publishes **no** domain event (no consumer).
+- `postgres` — two-table split (blob isolated), `slot`/`surface` as `TEXT` + `CHECK` (not enum),
+  index the `venue_id` FK, `TIMESTAMPTZ`, `ON DELETE CASCADE` from variant→photo.
+- `codebase-design` — `PhotoStorage` is the **real** seam (bytea↔S3 varies → 2 adapters);
+  `PhotoProcessor` is a **deep module with one impl** (a hypothetical seam that still earns its
+  keep by concentrating image logic); both accept-dependencies for fakeable service tests.
+- *To load at implement, per area:* `riviera-java-conventions` (Java idioms + the `ProblemDetail`
+  error contract §6b), `riviera-frontend` + `angular-developer` + angular-cli MCP (FE placement +
+  v22 APIs + `NgOptimizedImage`), `playwright-cli` (e2e `file_upload`), `riviera-local-debug`
+  (scoped build/test recipe). `riviera-stripe-payments` — **N/A, no money.**
+
+**Branch:** `feature/venue-photos` (exists; created off `main` before phase 0).
+
+---
+
+## Acceptance criteria (testable)
+
+> Written at the inner hexagon (the `venue` application boundary), tech-specifics pushed to
+> adapter-level tests.
+
+- [ ] **AC-1 (upload):** Given operator O owns venue V and no cover photo exists, when O uploads
+  a valid 4000×3000 JPEG to slot `cover`, then a `VenuePhoto(V, cover)` exists with the expected
+  capped variants (card + banner + preview), each within its byte + dimension cap. *Pinned by:*
+  `VenuePhotoServiceTest.uploadStoresCappedVariants`.
+- [ ] **AC-2 (replace = at most one per slot):** Given a cover photo already exists for V, when O
+  uploads a new cover image, then the old variants are gone and only the new ones remain — exactly
+  one photo per `(venue, slot)`. *Pinned by:* `VenuePhotoServiceTest.replaceOverwritesSlot` +
+  `JdbcPhotoStorageIT.uniqueVenueSlot` (DB `UNIQUE(venue_id, slot)`).
+- [ ] **AC-3 (delete = single-tx erasure):** When O deletes the cover slot, then the metadata row
+  **and** all variant bytes are removed in one transaction. *Pinned by:*
+  `VenuePhotoServiceTest.deleteRemovesMetadataAndBytes` + `JdbcPhotoStorageIT.deleteCascade`.
+- [ ] **AC-4 (BOLA, invariant #13):** Given operator O2 does **not** own venue V, when O2 calls
+  upload / replace / delete on V's photos, then the service throws before any storage call and the
+  endpoint returns **403**. *Pinned by:* `CrossVenueDenialIT` (extended with the photo routes).
+- [ ] **AC-5 (input validation):** When the upload is > 25 MB, or its real bytes are not a
+  supported image (magic-byte check, not the `Content-Type` header), or it decodes beyond the
+  ~50 MP / 12 000-px guard, then it is rejected with a `4xx` `ProblemDetail` and nothing is
+  stored. *Pinned by:* `PhotoProcessorTest.rejectsOversizeWrongMagicAndBombs`.
+- [ ] **AC-6 (EXIF strip):** Given a JPEG carrying GPS EXIF, when processed, then no stored
+  variant carries EXIF/GPS metadata (orientation is applied to pixels first, then metadata
+  dropped). *Pinned by:* `PhotoProcessorTest.stripsExifKeepsOrientation`.
+- [ ] **AC-7 (immutable, cache-once serving):** When the serving endpoint is hit for a variant
+  hash, then it returns the bytes with `Cache-Control: public, max-age=31536000, immutable` and a
+  strong `ETag`; a conditional `If-None-Match` re-request returns **304** without a blob read.
+  *Pinned by:* `VenuePhotoServingIT.immutableCacheAndConditionalGet`.
+- [ ] **AC-8 (read model exposes cover only when present):** The public venue discovery + map read
+  model exposes cover `card` + `banner` URLs when a cover photo exists, and `null` otherwise;
+  the `bytea` column is never selected by these queries. *Pinned by:*
+  `VenuePhotoReadModelIT.discoveryExposesCoverUrlsWithoutBlob`.
+- [ ] **AC-9 (operator FE):** In the operator Venue tab, each slot supports pick → preview →
+  upload, replace, and delete against the real contract (mocked in e2e). *Pinned by:*
+  `frontend/e2e/operator-venue-photos.spec.ts` (`file_upload`) + `venue-tab.spec.ts`.
+- [ ] **AC-10 (tourist FE + contrast floor preserved):** Discover card and beach-map banner render
+  the cover via `NgOptimizedImage` when present and fall back to the existing gradient when
+  absent; the `--riv-photo-scrim` AA floor still holds. *Pinned by:* `home.contrast.spec.ts` +
+  `venue-map.contrast.spec.ts` (unchanged assertions still pass) + `frontend/e2e/discover-photos.spec.ts`.
+
+## Non-goals
+
+- **Moderation** — deferred (grill decision); a follow-up issue is filed. No approval queue,
+  no `moderation_state` column.
+- **Automated GDPR erasure / retention policy** — deferred to **#101**. This slice ships only
+  operator-initiated delete/replace (which already makes #101 a single `DELETE`).
+- **Tourist gallery for sunbeds / bar** — those two are uploaded, stored, and shown in the
+  operator slots, but not surfaced to tourists (the designs render only the cover on card +
+  banner). A gallery is a follow-up.
+- **Storing the full-res original** — decoded, resized, discarded (ADR-0008). Changing resize
+  targets later means operators re-upload.
+- **Object-storage / CDN adapter** — deferred behind the port until a flip-threshold condition
+  (ADR-0008).
+- **HEIC / AVIF upload formats** — JPEG / PNG / WebP only.
+
+## Behavior-parity ledger
+
+> This slice **replaces two placeholder surfaces** (operator dashed slots + tourist gradient),
+> so the tourist gradient's one real behavior — the contrast floor — must be preserved.
+
+| Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
+|---|---|---|
+| Tourist card/banner render a gradient (`--riv-photo-grad`) placeholder | changed | Renders the cover photo when present; **falls back to the same gradient** when absent — so the placeholder survives as the empty state |
+| `--riv-photo-scrim` `0.5@75%` floor keeps the beach·region overlay at WCAG AA | **preserved** | Scrim stays layered over the photo; `home.contrast.spec.ts` / `venue-map.contrast.spec.ts` assertions kept and must still pass (#142 deferred note) |
+| "Venue photos coming soon" pill on the map banner | dropped → **replaced** | Removed when a photo is present; on the empty state the bare gradient shows without the pill (the follow-up is shipping, so "coming soon" is no longer true) |
+| Operator dashed slot placeholders + "coming in a later update (#142)" note | dropped → **replaced** | Replaced by real upload/replace/delete controls with a live preview |
+
+## Risk register
+
+| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
+|---|---|---|---|---|---|---|
+| R-1 | Decompression bomb / huge decode OOMs the free-tier instance | med | high | Hard ~50 MP / 12 000-px **dimension guard** decided *before* full decode (read header dims first) + 25 MB byte cap + bounded upload concurrency; `PhotoProcessorTest` bomb fixture | impl | open |
+| R-2 | Cross-venue write (BOLA, invariant #13) | med | high | `assertOwns(operator, venueId)` as the **first** line of every write service method (reuses `venue`→`operator::api`); `CrossVenueDenialIT` extended to photo routes | impl | open |
+| R-3 | `bytea` leaks into list/metadata queries → fat responses, Neon load | med | med | Blob isolated in `venue_photo_variant`; read-model + list SQL select metadata columns only, **never** `SELECT *`; review check (RV-BE) | impl | open |
+| R-4 | Tourist read puts Neon in the hot path | med | high | Content-hash URL + `Cache-Control: immutable` + `ETag` + `304`; blob read only on cache miss; `VenuePhotoServingIT` | impl | open |
+| R-5 | Flyway V24 collision (case #122/#127) | low | high | Verified **V24 free on `main`, no open PRs**; if a parallel slice merges V24 first, **this branch renumbers** (merges-second rule) | impl | verified-free |
+| R-6 | `Content-Type` header spoofed | med | med | Validate **actual bytes** via image decode + magic-byte sniff; ignore the client header for the trust decision | impl | open |
+| R-7 | WebP **encoding** needs a native lib (awkward in the JDK/Docker build) | med | low | Default variant output to **progressive JPEG** (native `ImageIO`); revisit WebP only if a clean pure-JVM encoder is confirmed (OQ-1) | impl | open |
+| R-8 | EXIF-orientation lost on re-encode → sideways photos | med | med | Read orientation, **apply rotation to pixels**, then drop all metadata; `PhotoProcessorTest.stripsExifKeepsOrientation` | impl | open |
+| R-9 | Ad-hoc `{"error":…}` body instead of the central contract | low | med | Errors as centralized `ProblemDetail` (`riviera-java-conventions` §6b) | impl | open |
+| R-10 | Public serving route breaks the `/api/**` security rules | med | high | `SecurityConfig`: permit **GET** `/api/venues/*/photos/**` publicly, keep **PUT/DELETE** authenticated; a shared-file change → `/security-review` + review flag | impl | open |
+
+## Open questions / Assumptions
+
+- **OQ-1 (codec):** Variant output = **progressive JPEG (q≈0.8)** for MVP (native `ImageIO`,
+  no extra native dep) vs WebP (smaller, needs a native encoder). — *Owner:* impl · *Resolves by:*
+  phase 1. `content_type` follows the chosen codec.
+- **OQ-2 (image lib):** decode/EXIF via **TwelveMonkeys ImageIO** (robust JPEG/PNG/WebP read +
+  metadata/orientation) + resize via **Thumbnailator**, both pure-JVM (MIT/BSD), vs stock
+  `ImageIO`. — *Owner:* impl · *Resolves by:* phase 1.
+- **Assumption:** Exact resize targets (card ≈ 640×360, banner ≈ 1200×300 @150px band, operator
+  preview ≈ 480×270; byte cap ≈ ≤120 KB) are **pinned in phase 1** against the
+  `home.contrast.spec.ts` geometry and the map banner's `h-[150px]`. — *Owner:* impl.
+- **Assumption (scope, maintainer-confirmed at grill):** Only the **cover** slot is surfaced to
+  tourists; sunbeds/bar are stored + operator-preview only.
+- **Assumption:** Upload transport is `multipart/form-data` (`MultipartFile`), one file per
+  request per slot.
+
+### Resolved
+- Storage backend — Postgres `bytea` behind `PhotoStorage` port (**ADR-0008**, grill 2026-07-11).
+- Upload limits — JPEG/PNG/WebP, ≤25 MB, EXIF stripped, ~50 MP guard (grill 2026-07-11).
+- Moderation — deferred; GDPR erasure — operator delete/replace only, automation → #101; scale —
+  few venues/light browse confirms bytea (grill 2026-07-11).
+
+## Availability & concurrency (invariant #2)
+
+**N/A — does not touch `availability`, `booking`, or the beach-map set layout.** Photos are venue
+**profile media**; no `(set_id, booking_date)` row is written. The only concurrency is
+per-slot replace, made safe by `UNIQUE(venue_id, slot)` + a single-transaction
+delete-then-insert in the `bytea` adapter (last writer wins per slot; no optimistic-version
+contract needed — a photo replace is not a lost-update hazard the way #224/#226 profile/set edits
+were).
+
+## Spring Modulith — modules, interfaces, events
+
+**Modules touched**
+
+| # | Module | Existing/new | Aggregate root | Why this module owns it |
+|---|---|---|---|---|
+| M-1 | `venue` | existing | `Venue` (photo is venue profile media) | `venue` Job: "own venue profiles (incl. amenities…)" — photos are venue-owned profile data; on **no** other module's Not-My-Job list |
+
+**Cross-module named interfaces (`api/` ports):** **none added.** Write path reuses the existing
+`venue → operator::api` (`VenueOwnership`) grant for `assertOwns`. Tourist photo URLs are added to
+the **existing** public venue read model (discovery + map DTOs) — new fields on already-published
+records, no new port.
+
+**Internal ports (module-private, `venue/application/` — not published):**
+
+| Port | Purpose | Real adapter | Fake |
+|---|---|---|---|
+| `PhotoStorage` | persist a slot's variants + metadata atomically; load bytes by hash; delete a slot | `JdbcPhotoStorage` (`adapter/out`, `bytea`) | `InMemoryPhotoStorage` (test) |
+| `PhotoProcessor` | validate → strip EXIF → resize → encode (pure) | `DefaultPhotoProcessor` (one impl) | used directly in tests (deterministic) |
+
+**Domain events:** **none.** No other module reacts to a photo change (checked against the
+event spine — availability/payout care about `BookingConfirmed`, not media). Inventing an event
+here would be the coupling smell `riviera-modulith` warns against.
+
+### Module ownership (§4a)
+
+All-in-`venue`, no cross-module interaction beyond the existing `operator::api` ownership check.
+`venue` Job covers venue profile data (amenities are the precedent); photos are not on any
+module's **Not My Job** list, and no other module claims media. One-module slice.
+
+## Payment & payout (invariants #5, #8, #9, #10)
+
+**N/A — no payment in scope.**
+
+## Angular — frontend surfaces touched
+
+| # | Surface | Existing/new | Type | State/reactivity | Forms |
+|---|---|---|---|---|---|
+| FE-1 | `operator/venue-tab.ts` + `.html` | modify | standalone component | Signals; per-slot upload state | file input (no Signal Form needed) |
+| FE-2 | `operator/venue-photo.service.ts` (or `core/`) | new | injectable service | — | — |
+| FE-3 | `pages/home/home.html` (+ `.ts`) | modify | standalone component | Signals | — |
+| FE-4 | `venue/venue-map.html` (+ `.ts`) | modify | standalone component | Signals | — |
+
+**Standards:** standalone, `inject()`, `@if`/`@for`, `input()`/`output()`, **`NgOptimizedImage`
+for the real photo URLs** (works for URLs, **not** base64 — our endpoint returns real URLs).
+Carry the two #142 deferred notes: (a) per-card `backdrop-filter` GPU-layer cost on large grids —
+watch for scroll jank once real photos land; (b) keep/strengthen `--riv-photo-scrim` and re-check
+the contrast specs if the photo band's height/offset changes. FE placement is `riviera-frontend`'s
+call at implement (service in `core/` vs feature-local; the tourist read type).
+
+## FE↔BE contract
+
+- **`PUT /api/venues/{venueId}/photos/{slot}`** — `multipart/form-data` (one image file);
+  `slot ∈ {cover,sunbeds,bar}`. → `200` with the new photo metadata (per-surface URLs);
+  `400` `ProblemDetail` (invalid image / too large); `403` cross-venue; `401` unauthenticated.
+- **`DELETE /api/venues/{venueId}/photos/{slot}`** → `204`; `403` cross-venue.
+- **`GET /api/venues/{venueId}/photos/{hash}`** — **public**; → `200` image bytes with
+  `Cache-Control: public, max-age=31536000, immutable` + strong `ETag`; `304` on matching
+  `If-None-Match`; `404` unknown hash.
+- **Read model:** discovery card + map DTOs gain `coverPhoto: { card: string; banner: string } |
+  null`. Operator venue-detail DTO gains per slot `{ present: boolean; previewUrl: string | null }`.
+- **Client typing:** hand-written typed service; no `as any`. URLs are opaque strings the client
+  feeds to `NgOptimizedImage` / `<img>`.
+
+## Execution status
+
+> Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
+
+**Stage pointer:** `plan — drafted, pending maintainer look; ADR-0008 + this plan committed next`
+
+**Next action:** commit ADR-0008 + this plan doc on `feature/venue-photos`; then begin **Phase 0**
+(Flyway V24 + tables + vocabulary + `PhotoStorage` port/adapter/fake), test-first.
+
+| Phase | Status | Commits |
+|-------|--------|---------|
+| 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | | |
+| 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | | |
+| 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | | |
+| 3 — FE operator upload UI + service + e2e | | |
+| 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | | |
+| 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | | |
+
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register**
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| — | — | none yet | — |
+
+---
+
+## File structure
+
+**Backend (`platform/src/main/java/ai/riviera/platform/venue/`)**
+- `vocabulary/PhotoSlot.java` — `enum {COVER, SUNBEDS, BAR}` (published; the read model + controller speak it).
+- `vocabulary/PhotoSurface.java` — `enum {CARD, BANNER, PREVIEW}`.
+- `vocabulary/ContentHash.java` — value type (hex) for the immutable URL / `ETag`.
+- `vocabulary/VenuePhotoView.java` — read-model record: per-slot presence + surface URLs.
+- `application/PhotoStorage.java` — the port (store / loadBytes / delete / list-metadata).
+- `application/PhotoProcessor.java` — the port (`ProcessedPhoto process(byte[], PhotoSlot)`).
+- `application/DefaultPhotoProcessor.java` — the one impl (validate/EXIF/resize/encode).
+- `application/VenuePhotoService.java` — `@Service`; `assertOwns` → process → storage; serving lookup.
+- `application/ProcessedPhoto.java`, `application/StoredVariant.java` — value records.
+- `adapter/out/JdbcPhotoStorage.java` — `bytea` adapter (`JdbcClient`, package-private).
+- `adapter/in/VenuePhotoController.java` — `PUT`/`DELETE` (venue-scoped) + `GET` serving (public).
+- `adapter/in/…` request/response DTOs as needed.
+- **Test:** `application/InMemoryPhotoStorage.java` (test fake), `PhotoProcessorTest`,
+  `VenuePhotoServiceTest`, `adapter/out/JdbcPhotoStorageIT`, `adapter/in/VenuePhotoServingIT`,
+  `VenuePhotoReadModelIT`, `CrossVenueDenialIT` (extend), fixture images under `test/resources`.
+
+**Migration**
+- `platform/src/main/resources/db/migration/V24__venue_photo.sql`.
+
+**Security**
+- `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — permit public GET on the
+  photo serving route (shared root-package file — review + `/security-review`).
+
+**Frontend (`frontend/src/app/`)**
+- `operator/venue-photo.service.ts` (+ spec) — typed client for the three endpoints.
+- `operator/venue-tab.ts` / `.html` / `.spec.ts` / `.a11y.spec.ts` — real upload UI.
+- `pages/home/home.html` / `home.ts` — cover on the card via `NgOptimizedImage` + fallback.
+- `venue/venue-map.html` / `venue-map.ts` — cover on the banner + fallback.
+- read-model type additions where the venue DTOs are declared.
+- `frontend/e2e/operator-venue-photos.spec.ts`, `frontend/e2e/discover-photos.spec.ts` (mocked).
+
+---
+
+## Phase 0 — Schema + storage port
+
+**Files:** Create `V24__venue_photo.sql`, `PhotoSlot`/`PhotoSurface`/`ContentHash`,
+`PhotoStorage`, `JdbcPhotoStorage`, `InMemoryPhotoStorage`, `StoredVariant`/`ProcessedPhoto` ·
+Test `JdbcPhotoStorageIT`.
+
+- [ ] **Step 1 — failing test:** `JdbcPhotoStorageIT` (Testcontainers Postgres) — store a photo
+  with three variants for `(V, cover)`; assert `list(V)` returns the metadata (no bytes),
+  `loadBytes(V, hash)` returns the stored bytes, a second store to `(V, cover)` **replaces** (one
+  row per slot), and `delete(V, cover)` removes metadata + variants (cascade).
+- [ ] **Step 2 — run, verify fail** — `.\platform\gradlew.bat -p platform test --tests "*JdbcPhotoStorageIT*"` → FAIL (no table / no adapter). *(Skips cleanly if Docker is down; CI runs it.)*
+- [ ] **Step 3 — implement:** V24 migration + `JdbcClient` adapter + the value/id types + fake.
+  - `venue_photo`: `id UUID PK`, `venue_id UUID NOT NULL REFERENCES venue(id) ON DELETE CASCADE`,
+    `slot TEXT NOT NULL CHECK (slot IN ('cover','sunbeds','bar'))`, `created_at TIMESTAMPTZ`,
+    `updated_at TIMESTAMPTZ`, `UNIQUE (venue_id, slot)`, `INDEX (venue_id)`.
+  - `venue_photo_variant`: `id UUID PK`, `photo_id UUID NOT NULL REFERENCES venue_photo(id) ON
+    DELETE CASCADE`, `surface TEXT NOT NULL CHECK (surface IN ('card','banner','preview'))`,
+    `content_hash TEXT NOT NULL`, `content_type TEXT NOT NULL`, `width INT NOT NULL`,
+    `height INT NOT NULL`, `byte_size INT NOT NULL`, `bytes BYTEA NOT NULL`,
+    `UNIQUE (photo_id, surface)`, `UNIQUE (venue_id, content_hash)` (carry `venue_id` for the
+    scoped serving lookup + hash uniqueness within a venue), `INDEX (photo_id)`.
+- [ ] **Step 4 — run, verify pass**; broaden to `--tests "*venue*"` for the module.
+- [ ] **Step 5 — generalization pass** — n/a (new capability); record "none".
+- [ ] **Step 6 — commit** — `feat(venue): V24 venue_photo + PhotoStorage bytea port (#142)`.
+- [ ] **Step 7 — update Execution status** in the same commit window.
+
+> Run `--tests "*ModularityTests*" "*JdbcOnlyArchitectureTests*" "*PackageShapeArchitectureTests*"`
+> at the end of phase 0 (new packages/types) and again after phase 2 (new controller/adapters).
+
+## Phase 1 — PhotoProcessor (pure)
+
+**Files:** Create `PhotoProcessor`, `DefaultPhotoProcessor` · Test `PhotoProcessorTest` + fixtures.
+
+- [ ] **Step 1 — failing tests:** valid JPEG/PNG/WebP → three capped variants within byte +
+  dimension caps; oversize / wrong-magic-bytes / >50 MP bomb → typed rejection; GPS-EXIF JPEG →
+  stored variants carry no EXIF but correct orientation. Pin the exact resize targets here
+  (resolve the Assumption) against the card/banner/preview geometry.
+- [ ] **Steps 2–4 — TDD** the processor (decode with dimension guard → orientation-normalize →
+  strip metadata → resize → encode per OQ-1/OQ-2). Add the chosen image lib to `platform/build.gradle`.
+- [ ] **Steps 5–7 —** generalization pass (the validation guard is the single choke point; note
+  it), commit `feat(venue): PhotoProcessor — validate/EXIF-strip/resize (#142)`, update status.
+
+## Phase 2 — Service + controller + serving + read model + security
+
+**Files:** Create `VenuePhotoService`, `VenuePhotoController` · Modify `SecurityConfig`, the venue
+read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
+`VenuePhotoReadModelIT`, extend `CrossVenueDenialIT`.
+
+- [ ] **Step 1 — failing tests (service, fakes):** `assertOwns` first (AC-4 path throws before
+  storage); upload stores capped variants (AC-1); replace overwrites (AC-2); delete erases (AC-3).
+  **Serving IT:** immutable cache headers + `ETag` + `304` (AC-7). **Read-model IT:** discovery
+  exposes cover card+banner URLs, `null` when absent, no blob selected (AC-8). **BOLA IT:** photo
+  routes added to `CrossVenueDenialIT`.
+- [ ] **Steps 2–4 — implement:** service (`assertOwns` → `PhotoProcessor` → `PhotoStorage`; serving
+  read); controller (`PUT`/`DELETE` venue-scoped `MultipartFile`, `GET` public bytes+headers);
+  `SecurityConfig` permit public GET on `/api/venues/*/photos/**`; read-model SQL/DTO additions
+  (metadata columns only). Errors as `ProblemDetail` (R-9).
+- [ ] **Steps 5–7 —** generalization pass (does any other venue read leak a blob? — confirm the
+  `SELECT`-columns discipline), run the structural net + `*CrossVenueDenialIT*`, commit, update status.
+
+## Phase 3 — Frontend operator upload
+
+**Files:** Create `venue-photo.service.ts` (+ spec) · Modify `operator/venue-tab.*` · Test
+`venue-tab.spec.ts`, `venue-tab.a11y.spec.ts`, `frontend/e2e/operator-venue-photos.spec.ts`.
+
+- [ ] Load `riviera-frontend` (placement) + `angular-developer` + angular-cli MCP + `playwright-cli`.
+- [ ] TDD: typed service (three endpoints); replace the placeholder slots with pick→preview→
+  upload/replace/delete + error + pending states; unit + a11y specs; mocked e2e using `file_upload`.
+- [ ] Commit `feat(venue): operator photo upload UI (#142)`, update status.
+
+## Phase 4 — Frontend tourist display
+
+**Files:** Modify `pages/home/home.*`, `venue/venue-map.*`, read-model type · Test
+`home.contrast.spec.ts` (kept), `venue-map.contrast.spec.ts` (kept),
+`frontend/e2e/discover-photos.spec.ts`.
+
+- [ ] Render cover via `NgOptimizedImage` when present; fall back to the gradient (drop the
+  "coming soon" pill on the empty state); keep the scrim layer. Re-run the contrast specs — if the
+  photo band's height/offset shifts, re-derive their geometry per the #142 note.
+- [ ] Mocked e2e + a11y for the discover/map photo states. Commit, update status.
+
+## Phase 5 — Docs freshness + close-out
+
+- [ ] `riviera-docs-freshness` over the slice's range. Add `CONTEXT.md` glossary entries (venue
+  photo, photo variant, photo slot); note media under `venue` in `RESPONSIBILITIES.md`; confirm
+  ADR-0008 + CLAUDE.md list of migrations are consistent. File the **moderation** follow-up issue
+  and cross-link **#101** for erasure automation.
+- [ ] Merge close-out checklist (`references/pr-gates.md`).
+
+---
+
+## Generalization-audit log
+
+| Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
+|---|---|---|---|---|---|
+
+---
+
+## Acceptance-criteria verification (final)
+
+- [ ] AC-1…AC-8 — backend test classes green (`--tests` scoped per class; CI full suite).
+- [ ] AC-9, AC-10 — `npm test` + `npm run test:e2e` + `npm run test:a11y` green.
+
+## Self-review checklist (before merge / PR)
+
+- [ ] Every AC has an implementing task and a verifying test.
+- [ ] No placeholders / TODO / TBD in the doc.
+- [ ] Type & method-signature consistency across phases.
+- [ ] **No JPA** (invariant #1); `bytea` via `JdbcClient` `setBytes`/`getBytes`.
+- [ ] Availability section justified **N/A** with reason (invariant #2).
+- [ ] **Modulith** section filled; `PhotoStorage`/`PhotoProcessor` internal (not `api/`); no new
+  event; `allowedDependencies` unchanged; no cross-module `application.*`/`adapter.*` imports (#11).
+- [ ] Payment/payout **N/A**.
+- [ ] BOLA: `assertOwns` first in the service; `CrossVenueDenialIT` covers the photo routes (#13).
+- [ ] Security: magic-byte + size + megapixel validation; EXIF stripped; public GET / authed
+  write; `/security-review` run on the diff.
+- [ ] Flyway **V24** present; `UNIQUE(venue_id, slot)` + cascade tested (invariant #12).
+- [ ] Serving: immutable cache + `ETag` + `304`; `bytea` never in a list query.
+- [ ] **Frontend** standards met; `NgOptimizedImage` for real URLs; contrast specs still pass; no
+  `as any` on the contract.
+- [ ] Execution status at HEAD matches reality; findings register current.
+- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
