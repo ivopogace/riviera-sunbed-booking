@@ -216,10 +216,13 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
-	public int updateVenueProfile(VenueId venueId, VenueProfileCommand command) {
-		// The venue UPDATE's rows-affected is the existence check (0 ⇒ no such venue). Only when the
-		// venue exists do we replace its amenity set (delete-then-insert). Both run inside the
-		// service's @Transactional boundary, so the set is never left partially replaced.
+	public int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command) {
+		// Conditional on the loaded version (#224): WHERE id = :id AND version = :version. The caller
+		// has already verified the venue exists, so 0 rows-affected here means the version no longer
+		// matches (a concurrent writer bumped it) — a stale write, and the amenity set below is left
+		// untouched. On a match the row's version is bumped by one, so the other writer off the same
+		// version loses. Only then do we replace the amenity set (delete-then-insert); both run inside
+		// the service's @Transactional boundary, so the set is never left partially replaced.
 		//
 		// commission_bps and payout_currency are NOT in the SET clause — they are read-only for
 		// operators (invariant #9 / provisional payout currency), and the command carries no such
@@ -227,8 +230,9 @@ class JdbcVenues implements Venues {
 		int rows = jdbc.sql("""
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,
-				    booking_mode = :mode, booking_cutoff = :cutoff, distance_to_water_m = :distance
-				WHERE id = :id
+				    booking_mode = :mode, booking_cutoff = :cutoff, distance_to_water_m = :distance,
+				    version = version + 1
+				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
 				.param(COL_BEACH, command.beach())
@@ -238,9 +242,10 @@ class JdbcVenues implements Venues {
 				.param("cutoff", command.bookingCutoff())
 				.param("distance", command.distanceToWaterM())
 				.param("id", venueId.value())
+				.param("version", expectedVersion)
 				.update();
 		if (rows == 0) {
-			return 0;
+			return 0; // no version match (stale write) — amenity set untouched
 		}
 		jdbc.sql("DELETE FROM venue_amenity WHERE venue_id = :id")
 				.param("id", venueId.value())
@@ -261,7 +266,7 @@ class JdbcVenues implements Venues {
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
 				SELECT name, beach, region, description, booking_mode, booking_cutoff,
-				       commission_bps, payout_currency, distance_to_water_m
+				       commission_bps, payout_currency, distance_to_water_m, version
 				FROM venue
 				WHERE id = :id
 				""")
@@ -272,7 +277,8 @@ class JdbcVenues implements Venues {
 						BookingMode.valueOf(rs.getString("booking_mode")),
 						rs.getObject("booking_cutoff", LocalTime.class),
 						rs.getInt("commission_bps"), rs.getString("payout_currency"),
-						rs.getObject("distance_to_water_m", Integer.class)))
+						rs.getObject("distance_to_water_m", Integer.class),
+						rs.getLong("version")))
 				.optional();
 		if (venue.isEmpty()) {
 			return Optional.empty();
@@ -286,13 +292,13 @@ class JdbcVenues implements Venues {
 				.toList();
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.commissionBps(), v.payoutCurrency(),
-				amenities, v.distanceToWaterM()));
+				amenities, v.distanceToWaterM(), v.version()));
 	}
 
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String region, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-			Integer distanceToWaterM) {
+			Integer distanceToWaterM, long version) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

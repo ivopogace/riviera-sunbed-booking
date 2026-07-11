@@ -56,14 +56,20 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 
 	@Override
 	@Transactional
-	public ChangeOutcome updateProfile(OperatorId operator, VenueId venueId, VenueProfileCommand command) {
-		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		// Rows-affected on the venue UPDATE is the existence check: 0 ⇒ no such venue. The amenity
-		// set is replaced inside the same @Transactional unit (see JdbcVenues#updateVenueProfile).
-		int rows = venues.updateVenueProfile(venueId, command);
-		return rows == 0
-				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE)
-				: ChangeOutcome.Applied.APPLIED;
+	public ProfileUpdateOutcome updateProfile(OperatorId operator, VenueId venueId,
+			long expectedVersion, VenueProfileCommand command) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13, first & unchanged
+		// Existence is checked BEFORE the conditional write so that a 0-rows result is unambiguous: here
+		// it can only mean the loaded version no longer matches (stale tab), never no-such-venue (R-2).
+		if (!venues.venueExists(venueId)) {
+			return ProfileUpdateOutcome.NO_SUCH_VENUE;
+		}
+		// Conditional on the loaded version (#224): of two writers off the same version the winner bumps
+		// version→+1, so the loser's WHERE version=:expected then matches nothing (READ COMMITTED
+		// re-evaluates the qual after the winner commits) → 0 rows → STALE_WRITE, rather than silently
+		// clobbering booking_mode/booking_cutoff. The amenity replace runs in the same @Transactional unit.
+		int rows = venues.updateVenueProfile(venueId, expectedVersion, command);
+		return rows == 0 ? ProfileUpdateOutcome.STALE_WRITE : ProfileUpdateOutcome.APPLIED;
 	}
 
 	@Override

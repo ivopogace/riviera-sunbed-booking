@@ -26,6 +26,9 @@ const CHIP_TEAL_ALPHA = 0.22;
 const ACTIVE_CHIP_INK = '#0a4f5e';
 const ACCENT_TEAL = '#0a6e85';
 const ERROR_INK = '#a3160e';
+/** The #224 stale-write banner: an amber wash (#f59e0b @ 0.14) over the card glass; ink is --riv-card-ink. */
+const BANNER_TINT: [number, number, number] = [245, 158, 11];
+const BANNER_TINT_ALPHA = 0.14;
 
 describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
   it('headings + labels + input values (--riv-card-ink) meet AA on the card glass', () => {
@@ -60,6 +63,16 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
       expect(
         contrastRatio(ERROR_INK, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the stale-write banner ink (--riv-card-ink) meets AA over the amber tint on the card glass (#224)', () => {
+    for (const stop of PORCELAIN_STOPS) {
+      const bannerSurface = composite(BANNER_TINT, BANNER_TINT_ALPHA, surfaceOver(CARD_GLASS, stop));
+      expect(
+        contrastRatio(rgbToHex(INK_DARK), rgbToHex(bannerSurface)),
+        `stale banner ink over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });

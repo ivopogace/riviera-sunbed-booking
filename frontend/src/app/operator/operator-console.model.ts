@@ -232,6 +232,8 @@ export interface VenueProfileView {
   readonly payoutCurrency: string;
   readonly amenities: readonly Amenity[];
   readonly distanceToWaterM: number | null;
+  /** The row's optimistic-concurrency token (#224); echoed back as {@link VenueProfileUpdate.expectedVersion}. */
+  readonly version: number;
 }
 
 /**
@@ -239,6 +241,9 @@ export interface VenueProfileView {
  * editable profile — the form re-sends every field. **Commission + payout currency are read-only and
  * deliberately absent**: the write can never touch the platform's cut (invariant #9). A `null`
  * distance clears it; an unknown amenity code is rejected 400 server-side (existing contract).
+ * {@link expectedVersion} is the optimistic-concurrency token loaded with the profile (#224): the
+ * server rejects a write whose version no longer matches with `409 STALE_WRITE`, so a stale tab
+ * can't clobber `bookingMode`/`bookingCutoff`.
  */
 export interface VenueProfileUpdate {
   readonly name: string;
@@ -249,17 +254,20 @@ export interface VenueProfileUpdate {
   readonly bookingCutoff: string;
   readonly amenities: readonly Amenity[];
   readonly distanceToWaterM: number | null;
+  readonly expectedVersion: number;
 }
 
 /**
  * A known venue-details save/load failure (O8 #177), mapped from the RFC-7807 `code` (#97) for
  * operator-facing copy. `NOT_VENUE_OWNER` = the 403 cross-venue denial (invariant #13);
- * `NO_SUCH_VENUE` = the 404; `INVALID_REQUEST` = the 400 edge rejection (§6b); `UNAUTHORIZED` = the
- * expired session.
+ * `NO_SUCH_VENUE` = the 404; `INVALID_REQUEST` = the 400 edge rejection (§6b); `STALE_WRITE` = the
+ * 409 optimistic-concurrency loss — the venue was changed elsewhere since the tab loaded it (#224),
+ * so the tab keeps the operator's edits and offers a Reload; `UNAUTHORIZED` = the expired session.
  */
 export type VenueProfileErrorCode =
   | 'NOT_VENUE_OWNER'
   | 'NO_SUCH_VENUE'
   | 'INVALID_REQUEST'
+  | 'STALE_WRITE'
   | 'UNAUTHORIZED'
   | 'UNKNOWN';

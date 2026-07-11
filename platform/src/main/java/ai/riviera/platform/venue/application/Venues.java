@@ -77,12 +77,16 @@ public interface Venues {
 	/**
 	 * Replace a venue's editable profile fields in one unit of work (O8 #177; widened from the T7
 	 * amenities + distance): name/beach/region/description, booking mode, booking cutoff, the amenity
-	 * set, and distance-to-water. Commission and payout currency are read-only and never written.
-	 * Returns the number of venue rows changed — {@code 0} means no such venue (the caller returns
-	 * NO_SUCH_VENUE); {@code 1} means the profile was replaced. The amenity set is fully replaced
-	 * (delete-then-insert), so it is order-insensitive and drops any amenity no longer selected.
+	 * set, and distance-to-water. Commission and payout currency are read-only and never written. The
+	 * write is <strong>conditional on {@code expectedVersion}</strong> — the optimistic-concurrency
+	 * token the tab loaded (#224) — and bumps the row's {@code version} by one on success. Returns the
+	 * number of venue rows changed: {@code 0} means the loaded version no longer matches (another writer
+	 * bumped it since the load — the caller, having already verified existence, returns STALE_WRITE);
+	 * {@code 1} means the profile was replaced. The amenity set is fully replaced (delete-then-insert),
+	 * so it is order-insensitive and drops any amenity no longer selected — and is left untouched when
+	 * the version guard rejects the write.
 	 */
-	int updateVenueProfile(VenueId venueId, VenueProfileCommand command);
+	int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command);
 
 	/**
 	 * The venue's admin profile for the operator console (O8 #177) — the editable core plus the

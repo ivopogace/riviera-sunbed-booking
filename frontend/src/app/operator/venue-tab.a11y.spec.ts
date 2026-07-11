@@ -29,6 +29,7 @@ describe('VenueTab a11y (#177)', () => {
     payoutCurrency: 'EUR',
     amenities: ['WIFI', 'BEACH_BAR'],
     distanceToWaterM: 20,
+    version: 7,
   };
 
   function configure(): void {
@@ -76,6 +77,26 @@ describe('VenueTab a11y (#177)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations with the stale-write conflict banner shown (#224)', async () => {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
+      .flush(PROFILE);
+    fixture.detectChanges();
+
+    // Reveal the conflict banner by failing a save with a 409 STALE_WRITE.
+    host().querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'PATCH')
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
     await expectNoAxeViolations(host());
   });
 });

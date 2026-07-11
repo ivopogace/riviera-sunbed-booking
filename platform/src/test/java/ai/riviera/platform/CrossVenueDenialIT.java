@@ -156,12 +156,14 @@ class CrossVenueDenialIT {
 				.andExpect(status().isForbidden());
 	}
 
-	/** A full, VALID widened profile body (O8 #177): valid so {@code toCommand()} passes and the 403
-	 *  comes from the service's ownership check, not from body validation (parse-then-authorize). */
+	/** A full, VALID widened profile body (O8 #177, versioned by #224): valid — including the required
+	 *  {@code expectedVersion} — so {@code toCommand()}/{@code requiredExpectedVersion()} pass and the
+	 *  403 comes from the service's ownership check, not from body/version validation (parse-then-authorize).
+	 *  The owning-venue counterpart edits a fresh venue, so {@code expectedVersion} 0 matches. */
 	private static final String FULL_PROFILE_BODY = """
 			{"name":"Edited","beach":"Ksamil","region":"Riviera","description":"x",
 			 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":["BEACH_BAR"],
-			 "distanceToWaterM":15}
+			 "distanceToWaterM":15,"expectedVersion":0}
 			""";
 
 	@Test

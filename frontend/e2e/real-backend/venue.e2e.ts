@@ -52,3 +52,45 @@ test('edits venue details + commodities via the console tab → tourist beach-ma
   await page.goto(`/operator/${id}/venue`);
   await expect(page.getByTestId('venue-booking-mode')).toHaveValue('REQUEST');
 });
+
+test('a stale-tab save is rejected with the 409 banner, and Reload recovers (#224)', async ({
+  page,
+  context,
+}) => {
+  // Onboard a fresh venue and open its tab (loads at version 0) — this is the "stale" tab.
+  await page.goto('/venue-admin');
+  await signInOperator(page);
+  const id = await createVenue(page, venueName('stale'));
+  await page.goto(`/operator/${id}/venue`);
+  await expect(page.getByTestId('venue-tab')).toBeVisible();
+  await expect(page.getByTestId('venue-booking-mode')).toHaveValue('INSTANT');
+
+  // A SECOND tab in the same session (a concurrent operator device) flips the mode and saves —
+  // bumping the venue's version on the server behind the first tab's back.
+  const other = await context.newPage();
+  await other.goto(`/operator/${id}/venue`);
+  await expect(other.getByTestId('venue-tab')).toBeVisible();
+  await other.getByTestId('venue-booking-mode').selectOption('REQUEST');
+  await other.getByTestId('venue-save').click();
+  await expect(other.getByTestId('venue-saved')).toBeVisible();
+  await other.close();
+
+  // The first tab (still holding the old version) edits and saves → real 409 STALE_WRITE. The
+  // conflict banner shows, and the operator's edit is PRESERVED (never a silent clobber — the exact
+  // #224 scenario: the stale INSTANT is NOT written back over the deliberate REQUEST).
+  await page.getByTestId('venue-name').fill('Stale Edit');
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-stale-banner')).toBeVisible();
+  await expect(page.getByTestId('venue-name')).toHaveValue('Stale Edit');
+  await expect(page.getByTestId('venue-saved')).toBeHidden();
+
+  // Reload pulls the latest server state (the concurrent REQUEST flip + new version) and clears the banner.
+  await page.getByTestId('venue-stale-reload').click();
+  await expect(page.getByTestId('venue-stale-banner')).toBeHidden();
+  await expect(page.getByTestId('venue-booking-mode')).toHaveValue('REQUEST');
+
+  // Re-applying and saving now succeeds against the fresh version.
+  await page.getByTestId('venue-name').fill('After Reload');
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+});

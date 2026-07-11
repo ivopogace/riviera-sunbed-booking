@@ -199,6 +199,7 @@ export function venueProfileErrorOf(error: unknown): VenueProfileErrorCode {
       case 'NOT_VENUE_OWNER':
       case 'NO_SUCH_VENUE':
       case 'INVALID_REQUEST':
+      case 'STALE_WRITE':
         return code;
       default:
         return 'UNKNOWN';
