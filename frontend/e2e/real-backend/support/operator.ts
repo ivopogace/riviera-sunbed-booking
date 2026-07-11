@@ -1,3 +1,7 @@
+import { expect, Page } from '@playwright/test';
+
+import { OperatorSignInPage } from '../../support/pages/operator-sign-in.page';
+
 /**
  * The operator credential the real-backend e2e suite signs in with. The same value is fed to the
  * backend `webServer` as `RIVIERA_OPERATOR_PASSWORD` (see `playwright.config.ts`), which
@@ -8,3 +12,36 @@
  */
 export const OPERATOR_USERNAME = 'operator';
 export const OPERATOR_PASSWORD = 'e2e-operator-secret';
+
+/** A unique-enough venue name per test, so a re-run never reads back a stale neighbour's venue. */
+export function venueName(label: string): string {
+  return `E2E ${label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+}
+
+/**
+ * Establish a REAL operator session (issue #109) via the shared sign-in Page Object: the form POSTs
+ * the credential once, the backend verifies the DB-backed hash and answers with the session cookie
+ * + CSRF token every later write rides.
+ */
+export async function signInOperator(page: Page, password: string = OPERATOR_PASSWORD): Promise<void> {
+  await new OperatorSignInPage(page).signIn(OPERATOR_USERNAME, password);
+}
+
+/**
+ * Fill the venue-onboarding "Venue details" create form (defaults stand for commission/currency/
+ * cutoff) and submit; returns the real venue id parsed from the "Venue #{id} created" status. Must be
+ * signed in first.
+ */
+export async function createVenue(page: Page, name: string): Promise<number> {
+  await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
+  await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
+  await page.getByRole('button', { name: 'Create venue' }).click();
+
+  const created = page.getByTestId('venue-created');
+  await expect(created).toBeVisible();
+  const id = Number((await created.textContent())?.match(/#(\d+)/)?.[1]);
+  expect(Number.isInteger(id)).toBe(true);
+  return id;
+}

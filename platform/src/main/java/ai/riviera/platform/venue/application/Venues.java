@@ -75,12 +75,21 @@ public interface Venues {
 	void insertSets(VenueId venueId, List<SetCommand> sets);
 
 	/**
-	 * Replace a venue's profile fields (amenities + distance-to-water) in one unit of work. Returns
-	 * the number of venue rows changed — {@code 0} means no such venue (the caller returns
+	 * Replace a venue's editable profile fields in one unit of work (O8 #177; widened from the T7
+	 * amenities + distance): name/beach/region/description, booking mode, booking cutoff, the amenity
+	 * set, and distance-to-water. Commission and payout currency are read-only and never written.
+	 * Returns the number of venue rows changed — {@code 0} means no such venue (the caller returns
 	 * NO_SUCH_VENUE); {@code 1} means the profile was replaced. The amenity set is fully replaced
 	 * (delete-then-insert), so it is order-insensitive and drops any amenity no longer selected.
 	 */
 	int updateVenueProfile(VenueId venueId, VenueProfileCommand command);
+
+	/**
+	 * The venue's admin profile for the operator console (O8 #177) — the editable core plus the
+	 * read-only commission + payout currency — or empty if no venue has this id. Read-only; the
+	 * caller (application service) has already asserted ownership (invariant #13).
+	 */
+	Optional<VenueProfileView> findProfile(VenueId venueId);
 
 	/** A layout-uniqueness conflict, in priority order for reporting. */
 	enum Conflict {

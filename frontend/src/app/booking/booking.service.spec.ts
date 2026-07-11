@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 
+import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
 import { environment } from '../../environments/environment';
 import {
   AwaitingPayment,
@@ -67,6 +68,11 @@ describe('BookingService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    // BookingService remembers each created code through DeviceLocalBookings (globalThis.localStorage,
+    // #139). Install a FRESH fake store per test — the fake-storage.ts contract — so codes written by
+    // one test don't leak into the next (e.g. the "remembers 3 codes" test into the "empty body"
+    // assertion). Without this the suite's isolation depends on worker/order luck.
+    installFakeStorage();
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
@@ -74,7 +80,10 @@ describe('BookingService', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    httpMock.verify();
+    removeFakeStorage();
+  });
 
   it('POSTs the request and exposes a confirmed result for a 201 (stub profile)', () => {
     let received: CreateBookingResult | undefined;

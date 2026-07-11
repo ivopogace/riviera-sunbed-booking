@@ -204,6 +204,9 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'booking/pay',
     'booking/requested',
     'booking/:code',
+    // O8 (#177): the /venue-admin editor was slimmed to onboarding-only and dropped its compat
+    // surface (its editing jobs are console tabs now) — so it renders on the bare background, not LEGACY.
+    'venue-admin',
   ];
 
   // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither
@@ -224,11 +227,11 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     }
   });
 
-  it('keeps only the venue-editor legacy route on the compat surface (O6 #176 retired the daily route)', () => {
-    // O6 retired the legacy StaffDaily page + its /venue-admin/daily/:venueId route; the venue editor
-    // is the last legacy operator surface (O8 restyles it as the Venue & commodities tab).
+  it('has no legacy compat-surface routes left (O8 #177 retired the last one)', () => {
+    // O6 retired the StaffDaily route; O8 (#177) slimmed /venue-admin to onboarding and dropped its
+    // legacySurface flag — the whole operator surface is now Liquid Glass (console) + bare onboarding.
     const legacy = routes.filter((r) => r.data?.['legacySurface'] === true);
-    expect(legacy.map((r) => r.path)).toEqual(['venue-admin']);
+    expect(legacy.map((r) => r.path)).toEqual([]);
   });
 
   it('forwards the retired daily URL to the console Daily-view tab, preserving the venue id (O6 #176)', () => {
@@ -259,5 +262,13 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     const component = await load?.();
     // The bundler may prefix the emitted class name (e.g. `_PayoutsTab`) — match on the class, not ===.
     expect(component?.name).toContain('PayoutsTab');
+  });
+
+  it('graduates the venue tab from the placeholder to the real VenueTab (O8 #177)', async () => {
+    const console = routes.find((r) => r.path === 'operator/:venueId');
+    const venue = (console?.children ?? []).find((c) => c.path === 'venue');
+    const load = venue?.loadComponent as (() => Promise<{ name: string }>) | undefined;
+    const component = await load?.();
+    expect(component?.name).toContain('VenueTab');
   });
 });

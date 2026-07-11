@@ -8,13 +8,17 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalTime;
+
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
+import ai.riviera.platform.venue.application.VenueProfileView;
 import ai.riviera.platform.venue.application.Venues;
 
 /**
@@ -31,6 +35,12 @@ class JdbcVenues implements Venues {
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
+	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
+	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
+	private static final String COL_NAME = "name";
+	private static final String COL_BEACH = "beach";
+	private static final String COL_REGION = "region";
+	private static final String COL_DESCRIPTION = "description";
 
 	/** The set-position INSERT column/values, shared by the single-row and bulk paths (one column list). */
 	private static final String INSERT_SET_SQL = """
@@ -54,10 +64,10 @@ class JdbcVenues implements Venues {
 				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff)
 				RETURNING id
 				""")
-				.param("name", c.name())
-				.param("beach", c.beach())
-				.param("region", c.region())
-				.param("description", c.description())
+				.param(COL_NAME, c.name())
+				.param(COL_BEACH, c.beach())
+				.param(COL_REGION, c.region())
+				.param(COL_DESCRIPTION, c.description())
 				.param("mode", c.bookingMode())
 				.param("bps", c.commissionBps())
 				.param("currency", c.payoutCurrency())
@@ -210,7 +220,22 @@ class JdbcVenues implements Venues {
 		// The venue UPDATE's rows-affected is the existence check (0 ⇒ no such venue). Only when the
 		// venue exists do we replace its amenity set (delete-then-insert). Both run inside the
 		// service's @Transactional boundary, so the set is never left partially replaced.
-		int rows = jdbc.sql("UPDATE venue SET distance_to_water_m = :distance WHERE id = :id")
+		//
+		// commission_bps and payout_currency are NOT in the SET clause — they are read-only for
+		// operators (invariant #9 / provisional payout currency), and the command carries no such
+		// field, so a crafted request cannot reach them (O8, issue #177).
+		int rows = jdbc.sql("""
+				UPDATE venue
+				SET name = :name, beach = :beach, region = :region, description = :description,
+				    booking_mode = :mode, booking_cutoff = :cutoff, distance_to_water_m = :distance
+				WHERE id = :id
+				""")
+				.param(COL_NAME, command.name())
+				.param(COL_BEACH, command.beach())
+				.param(COL_REGION, command.region())
+				.param(COL_DESCRIPTION, command.description())
+				.param("mode", command.bookingMode())
+				.param("cutoff", command.bookingCutoff())
 				.param("distance", command.distanceToWaterM())
 				.param("id", venueId.value())
 				.update();
@@ -227,6 +252,47 @@ class JdbcVenues implements Venues {
 					.update();
 		}
 		return rows;
+	}
+
+	@Override
+	public Optional<VenueProfileView> findProfile(VenueId venueId) {
+		// The owner's admin profile (O8 #177): the editable core + the read-only commission + payout
+		// currency. Two reads inside the caller's read-only tx — the venue row, then its amenity set
+		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
+		Optional<ProfileRow> venue = jdbc.sql("""
+				SELECT name, beach, region, description, booking_mode, booking_cutoff,
+				       commission_bps, payout_currency, distance_to_water_m
+				FROM venue
+				WHERE id = :id
+				""")
+				.param("id", venueId.value())
+				.query((rs, rowNum) -> new ProfileRow(
+						rs.getString(COL_NAME), rs.getString(COL_BEACH), rs.getString(COL_REGION),
+						rs.getString(COL_DESCRIPTION),
+						BookingMode.valueOf(rs.getString("booking_mode")),
+						rs.getObject("booking_cutoff", LocalTime.class),
+						rs.getInt("commission_bps"), rs.getString("payout_currency"),
+						rs.getObject("distance_to_water_m", Integer.class)))
+				.optional();
+		if (venue.isEmpty()) {
+			return Optional.empty();
+		}
+		ProfileRow v = venue.get();
+		List<Amenity> amenities = jdbc.sql("SELECT amenity FROM venue_amenity WHERE venue_id = :id")
+				.param("id", venueId.value())
+				.query((rs, rowNum) -> Amenity.valueOf(rs.getString("amenity")))
+				.list().stream()
+				.sorted() // enum natural order == canonical catalogue order (as findVenueMap)
+				.toList();
+		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
+				v.bookingMode(), v.bookingCutoff(), v.commissionBps(), v.payoutCurrency(),
+				amenities, v.distanceToWaterM()));
+	}
+
+	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
+	private record ProfileRow(String name, String beach, String region, String description,
+			BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
+			Integer distanceToWaterM) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

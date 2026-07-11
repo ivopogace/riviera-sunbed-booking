@@ -66,6 +66,12 @@ class SecurityConfig {
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read (U9); must be gated BEFORE the public venue GET. */
 	private static final String PAYOUT_LEDGER_PATH = "/api/venues/*/payout-ledger";
+	/**
+	 * The operator-only venue admin-profile read (O8 #177): it returns the venue's commission rate +
+	 * payout currency, which must NEVER reach the public tourist read. MUST be gated BEFORE the public
+	 * "GET /api/venues/**" below (first match wins), exactly like the payout ledger + takings reads.
+	 */
+	private static final String VENUE_PROFILE_PATH = "/api/venues/*/profile";
 	/** The operator-only per-venue daily online-takings read (#171, O2); gated BEFORE the public venue GET. */
 	private static final String TAKINGS_PATH = "/api/venues/*/takings";
 	/** The operator-only pending-requests queue (#98); must be gated BEFORE the public venue GET. */
@@ -132,6 +138,11 @@ class SecurityConfig {
 						// Per-venue payout ledger read (U9) — operator-only venue financial data. MUST
 						// precede the public "GET /api/venues/**" below (first match wins).
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
+						// Venue admin-profile read (O8 #177) — returns the commission rate + payout
+						// currency, so it is operator-only. MUST precede the public "GET /api/venues/**"
+						// below (first match wins); the per-venue ownership check itself lives in the
+						// application service (invariant #13). `*` matches one segment, never /sets/*.
+						.requestMatchers(HttpMethod.GET, VENUE_PROFILE_PATH).hasRole(OPERATOR_ROLE)
 						// Per-venue daily online-takings read (#171) — operator-only venue financial data.
 						// MUST precede the public "GET /api/venues/**" below (first match wins); the
 						// per-venue ownership check itself lives in the application service (invariant #13).

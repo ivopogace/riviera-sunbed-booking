@@ -8,6 +8,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +30,7 @@ import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
  * Operator write endpoints for venue onboarding + beach-map editing (U7, issue #7). Driving
@@ -55,13 +57,16 @@ class VenueAdminController {
 	private final OnboardVenue onboardVenue;
 	private final EditBeachMap editBeachMap;
 	private final EditVenueProfile editVenueProfile;
+	private final ViewVenueProfile viewVenueProfile;
 	private final CurrentOperator currentOperator;
 
 	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
-			EditVenueProfile editVenueProfile, CurrentOperator currentOperator) {
+			EditVenueProfile editVenueProfile, ViewVenueProfile viewVenueProfile,
+			CurrentOperator currentOperator) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
 		this.editVenueProfile = editVenueProfile;
+		this.viewVenueProfile = viewVenueProfile;
 		this.currentOperator = currentOperator;
 	}
 
@@ -70,6 +75,20 @@ class VenueAdminController {
 		VenueId id = onboardVenue.onboard(request.toCommand());
 		return ResponseEntity.created(URI.create("/api/venues/" + id.value()))
 				.body(Map.of("id", id.value()));
+	}
+
+	@GetMapping("/{venueId}/profile")
+	ResponseEntity<VenueProfileResponse> getProfile(Authentication authentication,
+			@PathVariable long venueId) {
+		// Owner-scoped read (invariant #13): the service asserts ownership before returning the
+		// profile (which carries the read-only commission + payout currency) — a non-owner is 403 via
+		// ApiErrorHandler. This endpoint is gated to role OPERATOR ABOVE the public "GET /api/venues/**"
+		// in SecurityConfig, so it never leaks commission to the anonymous tourist read.
+		OperatorId operator = currentOperator.require(authentication);
+		return viewVenueProfile.profileFor(operator, new VenueId(venueId))
+				.map(VenueProfileResponse::from)
+				.map(ResponseEntity::ok)
+				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
 	@PatchMapping("/{venueId}")

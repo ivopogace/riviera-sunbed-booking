@@ -1,10 +1,10 @@
-import { Amenity } from '../shared/amenities';
-import { BookingMode, MoneyView, Pool, Tier } from '../venue/venue.model';
+import { BookingMode } from '../venue/venue.model';
 
 /**
- * Typed views of the U7 venue write API (operator endpoints under `/api/venues`). Money travels as
- * integer minor units + ISO currency (invariant #5) reusing the U1 {@link MoneyView} shape exactly,
- * so a layout written here round-trips unchanged through the read API. No `any` anywhere.
+ * Typed views of the venue **onboarding** write API (`POST /api/venues`). Money travels as integer
+ * minor units + ISO currency (invariant #5). The per-set write + profile-edit types moved to the
+ * operator console when their editing surfaces graduated to console tabs (layout O3, pricing O4,
+ * details/commodities O8 #177 — see `operator/operator-console.model.ts`). No `any` anywhere.
  */
 
 /** `POST /api/venues` body — create a venue. Rating/reviews are server-defaulted to zero. */
@@ -20,39 +20,14 @@ export interface CreateVenueRequest {
   readonly bookingCutoff: string;
 }
 
-/** `POST`/`PATCH` `/api/venues/{id}/sets...` body — place or re-place one set position. */
-export interface SetPositionRequest {
-  readonly rowLabel: string;
-  readonly positionNo: number;
-  readonly tier: Tier;
-  readonly pool: Pool;
-  readonly price: MoneyView;
-  readonly gridX: number;
-  readonly gridY: number;
-}
-
-/**
- * `PATCH /api/venues/{id}` body — replace the venue's profile fields (T7, #140). The amenity set is
- * sent whole (codes from the fixed catalogue; the server rejects an unknown code 400); a `null`
- * distance clears it. Replaces, not merges — the editor re-sends every selected amenity.
- */
-export interface UpdateVenueProfileRequest {
-  readonly amenities: readonly Amenity[];
-  readonly distanceToWaterM: number | null;
-}
-
-/** `201` response from a create/add — the new technical id. */
+/** `201` response from a create — the new technical id. */
 export interface CreatedId {
   readonly id: number;
 }
 
-/** The server error codes the editor maps to operator-facing messages. */
+/** The server error codes onboarding maps to operator-facing messages (RFC-7807 `code`, issue #97). */
 export type VenueAdminErrorCode =
-  | 'CELL_TAKEN'
-  | 'DUPLICATE_POSITION'
   | 'NO_SUCH_VENUE'
-  | 'NO_SUCH_SET'
-  | 'CONFLICT'
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'UNKNOWN';

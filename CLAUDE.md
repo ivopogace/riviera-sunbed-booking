@@ -19,10 +19,11 @@ visual design (Liquid Glass v3 tourist + v2 operator console): `docs/design/`.
 Current state: full stack built and deployed. Since #110 the frontend is served
 **same-origin by the backend** (Spring bundles the Angular SPA into its Docker image) at
 riviera-sunbed-booking.onrender.com; GitHub Pages is retired. The tourist Liquid Glass restyle
-(epic #133, T2–T8) is done; the operator console (epic #141) is in progress —
+(epic #133, T2–T8) is done; the operator console (epic #141) is **complete** —
 O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view + O6 requests tab
 (which retired the legacy StaffDaily page) + O7 payouts tab (ledger + statement + weather refund)
-merged, O8 remains.
++ O8 venue & commodities tab (details form + amenity chips + photo placeholders; retired the legacy
+venue-editor page — now onboarding-only) all merged.
 
 ## Tech stack (locked)
 

@@ -1,0 +1,24 @@
+package ai.riviera.platform.venue.application;
+
+import java.time.LocalTime;
+import java.util.List;
+
+import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
+
+/**
+ * The operator's own view of a venue's admin profile (O8, issue #177) — everything the console's
+ * Venue &amp; commodities tab needs to render its form: the editable core
+ * (name/beach/region/description, booking mode, booking cutoff, amenities, distance-to-water) plus
+ * the two <strong>read-only</strong> display fields, {@code commissionBps} (shown as a %; the
+ * platform's cut, invariant #9) and {@code payoutCurrency} (standing provisional). Returned by the
+ * {@link ViewVenueProfile} driving port after the owner check (invariant #13).
+ *
+ * <p>This is deliberately NOT the public tourist {@code VenueMapView}: it carries commission +
+ * payout currency, which must never reach the anonymous read (that is why the read endpoint is
+ * gated to the owning operator, not permitted like {@code GET /api/venues/*}).
+ */
+public record VenueProfileView(String name, String beach, String region, String description,
+		BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
+		List<Amenity> amenities, Integer distanceToWaterM) {
+}

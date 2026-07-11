@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { CreateVenueRequest, SetPositionRequest } from './venue-admin.model';
+import { CreateVenueRequest } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
 const VENUE: CreateVenueRequest = {
@@ -15,16 +15,6 @@ const VENUE: CreateVenueRequest = {
   commissionBps: 1500,
   payoutCurrency: 'EUR',
   bookingCutoff: '18:00',
-};
-
-const SET: SetPositionRequest = {
-  rowLabel: 'Front row',
-  positionNo: 1,
-  tier: 'PREMIUM',
-  pool: 'ONLINE',
-  price: { minorUnits: 4500, currency: 'EUR' },
-  gridX: 1,
-  gridY: 1,
 };
 
 describe('VenueAdminService', () => {
@@ -51,31 +41,6 @@ describe('VenueAdminService', () => {
     req.flush({ id: 5 }, { status: 201, statusText: 'Created' });
     expect(id).toBe(5);
   });
-
-  it('addSet POSTs to the venue sets endpoint', () => {
-    let id: number | undefined;
-    service.addSet(5, SET).subscribe((r) => (id = r.id));
-    const req = httpMock.expectOne(`${base}/api/venues/5/sets`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(SET);
-    req.flush({ id: 9 }, { status: 201, statusText: 'Created' });
-    expect(id).toBe(9);
-  });
-
-  it('updateSet PATCHes the specific set', () => {
-    service.updateSet(5, 9, SET).subscribe();
-    const req = httpMock.expectOne(`${base}/api/venues/5/sets/9`);
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body).toEqual(SET);
-    req.flush(null, { status: 204, statusText: 'No Content' });
-  });
-
-  it('removeSet DELETEs the specific set', () => {
-    service.removeSet(5, 9).subscribe();
-    const req = httpMock.expectOne(`${base}/api/venues/5/sets/9`);
-    expect(req.request.method).toBe('DELETE');
-    req.flush(null, { status: 204, statusText: 'No Content' });
-  });
 });
 
 describe('venueAdminErrorOf', () => {
@@ -92,11 +57,7 @@ describe('venueAdminErrorOf', () => {
   });
 
   it('maps known server codes', () => {
-    expect(venueAdminErrorOf(httpError(409, 'CELL_TAKEN'))).toBe('CELL_TAKEN');
-    expect(venueAdminErrorOf(httpError(409, 'DUPLICATE_POSITION'))).toBe('DUPLICATE_POSITION');
-    expect(venueAdminErrorOf(httpError(409, 'CONFLICT'))).toBe('CONFLICT');
     expect(venueAdminErrorOf(httpError(404, 'NO_SUCH_VENUE'))).toBe('NO_SUCH_VENUE');
-    expect(venueAdminErrorOf(httpError(404, 'NO_SUCH_SET'))).toBe('NO_SUCH_SET');
     expect(venueAdminErrorOf(httpError(400, 'INVALID_REQUEST'))).toBe('INVALID_REQUEST');
   });
 

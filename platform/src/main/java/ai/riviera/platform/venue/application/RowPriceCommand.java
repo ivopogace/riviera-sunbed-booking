@@ -15,10 +15,10 @@ package ai.riviera.platform.venue.application;
 public record RowPriceCommand(String rowLabel, long priceMinor, String priceCurrency) {
 
 	public RowPriceCommand {
-		NewVenueCommand.requireText(rowLabel, "rowLabel");
+		VenueFieldValidation.requireText(rowLabel, "rowLabel");
 		if (priceMinor < 0) {
 			throw new IllegalArgumentException("priceMinor must be >= 0");
 		}
-		NewVenueCommand.requireIsoCurrency(priceCurrency, "priceCurrency");
+		VenueFieldValidation.requireIsoCurrency(priceCurrency, "priceCurrency");
 	}
 }

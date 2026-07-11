@@ -1,0 +1,256 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { form, required, submit, FormField } from '@angular/forms/signals';
+import { ActivatedRoute } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+
+import { OperatorAuth } from '../core/operator-auth';
+import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
+import { CardGlass } from '../shared/card-glass';
+import { parentVenueId } from '../shared/parent-venue-id';
+import { parseWholeNumber } from '../shared/whole-number';
+import { BookingMode } from '../venue/venue.model';
+import {
+  VenueProfileErrorCode,
+  VenueProfileUpdate,
+  VenueProfileView,
+} from './operator-console.model';
+import { OperatorConsoleService, venueProfileErrorOf } from './operator-console.service';
+
+/** The editable venue-details fields, bound to the Signal Form (the read-only commission + payout
+ *  currency are display-only signals, never part of the form/write). */
+interface VenueDetailsModel {
+  name: string;
+  beach: string;
+  region: string;
+  description: string;
+  bookingMode: BookingMode;
+  bookingCutoff: string; // "HH:mm" Europe/Tirane
+}
+
+const EMPTY_DETAILS: VenueDetailsModel = {
+  name: '',
+  beach: '',
+  region: '',
+  description: '',
+  bookingMode: 'INSTANT',
+  bookingCutoff: '18:00',
+};
+
+/** The three designed photo slots — VISUAL PLACEHOLDERS only; upload is deferred to issue #142. */
+const PHOTO_SLOTS: readonly { readonly key: string; readonly label: string }[] = [
+  { key: 'cover', label: 'Cover photo — the beach' },
+  { key: 'sunbeds', label: 'Sunbeds' },
+  { key: 'bar', label: 'Bar / restaurant' },
+];
+
+/**
+ * The O8 Venue &amp; commodities tab (issue #177, epic #141) — the operator's venue-details form
+ * (name/beach/region/description, booking mode, evening-before cutoff), the commodities amenity
+ * toggle-chip row over the fixed catalogue, and photo upload-slot **placeholders** (upload is #142).
+ *
+ * <p>Loads the owner-scoped profile (`GET /api/venues/{id}/profile`) — which carries the read-only
+ * <strong>commission</strong> (shown as a %) and <strong>payout currency</strong> the tourist read
+ * must never expose — and seeds the form. Save PATCHes the widened, owner-asserted profile write
+ * (invariant #13); commission + payout currency are read-only and never sent (invariant #9). A save
+ * failure shows operator-facing copy and drops a lost session (401). Always porcelain (console
+ * shell); glass via {@link CardGlass}. Editing booking mode flips the venue's tourist booking flow
+ * (Instant vs Request) — the reserve path reads the mode live.
+ */
+@Component({
+  selector: 'app-venue-tab',
+  imports: [FormField, CardGlass],
+  templateUrl: './venue-tab.html',
+})
+export class VenueTab {
+  private readonly route = inject(ActivatedRoute);
+  private readonly console = inject(OperatorConsoleService);
+  protected readonly operator = inject(OperatorAuth);
+
+  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if invalid). */
+  protected readonly venueId: number | undefined;
+
+  protected readonly loaded = signal(false);
+  protected readonly loadError = signal(false);
+  protected readonly saving = signal(false);
+  protected readonly saved = signal(false);
+  protected readonly errorCode = signal<VenueProfileErrorCode | null>(null);
+  /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
+   *  the operator at the right field instead of a generic form-wide message. */
+  protected readonly distanceError = signal(false);
+
+  /** Read-only display fields (from the loaded profile); never edited, never written. */
+  protected readonly commissionBps = signal<number | null>(null);
+  protected readonly payoutCurrency = signal<string | null>(null);
+  /** Commission as a percentage for display, e.g. 1500 bps → "15%", 1550 → "15.5%". */
+  protected readonly commissionPct = computed(() => {
+    const bps = this.commissionBps();
+    return bps === null ? '—' : `${bps / 100}%`;
+  });
+
+  /** The editable details, bound to the Signal Form; seeded from the loaded profile. */
+  protected readonly details = signal<VenueDetailsModel>(EMPTY_DETAILS);
+  protected readonly detailsForm = form(this.details, (path) => {
+    required(path.name, { message: 'Venue name is required' });
+    required(path.beach, { message: 'Beach is required' });
+    required(path.region, { message: 'Region is required' });
+    required(path.bookingCutoff, { message: 'Booking cutoff is required' });
+  });
+
+  /** The commodities: amenity toggle set + distance-to-water string (edited, saved with the form). */
+  protected readonly amenityCatalogue = AMENITY_CATALOGUE;
+  protected readonly amenityDraft = signal<ReadonlySet<Amenity>>(new Set());
+  protected readonly distanceDraft = signal('');
+
+  protected readonly photoSlots = PHOTO_SLOTS;
+
+  constructor() {
+    // Drop the "Saved" confirmation as soon as the operator edits any details field (a Signal-Form
+    // field, so it has no per-field handler like the amenity/distance ones) — otherwise the banner
+    // lingers after a save and a subsequent edit reads as already-persisted, a silent lost edit.
+    effect(() => {
+      this.details(); // track the form model: any edit re-fires this and clears the stale notice
+      this.saved.set(false);
+    });
+
+    const id = parentVenueId(this.route);
+    if (id !== undefined) {
+      this.venueId = id;
+      this.load(id);
+    } else {
+      this.loaded.set(true);
+    }
+  }
+
+  protected isAmenityActive(code: Amenity): boolean {
+    return this.amenityDraft().has(code);
+  }
+
+  protected amenityText(code: Amenity): string {
+    return amenityLabel(code);
+  }
+
+  /** Flip an amenity in the working set (persisted only on Save); clears the stale saved notice. */
+  protected onToggleAmenity(code: Amenity): void {
+    this.amenityDraft.update((current) => {
+      const next = new Set(current);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+    this.saved.set(false);
+  }
+
+  protected onDistanceInput(value: string): void {
+    this.distanceDraft.set(value);
+    this.saved.set(false);
+    this.distanceError.set(false);
+  }
+
+  /**
+   * Save the venue's editable profile: validate the form (Signal Forms marks touched + blocks an
+   * invalid submit), parse the distance (blank ⇒ null; else a positive integer), then PATCH the
+   * widened profile write. Commission + payout currency are never sent (read-only). A 401 drops the
+   * lost session so the shell re-gates; other failures show operator-facing copy.
+   */
+  protected onSave(): void {
+    const venueId = this.venueId;
+    if (venueId === undefined || this.saving()) {
+      return;
+    }
+    this.saved.set(false);
+    this.errorCode.set(null);
+    this.distanceError.set(false);
+    submit(this.detailsForm, async () => {
+      const raw = this.distanceDraft().trim();
+      let distanceToWaterM: number | null;
+      if (raw === '') {
+        distanceToWaterM = null;
+      } else {
+        const parsed = parseWholeNumber(raw);
+        if (parsed === undefined || parsed <= 0) {
+          // Field-level error at the distance input, not the generic form-wide message — the operator
+          // can see exactly which field to fix (the distance isn't a Signal-Form field).
+          this.distanceError.set(true);
+          return;
+        }
+        distanceToWaterM = parsed;
+      }
+      const m = this.details();
+      const request: VenueProfileUpdate = {
+        name: m.name,
+        beach: m.beach,
+        region: m.region,
+        description: m.description,
+        bookingMode: m.bookingMode,
+        bookingCutoff: m.bookingCutoff,
+        amenities: [...this.amenityDraft()],
+        distanceToWaterM,
+      };
+      this.saving.set(true);
+      try {
+        await firstValueFrom(this.console.updateVenueProfile(venueId, request));
+        this.saved.set(true);
+      } catch (error) {
+        const code = venueProfileErrorOf(error);
+        this.errorCode.set(code);
+        if (code === 'UNAUTHORIZED') {
+          this.operator.sessionLost();
+        }
+      } finally {
+        this.saving.set(false);
+      }
+    });
+  }
+
+  /** The operator-facing message for a save/load failure code. */
+  protected errorMessage(): string | undefined {
+    switch (this.errorCode()) {
+      case 'NOT_VENUE_OWNER':
+        return 'You do not manage this venue, so its details can’t be changed.';
+      case 'NO_SUCH_VENUE':
+        return 'This venue could not be found.';
+      case 'INVALID_REQUEST':
+        return 'Please check the details and try again.';
+      case 'UNAUTHORIZED':
+        return 'Your session has expired. Please sign in again.';
+      case 'UNKNOWN':
+        return 'Something went wrong saving your venue details. Please try again.';
+      default:
+        return undefined;
+    }
+  }
+
+  private load(venueId: number): void {
+    this.console.venueProfile(venueId).subscribe({
+      next: (profile) => this.seed(profile),
+      error: (error: unknown) => {
+        // A transient read failure must NOT read as a blank form — show an error instead.
+        this.loadError.set(true);
+        this.loaded.set(true);
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.operator.sessionLost();
+        }
+      },
+    });
+  }
+
+  private seed(profile: VenueProfileView): void {
+    this.details.set({
+      name: profile.name,
+      beach: profile.beach,
+      region: profile.region,
+      description: profile.description ?? '',
+      bookingMode: profile.bookingMode,
+      bookingCutoff: profile.bookingCutoff,
+    });
+    this.amenityDraft.set(new Set(profile.amenities));
+    this.distanceDraft.set(profile.distanceToWaterM == null ? '' : String(profile.distanceToWaterM));
+    this.commissionBps.set(profile.commissionBps);
+    this.payoutCurrency.set(profile.payoutCurrency);
+    this.loaded.set(true);
+  }
+}

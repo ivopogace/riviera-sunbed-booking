@@ -1,29 +1,19 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
 import { apiSessionInterceptor } from '../core/api-session.interceptor';
-import { VenueMapView } from '../venue/venue.model';
 import { VenueEditor } from './venue-editor';
 
-function venueView(id: number, sets: VenueMapView['sets']): VenueMapView {
-  return {
-    id,
-    name: 'Sunset Bar',
-    beach: 'Ksamil',
-    region: 'Riviera',
-    description: 'on the shore',
-    ratingTenths: 0,
-    reviewsCount: 0,
-    bookingMode: 'INSTANT',
-    fromPrice: sets.length ? sets[0].price : null,
-    sets,
-  };
-}
-
-describe('VenueEditor', () => {
+/**
+ * Venue onboarding (the retired editor's surviving job, O8 #177): sign in and CREATE a venue, then
+ * link into the console. Editing (layout/pricing/details/commodities) moved to the console tabs, so
+ * those flows are tested there (`layout-editor`, `pricing-tab`, `venue-tab`), not here.
+ */
+describe('VenueEditor (onboarding, #177)', () => {
   let fixture: ComponentFixture<VenueEditor>;
   let httpMock: HttpTestingController;
   let auth: OperatorAuth;
@@ -34,6 +24,7 @@ describe('VenueEditor', () => {
       providers: [
         provideHttpClient(withInterceptors([apiSessionInterceptor])),
         provideHttpClientTesting(),
+        provideRouter([]),
       ],
     }).compileComponents();
 
@@ -84,77 +75,12 @@ describe('VenueEditor', () => {
     button!.click();
   }
 
-  /** A venue (id 5) carrying a single ONLINE/WALK_IN set — the post-add read-back shape. */
-  function oneSet(pool: 'ONLINE' | 'WALK_IN' = 'ONLINE'): VenueMapView {
-    return venueView(5, [
-      {
-        id: 9,
-        rowLabel: 'Front row',
-        positionNo: 1,
-        tier: 'PREMIUM',
-        pool,
-        price: { minorUnits: 4500, currency: 'EUR' },
-        gridX: 1,
-        gridY: 1,
-        availability: 'FREE',
-      },
-    ]);
-  }
-
-  /** Sign in, create venue 5, and settle its first read-back so the layout step is showing. */
-  async function createVenue(): Promise<void> {
-    await signIn();
-    setField('Name', 'Sunset Bar');
-    setField('Beach', 'Ksamil');
-    setField('Region', 'Riviera');
-    fixture.detectChanges();
-    clickButton('Create venue');
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)
-      .flush({ id: 5 }, { status: 201, statusText: 'Created' });
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
-      .flush(venueView(5, []));
-    await fixture.whenStable();
-    fixture.detectChanges();
-  }
-
-  /** Fill the add-set form with a valid front-row set and submit it. */
-  function fillAndSubmitSet(price = '4500'): void {
-    setField('Row label', 'Front row');
-    setField('Position number', '1');
-    setField('Price (minor units)', price);
-    setField('Grid column', '1');
-    setField('Grid row', '1');
-    fixture.detectChanges();
-    clickButton('Add set');
-  }
-
-  /** Add a set to venue 5 and settle the read-back so one row is laid out. */
-  async function addSet(): Promise<void> {
-    fillAndSubmitSet();
-    await fixture.whenStable();
-    httpMock
-      .expectOne(
-        (r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets`,
-      )
-      .flush({ id: 9 }, { status: 201, statusText: 'Created' });
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
-      .flush(oneSet());
-    await fixture.whenStable();
-    fixture.detectChanges();
-  }
-
   it('shows the operator sign-in until signed in', () => {
     expect(host().textContent).toContain('Operator sign-in');
     expect(host().textContent).not.toContain('Create venue');
   });
 
-  it('creates a venue and rounds the layout trip through the read API', async () => {
+  it('creates a venue and links the operator into its console', async () => {
     await signIn();
 
     setField('Name', 'Sunset Bar');
@@ -177,68 +103,17 @@ describe('VenueEditor', () => {
       payoutCurrency: 'EUR',
       bookingCutoff: '18:00',
     });
-    // Session model (issue #109): the HttpOnly cookie is the credential — the request goes out
-    // withCredentials and carries NO Authorization header (the Basic flow is retired).
+    // Session model (issue #109): the HttpOnly cookie is the credential — withCredentials, no header.
     expect(createReq.request.headers.has('Authorization')).toBe(false);
     expect(createReq.request.withCredentials).toBe(true);
     createReq.flush({ id: 5 }, { status: 201, statusText: 'Created' });
     await fixture.whenStable();
-
-    // The editor re-reads the venue through the public U1 read API (the round-trip source).
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
-      .flush(venueView(5, []));
-    await fixture.whenStable();
     fixture.detectChanges();
+
+    // No read-back: the created venue is edited in the console. The card confirms + links there.
     expect(host().textContent).toContain('Venue #5 created');
-
-    // Add a set; tier/pool/currency keep their defaults (PREMIUM / ONLINE / EUR).
-    setField('Row label', 'Front row');
-    setField('Position number', '1');
-    setField('Price (minor units)', '4500');
-    setField('Grid column', '1');
-    setField('Grid row', '1');
-    fixture.detectChanges();
-
-    clickButton('Add set');
-    await fixture.whenStable();
-
-    const addReq = httpMock.expectOne(
-      (r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets`,
-    );
-    expect(addReq.request.body).toMatchObject({
-      rowLabel: 'Front row',
-      positionNo: 1,
-      tier: 'PREMIUM',
-      pool: 'ONLINE',
-      price: { minorUnits: 4500, currency: 'EUR' },
-      gridX: 1,
-      gridY: 1,
-    });
-    addReq.flush({ id: 9 }, { status: 201, statusText: 'Created' });
-    await fixture.whenStable();
-
-    const reloaded = venueView(5, [
-      {
-        id: 9,
-        rowLabel: 'Front row',
-        positionNo: 1,
-        tier: 'PREMIUM',
-        pool: 'ONLINE',
-        price: { minorUnits: 4500, currency: 'EUR' },
-        gridX: 1,
-        gridY: 1,
-        availability: 'FREE',
-      },
-    ]);
-    httpMock.expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`)).flush(reloaded);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    // The rendered layout is exactly what the read API returned (round-trip).
-    expect(host().textContent).toContain('Front row');
-    expect(host().textContent).toContain('position 1');
-    expect(host().textContent).toContain('Layout (1)');
+    const link = host().querySelector<HTMLAnchorElement>('[data-testid="venue-console-link"]');
+    expect(link?.getAttribute('href')).toBe('/operator/5');
   });
 
   it('rejects a non-integer commission client-side without calling the server', async () => {
@@ -257,41 +132,10 @@ describe('VenueEditor', () => {
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
   });
 
-  it('keeps a read-back failure distinct from a write error', async () => {
-    await signIn();
-    setField('Name', 'Sunset Bar');
-    setField('Beach', 'Ksamil');
-    setField('Region', 'Riviera');
-    fixture.detectChanges();
-
-    clickButton('Create venue');
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)
-      .flush({ id: 5 }, { status: 201, statusText: 'Created' });
-    await fixture.whenStable();
-
-    // The write succeeded (venue 5 created), but the read-back fails.
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
-      .error(new ProgressEvent('error'));
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    // The operator is told the preview is stale via the `<output>` status region (implicit
-    // role="status"), NOT shown a write error inviting a retry.
-    expect(host().textContent).toContain('Venue #5 created');
-    expect(host().querySelector('output.form-notice')?.textContent).toContain(
-      'couldn’t be refreshed',
-    );
-    expect(host().querySelector('.form-error')).toBeNull();
-  });
-
   it('surfaces a mid-flow 401 as a session-expired error AND drops the lost session', async () => {
     // Signed in, but the session dies before the write (expired/invalidated server-side): the 401
     // on the venue POST surfaces the session-expired alert AND clears local auth state via
-    // sessionLost(), so the sign-in form re-renders instead of stranding the operator on the
-    // signed-in card retrying a dead session (issue #109 review fix).
+    // sessionLost(), so the sign-in form re-renders instead of stranding the operator (issue #109).
     await signIn();
     expect(auth.signedIn()).toBe(true);
     setField('Name', 'Sunset Bar');
@@ -308,7 +152,6 @@ describe('VenueEditor', () => {
     fixture.detectChanges();
 
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('session has expired');
-    // The lost session is dropped, so the operator can sign in again (no dead-end).
     expect(auth.signedIn()).toBe(false);
     expect(host().querySelector('#operator-username, [name="operator-username"]')).not.toBeNull();
   });
@@ -318,7 +161,6 @@ describe('VenueEditor', () => {
     setField('Password', 'pw');
     fixture.detectChanges();
     clickButton('Sign in');
-    // Server-validated sign-in (issue #109): the form submit posts to the login endpoint.
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/operator/login`)
       .flush({ username: 'operator', principalType: 'OPERATOR' });
@@ -330,7 +172,6 @@ describe('VenueEditor', () => {
     expect(host().textContent).toContain('Create venue');
 
     clickButton('Sign out');
-    // Sign-out invalidates the server session before the local state clears.
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/logout`)
       .flush(null, { status: 204, statusText: 'No Content' });
@@ -345,175 +186,4 @@ describe('VenueEditor', () => {
     fixture.detectChanges();
     expect(auth.signedIn()).toBe(false);
   });
-
-  it('moves a set between the online and walk-in pools', async () => {
-    await createVenue();
-    await addSet();
-
-    clickButton('Move to walk-in');
-    await fixture.whenStable();
-    const patch = httpMock.expectOne(
-      (r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
-    );
-    expect(patch.request.body).toMatchObject({ pool: 'WALK_IN', gridX: 1, gridY: 1 });
-    patch.flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
-      .flush(oneSet('WALK_IN'));
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(host().textContent).toContain('walk-in pool');
-    expect(host().textContent).toContain('Move to online');
-  });
-
-  it('removes a set from the layout', async () => {
-    await createVenue();
-    await addSet();
-
-    clickButton('Remove');
-    await fixture.whenStable();
-    httpMock
-      .expectOne(
-        (r) => r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
-      )
-      .flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/5`))
-      .flush(venueView(5, []));
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(host().textContent).toContain('Layout (0)');
-    expect(host().textContent).toContain('No sets yet');
-  });
-
-  it('surfaces a failed pool move as an error without losing the existing layout', async () => {
-    await createVenue();
-    await addSet();
-
-    clickButton('Move to walk-in');
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`)
-      .flush({ status: 409, code: 'CELL_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(host().querySelector('[role="alert"]')?.textContent).toContain('grid cell');
-    // The write failed, so no read-back is issued and the original set stays rendered.
-    expect(host().textContent).toContain('online pool');
-  });
-
-  it('rejects a non-integer set price client-side without calling the server', async () => {
-    await createVenue();
-    fillAndSubmitSet('45.5'); // not clean digits → must not be truncated and sent
-    await fixture.whenStable();
-
-    httpMock.expectNone(`${environment.apiBaseUrl}/api/venues/5/sets`);
-    fixture.detectChanges();
-    expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
-  });
-
-  it('saves the venue commodities (amenity toggles + metres) and re-reads the profile', async () => {
-    await createVenue();
-
-    // Toggle two amenities on and enter a distance, then save.
-    clickButton('Beach bar');
-    clickButton('WiFi');
-    setField('Distance to water', '20');
-    fixture.detectChanges();
-    clickButton('Save commodities');
-    await fixture.whenStable();
-
-    const patch = httpMock.expectOne(
-      (r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5`,
-    );
-    const body = patch.request.body as { amenities: string[]; distanceToWaterM: number };
-    expect(body.distanceToWaterM).toBe(20);
-    expect(body.amenities).toHaveLength(2);
-    expect(body.amenities).toEqual(expect.arrayContaining(['BEACH_BAR', 'WIFI']));
-    patch.flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-
-    // The read-back carries the saved profile; the toggles re-seed (linkedSignal) to reflect it.
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/5'))
-      .flush({ ...venueView(5, []), amenities: ['BEACH_BAR', 'WIFI'], distanceToWaterM: 20 });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const active = Array.from(host().querySelectorAll('.chip-toggle[aria-pressed="true"]')).map(
-      (b) => b.textContent?.trim(),
-    );
-    expect(active).toEqual(expect.arrayContaining(['Beach bar', 'WiFi']));
-  });
-
-  it('preserves in-progress commodity toggles across an unrelated set-edit read-back (#140 review)', async () => {
-    await createVenue();
-    await addSet();
-
-    // Toggle an amenity but do NOT save; then remove the set — an unrelated write that reloads venue().
-    clickButton('Beach bar');
-    fixture.detectChanges();
-    clickButton('Remove');
-    await fixture.whenStable();
-    httpMock
-      .expectOne(
-        (r) => r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets/9`,
-      )
-      .flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-    httpMock
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/5'))
-      .flush(venueView(5, [])); // the reloaded venue has no persisted amenities
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    // The unsaved Beach bar toggle SURVIVES the read-back (not reverted to the venue's empty set).
-    const beachBar = Array.from(host().querySelectorAll('.chip-toggle')).find(
-      (b) => b.textContent?.trim() === 'Beach bar',
-    );
-    expect(beachBar?.getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('rejects a non-integer distance-to-water client-side without calling the server', async () => {
-    await createVenue();
-    setField('Distance to water', '1.5'); // not clean digits → must not be truncated and sent
-    fixture.detectChanges();
-    clickButton('Save commodities');
-    await fixture.whenStable();
-
-    httpMock.expectNone(
-      (r) => r.method === 'PATCH' && r.url === `${environment.apiBaseUrl}/api/venues/5`,
-    );
-    fixture.detectChanges();
-    expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
-  });
-
-  const addSetErrors: readonly (readonly [string, number, string])[] = [
-    ['CELL_TAKEN', 409, 'already occupies that grid cell'],
-    ['DUPLICATE_POSITION', 409, 'row label and position number'],
-    ['NO_SUCH_VENUE', 404, 'venue no longer exists'],
-    ['NO_SUCH_SET', 404, 'set no longer exists'],
-    ['BOOM', 500, 'Something went wrong'], // unrecognized code → generic UNKNOWN message
-  ];
-  for (const [code, status, expected] of addSetErrors) {
-    it(`maps an add-set ${code} failure to its operator message`, async () => {
-      await createVenue();
-      fillAndSubmitSet();
-      await fixture.whenStable();
-      httpMock
-        .expectOne(
-          (r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues/5/sets`,
-        )
-        .flush({ status, code }, { status, statusText: code });
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      expect(host().querySelector('[role="alert"]')?.textContent).toContain(expected);
-    });
-  }
 });

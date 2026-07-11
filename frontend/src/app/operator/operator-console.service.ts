@@ -18,6 +18,9 @@ import {
   RequestDecision,
   RequestErrorCode,
   TakingsView,
+  VenueProfileErrorCode,
+  VenueProfileUpdate,
+  VenueProfileView,
   WeatherRefundResult,
 } from './operator-console.model';
 
@@ -165,6 +168,43 @@ export class OperatorConsoleService {
       { params: new HttpParams().set('date', date) },
     );
   }
+
+  /**
+   * The owner's venue admin profile (O8 #177) — the editable core + the read-only commission +
+   * payout currency the Venue tab pre-fills. Operator-gated + owner-asserted server-side (invariant
+   * #13); the endpoint sits ABOVE the public venue GET so commission never leaks to the tourist read.
+   */
+  venueProfile(venueId: number): Observable<VenueProfileView> {
+    return this.http.get<VenueProfileView>(`${this.base}/api/venues/${venueId}/profile`);
+  }
+
+  /**
+   * Save the venue's editable profile (O8 #177) — REPLACES it (the form re-sends every field).
+   * Owner-asserted server-side (invariant #13); commission + payout currency are read-only and never
+   * sent (invariant #9). `204` on success; an unknown amenity code / bad field is `400` (§6b).
+   */
+  updateVenueProfile(venueId: number, request: VenueProfileUpdate): Observable<void> {
+    return this.http.patch<void>(`${this.base}/api/venues/${venueId}`, request);
+  }
+}
+
+/** Map a venue-details load/save failure to a known {@link VenueProfileErrorCode} (RFC-7807 `code`; or 401). */
+export function venueProfileErrorOf(error: unknown): VenueProfileErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'NOT_VENUE_OWNER':
+      case 'NO_SUCH_VENUE':
+      case 'INVALID_REQUEST':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
 }
 
 /**

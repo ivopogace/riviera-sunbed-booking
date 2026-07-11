@@ -1,5 +1,5 @@
 <section class="editor">
-  <h1>Venue editor</h1>
+  <h1>Create a venue</h1>
 
   <!-- Operator sign-in (U7 write API; session-validated on submit since issue #109) -->
   @if (operator.restoring()) {
@@ -7,7 +7,7 @@
   } @else if (!operator.signedIn()) {
     <form class="card sign-in" (submit)="onSignIn(); $event.preventDefault()" novalidate>
       <h2>Operator sign-in</h2>
-      <p class="hint">The venue write API requires an operator sign-in.</p>
+      <p class="hint">Creating a venue requires an operator sign-in.</p>
       <label class="field">
         <span>Username</span>
         <input
@@ -46,17 +46,11 @@
     <p class="form-error" role="alert">{{ msg }}</p>
   }
 
-  @if (reloadFailed()) {
-    <output class="form-notice">
-      Saved — but the layout preview couldn’t be refreshed. Reload the page to see the current map.
-    </output>
-  }
-
   @if (operator.signedIn()) {
     @if (venueId() === undefined) {
-      <!-- Step 1: create the venue -->
+      <!-- Create the venue -->
       <form class="card" (submit)="onCreateVenue(); $event.preventDefault()" novalidate>
-        <h2>1 · Create venue</h2>
+        <h2>Venue details</h2>
 
         <label class="field">
           <span>Name</span>
@@ -125,157 +119,15 @@
         </button>
       </form>
     } @else {
-      <!-- Step 2: lay out the beach map -->
+      <!-- Created: hand the operator into the console to lay out the beach map, set pricing, and
+           edit details/commodities — all now console tabs (O3/O4/O8). -->
       <output class="card created" data-testid="venue-created">
-        Venue <strong>#{{ venueId() }}</strong> created. Add set positions below; the layout shown
-        is re-read from the public beach-map API.
+        Venue <strong>#{{ venueId() }}</strong> created. Continue to the console to lay out its
+        beach map, set pricing, and edit its details.
+        <a class="btn-primary" [routerLink]="['/operator', venueId()]" data-testid="venue-console-link">
+          Open the console
+        </a>
       </output>
-
-      <form class="card" (submit)="onAddSet(); $event.preventDefault()" novalidate>
-        <h2>2 · Add a set position</h2>
-
-        <label class="field">
-          <span>Row label</span>
-          <input type="text" [formField]="setForm.rowLabel" />
-          @if (setForm.rowLabel().touched() && setForm.rowLabel().errors().length) {
-            <span class="field-error">{{ setForm.rowLabel().errors()[0].message }}</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Position number</span>
-          <input type="text" inputmode="numeric" [formField]="setForm.positionNo" />
-          @if (setForm.positionNo().touched() && setForm.positionNo().errors().length) {
-            <span class="field-error">{{ setForm.positionNo().errors()[0].message }}</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Tier</span>
-          <select [formField]="setForm.tier" data-testid="set-tier">
-            <option value="PREMIUM">Premium</option>
-            <option value="STANDARD">Standard</option>
-          </select>
-        </label>
-
-        <label class="field">
-          <span>Pool</span>
-          <select [formField]="setForm.pool" data-testid="set-pool">
-            <option value="ONLINE">Online</option>
-            <option value="WALK_IN">Walk-in</option>
-          </select>
-        </label>
-
-        <label class="field">
-          <span>Price (minor units)</span>
-          <input type="text" inputmode="numeric" [formField]="setForm.priceMinor" />
-          @if (setForm.priceMinor().touched() && setForm.priceMinor().errors().length) {
-            <span class="field-error">{{ setForm.priceMinor().errors()[0].message }}</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Currency (ISO 4217)</span>
-          <input type="text" autocomplete="off" [formField]="setForm.priceCurrency" />
-          @if (setForm.priceCurrency().touched() && setForm.priceCurrency().errors().length) {
-            <span class="field-error">{{ setForm.priceCurrency().errors()[0].message }}</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Grid column (X)</span>
-          <input type="text" inputmode="numeric" [formField]="setForm.gridX" />
-          @if (setForm.gridX().touched() && setForm.gridX().errors().length) {
-            <span class="field-error">{{ setForm.gridX().errors()[0].message }}</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Grid row (Y)</span>
-          <input type="text" inputmode="numeric" [formField]="setForm.gridY" />
-          @if (setForm.gridY().touched() && setForm.gridY().errors().length) {
-            <span class="field-error">{{ setForm.gridY().errors()[0].message }}</span>
-          }
-        </label>
-
-        <button type="submit" class="btn-primary" [disabled]="setForm().invalid() || saving()">
-          {{ saving() ? 'Adding…' : 'Add set' }}
-        </button>
-      </form>
-
-      <div class="card layout">
-        <h2>Layout ({{ sets().length }})</h2>
-        @if (sets().length === 0) {
-          <p class="hint">No sets yet. Add one above.</p>
-        } @else {
-          <ul class="set-list">
-            @for (set of sets(); track set.id) {
-              <li class="set-row" data-testid="layout-row">
-                <span class="set-name">{{ setLabel(set) }}</span>
-                <span class="set-actions">
-                  <button
-                    type="button"
-                    class="btn-secondary"
-                    [disabled]="saving()"
-                    (click)="onTogglePool(set)"
-                  >
-                    Move to {{ set.pool === 'ONLINE' ? 'walk-in' : 'online' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-danger"
-                    [disabled]="saving()"
-                    (click)="onRemoveSet(set)"
-                    [attr.aria-label]="'Remove ' + setLabel(set)"
-                  >
-                    Remove
-                  </button>
-                </span>
-              </li>
-            }
-          </ul>
-        }
-      </div>
-
-      <!-- Commodities (T7 #140): amenity toggles + distance-to-water on the loaded venue. Kept in the
-           editor's current (legacy) styling — the operator epic (#141) restyles this surface later. -->
-      <form class="card" (submit)="onSaveCommodities(); $event.preventDefault()" novalidate>
-        <h2>Commodities</h2>
-        <p class="hint">Shown as tags on your venue card and beach-map page.</p>
-
-        <fieldset class="chip-toggles">
-          <legend>Amenities</legend>
-          <div class="chip-toggle-row">
-            @for (code of amenityCatalogue; track code) {
-              <button
-                type="button"
-                class="chip-toggle"
-                [class.active]="isAmenityActive(code)"
-                [attr.aria-pressed]="isAmenityActive(code)"
-                [disabled]="saving()"
-                (click)="onToggleAmenity(code)"
-              >
-                {{ amenityText(code) }}
-              </button>
-            }
-          </div>
-        </fieldset>
-
-        <label class="field">
-          <span>Distance to water (metres)</span>
-          <input
-            type="text"
-            inputmode="numeric"
-            data-testid="distance-to-water"
-            [value]="distanceDraft()"
-            (input)="distanceDraft.set($any($event.target).value)"
-          />
-        </label>
-
-        <button type="submit" class="btn-primary" [disabled]="saving()">
-          {{ saving() ? 'Saving…' : 'Save commodities' }}
-        </button>
-      </form>
     }
   }
 </section>
