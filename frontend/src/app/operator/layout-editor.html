@@ -215,4 +215,27 @@
       </span>
     }
   </div>
+
+  <!-- #226: a stale-write 409 is a distinct, recoverable conflict — not a plain error. Keep the
+       operator's painted grid, explain what happened, and offer a Reload (never a silent discard). -->
+  @if (errorCode() === 'STALE_WRITE') {
+    <div
+      class="mt-3 flex flex-col gap-2 rounded-[14px] border border-[#d97706] bg-[#f59e0b]/[0.14] px-3.5 py-3"
+      role="alert"
+      data-testid="layout-stale-banner"
+    >
+      <span class="text-[12.5px] leading-[1.5] font-semibold text-(--riv-card-ink)">
+        This layout was changed somewhere else since you opened it. Your painted grid is kept — reload the
+        latest layout, re-apply your changes, then Save again.
+      </span>
+      <button
+        type="button"
+        class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90"
+        data-testid="layout-stale-reload"
+        (click)="reloadAfterStale()"
+      >
+        Reload latest
+      </button>
+    </div>
+  }
 </section>

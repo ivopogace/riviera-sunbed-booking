@@ -321,6 +321,7 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
       case 'EMPTY_LAYOUT':
       case 'LAYOUT_TOO_LARGE':
       case 'NO_SUCH_VENUE':
+      case 'STALE_WRITE':
       case 'INVALID_REQUEST':
       case 'CONFLICT':
         return code;

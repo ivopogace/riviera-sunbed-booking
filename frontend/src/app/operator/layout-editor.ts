@@ -97,6 +97,9 @@ export class LayoutEditor {
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a destructive regenerate over an existing grid. */
   protected readonly confirmRegen = signal(false);
+  /** The optimistic-concurrency token loaded with the map (#226 `setVersion`), echoed back on Save; a
+   *  `409 STALE_WRITE` means the layout moved on since — the editor keeps the grid and offers Reload. */
+  protected readonly loadedSetVersion = signal<number | null>(null);
 
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
@@ -253,12 +256,21 @@ export class LayoutEditor {
       this.errorCode.set('EMPTY_LAYOUT');
       return;
     }
+    const expectedVersion = this.loadedSetVersion();
+    if (expectedVersion === null) {
+      // Defensive (#226): the map load seeds the token, so the only null case is a failed initial read
+      // — never save without the token the server needs to detect a stale write (a page refresh recovers).
+      return;
+    }
     this.saving.set(true);
     this.errorCode.set(undefined);
     this.savedNotice.set(false);
     try {
-      await firstValueFrom(this.console.replaceLayout(this.venueId, { sets }));
+      await firstValueFrom(this.console.replaceLayout(this.venueId, { sets, expectedVersion }));
       this.savedNotice.set(true);
+      // The conditional write bumped set_version by exactly one (#226); advance our token so a second
+      // consecutive save by the same operator isn't spuriously rejected as a stale write.
+      this.loadedSetVersion.set(expectedVersion + 1);
     } catch (error) {
       const code = layoutErrorOf(error);
       this.errorCode.set(code);
@@ -287,11 +299,33 @@ export class LayoutEditor {
         return 'Two sets overlap on the grid. Please adjust and try again.';
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
+      case 'STALE_WRITE':
+        // Rendered by the dedicated recover-and-reload banner in the template, not this inline message.
+        return undefined;
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:
         return 'Something went wrong saving the layout. Please try again.';
     }
+  }
+
+  /**
+   * Recover from a `409 STALE_WRITE` (#226): discard the in-progress grid in favour of the latest server
+   * layout — re-seeding every cell, its prices, and the `setVersion` token — and clear the conflict
+   * banner. The preserve-edits UX is deliberate (mirrors the Venue tab): the 409 itself never touches the
+   * grid, so the operator keeps their work; only this explicit Reload replaces it with the current server
+   * state, from which they re-paint and Save.
+   */
+  protected reloadAfterStale(): void {
+    const venueId = this.venueId;
+    if (venueId === undefined) {
+      return;
+    }
+    this.errorCode.set(undefined);
+    this.savedNotice.set(false);
+    this.priceByCoord.clear();
+    this.grid.set([]); // clear so seedFrom re-seeds from the server layout (its guard skips a non-empty grid)
+    this.loadExisting(venueId);
   }
 
   private toRequest(): LayoutCellRequest[] {
@@ -320,11 +354,15 @@ export class LayoutEditor {
 
   private loadExisting(venueId: number): void {
     // Best-effort: seed the grid from the venue's current layout so the operator paints on it. A failed
-    // read (or an empty venue) leaves the empty state, from which Generate builds a fresh grid.
+    // read (or an empty venue) leaves the empty state, from which Generate builds a fresh grid. Always
+    // capture the optimistic-concurrency token (#226 setVersion) so a later Save can echo it back.
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
-      next: (venue) => this.seedFrom(venue.sets),
+      next: (venue) => {
+        this.loadedSetVersion.set(venue.setVersion ?? null);
+        this.seedFrom(venue.sets);
+      },
       error: () => {
-        // best-effort — start from the empty state
+        // best-effort — start from the empty state (no token: Save stays refused until a successful read)
       },
     });
   }

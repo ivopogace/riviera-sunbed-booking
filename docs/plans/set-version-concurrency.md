@@ -72,10 +72,12 @@ NOT NULL DEFAULT 0`. No new tables. `set_position` unchanged.
   availability hold, then it is rejected `LAYOUT_IN_USE` (409) and the layout is unchanged — the
   reject-unless-unclaimed guard and its `FOR UPDATE` claim-probe are intact.
   *Pinned by:* existing `BeachMapReplaceIT` in-use scenarios (stay green with the bump-first order) ✅ (Phase 1).
-- [ ] **AC-9 (FE preserve-edits + reload):** Given the beach-map editor / pricing tab receives a
+- [~] **AC-9 (FE preserve-edits + reload):** Given the beach-map editor / pricing tab receives a
   `409 STALE_WRITE` on save, then the operator's in-progress edits are preserved and a "Reload latest"
-  affordance is shown (no silent discard, no clobber). *Pinned by:* `layout-editor.spec.ts` +
-  `pricing-tab.spec.ts` (unit) and `beach-map-stale-write.e2e.ts` + `pricing-stale-write.e2e.ts` (mocked).
+  affordance is shown (no silent discard, no clobber). *Pinned by:* `layout-editor.spec.ts` ✅ (Phase 3) +
+  `pricing-tab.spec.ts` (Phase 4, unit) and the mocked-a11y e2e — **co-located** in the existing
+  `layout-editor.e2e.ts` ✅ (Phase 3) + `operator-pricing.e2e.ts` (Phase 4), matching #224's placement in
+  `operator-venue.e2e.ts` (reuses each surface's `page.route` harness; see Findings F-2).
 
 ## Non-goals
 
@@ -212,22 +214,21 @@ falsely rejected. Mocked-a11y e2e per user-facing flow (RV-FE-E2E) in `frontend/
 > Session-recovery anchor. Re-read before acting after any compaction/fresh session; update in the same
 > commit window as the change it records, at every phase + stage boundary.
 
-**Stage pointer:** `implement` — Phases 0 ✅ + 1 ✅ + 2 ✅ done (backend complete; AC-1..8 all pinned green);
-Phase 3 next (FE beach-map editor), test-first. **Load the FE routing gate before writing** —
-`riviera-frontend` + `angular-developer` + angular-cli MCP + `playwright-cli`.
+**Stage pointer:** `implement` — Phases 0 ✅ + 1 ✅ + 2 ✅ + 3 ✅ done; Phase 4 next (FE pricing tab), test-first.
+FE routing gate already loaded (`riviera-frontend` + `angular-developer` + `playwright-cli`).
 
-**Next action:** Start Phase 3 — failing `layout-editor.spec.ts` (a `409 STALE_WRITE` on `replaceLayout`
-sets the stale banner, preserves the grid, Reload re-loads; success advances the token `+1`); then add
-`setVersion` to the FE `VenueMapView`, `expectedVersion` to the layout request (model + service), capture
-`loadedSetVersion`, refuse save without it, STALE_WRITE banner + `reloadAfterStale()`, advance token on save;
-mocked-a11y `beach-map-stale-write.e2e.ts`.
+**Next action:** Start Phase 4 — failing `pricing-tab.spec.ts` (a `409 STALE_WRITE` on `repriceRow` reverts
+the row's optimistic value, shows the banner, Reload re-loads; a successful reprice advances the token);
+then thread `expectedVersion` into `repriceRow` (model `RepriceErrorCode`+`STALE_WRITE`, service body
+`{ price, expectedVersion }` + `repriceErrorOf`), capture `loadedSetVersion` (from the map read), banner +
+`reloadAfterStale()`, advance token on success; co-locate the mocked-a11y stale test in `operator-pricing.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Migration `V23` + `setVersion` on the map read | ✅ | `feat: add venue.set_version + surface it on the map read (#226)` |
 | 1 — Backend `replaceLayout` guard (`bumpSetVersion`, order, STALE_WRITE, required token) | ✅ | `feat: optimistic-lock the beach-map replace on set_version (#226)` |
 | 2 — Backend `repriceRow` guard (+ cross-write race) | ✅ | `feat: optimistic-lock the per-row reprice on set_version (#226)` |
-| 3 — FE beach-map editor (capture/echo/handle STALE_WRITE + reload) | | |
+| 3 — FE beach-map editor (capture/echo/handle STALE_WRITE + reload) | ✅ | `feat(fe): stale-write guard on the beach-map editor (#226)` |
 | 4 — FE pricing tab (same) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -237,6 +238,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | Phase 1 local test run | `SetBookingInfoIT.resolvesBookingInfoForOnlineSet` was order-dependent — its `SELECT … WHERE pool='ONLINE' ORDER BY price_minor DESC LIMIT 1` took the GLOBAL max-priced ONLINE set (shared Testcontainers DB); the new `BeachMapReplaceConcurrencyIT` leaves ~7000-priced ONLINE sets (as would VenueRepriceIT's 5000 reprice), so a class-ordering shift picked one of theirs. | Fixed — scoped the query to `v.name = 'Miramar Beach Club'` (the venue the test already asserts on); order-independent. |
+| F-2 | Phase 3 (planning deviation) | The plan's File-structure lists new `beach-map-stale-write.e2e.ts` / `pricing-stale-write.e2e.ts`. #224 instead co-located its stale-write e2e in the surface's existing spec (`operator-venue.e2e.ts`), reusing its `page.route` mock harness. A separate file would duplicate the whole sign-in + venue-map + PUT mock. | Deviation accepted — co-located the stale-write test in `layout-editor.e2e.ts` (Phase 3) and will do the same in `operator-pricing.e2e.ts` (Phase 4). Made each `mock*` harness stateful on `setVersion` (a `bump()`), mirroring #224. No new e2e files. |
 
 ---
 
@@ -358,17 +360,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 > Load `angular-developer` + angular-cli MCP + `playwright-cli` before editing (routing gate).
 
-- [ ] **Step 1:** Failing unit spec — `layout-editor.spec.ts`: a `409 STALE_WRITE` on `replaceLayout`
-  sets the stale banner, preserves the grid, and Reload re-loads; success advances the token `+1`.
-- [ ] **Step 2:** `npm test` (scoped) → FAIL.
-- [ ] **Step 3:** Add `setVersion` to `VenueMapView`; add `expectedVersion` to `BeachMapLayoutRequest`
-  (model + service); capture `loadedSetVersion` on load; refuse save without it; STALE_WRITE banner +
-  `reloadAfterStale()` in `.html` (mirror `venue-tab`); advance token on success.
-- [ ] **Step 4:** `npm test` (scoped) + `npm run test:a11y` → PASS. Author `beach-map-stale-write.e2e.ts`
-  (mocked 409) → `npm run test:e2e` (targeted).
-- [ ] **Step 5:** Generalization pass.
-- [ ] **Step 6:** Commit `feat(fe): stale-write guard on the beach-map editor (#226)`.
-- [ ] **Step 7:** Update Execution status.
+- [x] **Step 1:** Failing unit spec — `layout-editor.spec.ts`: a `409 STALE_WRITE` on `replaceLayout`
+  sets the stale banner, preserves the grid, and Reload re-loads; success advances the token `+1`. Also
+  asserted `expectedVersion` in the save PUT.
+- [x] **Step 2:** Ran scoped `layout-editor.spec.ts` → FAIL (3/10: expectedVersion undefined, stale-banner
+  null, token-advance undefined).
+- [x] **Step 3:** Added optional `setVersion` to the FE `VenueMapView`; required `expectedVersion` to
+  `BeachMapLayoutRequest` + `STALE_WRITE` to `LayoutErrorCode`/`layoutErrorOf`; captured `loadedSetVersion`
+  on load (refuse save without it); STALE_WRITE banner + `reloadAfterStale()` in `.html` (mirrors
+  `venue-tab`); advance token on success.
+- [x] **Step 4:** `layout-editor.spec.ts` → PASS (10); whole `operator/**` folder → 194 PASS (incl.
+  a11y/contrast + service spec); `npm run lint` clean; `npm run build` clean. Stale-write mocked-a11y e2e
+  authored in `layout-editor.e2e.ts` (co-located, F-2) → `test:e2e:a11y` (targeted) → 3 PASS incl. axe.
+- [x] **Step 5:** Generalization pass — the FE stale-write shape (`loadedVersion`/`errorCode` signals +
+  `reloadAfterStale()` + the amber banner markup) is now in `venue-tab` + `layout-editor` (pricing = 3rd
+  in Phase 4). Left per-component (matches #224's `venue-tab`; banner copy differs per surface). A shared
+  `<app-stale-write-banner>` with a projected message is a candidate if the 3rd copy makes it worth it —
+  revisit in Phase 4. Logged.
+- [x] **Step 6:** Commit `feat(fe): stale-write guard on the beach-map editor (#226)`.
+- [x] **Step 7:** Update Execution status.
 
 ## Phase 4 — FE pricing tab
 
@@ -394,6 +404,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-07-11 | Phase 0 | `VenueMapView` construction sites | `grep "new VenueMapView("` | 1 (`JdbcVenueCatalog`) | None — single site; no duplication to fold. Profile read intentionally omits `set_version`. |
 | 2026-07-11 | Phase 1 | `replaceLayout(` call sites (signature widen) | `grep "replaceLayout\("` | 6 test + 3 prod | All updated to the 4-arg signature (incl. `WebSliceStubs`). `bumpSetVersion` is one shared port method (reprice reuses in Phase 2); `requiredExpectedVersion()` left duplicated per record (matches #224). |
 | 2026-07-11 | Phase 2 | `repriceRow(` call sites + `bumpSetVersion`/`requiredExpectedVersion` spread | `grep "repriceRow\("` / `grep "requiredExpectedVersion\|bumpSetVersion"` | `EditBeachMap.repriceRow` widened (5 call sites); `bumpSetVersion` = 1 shared method, 2 call sites (both writes); `requiredExpectedVersion()` = 3 identical copies | Widened all `repriceRow` callers. `bumpSetVersion` confirmed shared (no dup). `requiredExpectedVersion()` left duplicated (trivial null-check; matches #224 idiom; records can't share a base). |
+| 2026-07-11 | Phase 3 | FE stale-write shape (`loadedVersion` signal + `reloadAfterStale()` + amber banner) | reviewed `venue-tab` vs `layout-editor` | 2 copies (venue-tab, layout-editor); pricing-tab = 3rd in Phase 4 | Left per-component (matches #224's `venue-tab`; per-surface copy). Candidate: a shared `<app-stale-write-banner>` with a projected message — revisit in Phase 4 if the 3rd copy warrants it. |
 
 ---
 
