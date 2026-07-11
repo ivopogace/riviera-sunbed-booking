@@ -214,11 +214,15 @@ falsely rejected. Mocked-a11y e2e per user-facing flow (RV-FE-E2E) in `frontend/
 > Session-recovery anchor. Re-read before acting after any compaction/fresh session; update in the same
 > commit window as the change it records, at every phase + stage boundary.
 
-**Stage pointer:** `CI` — PR #228 open. Run 1: Frontend + CodeQL green, Backend **failed** (F-3:
-`CrossVenueDenialIT` non-owner bodies missing the new token → 400 not 403). Fixed + re-pushed; awaiting
-run 2. Next: green CI → **review** gate (`riviera-review-overlay` — flag the open item: token on the
-public map read). Lesson: run `*CrossVenueDenialIT*` (and other cross-cutting `platform`-package ITs)
-whenever a venue-scoped request contract changes — the `*venue*` filter doesn't match them.
+**Stage pointer:** `CI` ✅ **green** — PR #228, run 2 (`ec9c2a9`): Backend + Frontend + CodeQL +
+SonarCloud all `success`. Sonar strict merge bar met (queried directly): **0 new issues** (0 blocker/
+critical/major/hotspots), **0.0% new duplicated lines**, **89.53% new-code coverage** (≥80%), 0 unresolved
+PR issues, 310 new lines. Run 1 caught F-3 (`CrossVenueDenialIT`) — fixed + re-pushed. Lesson: run
+`*CrossVenueDenialIT*` (+ cross-cutting `platform`-package ITs) whenever a venue-scoped request contract
+changes — the `*venue*` filter doesn't match them.
+
+**Next stage: `review`** — `riviera-review-overlay` + `/code-review` on the diff; flag the open item
+(token on the public map read). Then **merge** (outward — the user's call, after review).
 
 **Next action:** Push `feature/set-version-concurrency` + open the PR (refs #226; follow-up to #224/PR #225).
 Watch CI: (1) the full backend suite may surface a shared-state failure a scoped run can't (riviera-local-debug);
