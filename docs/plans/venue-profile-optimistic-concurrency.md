@@ -131,9 +131,10 @@ re-pinned by the existing tests (updated only to carry the new required `expecte
 - **Assumption:** New venues start at `version = 0` (column `DEFAULT 0`; `insertVenue` doesn't set
   it), and the seed (V3 Miramar) back-fills to `0`. The read returns it; the FE echoes it. —
   *Owner:* Ivo · *Resolves by:* Phase 0 (verified by AC-3/AC-4).
-- **Open question:** The follow-up issue for extending optimistic concurrency to beach-map replace
-  (#172) + per-row reprice (#174) must be **filed** before this slice is called done. — *Owner:*
-  Ivo · *Resolves by:* merge close-out (record the issue # here).
+- **Resolved:** The follow-up issue for extending optimistic concurrency to beach-map replace
+  (#172) + per-row reprice (#174) is filed as **#226** (they mutate `set_position`, not `venue`, so
+  they need a venue-aggregate version — a bigger change, deferred by owner decision). — *Owner:*
+  Ivo · *Resolved:* 2026-07-11 at merge close-out.
 
 ## Availability & concurrency (invariant #2)
 
@@ -237,6 +238,20 @@ only Reload re-seeds (preserve-edits UX). Contrast/axe specs cover the new banne
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as
 each phase's code.
+
+**Merge close-out record (2026-07-11):**
+- **CI:** green on the PR head (`dc5e76a`) — Backend build+test, Frontend lint+test+build, CodeQL
+  (java + js), SonarCloud scan all `success`; the full backend suite passing in CI cleared R-5.
+- **Review gate:** `riviera-review-overlay` walked (RV-BE/FE/CT + RV-PROC-1) + an independent
+  adversarial correctness pass — **no findings**; `assertOwns`-first (RV-BE-9), JDBC-only, all in
+  `venue`, stable `STALE_WRITE` code the FE branches on.
+- **Sonar gate:** pulled from the API — new-code coverage **91.5%**, **0** duplicated blocks, **0**
+  bugs/vulns/hotspots. One CRITICAL `java:S1192` (the third `"No such venue."` literal) was fixed
+  by extracting `NO_SUCH_VENUE_DETAIL` (commit `dc5e76a`) → **0 new issues**.
+- **riviera-docs-freshness** over `origin/main...HEAD`: **zero findings** — the venue write
+  contract change is additive; no present-tense fact in `CLAUDE.md`/`CONTEXT.md`/`RESPONSIBILITIES.md`/
+  ADRs/skills is contradicted (all identifier hits were in historical/current plan records).
+- **Follow-up filed:** #226 (optimistic concurrency for beach-map replace #172 + reprice #174).
 
 ---
 
