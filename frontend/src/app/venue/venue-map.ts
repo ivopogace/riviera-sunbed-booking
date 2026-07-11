@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import {
   afterRenderEffect,
   Component,
@@ -77,7 +78,15 @@ export function rowCode(index: number): string {
  */
 @Component({
   selector: 'app-venue-map',
-  imports: [BookingDialog, RetryButton, PanelGlass, CardGlass, AmenityChip, ...FAILURE_DIRECTIVES],
+  imports: [
+    NgOptimizedImage,
+    BookingDialog,
+    RetryButton,
+    PanelGlass,
+    CardGlass,
+    AmenityChip,
+    ...FAILURE_DIRECTIVES,
+  ],
   templateUrl: './venue-map.html',
   // Was `:host { display:block; --riv-tile: clamp(...); color: var(--riv-card-ink) }` in the deleted
   // SCSS. --riv-tile drives the seat-tile grid columns + the label/price side-cell heights; it lives

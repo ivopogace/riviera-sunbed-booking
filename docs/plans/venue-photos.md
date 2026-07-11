@@ -241,13 +241,12 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phase 3 DONE (venue-photo.service.ts typed client + photoErrorOf; venue-tab real slots: pick=upload=replace multipart, preview from returned PREVIEW variant, remove, per-slot busy/error, 401 session drop; photos map on the FE VenueProfileView; specs + a11y updated; operator-venue-photos.e2e.ts new + operator-venue.e2e.ts placeholder assertions replaced; lint + 651 unit + build + 44 mocked-e2e green). NEXT: Phase 4 tourist display (home card + venue-map banner via NgOptimizedImage + gradient fallback; PRESERVE --riv-photo-scrim; re-check contrast specs; e2e).`
+**Stage pointer:** `implement — Phase 4 DONE (CoverPhotoView on the FE venue model; Discover card + map banner render the cover via NgOptimizedImage fill + object-cover with the gradient/sun fallback; "coming soon" pill retired in BOTH states; scrim kept and STRENGTHENED for real photos: --riv-photo-scrim 0.5→0.68@75% / 0.66→0.8@100% + --riv-mode-chip-glass 0.7→0.85 because the worst case is now any photo (white/black), asserted by the extended home.contrast.spec.ts; pill contrast test retired with the pill; discover-photos.e2e.ts new; lint + 653 unit + build + 45 mocked-e2e green). NEXT: Phase 5 docs-freshness + close-out, then gates (CI → review overlay → /security-review → Sonar).`
 
-**Next action:** **Phase 4** — render the cover card image on the Discover card (`pages/home`) and
-the banner on the beach map (`venue/venue-map`) when `coverPhoto` is present, gradient fallback
-(drop the "coming soon" pill on the photo state), keep the scrim; re-run
-`home.contrast.spec.ts` / `venue-map.contrast.spec.ts`; `discover-photos.e2e.ts`. Then Phase 5 +
-gates (`/security-review` on the full diff).
+**Next action:** **Phase 5** — `riviera-docs-freshness` over the slice range; CONTEXT.md glossary
+(venue photo / photo variant / photo slot); RESPONSIBILITIES.md venue-module media note; file the
+moderation follow-up issue + cross-link #101. Then the gates; CONFIRM with the maintainer before
+any push / PR / merge.
 
 **Windows-session note:** the CI-safe mocked Playwright suite here is **`npm run test:e2e:a11y`**
 (`playwright.a11y.config.ts`, testMatch `e2e/*.e2e.ts`, no backend); the bare `test:e2e` config
@@ -261,7 +260,7 @@ boots the real backend via `./gradlew bootRun` and fails on this box. e2e spec n
 | 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | ✅ | Phase-1 commit (this window) |
 | 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ✅ | 2a core `0a3e8d5`; ITs + F-1 `c2b6848`; 2b read-model (this window) |
 | 3 — FE operator upload UI + service + e2e | ✅ | this window |
-| 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | | |
+| 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | ✅ | this window |
 | 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -407,10 +406,17 @@ read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
 `home.contrast.spec.ts` (kept), `venue-map.contrast.spec.ts` (kept),
 `frontend/e2e/discover-photos.spec.ts`.
 
-- [ ] Render cover via `NgOptimizedImage` when present; fall back to the gradient (drop the
-  "coming soon" pill on the empty state); keep the scrim layer. Re-run the contrast specs — if the
-  photo band's height/offset shifts, re-derive their geometry per the #142 note.
-- [ ] Mocked e2e + a11y for the discover/map photo states. Commit, update status.
+- [x] Cover rendered via `NgOptimizedImage` (`fill` + `object-cover`) on the Discover card (CARD
+  variant) + map banner (BANNER variant); gradient + sun fallback; the "coming soon" pill retired
+  in BOTH states (parity-ledger decision). Scrim kept — and per the #142 deferred note re-derived
+  for real photos: the worst case moved from the gradient's light stop to ANY photo, so
+  `--riv-photo-scrim` bottom band 0.5→0.68@75% / 0.66→0.8@100% (white-photo floor ≈6:1) and
+  `--riv-mode-chip-glass` 0.7→0.85 (black-photo floor); `home.contrast.spec.ts` now asserts over
+  white+black photo stops; the pill's contrast test retired with the pill. Geometry unchanged.
+- [x] `discover-photos.e2e.ts` (card photo + scrim layering + gradient fallback + banner + no
+  pill + axe); home/venue-map unit tests for both states. lint + 653 unit + build + 45 e2e green.
+  Deferred-note (a) carried: per-card `backdrop-filter` GPU cost — watch scroll jank now that real
+  photos land under the glass cards (no action yet; recorded for close-out).
 
 ## Phase 5 — Docs freshness + close-out
 

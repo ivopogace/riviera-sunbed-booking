@@ -10,6 +10,16 @@ export interface MoneyView {
   readonly currency: string;
 }
 
+/**
+ * The venue's tourist-surfaced cover photo (#142): content-addressed, immutably-cached serving
+ * URLs for the Discover card and the beach-map banner. Opaque strings fed to `NgOptimizedImage`;
+ * `null`/absent when the venue has no cover photo — the gradient fallback renders instead.
+ */
+export interface CoverPhotoView {
+  readonly card: string;
+  readonly banner: string;
+}
+
 export type Tier = 'PREMIUM' | 'STANDARD';
 export type Pool = 'ONLINE' | 'WALK_IN';
 export type SeatAvailability = 'FREE' | 'TAKEN';
@@ -53,6 +63,8 @@ export interface VenueMapView {
    * and older payloads may omit it; the real API always sends it (a number ≥ 0).
    */
   readonly setVersion?: number;
+  /** The cover photo's serving URLs (#142), or `null`/absent — the banner then keeps its gradient. */
+  readonly coverPhoto?: CoverPhotoView | null;
 }
 
 /**
@@ -87,4 +99,6 @@ export interface VenueSummary {
   /** Distance to the water in metres (T7, #140), or `null`/absent when not stated. */
   readonly distanceToWaterM?: number | null;
   readonly availability: AvailabilitySummary;
+  /** The cover photo's serving URLs (#142), or `null`/absent — the card then keeps its gradient. */
+  readonly coverPhoto?: CoverPhotoView | null;
 }

@@ -54,7 +54,7 @@ const CTA_STOPS = ['#0c7288', '#0a5f74'];
 const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the card glass
-const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.7 }; // --riv-mode-chip-glass
+const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 }; // --riv-mode-chip-glass (0.85 since #142: AA over any photo)
 const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
 const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint)
@@ -180,9 +180,15 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
   });
 });
 
-describe('Discover photo-area contrast (theme-independent, issue #135)', () => {
-  it('mode chip text (accent) meets AA on the chip glass over the photo gradient', () => {
-    for (const stop of PHOTO_STOPS) {
+describe('Discover photo-area contrast (theme-independent, issue #135; real photos since #142)', () => {
+  // Since #142 the photo band backs a REAL uploaded image, so every overlay ink is proven over
+  // the worst case ANY photo can present — pure white (for the dark scrim under white text) and
+  // pure black (for the white chip glass under dark text) — plus the gradient placeholder stops
+  // the empty state still renders.
+  const WORST_PHOTOS = [...PHOTO_STOPS, hexToRgb('ffffff'), hexToRgb('000000')];
+
+  it('mode chip text (accent) meets AA on the chip glass over the gradient AND any photo', () => {
+    for (const stop of WORST_PHOTOS) {
       const chip = composite(MODE_CHIP_GLASS.color, MODE_CHIP_GLASS.alpha, stop);
       expect(
         contrastRatio(ACCENT, rgbToHex(chip)),
@@ -197,16 +203,16 @@ describe('Discover photo-area contrast (theme-independent, issue #135)', () => {
     }
   });
 
-  it('location overlay (white) meets AA over the weakest scrim under the text band', () => {
+  it('location overlay (white) meets AA over the weakest scrim under the text band, over any photo', () => {
     // Geometry (kept true by home.scss + styles.scss): the photo is 150px; the scrim
-    // reaches alpha 0.5 at its 75% stop (y = 112.5px); the overlay text (bottom: 13px,
-    // explicit 15px line box) occupies y ≈ 122–137px — entirely below the 0.5 stop, so
-    // 0.5 is a floor with margin (actual band minimum ≈ 0.54). Review finding at #135:
-    // an earlier scrim curve only reached ~0.35 under the text, where the lightest
-    // photo stop composites below AA.
+    // reaches alpha 0.68 at its 75% stop (y = 112.5px); the overlay text (bottom: 13px,
+    // explicit 15px line box) occupies y ≈ 122–137px — entirely below the 0.68 stop, so
+    // 0.68 is a floor with margin. History: #135 review raised the design curve (~0.35 under
+    // the text) to 0.5 for the gradient's light stop; #142 raised it again to 0.68 because a
+    // real photo's worst case is pure white, where 0.5 composites below AA (~3.5:1).
     const SCRIM = hexToRgb('0d2828');
-    for (const stop of PHOTO_STOPS) {
-      const backdrop = composite(SCRIM, 0.5, stop);
+    for (const stop of WORST_PHOTOS) {
+      const backdrop = composite(SCRIM, 0.68, stop);
       expect(
         contrastRatio(rgbToHex(WHITE), rgbToHex(backdrop)),
         `over stop ${rgbToHex(stop)}`,

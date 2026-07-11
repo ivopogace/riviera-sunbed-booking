@@ -78,6 +78,26 @@ describe('Home (venue discovery)', () => {
     req.flush(venues());
   });
 
+  it('renders the cover photo on a card that has one and the gradient fallback on one that does not (#142)', async () => {
+    const [withCover, noPhoto] = venues();
+    listRequest().flush([
+      { ...withCover, coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' } },
+      noPhoto,
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = el().querySelectorAll('[data-testid="venue-card"]');
+    const coverImg = cards[0].querySelector<HTMLImageElement>('[data-testid="card-photo-img"]');
+    expect(coverImg?.getAttribute('src')).toBe('/api/venues/1/photos/aa01');
+    // The scrim stays layered over the photo — the location text's AA floor depends on it.
+    expect(cards[0].querySelector('.photo-scrim')).toBeTruthy();
+    expect(cards[0].querySelector('.photo-sun')).toBeNull();
+    // No cover → the gradient placeholder (sun, no img).
+    expect(cards[1].querySelector('[data-testid="card-photo-img"]')).toBeNull();
+    expect(cards[1].querySelector('.photo-sun')).toBeTruthy();
+  });
+
   it('renders a card per venue with name, location, rating, from-price and availability', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();

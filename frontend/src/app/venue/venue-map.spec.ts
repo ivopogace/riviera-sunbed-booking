@@ -114,6 +114,30 @@ describe('VenueMap', () => {
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
+  it('renders the cover banner photo when present, keeping the scrim; no "coming soon" pill either way (#142)', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' },
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const img = el().querySelector<HTMLImageElement>('[data-testid="map-banner-img"]');
+    expect(img?.getAttribute('src')).toBe('/api/venues/1/photos/bb02');
+    // The scrim stays layered over the photo band, and the retired pill never renders.
+    expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
+    expect(el().textContent).not.toContain('coming soon');
+  });
+
+  it('falls back to the bare gradient band without the pill when there is no cover photo (#142)', async () => {
+    flushVenue(); // the fixture has no coverPhoto
+    await fixture.whenStable();
+
+    expect(el().querySelector('[data-testid="map-banner-img"]')).toBeNull();
+    expect(el().querySelector('.photo-band')).toBeTruthy();
+    expect(el().textContent).not.toContain('coming soon');
+  });
+
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();
