@@ -107,8 +107,9 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
 This gate fires at the plan stage (vet the design), the implement stage (vet the code), **and
 the review-fix stage** (vet each finding fix). Fixing a finding is implementation: re-detect
 what the fix touches and load that area's skills **per the routing table** before you edit
-(re-entry rule). Loading a skill earlier does not exempt you when a new area appears, and
-re-loading is cheap — when in doubt, load it.
+(re-entry rule). Loading a skill earlier does not exempt you when a new area appears — nor
+after a **context compaction**, where a previously loaded skill may survive only as a summary
+sentence (re-load it; see Context hygiene) — and re-loading is cheap: when in doubt, load it.
 
 ## Rules of the loop
 
@@ -128,6 +129,45 @@ re-loading is cheap — when in doubt, load it.
     or improvement plan that issues or ADRs reference must be **committed** (e.g.
     `docs/architecture/`, `docs/plans/`) before or with the artifacts that cite it —
     uncommitted means unavailable to the next session (case history: #93).
+11. **The conversation is never the state store — rule 10, extended to *progress*.** The
+    plan doc's Execution status section carries the stage pointer, next action, phase
+    status, and findings register; commit it at every phase boundary and stage transition,
+    and re-anchor from it after any compaction (Context hygiene, below).
+
+## Context hygiene (long sessions, compaction, drift)
+
+A long SDLC run fills the context window; the harness then **compacts** (summarizes) the
+conversation and continues. Compaction is lossy in exactly the places this pipeline is
+strict — which stage you're in, which gates already ran, the open findings, the loaded
+skills' actual content — and lost gate state is how drift ships: a post-review fix that
+skips the routing gate, a forgotten Sonar issue list, a merge without close-out. The
+defense is not "use less context"; it is **the conversation is never the state store**:
+
+1. **The plan doc's Execution status section is the state store** — stage pointer, next
+   action, phase table, findings register — committed at every phase boundary and every
+   stage transition (`riviera-plan-doc` owns the format). Kept current, compaction is a
+   non-event: the re-anchor cost is one file read.
+2. **Re-anchor rule.** After a compaction, or whenever unsure what stage you're in,
+   re-read the plan doc's Execution status section **and** the current stage's reference
+   file (`references/pr-gates.md`, `references/issue-intake-gate.md`) before acting.
+   Never run a gate from the summary's memory of its procedure.
+3. **Re-load rule.** A compaction is a new area-entry for the Skill-routing gate: re-load
+   the routed skills for whatever you touch next — a skill loaded before compaction may
+   survive only as a summary sentence, and trusting that sentence is how an invariant-#11
+   violation ships at hour three. Re-loading is cheap.
+4. **Keep bulk reads out of the main thread.** What fills context fastest is tool output,
+   not skills. Delegate self-contained heavy reading to subagents that return conclusions:
+   the review gate (`/code-review` already runs one), the Sonar issue-list triage,
+   `riviera-docs-freshness`, and broad exploration (an Explore agent, or `graphify query`'s
+   scoped subgraph instead of raw grep dumps). Keep test runs scoped per
+   `riviera-local-debug`; read file ranges, not whole files.
+5. **Break marathon slices at the gate boundaries instead of pushing through.** The gates
+   are designed as cold-entry points: a committed plan doc is everything an implement
+   session needs (the issue-intake gate is the entry procedure), and the PR + plan doc is
+   everything the review/sonar/merge session needs. When context runs high near a gate,
+   finish the current phase, commit the Execution status, and continue in a fresh
+   session — drift risk peaks exactly when the strictest gates run, and a fresh session
+   with a current plan doc beats a compacted one every time.
 
 ## Remote / cloud session addendum
 

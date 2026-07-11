@@ -32,9 +32,14 @@ Every riviera feature large enough to need a plan doc gets:
   `references/plan-doc-template.md` exactly. Empty sections are filled with
   `N/A — <reason>`, not deleted.
 - **A branch** named `<feature|bugfix>/<short-slug>`, existing before phase 0.
-- **An Execution-status row per phase**, updated in the **same commit window** as
-  that phase's code change (the same commit or the immediately-following one, nothing
-  unrelated between) — the rule covers every plan-doc update, incl. *Skills consulted*.
+- **A live Execution-status section** — stage pointer + next action, a status row
+  per phase, and the findings register — updated in the **same commit window** as
+  the change it records (the same commit or the immediately-following one, nothing
+  unrelated between; the rule covers every plan-doc update, incl. *Skills
+  consulted*) and at every SDLC stage transition. It is the **session-recovery
+  anchor**: after a context compaction or in a fresh session, re-read it before
+  acting (the template's blockquote carries the rule; `riviera-sdlc` §Context
+  hygiene carries the why).
 - **An empty Open Questions / Assumptions section by the time "done" is claimed**,
   or remaining items each cite a follow-up issue.
 
