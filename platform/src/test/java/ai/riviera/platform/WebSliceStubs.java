@@ -332,7 +332,7 @@ class WebSliceStubs {
 
 			@Override
 			public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId,
-					LayoutCommand command) {
+					long expectedVersion, LayoutCommand command) {
 				return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
 			}
 

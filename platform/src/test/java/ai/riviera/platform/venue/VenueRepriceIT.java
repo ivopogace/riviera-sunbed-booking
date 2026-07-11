@@ -91,11 +91,13 @@ class VenueRepriceIT {
 	/** Seed a venue with row A (two ONLINE + one WALK_IN, all 3500) and row B (one ONLINE, 2000). */
 	private long seedVenue(String name) throws Exception {
 		long venue = createVenue(name);
+		// The seed replace runs off the fresh venue's set_version (0) and bumps it to 1 (#226); reprice
+		// bodies below therefore load the current token rather than assume 0.
 		String layout = "{\"sets\":[" + String.join(",",
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
 				cell("A", 3, "PREMIUM", "WALK_IN", 3500, 3, 1),
-				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)) + "]}";
+				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)) + "],\"expectedVersion\":0}";
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(layout))
 				.andExpect(status().isNoContent());

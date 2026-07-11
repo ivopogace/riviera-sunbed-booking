@@ -151,7 +151,8 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 
 	@Override
 	@Transactional
-	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, LayoutCommand command) {
+	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, long expectedVersion,
+			LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (command.isEmpty()) {
@@ -166,6 +167,15 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 		Optional<Venues.Conflict> internal = command.duplicateWithin();
 		if (internal.isPresent()) {
 			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
+		}
+		// #226 optimistic lock — conditionally bump the venue's set_version BEFORE lockSetsOfVenue's
+		// FOR UPDATE. Both set-writes acquire the venue row (this bump) before its set rows, one consistent
+		// order → no deadlock (R-1). Existence is checked above, so 0 rows here is unambiguously a stale
+		// version (another replace/reprice bumped it since the load); a rejected replace below may still
+		// have bumped it — safe (only makes other tabs reload), and it is the same token repriceRow bumps,
+		// so a replace and a reprice racing off the same value cannot both win (R-2).
+		if (venues.bumpSetVersion(venueId, expectedVersion) == 0) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
 		}
 		// Reject-unless-unclaimed (issue #172): a booking (any status) pins its set via the RESTRICT FK,
 		// and an availability hold (any date) would be silently CASCADE-dropped by the delete — either

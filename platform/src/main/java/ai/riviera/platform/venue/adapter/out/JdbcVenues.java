@@ -85,6 +85,24 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
+	public int bumpSetVersion(VenueId venueId, long expectedVersion) {
+		// Conditional on the loaded set_version (#226): WHERE id AND set_version = :expected. The caller
+		// has already verified the venue exists, so 0 rows-affected means the token no longer matches
+		// (a concurrent replace/reprice bumped it) — a stale write. On a match the row's set_version is
+		// bumped by one, so the other writer off the same value loses (READ COMMITTED re-evaluates its
+		// WHERE after the winner commits → no match). Self-serializing on the PK row (no FOR UPDATE), and
+		// deliberately acquired BEFORE lockSetsOfVenue in the replace path (venue row before its set rows
+		// in BOTH set-writes → one consistent acquisition order → no deadlock, R-1).
+		return jdbc.sql("""
+				UPDATE venue SET set_version = set_version + 1
+				WHERE id = :id AND set_version = :expected
+				""")
+				.param("id", venueId.value())
+				.param("expected", expectedVersion)
+				.update();
+	}
+
+	@Override
 	public boolean setExists(VenueId venueId, SetId setId) {
 		return jdbc.sql("""
 				SELECT EXISTS(SELECT 1 FROM set_position WHERE id = :setId AND venue_id = :venue)

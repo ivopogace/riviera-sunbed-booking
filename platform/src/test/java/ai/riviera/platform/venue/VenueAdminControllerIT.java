@@ -443,6 +443,24 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void replaceWithoutVersionIs400() throws Exception {
+		// #226, AC-5: a beach-map replace body without expectedVersion is 400 INVALID_REQUEST — never
+		// treated as 0 (which would match a fresh venue and re-open the last-write-wins hole), mirroring
+		// the profile PATCH. requiredExpectedVersion() throws before the write.
+		long venue = createVenue("No Layout Version Club");
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sets":[{"rowLabel":"A","positionNo":1,"tier":"PREMIUM","pool":"ONLINE",
+								 "price":{"minorUnits":3500,"currency":"EUR"},"gridX":1,"gridY":1}]}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void getProfileRequiresOperatorAuth() throws Exception {
 		// O8 (#177), AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
 		// unauthenticated caller is 401 — commission never leaks to an anonymous request.

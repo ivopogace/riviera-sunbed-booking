@@ -42,8 +42,15 @@ class SetBookingInfoIT {
 
 	@Test
 	void resolvesBookingInfoForOnlineSet() {
-		long setId = jdbc.sql(
-				"SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY price_minor DESC LIMIT 1")
+		// Scope to Miramar (the venue this test asserts on): the highest-priced ONLINE set is its front-row
+		// premium (4500). A global "ORDER BY price_minor DESC" would be order-dependent in a shared
+		// Testcontainers DB — other ITs (concurrency #226, reprice) leave higher-priced ONLINE sets, so a
+		// class-ordering shift would otherwise pick one of theirs (riviera-local-debug: isolate the key).
+		long setId = jdbc.sql("""
+				SELECT sp.id FROM set_position sp JOIN venue v ON v.id = sp.venue_id
+				WHERE sp.pool = 'ONLINE' AND v.name = 'Miramar Beach Club'
+				ORDER BY sp.price_minor DESC LIMIT 1
+				""")
 				.query(Long.class).single();
 
 		Optional<SetBookingInfo> info = catalog.setBookingInfo(new SetId(setId));

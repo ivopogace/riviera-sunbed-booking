@@ -268,7 +268,7 @@ class VenueAdminServiceTest {
 	void replacesLayoutForUnclaimedVenue() {
 		venues.venues.add(VENUE.value());
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
 		assertEquals(1, venues.deletedAllCount);
@@ -280,7 +280,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		bookings.hasBookings = true;
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
@@ -292,7 +292,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		availability.claimed = true;
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(2, 3));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -302,7 +302,7 @@ class VenueAdminServiceTest {
 	void rejectsEmptyLayout() {
 		venues.venues.add(VENUE.value());
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, new LayoutCommand(List.of()));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, new LayoutCommand(List.of()));
 
 		assertEquals(ReplaceRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -315,7 +315,7 @@ class VenueAdminServiceTest {
 				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
 				new SetCommand("B", 2, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))); // same grid cell
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, clashing);
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, clashing);
 
 		assertEquals(ReplaceRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -323,18 +323,35 @@ class VenueAdminServiceTest {
 
 	@Test
 	void rejectsReplaceOnUnknownVenue() {
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, grid(1, 1));
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
 
 		assertEquals(ReplaceRejection.NO_SUCH_VENUE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void replaceWithStaleSetVersionIsStaleWrite() {
+		// #226, AC-1 (unit): the venue exists but the conditional set_version bump finds no row at the
+		// loaded token (another writer bumped it) ⇒ 0 rows ⇒ STALE_WRITE, and the layout is left untouched
+		// — the bump precedes the delete, so a stale replace deletes/inserts nothing.
+		venues.venues.add(VENUE.value());
+		venues.forceBumpRows = 0; // set_version no longer matches the loaded token
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+
+		assertEquals(ReplaceRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.insertedInLayout);
 	}
 
 	@Test
 	void replaceByANonOwnerIsDeniedBeforeAnyRead() {
 		venues.venues.add(VENUE.value());
 
-		assertThrows(NotVenueOwnerException.class, () -> service.replaceLayout(STRANGER, VENUE, grid(2, 3)));
-		// Fail closed: the ownership guard fires before the claim probes and before any delete.
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.replaceLayout(STRANGER, VENUE, 0L, grid(2, 3)));
+		// Fail closed: the ownership guard fires before the claim probes, the bump, and any delete.
 		assertEquals(0, availability.anyClaimsCalls);
+		assertEquals(0, venues.bumpedSetVersions);
 		assertEquals(0, venues.deletedAllCount);
 	}
 
@@ -427,6 +444,19 @@ class VenueAdminServiceTest {
 		@Override
 		public boolean venueExists(VenueId venueId) {
 			return venues.contains(venueId.value());
+		}
+
+		int bumpedSetVersions;
+		// #226: null ⇒ the set_version bump matches the loaded token (1 row, proceeds); set 0 to model a
+		// stale token (another replace/reprice bumped it since the load ⇒ STALE_WRITE).
+		Integer forceBumpRows;
+
+		@Override
+		public int bumpSetVersion(VenueId venueId, long expectedVersion) {
+			bumpedSetVersions++;
+			// The service checks venueExists first, so this is only reached for an existing venue; the
+			// default 1 models a token match. forceBumpRows = 0 models a stale-token loss.
+			return forceBumpRows != null ? forceBumpRows : 1;
 		}
 
 		@Override

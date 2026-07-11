@@ -12,8 +12,22 @@ import ai.riviera.platform.venue.application.SetCommand;
  * read contract exactly — integer minor units + ISO currency (invariant #5), no float. {@link #toCommand()}
  * validates presence per cell (delegating range/token checks to {@link SetCommand}) and wraps the cells
  * in a {@link LayoutCommand}; bad input → {@link IllegalArgumentException} → {@code 400}.
+ *
+ * <p>{@code expectedVersion} is the required optimistic-concurrency token (#226) — the {@code setVersion}
+ * the tab loaded with the map read. It is typed {@link Long} (not primitive) so an absent field is
+ * {@code null}, not a silent {@code 0}: {@link #requiredExpectedVersion()} rejects the null with a
+ * {@code 400} rather than letting it match a fresh venue and re-open the last-write-wins hole (mirrors
+ * {@code UpdateVenueProfileRequest}, #224).
  */
-record BeachMapLayoutRequest(List<SetPositionRequest> sets) {
+record BeachMapLayoutRequest(List<SetPositionRequest> sets, Long expectedVersion) {
+
+	/** The loaded concurrency token, required — a missing {@code expectedVersion} is a 400, never a 0 (#226). */
+	long requiredExpectedVersion() {
+		if (expectedVersion == null) {
+			throw new IllegalArgumentException("expectedVersion is required");
+		}
+		return expectedVersion;
+	}
 
 	LayoutCommand toCommand() {
 		if (sets == null) {

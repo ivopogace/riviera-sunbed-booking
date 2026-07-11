@@ -21,6 +21,20 @@ public interface Venues {
 	/** Whether a venue with this id exists. */
 	boolean venueExists(VenueId venueId);
 
+	/**
+	 * Conditionally bump the venue's {@code set_version} optimistic-concurrency token (#226) — the
+	 * SEPARATE counter for the two operator set-position writes (beach-map replace + per-row reprice),
+	 * distinct from the profile {@code version} (#224). Runs
+	 * {@code UPDATE venue SET set_version = set_version + 1 WHERE id = :id AND set_version = :expectedVersion}.
+	 * Returns the number of venue rows changed: {@code 1} means the loaded token matched and was bumped;
+	 * {@code 0} means it no longer matches (another writer bumped it since the load — the caller, having
+	 * already verified existence, returns STALE_WRITE). The conditional UPDATE is self-serializing on the
+	 * PK row (no explicit lock), and is acquired <strong>before</strong> {@link #lockSetsOfVenue}'s
+	 * {@code FOR UPDATE} in the replace path so both set-writes lock the venue row before its set rows
+	 * (consistent order → no deadlock, R-1).
+	 */
+	int bumpSetVersion(VenueId venueId, long expectedVersion);
+
 	/** Whether the set with this id belongs to the venue. */
 	boolean setExists(VenueId venueId, SetId setId);
 

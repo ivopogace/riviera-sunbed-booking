@@ -141,7 +141,10 @@ class VenueAdminController {
 	ResponseEntity<?> replaceLayout(Authentication authentication, @PathVariable long venueId,
 			@RequestBody BeachMapLayoutRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		return switch (editBeachMap.replaceLayout(operator, new VenueId(venueId), request.toCommand())) {
+		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
+		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest map and re-apply.
+		return switch (editBeachMap.replaceLayout(operator, new VenueId(venueId),
+				request.requiredExpectedVersion(), request.toCommand())) {
 			case ReplaceLayoutOutcome.Replaced ignored -> ResponseEntity.noContent().build();
 			case ReplaceLayoutOutcome.Rejected rejected -> error(rejected.reason());
 		};
@@ -181,6 +184,8 @@ class VenueAdminController {
 		return switch (reason) {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					NO_SUCH_VENUE_DETAIL);
+			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"This layout was changed by someone else. Reload the latest map and try again.");
 			case LAYOUT_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"This venue has bookings or walk-in holds, so its layout is locked.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
