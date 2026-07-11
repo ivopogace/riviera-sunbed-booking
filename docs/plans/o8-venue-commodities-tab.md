@@ -152,6 +152,7 @@ editing jobs are all covered by console tabs. Ledger:
 | R-5 | **Error-contract drift** — the widened DTO must reject bad `bookingMode`/blank `name`/malformed `bookingCutoff` as centralized `ProblemDetail` `INVALID_REQUEST`, not a per-controller body. | low | med | Parse/validate in `UpdateVenueProfileRequest.toCommand()` → `IllegalArgumentException` → `ApiErrorHandler` (§6b). `VenueAdminControllerIT` asserts 400 + `code`. | plan | open |
 | R-6 | **`booking_cutoff` on the wire** — a bad `"HH:mm"` or an out-of-range time breaks the reserve cutoff. | low | med | DTO parses `LocalTime` strictly; command requires non-null (mirrors `NewVenueCommand`). Column is `TIME`; no new constraint. No cutoff-logic change (already per-venue). | plan | open |
 | R-7 | **Flyway number** — none needed. If a reviewer expects one, the plan states **no migration** (V21 is HEAD; V22 stays free). | low | low | Documented; arch tests + `Testcontainers` prove the write against the real schema. | plan | resolved (no migration) |
+| R-8 | **Stale-tab last-write-wins** — the full-profile REPLACE re-sends `booking_mode`/`cutoff` seeded from load; a stale concurrent tab can clobber them (safety fields). | low | high | Deferred — proper fix is optimistic concurrency (version column + 409), an epic-wide concern (beach-map/pricing writes are also LWW). Tracked in **#224**. | review | deferred → #224 |
 
 ## Open questions / Assumptions
 

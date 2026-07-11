@@ -4,14 +4,10 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
+import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../venue/venue.model';
 import { VenueAdminErrorCode } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
-
-/** Parse clean digits to a non-negative whole number, or undefined ('4.5'/'12abc' are rejected, not truncated). */
-function parseWholeNumber(raw: string): number | undefined {
-  return /^\d+$/.test(raw.trim()) ? Number.parseInt(raw, 10) : undefined;
-}
 
 /**
  * Venue onboarding (U7) — sign in as an operator and **create** a venue. This is all that remains of

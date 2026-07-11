@@ -202,6 +202,37 @@ describe('VenueTab (#177)', () => {
     expect(byId('venue-error').textContent?.toLowerCase()).toContain('session');
   });
 
+  it('clears the Saved notice when a details field is edited after saving (no silent lost edit)', async () => {
+    render();
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-saved')).toBeTruthy();
+
+    // Editing any details field after the save must drop the stale confirmation.
+    setValue('venue-name', 'Edited After Save');
+
+    expect(host.querySelector('[data-testid="venue-saved"]')).toBeNull();
+  });
+
+  it('shows a field-level distance error (not the generic message) for a bad metres value and sends no PATCH', async () => {
+    render();
+
+    setValue('venue-distance', '4.5'); // not a whole number of metres
+    await save();
+
+    http.expectNone((r) => r.method === 'PATCH');
+    expect(byId('venue-distance-error')).toBeTruthy();
+    // The generic form-wide error must NOT fire — the operator sees exactly which field is wrong.
+    expect(host.querySelector('[data-testid="venue-error"]')).toBeNull();
+
+    // Re-typing a valid value clears the field error.
+    setValue('venue-distance', '20');
+    expect(host.querySelector('[data-testid="venue-distance-error"]')).toBeNull();
+  });
+
   it('shows a load-error message (not a blank form) when the profile read fails', () => {
     configure();
     http

@@ -223,6 +223,14 @@
               (input)="onDistanceInput($any($event.target).value)"
               class="w-[140px] rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
             />
+            @if (distanceError()) {
+              <span
+                class="text-[11.5px] font-semibold text-[#a3160e]"
+                role="alert"
+                data-testid="venue-distance-error"
+                >Enter a whole number of metres, or leave it blank.</span
+              >
+            }
           </label>
         </section>
       </div>

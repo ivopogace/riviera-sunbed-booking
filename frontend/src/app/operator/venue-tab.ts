@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
 import { CardGlass } from '../shared/card-glass';
 import { parentVenueId } from '../shared/parent-venue-id';
+import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../venue/venue.model';
 import {
   VenueProfileErrorCode,
@@ -43,15 +44,6 @@ const PHOTO_SLOTS: readonly { readonly key: string; readonly label: string }[] =
   { key: 'bar', label: 'Bar / restaurant' },
 ];
 
-/** Parse a clean positive integer, or `null` ('4.5'/'12abc'/'0'/'' are rejected, not truncated). */
-function positiveIntOrNull(raw: string): number | null {
-  if (!/^\d+$/.test(raw)) {
-    return null;
-  }
-  const value = Number.parseInt(raw, 10);
-  return value > 0 ? value : null;
-}
-
 /**
  * The O8 Venue &amp; commodities tab (issue #177, epic #141) — the operator's venue-details form
  * (name/beach/region/description, booking mode, evening-before cutoff), the commodities amenity
@@ -83,6 +75,9 @@ export class VenueTab {
   protected readonly saving = signal(false);
   protected readonly saved = signal(false);
   protected readonly errorCode = signal<VenueProfileErrorCode | null>(null);
+  /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
+   *  the operator at the right field instead of a generic form-wide message. */
+  protected readonly distanceError = signal(false);
 
   /** Read-only display fields (from the loaded profile); never edited, never written. */
   protected readonly commissionBps = signal<number | null>(null);
@@ -110,6 +105,14 @@ export class VenueTab {
   protected readonly photoSlots = PHOTO_SLOTS;
 
   constructor() {
+    // Drop the "Saved" confirmation as soon as the operator edits any details field (a Signal-Form
+    // field, so it has no per-field handler like the amenity/distance ones) — otherwise the banner
+    // lingers after a save and a subsequent edit reads as already-persisted, a silent lost edit.
+    effect(() => {
+      this.details(); // track the form model: any edit re-fires this and clears the stale notice
+      this.saved.set(false);
+    });
+
     const id = parentVenueId(this.route);
     if (id !== undefined) {
       this.venueId = id;
@@ -144,6 +147,7 @@ export class VenueTab {
   protected onDistanceInput(value: string): void {
     this.distanceDraft.set(value);
     this.saved.set(false);
+    this.distanceError.set(false);
   }
 
   /**
@@ -159,17 +163,21 @@ export class VenueTab {
     }
     this.saved.set(false);
     this.errorCode.set(null);
+    this.distanceError.set(false);
     submit(this.detailsForm, async () => {
       const raw = this.distanceDraft().trim();
       let distanceToWaterM: number | null;
       if (raw === '') {
         distanceToWaterM = null;
       } else {
-        distanceToWaterM = positiveIntOrNull(raw);
-        if (distanceToWaterM === null) {
-          this.errorCode.set('INVALID_REQUEST');
+        const parsed = parseWholeNumber(raw);
+        if (parsed === undefined || parsed <= 0) {
+          // Field-level error at the distance input, not the generic form-wide message — the operator
+          // can see exactly which field to fix (the distance isn't a Signal-Form field).
+          this.distanceError.set(true);
           return;
         }
+        distanceToWaterM = parsed;
       }
       const m = this.details();
       const request: VenueProfileUpdate = {

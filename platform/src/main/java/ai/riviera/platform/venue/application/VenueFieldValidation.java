@@ -1,8 +1,12 @@
 package ai.riviera.platform.venue.application;
 
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.Currency;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
  * Shared edge validators for the venue-profile fields, used by both {@link NewVenueCommand} (onboard,
@@ -14,8 +18,13 @@ import java.util.Set;
  */
 final class VenueFieldValidation {
 
-	/** The booking-mode tokens accepted on the wire and stored by the {@code venue_booking_mode_check} CHECK. */
-	static final Set<String> BOOKING_MODES = Set.of("INSTANT", "REQUEST");
+	/**
+	 * The booking-mode tokens accepted on the wire — derived from the {@link BookingMode} enum (whose
+	 * names are the same tokens the {@code venue_booking_mode_check} CHECK stores), so the validator, the
+	 * enum, and the CHECK stay in one source of truth: a new mode added to the enum is accepted here too.
+	 */
+	static final Set<String> BOOKING_MODES =
+			Arrays.stream(BookingMode.values()).map(Enum::name).collect(Collectors.toUnmodifiableSet());
 	/** Commission bps upper bound (100%), mirroring the {@code venue_commission_bps_check} CHECK. */
 	static final int MAX_BPS = 10_000;
 
