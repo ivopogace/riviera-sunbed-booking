@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
@@ -82,7 +83,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
  */
 @Component({
   selector: 'app-venue-tab',
-  imports: [FormField, CardGlass],
+  imports: [FormField, CardGlass, NgOptimizedImage],
   templateUrl: './venue-tab.html',
 })
 export class VenueTab {

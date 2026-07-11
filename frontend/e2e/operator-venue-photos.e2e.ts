@@ -32,9 +32,9 @@ const PROFILE = {
   distanceToWaterM: 20,
   version: 7,
   photos: {
-    cover: { present: false, previewUrl: null },
-    sunbeds: { present: false, previewUrl: null },
-    bar: { present: false, previewUrl: null },
+    cover: { previewUrl: null },
+    sunbeds: { previewUrl: null },
+    bar: { previewUrl: null },
   },
 };
 
@@ -181,10 +181,11 @@ test('picks a file → one multipart upload → preview + Replace, then Remove d
   expect(uploads).toHaveLength(1);
   expect(uploads[0].headers()['content-type']).toContain('multipart/form-data');
 
-  // The tab previews the returned PREVIEW variant's content-addressed URL, no profile re-fetch.
+  // The tab previews the returned PREVIEW variant's content-addressed URL (resolved against the
+  // API origin — F-7), no profile re-fetch.
   await expect(page.getByTestId('photo-preview-cover')).toHaveAttribute(
     'src',
-    '/api/venues/1/photos/cc03',
+    /\/api\/venues\/1\/photos\/cc03$/,
   );
   await expect(page.getByTestId('photo-pick-cover')).toHaveText(/Replace/);
   await settle(page);

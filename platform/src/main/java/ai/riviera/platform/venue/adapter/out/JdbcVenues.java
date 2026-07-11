@@ -345,8 +345,7 @@ class JdbcVenues implements Venues {
 				.collect(Collectors.toMap(SlotPreviewRow::slot,
 						r -> PhotoServingUrls.servingUrl(venueId.value(), new ContentHash(r.hash()))));
 		return Arrays.stream(PhotoSlot.values())
-				.map(slot -> new PhotoSlotView(slot, previewBySlot.containsKey(slot),
-						previewBySlot.get(slot)))
+				.map(slot -> new PhotoSlotView(slot, previewBySlot.get(slot)))
 				.toList();
 	}
 

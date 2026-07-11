@@ -31,9 +31,9 @@ describe('VenueTab a11y (#177)', () => {
     distanceToWaterM: 20,
     version: 7,
     photos: {
-      cover: { present: true, previewUrl: '/api/venues/1/photos/cc03' },
-      sunbeds: { present: false, previewUrl: null },
-      bar: { present: false, previewUrl: null },
+      cover: { previewUrl: '/api/venues/1/photos/cc03' },
+      sunbeds: { previewUrl: null },
+      bar: { previewUrl: null },
     },
   };
 

@@ -28,9 +28,9 @@ const INITIAL_PROFILE = {
   version: 7, // the optimistic-concurrency token the tab loads and echoes back (#224)
   // The per-slot photo map (#142) — empty here; the photo flows live in operator-venue-photos.e2e.ts.
   photos: {
-    cover: { present: false, previewUrl: null },
-    sunbeds: { present: false, previewUrl: null },
-    bar: { present: false, previewUrl: null },
+    cover: { previewUrl: null },
+    sunbeds: { previewUrl: null },
+    bar: { previewUrl: null },
   },
 };
 

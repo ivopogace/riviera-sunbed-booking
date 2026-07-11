@@ -42,21 +42,25 @@ class JdbcPhotoStorage implements PhotoStorage {
 	@Override
 	@Transactional
 	public void replace(VenueId venueId, PhotoSlot slot, ProcessedPhoto photo) {
-		// Atomic delete-then-insert: drop any existing photo in this slot (cascades to its variants),
-		// then insert the fresh photo row and its variant bytes — one transaction, no orphaned blob.
-		jdbc.sql("DELETE FROM venue_photo WHERE venue_id = :venue AND slot = :slot")
-				.param(P_VENUE, venueId.value())
-				.param(P_SLOT, slot.name())
-				.update();
+		// Atomic race-safe replace (review finding #142 F-3): the upsert claims OR locks the slot's
+		// row — a concurrent replace of the same (venue, slot) blocks on the row lock instead of
+		// dying on venue_photo_slot_uniq the way delete-then-insert did (last writer wins, per the
+		// plan's concurrency section). created_at is bumped on conflict: the row then describes the
+		// CURRENT photo, whose creation is this upload. Variants are swapped under the same lock —
+		// one transaction, no orphaned blob.
 		long photoId = jdbc.sql("""
 				INSERT INTO venue_photo (venue_id, slot)
 				VALUES (:venue, :slot)
+				ON CONFLICT (venue_id, slot) DO UPDATE SET created_at = NOW()
 				RETURNING id
 				""")
 				.param(P_VENUE, venueId.value())
 				.param(P_SLOT, slot.name())
 				.query(Long.class)
 				.single();
+		jdbc.sql("DELETE FROM venue_photo_variant WHERE photo_id = :photoId")
+				.param("photoId", photoId)
+				.update();
 		for (StoredVariant v : photo.variants()) {
 			jdbc.sql("""
 					INSERT INTO venue_photo_variant (photo_id, venue_id, surface, content_hash,
@@ -87,10 +91,13 @@ class JdbcPhotoStorage implements PhotoStorage {
 
 	@Override
 	public Optional<StoredBytes> loadBytes(VenueId venueId, ContentHash hash) {
+		// LIMIT 1: the same image in two slots stores two rows with this (venue, hash) — they are
+		// content-identical by construction (hash = SHA-256 of the bytes), so any one serves.
 		return jdbc.sql("""
 				SELECT content_type, content_hash, bytes
 				FROM venue_photo_variant
 				WHERE venue_id = :venue AND content_hash = :hash
+				LIMIT 1
 				""")
 				.param(P_VENUE, venueId.value())
 				.param("hash", hash.value())

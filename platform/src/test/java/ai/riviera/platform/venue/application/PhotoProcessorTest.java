@@ -102,6 +102,31 @@ class PhotoProcessorTest {
 	}
 
 	@Test
+	void rejectsAJpegWhoseHeaderParsesButWhoseRasterDoesNot() throws IOException {
+		// #142 review F-5: the up-front guard is header-only, so a file can pass the magic + SOF
+		// checks yet still fail the FULL raster decode (real-world case: a CMYK/Adobe JPEG). Model
+		// it with a JPEG cut just before its SOS marker: the SOF header (dimensions) is intact, but
+		// there is no scan data to decode. This must be the typed UNREADABLE rejection — an upload
+		// flaw — not an escaping 500.
+		byte[] whole = solidJpeg(1600, 1200);
+		byte[] headerOnly = new byte[startOfScanIndex(whole)];
+		System.arraycopy(whole, 0, headerOnly, 0, headerOnly.length);
+
+		assertEquals(Reason.UNREADABLE,
+				assertRejected(processor.process(headerOnly, PhotoSlot.COVER)).reason());
+	}
+
+	/** The offset of the JPEG SOS marker (FF DA) — everything before it is header segments only. */
+	private static int startOfScanIndex(byte[] jpeg) {
+		for (int i = 0; i < jpeg.length - 1; i++) {
+			if ((jpeg[i] & 0xFF) == 0xFF && (jpeg[i + 1] & 0xFF) == 0xDA) {
+				return i;
+			}
+		}
+		throw new IllegalStateException("fixture JPEG has no SOS marker");
+	}
+
+	@Test
 	void stripsExifMetadataFromEveryVariant() throws IOException {
 		byte[] withExif = jpegWithExif(1600, 1200);
 		// sanity: the input really carries an EXIF APP1 marker

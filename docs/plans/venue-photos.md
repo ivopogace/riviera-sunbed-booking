@@ -165,10 +165,12 @@ query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
 
 **N/A — does not touch `availability`, `booking`, or the beach-map set layout.** Photos are venue
 **profile media**; no `(set_id, booking_date)` row is written. The only concurrency is
-per-slot replace, made safe by `UNIQUE(venue_id, slot)` + a single-transaction
-delete-then-insert in the `bytea` adapter (last writer wins per slot; no optimistic-version
-contract needed — a photo replace is not a lost-update hazard the way #224/#226 profile/set edits
-were).
+per-slot replace, made safe by `UNIQUE(venue_id, slot)` + a single-transaction **slot-row upsert
+(`ON CONFLICT (venue_id, slot) DO UPDATE`) whose row lock serializes concurrent replaces** — the
+original delete-then-insert raced (review F-3) — then a variant swap under the same lock (last
+writer wins per slot; no optimistic-version contract needed — a photo replace is not a
+lost-update hazard the way #224/#226 profile/set edits were). Pinned by
+`JdbcPhotoStorageIT.concurrentReplacesOfTheSameSlotSerializeToOnePhoto`.
 
 ## Spring Modulith — modules, interfaces, events
 
@@ -241,10 +243,10 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `Phase 5 docs done (freshness run + glossary + #230 filed). AT THE GATES: local review (riviera-review-overlay + /code-review) → /security-review → then BLOCKED on maintainer confirmation to push (CI) / open PR / Sonar / merge.`
+**Stage pointer:** `GATES: local review RUN (riviera-review-overlay + /code-review high, 21-agent workflow) → 10 findings F-2..F-11, ALL FIXED through the loop (re-entry: postgres/java-conventions/modulith/FE skills; red-first where pinnable; backend photo suite + structural nets + FE lint/653-unit/build/45-e2e green — one unrelated operator-requests e2e flake, passes in isolation). /security-review RUN: no high-confidence findings. BLOCKED on maintainer confirmation to push (CI) → PR → Sonar (watch OQ-3 S6218) → merge (+ close-out incl. graphify update).`
 
-**Next action:** run the local Review gate + `/security-review` over `main...HEAD`; resolve
-findings through the loop; then ask the maintainer to confirm push → CI → PR → Sonar → merge.
+**Next action:** maintainer confirms → push `feature/venue-photos` → verify CI green → open PR →
+Sonar gate (pull the new-issue list) → merge + close-out checklist.
 
 **Windows-session note:** the CI-safe mocked Playwright suite here is **`npm run test:e2e:a11y`**
 (`playwright.a11y.config.ts`, testMatch `e2e/*.e2e.ts`, no backend); the bare `test:e2e` config
@@ -268,6 +270,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | local IT (first web-context boot after 2a) | The 2a `@ExceptionHandler(MaxUploadSizeExceededException)` duplicated the `ResponseEntityExceptionHandler` base handler (final since FW 6.1) → ambiguous mapping, Spring context failed to start for every MockMvc IT. Fix: handler removed; 413 flows through `handleExceptionInternal`, `code` pinned to `PAYLOAD_TOO_LARGE` in `defaultCode` (literal 413 — the enum constant is mid-rename). Pinned by `ApiErrorHandlerTest.uploadBeyondTheMultipartLimitIs413WithStableCode` (red→green). Side effect: the compile-time deprecation NOTE on `ApiErrorHandler` is gone — it was the removed handler's own `HttpStatus.PAYLOAD_TOO_LARGE` reference (new code, not pre-existing). | fixed |
+| F-2 | review (high, CONFIRMED) | `UNIQUE(venue_id, content_hash)` spanned slots → the same image in two slots (byte-identical PREVIEWs, same SHA-256) broke the 2nd upload with an unrecoverable 409. Fix: constraint → plain serving index `venue_photo_variant_serving_idx` (V24 edited in place — branch-local, never applied outside disposable test DBs); `loadBytes` gains `LIMIT 1` (duplicate rows are content-identical by construction). Pinned by `JdbcPhotoStorageIT.theSameImageCanOccupyTwoSlotsOfOneVenue`. | fixed |
+| F-3 | review (high, CONFIRMED) | `replace()` delete-then-insert raced: a concurrent same-slot replace died on `venue_photo_slot_uniq`. Fix: slot-row upsert `ON CONFLICT (venue_id, slot) DO UPDATE SET created_at = NOW()` (row lock serializes; last writer wins; `created_at` now = the current photo's upload) + variant swap by `photo_id`. Pinned by `JdbcPhotoStorageIT.concurrentReplacesOfTheSameSlotSerializeToOnePhoto` (2-thread). | fixed |
+| F-4 | review (high, CONFIRMED) | `@Transactional` on `VenuePhotoService.upload` pinned a Hikari connection through the CPU-heavy 25MB decode/resize — pool starvation under upload bursts. Fix: service tx removed (the adapter's `replace()` is itself `@Transactional`; delete is one cascading statement); comment explains the deliberate absence. | fixed |
+| F-5 | review (CONFIRMED) | Header-only up-front check let a header-parses/raster-fails file (CMYK JPEG) escape as a 500 (`UncheckedIOException`). Fix: `render()` throws `IOException`, `process()` catches → typed `Rejected(UNREADABLE)`. Pinned by `PhotoProcessorTest.rejectsAJpegWhoseHeaderParsesButWhoseRasterDoesNot` (cut-before-SOS fixture; a mid-scan truncation decodes leniently, learned red-first). | fixed |
+| F-6 | review (CONFIRMED) | Tomcat's default 2MB `max-swallow-size` aborted oversize uploads before the 413 body reached the browser (status-0 network error → generic copy). Fix: `server.tomcat.max-swallow-size=33MB` (≥ max-request-size). | fixed |
+| F-7 | review (CONFIRMED) | Serving URLs are root-relative but dev `apiBaseUrl` is another origin → every photo broken in local dev. Fix: `venue/photo-url.ts` (`apiPhotoUrl`/`resolveCoverPhoto`) applied at the three HTTP-service boundaries (venue list/map, profile previews, upload response) — a no-op in same-origin prod; specs/e2e assert the resolved URLs (ends-with regex in e2e). | fixed |
+| F-8 | review (PLAUSIBLE) | A COVER photo missing one of its CARD/BANNER variant rows produced a non-null `CoverPhotoView` with a null URL → NgOptimizedImage throws past the `@if` guard. Fix: `coverPhotosByVenue` emits a view only for a COMPLETE pair; an incomplete cover reads as "no cover" (gradient fallback). | fixed |
+| F-9 | review (CONFIRMED) | Operator slot preview used raw `<img [src]>` against the NgOptimizedImage mandate. Fix: `ngSrc` + `NgOptimizedImage` import in the venue tab. | fixed |
+| F-10 | review (cleanup, CONFIRMED) | `actualDimensions()` full-raster-decoded each rendered variant just for width/height. Fix: reuse the header-only `readHeaderDimensions` on our own fresh JPEG; helper deleted. | fixed |
+| F-11 | review (cleanup, CONFIRMED) | `present` was derivable lock-step state (`≡ previewUrl != null`) across `PhotoSlotView`, the wire `SlotPhoto`, and the FE model. Fix: dropped everywhere; emptiness is the null `previewUrl`. | fixed |
 
 ---
 

@@ -29,7 +29,7 @@ describe('VenuePhotoService (#142)', () => {
 
   afterEach(() => http.verify());
 
-  it('uploads the picked file as a single multipart "file" part to the slot path', () => {
+  it('uploads the picked file as a single multipart "file" part and resolves the variant URLs against the API origin', () => {
     const file = new File(['jpeg-bytes'], 'beach.jpg', { type: 'image/jpeg' });
     let response: PhotoUploadView | undefined;
 
@@ -38,15 +38,19 @@ describe('VenuePhotoService (#142)', () => {
     const req = http.expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/cover'));
     expect(req.request.body).toBeInstanceOf(FormData);
     expect((req.request.body as FormData).get('file')).toBe(file);
-    const uploaded: PhotoUploadView = {
+    req.flush({
       slot: 'cover',
       variants: [
         { surface: 'card', url: '/api/venues/1/photos/aa01', width: 640, height: 384 },
         { surface: 'preview', url: '/api/venues/1/photos/cc03', width: 480, height: 360 },
       ],
-    };
-    req.flush(uploaded);
-    expect(response).toEqual(uploaded);
+    });
+    // The wire paths are root-relative; the service prefixes the API origin (F-7) so <img> works
+    // in local dev where the API is another origin (a no-op in same-origin prod).
+    expect(response?.variants.map((v) => v.url)).toEqual([
+      'http://localhost:8080/api/venues/1/photos/aa01',
+      'http://localhost:8080/api/venues/1/photos/cc03',
+    ]);
   });
 
   it('remove DELETEs the slot path', () => {

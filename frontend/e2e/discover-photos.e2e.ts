@@ -85,7 +85,8 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   // (the location text's AA floor is computed in home.contrast.spec.ts — here we pin the layering).
   const coverImg = cards.first().getByTestId('card-photo-img');
   await expect(coverImg).toBeVisible();
-  await expect(coverImg).toHaveAttribute('src', COVER.card);
+  // The service resolves the wire's root-relative path against the API origin (F-7).
+  await expect(coverImg).toHaveAttribute('src', /\/api\/venues\/1\/photos\/aa01$/);
   await expect(cards.first().locator('.photo-scrim')).toBeAttached();
 
   // Venue 2 has none → the gradient placeholder (no image) — the empty state, not a broken photo.
@@ -98,7 +99,7 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expect(page).toHaveURL(/\/venues\/1/);
   const banner = page.getByTestId('map-banner-img');
   await expect(banner).toBeVisible();
-  await expect(banner).toHaveAttribute('src', COVER.banner);
+  await expect(banner).toHaveAttribute('src', /\/api\/venues\/1\/photos\/bb02$/);
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'beach map with cover banner');
 });

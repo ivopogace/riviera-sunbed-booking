@@ -102,6 +102,50 @@ class JdbcPhotoStorageIT {
 	}
 
 	@Test
+	void theSameImageCanOccupyTwoSlotsOfOneVenue() {
+		// #142 review F-2: the pipeline is deterministic, so the same source image uploaded to two
+		// slots yields byte-identical PREVIEW variants with the same SHA-256. Both must store (the
+		// old UNIQUE(venue_id, content_hash) made the second upload die), and the content-addressed
+		// serving read stays well-defined — identical hash = identical bytes, any row serves.
+		VenueId v = newVenue();
+		byte[] sameBytes = {42, 42, 42};
+		storage.replace(v, PhotoSlot.SUNBEDS, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.PREVIEW, "5e01", sameBytes))));
+
+		storage.replace(v, PhotoSlot.BAR, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.PREVIEW, "5e01", sameBytes))));
+
+		assertEquals(2, storage.listMetadata(v).size(), "both slots occupied by the same image");
+		Optional<StoredBytes> served = storage.loadBytes(v, new ContentHash("5e01"));
+		assertTrue(served.isPresent(), "the shared hash still serves");
+		assertArrayEquals(sameBytes, served.get().bytes());
+	}
+
+	@Test
+	void concurrentReplacesOfTheSameSlotSerializeToOnePhoto() throws Exception {
+		// #142 review F-3: two concurrent replaces of one (venue, slot) — a double-submit from two
+		// tabs — must serialize on the slot row's upsert lock (last writer wins), never die on
+		// venue_photo_slot_uniq the way delete-then-insert did. Both calls succeed; one photo remains.
+		VenueId v = newVenue();
+		try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+			var barrier = new java.util.concurrent.CyclicBarrier(2);
+			java.util.concurrent.Callable<Void> replaceOnce = () -> {
+				barrier.await();
+				storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+						variant(PhotoSurface.CARD, "6f0" + Thread.currentThread().threadId() % 10,
+								new byte[] {(byte) Thread.currentThread().threadId()}))));
+				return null;
+			};
+			for (var future : executor.invokeAll(List.of(replaceOnce, replaceOnce))) {
+				future.get(); // propagate any constraint violation — both must have succeeded
+			}
+		}
+		int photoRows = jdbc.sql("SELECT COUNT(*) FROM venue_photo WHERE venue_id = :v AND slot = 'COVER'")
+				.param("v", v.value()).query(Integer.class).single();
+		assertEquals(1, photoRows, "concurrent replaces serialized to exactly one photo row");
+	}
+
+	@Test
 	void deleteRemovesMetadataAndBytesInOneShot() {
 		VenueId v = newVenue();
 		storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(

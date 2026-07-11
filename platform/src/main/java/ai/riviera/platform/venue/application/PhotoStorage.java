@@ -24,8 +24,9 @@ public interface PhotoStorage {
 
 	/**
 	 * Persist {@code photo}'s variants for {@code (venueId, slot)}, replacing any existing photo in
-	 * that slot <strong>atomically</strong> (delete-then-insert in one transaction) — at most one
-	 * photo per slot (invariant enforced in the DB by {@code UNIQUE(venue_id, slot)} too).
+	 * that slot <strong>atomically</strong> (a slot-row upsert whose row lock also serializes
+	 * concurrent replaces — last writer wins — then a variant swap, in one transaction) — at most
+	 * one photo per slot (enforced in the DB by {@code UNIQUE(venue_id, slot)} too).
 	 */
 	void replace(VenueId venueId, PhotoSlot slot, ProcessedPhoto photo);
 

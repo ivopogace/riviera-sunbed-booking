@@ -34,11 +34,17 @@ CREATE TABLE venue_photo_variant (
     CONSTRAINT venue_photo_variant_surface_check CHECK (surface IN ('CARD', 'BANNER', 'PREVIEW')),
     CONSTRAINT venue_photo_variant_size_check    CHECK (byte_size >= 0),
     CONSTRAINT venue_photo_variant_dims_check    CHECK (width > 0 AND height > 0),
-    -- one variant per (photo, surface); the serving lookup keys on (venue_id, content_hash), whose
-    -- leading venue_id column also indexes the FK + cascade — so no separate venue_id index is needed.
-    CONSTRAINT venue_photo_variant_surface_uniq  UNIQUE (photo_id, surface),
-    CONSTRAINT venue_photo_variant_hash_uniq     UNIQUE (venue_id, content_hash)
+    -- one variant per (photo, surface)
+    CONSTRAINT venue_photo_variant_surface_uniq  UNIQUE (photo_id, surface)
 );
+
+-- The serving lookup keys on (venue_id, content_hash) — a plain index, deliberately NOT unique:
+-- the pipeline is deterministic, so the same source image uploaded to two slots of one venue
+-- yields byte-identical PREVIEW variants with the same SHA-256, and both rows must coexist
+-- (review finding #142 F-2). Duplicate (venue, hash) rows are content-identical by construction
+-- (hash = SHA-256 of the bytes), so the serving read picks any one. The leading venue_id column
+-- also indexes that FK + cascade.
+CREATE INDEX venue_photo_variant_serving_idx ON venue_photo_variant (venue_id, content_hash);
 
 -- Index the photo_id FK (join + cascade); it is not the leading column of any index above.
 CREATE INDEX venue_photo_variant_photo_id_idx ON venue_photo_variant (photo_id);

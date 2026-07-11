@@ -116,13 +116,11 @@ class VenuePhotoReadModelIT {
 		VenueId venue = newVenue("RM profile venue");
 		seedCover(venue, "3a03", "3b03", "3c03");
 
+		// Emptiness IS the null previewUrl (review F-11) — all three slot keys are always present.
 		mvc.perform(get("/api/venues/{v}/profile", venue.value()).cookie(session))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.photos.cover.present").value(true))
 				.andExpect(jsonPath("$.photos.cover.previewUrl").value(url(venue, "3c03")))
-				.andExpect(jsonPath("$.photos.sunbeds.present").value(false))
 				.andExpect(jsonPath("$.photos.sunbeds.previewUrl").value(nullValue()))
-				.andExpect(jsonPath("$.photos.bar.present").value(false))
 				.andExpect(jsonPath("$.photos.bar.previewUrl").value(nullValue()));
 	}
 }

@@ -123,7 +123,8 @@ describe('VenueMap', () => {
     fixture.detectChanges();
 
     const img = el().querySelector<HTMLImageElement>('[data-testid="map-banner-img"]');
-    expect(img?.getAttribute('src')).toBe('/api/venues/1/photos/bb02');
+    // The service resolves the wire's root-relative path against the API origin (F-7).
+    expect(img?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/bb02`);
     // The scrim stays layered over the photo band, and the retired pill never renders.
     expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
     expect(el().textContent).not.toContain('coming soon');

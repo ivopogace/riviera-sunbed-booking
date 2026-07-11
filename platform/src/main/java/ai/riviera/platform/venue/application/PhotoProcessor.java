@@ -1,10 +1,8 @@
 package ai.riviera.platform.venue.application;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -79,8 +77,14 @@ class PhotoProcessor {
 			return rejected(Reason.DIMENSIONS_EXCEEDED);
 		}
 		List<StoredVariant> variants = new ArrayList<>();
-		for (PhotoSurface surface : surfacesFor(slot)) {
-			variants.add(render(upload, surface));
+		try {
+			for (PhotoSurface surface : surfacesFor(slot)) {
+				variants.add(render(upload, surface));
+			}
+		} catch (IOException e) {
+			// The up-front check is header-only, so a raster the decoder can't handle (e.g. a CMYK
+			// JPEG) first fails HERE — an expected upload flaw, not a server error (#142 review F-5).
+			return rejected(Reason.UNREADABLE);
 		}
 		return new PhotoProcessingResult.Processed(new ProcessedPhoto(List.copyOf(variants)));
 	}
@@ -100,24 +104,25 @@ class PhotoProcessor {
 				: List.of(PhotoSurface.PREVIEW);
 	}
 
-	private StoredVariant render(byte[] upload, PhotoSurface surface) {
+	/** Renders one surface's JPEG; an {@link IOException} means the raster is undecodable (→ UNREADABLE). */
+	private StoredVariant render(byte[] upload, PhotoSurface surface) throws IOException {
 		int[] bound = boundsFor(surface);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		try {
-			// Re-decodes from the raw bytes per surface so EXIF orientation is read + applied (and then
-			// dropped) each time; a rare operator action, so the repeated decode is acceptable.
-			Thumbnails.of(new ByteArrayInputStream(upload))
-					.useExifOrientation(true)
-					.size(bound[0], bound[1])
-					.outputFormat("jpg")
-					.outputQuality(JPEG_QUALITY)
-					.toOutputStream(out);
-		} catch (IOException e) {
-			// Readability was validated up front; a failure here is genuinely exceptional.
-			throw new UncheckedIOException("failed to render the " + surface + " variant", e);
-		}
+		// Re-decodes from the raw bytes per surface so EXIF orientation is read + applied (and then
+		// dropped) each time; a rare operator action, so the repeated decode is acceptable.
+		Thumbnails.of(new ByteArrayInputStream(upload))
+				.useExifOrientation(true)
+				.size(bound[0], bound[1])
+				.outputFormat("jpg")
+				.outputQuality(JPEG_QUALITY)
+				.toOutputStream(out);
 		byte[] bytes = out.toByteArray();
-		int[] actual = actualDimensions(bytes);
+		// Header-only read of our own freshly encoded JPEG — no second full-raster decode just for
+		// two ints (#142 review F-10). It cannot fail on bytes this class just wrote.
+		int[] actual = readHeaderDimensions(bytes);
+		if (actual == null) {
+			throw new IllegalStateException("the freshly rendered " + surface + " JPEG has no readable header");
+		}
 		return new StoredVariant(surface, hash(bytes), JPEG_TYPE, actual[0], actual[1], bytes);
 	}
 
@@ -170,15 +175,6 @@ class PhotoProcessor {
 			}
 		} catch (IOException e) {
 			return null;
-		}
-	}
-
-	private static int[] actualDimensions(byte[] jpeg) {
-		try {
-			BufferedImage image = ImageIO.read(new ByteArrayInputStream(jpeg));
-			return new int[] {image.getWidth(), image.getHeight()};
-		} catch (IOException e) {
-			throw new UncheckedIOException("failed to read back the rendered variant", e);
 		}
 	}
 

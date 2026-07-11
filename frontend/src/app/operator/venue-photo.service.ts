@@ -1,9 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
+import { apiPhotoUrl } from '../venue/photo-url';
 import { PhotoSlotKey } from './operator-console.model';
 
 /** One stored variant of an uploaded photo (#142): its surface, serving URL, and dimensions. */
@@ -40,10 +41,15 @@ export class VenuePhotoService {
   upload(venueId: number, slot: PhotoSlotKey, file: File): Observable<PhotoUploadView> {
     const body = new FormData();
     body.append('file', file);
-    return this.http.post<PhotoUploadView>(
-      `${this.base}/api/venues/${venueId}/photos/${slot}`,
-      body,
-    );
+    return this.http
+      .post<PhotoUploadView>(`${this.base}/api/venues/${venueId}/photos/${slot}`, body)
+      .pipe(
+        // Variant paths resolve against the API origin (#142 review F-7; no-op same-origin prod).
+        map((uploaded) => ({
+          ...uploaded,
+          variants: uploaded.variants.map((v) => ({ ...v, url: apiPhotoUrl(v.url) })),
+        })),
+      );
   }
 
   /** Delete the slot's photo (metadata + bytes, one transaction server-side). `204`; `404` when empty. */

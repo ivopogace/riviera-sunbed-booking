@@ -3,7 +3,6 @@ package ai.riviera.platform.venue.application;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -33,8 +32,11 @@ class VenuePhotoService implements VenuePhotos {
 	}
 
 	@Override
-	@Transactional
 	public PhotoUploadResult upload(OperatorId operator, VenueId venueId, PhotoSlot slot, byte[] image) {
+		// Deliberately NOT @Transactional (review finding #142 F-4): the CPU-heavy image pipeline
+		// must run OUTSIDE any DB transaction — a service-level tx would pin a pool connection
+		// through a multi-second decode/resize of a 25MB upload and starve unrelated requests.
+		// Atomicity lives where it's needed: the adapter's replace() is itself @Transactional.
 		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST, before any work
 		return switch (processor.process(image, slot)) {
 			case PhotoProcessingResult.Processed(var photo) -> {
@@ -46,9 +48,9 @@ class VenuePhotoService implements VenuePhotos {
 	}
 
 	@Override
-	@Transactional
 	public boolean delete(OperatorId operator, VenueId venueId, PhotoSlot slot) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST
+		// No tx needed here: the adapter's delete is one cascading DELETE statement (atomic on its own).
 		return storage.delete(venueId, slot);
 	}
 

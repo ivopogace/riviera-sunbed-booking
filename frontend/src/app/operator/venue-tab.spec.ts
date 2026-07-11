@@ -34,11 +34,14 @@ describe('VenueTab (#177)', () => {
     distanceToWaterM: 20,
     version: 7, // a non-zero token so tests prove it's echoed from the load, not hardcoded
     photos: {
-      cover: { present: true, previewUrl: '/api/venues/1/photos/cc03' },
-      sunbeds: { present: false, previewUrl: null },
-      bar: { present: false, previewUrl: null },
+      cover: { previewUrl: '/api/venues/1/photos/cc03' },
+      sunbeds: { previewUrl: null },
+      bar: { previewUrl: null },
     },
   };
+
+  /** The service resolves photo paths against the API origin (F-7), so rendered src attrs carry it. */
+  const API = 'http://localhost:8080';
 
   function configure(parentVenueId: Record<string, string> = { venueId: '1' }): void {
     TestBed.configureTestingModule({
@@ -350,7 +353,7 @@ describe('VenueTab (#177)', () => {
     render();
 
     const preview = byId('photo-preview-cover') as HTMLImageElement;
-    expect(preview.getAttribute('src')).toBe('/api/venues/1/photos/cc03');
+    expect(preview.getAttribute('src')).toBe(`${API}/api/venues/1/photos/cc03`);
     expect(preview.alt).not.toBe(''); // the preview image is named for AT
     expect(byId('photo-pick-cover').textContent).toContain('Replace');
     expect(byId('photo-remove-cover')).toBeTruthy();
@@ -379,7 +382,7 @@ describe('VenueTab (#177)', () => {
     fixture.detectChanges();
 
     expect((byId('photo-preview-sunbeds') as HTMLImageElement).getAttribute('src')).toBe(
-      '/api/venues/1/photos/dd04',
+      `${API}/api/venues/1/photos/dd04`,
     );
     expect(byId('photo-pick-sunbeds').textContent).toContain('Replace');
   });
@@ -414,7 +417,7 @@ describe('VenueTab (#177)', () => {
     expect(byId('photo-error-cover').textContent).toContain('JPEG, PNG, or WebP');
     // The rejected upload never touches the existing photo — the old preview survives.
     expect((byId('photo-preview-cover') as HTMLImageElement).getAttribute('src')).toBe(
-      '/api/venues/1/photos/cc03',
+      `${API}/api/venues/1/photos/cc03`,
     );
   });
 

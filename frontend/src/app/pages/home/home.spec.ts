@@ -89,7 +89,8 @@ describe('Home (venue discovery)', () => {
 
     const cards = el().querySelectorAll('[data-testid="venue-card"]');
     const coverImg = cards[0].querySelector<HTMLImageElement>('[data-testid="card-photo-img"]');
-    expect(coverImg?.getAttribute('src')).toBe('/api/venues/1/photos/aa01');
+    // The service resolves the wire's root-relative path against the API origin (F-7).
+    expect(coverImg?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/aa01`);
     // The scrim stays layered over the photo — the location text's AA floor depends on it.
     expect(cards[0].querySelector('.photo-scrim')).toBeTruthy();
     expect(cards[0].querySelector('.photo-sun')).toBeNull();

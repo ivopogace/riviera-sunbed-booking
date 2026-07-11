@@ -2,6 +2,7 @@ package ai.riviera.platform.venue.adapter.out;
 
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -226,9 +227,18 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.collect(Collectors.groupingBy(CoverVariantRow::venueId,
 						Collectors.toMap(CoverVariantRow::surface, r -> PhotoServingUrls
 								.servingUrl(r.venueId(), new ContentHash(r.hash())))));
-		return urlsByVenue.entrySet().stream()
-				.collect(Collectors.toMap(Map.Entry::getKey, e -> new CoverPhotoView(
-						e.getValue().get(SURFACE_CARD), e.getValue().get(SURFACE_BANNER))));
+		// Only a COMPLETE pair becomes a CoverPhotoView (#142 review F-8): a cover missing one of
+		// its CARD/BANNER rows (manual data fix, future surface-set change) must read as "no cover"
+		// — the FE's @if(coverPhoto) guard would otherwise pass and bind null into NgOptimizedImage.
+		Map<Long, CoverPhotoView> covers = new HashMap<>();
+		urlsByVenue.forEach((venueId, urls) -> {
+			String card = urls.get(SURFACE_CARD);
+			String banner = urls.get(SURFACE_BANNER);
+			if (card != null && banner != null) {
+				covers.put(venueId, new CoverPhotoView(card, banner));
+			}
+		});
+		return covers;
 	}
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,

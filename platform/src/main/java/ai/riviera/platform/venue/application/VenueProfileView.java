@@ -23,8 +23,8 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * than clobbering {@code bookingMode}/{@code bookingCutoff}. Read-only for the operator — the write
  * never sets it directly; the conditional {@code UPDATE} bumps it.
  *
- * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its presence +
- * preview URL (#142) — always all three slots, so the tab renders a stable slot grid.
+ * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its preview URL
+ * ({@code null} = empty slot, #142) — always all three slots, so the tab renders a stable grid.
  */
 public record VenueProfileView(String name, String beach, String region, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,

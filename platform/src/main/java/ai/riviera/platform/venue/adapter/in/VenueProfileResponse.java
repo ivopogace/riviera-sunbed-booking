@@ -21,14 +21,15 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * {@code expectedVersion} on the next {@code PATCH}, so a stale write is rejected with 409.
  *
  * <p>{@code photos} keys every slot (lower-case, matching the REST path vocabulary) to its
- * presence + PREVIEW serving URL (#142) — always all three, so the tab renders a stable grid.
+ * PREVIEW serving URL (#142), {@code null} when empty — always all three keys, so the tab renders
+ * a stable grid. Emptiness is the null URL; no separate boolean (review F-11).
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, int commissionBps, String payoutCurrency,
 		List<String> amenities, Integer distanceToWaterM, long version,
 		Map<String, SlotPhoto> photos) {
 
-	record SlotPhoto(boolean present, String previewUrl) {
+	record SlotPhoto(String previewUrl) {
 	}
 
 	/** {@code "HH:mm"} to match the write DTO's cutoff shape (drops the always-zero seconds of a TIME). */
@@ -37,8 +38,7 @@ record VenueProfileResponse(String name, String beach, String region, String des
 	static VenueProfileResponse from(VenueProfileView v) {
 		Map<String, SlotPhoto> photos = new LinkedHashMap<>(); // slot declaration order, stable on the wire
 		for (PhotoSlotView slot : v.photos()) {
-			photos.put(slot.slot().name().toLowerCase(Locale.ROOT),
-					new SlotPhoto(slot.present(), slot.previewUrl()));
+			photos.put(slot.slot().name().toLowerCase(Locale.ROOT), new SlotPhoto(slot.previewUrl()));
 		}
 		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.commissionBps(),

@@ -256,11 +256,10 @@ export interface VenueProfileView {
 export type PhotoSlotKey = 'cover' | 'sunbeds' | 'bar';
 
 /**
- * One slot on the owner profile (#142): whether it holds a photo, and the PREVIEW variant's
- * content-addressed serving URL when it does ({@code null} when empty).
+ * One slot on the owner profile (#142): the PREVIEW variant's content-addressed serving URL, or
+ * `null` when the slot is empty — emptiness IS the null URL (review F-11, no derivable boolean).
  */
 export interface SlotPhotoView {
-  readonly present: boolean;
   readonly previewUrl: string | null;
 }
 
