@@ -72,11 +72,11 @@ NOT NULL DEFAULT 0`. No new tables. `set_position` unchanged.
   availability hold, then it is rejected `LAYOUT_IN_USE` (409) and the layout is unchanged — the
   reject-unless-unclaimed guard and its `FOR UPDATE` claim-probe are intact.
   *Pinned by:* existing `BeachMapReplaceIT` in-use scenarios (stay green with the bump-first order) ✅ (Phase 1).
-- [~] **AC-9 (FE preserve-edits + reload):** Given the beach-map editor / pricing tab receives a
+- [x] **AC-9 (FE preserve-edits + reload):** Given the beach-map editor / pricing tab receives a
   `409 STALE_WRITE` on save, then the operator's in-progress edits are preserved and a "Reload latest"
   affordance is shown (no silent discard, no clobber). *Pinned by:* `layout-editor.spec.ts` ✅ (Phase 3) +
-  `pricing-tab.spec.ts` (Phase 4, unit) and the mocked-a11y e2e — **co-located** in the existing
-  `layout-editor.e2e.ts` ✅ (Phase 3) + `operator-pricing.e2e.ts` (Phase 4), matching #224's placement in
+  `pricing-tab.spec.ts` ✅ (Phase 4, unit) and the mocked-a11y e2e — **co-located** in the existing
+  `layout-editor.e2e.ts` ✅ (Phase 3) + `operator-pricing.e2e.ts` ✅ (Phase 4), matching #224's placement in
   `operator-venue.e2e.ts` (reuses each surface's `page.route` harness; see Findings F-2).
 
 ## Non-goals
@@ -214,14 +214,16 @@ falsely rejected. Mocked-a11y e2e per user-facing flow (RV-FE-E2E) in `frontend/
 > Session-recovery anchor. Re-read before acting after any compaction/fresh session; update in the same
 > commit window as the change it records, at every phase + stage boundary.
 
-**Stage pointer:** `implement` — Phases 0 ✅ + 1 ✅ + 2 ✅ + 3 ✅ done; Phase 4 next (FE pricing tab), test-first.
-FE routing gate already loaded (`riviera-frontend` + `angular-developer` + `playwright-cli`).
+**Stage pointer:** `implement` ✅ **complete** — all 5 phases done, AC-1..9 pinned green locally
+(backend: scoped ITs + structural net; FE: unit + a11y + lint + build + mocked e2e). **Next stage: CI**
+(push the branch, open the PR; CI owns the full backend suite + the frontend lint/test/build/e2e + Sonar),
+then the **review** gate (`riviera-review-overlay` — flag the one open item: token on the public map read).
 
-**Next action:** Start Phase 4 — failing `pricing-tab.spec.ts` (a `409 STALE_WRITE` on `repriceRow` reverts
-the row's optimistic value, shows the banner, Reload re-loads; a successful reprice advances the token);
-then thread `expectedVersion` into `repriceRow` (model `RepriceErrorCode`+`STALE_WRITE`, service body
-`{ price, expectedVersion }` + `repriceErrorOf`), capture `loadedSetVersion` (from the map read), banner +
-`reloadAfterStale()`, advance token on success; co-locate the mocked-a11y stale test in `operator-pricing.e2e.ts`.
+**Next action:** Push `feature/set-version-concurrency` + open the PR (refs #226; follow-up to #224/PR #225).
+Watch CI: (1) the full backend suite may surface a shared-state failure a scoped run can't (riviera-local-debug);
+(2) confirm the mocked e2e passes headless in CI (the local runs hit a Windows ng-serve teardown port squat,
+not a code issue). At the review gate, surface the deliberate design choices in Open questions (public map
+read carries `setVersion`; accepted spurious bump on LAYOUT_IN_USE/NO_SUCH_ROW; per-component FE banner).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -229,7 +231,7 @@ then thread `expectedVersion` into `repriceRow` (model `RepriceErrorCode`+`STALE
 | 1 — Backend `replaceLayout` guard (`bumpSetVersion`, order, STALE_WRITE, required token) | ✅ | `feat: optimistic-lock the beach-map replace on set_version (#226)` |
 | 2 — Backend `repriceRow` guard (+ cross-write race) | ✅ | `feat: optimistic-lock the per-row reprice on set_version (#226)` |
 | 3 — FE beach-map editor (capture/echo/handle STALE_WRITE + reload) | ✅ | `feat(fe): stale-write guard on the beach-map editor (#226)` |
-| 4 — FE pricing tab (same) | | |
+| 4 — FE pricing tab (same) | ✅ | `feat(fe): stale-write guard on the pricing tab (#226)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -385,15 +387,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `operator-console.service.ts`, `pricing-tab.ts`/`.html`/`.spec.ts` · Create
 `e2e/pricing-stale-write.e2e.ts`
 
-- [ ] **Step 1:** Failing unit spec — `pricing-tab.spec.ts`: a `409 STALE_WRITE` on `repriceRow` reverts
-  the row's optimistic value, shows the banner, and Reload re-loads; a successful reprice advances the token.
-- [ ] **Step 2:** `npm test` (scoped) → FAIL.
-- [ ] **Step 3:** Thread `expectedVersion` into `repriceRow` (model + service body `{ price, expectedVersion }`);
-  capture `loadedSetVersion`; map `STALE_WRITE` via `problemCodeOf`; banner + reload; advance token on success.
-- [ ] **Step 4:** `npm test` + `npm run test:a11y` → PASS; author `pricing-stale-write.e2e.ts` → `npm run test:e2e` (targeted).
-- [ ] **Step 5:** Generalization pass.
-- [ ] **Step 6:** Commit `feat(fe): stale-write guard on the pricing tab (#226)`.
-- [ ] **Step 7:** Update Execution status.
+- [x] **Step 1:** Failing unit spec — `pricing-tab.spec.ts`: a `409 STALE_WRITE` on `repriceRow` reverts
+  the row's optimistic value, shows the banner, and Reload re-loads; a successful reprice advances the
+  token. Also asserted `expectedVersion` in the reprice PUT body.
+- [x] **Step 2:** Ran scoped `pricing-tab.spec.ts` → FAIL (3/12: exact body missing `expectedVersion`,
+  stale-banner null, token-advance undefined).
+- [x] **Step 3:** Threaded `expectedVersion` into `repriceRow` (service body `{ price, expectedVersion }`;
+  `RepriceErrorCode` + `repriceErrorOf` gain `STALE_WRITE`); captured `loadedSetVersion` from the map read;
+  a `STALE_WRITE` sets a venue-level `staleConflict` banner (not the per-row inline error) and reverts the
+  row; `reloadAfterStale()` re-loads prices + token; advance token on success.
+- [x] **Step 4:** `pricing-tab.spec.ts` → 12 PASS; whole `operator/**` → 196 PASS (incl. a11y/contrast);
+  `npm run lint` clean; `npm run build` clean. Stale-write mocked-a11y e2e co-located in
+  `operator-pricing.e2e.ts` (F-2) → `test:e2e:a11y` (targeted) → 3 PASS incl. axe.
+- [x] **Step 5:** Generalization pass — the FE stale-write shape is now in 3 components (venue-tab,
+  layout-editor, pricing-tab). Left per-component (banner copy + reload handler differ per surface; a
+  shared `<app-stale-write-banner>` would touch #224's venue-tab). Logged as a deferred refactor candidate.
+- [x] **Step 6:** Commit `feat(fe): stale-write guard on the pricing tab (#226)`.
+- [x] **Step 7:** Update Execution status.
 
 ---
 
@@ -405,6 +415,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-07-11 | Phase 1 | `replaceLayout(` call sites (signature widen) | `grep "replaceLayout\("` | 6 test + 3 prod | All updated to the 4-arg signature (incl. `WebSliceStubs`). `bumpSetVersion` is one shared port method (reprice reuses in Phase 2); `requiredExpectedVersion()` left duplicated per record (matches #224). |
 | 2026-07-11 | Phase 2 | `repriceRow(` call sites + `bumpSetVersion`/`requiredExpectedVersion` spread | `grep "repriceRow\("` / `grep "requiredExpectedVersion\|bumpSetVersion"` | `EditBeachMap.repriceRow` widened (5 call sites); `bumpSetVersion` = 1 shared method, 2 call sites (both writes); `requiredExpectedVersion()` = 3 identical copies | Widened all `repriceRow` callers. `bumpSetVersion` confirmed shared (no dup). `requiredExpectedVersion()` left duplicated (trivial null-check; matches #224 idiom; records can't share a base). |
 | 2026-07-11 | Phase 3 | FE stale-write shape (`loadedVersion` signal + `reloadAfterStale()` + amber banner) | reviewed `venue-tab` vs `layout-editor` | 2 copies (venue-tab, layout-editor); pricing-tab = 3rd in Phase 4 | Left per-component (matches #224's `venue-tab`; per-surface copy). Candidate: a shared `<app-stale-write-banner>` with a projected message — revisit in Phase 4 if the 3rd copy warrants it. |
+| 2026-07-11 | Phase 4 | FE stale-write banner (now 3 copies) + e2e `mock*` setVersion-stateful harness | reviewed the 3 tabs + 2 e2e mocks | 3 banner copies (venue-tab/layout-editor/pricing-tab); 2 stateful e2e mocks (mockEditor/mockPricing mirror mockVenue) | Banner left per-component — deferred `<app-stale-write-banner>` extraction to a follow-up (touches #224's venue-tab; per-surface copy + revert semantics differ: layout keeps the grid, pricing reverts the row). The e2e `bump()` pattern is intentionally mirrored per-surface (each owns its `page.route` harness), matching #224. |
 
 ---
 

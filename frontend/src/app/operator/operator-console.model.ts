@@ -44,13 +44,16 @@ export interface BeachMapLayoutRequest {
 /**
  * A known per-row reprice failure (O4, #174), mapped from the RFC-7807 `code` (issue #97) for
  * operator-facing copy. `NO_SUCH_ROW`/`NO_SUCH_VENUE` are the 404s; `NOT_VENUE_OWNER` the 403
- * (invariant #13); `INVALID_REQUEST` the 400 edge rejection (§6b); `UNAUTHORIZED` the expired session.
+ * (invariant #13); `INVALID_REQUEST` the 400 edge rejection (§6b); `STALE_WRITE` the 409
+ * optimistic-concurrency loss (#226) — the layout/prices moved on since the tab loaded, so the tab
+ * reverts the row and offers a Reload; `UNAUTHORIZED` the expired session.
  */
 export type RepriceErrorCode =
   | 'NOT_VENUE_OWNER'
   | 'NO_SUCH_ROW'
   | 'NO_SUCH_VENUE'
   | 'INVALID_REQUEST'
+  | 'STALE_WRITE'
   | 'UNAUTHORIZED'
   | 'CONFLICT'
   | 'UNKNOWN';

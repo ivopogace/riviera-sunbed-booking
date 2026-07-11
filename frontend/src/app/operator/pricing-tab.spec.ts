@@ -53,11 +53,11 @@ describe('PricingTab (#174)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
   }
 
-  function render(sets: SetView[] = SEED): void {
+  function render(sets: SetView[] = SEED, setVersion = 0): void {
     configure();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets });
+      .flush({ id: 1, name: 'V', sets, setVersion });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -118,7 +118,11 @@ describe('PricingTab (#174)', () => {
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
     );
-    expect(req.request.body).toEqual({ price: { minorUnits: 4250, currency: 'EUR' } });
+    // #226: the body carries the price AND the loaded optimistic-concurrency token (0 for the fresh mock).
+    expect(req.request.body).toEqual({
+      price: { minorUnits: 4250, currency: 'EUR' },
+      expectedVersion: 0,
+    });
     req.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -186,6 +190,56 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-projected').textContent).toContain(
       formatMoney({ minorUnits: 9000, currency: 'EUR' }),
     );
+  });
+
+  it('reverts the row, shows the stale banner, and Reload re-loads on a 409 STALE_WRITE', async () => {
+    // #226, AC-9: a stale-write conflict reverts the row's optimistic value and shows the recover-and-
+    // reload banner (a venue-level conflict, not the per-row inline error); Reload re-seeds from the server.
+    render(SEED, 3); // loaded at set_version 3
+    editRow('A', '99');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The optimistic €99 reverts to €35, the stale banner shows, and the inline per-row error does NOT.
+    expect(input('A').value).toBe('35');
+    expect(byId('pricing-stale-banner')).toBeTruthy();
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+
+    // Reload pulls the latest server prices (row A now €50) + token and clears the banner.
+    byId('pricing-stale-reload').click();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({
+        id: 1,
+        name: 'V',
+        sets: [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 5000, 1, 1)],
+        setVersion: 4,
+      });
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="pricing-stale-banner"]')).toBeNull();
+    expect(input('A').value).toBe('50');
+  });
+
+  it('advances the token on a successful reprice so a second reprice is not falsely stale', async () => {
+    // #226: the conditional write bumps set_version by one; the tab advances its token so a following
+    // sequential row edit sends the new value, not the stale one.
+    render(SEED, 5);
+    editRow('A', '40');
+    const first = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));
+    expect(first.request.body.expectedVersion).toBe(5);
+    first.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    editRow('B', '30');
+    const second = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'));
+    expect(second.request.body.expectedVersion).toBe(6); // advanced, not the stale 5
+    second.flush(null);
+    await fixture.whenStable();
   });
 
   it('marks a heterogeneous row as mixed with a blank input rather than a single price', () => {
