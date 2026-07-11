@@ -70,7 +70,9 @@ review-only.
 ---
 
 ## `venue`
-**Job:** Own venue profiles (incl. amenities + distance-to-water), the beach map / layout, set
+**Job:** Own venue profiles (incl. amenities + distance-to-water), venue photos (#142: per-slot
+upload/replace/delete, processing, `bytea` storage behind the module-internal `PhotoStorage`
+port, and the public content-hash serving read — ADR-0008), the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
 (Instant / Request).
 

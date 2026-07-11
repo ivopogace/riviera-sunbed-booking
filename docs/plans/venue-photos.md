@@ -241,12 +241,10 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phase 4 DONE (CoverPhotoView on the FE venue model; Discover card + map banner render the cover via NgOptimizedImage fill + object-cover with the gradient/sun fallback; "coming soon" pill retired in BOTH states; scrim kept and STRENGTHENED for real photos: --riv-photo-scrim 0.5→0.68@75% / 0.66→0.8@100% + --riv-mode-chip-glass 0.7→0.85 because the worst case is now any photo (white/black), asserted by the extended home.contrast.spec.ts; pill contrast test retired with the pill; discover-photos.e2e.ts new; lint + 653 unit + build + 45 mocked-e2e green). NEXT: Phase 5 docs-freshness + close-out, then gates (CI → review overlay → /security-review → Sonar).`
+**Stage pointer:** `Phase 5 docs done (freshness run + glossary + #230 filed). AT THE GATES: local review (riviera-review-overlay + /code-review) → /security-review → then BLOCKED on maintainer confirmation to push (CI) / open PR / Sonar / merge.`
 
-**Next action:** **Phase 5** — `riviera-docs-freshness` over the slice range; CONTEXT.md glossary
-(venue photo / photo variant / photo slot); RESPONSIBILITIES.md venue-module media note; file the
-moderation follow-up issue + cross-link #101. Then the gates; CONFIRM with the maintainer before
-any push / PR / merge.
+**Next action:** run the local Review gate + `/security-review` over `main...HEAD`; resolve
+findings through the loop; then ask the maintainer to confirm push → CI → PR → Sonar → merge.
 
 **Windows-session note:** the CI-safe mocked Playwright suite here is **`npm run test:e2e:a11y`**
 (`playwright.a11y.config.ts`, testMatch `e2e/*.e2e.ts`, no backend); the bare `test:e2e` config
@@ -261,7 +259,7 @@ boots the real backend via `./gradlew bootRun` and fails on this box. e2e spec n
 | 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | ✅ | 2a core `0a3e8d5`; ITs + F-1 `c2b6848`; 2b read-model (this window) |
 | 3 — FE operator upload UI + service + e2e | ✅ | this window |
 | 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | ✅ | this window |
-| 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | | |
+| 5 — Docs freshness (glossary/RESPONSIBILITIES) + close-out | ⏳ | docs this window; close-out after merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -420,11 +418,15 @@ read-model query/DTOs · Test `VenuePhotoServiceTest`, `VenuePhotoServingIT`,
 
 ## Phase 5 — Docs freshness + close-out
 
-- [ ] `riviera-docs-freshness` over the slice's range. Add `CONTEXT.md` glossary entries (venue
-  photo, photo variant, photo slot); note media under `venue` in `RESPONSIBILITIES.md`; confirm
-  ADR-0008 + CLAUDE.md list of migrations are consistent. File the **moderation** follow-up issue
-  and cross-link **#101** for erasure automation.
-- [ ] Merge close-out checklist (`references/pr-gates.md`).
+- [x] `riviera-docs-freshness` run over `main...HEAD`. Findings (all patched in-window):
+  `CLAUDE.md:25` "photo placeholders" in the O8 note — contradicted by the shipped upload UI →
+  patched (+ the venue module-table Owns row gains photos); `RESPONSIBILITIES.md` venue Job —
+  silent on photos → patched; `riviera-java-conventions/references/error-contract.md` "otherwise
+  the HTTP status name" — contradicted by the F-1 literal 413 pin → patched. ADR-0008's
+  "coming soon" mention is its *Context* (historical) — left alone. `CONTEXT.md` glossary gained
+  venue photo / photo slot / photo variant (the slice's own doc job, not a freshness finding).
+- [x] Moderation follow-up filed as **#230** (cross-links #142 + #101 erasure automation).
+- [ ] Merge close-out checklist (`references/pr-gates.md`) — after the gates + merge.
 
 ---
 
