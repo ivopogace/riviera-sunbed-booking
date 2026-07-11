@@ -211,12 +211,18 @@ only Reload re-seeds (preserve-edits UX). Contrast/axe specs cover the new banne
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc | ✅ | |
-| 1 — Migration + read carries the token | | |
+| 0 — Plan doc | ✅ | afa153f |
+| 1 — Migration + read carries the token | ✅ | (this commit) |
 | 2 — Conditional write + 409 STALE_WRITE (+ WebSliceStubs & IT bodies) | | |
 | 3 — Concurrency IT (headline) | | |
 | 4 — Frontend: send version, handle 409, preserve edits + Reload | | |
 | 5 — e2e (mocked CI-safe + real-backend) | | |
+
+> **Sequencing note (execution):** the FE `VenueProfileView` model change (`version: number`)
+> is consolidated into **Phase 4** with the rest of the frontend, rather than split into Phase 1
+> — the field is not consumed until the tab sends `expectedVersion`, and this keeps Phase 1 a
+> backend-only commit and loads the FE skills (`riviera-frontend` + `angular-developer` + the
+> angular-cli MCP) once. No AC moves; AC-3 is still pinned by the Phase 1 backend IT.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done. Update in the SAME commit window as
 each phase's code.
@@ -444,6 +450,7 @@ ResponseEntity<?> updateProfile(Authentication authentication, @PathVariable lon
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-11 | Phase 1 (VenueProfileView gains `version`) | `new VenueProfileView(` construction sites | `grep "new VenueProfileView\("` | 2 real (`JdbcVenues.findProfile`, `VenueAdminServiceTest` fake) + the plan doc | Both real sites updated to pass `version`; no other constructor. |
 
 ---
 

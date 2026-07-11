@@ -261,7 +261,7 @@ class JdbcVenues implements Venues {
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
 				SELECT name, beach, region, description, booking_mode, booking_cutoff,
-				       commission_bps, payout_currency, distance_to_water_m
+				       commission_bps, payout_currency, distance_to_water_m, version
 				FROM venue
 				WHERE id = :id
 				""")
@@ -272,7 +272,8 @@ class JdbcVenues implements Venues {
 						BookingMode.valueOf(rs.getString("booking_mode")),
 						rs.getObject("booking_cutoff", LocalTime.class),
 						rs.getInt("commission_bps"), rs.getString("payout_currency"),
-						rs.getObject("distance_to_water_m", Integer.class)))
+						rs.getObject("distance_to_water_m", Integer.class),
+						rs.getLong("version")))
 				.optional();
 		if (venue.isEmpty()) {
 			return Optional.empty();
@@ -286,13 +287,13 @@ class JdbcVenues implements Venues {
 				.toList();
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.commissionBps(), v.payoutCurrency(),
-				amenities, v.distanceToWaterM()));
+				amenities, v.distanceToWaterM(), v.version()));
 	}
 
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String region, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-			Integer distanceToWaterM) {
+			Integer distanceToWaterM, long version) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

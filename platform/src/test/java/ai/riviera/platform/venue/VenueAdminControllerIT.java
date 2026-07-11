@@ -355,6 +355,17 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void profileReadCarriesVersion() throws Exception {
+		// #224, AC-3: the owner profile read carries the row's optimistic-concurrency token. A fresh
+		// venue starts at version 0 (the V22 column DEFAULT); the FE echoes it back on the next PATCH.
+		long venue = createVenue("Versioned Club");
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.version").value(0));
+	}
+
+	@Test
 	void getProfileRequiresOperatorAuth() throws Exception {
 		// O8 (#177), AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
 		// unauthenticated caller is 401 — commission never leaks to an anonymous request.
