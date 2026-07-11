@@ -119,28 +119,21 @@ query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Decompression bomb / huge decode OOMs the free-tier instance | med | high | Hard ~50 MP / 12 000-px **dimension guard** decided *before* full decode (read header dims first) + 25 MB byte cap + bounded upload concurrency; `PhotoProcessorTest` bomb fixture | impl | open |
+| R-1 | Decompression bomb / huge decode OOMs the free-tier instance | med | high | Hard ~50 MP / 12 000-px **dimension guard** decided *before* full decode (read header dims first) + 25 MB byte cap + bounded upload concurrency; `PhotoProcessorTest` guard tests (per-side + megapixel) | impl | mitigated (Phase 1) |
 | R-2 | Cross-venue write (BOLA, invariant #13) | med | high | `assertOwns(operator, venueId)` as the **first** line of every write service method (reuses `venue`→`operator::api`); `CrossVenueDenialIT` extended to photo routes | impl | open |
 | R-3 | `bytea` leaks into list/metadata queries → fat responses, Neon load | med | med | Blob isolated in `venue_photo_variant`; read-model + list SQL select metadata columns only, **never** `SELECT *`; review check (RV-BE) | impl | open |
 | R-4 | Tourist read puts Neon in the hot path | med | high | Content-hash URL + `Cache-Control: immutable` + `ETag` + `304`; blob read only on cache miss; `VenuePhotoServingIT` | impl | open |
 | R-5 | Flyway V24 collision (case #122/#127) | low | high | Verified **V24 free on `main`, no open PRs**; if a parallel slice merges V24 first, **this branch renumbers** (merges-second rule) | impl | verified-free |
-| R-6 | `Content-Type` header spoofed | med | med | Validate **actual bytes** via image decode + magic-byte sniff; ignore the client header for the trust decision | impl | open |
-| R-7 | WebP **encoding** needs a native lib (awkward in the JDK/Docker build) | med | low | Default variant output to **progressive JPEG** (native `ImageIO`); revisit WebP only if a clean pure-JVM encoder is confirmed (OQ-1) | impl | open |
-| R-8 | EXIF-orientation lost on re-encode → sideways photos | med | med | Read orientation, **apply rotation to pixels**, then drop all metadata; `PhotoProcessorTest.stripsExifKeepsOrientation` | impl | open |
+| R-6 | `Content-Type` header spoofed | med | med | Validate **actual bytes** via image decode + magic-byte sniff; ignore the client header for the trust decision | impl | mitigated (Phase 1: magic sniff + `rejectsNonImageBytesByMagicNotContentType`) |
+| R-7 | WebP **encoding** needs a native lib (awkward in the JDK/Docker build) | med | low | Default variant output to **progressive JPEG** (native `ImageIO`); revisit WebP only if a clean pure-JVM encoder is confirmed (OQ-1) | impl | closed — JPEG output chosen |
+| R-8 | EXIF-orientation lost on re-encode → sideways photos | med | med | Thumbnailator `useExifOrientation(true)` applies orientation to pixels, then JPEG re-encode drops all metadata; `PhotoProcessorTest.stripsExifMetadataFromEveryVariant` | impl | mitigated (Phase 1) |
 | R-9 | Ad-hoc `{"error":…}` body instead of the central contract | low | med | Errors as centralized `ProblemDetail` (`riviera-java-conventions` §6b) | impl | open |
 | R-10 | Public serving route breaks the `/api/**` security rules | med | high | `SecurityConfig`: permit **GET** `/api/venues/*/photos/**` publicly, keep **PUT/DELETE** authenticated; a shared-file change → `/security-review` + review flag | impl | open |
 
 ## Open questions / Assumptions
 
-- **OQ-1 (codec):** Variant output = **progressive JPEG (q≈0.8)** for MVP (native `ImageIO`,
-  no extra native dep) vs WebP (smaller, needs a native encoder). — *Owner:* impl · *Resolves by:*
-  phase 1. `content_type` follows the chosen codec.
-- **OQ-2 (image lib):** decode/EXIF via **TwelveMonkeys ImageIO** (robust JPEG/PNG/WebP read +
-  metadata/orientation) + resize via **Thumbnailator**, both pure-JVM (MIT/BSD), vs stock
-  `ImageIO`. — *Owner:* impl · *Resolves by:* phase 1.
-- **Assumption:** Exact resize targets (card ≈ 640×360, banner ≈ 1200×300 @150px band, operator
-  preview ≈ 480×270; byte cap ≈ ≤120 KB) are **pinned in phase 1** against the
-  `home.contrast.spec.ts` geometry and the map banner's `h-[150px]`. — *Owner:* impl.
+- *(OQ-1 codec, OQ-2 image-lib, and the resize-target assumption were resolved at Phase 1 — see
+  the **### Resolved** entries below.)*
 - **Assumption (scope, maintainer-confirmed at grill):** Only the **cover** slot is surfaced to
   tourists; sunbeds/bar are stored + operator-preview only.
 - **Assumption:** Upload transport is `multipart/form-data` (`MultipartFile`), one file per
@@ -155,6 +148,18 @@ query. Bytes move via `JdbcClient` `setBytes`/`getBytes`, no JPA.
 - Upload limits — JPEG/PNG/WebP, ≤25 MB, EXIF stripped, ~50 MP guard (grill 2026-07-11).
 - Moderation — deferred; GDPR erasure — operator delete/replace only, automation → #101; scale —
   few venues/light browse confirms bytea (grill 2026-07-11).
+- **OQ-1 codec (Phase 1):** progressive JPEG, quality 0.82 (`content_type` `image/jpeg`) — native
+  `ImageIO` writer, no WebP native-encoder dependency.
+- **OQ-2 image lib (Phase 1):** TwelveMonkeys `imageio-jpeg` + `imageio-webp` (decode; ServiceLoader
+  auto-register) + Thumbnailator (resize + EXIF-orientation). Added to `platform/build.gradle`.
+- **Resize targets (Phase 1):** **fit-within** bounds — card 640×384, banner 1280×480, preview
+  480×360 — with the frontend's `object-fit: cover` doing the visible crop (no server-side crop, no
+  wasted pixels); tests assert each variant ≤ its bound and ≤ 200 KB. Cover → card+banner+preview;
+  secondary slots → preview only.
+- **Phase-1 corrections:** implemented as a single package-private `PhotoProcessor` class (one impl →
+  no `DefaultPhotoProcessor`, no interface; riviera-java-conventions §4). WebP *happy-path* is not
+  unit-tested — no pure-JVM WebP **writer** to build a fixture; WebP decode is covered by the lib +
+  CI/manual. R-7 (WebP encoding) closed by choosing JPEG output.
 
 ## Availability & concurrency (invariant #2)
 
@@ -233,16 +238,16 @@ call at implement (service in `core/` vs feature-local; the tourist read type).
 
 > Session-recovery anchor. Re-read before acting after any compaction or in a fresh session.
 
-**Stage pointer:** `implement — Phase 0 DONE (schema + storage port; red→green + structural net GREEN). Phase 1 (PhotoProcessor) next.`
+**Stage pointer:** `implement — Phases 0–1 DONE (schema+port; PhotoProcessor green). Phase 2 (service + controller + serving + security) next.`
 
-**Next action:** begin **Phase 1** — `PhotoProcessor` (validate → EXIF-strip → resize → encode),
-test-first; resolve OQ-1 (codec) + OQ-2 (image lib), add the lib to `platform/build.gradle`, and pin
-the resize targets against the card/banner/preview geometry.
+**Next action:** begin **Phase 2** — build `VenuePhotoService` (`assertOwns` BOLA → process → storage)
++ the venue-scoped `VenuePhotoController` (PUT/DELETE write, public immutable-cached GET serving) +
+read-model URLs + the `SecurityConfig` public-GET rule; then run `/security-review` on the diff.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Schema + storage port (V24, tables, `PhotoStorage`, bytea adapter + fake) | ✅ | Phase-0 commit (this window) |
-| 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | | |
+| 1 — `PhotoProcessor` (validate/EXIF/resize/encode) | ✅ | Phase-1 commit (this window) |
 | 2 — Service + controller + serving + read-model + SecurityConfig (BOLA, cache) | | |
 | 3 — FE operator upload UI + service + e2e | | |
 | 4 — FE tourist display (card + banner) + contrast re-check + e2e/a11y | | |
@@ -329,16 +334,19 @@ Test `JdbcPhotoStorageIT`.
 
 ## Phase 1 — PhotoProcessor (pure)
 
-**Files:** Create `PhotoProcessor`, `DefaultPhotoProcessor` · Test `PhotoProcessorTest` + fixtures.
+**Files:** Create `PhotoProcessor` (single class), `PhotoProcessingResult` · Modify `platform/build.gradle`
+· Test `PhotoProcessorTest` (in-test fixtures).
 
-- [ ] **Step 1 — failing tests:** valid JPEG/PNG/WebP → three capped variants within byte +
-  dimension caps; oversize / wrong-magic-bytes / >50 MP bomb → typed rejection; GPS-EXIF JPEG →
-  stored variants carry no EXIF but correct orientation. Pin the exact resize targets here
-  (resolve the Assumption) against the card/banner/preview geometry.
-- [ ] **Steps 2–4 — TDD** the processor (decode with dimension guard → orientation-normalize →
-  strip metadata → resize → encode per OQ-1/OQ-2). Add the chosen image lib to `platform/build.gradle`.
-- [ ] **Steps 5–7 —** generalization pass (the validation guard is the single choke point; note
-  it), commit `feat(venue): PhotoProcessor — validate/EXIF-strip/resize (#142)`, update status.
+- [x] **Step 1 — tests:** cover → card+banner+preview JPEGs; secondary → preview only; TOO_LARGE /
+  UNSUPPORTED_FORMAT / DIMENSIONS_EXCEEDED (megapixel + per-side) / UNREADABLE typed rejections;
+  EXIF stripped from every variant (spliced minimal-EXIF fixture). Targets pinned (fit-within).
+- [x] **Steps 2–4 — implemented + GREEN** — added TwelveMonkeys (`imageio-jpeg`/`imageio-webp`) +
+  Thumbnailator; `PhotoProcessor` (validate → header-only dimension guard → decode w/ EXIF
+  orientation → fit-within resize → JPEG re-encode = EXIF dropped); `--tests "*PhotoProcessorTest*"`
+  BUILD SUCCESSFUL; structural net still GREEN.
+- [x] **Steps 5–7 —** generalization pass: the validation guard is the single input choke point
+  (nothing else to generalise); commit `feat(venue): PhotoProcessor — validate/EXIF-strip/resize (#142)`;
+  status updated. *(One class, not `DefaultPhotoProcessor` — one impl needs no interface, §4.)*
 
 ## Phase 2 — Service + controller + serving + read model + security
 
