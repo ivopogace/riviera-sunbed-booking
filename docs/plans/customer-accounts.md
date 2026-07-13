@@ -248,21 +248,32 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `plan` — plan doc authored; ready to commit the plan and begin `implement` phase 0.
+**Stage pointer:** `implement` — **phases 0–1 done and verified; STOPPED here per request.** Phase 2
+(platform edge) is next.
 
-**Next action:** Commit this plan doc on `feature/customer-accounts`, then start **Phase 0** (Flyway
-`V25__customer_account.sql` + its migration test). Load `riviera-local-debug` before the first `./gradlew`.
+**Next action:** Begin **Phase 2** (platform edge: `CustomerUserDetailsService`, the
+`customerAuthenticationManager` bean built inline, `AuthController` register + login, `principalType`
+from authorities, `RateLimitFilter` customer paths, `SecurityConfig` permits). ⚠️ Phase 2 touches
+`RateLimitFilter` — the #127 **full-suite-only** failure class: give each test login a unique
+`X-Forwarded-For` and expect verification only from the push's CI run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Flyway V25 `customer_account` migration | | |
-| 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | | |
+| 0 — Flyway V25 `customer_account` migration | ✅ | phases 0–1 commit |
+| 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | ✅ | phases 0–1 commit |
 | 2 — Platform edge: register + login + session + rate-limit + security | | |
 | 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | | |
 | 4 — e2e (mocked-a11y): register → sign in → sign out | | |
 | 5 — Docs + epic close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Verified (phases 0–1):** `CustomerAccountServiceTest`, `JdbcCustomerAccountsIT` (Testcontainers —
+boots Flyway V25, proves the ON-CONFLICT race-safety + no-overwrite), `CustomerAuthPlacementTests`, and
+the structural net (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
+`PublishedSurfacePlacementArchitectureTests`, `ResponsibilitiesArchitectureTests`) all green locally.
+Covers **AC-1, AC-2, AC-9** (+ the R-3 concurrent-registration race). Not yet exercised: the CI full
+suite (run at PR).
 
 **Findings register** — one row per review/Sonar/CI finding; every fix re-enters at Implement.
 
