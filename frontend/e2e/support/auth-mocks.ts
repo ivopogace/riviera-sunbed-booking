@@ -48,3 +48,55 @@ export async function mockAuthApi(
     return route.fulfill({ status: 204 });
   });
 }
+
+/**
+ * Stateful mock of the CUSTOMER session-auth API (S2 #111) for the CI-safe suite. Mirrors
+ * {@link mockAuthApi} but for the customer principal type + the register endpoint's D-8 semantics:
+ * registration returns an identical 201 body whether the email is fresh or already taken, but only a
+ * FRESH email establishes the session — so the FE learns "registered vs exists" from the subsequent
+ * `/me`, exactly as against the real backend. Login succeeds only for `validPassword` (generic 401
+ * otherwise); logout flips the state back and answers 204 like the real LogoutFilter.
+ */
+export async function mockCustomerAuthApi(
+  page: Page,
+  options: {
+    readonly email: string;
+    readonly validPassword: string;
+    readonly takenEmails?: readonly string[];
+  },
+): Promise<void> {
+  const email = options.email;
+  const taken = new Set((options.takenEmails ?? []).map((e) => e.trim().toLowerCase()));
+  let signedIn = false;
+
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    signedIn
+      ? route.fulfill({ json: { username: email, principalType: 'CUSTOMER' } })
+      : route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED')),
+  );
+
+  await page.route(/\/api\/auth\/customer\/register$/, (route) => {
+    const body = route.request().postDataJSON() as { email?: string; password?: string };
+    const entered = (body.email ?? '').trim().toLowerCase();
+    // Non-enumerating (D-8): identical 201 body either way; a FRESH email additionally signs in.
+    if (entered && !taken.has(entered)) {
+      taken.add(entered);
+      signedIn = true;
+    }
+    return route.fulfill({ status: 201, json: { username: body.email, principalType: 'CUSTOMER' } });
+  });
+
+  await page.route(/\/api\/auth\/customer\/login$/, (route) => {
+    const body = route.request().postDataJSON() as { email?: string; password?: string };
+    if ((body.email ?? '').trim().toLowerCase() === email.toLowerCase() && body.password === options.validPassword) {
+      signedIn = true;
+      return route.fulfill({ json: { username: email, principalType: 'CUSTOMER' } });
+    }
+    return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
+  });
+
+  await page.route(/\/api\/auth\/logout$/, (route) => {
+    signedIn = false;
+    return route.fulfill({ status: 204 });
+  });
+}

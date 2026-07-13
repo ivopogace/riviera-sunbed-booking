@@ -260,25 +260,32 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `implement` — **phases 0–3 done and verified; STOPPED here per request.** Phase 4
-(e2e) is next.
+**Stage pointer:** `implement` — **phases 0–4 done and verified; STOPPED here per request.** Phase 5
+(docs + epic close-out) is next — then the PR → review → Sonar → merge gates.
 
-**Next action:** Begin **Phase 4** (mocked-a11y e2e). Load `playwright-cli`; place specs in the CI-safe
-suite `frontend/e2e/*.e2e.ts` (per RV-FE-E2E). Add `mockCustomerAuthApi` to `frontend/e2e/support/auth-mocks.ts`
-(stateful mock of `POST /customer/register|login`, `GET /me`, `POST /logout`), Page Objects under
-`e2e/support/pages/`, and `customer-auth.e2e.ts` (register → signed-in header → reload → sign out; axe on
-both pages). Run with `npm run test:e2e:a11y` (the Windows-runnable suite).
+**Next action:** Begin **Phase 5** (docs). Update `RESPONSIBILITIES.md` (customer Job / Not-My-Job line 166
+→ owns account identity + hash; login machinery stays at the edge), `CONTEXT.md` (customer-account
+vocabulary), `CLAUDE.md` (bounded-context table: customer gains account identity, thin→full), the design
+doc (`docs/architecture/auth-signin-register.md` — the separate-identity S2 decision + recorded #111 drift),
+tick the epic **#108** S2 box at merge close-out, annotate issue #111, and run `graphify update .`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Flyway V25 `customer_account` migration | ✅ | phases 0–1 commit `bd924a8` |
 | 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | ✅ | phases 0–1 commit `bd924a8` |
 | 2 — Platform edge: register + login + session + rate-limit + security | ✅ | phase 2 commit `f3851e1` |
-| 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | ✅ | phase 3 commit |
-| 4 — e2e (mocked-a11y): register → sign in → sign out | | |
+| 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | ✅ | phase 3 commit `bcae580` |
+| 4 — e2e (mocked-a11y): register → sign in → sign out | ✅ | phase 4 commit |
 | 5 — Docs + epic close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Verified (phase 4):** `customer-auth.e2e.ts` (2 tests: register → signed-in header → reload survives →
+sign out; sign-in with a generic wrong-password failure + no navigation) green, and the **full mocked-a11y
+suite 47/47** (the header change is regression-clean — `theme-shell` axe sweeps, the mobile-menu test,
+`discovery-flow`/`my-bookings`/`find-a-booking` axe all still pass). Added `mockCustomerAuthApi` +
+`CustomerAuthPage` Page Object. **AC-11 is now fully covered** (unit + a11y + e2e). (Ops note: a hung
+`ng serve` orphan on :4200 blocked the first run and was stopped so Playwright could serve a fresh build.)
 
 **Verified (phase 3):** `npm run lint` clean; the full Vitest suite **679 tests / 89 files green**
 (`customer-auth.spec` 9, `sign-in.spec` 4, `register.spec` 5, `sign-in.a11y.spec` + `register.a11y.spec`
