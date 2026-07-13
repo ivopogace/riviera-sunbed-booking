@@ -190,12 +190,25 @@ class RateLimitFilterTest {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 
-		// Registration (fresh IP) rides the same login budget: allowed attempts are 201, the 3rd is 429.
+		// Registration (fresh IP) rides the customer-auth budget: allowed attempts are 201, the 3rd is 429.
 		registerFromIp("10.11.0.2").andExpect(status().isCreated());
 		registerFromIp("10.11.0.2").andExpect(status().isCreated());
 		registerFromIp("10.11.0.2")
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void customerAuthBudgetIsSeparateFromOperatorLogin() throws Exception {
+		// F1 fix (S2 #111): exhaust the CUSTOMER-auth budget from an IP (a burst of tourist registers)…
+		String ip = "10.12.0.1";
+		registerFromIp(ip).andExpect(status().isCreated());
+		registerFromIp(ip).andExpect(status().isCreated());
+		registerFromIp(ip).andExpect(status().isTooManyRequests());
+
+		// …and the SAME IP's operator-login budget is untouched — tourist traffic must never lock an
+		// operator out of the console from a shared WiFi / CGNAT IP.
+		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
 	@Test

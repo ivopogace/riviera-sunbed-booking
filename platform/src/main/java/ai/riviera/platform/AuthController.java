@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -57,6 +58,15 @@ class AuthController {
 	/** Password policy (design D-8): a server-side minimum, capped at bcrypt's 72-byte input limit. */
 	private static final int MIN_PASSWORD_LENGTH = 8;
 	private static final int MAX_PASSWORD_BYTES = 72;
+
+	/**
+	 * A fixed {@code {bcrypt}} hash used solely to burn an equivalent verify on the already-registered
+	 * branch of {@link #register}, so a fresh vs. a taken email take the same time — closing the timing
+	 * oracle that would otherwise defeat non-enumeration (D-8). Not a credential; it authenticates
+	 * nothing. (bcrypt cost 10, matching the delegating encoder's default.)
+	 */
+	private static final String TIMING_EQUALIZER_HASH =
+			"{bcrypt}$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 	private final AuthenticationManager operatorManager;
 	private final AuthenticationManager customerManager;
@@ -133,16 +143,25 @@ class AuthController {
 	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerCredentials registration,
 			HttpServletRequest request, HttpServletResponse response) {
 		validatePassword(registration.password());
-		// The module owns email normalization + storage; the edge only encodes the password (the module
-		// receives an opaque, already-encoded hash — never a Spring Security type crosses in, RV-BE-11).
+		// Normalize at the edge so the response echoes the SAME canonical email that /me + login return
+		// (stored lower-cased/trimmed) — otherwise the displayed email would change after a reload. The
+		// module normalizes again internally (idempotent); the edge only encodes the password, never
+		// touching a Spring Security type inside the module (RV-BE-11).
+		String email = normalizeEmail(registration.email());
 		RegistrationOutcome outcome =
-				customerAccounts.register(registration.email(), passwordEncoder.encode(registration.password()));
+				customerAccounts.register(email, passwordEncoder.encode(registration.password()));
 		if (outcome instanceof RegistrationOutcome.Registered) {
-			establishSession(customerManager, registration.email(), registration.password(), request, response);
+			establishSession(customerManager, email, registration.password(), request, response);
+		}
+		else {
+			// Constant-time (D-8): the fresh branch spends a bcrypt verify inside establishSession's
+			// authenticate(); burn an equivalent verify here so an already-registered email is not
+			// measurably faster — a latency gap would be an account-enumeration oracle.
+			passwordEncoder.matches(registration.password(), TIMING_EQUALIZER_HASH);
 		}
 		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie.
 		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new PrincipalResponse(registration.email(), CUSTOMER_PRINCIPAL_TYPE));
+				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE));
 	}
 
 	/**
@@ -186,5 +205,11 @@ class AuthController {
 		if (password.length() < MIN_PASSWORD_LENGTH || bytes > MAX_PASSWORD_BYTES) {
 			throw new IllegalArgumentException("password outside the permitted length");
 		}
+	}
+
+	/** The canonical email form the module stores/looks up by (lower-cased + trimmed) — the edge echoes
+	 *  it in the register response so the displayed email matches {@code /me} and login. */
+	private static String normalizeEmail(String email) {
+		return email.trim().toLowerCase(Locale.ROOT);
 	}
 }

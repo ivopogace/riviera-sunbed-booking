@@ -18,6 +18,8 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.VenueOwnership;
@@ -76,6 +78,16 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	OperatorProvisioning provisioning;
+
+	// S2 #111: the root edge (SecurityConfig + AuthController) now also depends on the customer::api
+	// account ports — the customer UserDetailsService/manager on CustomerAccounts, the register endpoint
+	// on CustomerAccountProvisioning. In module isolation the customer module isn't bootstrapped, so
+	// these are mocked to let the payout context load; the accrual listener under test uses neither.
+	@MockitoBean
+	CustomerAccounts customerAccounts;
+
+	@MockitoBean
+	CustomerAccountProvisioning customerAccountProvisioning;
 
 	@Autowired
 	JdbcClient jdbc;
