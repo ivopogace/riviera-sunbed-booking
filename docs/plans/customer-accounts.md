@@ -260,15 +260,16 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `implement` — **ALL phases (0–5) done and verified; STOPPED here per request.**
-Implementation is complete; next is the **PR → review gate → Sonar gate → merge** (the non-negotiable
-gates). This branch has not yet been PR'd.
+**Stage pointer:** `review gate → re-entry` — PR **#243** open; review gate ran (high effort, 8 findings
++ 2 CI failures), **all fixed and re-verified locally** (backend full suite green, frontend lint + 680
+unit + 47 e2e green). Re-pushing to re-trigger CI + Sonar; then the **Sonar gate** + a re-review of the
+fix diff, then merge.
 
-**Next action:** Open the PR into `main` (merge latest `origin/main` first), then run the **review gate**
-(`riviera-review-overlay` + `/code-review`) and the **Sonar gate** (pull the reported new-issue list, not
-just the green gate). Merge-close-out-only doc actions still pending: update the `CLAUDE.md` "Current
-state" narrative to note epic #108 progress, tick the epic **#108** S2 box with the PR number, and
-annotate issue **#111** with the separate-identity drift.
+**Next action:** Push the review-fix commits; confirm the PR's CI goes green (esp. backend `PayoutModuleTest`
++ frontend date-flake) and that Sonar now runs (it was `skipped` while CI was red). Then the **Sonar gate**
+(pull the new-issue + duplication list, not just the gate colour) and a focused re-walk of the overlay bank
+for the changed surface (RateLimitFilter, AuthController, the `SessionAuth` refactor). Merge-close-out-only
+doc actions still pending: `CLAUDE.md` "Current state" narrative, tick epic **#108** S2, annotate #111.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -323,7 +324,17 @@ stubs. Covers **AC-3, AC-4, AC-5, AC-6, AC-7, AC-8** (+ R-1, R-2). Not yet exerc
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | (none yet) | — |
+| CI-BE | CI | `PayoutModuleTest` context fails to load — the edge now needs `CustomerAccounts`/`CustomerAccountProvisioning`, unmocked in that `@ApplicationModuleTest` | fixed — 2 `@MockitoBean`s added |
+| CI-FE | CI | `home.spec` + `venue-map.spec` date flake: hardcoded `2026-07-15` equals today's (07-14) default "tomorrow" → no change event → no re-fetch (pre-existing, not this slice) | fixed — chosen date derived from `defaultBookingDate` so it always differs from the default |
+| F1 | review (high) | `RateLimitFilter`: customer login+register shared the operator login's per-IP bucket → operator lockout from a shared IP | fixed — separate `customerAuthBuckets`; new `RateLimitFilterTest.customerAuthBudgetIsSeparateFromOperatorLogin` |
+| F2 | review (high) | `/me` now polymorphic but `OperatorAuth` adopted any principal → a customer session drove the operator console | fixed — the shared `SessionAuth` base filters by `principalType`; new operator-auth F2 test + existing customer "ignores OPERATOR" test |
+| F3 | review | `register()` inferred success from `signedIn()` → a signed-in customer registering a taken email was falsely told "registered" | fixed — only report `registered` on a signed-out→signed-in transition |
+| F4 | review | a >72-byte password got the "at least 8 characters" message | fixed — "8–72 characters" wording (hint + messages) |
+| F5 | review | register auto-sign-in (extra bcrypt) made a fresh email measurably slower → timing enumeration oracle (D-8) | fixed — constant-time: an equal bcrypt verify burned on the duplicate branch |
+| F6 | review (cleanup) | register returned the raw email; `/me`/login return normalized → display changed after reload | fixed — normalize at the edge, echo the canonical email |
+| F7 | review (cleanup) | `CustomerAuth` duplicated ~80 lines of `OperatorAuth` | fixed — extracted `core/session-auth.ts` `SessionAuth` base; both extend it |
+| F8 | review (cleanup) | dead Signal-Form `required()` validators (never rendered) | fixed — dropped the unused schema; `form(model)` for binding only |
+| — | review (refuted) | establishSession re-auth with raw email | not a defect — `CustomerUserDetailsService` re-normalizes (verified) |
 
 ---
 

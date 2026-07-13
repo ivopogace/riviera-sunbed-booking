@@ -1,5 +1,5 @@
 import { afterNextRender, Component, ElementRef, inject, signal } from '@angular/core';
-import { FormField, form, required } from '@angular/forms/signals';
+import { FormField, form } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 
 import { CustomerAuth, customerSignInMessage } from '../core/customer-auth';
@@ -80,10 +80,9 @@ export class SignIn {
   protected readonly error = signal<string | undefined>(undefined);
 
   protected readonly model = signal({ email: '', password: '' });
-  protected readonly signInForm = form(this.model, (path) => {
-    required(path.email, { message: 'Enter your email.' });
-    required(path.password, { message: 'Enter your password.' });
-  });
+  // form() drives the two-way [formField] binding; validity is gated in onSubmit + shown via the one
+  // `error` alert (the find-booking pattern), so no per-field validator schema here.
+  protected readonly signInForm = form(this.model);
 
   constructor() {
     // Move focus into the first field on load (form a11y).

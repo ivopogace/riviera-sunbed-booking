@@ -84,7 +84,7 @@ describe('Register', () => {
     await fixture.whenStable();
 
     expect(auth.register).not.toHaveBeenCalled();
-    expect(errorText(fixture)).toBe('Choose a password of at least 8 characters.');
+    expect(errorText(fixture)).toBe('Choose a password of 8–72 characters.');
   });
 
   it('shows the rate-limit copy on a 429', async () => {

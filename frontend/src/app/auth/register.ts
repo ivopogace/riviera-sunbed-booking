@@ -1,5 +1,5 @@
 import { afterNextRender, Component, ElementRef, inject, signal } from '@angular/core';
-import { FormField, form, required } from '@angular/forms/signals';
+import { FormField, form } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 
 import { CustomerAuth, customerRegisterMessage } from '../core/customer-auth';
@@ -51,7 +51,7 @@ const MIN_PASSWORD_LENGTH = 8;
               aria-describedby="register-hint"
             />
           </label>
-          <p id="register-hint" class="auth-hint">At least 8 characters.</p>
+          <p id="register-hint" class="auth-hint">8–72 characters.</p>
 
           @if (error(); as msg) {
             <p class="auth-error" role="alert" data-testid="register-error">{{ msg }}</p>
@@ -85,10 +85,9 @@ export class Register {
   protected readonly error = signal<string | undefined>(undefined);
 
   protected readonly model = signal({ email: '', password: '' });
-  protected readonly registerForm = form(this.model, (path) => {
-    required(path.email, { message: 'Enter your email.' });
-    required(path.password, { message: 'Choose a password.' });
-  });
+  // form() drives the two-way [formField] binding; validity is gated in onSubmit + shown via the one
+  // `error` alert (the find-booking pattern), so no per-field validator schema here.
+  protected readonly registerForm = form(this.model);
 
   constructor() {
     afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
@@ -105,7 +104,7 @@ export class Register {
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
-      this.error.set('Choose a password of at least 8 characters.');
+      this.error.set('Choose a password of 8–72 characters.');
       return;
     }
     this.submitting.set(true);

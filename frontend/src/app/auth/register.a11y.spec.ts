@@ -33,7 +33,7 @@ describe('Register accessibility (axe)', () => {
     expect(host.querySelector('[data-testid="register-email"]')).not.toBeNull();
     const password = host.querySelector('[data-testid="register-password"]');
     expect(password?.getAttribute('aria-describedby')).toContain('register-hint');
-    expect(host.querySelector('#register-hint')?.textContent).toContain('8 characters');
+    expect(host.querySelector('#register-hint')?.textContent).toContain('8–72 characters');
     expect(host.querySelector('[data-testid="register-submit"]')?.textContent).toContain('Create account');
   });
 

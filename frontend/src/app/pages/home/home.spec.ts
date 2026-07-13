@@ -160,13 +160,17 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
+    // A date guaranteed to differ from the component's default (tomorrow) on ANY calendar day —
+    // a hardcoded date that happens to equal "tomorrow" fires no change event (the 2026-07-14
+    // flake). Derived like the component derives its own default, a week out.
+    const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
-    input.value = '2026-07-15';
+    input.value = chosen;
     input.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
     const req = listRequest();
-    expect(req.request.params.get('date')).toBe('2026-07-15');
+    expect(req.request.params.get('date')).toBe(chosen);
     req.flush(venues());
   });
 
