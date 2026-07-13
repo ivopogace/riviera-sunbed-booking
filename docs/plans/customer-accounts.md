@@ -260,14 +260,15 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `implement` — **phases 0–4 done and verified; STOPPED here per request.** Phase 5
-(docs + epic close-out) is next — then the PR → review → Sonar → merge gates.
+**Stage pointer:** `implement` — **ALL phases (0–5) done and verified; STOPPED here per request.**
+Implementation is complete; next is the **PR → review gate → Sonar gate → merge** (the non-negotiable
+gates). This branch has not yet been PR'd.
 
-**Next action:** Begin **Phase 5** (docs). Update `RESPONSIBILITIES.md` (customer Job / Not-My-Job line 166
-→ owns account identity + hash; login machinery stays at the edge), `CONTEXT.md` (customer-account
-vocabulary), `CLAUDE.md` (bounded-context table: customer gains account identity, thin→full), the design
-doc (`docs/architecture/auth-signin-register.md` — the separate-identity S2 decision + recorded #111 drift),
-tick the epic **#108** S2 box at merge close-out, annotate issue #111, and run `graphify update .`.
+**Next action:** Open the PR into `main` (merge latest `origin/main` first), then run the **review gate**
+(`riviera-review-overlay` + `/code-review`) and the **Sonar gate** (pull the reported new-issue list, not
+just the green gate). Merge-close-out-only doc actions still pending: update the `CLAUDE.md` "Current
+state" narrative to note epic #108 progress, tick the epic **#108** S2 box with the PR number, and
+annotate issue **#111** with the separate-identity drift.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -275,10 +276,19 @@ tick the epic **#108** S2 box at merge close-out, annotate issue #111, and run `
 | 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | ✅ | phases 0–1 commit `bd924a8` |
 | 2 — Platform edge: register + login + session + rate-limit + security | ✅ | phase 2 commit `f3851e1` |
 | 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | ✅ | phase 3 commit `bcae580` |
-| 4 — e2e (mocked-a11y): register → sign in → sign out | ✅ | phase 4 commit |
-| 5 — Docs + epic close-out | | |
+| 4 — e2e (mocked-a11y): register → sign in → sign out | ✅ | phase 4 commit `824bc1f` |
+| 5 — Docs + substrate freshness | ✅ | phase 5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Verified (phase 5) — `riviera-docs-freshness` over `origin/main...HEAD`:** 5 present-tense facts
+patched, 0 flagged. `RESPONSIBILITIES.md` (customer Job/Not-My-Job + the RV-BE-11 fitness-function row for
+`CustomerAuthPlacementTests`), `CONTEXT.md` (customer-account glossary), `CLAUDE.md` (bounded-context table
+row), `docs/architecture/auth-signin-register.md` (D-2 "S2 realized" note: separate identity + the #111
+drift), and `riviera-modulith/SKILL.md` (its canonical thin-module example was `customer` — now "none
+today; graduated to full in #111"). The V5 migration's "(No accounts/auth in v1.)" comment is left as a
+historical record. Deferred to merge close-out: the `CLAUDE.md` "Current state" narrative + the #108
+checklist tick, per the repo's "reflect X merge" convention.
 
 **Verified (phase 4):** `customer-auth.e2e.ts` (2 tests: register → signed-in header → reload survives →
 sign out; sign-in with a generic wrong-password failure + no navigation) green, and the **full mocked-a11y

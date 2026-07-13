@@ -157,13 +157,25 @@ refund reverses it.
 ---
 
 ## `customer`
-**Job:** Own light tourist identity / guest-checkout contact.
+**Job:** Own tourist identity — the guest-checkout contact AND (S2 #111) the customer
+**account** (email + opaque credential hash) that backs register / sign-in. The account is a
+**separate identity** from the guest-contact row (no foreign key), so registration never
+auto-claims a guest email's past bookings — linking those is a later, email-verified step
+(design D-6).
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
 - Operator accounts or staff logins → **`operator`** (I am the *tourist*; `operator`
   is the *venue's* people)
-- Tourist accounts, marketing, or authentication → out of scope in v1 (guest checkout)
+- Marketing → out of scope
+- Encoding/verifying credentials + all login machinery (`UserDetailsService`, session,
+  the register/login endpoints) → the **platform edge** (RV-BE-11); I own the account
+  identity and store an opaque credential hash, never the login machinery
+
+**Shipped** (S2 #111, epic #108): customer accounts — register + sign-in via a server-side
+session, non-enumerating (D-8). The module graduated **thin → full** (gained
+`CustomerAccountService`); no Spring Security type lives inside it, pinned by
+`CustomerAuthPlacementTests`.
 
 ---
 
@@ -212,6 +224,7 @@ sufficient.
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
+| No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
 
 Each rule is proven able to fail on every build, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking

@@ -111,7 +111,7 @@ invariant #11.
 | `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired), request accept/decline + expiry sweep (#98), cancellation-policy enforcement | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting | `PayoutLedgerEntry`, `PayoutBatch` |
-| `customer` | light tourist identity / guest-checkout contact | `Customer` |
+| `customer` | tourist identity: guest-checkout contact + the customer account (email + opaque credential hash) for register/sign-in (#111, thin→full); account identity is separate from the guest row, no FK (D-6) | `Customer`, `CustomerAccount` |
 | `operator` | operator accounts and the operator↔venue ownership mapping (per-venue authorization, invariant #13) | `Operator` |
 
 > **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed

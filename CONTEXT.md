@@ -86,7 +86,13 @@ model in `docs/architecture/domain-model.md`.
 ## Demand (tourist side)
 
 - **Tourist / Customer** — the person booking a set. Guest checkout (email only) is
-  allowed; identity is intentionally light.
+  allowed; an **account** is optional (S2 #111).
+- **Customer account** — a registered tourist identity (email + opaque credential hash) for
+  register / sign-in via a server-side session. Deliberately **separate** from the
+  guest-checkout contact row (no foreign key): registering never auto-claims a guest email's
+  past bookings — linking those is a later, email-verified step (design D-6). The account's
+  credential hash is stored by `customer`; all login machinery lives at the platform edge
+  (RV-BE-11).
 
 ## Operators (venue management side)
 
