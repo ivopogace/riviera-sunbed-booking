@@ -335,6 +335,8 @@ stubs. Covers **AC-3, AC-4, AC-5, AC-6, AC-7, AC-8** (+ R-1, R-2). Not yet exerc
 | F7 | review (cleanup) | `CustomerAuth` duplicated ~80 lines of `OperatorAuth` | fixed — extracted `core/session-auth.ts` `SessionAuth` base; both extend it |
 | F8 | review (cleanup) | dead Signal-Form `required()` validators (never rendered) | fixed — dropped the unused schema; `form(model)` for binding only |
 | — | review (refuted) | establishSession re-auth with raw email | not a defect — `CustomerUserDetailsService` re-normalizes (verified) |
+| S-1 | sonar (BLOCKER, `secrets:S8215`) | the F5 `TIMING_EQUALIZER_HASH` bcrypt literal flagged as an exposed credential (`AuthController`) | fixed — the throwaway equalizer hash is now computed once at construction via `passwordEncoder.encode(...)`, no source literal |
+| S-2 | sonar (MAJOR ×2, `java:S1168`) | `RateLimitFilter.authBucketsFor` returned `null` for a `Map` | fixed — returns `Optional<Map>` (empty-map semantics would be wrong; the caller must tell "not an auth request" from "auth request") |
 
 ---
 

@@ -60,13 +60,13 @@ class AuthController {
 	private static final int MAX_PASSWORD_BYTES = 72;
 
 	/**
-	 * A fixed {@code {bcrypt}} hash used solely to burn an equivalent verify on the already-registered
-	 * branch of {@link #register}, so a fresh vs. a taken email take the same time — closing the timing
-	 * oracle that would otherwise defeat non-enumeration (D-8). Not a credential; it authenticates
-	 * nothing. (bcrypt cost 10, matching the delegating encoder's default.)
+	 * A throwaway {@code {bcrypt}} hash computed ONCE at construction from a fixed non-secret string
+	 * (never a literal in source — so it is not an exposed credential), used solely to burn an
+	 * equivalent bcrypt verify on the already-registered branch of {@link #register} so a fresh vs. a
+	 * taken email take the same time (closes the timing-enumeration oracle, D-8). It authenticates
+	 * nothing; its cost matches the delegating encoder's default because the encoder produced it.
 	 */
-	private static final String TIMING_EQUALIZER_HASH =
-			"{bcrypt}$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+	private final String timingEqualizerHash;
 
 	private final AuthenticationManager operatorManager;
 	private final AuthenticationManager customerManager;
@@ -86,6 +86,7 @@ class AuthController {
 		this.securityContextRepository = securityContextRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.customerAccounts = customerAccounts;
+		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-credential");
 	}
 
 	/**
@@ -157,7 +158,7 @@ class AuthController {
 			// Constant-time (D-8): the fresh branch spends a bcrypt verify inside establishSession's
 			// authenticate(); burn an equivalent verify here so an already-registered email is not
 			// measurably faster — a latency gap would be an account-enumeration oracle.
-			passwordEncoder.matches(registration.password(), TIMING_EQUALIZER_HASH);
+			passwordEncoder.matches(registration.password(), timingEqualizerHash);
 		}
 		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie.
 		return ResponseEntity.status(HttpStatus.CREATED)

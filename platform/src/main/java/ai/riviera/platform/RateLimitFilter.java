@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -98,11 +99,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		// endpoints use SEPARATE bucket maps under the same limit, so customer traffic can't starve
 		// operator login from a shared IP.
 		if (props.enabled()) {
-			Map<String, TokenBucket> authBuckets = authBucketsFor(request);
-			if (authBuckets != null) {
+			Optional<Map<String, TokenBucket>> authBuckets = authBucketsFor(request);
+			if (authBuckets.isPresent()) {
 				Instant now = clock.instant();
 				String ip = ClientIpResolver.resolve(request);
-				TokenBucket bucket = bucketFor(authBuckets, ip, props.login(), now);
+				TokenBucket bucket = bucketFor(authBuckets.get(), ip, props.login(), now);
 				if (!bucket.tryAcquire(now)) {
 					reject(response, bucket.retryAfterSeconds(now), ip, "login");
 					return;
@@ -152,18 +153,18 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * can never exhaust operator login (a shared IP on venue WiFi / CGNAT). Never an OPTIONS preflight —
 	 * the method check excludes it.
 	 */
-	private Map<String, TokenBucket> authBucketsFor(HttpServletRequest request) {
+	private Optional<Map<String, TokenBucket>> authBucketsFor(HttpServletRequest request) {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
-			return null;
+			return Optional.empty();
 		}
 		String path = pathWithinApplication(request);
 		if (LOGIN_PATH.equals(path)) {
-			return loginBuckets;
+			return Optional.of(loginBuckets);
 		}
 		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
-			return customerAuthBuckets;
+			return Optional.of(customerAuthBuckets);
 		}
-		return null;
+		return Optional.empty();
 	}
 
 	/**
