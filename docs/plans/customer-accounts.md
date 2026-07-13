@@ -160,6 +160,18 @@ tracked as **R-1** in the risk register and pinned by the existing `AuthSessionI
 - **Open question (rate-limit budget for register):** reuse the existing per-IP `login` budget for both
   customer login and register, or give register its own? **Default: reuse `login`** (simplest; register is
   as abusable as login). Revisit only if review flags it. — *Owner:* agent · *Resolves by:* phase 2.
+- **Assumption (FE styling):** the auth pages are styled with the existing tourist **`riv-*` glass SCSS
+  tokens** (`--riv-card-*`, `--riv-field-*`, `--riv-cta-grad`) via a shared `auth/auth.scss`, mirroring
+  `find-booking` and every sibling tourist surface — NOT hand-rolled Tailwind. This keeps the pages
+  visually coherent inside the glass shell; the SCSS→Tailwind migration is a separate, app-wide track.
+  — *Owner:* agent · *Resolves by:* phase 3 (RV-FE may opine).
+
+### Resolved
+
+- **FE session state (phase 3):** shipped a separate `core/customer-auth.ts` mirroring `OperatorAuth`
+  (its own `/me` restore, filtered to `principalType==='CUSTOMER'`). On operator pages both services
+  construct → two startup `/me` calls; on tourist pages only one (`OperatorAuth` is root-lazy). Accepted;
+  a shared `core/session` store remains a deferred cleanup. Resolved in `f3851e1`-successor (phase 3 commit).
 
 ## Availability & concurrency (invariant #2)
 
@@ -248,26 +260,33 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `implement` — **phases 0–2 done and verified; STOPPED here per request.** Phase 3
-(frontend) is next.
+**Stage pointer:** `implement` — **phases 0–3 done and verified; STOPPED here per request.** Phase 4
+(e2e) is next.
 
-**Next action:** Begin **Phase 3** (frontend). Load `angular-developer` + the angular-cli MCP and
-`riviera-frontend` (already loaded) before writing: `core/customer-auth.ts` (mirror `OperatorAuth`,
-filter `/me` by `principalType==='CUSTOMER'`), `auth/register.ts` + `auth/sign-in.ts` (Signal Forms,
-WCAG AA), `app.routes.ts` (`account/register`, `account/sign-in`), and the `app.ts` header signed-in
-state. FE↔BE contract: register/login DTO field is `email` (not `username`); `PrincipalResponse` carries
-`{username: <email>, principalType: "CUSTOMER"}`.
+**Next action:** Begin **Phase 4** (mocked-a11y e2e). Load `playwright-cli`; place specs in the CI-safe
+suite `frontend/e2e/*.e2e.ts` (per RV-FE-E2E). Add `mockCustomerAuthApi` to `frontend/e2e/support/auth-mocks.ts`
+(stateful mock of `POST /customer/register|login`, `GET /me`, `POST /logout`), Page Objects under
+`e2e/support/pages/`, and `customer-auth.e2e.ts` (register → signed-in header → reload → sign out; axe on
+both pages). Run with `npm run test:e2e:a11y` (the Windows-runnable suite).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Flyway V25 `customer_account` migration | ✅ | phases 0–1 commit `bd924a8` |
 | 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | ✅ | phases 0–1 commit `bd924a8` |
-| 2 — Platform edge: register + login + session + rate-limit + security | ✅ | phase 2 commit |
-| 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | | |
+| 2 — Platform edge: register + login + session + rate-limit + security | ✅ | phase 2 commit `f3851e1` |
+| 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | ✅ | phase 3 commit |
 | 4 — e2e (mocked-a11y): register → sign in → sign out | | |
 | 5 — Docs + epic close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Verified (phase 3):** `npm run lint` clean; the full Vitest suite **679 tests / 89 files green**
+(`customer-auth.spec` 9, `sign-in.spec` 4, `register.spec` 5, `sign-in.a11y.spec` + `register.a11y.spec`
+axe, updated `app.spec` +2 header tests); `npm run build` succeeds (only pre-existing SCSS-budget
+warnings). Covers **AC-11** (unit + a11y half; the e2e half is phase 4). Two fixes made during the phase:
+the `customer-auth.spec` register tests must `await` a tick between the `/register` flush and the
+follow-up `/me` (else an unflushed request cascaded "TestBed already instantiated" across files), and the
+`app.spec` route-flags list gained the two `account/*` born-glass routes.
 
 **Verified (phases 0–1):** `CustomerAccountServiceTest`, `JdbcCustomerAccountsIT` (Testcontainers —
 boots Flyway V25, proves the ON-CONFLICT race-safety + no-overwrite), `CustomerAuthPlacementTests`, and
