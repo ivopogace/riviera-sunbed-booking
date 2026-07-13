@@ -66,10 +66,13 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String CODE_VAR = "code";
-	// The session login (issue #109, D-8): per-IP throttled on its OWN, stricter budget — a
+	// The session logins (issue #109, D-8): per-IP throttled on their OWN, stricter budget — a
 	// credential-guessing oracle, like the booking-code endpoints, but a separate dimension so
-	// tightening one never starves the other. Mirrors SecurityConfig's LOGIN_PATH.
+	// tightening one never starves the other. Mirrors SecurityConfig's login/register paths. Customer
+	// register (S2 #111) shares the login budget: it is as abusable (spam / enumeration) as a login.
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
+	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 
 	private final RateLimitProperties props;
 	private final Clock clock;
@@ -133,10 +136,15 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private record Target(String code) {
 	}
 
-	/** The session login POST (never an OPTIONS preflight — the method check excludes it). */
+	/** A session-login/register POST (never an OPTIONS preflight — the method check excludes it). */
 	private boolean isLoginAttempt(HttpServletRequest request) {
-		return HttpMethod.POST.matches(request.getMethod())
-				&& LOGIN_PATH.equals(pathWithinApplication(request));
+		if (!HttpMethod.POST.matches(request.getMethod())) {
+			return false;
+		}
+		String path = pathWithinApplication(request);
+		return LOGIN_PATH.equals(path)
+				|| CUSTOMER_LOGIN_PATH.equals(path)
+				|| CUSTOMER_REGISTER_PATH.equals(path);
 	}
 
 	/**

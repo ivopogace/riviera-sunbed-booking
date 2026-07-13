@@ -160,6 +160,44 @@ class RateLimitFilterTest {
 		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
+	// ---- Customer login + registration ride the same login budget (S2 #111, D-8) ----
+
+	private ResultActions customerLoginFromIp(String ip) throws Exception {
+		// Empty stub credential store → an allowed attempt is the generic 401; a 429 is the limiter.
+		return mvc.perform(post("/api/auth/customer/login").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "ghost@example.com", "password": "nope-nope"}"""));
+	}
+
+	private ResultActions registerFromIp(String ip) throws Exception {
+		// The stub provisioning returns AlreadyRegistered → an allowed attempt is the generic 201
+		// (non-enumeration); a 429 is the limiter.
+		return mvc.perform(post("/api/auth/customer/register").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "new@example.com", "password": "password123"}"""));
+	}
+
+	@Test
+	void customerLoginAndRegisterConsumeTheLoginBudget() throws Exception {
+		// Customer login (its own IP): allowed attempts are 401, the over-budget one is 429.
+		customerLoginFromIp("10.11.0.1").andExpect(status().isUnauthorized());
+		customerLoginFromIp("10.11.0.1").andExpect(status().isUnauthorized());
+		customerLoginFromIp("10.11.0.1")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		// Registration (fresh IP) rides the same login budget: allowed attempts are 201, the 3rd is 429.
+		registerFromIp("10.11.0.2").andExpect(status().isCreated());
+		registerFromIp("10.11.0.2").andExpect(status().isCreated());
+		registerFromIp("10.11.0.2")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
 	@Test
 	void usesForwardedForClientIp() throws Exception {
 		// The XFF client is constant while the socket address varies → the limiter must key on XFF.

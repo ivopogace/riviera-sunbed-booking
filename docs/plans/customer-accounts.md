@@ -248,20 +248,21 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `implement` — **phases 0–1 done and verified; STOPPED here per request.** Phase 2
-(platform edge) is next.
+**Stage pointer:** `implement` — **phases 0–2 done and verified; STOPPED here per request.** Phase 3
+(frontend) is next.
 
-**Next action:** Begin **Phase 2** (platform edge: `CustomerUserDetailsService`, the
-`customerAuthenticationManager` bean built inline, `AuthController` register + login, `principalType`
-from authorities, `RateLimitFilter` customer paths, `SecurityConfig` permits). ⚠️ Phase 2 touches
-`RateLimitFilter` — the #127 **full-suite-only** failure class: give each test login a unique
-`X-Forwarded-For` and expect verification only from the push's CI run.
+**Next action:** Begin **Phase 3** (frontend). Load `angular-developer` + the angular-cli MCP and
+`riviera-frontend` (already loaded) before writing: `core/customer-auth.ts` (mirror `OperatorAuth`,
+filter `/me` by `principalType==='CUSTOMER'`), `auth/register.ts` + `auth/sign-in.ts` (Signal Forms,
+WCAG AA), `app.routes.ts` (`account/register`, `account/sign-in`), and the `app.ts` header signed-in
+state. FE↔BE contract: register/login DTO field is `email` (not `username`); `PrincipalResponse` carries
+`{username: <email>, principalType: "CUSTOMER"}`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Flyway V25 `customer_account` migration | ✅ | phases 0–1 commit |
-| 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | ✅ | phases 0–1 commit |
-| 2 — Platform edge: register + login + session + rate-limit + security | | |
+| 0 — Flyway V25 `customer_account` migration | ✅ | phases 0–1 commit `bd924a8` |
+| 1 — `customer` module: account identity (ports, records, service, adapter, arch tests) | ✅ | phases 0–1 commit `bd924a8` |
+| 2 — Platform edge: register + login + session + rate-limit + security | ✅ | phase 2 commit |
 | 3 — Frontend: `CustomerAuth` core service + `auth/` pages + header | | |
 | 4 — e2e (mocked-a11y): register → sign in → sign out | | |
 | 5 — Docs + epic close-out | | |
@@ -271,9 +272,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Verified (phases 0–1):** `CustomerAccountServiceTest`, `JdbcCustomerAccountsIT` (Testcontainers —
 boots Flyway V25, proves the ON-CONFLICT race-safety + no-overwrite), `CustomerAuthPlacementTests`, and
 the structural net (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
-`PublishedSurfacePlacementArchitectureTests`, `ResponsibilitiesArchitectureTests`) all green locally.
-Covers **AC-1, AC-2, AC-9** (+ the R-3 concurrent-registration race). Not yet exercised: the CI full
-suite (run at PR).
+`PublishedSurfacePlacementArchitectureTests`, `ResponsibilitiesArchitectureTests`). Covers **AC-1, AC-2, AC-9**.
+
+**Verified (phase 2):** `CustomerRegisterIT` (fresh auto-sign-in; duplicate byte-identical + sessionless;
+password policy 400), `CustomerLoginIT` (session + `/me`=CUSTOMER; logout; unknown-vs-wrong 401 identical),
+`CustomerRoleSeparationIT` (customer session → operator endpoint 403; cross-namespace creds 401),
+`RateLimitFilterTest.customerLoginAndRegisterConsumeTheLoginBudget`, and the **R-1 regression check**
+(`AuthSessionIT` + `PerOperatorLoginIT` green — operator login unchanged by the `establishSession`
+refactor + the second manager). `WebSliceStubs` gained `CustomerAccounts` + `CustomerAccountProvisioning`
+stubs. Covers **AC-3, AC-4, AC-5, AC-6, AC-7, AC-8** (+ R-1, R-2). Not yet exercised: the CI full suite
+(run at PR) — the #127 full-suite-only class is mitigated by unique `X-Forwarded-For` per login.
 
 **Findings register** — one row per review/Sonar/CI finding; every fix re-enters at Implement.
 
@@ -601,7 +609,7 @@ PrincipalResponse customerLogin(@RequestBody CustomerLoginRequest login, HttpSer
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-07-13 | Phase 2 (`establishSession` extraction) | login → session-establish blocks that should share one flow | Read `AuthController` (operator + customer + register) | 3 (operator login, customer login, register auto-sign-in) | Extracted one `establishSession(manager, …)` helper; all three call it. Operator behavior pinned unchanged by `AuthSessionIT` (R-1). |
 
 ---
 
