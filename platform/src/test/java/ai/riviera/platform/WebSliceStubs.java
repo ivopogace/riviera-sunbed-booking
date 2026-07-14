@@ -31,8 +31,10 @@ import ai.riviera.platform.booking.application.request.DeclineOutcome;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
 import ai.riviera.platform.booking.application.request.PendingRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
+import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
@@ -186,6 +188,26 @@ class WebSliceStubs {
 	@Bean
 	CurrentOperator currentOperator(OperatorDirectory operatorDirectory) {
 		return new CurrentOperator(operatorDirectory);
+	}
+
+	/**
+	 * S3 (#114): the customer account-id resolver + the edge helper that {@code BookingController}
+	 * (signed-in checkout link) and {@code MyBookingsController} (my-bookings) now depend on. Inert:
+	 * the web slices hit permit-all / role-gated paths, never resolving a real account.
+	 */
+	@Bean
+	CustomerAccountDirectory customerAccountDirectory() {
+		return _ -> Optional.empty();
+	}
+
+	@Bean
+	CurrentCustomer currentCustomer(CustomerAccountDirectory customerAccountDirectory) {
+		return new CurrentCustomer(customerAccountDirectory);
+	}
+
+	@Bean
+	MyBookings myBookings() {
+		return _ -> List.of();
 	}
 
 	@Bean

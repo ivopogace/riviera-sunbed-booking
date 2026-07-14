@@ -199,20 +199,22 @@ presentation and `/booking/:code` detail link; no new route (`/my-bookings` exis
 
 > Session-recovery anchor. Re-read before acting after any compaction. Update in the same commit window.
 
-**Stage pointer:** `implement (phase 1)` — Phase 0 committed to the feature branch, scoped tests green.
+**Stage pointer:** `implement (phase 2)` — Phases 0–1 committed to the feature branch, scoped tests green.
 
-**Next action:** Phase 1 — `GET /api/me/bookings`: `Bookings.findByAccountId` + `MyBookings` service + `MyBookingsController` (session-principal-scoped, `CurrentCustomer.require`), `SecurityConfig` `/api/me/**` → `CUSTOMER`, and add `CurrentCustomer` to `WebSliceStubs` (R-4).
+**Next action:** Phase 2 (frontend) — `BookingService.myBookings()` → `GET /api/me/bookings`; make `MyBookings` component auth-aware, union device-local codes ∪ account list deduped by code (signed-out unchanged).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — DB + signed-in checkout link | ✅ | `feat(customer): link signed-in checkout to CustomerAccountId (#114)` |
-| 1 — my-bookings query endpoint | | |
+| 1 — my-bookings query endpoint | ✅ | `feat(booking): GET /api/me/bookings for the signed-in customer (#114)` |
 | 2 — frontend union screen | | |
 | 3 — e2e (mocked) + a11y | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Phase 0 verification (scoped, local + Docker):** `JdbcBookingsAccountLinkIT` (AC-1 link, AC-2 guest-NULL) ✅ · structural net `ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests` ✅ (boundaries hold, no cycle) · guest-path regressions `BookingServiceIT`, `BookingControllerIT`, `RequestToBookFlowIT`, `ConcurrentReservationIT` (#2), `JdbcBookingsTransitionIT`, `CreateBookingServiceTest` ✅. CI owns the full suite.
+**Phase 0 verification (scoped, local + Docker):** `JdbcBookingsAccountLinkIT` (AC-1 link, AC-2 guest-NULL) ✅ · structural net (`ModularityTests` + 3 arch tests) ✅ (boundaries hold, no cycle) · guest-path regressions `BookingServiceIT`, `BookingControllerIT`, `RequestToBookFlowIT`, `ConcurrentReservationIT` (#2), `JdbcBookingsTransitionIT`, `CreateBookingServiceTest` ✅.
+
+**Phase 1 verification (scoped, local + Docker):** `MyBookingsIT` — AC-3 (cross-customer denial: A sees CODE_A, never CODE_B) + AC-4 (anonymous→401, operator→403, customer→200) ✅ · structural net ✅ (new port/controller/service, no boundary leak) · R-4 web-slice load: `WebCorsConfigTest`, `RateLimitFilterTest`, `SpaShellTest` ✅ (`CurrentCustomer`/`MyBookings` stubs added) · `findByCode` mapper-refactor regression `BookingViewIT` ✅. CI owns the full suite.
 
 **Findings register**
 

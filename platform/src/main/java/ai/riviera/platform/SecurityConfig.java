@@ -57,6 +57,8 @@ class SecurityConfig {
 
 	/** The single role that gates the U7 operator write surface. */
 	private static final String OPERATOR_ROLE = "OPERATOR";
+	/** The role gating the signed-in tourist's own-bookings surface (S3 #114). */
+	private static final String CUSTOMER_ROLE = "CUSTOMER";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
@@ -202,6 +204,10 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
+						// The signed-in tourist's own bookings (S3 #114): CUSTOMER-only, session-principal-
+						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
+						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
+						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
 				// session and clears the context; 204 (no redirect — this is an SPA's API).

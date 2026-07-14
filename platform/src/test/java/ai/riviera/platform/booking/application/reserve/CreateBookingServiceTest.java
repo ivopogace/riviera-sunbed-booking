@@ -383,6 +383,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public List<ai.riviera.platform.booking.application.view.BookingRecord> findByAccountId(
+				ai.riviera.platform.customer.vocabulary.CustomerAccountId accountId) {
+			return List.of();
+		}
+
+		@Override
 		public List<ai.riviera.platform.booking.vocabulary.BookingId> findOverduePendingRequests(Instant now) {
 			return List.of();
 		}

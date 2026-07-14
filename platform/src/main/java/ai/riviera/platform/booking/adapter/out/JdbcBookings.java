@@ -20,6 +20,7 @@ import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -231,20 +232,41 @@ class JdbcBookings implements Bookings {
 				WHERE code = :code
 				""")
 				.param("code", code)
-				.query((rs, rowNum) -> {
-					java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
-					Long refundMinor = rs.getObject("refund_minor", Long.class);
-					java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
-					return new BookingRecord(
-							rs.getLong("id"), rs.getString("code"),
-							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-							new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
-							rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-							rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
-							requestExpiresAt == null ? null : requestExpiresAt.toInstant());
-				})
+				.query(JdbcBookings::mapBookingRecord)
 				.optional();
+	}
+
+	@Override
+	public List<BookingRecord> findByAccountId(CustomerAccountId accountId) {
+		// The signed-in customer's bookings (S3, #114), newest first — account-scoped by account_id
+		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
+		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
+		// uniformly; a guest booking (NULL account_id) can never match.
+		return jdbc.sql("""
+				SELECT id, code, status, venue_id, set_id, booking_date,
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
+				FROM booking
+				WHERE account_id = :account
+				ORDER BY booking_date DESC, id DESC
+				""")
+				.param("account", accountId.value())
+				.query(JdbcBookings::mapBookingRecord)
+				.list();
+	}
+
+	/** Shared {@link BookingRecord} row mapper for the by-code + by-account reads (S3, #114). */
+	private static BookingRecord mapBookingRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
+		Long refundMinor = rs.getObject("refund_minor", Long.class);
+		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
+		return new BookingRecord(
+				rs.getLong("id"), rs.getString("code"),
+				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+				new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
+				rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
+				requestExpiresAt == null ? null : requestExpiresAt.toInstant());
 	}
 
 	@Override
