@@ -199,15 +199,15 @@ presentation and `/booking/:code` detail link; no new route (`/my-bookings` exis
 
 > Session-recovery anchor. Re-read before acting after any compaction. Update in the same commit window.
 
-**Stage pointer:** `implement (phase 2)` — Phases 0–1 committed to the feature branch, scoped tests green.
+**Stage pointer:** `implement (phase 3)` — Phases 0–2 committed to the feature branch, scoped tests green.
 
-**Next action:** Phase 2 (frontend) — `BookingService.myBookings()` → `GET /api/me/bookings`; make `MyBookings` component auth-aware, union device-local codes ∪ account list deduped by code (signed-out unchanged).
+**Next action:** Phase 3 — mocked Playwright e2e (`frontend/e2e/`): sign in, create a booking, open `/my-bookings`, assert the account+device union renders; axe pass after animations settle.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — DB + signed-in checkout link | ✅ | `feat(customer): link signed-in checkout to CustomerAccountId (#114)` |
 | 1 — my-bookings query endpoint | ✅ | `feat(booking): GET /api/me/bookings for the signed-in customer (#114)` |
-| 2 — frontend union screen | | |
+| 2 — frontend union screen | ✅ | `feat(booking): signed-in My bookings merges device + account (#114)` |
 | 3 — e2e (mocked) + a11y | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -215,6 +215,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Phase 0 verification (scoped, local + Docker):** `JdbcBookingsAccountLinkIT` (AC-1 link, AC-2 guest-NULL) ✅ · structural net (`ModularityTests` + 3 arch tests) ✅ (boundaries hold, no cycle) · guest-path regressions `BookingServiceIT`, `BookingControllerIT`, `RequestToBookFlowIT`, `ConcurrentReservationIT` (#2), `JdbcBookingsTransitionIT`, `CreateBookingServiceTest` ✅.
 
 **Phase 1 verification (scoped, local + Docker):** `MyBookingsIT` — AC-3 (cross-customer denial: A sees CODE_A, never CODE_B) + AC-4 (anonymous→401, operator→403, customer→200) ✅ · structural net ✅ (new port/controller/service, no boundary leak) · R-4 web-slice load: `WebCorsConfigTest`, `RateLimitFilterTest`, `SpaShellTest` ✅ (`CurrentCustomer`/`MyBookings` stubs added) · `findByCode` mapper-refactor regression `BookingViewIT` ✅. CI owns the full suite.
+
+**Phase 2 verification (frontend):** full Vitest suite **683 tests / 89 files pass** — incl. new `my-bookings.spec.ts` signed-in cases (AC-6 union deduped by code, account-fetch fallback to device-local, account-only) + all existing guest cases unchanged (AC-7) · `ng lint` clean. Behavior-parity ledger honored — every guest behavior preserved (additive merge). Playwright e2e (AC-6 end-to-end) is Phase 3.
 
 **Findings register**
 

@@ -1,11 +1,13 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
 import { expectNoAxeViolations } from '../../testing/axe';
+import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
-import { BookingDetail, BookingStatus } from './booking.model';
+import { BookingDetail, BookingStatus, MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 import { MyBookings } from './my-bookings';
 
@@ -50,6 +52,27 @@ function stubService(
   };
 }
 
+/** A minimal {@link CustomerAuth}: the component only reads `restoring` + `signedIn` (both settled). */
+function authStub(signedIn: boolean): CustomerAuth {
+  return { restoring: signal(false), signedIn: signal(signedIn) } as unknown as CustomerAuth;
+}
+
+/** One `GET /api/me/bookings` server row (the {@link MyBookingSummary} subset). */
+function summary(code: string, extra: Partial<MyBookingSummary> = {}): MyBookingSummary {
+  return {
+    code,
+    status: 'CONFIRMED',
+    venueId: 1,
+    venueName: 'Miramar Beach Club',
+    rowLabel: 'Front row',
+    positionNo: 7,
+    bookingDate: '2026-12-01',
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    requestExpiresAt: null,
+    ...extra,
+  };
+}
+
 describe('MyBookings (device-local list, issue #139)', () => {
   let storage: Map<string, string>;
 
@@ -61,10 +84,17 @@ describe('MyBookings (device-local list, issue #139)', () => {
     storage.set(KEY, JSON.stringify(codes));
   }
 
-  async function render(service: Partial<BookingService>): Promise<ComponentFixture<MyBookings>> {
+  async function render(
+    service: Partial<BookingService>,
+    auth: CustomerAuth = authStub(false),
+  ): Promise<ComponentFixture<MyBookings>> {
     await TestBed.configureTestingModule({
       imports: [MyBookings],
-      providers: [provideRouter([]), { provide: BookingService, useValue: service }],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        { provide: CustomerAuth, useValue: auth },
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(MyBookings);
     fixture.detectChanges();
@@ -231,5 +261,55 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(loading).not.toBeNull();
     expect(loading?.getAttribute('aria-busy')).toBe('true');
     await expectNoAxeViolations(host);
+  });
+
+  describe('signed in (S3 #114): merges the account list with device-local codes', () => {
+    it('unions the account list with device-only codes, deduped by code', async () => {
+      // DEVICE01 is a guest booking made only on this device; DUPE0001 is in BOTH (booked while
+      // signed in, so it is device-local AND account-linked) → it must appear exactly once.
+      seedCodes(['DEVICE01', 'DUPE0001']);
+      const service: Partial<BookingService> = {
+        ...stubService({ DEVICE01: detail('DEVICE01', 'CONFIRMED', { venueName: 'Device Bar' }) }),
+        myBookings: () => of([summary('ACCT0001'), summary('DUPE0001')]),
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const rows = host.querySelectorAll('[data-testid="booking-row"]');
+      expect(rows).toHaveLength(3); // ACCT0001 + DUPE0001 (once) + DEVICE01
+      const text = host.textContent ?? '';
+      expect(text).toContain('ACCT0001');
+      expect(text).toContain('DEVICE01');
+      expect([...rows].filter((r) => r.textContent?.includes('DUPE0001'))).toHaveLength(1);
+      await expectNoAxeViolations(host);
+    });
+
+    it('falls back to the device-local list when the account fetch fails', async () => {
+      seedCodes(['DEVONLY1']);
+      const service: Partial<BookingService> = {
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        myBookings: () => throwError(() => ({ status: 500 })) as Observable<MyBookingSummary[]>,
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const rows = host.querySelectorAll('[data-testid="booking-row"]');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].textContent).toContain('DEVONLY1');
+    });
+
+    it('shows the account list when the device has no remembered codes', async () => {
+      seedCodes([]);
+      const service: Partial<BookingService> = {
+        ...stubService({}),
+        myBookings: () => of([summary('ACCTONLY1')]),
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const rows = host.querySelectorAll('[data-testid="booking-row"]');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].textContent).toContain('ACCTONLY1');
+    });
   });
 });

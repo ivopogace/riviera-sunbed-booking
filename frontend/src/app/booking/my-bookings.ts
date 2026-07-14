@@ -1,17 +1,18 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
-import { BookingDetail } from './booking.model';
+import { MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 
 /** The design's per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
-function subLineOf(b: BookingDetail): string {
+function subLineOf(b: MyBookingSummary): string {
   switch (b.status) {
     case 'AWAITING_PAYMENT':
       // No server pay-by deadline exists (only requestExpiresAt, the venue response deadline) →
@@ -50,7 +51,7 @@ interface RowView {
   readonly amountStr: string;
 }
 
-function buildView(b: BookingDetail): RowView {
+function buildView(b: MyBookingSummary): RowView {
   const meta = metaFor(b.status);
   return {
     code: b.code,
@@ -77,20 +78,25 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * The guest's device-local "My bookings" list (issue #139, epic #133; design v3 *My bookings* list
- * card). A guest has no account (#114 unshipped), so the only key to a booking is its unguessable
- * code (invariant #7): {@link DeviceLocalBookings} holds the codes this browser created, and this
- * screen fetches each one live from `GET /api/bookings/{code}` so every row shows the **current**
- * server status (a request accepted/declined/expired elsewhere is reflected on the next load) —
+ * The tourist's "My bookings" list (issue #139 device-local base; S3 #114 signed-in merge).
+ *
+ * <p><strong>Signed out (guest):</strong> the only key to a booking is its unguessable code
+ * (invariant #7) — {@link DeviceLocalBookings} holds the codes this browser created, and this screen
+ * fetches each live from `GET /api/bookings/{code}` so every row shows the current server status;
  * there is deliberately no guest list endpoint.
  *
- * <p>Each row loads independently into a precomputed {@link RowView}. Rows are links to the T5
+ * <p><strong>Signed in (S3 #114):</strong> the screen also loads the customer's account-linked
+ * bookings from `GET /api/me/bookings` (a single, already-enriched call) and MERGES them with the
+ * device-local codes, deduped by code — nothing the user could already see disappears, and
+ * account-linked bookings show on any device they sign in on. Back-linking past guest bookings by
+ * email is a later, #113-gated step (design D-6), so a pre-sign-in guest booking made elsewhere is
+ * not yet listed here. The merge is display-only — no booking codes are handed to the account.
+ *
+ * <p>Each row loads independently into a precomputed {@link RowView}. Rows link to the T5
  * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
- * (invariant #5); the PENDING_REQUEST deadline via the shared {@link formatDeadline} (Europe/Tirane,
- * invariant #6) — the component does no `Date`/cutoff arithmetic. On a `404` the row is dropped from
- * view but the code is **kept** (invariant #7: it is the guest's only key and a 404 can be transient
- * — a recovered booking reappears next load); a transient/offline failure shows Retry. Codes are
- * treated as secrets — never logged.
+ * (invariant #5); the PENDING_REQUEST deadline via {@link formatDeadline} (Europe/Tirane, invariant
+ * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
+ * can be transient); a transient/offline failure shows Retry. Codes are treated as secrets — never logged.
  */
 @Component({
   selector: 'app-my-bookings',
@@ -100,7 +106,16 @@ function isNotFound(error: unknown): boolean {
       <a routerLink="/" class="back-link">← All beaches</a>
       <h1 id="mb-title">Your bookings</h1>
 
-      @if (rows().length === 0) {
+      @if (loading()) {
+        <div class="rows" aria-busy="true" data-testid="my-bookings-loading">
+          <div class="row row--loading" appCardGlass>
+            <span class="row-main">
+              <span class="skeleton skeleton-line"></span>
+              <span class="skeleton skeleton-line short"></span>
+            </span>
+          </div>
+        </div>
+      } @else if (rows().length === 0) {
         <section class="empty-card" appCardGlass aria-labelledby="mb-empty-title" data-testid="my-bookings-empty">
           <h2 id="mb-empty-title">No booking yet</h2>
           <p class="empty-lead">
@@ -174,15 +189,62 @@ function isNotFound(error: unknown): boolean {
 export class MyBookings {
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);
+  private readonly auth = inject(CustomerAuth);
 
   protected readonly rows = signal<readonly Row[]>([]);
+  /**
+   * True until the initial list is decided (the session restore has settled AND the first rows are
+   * set). Gates the empty card so a signed-in account fetch in flight never flashes "No booking yet".
+   */
+  protected readonly loading = signal(true);
 
   constructor() {
-    // Snapshot the remembered codes once and fetch each live. Placeholder loading rows first so the
-    // list keeps the device's newest-first order as the async fetches resolve into it.
+    // Load ONCE the session restore has settled — signed-in vs guest is only known then. untracked()
+    // so reading the auth/store signals inside the load never re-triggers this effect (restoring
+    // flips true→false exactly once, so the body runs a single time).
+    effect(() => {
+      if (this.auth.restoring()) {
+        return;
+      }
+      untracked(() => this.loadAll());
+    });
+  }
+
+  private loadAll(): void {
     const codes = this.store.codes();
+    if (this.auth.signedIn()) {
+      this.loadSignedIn(codes);
+    } else {
+      this.loadDeviceLocal(codes);
+    }
+  }
+
+  /** Guest / signed-out: the device-local codes only (issue #139), each fetched live by code. */
+  private loadDeviceLocal(codes: readonly string[]): void {
     this.rows.set(codes.map((code) => ({ code, state: 'loading' as const })));
+    this.loading.set(false);
     codes.forEach((code) => this.load(code));
+  }
+
+  /**
+   * Signed in (S3 #114): MERGE the account's server list with this device's remembered codes, deduped
+   * by code. Account rows arrive fully loaded from the one list call; device-local codes the account
+   * list doesn't cover (e.g. a guest booking made here before signing in) are still shown, fetched
+   * per-code as in guest mode — nothing the user could already see disappears. A failed list call
+   * falls back to the device-local view, so a signed-in user keeps at least this device's bookings.
+   */
+  private loadSignedIn(deviceCodes: readonly string[]): void {
+    this.bookings.myBookings().subscribe({
+      next: (account) => {
+        const accountCodes = new Set(account.map((b) => b.code));
+        const accountRows: Row[] = account.map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
+        const extra = deviceCodes.filter((code) => !accountCodes.has(code));
+        this.rows.set([...accountRows, ...extra.map((code) => ({ code, state: 'loading' as const }))]);
+        this.loading.set(false);
+        extra.forEach((code) => this.load(code));
+      },
+      error: () => this.loadDeviceLocal(deviceCodes),
+    });
   }
 
   protected retry(code: string): void {

@@ -13,6 +13,7 @@ import {
   Cancellation,
   CreateBookingRequest,
   CreateBookingResult,
+  MyBookingSummary,
   PaymentHandoff,
   RequestedBooking,
 } from './booking.model';
@@ -108,6 +109,15 @@ export class BookingService {
     return this.http.get<BookingDetail>(
       `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}`,
     );
+  }
+
+  /**
+   * The signed-in customer's account-linked bookings (S3, `GET /api/me/bookings`). Session-principal
+   * scoped by the backend — the request carries no id, so it returns only the caller's own bookings
+   * (never another customer's). The session cookie is attached by the api-session interceptor.
+   */
+  myBookings(): Observable<MyBookingSummary[]> {
+    return this.http.get<MyBookingSummary[]>(`${environment.apiBaseUrl}/api/me/bookings`);
   }
 
   /**
