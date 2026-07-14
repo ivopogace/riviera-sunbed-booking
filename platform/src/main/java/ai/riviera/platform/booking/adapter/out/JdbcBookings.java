@@ -53,6 +53,15 @@ class JdbcBookings implements Bookings {
 		this.jdbc = jdbc;
 	}
 
+	/**
+	 * The nullable account link (S3, #114) as a bindable {@code Long}: the signed-in
+	 * {@link ai.riviera.platform.customer.vocabulary.CustomerAccountId} value, or {@code null} for a
+	 * guest booking (the guest checkout path leaves {@code account_id} NULL).
+	 */
+	private static Long accountParam(NewBooking b) {
+		return b.accountId() == null ? null : b.accountId().value();
+	}
+
 	@Override
 	public OptionalLong insertAwaitingPayment(NewBooking b) {
 		// ON CONFLICT (code) DO NOTHING makes a code collision a no-op (empty result), NOT a
@@ -60,9 +69,9 @@ class JdbcBookings implements Bookings {
 		// the surrounding transaction (a thrown violation would poison it). FK/CHECK failures
 		// still throw, as they should. RETURNING yields the id only on a real insert.
 		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :amount, :currency, :status)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
@@ -70,6 +79,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
+				.param("account", accountParam(b))
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
@@ -86,9 +96,9 @@ class JdbcBookings implements Bookings {
 		// AWAITING_PAYMENT insert — a code collision is an empty retry signal, never a poisoned
 		// transaction. The deadline is stored on the row so accept guard + expiry sweep share it.
 		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status, :expires)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :amount, :currency, :status, :expires)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
@@ -96,6 +106,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
+				.param("account", accountParam(b))
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())

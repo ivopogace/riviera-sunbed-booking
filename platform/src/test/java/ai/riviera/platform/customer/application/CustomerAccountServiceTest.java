@@ -45,9 +45,19 @@ class CustomerAccountServiceTest {
 				.isEqualTo("{bcrypt}first");
 	}
 
+	@Test
+	void accountForResolvesNormalizedEmailToItsAccountId() {
+		service.register("Alice@Example.com ", "{bcrypt}hash");
+
+		Optional<CustomerAccountId> resolved = service.accountFor("  ALICE@example.com "); // case/space-insensitive
+		assertThat(resolved).isPresent().isEqualTo(store.findIdByEmail("alice@example.com"));
+		assertThat(service.accountFor("nobody@example.com")).isEmpty();
+	}
+
 	/** In-memory store mirroring the adapter's INSERT … ON CONFLICT DO NOTHING semantics. */
 	private static final class FakeStore implements CustomerAccountStore {
 		private final Map<String, CustomerAccountCredential> byEmail = new HashMap<>();
+		private final Map<String, Long> idByEmail = new HashMap<>();
 		private long nextId = 1;
 
 		@Override
@@ -56,12 +66,19 @@ class CustomerAccountServiceTest {
 		}
 
 		@Override
+		public Optional<CustomerAccountId> findIdByEmail(String normalizedEmail) {
+			return Optional.ofNullable(idByEmail.get(normalizedEmail)).map(CustomerAccountId::new);
+		}
+
+		@Override
 		public RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash) {
 			if (byEmail.containsKey(normalizedEmail)) {
 				return new RegistrationOutcome.AlreadyRegistered();
 			}
+			long id = nextId++;
 			byEmail.put(normalizedEmail, new CustomerAccountCredential(normalizedEmail, passwordHash));
-			return new RegistrationOutcome.Registered(new CustomerAccountId(nextId++));
+			idByEmail.put(normalizedEmail, id);
+			return new RegistrationOutcome.Registered(new CustomerAccountId(id));
 		}
 	}
 }

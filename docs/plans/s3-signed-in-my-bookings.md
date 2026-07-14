@@ -199,18 +199,20 @@ presentation and `/booking/:code` detail link; no new route (`/my-bookings` exis
 
 > Session-recovery anchor. Re-read before acting after any compaction. Update in the same commit window.
 
-**Stage pointer:** `plan` — plan doc authored, not yet approved/started.
+**Stage pointer:** `implement (phase 1)` — Phase 0 committed to the feature branch, scoped tests green.
 
-**Next action:** review plan with Ivo, then begin Phase 0 (V26 migration + booking write link) test-first.
+**Next action:** Phase 1 — `GET /api/me/bookings`: `Bookings.findByAccountId` + `MyBookings` service + `MyBookingsController` (session-principal-scoped, `CurrentCustomer.require`), `SecurityConfig` `/api/me/**` → `CUSTOMER`, and add `CurrentCustomer` to `WebSliceStubs` (R-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — DB + signed-in checkout link | | |
+| 0 — DB + signed-in checkout link | ✅ | `feat(customer): link signed-in checkout to CustomerAccountId (#114)` |
 | 1 — my-bookings query endpoint | | |
 | 2 — frontend union screen | | |
 | 3 — e2e (mocked) + a11y | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Phase 0 verification (scoped, local + Docker):** `JdbcBookingsAccountLinkIT` (AC-1 link, AC-2 guest-NULL) ✅ · structural net `ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests` ✅ (boundaries hold, no cycle) · guest-path regressions `BookingServiceIT`, `BookingControllerIT`, `RequestToBookFlowIT`, `ConcurrentReservationIT` (#2), `JdbcBookingsTransitionIT`, `CreateBookingServiceTest` ✅. CI owns the full suite.
 
 **Findings register**
 
@@ -315,6 +317,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-14 | Phase 0 (account-link write) | other booking-create paths that should stamp `account_id` | read `ReserveSetService` + `booking/adapter/in` controllers | `insertAwaitingPayment` **and** `insertPendingRequest` (both via `ReserveSetService`) | stamped **both** inserts — Instant + Request bookings via `POST /api/bookings` both carry the link; `BookingRequestController` is operator accept/decline (#98), not a creation path → no other site |
 
 ---
 
