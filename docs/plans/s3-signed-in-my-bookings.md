@@ -199,9 +199,11 @@ presentation and `/booking/:code` detail link; no new route (`/my-bookings` exis
 
 > Session-recovery anchor. Re-read before acting after any compaction. Update in the same commit window.
 
-**Stage pointer:** `PR → review gate` — all four phases committed to the feature branch, scoped tests green. Implementation complete; next SDLC stage is the PR + mandatory review gate + Sonar gate.
+**Stage pointer:** `review gate — fixes applied, re-verified` — PR #245 open; the workflow-backed high-effort review ran, findings resolved/deferred below. Next: confirm CI green + the Sonar gate on PR #245, then merge close-out.
 
-**Next action:** merge latest `origin/main` into the branch, push, open the PR into `main`; then run the review gate (`riviera-review-overlay` + `/code-review`) and the Sonar gate before merge close-out.
+**Next action:** wait for PR #245's CI + SonarCloud analysis; pull the Sonar new-issue + duplication list and clear it; then merge close-out (tick epic #108 S3, docs-freshness, notify).
+
+**Review gate note (workflow-backed, high-effort, PR #245):** 5 verified findings (1 refuted). Riviera overlay walked clean (RV-BE-9 customer-side BOLA via `MyBookingsIT`; RV-BE-11 ownership matches plan §4a; RV-PROC-1 skills line covers the diff). Fixes re-entered at Implement (frontend + backend skills already loaded), re-verified: `MyBookingsIT` + structural net green; frontend 685 Vitest + lint; `my-bookings.e2e.ts` 3/3. F3+F4 deferred → #246.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -220,11 +222,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Phase 3 verification (mocked Playwright, a11y config):** `my-bookings.e2e.ts` — new signed-in **union + dedupe** end-to-end (ACCT_CODE booked-while-signed-in appears once across account list + device store; DEVICE_CODE device-only appears too) with axe clean (AC-6) + the two existing guest tests still green (booking→list→cancel reflect, empty state — AC-7 no regression). 3/3 pass.
 
-**Findings register**
+**Findings register** — review gate (workflow-backed, high-effort) on PR #245.
 
-| # | Source (review / sonar / CI) | Finding | Status |
+| # | Source | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F1 | review (correctness) | account-fetch error silently hid account bookings (incl. on 401) | **fixed** — device renders first + Retry surfaced, no silent hide |
+| F2 | review (correctness) | `loading` stuck on a hung `/api/me/bookings`; device rows never shown | **fixed** — device-local renders immediately; account merges async |
+| F5 | review (cleanup) | dead silent-drop branch (FK `ON DELETE RESTRICT` makes it impossible) | **fixed** — fail-loud on the impossible, no silent drop |
+| F3 | review (cleanup) | N+1 `setBookingInfo` per booking | **deferred → #246** (needs batch venue-api) |
+| F4 | review (cleanup) | non-chronological merge order | **deferred → #246** (needs async-aware sort) |
 
 ---
 

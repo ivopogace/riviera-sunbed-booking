@@ -115,7 +115,7 @@ function isNotFound(error: unknown): boolean {
             </span>
           </div>
         </div>
-      } @else if (rows().length === 0) {
+      } @else if (rows().length === 0 && !accountError()) {
         <section class="empty-card" appCardGlass aria-labelledby="mb-empty-title" data-testid="my-bookings-empty">
           <h2 id="mb-empty-title">No booking yet</h2>
           <p class="empty-lead">
@@ -124,6 +124,16 @@ function isNotFound(error: unknown): boolean {
           <a routerLink="/" class="btn-cta" data-testid="browse-beaches">Browse beaches</a>
         </section>
       } @else {
+        @if (accountError()) {
+          <section class="empty-card" appCardGlass role="status" data-testid="account-error">
+            <p class="empty-lead">
+              We couldn’t load your account bookings just now — any made on other devices may be missing.
+            </p>
+            <button type="button" class="btn-cta" (click)="retryAccount()" data-testid="account-retry">
+              Retry
+            </button>
+          </section>
+        }
         <ul class="rows" role="list">
           @for (row of rows(); track row.code) {
             <li>
@@ -197,6 +207,11 @@ export class MyBookings {
    * set). Gates the empty card so a signed-in account fetch in flight never flashes "No booking yet".
    */
   protected readonly loading = signal(true);
+  /**
+   * The account list (signed-in) failed to load — surface a Retry rather than silently hiding the
+   * account bookings behind the device-local ones (review F1).
+   */
+  protected readonly accountError = signal(false);
 
   constructor() {
     // Kick the load once the session restore has settled — signed-in vs guest is only known then.
@@ -215,14 +230,16 @@ export class MyBookings {
 
   private loadAll(): void {
     const codes = this.store.codes();
+    // Device-local rows render IMMEDIATELY in both modes, so a slow or failed account fetch never
+    // blocks them (review F2 — pre-S3 the device bookings always showed at once). Signed in, the
+    // account list then merges IN the bookings this device doesn't already list.
+    this.loadDeviceLocal(codes);
     if (this.auth.signedIn()) {
-      this.loadSignedIn(codes);
-    } else {
-      this.loadDeviceLocal(codes);
+      this.loadAccount(codes);
     }
   }
 
-  /** Guest / signed-out: the device-local codes only (issue #139), each fetched live by code. */
+  /** Render this device's remembered codes (issue #139), each fetched live by code. */
   private loadDeviceLocal(codes: readonly string[]): void {
     this.rows.set(codes.map((code) => ({ code, state: 'loading' as const })));
     this.loading.set(false);
@@ -230,24 +247,31 @@ export class MyBookings {
   }
 
   /**
-   * Signed in (S3 #114): MERGE the account's server list with this device's remembered codes, deduped
-   * by code. Account rows arrive fully loaded from the one list call; device-local codes the account
-   * list doesn't cover (e.g. a guest booking made here before signing in) are still shown, fetched
-   * per-code as in guest mode — nothing the user could already see disappears. A failed list call
-   * falls back to the device-local view, so a signed-in user keeps at least this device's bookings.
+   * Signed in (S3 #114): merge the account's server list ON TOP of the already-rendered device rows,
+   * adding only the bookings this device does NOT already list (deduped by code — a booking made on
+   * another device). A failed or slow list call leaves the device rows intact and surfaces a Retry
+   * (review F1) rather than silently hiding the account bookings; a 401 (expired session) surfaces the
+   * same way, not as a false "these are all your bookings."
    */
-  private loadSignedIn(deviceCodes: readonly string[]): void {
+  private loadAccount(deviceCodes: readonly string[]): void {
+    this.accountError.set(false);
+    const onDevice = new Set(deviceCodes);
     this.bookings.myBookings().subscribe({
       next: (account) => {
-        const accountCodes = new Set(account.map((b) => b.code));
-        const accountRows: Row[] = account.map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
-        const extra = deviceCodes.filter((code) => !accountCodes.has(code));
-        this.rows.set([...accountRows, ...extra.map((code) => ({ code, state: 'loading' as const }))]);
-        this.loading.set(false);
-        extra.forEach((code) => this.load(code));
+        const additions: Row[] = account
+          .filter((b) => !onDevice.has(b.code))
+          .map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
+        if (additions.length > 0) {
+          this.rows.update((rows) => [...rows, ...additions]);
+        }
       },
-      error: () => this.loadDeviceLocal(deviceCodes),
+      error: () => this.accountError.set(true),
     });
+  }
+
+  /** Re-attempt the account list after a failure (review F1); the device rows stay untouched. */
+  protected retryAccount(): void {
+    this.loadAccount(this.store.codes());
   }
 
   protected retry(code: string): void {
