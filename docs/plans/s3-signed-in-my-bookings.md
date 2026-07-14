@@ -231,6 +231,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F5 | review (cleanup) | dead silent-drop branch (FK `ON DELETE RESTRICT` makes it impossible) | **fixed** — fail-loud on the impossible, no silent drop |
 | F3 | review (cleanup) | N+1 `setBookingInfo` per booking | **deferred → #246** (needs batch venue-api) |
 | F4 | review (cleanup) | non-chronological merge order | **deferred → #246** (needs async-aware sort) |
+| F6 | CI (full backend suite) | `PayoutModuleTest` `NoSuchBeanDefinition` — the root-edge `CurrentCustomer` needs `CustomerAccountDirectory`, absent in payout's module isolation | **fixed** — `@MockitoBean CustomerAccountDirectory` (4ecbc51). Scoped runs missed the only `@ApplicationModuleTest` (the full-suite-only class) |
+| S1 | sonar (`java:S1192`, CRITICAL smell) | literal `"account"` ×3 in `JdbcBookings` (the SQL param key) | **fixed** — extracted `PARAM_ACCOUNT` constant (§6a). Sonar gate: 0 bugs/vulns, 0 dup blocks, new-code coverage **90.9%** (≥80%); this was the only reported new issue |
 
 ---
 

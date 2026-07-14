@@ -39,6 +39,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_PENDING = "pending";
 	private static final String PARAM_CONFIRMED = "confirmed";
 	private static final String PARAM_VENUE = "venue";
+	private static final String PARAM_ACCOUNT = "account";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -80,7 +81,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
-				.param("account", accountParam(b))
+				.param(PARAM_ACCOUNT, accountParam(b))
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
@@ -107,7 +108,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
-				.param("account", accountParam(b))
+				.param(PARAM_ACCOUNT, accountParam(b))
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
@@ -249,7 +250,7 @@ class JdbcBookings implements Bookings {
 				WHERE account_id = :account
 				ORDER BY booking_date DESC, id DESC
 				""")
-				.param("account", accountId.value())
+				.param(PARAM_ACCOUNT, accountId.value())
 				.query(JdbcBookings::mapBookingRecord)
 				.list();
 	}
