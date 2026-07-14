@@ -5,6 +5,7 @@ import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,11 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.ApiProblem;
+import ai.riviera.platform.CurrentCustomer;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ViewBooking;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
  * Public tourist booking endpoint (U3, issue #6). Driving adapter — depends only on the
@@ -34,11 +37,14 @@ class BookingController {
 	private final CreateBooking createBooking;
 	private final ViewBooking viewBooking;
 	private final CancelBooking cancelBooking;
+	private final CurrentCustomer currentCustomer;
 
-	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking) {
+	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking,
+			CurrentCustomer currentCustomer) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
 		this.cancelBooking = cancelBooking;
+		this.currentCustomer = currentCustomer;
 	}
 
 	/**
@@ -72,8 +78,12 @@ class BookingController {
 	}
 
 	@PostMapping
-	ResponseEntity<?> create(@RequestBody CreateBookingRequest request) {
-		BookingOutcome outcome = createBooking.create(request.toCommand());
+	ResponseEntity<?> create(@RequestBody CreateBookingRequest request, Authentication authentication) {
+		// Signed-in checkout links the booking to the customer's account (S3, #114); a guest / anonymous
+		// principal resolves to null → an unchanged guest booking (invariant #2/#4 flows untouched). The
+		// account id comes from the SESSION principal only, never the request body (BOLA-safe).
+		CustomerAccountId accountId = currentCustomer.optional(authentication).orElse(null);
+		BookingOutcome outcome = createBooking.create(request.toCommand(accountId));
 		return switch (outcome) {
 			case BookingOutcome.Confirmed confirmed -> ResponseEntity.status(HttpStatus.CREATED)
 					.body(BookingConfirmationView.of(confirmed.confirmation()));

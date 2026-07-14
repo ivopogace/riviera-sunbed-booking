@@ -6,9 +6,11 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 
 /**
@@ -26,7 +28,7 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
  * is a pure query.
  */
 @Service
-class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisioning {
+class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisioning, CustomerAccountDirectory {
 
 	private final CustomerAccountStore store;
 
@@ -37,6 +39,11 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	public Optional<CustomerAccountCredential> findByEmail(String email) {
 		return store.findByEmail(normalize(email));
+	}
+
+	@Override
+	public Optional<CustomerAccountId> accountFor(String email) {
+		return store.findIdByEmail(normalize(email));
 	}
 
 	@Override

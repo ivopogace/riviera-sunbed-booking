@@ -42,6 +42,15 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	}
 
 	@Override
+	public Optional<CustomerAccountId> findIdByEmail(String normalizedEmail) {
+		return jdbc.sql("SELECT id FROM customer_account WHERE email = :email")
+				.param(EMAIL, normalizedEmail)
+				.query(Long.class)
+				.optional()
+				.map(CustomerAccountId::new);
+	}
+
+	@Override
 	public RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash) {
 		return jdbc.sql("""
 				INSERT INTO customer_account (email, password_hash)

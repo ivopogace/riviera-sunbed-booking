@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -19,7 +20,7 @@ record CreateBookingRequest(Long setId, String bookingDate, Contact contact) {
 	record Contact(String email, String fullName, String phone) {
 	}
 
-	CreateBookingCommand toCommand() {
+	CreateBookingCommand toCommand(CustomerAccountId accountId) {
 		if (setId == null) {
 			throw new IllegalArgumentException("setId is required");
 		}
@@ -38,6 +39,7 @@ record CreateBookingRequest(Long setId, String bookingDate, Contact contact) {
 		}
 		// GuestContact's canonical constructor validates email/name/phone are present.
 		GuestContact guest = new GuestContact(contact.email(), contact.fullName(), contact.phone());
-		return new CreateBookingCommand(new SetId(setId), date, guest);
+		// accountId is the signed-in tourist's account link (S3, #114) — null for a guest.
+		return new CreateBookingCommand(new SetId(setId), date, guest, accountId);
 	}
 }

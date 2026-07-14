@@ -15,6 +15,7 @@ import java.util.OptionalLong;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.view.DailyBooking;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -95,6 +96,15 @@ public interface Bookings {
 	 * aggregate.
 	 */
 	Optional<BookingRecord> findByCode(String code);
+
+	/**
+	 * The bookings linked to a customer ACCOUNT (S3, #114), newest first — the signed-in "my bookings"
+	 * list. Account-scoped by {@code account_id} (the session principal's id, never a request param —
+	 * BOLA-safe, invariant #13 posture); a guest booking (NULL {@code account_id}) is never returned.
+	 * Carries the raw rows (same shape as {@link #findByCode}) the caller enriches with venue/set
+	 * display via the {@code venue} api. Empty when the account has none.
+	 */
+	List<BookingRecord> findByAccountId(CustomerAccountId accountId);
 
 	/**
 	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}, and return the

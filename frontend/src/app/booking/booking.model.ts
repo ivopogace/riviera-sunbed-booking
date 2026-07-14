@@ -127,6 +127,25 @@ export interface BookingPayment {
   readonly paymentIntentId: string;
 }
 
+/**
+ * Typed view of one row from `GET /api/me/bookings` (S3, #114) — the signed-in "my bookings" list.
+ * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund terms +
+ * payment credentials are loaded only on the code-gated detail view, not the list). Money as integer
+ * minor units (invariant #5); date as ISO `LocalDate`; `requestExpiresAt` null for instant bookings.
+ * `BookingDetail` is structurally a superset, so both feed the shared list-row builder.
+ */
+export interface MyBookingSummary {
+  readonly code: string;
+  readonly status: BookingStatus;
+  readonly venueId: number;
+  readonly venueName: string;
+  readonly rowLabel: string;
+  readonly positionNo: number;
+  readonly bookingDate: string;
+  readonly amount: MoneyView;
+  readonly requestExpiresAt: string | null;
+}
+
 /** The refund tier returned with a cancellation (mirrors the backend `CancelOutcome.Tier`). */
 export type RefundTier = 'FULL' | 'PARTIAL' | 'NONE';
 

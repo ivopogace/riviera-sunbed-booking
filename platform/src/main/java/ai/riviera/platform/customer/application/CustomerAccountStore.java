@@ -3,6 +3,7 @@ package ai.riviera.platform.customer.application;
 import java.util.Optional;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 
 /**
@@ -21,6 +22,9 @@ public interface CustomerAccountStore {
 
 	/** The stored credential for this normalized email, or empty if no account exists. */
 	Optional<CustomerAccountCredential> findByEmail(String normalizedEmail);
+
+	/** The account id for this normalized email, or empty if no account exists (S3 identity resolution). */
+	Optional<CustomerAccountId> findIdByEmail(String normalizedEmail);
 
 	/**
 	 * Claim the email for a new account if it is free — an atomic {@code INSERT … ON CONFLICT DO
