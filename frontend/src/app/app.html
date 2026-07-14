@@ -30,6 +30,25 @@
           Find a booking
         </button>
 
+        <!-- Customer auth (S2 #111): sign-in/register links ↔ signed-in + sign-out. Held until the
+             startup /me restore settles so the signed-in state doesn't flash "Sign in" first. -->
+        @if (!customerAuth.restoring()) {
+          @if (customerAuth.signedIn()) {
+            <span class="riv-nav-user" data-testid="nav-user">Signed in as {{ customerAuth.email() }}</span>
+            <button
+              type="button"
+              class="riv-nav-link riv-nav-btn"
+              data-testid="nav-signout"
+              (click)="signOut()"
+            >
+              Sign out
+            </button>
+          } @else {
+            <a routerLink="/account/sign-in" class="riv-nav-link" data-testid="nav-signin">Sign in</a>
+            <a routerLink="/account/register" class="riv-nav-link" data-testid="nav-register">Register</a>
+          }
+        }
+
         <div class="riv-theme-picker">
           <button
             #themeButton
@@ -97,6 +116,38 @@
           >
             Find a booking
           </button>
+
+          <!-- Customer auth (S2 #111), mobile menu twin of the desktop controls. -->
+          @if (!customerAuth.restoring()) {
+            @if (customerAuth.signedIn()) {
+              <span class="riv-mobile-user" data-testid="nav-user-mobile"
+                >Signed in as {{ customerAuth.email() }}</span
+              >
+              <button
+                type="button"
+                class="riv-mobile-link riv-mobile-btn"
+                data-testid="nav-signout-mobile"
+                (click)="signOut()"
+              >
+                Sign out
+              </button>
+            } @else {
+              <a
+                routerLink="/account/sign-in"
+                class="riv-mobile-link"
+                data-testid="nav-signin-mobile"
+                (click)="closeMenus()"
+                >Sign in</a
+              >
+              <a
+                routerLink="/account/register"
+                class="riv-mobile-link"
+                data-testid="nav-register-mobile"
+                (click)="closeMenus()"
+                >Register</a
+              >
+            }
+          }
           <div class="riv-mobile-theme">
             <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
             <div class="riv-mobile-swatches">

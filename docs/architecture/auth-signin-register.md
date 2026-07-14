@@ -71,6 +71,13 @@ login/register endpoints, sharing the platform-edge machinery. Module ownership
 - `customer` module: customer **account identity** + opaque credential hash +
   SSO subject linkage. (This supersedes the "tourist accounts out of scope in v1"
   line — update `RESPONSIBILITIES.md`/`CONTEXT.md` when the first slice ships.)
+  - **S2 realized (#111):** the account is a **separate identity** — its own
+    `customer_account` table (own PK, **no FK** to the guest `customer` row) — so
+    registration never auto-claims a guest email's past bookings; D-6's verified-email
+    linking (S3/S8) stays a deliberate step by construction. This refines D-6 and is a
+    recorded drift from #111's literal "keyed by CustomerId" wording (maintainer-approved
+    2026-07-13). The module graduated thin → full; login machinery stays at the edge
+    (RV-BE-11, `CustomerAuthPlacementTests`).
 - `operator` module: unchanged ownership (account identity + operator↔venue
   mapping), gains registration/approval state.
 - Platform edge (`ai.riviera.platform`): all login machinery — filter chain,

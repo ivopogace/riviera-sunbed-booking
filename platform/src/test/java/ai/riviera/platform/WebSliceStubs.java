@@ -33,6 +33,9 @@ import ai.riviera.platform.booking.application.request.PendingRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
+import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -161,6 +164,22 @@ class WebSliceStubs {
 	@Bean
 	OperatorAccounts operatorAccounts() {
 		return _ -> Optional.empty();
+	}
+
+	/**
+	 * Customer account ports (S2 #111) that {@code SecurityConfig}'s {@code customerAuthenticationManager}
+	 * and {@code AuthController} require. Empty/inert like the operator store: the web slices never
+	 * authenticate or actually create a customer, so an empty credential store + an always-already-taken
+	 * registration are enough for the context to load and for a rate-limit attempt to reach the limiter.
+	 */
+	@Bean
+	CustomerAccounts customerAccounts() {
+		return _ -> Optional.empty();
+	}
+
+	@Bean
+	CustomerAccountProvisioning customerAccountProvisioning() {
+		return (_, _) -> new RegistrationOutcome.AlreadyRegistered();
 	}
 
 	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */

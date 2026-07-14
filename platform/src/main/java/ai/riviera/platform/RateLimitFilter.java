@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -66,10 +67,13 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String CODE_VAR = "code";
-	// The session login (issue #109, D-8): per-IP throttled on its OWN, stricter budget — a
+	// The session logins (issue #109, D-8): per-IP throttled on their OWN, stricter budget — a
 	// credential-guessing oracle, like the booking-code endpoints, but a separate dimension so
-	// tightening one never starves the other. Mirrors SecurityConfig's LOGIN_PATH.
+	// tightening one never starves the other. Mirrors SecurityConfig's login/register paths. Customer
+	// register (S2 #111) shares the login budget: it is as abusable (spam / enumeration) as a login.
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
+	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 
 	private final RateLimitProperties props;
 	private final Clock clock;
@@ -77,6 +81,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final Map<String, TokenBucket> ipBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> codeBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> loginBuckets = new ConcurrentHashMap<>();
+	// Customer login + register draw on their OWN per-IP budget, separate from operator login
+	// (S2 #111): a burst of unauthenticated customer registrations from a shared IP (venue WiFi /
+	// CGNAT) must never exhaust the operator-login budget and lock operators out.
+	private final Map<String, TokenBucket> customerAuthBuckets = new ConcurrentHashMap<>();
 
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
@@ -86,18 +94,23 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-		// The session login rides its own per-IP budget (issue #109, D-8) — checked first because
-		// it is not one of the booking Targets below.
-		if (props.enabled() && isLoginAttempt(request)) {
-			Instant now = clock.instant();
-			String ip = ClientIpResolver.resolve(request);
-			TokenBucket loginBucket = bucketFor(loginBuckets, ip, props.login(), now);
-			if (!loginBucket.tryAcquire(now)) {
-				reject(response, loginBucket.retryAfterSeconds(now), ip, "login");
+		// The auth endpoints ride their own per-IP budgets (issue #109 / S2 #111, D-8) — checked first
+		// because they are not one of the booking Targets below. Operator login and the customer auth
+		// endpoints use SEPARATE bucket maps under the same limit, so customer traffic can't starve
+		// operator login from a shared IP.
+		if (props.enabled()) {
+			Optional<Map<String, TokenBucket>> authBuckets = authBucketsFor(request);
+			if (authBuckets.isPresent()) {
+				Instant now = clock.instant();
+				String ip = ClientIpResolver.resolve(request);
+				TokenBucket bucket = bucketFor(authBuckets.get(), ip, props.login(), now);
+				if (!bucket.tryAcquire(now)) {
+					reject(response, bucket.retryAfterSeconds(now), ip, "login");
+					return;
+				}
+				chain.doFilter(request, response);
 				return;
 			}
-			chain.doFilter(request, response);
-			return;
 		}
 
 		// Classify the request once: skip non-booking endpoints, preflights, and (when disabled) all.
@@ -133,10 +146,25 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private record Target(String code) {
 	}
 
-	/** The session login POST (never an OPTIONS preflight — the method check excludes it). */
-	private boolean isLoginAttempt(HttpServletRequest request) {
-		return HttpMethod.POST.matches(request.getMethod())
-				&& LOGIN_PATH.equals(pathWithinApplication(request));
+	/**
+	 * The per-IP auth budget a request draws on, or {@code null} if it is not an auth POST. Operator
+	 * login draws on {@code loginBuckets}; the customer auth endpoints (login + register) draw on the
+	 * SEPARATE {@code customerAuthBuckets} under the same {@code login} limit, so tourist-side traffic
+	 * can never exhaust operator login (a shared IP on venue WiFi / CGNAT). Never an OPTIONS preflight —
+	 * the method check excludes it.
+	 */
+	private Optional<Map<String, TokenBucket>> authBucketsFor(HttpServletRequest request) {
+		if (!HttpMethod.POST.matches(request.getMethod())) {
+			return Optional.empty();
+		}
+		String path = pathWithinApplication(request);
+		if (LOGIN_PATH.equals(path)) {
+			return Optional.of(loginBuckets);
+		}
+		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
+			return Optional.of(customerAuthBuckets);
+		}
+		return Optional.empty();
 	}
 
 	/**

@@ -171,6 +171,14 @@
   font-size: inherit;
 }
 
+// The "Signed in as …" label in the desktop nav (S2 #111): inline, non-interactive; full contrast
+// (no opacity) so it stays AA next to the interactive links.
+.riv-nav-user {
+  color: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
 .riv-chip-btn {
   display: inline-flex;
   align-items: center;
@@ -350,6 +358,16 @@
   border: 0;
   cursor: pointer;
   font-family: inherit;
+}
+
+// The "Signed in as …" label in the mobile menu (S2 #111): non-interactive, sharing the mobile-link
+// ink for AA on the popover.
+.riv-mobile-user {
+  display: block;
+  padding: 13px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a2a33;
 }
 
 .riv-mobile-theme {

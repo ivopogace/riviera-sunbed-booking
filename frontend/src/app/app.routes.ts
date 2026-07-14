@@ -68,6 +68,19 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
+    // Customer sign-in (S2 #111, epic #108) — glass from the start. `account/*` literal segments,
+    // no param collision. Guest checkout is unaffected; an account is optional.
+    path: 'account/sign-in',
+    loadComponent: () => import('./auth/sign-in').then((m) => m.SignIn),
+    title: 'Sign in — Riviera',
+  },
+  {
+    // Customer registration (S2 #111, epic #108).
+    path: 'account/register',
+    loadComponent: () => import('./auth/register').then((m) => m.Register),
+    title: 'Create an account — Riviera',
+  },
+  {
     // Venue onboarding (create a venue), reached from the console header. O8 (#177) retired this
     // page's in-page editing — layout/pricing/details/commodities are console tabs now — so it is no
     // longer a legacy compat surface: the `legacySurface` flag is dropped (its self-styled form

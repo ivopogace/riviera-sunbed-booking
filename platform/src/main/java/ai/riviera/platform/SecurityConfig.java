@@ -9,6 +9,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,6 +27,7 @@ import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
+import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 
 /**
@@ -88,6 +91,9 @@ class SecurityConfig {
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
+	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
+	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
@@ -134,6 +140,10 @@ class SecurityConfig {
 						// INSIDE the endpoint (AuthController → AuthenticationManager). /api/auth/me
 						// stays behind anyRequest().authenticated(); logout is the LogoutFilter below.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
+						// Customer session login + registration (S2 #111): anonymous like the operator
+						// login — the endpoints authenticate/create internally. Register auto-signs-in on
+						// success. Both ride the login rate-limit budget (D-8, RateLimitFilter).
+						.requestMatchers(HttpMethod.POST, CUSTOMER_LOGIN_PATH, CUSTOMER_REGISTER_PATH).permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).
@@ -240,6 +250,25 @@ class SecurityConfig {
 	@Bean
 	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) {
 		return configuration.getAuthenticationManager();
+	}
+
+	/**
+	 * The CUSTOMER authentication manager (S2 #111, design D-2): an explicit {@link ProviderManager}
+	 * over a {@link DaoAuthenticationProvider} whose {@link CustomerUserDetailsService} is built INLINE.
+	 * Kept separate from the operator {@link #authenticationManager} so a customer credential can never
+	 * authenticate as an operator (AC-5) — {@code AuthController} selects the manager per principal-typed
+	 * endpoint. Deliberately NOT wired as a second {@code UserDetailsService} bean: that would make
+	 * {@link AuthenticationConfiguration} ambiguous and break the operator manager's auto-wiring, so S1's
+	 * operator path stays untouched. The stored hash is verified against the same delegating
+	 * {@link #passwordEncoder()}.
+	 */
+	@Bean
+	AuthenticationManager customerAuthenticationManager(CustomerAccounts customerAccounts,
+			PasswordEncoder passwordEncoder) {
+		DaoAuthenticationProvider provider =
+				new DaoAuthenticationProvider(new CustomerUserDetailsService(customerAccounts));
+		provider.setPasswordEncoder(passwordEncoder);
+		return new ProviderManager(provider);
 	}
 
 	/**

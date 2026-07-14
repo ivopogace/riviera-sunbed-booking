@@ -56,6 +56,16 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     expect(auth.restoring()).toBe(false);
   });
 
+  it('does NOT adopt a CUSTOMER /me principal — a customer session never signs an operator in (F2)', async () => {
+    // /me is polymorphic (S2 #111); OperatorAuth must filter to its own principal type.
+    const auth = TestBed.inject(OperatorAuth);
+    httpMock.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
+    await Promise.resolve();
+
+    expect(auth.signedIn()).toBe(false);
+    expect(auth.username()).toBeUndefined();
+  });
+
   it('signIn posts the credential once and holds only the principal — never the password', async () => {
     const auth = serviceWithRestore('signed-out');
 

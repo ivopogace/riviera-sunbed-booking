@@ -1,13 +1,27 @@
 import { provideHttpClient } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { CustomerAuth } from './core/customer-auth';
 
 @Component({ template: '' })
 class BlankPage {}
+
+/**
+ * A CustomerAuth fake (S2 #111): the shell injects CustomerAuth, which would otherwise fire a real
+ * `GET /api/auth/me` on construction. Signal-backed so a test can flip the signed-in state before
+ * rendering; reset to signed-out in each `beforeEach`.
+ */
+const customerAuth = {
+  restoring: signal(false),
+  signedIn: signal(false),
+  email: signal<string | undefined>(undefined),
+  signOut: vi.fn(() => Promise.resolve()),
+};
 
 /** Test routes exercising the compat-surface + chromeless mechanisms without loading real
  *  (HTTP-bound) pages. */
@@ -20,11 +34,20 @@ const surfaceRoutes = [
 describe('App (Liquid Glass shell, issue #134)', () => {
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
+    customerAuth.restoring.set(false);
+    customerAuth.signedIn.set(false);
+    customerAuth.email.set(undefined);
+    customerAuth.signOut.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       // provideHttpClient: the shell renders the find-a-booking modal (#148), whose BookingService
-      // injects HttpClient — no request is made in these tests.
-      providers: [provideRouter(surfaceRoutes), provideHttpClient()],
+      // injects HttpClient — no request is made in these tests. The CustomerAuth fake replaces the
+      // real one so no startup /me call fires (S2 #111).
+      providers: [
+        provideRouter(surfaceRoutes),
+        provideHttpClient(),
+        { provide: CustomerAuth, useValue: customerAuth },
+      ],
     }).compileComponents();
   });
 
@@ -77,6 +100,36 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       .querySelector('[data-testid="mobile-menu"]')
       ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
     expect(mobileLink?.textContent).toContain('My bookings');
+  });
+
+  it('shows Sign in and Register links in the header when signed out (S2 #111)', () => {
+    const { el } = shell();
+    const nav = el.querySelector('.riv-nav-desktop');
+    expect(
+      nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-signin"]')?.getAttribute('href'),
+    ).toBe('/account/sign-in');
+    expect(
+      nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-register"]')?.getAttribute('href'),
+    ).toBe('/account/register');
+    // No signed-in affordances when signed out.
+    expect(nav?.querySelector('[data-testid="nav-user"]')).toBeNull();
+    expect(nav?.querySelector('[data-testid="nav-signout"]')).toBeNull();
+  });
+
+  it('shows the signed-in email + Sign out when signed in, and signs out on click (S2 #111)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    expect(el.querySelector('[data-testid="nav-user"]')?.textContent).toContain(
+      'Signed in as ana@example.com',
+    );
+    // The signed-out links are gone.
+    expect(el.querySelector('[data-testid="nav-signin"]')).toBeNull();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!.click();
+    fixture.detectChanges();
+    expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
   });
 
   it('exposes a Find a booking trigger on desktop that opens the modal and restores focus on dismiss (#148)', () => {
@@ -199,6 +252,9 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   const RESTYLED_PATHS = [
     '',
     'my-bookings',
+    // S2 (#111): the customer auth pages are new glass routes, born un-legacied (like my-bookings).
+    'account/sign-in',
+    'account/register',
     'venues/:id',
     'booking/confirmation',
     'booking/pay',

@@ -1,0 +1,133 @@
+// Customer auth pages (sign-in + register, epic #108 / S2 #111) — shared styles. A single centered
+// Liquid Glass card on the tourist themed background, reusing the design tokens the tourist surfaces
+// share (--riv-card-*, --riv-field-*, --riv-cta-grad) so it sits coherently in the app shell. The
+// glass surface (bg / border / ink) comes from `appCardGlass`; this adds the card geometry + the
+// field/button styling cloned from the AA-proven find-booking values.
+
+.auth-wrap {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 26px;
+  padding: 30px 26px 24px;
+  box-shadow: 0 30px 70px rgba(6, 30, 40, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.auth-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--riv-card-ink);
+}
+
+.auth-intro {
+  margin: 0 0 20px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riv-card-ink-soft);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.auth-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riv-card-ink-soft);
+}
+
+.auth-field input {
+  font: inherit;
+  font-size: 16px;
+  color: var(--riv-card-ink);
+  background: var(--riv-field-fill);
+  border: 1px solid var(--riv-field-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.auth-field input::placeholder {
+  color: var(--riv-card-ink-soft);
+}
+
+.auth-field input:focus-visible {
+  outline: 3px solid var(--riv-accent-ink);
+  outline-offset: 1px;
+}
+
+.auth-hint {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--riv-card-ink-soft);
+}
+
+.auth-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a3160e; // dark brick red — AA on the light glass card (the find-booking value)
+}
+
+.auth-submit {
+  margin-top: 18px;
+  width: 100%;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--riv-cta-grad);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: filter 0.15s ease;
+}
+
+.auth-submit:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .auth-submit:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+
+.auth-submit:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.auth-alt {
+  margin: 18px 0 0;
+  font-size: 13.5px;
+  text-align: center;
+  color: var(--riv-card-ink-soft);
+}
+
+.auth-alt a {
+  color: var(--riv-accent-ink);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-submit {
+    transition: none;
+  }
+}
