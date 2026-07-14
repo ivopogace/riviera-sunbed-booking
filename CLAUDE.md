@@ -27,11 +27,17 @@ venue-editor page — now onboarding-only) all merged. Venue photos (#142) are r
 operator upload/replace/delete per slot in the O8 tab, tourists see the cover on the Discover
 card + beach-map banner (ADR-0008 `bytea`-behind-port storage, Flyway V24). Customer accounts
 (epic #108) are underway: S1 session foundation (#109) + S7 same-origin hosting (#110) + **S2
-register/sign-in (#111, Flyway V25)** have landed — tourists register + sign in via server-side
-sessions, with a **separate account identity** (own `customer_account` table, no FK to the guest
-row, so registration never auto-claims a guest email's bookings — D-6); login machinery stays at the
-platform edge (RV-BE-11). Remaining epic slices: S3 my-bookings (#114), S4 SSO (#112), S6 operator
-self-registration (#115), S8 email verification (#113).
+register/sign-in (#111, Flyway V25)** + **S3 signed-in checkout linking + my-bookings (#114, Flyway
+V26)** have landed — tourists register + sign in via server-side sessions, with a **separate account
+identity** (own `customer_account` table, no FK to the guest row, so registration never auto-claims a
+guest email's bookings — D-6); login machinery stays at the platform edge (RV-BE-11). Since S3, a
+booking made while signed in links to the customer's `CustomerAccountId` (nullable `booking.account_id`,
+no guest-row FK); `GET /api/me/bookings` lists the customer's own bookings (CUSTOMER-only,
+session-principal-scoped, BOLA-safe) via the new `customer::api` `CustomerAccountDirectory` id-resolver
+(resolved at the edge by `CurrentCustomer`, mirroring `CurrentOperator`); the My bookings screen merges
+the account list with this device's remembered codes, deduped. Guest checkout is byte-for-byte
+unchanged. Back-linking past guest bookings by email is deferred (S8/#113-gated; cleanups #246).
+Remaining epic slices: S4 SSO (#112), S6 operator self-registration (#115), S8 email verification (#113).
 
 ## Tech stack (locked)
 

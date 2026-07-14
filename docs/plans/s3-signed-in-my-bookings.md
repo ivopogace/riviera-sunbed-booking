@@ -199,9 +199,11 @@ presentation and `/booking/:code` detail link; no new route (`/my-bookings` exis
 
 > Session-recovery anchor. Re-read before acting after any compaction. Update in the same commit window.
 
-**Stage pointer:** `review gate — fixes applied, re-verified` — PR #245 open; the workflow-backed high-effort review ran, findings resolved/deferred below. Next: confirm CI green + the Sonar gate on PR #245, then merge close-out.
+**Stage pointer:** `MERGED — close-out` — PR #245 squash-merged to `main` as **9231d83**; #114 closed, epic #108 S3 ticked. All gates passed: CI green, review gate ran + findings resolved/deferred, Sonar green + issue list cleared (coverage 90.9%).
 
-**Next action:** wait for PR #245's CI + SonarCloud analysis; pull the Sonar new-issue + duplication list and clear it; then merge close-out (tick epic #108 S3, docs-freshness, notify).
+**Next action:** none — slice complete. Follow-ups: #246 (F3/F4 cleanups), #247 (unrelated prod CSRF bug filed during this slice). Close-out docs micro-PR carries the CLAUDE.md current-state patch + this final state.
+
+**Docs-freshness run (`995ddc6..9231d83`, merge close-out step 5):** 1 finding — `CLAUDE.md` current-state narrative listed S3 as a *remaining* slice → **patched** (S3 now in the landed list + the account-link/`/api/me/bookings`/merge behavior described; remaining = S4/S6/S8). `RESPONSIBILITIES.md` + `CONTEXT.md` customer/booking claims still accurate (S3 added capability, contradicted no stated fact) → no patch.
 
 **Review gate note (workflow-backed, high-effort, PR #245):** 5 verified findings (1 refuted). Riviera overlay walked clean (RV-BE-9 customer-side BOLA via `MyBookingsIT`; RV-BE-11 ownership matches plan §4a; RV-PROC-1 skills line covers the diff). Fixes re-entered at Implement (frontend + backend skills already loaded), re-verified: `MyBookingsIT` + structural net green; frontend 685 Vitest + lint; `my-bookings.e2e.ts` 3/3. F3+F4 deferred → #246.
 
