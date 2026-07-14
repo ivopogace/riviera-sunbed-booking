@@ -199,9 +199,12 @@ export class MyBookings {
   protected readonly loading = signal(true);
 
   constructor() {
-    // Load ONCE the session restore has settled — signed-in vs guest is only known then. untracked()
-    // so reading the auth/store signals inside the load never re-triggers this effect (restoring
-    // flips true→false exactly once, so the body runs a single time).
+    // Kick the load once the session restore has settled — signed-in vs guest is only known then.
+    // effect() is the appropriate tool per Angular's guidance: this SYNCS settled signal state to an
+    // IMPERATIVE, non-signal API — the RxJS orchestration below is a one-shot union of two async
+    // sources (the account list + per-code device fetches, each with its own retry/404 state), not a
+    // signal→signal derivation (which would be a computed/linkedSignal). untracked() keeps it one-shot:
+    // restoring() flips true→false exactly once, and the load's own signal reads never re-trigger this.
     effect(() => {
       if (this.auth.restoring()) {
         return;
