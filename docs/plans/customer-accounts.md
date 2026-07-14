@@ -260,16 +260,17 @@ untouched.)
 > **Session-recovery anchor.** Re-read this section (+ the current `riviera-sdlc` reference file) after
 > any compaction or in a fresh session before acting. Update in the same commit window as the change.
 
-**Stage pointer:** `review gate → re-entry` — PR **#243** open; review gate ran (high effort, 8 findings
-+ 2 CI failures), **all fixed and re-verified locally** (backend full suite green, frontend lint + 680
-unit + 47 e2e green). Re-pushing to re-trigger CI + Sonar; then the **Sonar gate** + a re-review of the
-fix diff, then merge.
+**Stage pointer:** ✅ **MERGED — slice complete.** PR **#243** squash-merged into `main` as **`7fe4a54`**
+(2026-07-14); #111 closed, epic **#108** S2 ticked, #111 annotated with the separate-identity drift.
 
-**Next action:** Push the review-fix commits; confirm the PR's CI goes green (esp. backend `PayoutModuleTest`
-+ frontend date-flake) and that Sonar now runs (it was `skipped` while CI was red). Then the **Sonar gate**
-(pull the new-issue + duplication list, not just the gate colour) and a focused re-walk of the overlay bank
-for the changed surface (RateLimitFilter, AuthController, the `SessionAuth` refactor). Merge-close-out-only
-doc actions still pending: `CLAUDE.md` "Current state" narrative, tick epic **#108** S2, annotate #111.
+**Gates (all passed):** CI green (backend + frontend + CodeQL) · high-effort review gate → 8 findings +
+2 CI failures + 2 Sonar issues, **all resolved through the loop** (see the Findings register) · Sonar
+quality gate green with **0 new issues** + **92.5%** new-code coverage + 0 duplicated blocks. Close-out
+done: substrate docs (phase 5, merged in the PR) + the `CLAUDE.md` "Current state" narrative + this
+final-state line (close-out micro-PR) + `graphify update`.
+
+**Next action:** none — done. Epic follow-ups (not this slice): S3 my-bookings (#114), S4 SSO (#112),
+S6 operator self-reg (#115), S8 email verify (#113).
 
 | Phase | Status | Commits |
 |-------|--------|---------|

@@ -25,7 +25,13 @@ O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view + 
 + O8 venue & commodities tab (details form + amenity chips; retired the legacy
 venue-editor page — now onboarding-only) all merged. Venue photos (#142) are real end-to-end:
 operator upload/replace/delete per slot in the O8 tab, tourists see the cover on the Discover
-card + beach-map banner (ADR-0008 `bytea`-behind-port storage, Flyway V24).
+card + beach-map banner (ADR-0008 `bytea`-behind-port storage, Flyway V24). Customer accounts
+(epic #108) are underway: S1 session foundation (#109) + S7 same-origin hosting (#110) + **S2
+register/sign-in (#111, Flyway V25)** have landed — tourists register + sign in via server-side
+sessions, with a **separate account identity** (own `customer_account` table, no FK to the guest
+row, so registration never auto-claims a guest email's bookings — D-6); login machinery stays at the
+platform edge (RV-BE-11). Remaining epic slices: S3 my-bookings (#114), S4 SSO (#112), S6 operator
+self-registration (#115), S8 email verification (#113).
 
 ## Tech stack (locked)
 
