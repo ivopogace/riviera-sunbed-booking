@@ -199,16 +199,16 @@ presentation and `/booking/:code` detail link; no new route (`/my-bookings` exis
 
 > Session-recovery anchor. Re-read before acting after any compaction. Update in the same commit window.
 
-**Stage pointer:** `implement (phase 3)` — Phases 0–2 committed to the feature branch, scoped tests green.
+**Stage pointer:** `PR → review gate` — all four phases committed to the feature branch, scoped tests green. Implementation complete; next SDLC stage is the PR + mandatory review gate + Sonar gate.
 
-**Next action:** Phase 3 — mocked Playwright e2e (`frontend/e2e/`): sign in, create a booking, open `/my-bookings`, assert the account+device union renders; axe pass after animations settle.
+**Next action:** merge latest `origin/main` into the branch, push, open the PR into `main`; then run the review gate (`riviera-review-overlay` + `/code-review`) and the Sonar gate before merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — DB + signed-in checkout link | ✅ | `feat(customer): link signed-in checkout to CustomerAccountId (#114)` |
 | 1 — my-bookings query endpoint | ✅ | `feat(booking): GET /api/me/bookings for the signed-in customer (#114)` |
 | 2 — frontend union screen | ✅ | `feat(booking): signed-in My bookings merges device + account (#114)` |
-| 3 — e2e (mocked) + a11y | | |
+| 3 — e2e (mocked) + a11y | ✅ | `test(booking): e2e signed-in checkout + my-bookings (#114)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -216,7 +216,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Phase 1 verification (scoped, local + Docker):** `MyBookingsIT` — AC-3 (cross-customer denial: A sees CODE_A, never CODE_B) + AC-4 (anonymous→401, operator→403, customer→200) ✅ · structural net ✅ (new port/controller/service, no boundary leak) · R-4 web-slice load: `WebCorsConfigTest`, `RateLimitFilterTest`, `SpaShellTest` ✅ (`CurrentCustomer`/`MyBookings` stubs added) · `findByCode` mapper-refactor regression `BookingViewIT` ✅. CI owns the full suite.
 
-**Phase 2 verification (frontend):** full Vitest suite **683 tests / 89 files pass** — incl. new `my-bookings.spec.ts` signed-in cases (AC-6 union deduped by code, account-fetch fallback to device-local, account-only) + all existing guest cases unchanged (AC-7) · `ng lint` clean. Behavior-parity ledger honored — every guest behavior preserved (additive merge). Playwright e2e (AC-6 end-to-end) is Phase 3.
+**Phase 2 verification (frontend):** full Vitest suite **683 tests / 89 files pass** — incl. new `my-bookings.spec.ts` signed-in cases (AC-6 union deduped by code, account-fetch fallback to device-local, account-only) + all existing guest cases unchanged (AC-7) · `ng lint` clean. Behavior-parity ledger honored — every guest behavior preserved (additive merge).
+
+**Phase 3 verification (mocked Playwright, a11y config):** `my-bookings.e2e.ts` — new signed-in **union + dedupe** end-to-end (ACCT_CODE booked-while-signed-in appears once across account list + device store; DEVICE_CODE device-only appears too) with axe clean (AC-6) + the two existing guest tests still green (booking→list→cancel reflect, empty state — AC-7 no regression). 3/3 pass.
 
 **Findings register**
 

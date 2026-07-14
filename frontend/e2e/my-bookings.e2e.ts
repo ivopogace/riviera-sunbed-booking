@@ -125,3 +125,71 @@ test('the empty My bookings state is accessible (no bookings on this device)', a
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings empty state');
 });
+
+// S3 (#114): signed-in union + dedupe. DEVICE_CODE is a guest booking made only on this device;
+// ACCT_CODE is booked while signed in, so it is BOTH device-local AND in the account list — it must
+// appear exactly once (deduped by code). Only DEVICE_CODE is fetched per-code; the account list
+// serves ACCT_CODE fully.
+const DEVICE_CODE = 'DEVICE99999';
+const ACCT_CODE = 'ACCT1111111';
+
+const ACCOUNT_ROW = {
+  code: ACCT_CODE,
+  status: 'CONFIRMED',
+  venueId: 1,
+  venueName: 'Sunset Bar',
+  rowLabel: 'Back row',
+  positionNo: 3,
+  bookingDate: '2026-12-05',
+  amount: { minorUnits: 5000, currency: 'EUR' },
+  requestExpiresAt: null,
+};
+
+const DEVICE_DETAIL = {
+  code: DEVICE_CODE,
+  status: 'CONFIRMED',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
+  cancellable: true,
+  beforeCutoff: true,
+  refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
+  refundedAmount: null,
+  requestExpiresAt: null,
+  payment: null,
+};
+
+test('signed in: My bookings unions the account list with this device\'s codes, deduped (a11y)', async ({
+  page,
+}) => {
+  // A CUSTOMER session: /api/auth/me returns a customer principal, so the app restores signed-in.
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({ json: { username: 'tourist@example.com', principalType: 'CUSTOMER' } }),
+  );
+  // The account's server list (ACCT_CODE, already enriched — no per-code fetch).
+  await page.route(/\/api\/me\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [ACCOUNT_ROW] }));
+  // The device-only booking, fetched live by code.
+  await page.route(new RegExp(`/api/bookings/${DEVICE_CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: DEVICE_DETAIL }),
+  );
+
+  // Seed this device's remembered codes: one device-only (DEVICE_CODE) + one also account-linked
+  // (ACCT_CODE), to prove the dedupe. Then open My bookings signed in.
+  await page.goto('/');
+  await page.evaluate(
+    (codes) => localStorage.setItem('riviera.bookings.v1', JSON.stringify(codes)),
+    [DEVICE_CODE, ACCT_CODE],
+  );
+  await page.goto('/my-bookings');
+
+  const rows = page.getByTestId('booking-row');
+  await expect(rows).toHaveCount(2); // account + device, ACCT_CODE not duplicated
+  await expect(rows.filter({ hasText: ACCT_CODE })).toHaveCount(1);
+  await expect(rows.filter({ hasText: DEVICE_CODE })).toHaveCount(1);
+  await expect(page.getByText('Sunset Bar')).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'my bookings signed-in union');
+});
