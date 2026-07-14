@@ -18,6 +18,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -88,6 +89,11 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	CustomerAccountProvisioning customerAccountProvisioning;
+
+	// S3 #114: the root edge's CurrentCustomer resolves the signed-in principal to its account id via
+	// customer::api's CustomerAccountDirectory — same isolation story, so it is mocked here too.
+	@MockitoBean
+	CustomerAccountDirectory customerAccountDirectory;
 
 	@Autowired
 	JdbcClient jdbc;
