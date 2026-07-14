@@ -20,9 +20,11 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
@@ -103,6 +105,10 @@ class SecurityConfig {
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock) {
+		// One shared CSRF cookie repository instance: the filter chain issues/reads the XSRF-TOKEN
+		// cookie through it, and the logout success handler (#247) re-issues a fresh one through the
+		// SAME hardened config, so both stay in lockstep.
+		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		http
 				// Scope this chain to the backend surface only (issue #110): the SPA shell is a
 				// separate, PUBLIC chain below. Ordered FIRST, so /api + /actuator match here and
@@ -133,7 +139,7 @@ class SecurityConfig {
 						.spa()
 						// spa()'s CookieCsrfTokenRepository, hardened: Secure + SameSite=Lax to
 						// mirror the session cookie's posture (the override keeps spa()'s handler).
-						.csrfTokenRepository(csrfCookieRepository())
+						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
@@ -210,10 +216,11 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
-				// session and clears the context; 204 (no redirect — this is an SPA's API).
+				// session and clears the context; 204 (no redirect — this is an SPA's API). The
+				// success handler also re-issues a fresh XSRF-TOKEN cookie (#247) — see below.
 				.logout(logout -> logout
 						.logoutUrl(LOGOUT_PATH)
-						.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
+						.logoutSuccessHandler(csrfReissuingLogoutSuccessHandler(csrfTokenRepository)))
 				// Unauthenticated access to a protected endpoint → RFC-7807 401 UNAUTHENTICATED. This
 				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
 				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
@@ -286,6 +293,31 @@ class SecurityConfig {
 	@Bean
 	SecurityContextRepository securityContextRepository() {
 		return new HttpSessionSecurityContextRepository();
+	}
+
+	/**
+	 * Logout success handler that answers {@code 204} <strong>and</strong> re-issues a fresh
+	 * {@code XSRF-TOKEN} cookie (#247). The framework's {@code CsrfLogoutHandler} — added because CSRF
+	 * is enabled and {@code .logout(...)} is configured — <em>clears</em> the CSRF cookie during
+	 * logout, and {@code LogoutFilter} then writes this {@code 204} and short-circuits the chain, so
+	 * {@code .spa()}'s deferred-token machinery (which re-issues the cookie on ordinary responses)
+	 * never runs on the logout response. That left the SPA with <em>no</em> token, so its immediate
+	 * next CSRF-protected POST (the re-login) sent no {@code X-XSRF-TOKEN} and got
+	 * {@code 403 INVALID_CSRF_TOKEN}, succeeding only on the retry that the 403's re-seeded cookie
+	 * enabled. Generating + saving a new token here (this runs <em>after</em> {@code CsrfLogoutHandler}
+	 * cleared the old one, and before the {@code 204} commits) restores the invariant that every
+	 * response leaves a usable token. The repository is stateless — the token lives in the cookie, not
+	 * the just-invalidated session — so the fresh cookie authenticates the next request. Applies to
+	 * both principal types (operator + customer): one shared logout filter, one shared fix.
+	 */
+	private static LogoutSuccessHandler csrfReissuingLogoutSuccessHandler(CsrfTokenRepository csrfTokenRepository) {
+		HttpStatusReturningLogoutSuccessHandler noContent =
+				new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT);
+		return (request, response, authentication) -> {
+			// Save the cookie BEFORE the 204 commits (the status handler flushes the response).
+			csrfTokenRepository.saveToken(csrfTokenRepository.generateToken(request), request, response);
+			noContent.onLogoutSuccess(request, response, authentication);
+		};
 	}
 
 	/**
