@@ -122,21 +122,26 @@ name/flags are unchanged; the fix only ensures the cookie is *present* after log
 
 ## Execution status
 
-**Stage pointer:** review gate — self-review done, ready for the review gate (`/code-review`
-+ `riviera-review-overlay`), then Sonar gate → merge.
+**Stage pointer:** review gate cleared (overlay + `/code-review` high, 2 low-sev test-DRY
+findings fixed) → CI + Sonar gates → merge (integrate `origin/main` first: PR #248 S3
+close-out, docs-only, no conflict).
 
-**Next action:** open the PR into `main`; run the review gate on the diff.
+**Next action:** confirm CI green on the pushed cleanup + pull the Sonar new-issue list;
+integrate `origin/main`; then merge (Ivo's go-ahead — prod auth).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — repro (red) + fix (green) + regression IT | ✅ | (this commit) |
-| 1 — blast-radius + structural-net verification | ✅ | (scoped tests green locally) |
+| 0 — repro (red) + fix (green) + regression IT | ✅ | 79a1f77 |
+| 1 — blast-radius + structural-net verification | ✅ | (scoped tests green locally + CI) |
+| 2 — review-gate cleanup fixes (F-1, F-2) | ✅ | (this commit) |
 
 **Findings register**
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | `/code-review` (high) | `LogoutThenLoginCsrfIT.login()` re-implemented the login request shape `SessionLoginSupport` centralizes (low-sev DRY) | fixed — added csrf-free `SessionLoginSupport.loginRequest(...)`; both callers share it |
+| F-2 | `/code-review` (high) | cookie-deletion predicate duplicated in `effectiveXsrfCookie()` + `BrowserJar.apply()` (low-sev DRY) | fixed — extracted `isClearedCookie(Cookie)` |
+| — | `/code-review` (high) | **no correctness bugs** — CSRF/session not weakened, commit-order correct, IT models the browser faithfully | verified clean |
 
 ---
 

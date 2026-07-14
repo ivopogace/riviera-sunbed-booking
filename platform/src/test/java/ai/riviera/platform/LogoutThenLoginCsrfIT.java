@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -146,9 +145,9 @@ class LogoutThenLoginCsrfIT {
 	}
 
 	private ResultActions login(BrowserJar jar, String path, String body) throws Exception {
-		ResultActions actions = mvc.perform(post(path).with(jar.attach())
-				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
-				.contentType(MediaType.APPLICATION_JSON).content(body));
+		// Share the login request shape with SessionLoginSupport, but drive the REAL cookie-to-header
+		// CSRF flow (jar.attach()) instead of the csrf() post-processor that hides cookie rotation.
+		ResultActions actions = mvc.perform(SessionLoginSupport.loginRequest(path, body).with(jar.attach()));
 		jar.apply(actions.andReturn());
 		return actions;
 	}
@@ -162,12 +161,16 @@ class LogoutThenLoginCsrfIT {
 	private static Cookie effectiveXsrfCookie(MvcResult result) {
 		Cookie effective = null;
 		for (Cookie c : result.getResponse().getCookies()) {
-			if (XSRF_COOKIE.equals(c.getName()) && c.getMaxAge() != 0
-					&& c.getValue() != null && !c.getValue().isEmpty()) {
+			if (XSRF_COOKIE.equals(c.getName()) && !isClearedCookie(c)) {
 				effective = c;
 			}
 		}
 		return effective;
+	}
+
+	/** A Set-Cookie that DELETES the cookie: {@code Max-Age=0} or an empty/absent value. */
+	private static boolean isClearedCookie(Cookie c) {
+		return c.getMaxAge() == 0 || c.getValue() == null || c.getValue().isEmpty();
 	}
 
 	/**
@@ -200,7 +203,7 @@ class LogoutThenLoginCsrfIT {
 
 		void apply(MvcResult result) {
 			for (Cookie c : result.getResponse().getCookies()) {
-				if (c.getMaxAge() == 0 || c.getValue() == null || c.getValue().isEmpty()) {
+				if (isClearedCookie(c)) {
 					cookies.remove(c.getName());
 				} else {
 					cookies.put(c.getName(), c.getValue());
