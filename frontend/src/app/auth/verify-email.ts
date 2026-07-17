@@ -32,6 +32,14 @@ type VerifyState = 'verifying' | 'verified' | 'invalid' | 'error';
               <a routerLink="/" data-testid="verify-to-home">Continue</a>
             </p>
           }
+          @case ('error') {
+            <p class="auth-error" role="alert" data-testid="verify-error">
+              Something went wrong verifying your email. Please try again.
+            </p>
+            <p class="auth-alt">
+              <a routerLink="/account/sign-in" data-testid="verify-to-signin">Sign in</a>
+            </p>
+          }
           @default {
             <p class="auth-error" role="alert" data-testid="verify-failed">
               This verification link is invalid or has expired. Sign in and request a new one.
@@ -62,6 +70,9 @@ export class VerifyEmail {
       this.state.set('invalid');
       return;
     }
+    // Wait for the startup /me restore so the CSRF cookie is bootstrapped before this CSRF-protected POST —
+    // otherwise a cold-browser load could race it to a 403 and show a valid token as invalid (review fix).
+    await this.auth.whenReady();
     const result = await this.auth.verifyEmail(token);
     if (result === 'verified') {
       this.state.set('verified');

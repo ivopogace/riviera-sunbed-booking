@@ -2,11 +2,8 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { CustomerAuth } from '../core/customer-auth';
+import { CustomerAuth, MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
-
-/** Client-side minimum, mirrored on the server (bcrypt-capped there). Named, not a magic literal. */
-const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Password-reset page (S8 #113). Reached from the emailed link `/account/reset?token=…`; the token is
@@ -103,7 +100,7 @@ export class ResetPassword {
     }
     const { newPassword, confirm } = this.model();
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      this.error.set('Choose a password of 8–72 characters.');
+      this.error.set(PASSWORD_LENGTH_MESSAGE);
       return;
     }
     if (newPassword !== confirm) {
@@ -122,7 +119,7 @@ export class ResetPassword {
         this.error.set('This reset link is invalid or has expired. Request a new one.');
         break;
       case 'invalid-password':
-        this.error.set('Choose a password of 8–72 characters.');
+        this.error.set(PASSWORD_LENGTH_MESSAGE);
         break;
       case 'rate-limited':
         this.error.set('Too many attempts. Please wait a minute and try again.');

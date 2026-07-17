@@ -2,11 +2,8 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
-import { CustomerAuth } from '../core/customer-auth';
+import { CustomerAuth, MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
-
-/** Client-side minimum, mirrored on the server (bcrypt-capped there). Named, not a magic literal. */
-const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * The signed-in customer's account page (S8 #113): set or change a password, and see/resend email
@@ -122,13 +119,16 @@ export class SetPassword {
     }
     const { newPassword, currentPassword } = this.model();
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      this.error.set('Choose a password of 8–72 characters.');
+      this.error.set(PASSWORD_LENGTH_MESSAGE);
       return;
     }
     this.submitting.set(true);
     this.error.set(undefined);
     this.notice.set(undefined);
-    const result = await this.auth.setPassword(newPassword, currentPassword.trim() || undefined);
+    // Send the current password exactly as typed — passwords may contain leading/trailing spaces, so
+    // trimming would make an account with such a password unable to verify its current one (review fix).
+    // Only an empty field means "no current password" (an SSO-only account setting its first).
+    const result = await this.auth.setPassword(newPassword, currentPassword || undefined);
     this.submitting.set(false);
     switch (result) {
       case 'set':
@@ -139,7 +139,7 @@ export class SetPassword {
         this.error.set('The current password is incorrect.');
         break;
       case 'invalid-password':
-        this.error.set('Choose a password of 8–72 characters.');
+        this.error.set(PASSWORD_LENGTH_MESSAGE);
         break;
       case 'error':
         this.error.set('Something went wrong. Please try again.');

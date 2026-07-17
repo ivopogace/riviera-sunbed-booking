@@ -321,6 +321,13 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 |---|---|---|---|
 | F-CI-1 | CI-class (local full suite) | `PayoutModuleTest` (`@ApplicationModuleTest`) failed context load — the edge `CustomerRecovery` needs `customer::api CustomerAccountRecovery`, absent in module isolation (the R-7 / S4 F-CI trap). | fixed — `@MockitoBean CustomerAccountRecovery` (S4 pattern) |
 | F-CI-2 | CI-class (local full suite) | `SsoCallbackIT.identityRows("GOOGLE")` is a **global** count polluted by my new tests' GOOGLE SSO identities (full-suite-only; pre-existing fragility). | fixed — scoped the count to the mock flow's `%.tourist@example.com` canned identities |
+| F-R1 | review (CONFIRMED) | `set-password` trims `currentPassword` → an account whose password has surrounding whitespace can never change it. | fixed — send `currentPassword` untrimmed (empty → undefined); commit `<rev>` |
+| F-R2 | review (PLAUSIBLE) | register + forgot-password 500 when the (real) mailer throws — register regresses to 500; forgot becomes a 500-vs-204 enumeration oracle. | fixed — `CustomerRecovery.sendQuietly` makes the mail send best-effort (token already stored); pinned by `RecoveryMailerFailureIT` |
+| F-R3 | review (PLAUSIBLE) | `verify-email` auto-POSTs on load and can race the CSRF-cookie bootstrap → 403 shows a valid token as invalid. | fixed — `await this.auth.whenReady()` (the `/me` restore that bootstraps the XSRF cookie) before the verify POST |
+| F-R4 | review (CONFIRMED) | `verify-email` `'error'` and `'invalid'` render identically (a transport error reads as "invalid link"). | fixed — distinct `@case ('error')` "try again" message |
+| F-R5 | review (CONFIRMED) | `MIN_PASSWORD_LENGTH` + the "8–72" message copy-pasted across auth components. | fixed — exported `MIN_PASSWORD_LENGTH` + `PASSWORD_LENGTH_MESSAGE` from `core/customer-auth`, reused |
+| F-R6 | review (PLAUSIBLE) | register/forgot **timing** oracle — the known/registered branch does token+DB+send the other doesn't. | **deferred → real-mailer follow-up**: negligible with the fast mock (bcrypt dominates register); the real *synchronous* SMTP send is what widens it, so the async-send fix belongs with the real adapter (noted in `CustomerRecovery.sendQuietly`). |
+| F-R7 | review (CONFIRMED, cleanup) | `verifiedStatus` runs two DB queries on every `/me`/login. | **deferred → cleanup follow-up**: minor perf on a non-hot endpoint; a 1-query fix needs new `customer::api` surface (parallels S3's N+1 → #246). |
 
 ---
 

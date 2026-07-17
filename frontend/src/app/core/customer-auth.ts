@@ -9,6 +9,13 @@ import { SsoProviderId, SsoRedirect } from './sso-redirect';
 /** The `/api/me` surface for the signed-in customer's own account writes (S8 #113). */
 const ME_API = `${environment.apiBaseUrl}/api/me`;
 
+/**
+ * The customer password policy surfaced client-side (the server is authoritative, bcrypt-capped). One
+ * source so the constant + the friendly message can't desync across the auth screens.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+export const PASSWORD_LENGTH_MESSAGE = 'Choose a password of 8–72 characters.';
+
 /** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
 export type ForgotPasswordResult = 'sent' | 'rate-limited' | 'error';
 /** How a reset-token redemption ended. */
@@ -61,6 +68,15 @@ export class CustomerAuth extends SessionAuth {
 
   private readonly ssoRedirect = inject(SsoRedirect);
   private readonly restoreOnStartup = this.restore();
+
+  /**
+   * Resolves once the initial `GET /api/auth/me` restore has completed. Awaiting it guarantees the CSRF
+   * cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN` on the first API response), so a page that
+   * fires a CSRF-protected write on load — the verify-email landing — doesn't race a cold browser to a 403.
+   */
+  whenReady(): Promise<void> {
+    return this.restoreOnStartup;
+  }
 
   /**
    * Start "Continue with Google/Apple" (S4, epic #108): a full-page navigation to the backend authorize
@@ -218,7 +234,7 @@ export function customerRegisterMessage(result: CustomerRegisterResult): string 
     case 'exists':
       return 'That email may already have an account. Try signing in instead.';
     case 'invalid-password':
-      return 'Choose a password of 8–72 characters.';
+      return PASSWORD_LENGTH_MESSAGE;
     case 'rate-limited':
       return 'Too many attempts. Please wait a minute and try again.';
     case 'error':

@@ -8,7 +8,10 @@ import { VerifyEmail } from './verify-email';
 function authStub(result: VerifyEmailResult): Partial<CustomerAuth> & {
   verifyEmail: ReturnType<typeof vi.fn>;
 } {
-  return { verifyEmail: vi.fn(async () => result) } as unknown as Partial<CustomerAuth> & {
+  return {
+    whenReady: vi.fn(async () => undefined),
+    verifyEmail: vi.fn(async () => result),
+  } as unknown as Partial<CustomerAuth> & {
     verifyEmail: ReturnType<typeof vi.fn>;
   };
 }
@@ -66,5 +69,13 @@ describe('VerifyEmail', () => {
     const fixture = await render(auth, 'tok');
 
     expect(text(fixture, 'verify-failed')).toContain('invalid or has expired');
+  });
+
+  it('shows a distinct try-again message on a transport error (not the invalid-link copy)', async () => {
+    const auth = authStub('error');
+    const fixture = await render(auth, 'tok');
+
+    expect(text(fixture, 'verify-error')).toContain('Something went wrong');
+    expect(text(fixture, 'verify-failed')).toBe(''); // not the invalid-link message
   });
 });

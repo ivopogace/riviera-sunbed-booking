@@ -3,6 +3,8 @@ package ai.riviera.platform;
 import java.net.URI;
 import java.time.Clock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -26,6 +28,8 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 @Component
 class CustomerRecovery {
 
+	private static final Logger log = LoggerFactory.getLogger(CustomerRecovery.class);
+
 	static final String VERIFY_PATH = "/account/verify";
 	static final String RESET_PATH = "/account/reset";
 	private static final String TOKEN_PARAM = "token";
@@ -45,20 +49,42 @@ class CustomerRecovery {
 		this.clock = clock;
 	}
 
-	/** Issue a fresh verification token for the account and email its link. */
+	/** Issue a fresh verification token for the account and (best-effort) email its link. */
 	void sendVerificationEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()));
-		mailer.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
+		sendQuietly(() -> mailer.sendEmailVerification(email, link(VERIFY_PATH, rawToken)));
 	}
 
-	/** Issue a fresh password-reset token for the account and email its link. */
+	/** Issue a fresh password-reset token for the account and (best-effort) email its link. */
 	void sendPasswordResetEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.resetTokenTtl()));
-		mailer.sendPasswordReset(email, link(RESET_PATH, rawToken));
+		sendQuietly(() -> mailer.sendPasswordReset(email, link(RESET_PATH, rawToken)));
+	}
+
+	/**
+	 * Run a mail send best-effort: the token is already stored, so a transport failure must never fail the
+	 * triggering request (registration would 500 after the account+session already exist) nor become a
+	 * status-code enumeration oracle (forgot-password must return its uniform 204 whether or not the email
+	 * has an account — D-8). The user can simply re-request. Only the mailer send is guarded — a token-store
+	 * failure is a real error and still propagates.
+	 *
+	 * <p>The real {@code SmtpMailer} is deferred (throws {@code UnsupportedOperationException}); when it
+	 * ships, its <em>synchronous</em> SMTP round-trip should also move off the request thread so a slower
+	 * known-email branch cannot become a <em>timing</em> oracle (tracked with the real-mailer follow-up).
+	 */
+	private void sendQuietly(Runnable send) {
+		try {
+			send.run();
+		}
+		catch (RuntimeException e) {
+			// The mailer is a best-effort side channel; never log the raw link/token (invariant #7).
+			log.warn("Recovery email send failed ({}); the token was issued, delivery can be retried",
+					e.getClass().getSimpleName());
+		}
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */
