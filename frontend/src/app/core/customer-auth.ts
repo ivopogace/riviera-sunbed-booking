@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Service } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
+import { SsoProviderId, SsoRedirect } from './sso-redirect';
 
 /** How a customer sign-in attempt ended (the shared {@link SignInResult}; aliased for the surfaces). */
 export type CustomerSignInResult = SignInResult;
@@ -33,7 +34,19 @@ export class CustomerAuth extends SessionAuth {
   /** The signed-in customer's email, or undefined when signed out (the base's principal name). */
   readonly email = this.principalName;
 
+  private readonly ssoRedirect = inject(SsoRedirect);
   private readonly restoreOnStartup = this.restore();
+
+  /**
+   * Start "Continue with Google/Apple" (S4, epic #108): a full-page navigation to the backend authorize
+   * endpoint. The OIDC Authorization Code + PKCE flow completes server-side and returns to the SPA with a
+   * session cookie — the same session as form login — so this deliberately leaves the SPA (via the
+   * {@link SsoRedirect} seam) rather than an {@code HttpClient} call; `restore()` then picks up the
+   * signed-in state on the return load.
+   */
+  startSso(provider: SsoProviderId): void {
+    this.ssoRedirect.go(`${AUTH_API}/sso/${provider}/authorize`);
+  }
 
   /** Server-validated sign-in: a wrong credential is a generic 401 (the backend never says why, D-8). */
   async signIn(email: string, password: string): Promise<CustomerSignInResult> {

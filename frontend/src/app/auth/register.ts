@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { CustomerAuth, customerRegisterMessage } from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
+import { SsoButtons } from './sso-buttons';
 
 /** Client-side minimum, mirrored on the server (bcrypt-capped there). Named, not a magic literal. */
 const MIN_PASSWORD_LENGTH = 8;
@@ -17,7 +18,7 @@ const MIN_PASSWORD_LENGTH = 8;
  */
 @Component({
   selector: 'app-register',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, SsoButtons],
   template: `
     <section class="auth-wrap" aria-labelledby="register-title">
       <div class="auth-card" appCardGlass>
@@ -66,6 +67,8 @@ const MIN_PASSWORD_LENGTH = 8;
             {{ submitting() ? 'Creating…' : 'Create account' }}
           </button>
         </form>
+
+        <app-sso-buttons />
 
         <p class="auth-alt">
           Already have an account?

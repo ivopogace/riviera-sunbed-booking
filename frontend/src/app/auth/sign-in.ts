@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { CustomerAuth, customerSignInMessage } from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
+import { SsoButtons } from './sso-buttons';
 
 /**
  * Customer sign-in page (epic #108 / S2 #111, design D-1/D-8). A tourist enters email + password; on
@@ -14,7 +15,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-sign-in',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, SsoButtons],
   template: `
     <section class="auth-wrap" aria-labelledby="signin-title">
       <div class="auth-card" appCardGlass>
@@ -61,6 +62,8 @@ import { CardGlass } from '../shared/card-glass';
             {{ submitting() ? 'Signing in…' : 'Sign in' }}
           </button>
         </form>
+
+        <app-sso-buttons />
 
         <p class="auth-alt">
           New here?

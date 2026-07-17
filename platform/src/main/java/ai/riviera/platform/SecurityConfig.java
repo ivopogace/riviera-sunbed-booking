@@ -98,6 +98,13 @@ class SecurityConfig {
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	/**
+	 * The SSO redirect/callback surface (S4 #112, D-3): the authorize + callback GETs and the mock IdP
+	 * authorize GET. Anonymous by definition — the callback completes the OIDC exchange and establishes the
+	 * session internally; GETs are never CSRF-challenged, and the {@code state} nonce is the callback's
+	 * forgery defence. Behind the {@code RateLimitFilter} per-IP budget.
+	 */
+	private static final String SSO_PATHS = "/api/auth/sso/**";
 	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
@@ -152,6 +159,9 @@ class SecurityConfig {
 						// login — the endpoints authenticate/create internally. Register auto-signs-in on
 						// success. Both ride the login rate-limit budget (D-8, RateLimitFilter).
 						.requestMatchers(HttpMethod.POST, CUSTOMER_LOGIN_PATH, CUSTOMER_REGISTER_PATH).permitAll()
+						// SSO redirect/callback (S4 #112, D-3): anonymous GETs that complete the OIDC exchange
+						// and establish the session internally; rate-limited per-IP like the logins (D-8).
+						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).

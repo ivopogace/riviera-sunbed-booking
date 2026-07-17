@@ -8,6 +8,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
 import { apiSessionInterceptor } from './core/api-session.interceptor';
+import { SsoRedirect, WindowSsoRedirect } from './core/sso-redirect';
 import { ThemeService } from './core/theme';
 
 import {
@@ -42,6 +43,10 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(ThemeService);
     }),
-    { provide: StripePaymentGateway, useFactory: stripeGatewayFactory }
+    { provide: StripePaymentGateway, useFactory: stripeGatewayFactory },
+    // SSO start is a full-page navigation out of the SPA (S4 #112); the seam lets unit specs record the
+    // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
+    // intercepts the navigation with page.route.
+    { provide: SsoRedirect, useClass: WindowSsoRedirect }
   ]
 };

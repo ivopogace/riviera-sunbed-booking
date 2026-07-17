@@ -9,6 +9,7 @@ import ai.riviera.platform.customer.application.CustomerAccountStore;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
  * JDBC adapter for the {@code customer} module's {@link CustomerAccountStore} port (ADR-0007
@@ -23,8 +24,11 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 @Repository
 class JdbcCustomerAccounts implements CustomerAccountStore {
 
-	/** SQL named-param / column key for the account email (named, not duplicated — invariant #6a). */
+	/** SQL named-param / column keys, named not duplicated (invariant #6a). */
 	private static final String EMAIL = "email";
+	private static final String PROVIDER = "provider";
+	private static final String SUBJECT = "subject";
+	private static final String ACCOUNT_ID = "accountId";
 
 	private final JdbcClient jdbc;
 
@@ -34,7 +38,12 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 
 	@Override
 	public Optional<CustomerAccountCredential> findByEmail(String normalizedEmail) {
-		return jdbc.sql("SELECT email, password_hash FROM customer_account WHERE email = :email")
+		// password_hash IS NOT NULL excludes SSO-only accounts (S4 #112): they have no local password, so
+		// the edge sees "no credential" and password login returns the generic 401 (non-enumeration D-8).
+		return jdbc.sql("""
+				SELECT email, password_hash FROM customer_account
+				WHERE email = :email AND password_hash IS NOT NULL
+				""")
 				.param(EMAIL, normalizedEmail)
 				.query((rs, rowNum) -> new CustomerAccountCredential(
 						rs.getString(EMAIL), rs.getString("password_hash")))
@@ -64,5 +73,57 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.optional()
 				.<RegistrationOutcome>map(id -> new RegistrationOutcome.Registered(new CustomerAccountId(id)))
 				.orElseGet(RegistrationOutcome.AlreadyRegistered::new);
+	}
+
+	@Override
+	public CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail) {
+		// 1. A returning (provider, subject) resolves to its already-linked account FIRST — before any
+		//    email path — so a changed provider email can never spawn a stray second account.
+		Optional<Long> existing = accountIdForIdentity(provider, subject);
+		if (existing.isPresent()) {
+			return new CustomerAccountId(existing.get());
+		}
+		// 2. Find-or-create the account by email: claim a new password-less account, or (email taken)
+		//    auto-link to the existing one. Race-safe — a concurrent creator wins the ON CONFLICT and we
+		//    read back its id.
+		long accountId = jdbc.sql("""
+				INSERT INTO customer_account (email, password_hash)
+				VALUES (:email, NULL)
+				ON CONFLICT (email) DO NOTHING
+				RETURNING id
+				""")
+				.param(EMAIL, normalizedEmail)
+				.query(Long.class)
+				.optional()
+				.orElseGet(() -> jdbc.sql("SELECT id FROM customer_account WHERE email = :email")
+						.param(EMAIL, normalizedEmail)
+						.query(Long.class)
+						.single());
+		// 3. Link the identity, race-safe: a concurrent first sign-in for the same subject wins the
+		//    ON CONFLICT (provider, subject) claim and we read back the winner's account_id.
+		long linked = jdbc.sql("""
+				INSERT INTO customer_sso_identity (account_id, provider, subject, email)
+				VALUES (:accountId, :provider, :subject, :email)
+				ON CONFLICT (provider, subject) DO NOTHING
+				RETURNING account_id
+				""")
+				.param(ACCOUNT_ID, accountId)
+				.param(PROVIDER, provider.name())
+				.param(SUBJECT, subject)
+				.param(EMAIL, normalizedEmail)
+				.query(Long.class)
+				.optional()
+				.orElseGet(() -> accountIdForIdentity(provider, subject).orElseThrow());
+		return new CustomerAccountId(linked);
+	}
+
+	private Optional<Long> accountIdForIdentity(SsoProvider provider, String subject) {
+		return jdbc.sql("""
+				SELECT account_id FROM customer_sso_identity WHERE provider = :provider AND subject = :subject
+				""")
+				.param(PROVIDER, provider.name())
+				.param(SUBJECT, subject)
+				.query(Long.class)
+				.optional();
 	}
 }

@@ -21,6 +21,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.VenueOwnership;
@@ -94,6 +95,11 @@ class PayoutModuleTest {
 	// customer::api's CustomerAccountDirectory — same isolation story, so it is mocked here too.
 	@MockitoBean
 	CustomerAccountDirectory customerAccountDirectory;
+
+	// S4 #112: the root edge's SsoController resolve-or-creates the account behind an external SSO identity
+	// via customer::api's SsoAccountProvisioning — same isolation story, so it is mocked here too.
+	@MockitoBean
+	SsoAccountProvisioning ssoAccountProvisioning;
 
 	@Autowired
 	JdbcClient jdbc;

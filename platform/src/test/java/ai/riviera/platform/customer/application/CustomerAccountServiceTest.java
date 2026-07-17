@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,10 +55,32 @@ class CustomerAccountServiceTest {
 		assertThat(service.accountFor("nobody@example.com")).isEmpty();
 	}
 
+	@Test
+	void resolveOrCreateNormalizesEmailAndIsIdempotentOnProviderSubject() {
+		CustomerAccountId first = service.resolveOrCreate(SsoProvider.GOOGLE, "g-1", "Tourist@Example.com ");
+		CustomerAccountId again = service.resolveOrCreate(SsoProvider.GOOGLE, "g-1", "  tourist@example.com");
+
+		assertThat(again).as("a returning (provider, subject) reuses the same account").isEqualTo(first);
+		assertThat(service.accountFor("tourist@example.com")).isPresent().contains(first); // stored normalized
+		assertThat(service.findByEmail("tourist@example.com"))
+				.as("an SSO-only account has no password credential").isEmpty();
+	}
+
+	@Test
+	void resolveOrCreateAutoLinksToAnExistingAccountByNormalizedEmail() {
+		RegistrationOutcome registered = service.register("owner@example.com", "{bcrypt}pw");
+		CustomerAccountId passwordAccount = ((RegistrationOutcome.Registered) registered).accountId();
+
+		CustomerAccountId linked = service.resolveOrCreate(SsoProvider.APPLE, "a-1", "  OWNER@Example.com ");
+
+		assertThat(linked).as("auto-link by verified email → the existing account").isEqualTo(passwordAccount);
+	}
+
 	/** In-memory store mirroring the adapter's INSERT … ON CONFLICT DO NOTHING semantics. */
 	private static final class FakeStore implements CustomerAccountStore {
 		private final Map<String, CustomerAccountCredential> byEmail = new HashMap<>();
 		private final Map<String, Long> idByEmail = new HashMap<>();
+		private final Map<String, Long> accountBySsoIdentity = new HashMap<>();
 		private long nextId = 1;
 
 		@Override
@@ -79,6 +102,18 @@ class CustomerAccountServiceTest {
 			byEmail.put(normalizedEmail, new CustomerAccountCredential(normalizedEmail, passwordHash));
 			idByEmail.put(normalizedEmail, id);
 			return new RegistrationOutcome.Registered(new CustomerAccountId(id));
+		}
+
+		@Override
+		public CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail) {
+			Long existing = accountBySsoIdentity.get(provider.name() + '|' + subject);
+			if (existing != null) {
+				return new CustomerAccountId(existing);
+			}
+			// find-or-create by email (auto-link); an SSO-only account gets an id but no password credential.
+			long accountId = idByEmail.computeIfAbsent(normalizedEmail, e -> nextId++);
+			accountBySsoIdentity.put(provider.name() + '|' + subject, accountId);
+			return new CustomerAccountId(accountId);
 		}
 	}
 }

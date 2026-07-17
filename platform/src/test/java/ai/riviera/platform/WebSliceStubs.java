@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -37,7 +38,10 @@ import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -203,6 +207,31 @@ class WebSliceStubs {
 	@Bean
 	CurrentCustomer currentCustomer(CustomerAccountDirectory customerAccountDirectory) {
 		return new CurrentCustomer(customerAccountDirectory);
+	}
+
+	/**
+	 * S4 (#112): the edge SSO ports {@code SsoController} requires. Inert — the web slices (CORS +
+	 * rate-limit) never drive the SSO redirect/callback, so a pass-through gateway + a fixed account id
+	 * are enough for the context to load and for a rate-limit attempt to reach the limiter.
+	 */
+	@Bean
+	SsoGateway ssoGateway() {
+		return new SsoGateway() {
+			@Override
+			public URI authorizationRequest(SsoProvider provider, SsoAuthorizationChallenge challenge, URI redirectUri) {
+				return redirectUri;
+			}
+
+			@Override
+			public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, URI redirectUri) {
+				return new ExternalIdentity(provider, "web-slice-subject", "web-slice@example.com");
+			}
+		};
+	}
+
+	@Bean
+	SsoAccountProvisioning ssoAccountProvisioning() {
+		return (_, _, _) -> new CustomerAccountId(0);
 	}
 
 	@Bean

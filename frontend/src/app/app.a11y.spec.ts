@@ -3,7 +3,12 @@ import { provideRouter } from '@angular/router';
 
 import { expectNoAxeViolations } from '../testing/axe';
 import { App } from './app';
+import { SsoRedirect } from './core/sso-redirect';
 import { ThemeService } from './core/theme';
+
+/** No-op SSO redirect: the shell instantiates the real CustomerAuth, which injects SsoRedirect (S4 #112);
+ *  these tests never start SSO, so a do-nothing redirector avoids a real navigation. */
+const noopSsoRedirect: SsoRedirect = { go: () => undefined };
 
 /**
  * Automated axe-core structural audit of the Liquid Glass shell (issue #134, AC-4): header,
@@ -16,7 +21,7 @@ describe('App shell accessibility (axe, issue #134)', () => {
     document.documentElement.removeAttribute('data-riv-theme');
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), { provide: SsoRedirect, useValue: noopSsoRedirect }],
     }).compileComponents();
   });
 
