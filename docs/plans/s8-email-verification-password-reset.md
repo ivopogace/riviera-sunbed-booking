@@ -284,14 +284,18 @@ Reuse `sso-buttons.ts`/`SessionAuth` idioms; styling per `riviera-tailwind` (no 
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `PR / review gate` — all phases committed; last `d983162`. Backend + FE green locally; opening PR.
+**Stage pointer:** `DONE` — **merged to `main` as `bcd33a7`** (squash, PR #254); close-out complete.
 
-**Next action:** Phase 4 — Angular screens (`forgot-password`, `reset-password`, `verify-email`, `set-password`)
-+ verify nudge + `CustomerAuth`/`SessionAuth` methods + flat `account/*` routes; mocked Playwright e2e for the
-verify + reset journeys. Load `riviera-frontend` + `angular-developer` + angular-cli MCP + `riviera-tailwind` +
-`playwright-cli` FIRST. Design notes: two controllers landed (`AccountRecoveryController` public
-`/api/auth/customer/{forgot-password,reset-password,verify-email}`; `MyAccountController` authenticated
-`POST /api/me/password` + `POST /api/me/verify-email/request`); `me`/customer-login now carry `emailVerified`.
+**Next action:** None — slice shipped. Deferred follow-ups tracked: real SMTP + off-thread send (#255),
+`verifiedStatus` 1-query (#256). Epic #108 checklist ticked (S8 + caught S7's missed tick). Substrate docs
+(CLAUDE.md / RESPONSIBILITIES / CONTEXT + design D-6 amendment) folded into the PR; `graphify update` run.
+
+**Gates:** CI green (Backend + Frontend + CodeQL). Review gate — high-effort workflow `/code-review` (9 findings,
+0 refuted): 5 fixed (F-R1 set-password trim, F-R2 best-effort mailer, F-R3 verify CSRF race, F-R4 verify error
+state, F-R5 shared password constants), 2 deferred (F-R6→#255 timing, F-R7→#256 2-query). Sonar gate green —
+**new-code coverage 89.9%** (≥80), 0 smells/bugs/vulns, 0 duplicated blocks, issue list empty (fixed S6213
+`MockMailer.record`→`capture`; the scan job failed transiently once at 28s, re-ran clean). Two full-suite-only
+test fixes (R-7): `PayoutModuleTest` `@MockitoBean CustomerAccountRecovery`, scoped `SsoCallbackIT.identityRows`.
 
 **Verified so far:** Phase 0 — `CustomerAccountRecoveryIT` (3) + `CustomerAccountServiceTest` (10) + structural net.
 Phase 1 — `RealMailerTest`/`MockMailerProdGuardTest`/`RecoveryTokensTest`/`MockMailerTest` (7). Phase 2 —
