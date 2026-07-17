@@ -33,15 +33,15 @@ class MockMailer implements Mailer {
 
 	@Override
 	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		record(new SentEmail(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink));
+		capture(new SentEmail(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink));
 	}
 
 	@Override
 	public void sendPasswordReset(String toEmail, URI resetLink) {
-		record(new SentEmail(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink));
+		capture(new SentEmail(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink));
 	}
 
-	private void record(SentEmail email) {
+	private void capture(SentEmail email) {
 		sent.add(email);
 		// Dev-only convenience (design D-6): follow the tokenized link without a real inbox. The email is
 		// user-supplied, so neutralize newlines before logging (log-forging, riviera-java-conventions §10).

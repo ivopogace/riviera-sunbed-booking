@@ -90,9 +90,16 @@ model in `docs/architecture/domain-model.md`.
 - **Customer account** — a registered tourist identity (email + opaque credential hash) for
   register / sign-in via a server-side session. Deliberately **separate** from the
   guest-checkout contact row (no foreign key): registering never auto-claims a guest email's
-  past bookings — linking those is a later, email-verified step (design D-6). The account's
-  credential hash is stored by `customer`; all login machinery lives at the platform edge
-  (RV-BE-11).
+  past bookings — back-linking guest bookings is a **permanent non-goal** (design D-6, amended
+  at S8). The account's credential hash is stored by `customer`; all login machinery lives at
+  the platform edge (RV-BE-11).
+- **Email verification** — a soft, non-blocking signal that a customer account's email was
+  proven owned (`email_verified`, S8 #113). Set by visiting a tokenized link mailed at
+  registration, or granted automatically for SSO-created accounts (provider-verified).
+  Informational in v1 — it gates no sign-in or booking.
+- **Recovery token** — a single-use, expiring, **hashed** bearer credential mailed to an
+  account's email for one of two purposes: **verify-email** or **reset-password**
+  (`customer_account_token`, S8 #113). Treated like a secret (invariant #7); consumed on redeem.
 
 ## Operators (venue management side)
 
