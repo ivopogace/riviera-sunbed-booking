@@ -37,3 +37,19 @@ Area labels drive **skill routing** in `riviera-sdlc`: `area:frontend` → Angul
 skills + Angular MCP; `area:backend` → `codebase-design` / `domain-modeling` + `postgres` (Flyway/table
 design) + `riviera-stripe-payments` (payment/payout); both always plan with
 `riviera-plan-doc` and review with `riviera-review-overlay`.
+
+## Wayfinding (planning — the `wayfinder` skill)
+
+Used only when charting a **foggy epic** with `wayfinder` (destination clear, route
+not — the niche front-stage; the common path skips straight to `to-spec` / `to-issues`).
+These label the map issue and its **decision** tickets — questions whose resolution is a
+decision, not build slices. They live only for the charting phase; execution tickets use
+the state/category/area labels above.
+
+| Label | Meaning |
+|---|---|
+| `wayfinder:map` | The map issue — the effort's shared index of decisions + frontier. |
+| `wayfinder:research` | Decision ticket resolved by reading docs/APIs (AFK — `Explore`/`general-purpose` subagent; no `/research` skill here). |
+| `wayfinder:prototype` | Decision ticket resolved by a cheap rough artifact (HITL — a throwaway spike branch; no `/prototype` skill here). |
+| `wayfinder:grilling` | Decision ticket resolved by conversation (HITL — `grilling` + `domain-modeling`). The default. |
+| `wayfinder:task` | Manual work that must happen before a decision can be made (provision access, move data). |

@@ -266,10 +266,11 @@ Repo-scoped — they load when working in this repository (tracked in
   frontend slice.
 - **`postgres`** (PlanetScale, MIT, trimmed) — table/schema/index design for
   Flyway migrations.
-- **Vendored craft skills** (Matt Pocock, MIT): `grilling`/`grill-me`, `to-issues`,
-  `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
-  `triage`, `improve-codebase-architecture` — the generic engine the `riviera-*`
-  skills specialize.
+- **Vendored craft skills** (Matt Pocock, MIT): `grilling`/`grill-me`, `wayfinder` +
+  `to-spec` + `to-issues` (the optional *Epic front-end* chain — chart foggy epics →
+  epic spec → slice; see `riviera-sdlc`), `implement`, `tdd`, `diagnosing-bugs`,
+  `codebase-design`, `domain-modeling`, `triage`, `improve-codebase-architecture` —
+  the generic engine the `riviera-*` skills specialize.
 
 ## Where things are written down
 
