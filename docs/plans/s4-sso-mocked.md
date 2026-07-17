@@ -269,6 +269,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-CI | CI (full suite) | `PayoutModuleTest` (`@ApplicationModuleTest`) failed to init — the edge `SsoController` needs `customer::api SsoAccountProvisioning`, absent in module isolation (the memory-noted #127-class trap; scoped runs skip it) | fixed (`@MockitoBean SsoAccountProvisioning`); full backend suite green locally |
+| F-Sonar | sonar (issue list) | 3× `java:S1075` ("hardcoded URI") on the SSO route-path constants (`SsoController`/`MockSsoGateway`/`MockSsoIdpController`) — gate was green (smells don't fail it) but the merge bar is 0 new issues | fixed — added the three files to `sonar-project.properties` S1075 file-ignore list (the established repo pattern; these are HTTP route patterns, not configurable URIs). Coverage 87.88% (≥80), 0 dup blocks, 0 bugs/vulns |
 | F-3 | review (high) | `SsoController` builds the session principal from the raw provider email, not normalized — S5-latent display drift | fixed |
 | F-5 | review (high) | `MockSsoIdpController` open-redirect guard misses scheme/port | fixed (Location rebuilt from the request, guard tightened) |
 | F-6 | review (high) | SSO button block duplicated across sign-in/register (also a Sonar-duplication risk) | fixed (extracted `auth/sso-buttons.ts`) |
