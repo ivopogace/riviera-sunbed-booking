@@ -284,17 +284,21 @@ Reuse `sso-buttons.ts`/`SessionAuth` idioms; styling per `riviera-tailwind` (no 
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement (phase 0)` — plan + D-6 amendment committed (`1b537ce`); starting Phase 0.
+**Stage pointer:** `implement (phase 1)` — Phase 0 committed (`306a79d`), green locally.
 
-**Next action:** Phase 0 — write `CustomerAccountRecoveryIT` (red), add V28 migration + the `customer::api`
-`CustomerAccountRecovery` port (issue/redeem/set/verified) with the atomic single-use claim (green). Load
-`riviera-local-debug` before the first `./gradlew`.
+**Next action:** Phase 1 — edge `Mailer` port + `MockMailer` (`@Profile("!mailer")`, recording) + throwing
+`SmtpMailer` (`@Profile("mailer")`) + `MockMailerProdGuard` (`@Profile("prod & !mailer")`) + `TokenHasher`
+/`RecoveryTokens`/`RecoveryProperties`. Load `riviera-java-conventions` + `riviera-modulith` before editing.
+
+**Verified so far:** Phase 0 — `CustomerAccountRecoveryIT` (3, real Postgres + V28) + `CustomerAccountServiceTest`
+(9) + structural net (`ModularityTests`, `PackageShape*`, `PublishedSurfacePlacement*`, `CustomerAuthPlacementTests`,
+`JdbcOnly*`) all green locally. Full suite = CI.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | Plan — plan doc + D-6 amendment | ✅ | `1b537ce` |
-| 0 — V28 + `customer` `CustomerAccountRecovery` (issue/redeem/set/verified) | | |
-| 1 — Edge `Mailer` port + mock/real adapters + prod guard + `TokenHasher` | | |
+| 0 — V28 + `customer` `CustomerAccountRecovery` (issue/redeem/set/verified) | ✅ | `306a79d` |
+| 1 — Edge `Mailer` port + mock/real adapters + prod guard + `TokenHasher` | ⏳ | |
 | 2 — `AccountRecoveryController` (verify/forgot/reset + `/api/me/password` + resend), session revoke, rate-limit, `me.emailVerified`, register issues verify | | |
 | 3 — SSO=verified wiring + V28 backfill test | | |
 | 4 — Frontend screens + nudge + mocked e2e | | |
