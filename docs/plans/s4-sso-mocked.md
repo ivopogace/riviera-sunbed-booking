@@ -234,24 +234,26 @@ the redirect flow must leave the SPA and return with a session cookie, so the CS
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement (phase 2)` — Phase 0 + Phase 1 green.
+**Stage pointer:** `implement (phase 3)` — Phases 0–2 green (backend complete).
 
-**Next action:** Build Phase 2 test-first — `SsoController` authorize+callback (state/PKCE in session,
-`establishSession(Authentication)`, 302 to `/`) + `RateLimitFilter` SSO GET paths (`SsoCallbackIT`,
-`SsoRateLimitIT`). Read `SecurityConfig`/`AuthController`/`RateLimitFilter` first; watch R-5 (WebSliceStubs).
+**Next action:** Build Phase 3 (frontend) — load `riviera-frontend` + `angular-developer` + angular-cli
+MCP + `riviera-tailwind` + `playwright-cli`; add SSO buttons to sign-in/register + `startSso(provider)`
+nav helper; author the mocked e2e spec (button → routed authorize redirect → signed-in) + a11y.
 
-**Verified so far:** Phase 0 — `SsoAccountProvisioningIT` (4, real Postgres) + `CustomerAccountServiceTest`
-(5) + S2 regression. Phase 1 — `MockSsoGatewayTest` (2) + `RealSsoGatewayTest` (2) + `MockSsoProdGuardTest`
-(3) + full-context boot with mock beans (`SsoAccountProvisioningIT`) + structural net (`ModularityTests`,
-`PackageShape*`, `PublishedSurfacePlacement*`, `ErrorContract*`). All pass locally. Full suite = CI.
+**Verified so far:** Phase 0 — `SsoAccountProvisioningIT` (4) + `CustomerAccountServiceTest` (5) + S2
+regression. Phase 1 — `MockSsoGatewayTest` (2) + `RealSsoGatewayTest` (2) + `MockSsoProdGuardTest` (3).
+Phase 2 — `SsoCallbackIT` (5: google+apple flows, reuse, bad-state 400, no-authorize 400) + `SsoRateLimitIT`
+(1) + refactor regression (`AuthSessionIT` 5 — session-id rotation intact, `CustomerLoginIT` 3) + web slices
+with new stubs (`RateLimitFilterTest` 12, `WebCorsConfigTest` 2) + structural net (`ModularityTests`,
+`ErrorContract*`, `PackageShape*`, `PublishedSurfacePlacement*`). All pass locally. Full suite = CI.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | Plan — plan doc | ✅ | `2cddfeb` |
 | 0 — V27 + customer SSO provisioning | ✅ | `e08e545` |
-| 1 — Edge SsoGateway + adapters + guard | ✅ | (this commit) |
-| 2 — SsoController (authorize/callback, session, rate-limit) | ⏳ | |
-| 3 — Frontend buttons + mocked e2e | | |
+| 1 — Edge SsoGateway + adapters + guard | ✅ | `852a343` |
+| 2 — SsoController (authorize/callback, session, rate-limit) | ✅ | (this commit) |
+| 3 — Frontend buttons + mocked e2e | ⏳ | |
 | Close-out — docs + epic tick | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

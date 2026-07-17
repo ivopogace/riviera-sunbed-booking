@@ -9,9 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -73,8 +70,6 @@ class AuthController {
 	private final SecurityContextRepository securityContextRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final CustomerAccountProvisioning customerAccounts;
-	private final SecurityContextHolderStrategy contextHolderStrategy =
-			SecurityContextHolder.getContextHolderStrategy();
 
 	AuthController(@Qualifier("authenticationManager") AuthenticationManager operatorManager,
 			@Qualifier("customerAuthenticationManager") AuthenticationManager customerManager,
@@ -185,13 +180,7 @@ class AuthController {
 			HttpServletRequest request, HttpServletResponse response) {
 		Authentication authentication = manager.authenticate(
 				UsernamePasswordAuthenticationToken.unauthenticated(username, password));
-		if (request.getSession(false) != null) {
-			request.changeSessionId();
-		}
-		SecurityContext context = contextHolderStrategy.createEmptyContext();
-		context.setAuthentication(authentication);
-		contextHolderStrategy.setContext(context);
-		securityContextRepository.saveContext(context, request, response);
+		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
 		return authentication;
 	}
 

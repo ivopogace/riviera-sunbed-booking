@@ -26,7 +26,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel} and
  * {@code POST /api/bookings} — plus, since issue #109, the session login
  * ({@code POST /api/auth/operator/login}) on its own stricter per-IP budget (D-8: the login is a
- * credential-guessing oracle exactly like the code endpoints). They are {@code permitAll} because
+ * credential-guessing oracle exactly like the code endpoints), and since S4 (#112) the SSO
+ * authorize/callback GETs on their own per-IP budget. They are {@code permitAll} because
  * the booking code is the bearer credential (invariant #7); the {@code 200}/{@code 404} answer is
  * otherwise a brute-force oracle, so this filter caps request volume.
  *
@@ -74,6 +75,12 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	// The SSO redirect/callback GETs (S4 #112, D-3/D-8): unauthenticated oracles like the logins —
+	// authorize mints sessions, callback exchanges codes — so they ride a per-IP budget too. Templates
+	// (one {provider} segment) so the deeper mock-authorize path (/sso/mock/{provider}/authorize) never
+	// matches and is not throttled.
+	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
+	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
 
 	private final RateLimitProperties props;
 	private final Clock clock;
@@ -85,6 +92,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// (S2 #111): a burst of unauthenticated customer registrations from a shared IP (venue WiFi /
 	// CGNAT) must never exhaust the operator-login budget and lock operators out.
 	private final Map<String, TokenBucket> customerAuthBuckets = new ConcurrentHashMap<>();
+	// SSO authorize/callback GETs draw on their OWN per-IP budget (S4 #112), separate from the logins so
+	// tightening one never starves the other — same rationale as customerAuthBuckets.
+	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
 
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
@@ -154,15 +164,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * the method check excludes it.
 	 */
 	private Optional<Map<String, TokenBucket>> authBucketsFor(HttpServletRequest request) {
-		if (!HttpMethod.POST.matches(request.getMethod())) {
-			return Optional.empty();
-		}
+		String method = request.getMethod();
 		String path = pathWithinApplication(request);
-		if (LOGIN_PATH.equals(path)) {
-			return Optional.of(loginBuckets);
+		if (HttpMethod.POST.matches(method)) {
+			if (LOGIN_PATH.equals(path)) {
+				return Optional.of(loginBuckets);
+			}
+			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
+				return Optional.of(customerAuthBuckets);
+			}
 		}
-		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
-			return Optional.of(customerAuthBuckets);
+		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too.
+		if (HttpMethod.GET.matches(method)
+				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
+			return Optional.of(ssoBuckets);
 		}
 		return Optional.empty();
 	}
