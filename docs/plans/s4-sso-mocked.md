@@ -234,16 +234,18 @@ the redirect flow must leave the SPA and return with a session cookie, so the CS
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `review gate — fixes applied, re-pushing` → then Sonar gate → merge close-out.
+**Stage pointer:** `DONE` — merged to `main` as **`208a8b4`** (squash, PR #251); close-out complete.
 
-**Next action:** Push the review-fix batch (F-3/5/6/7/8/9), confirm CI green on the new push, pull the
-SonarCloud new-issue + duplication list for PR #251 and clear it, then the merge close-out. F-1/F-2/F-4
-deferred with rationale (findings register) — propagate to #113/#116/new follow-up at close-out.
+**Next action:** None — slice shipped. (Docs close-out landed via micro-PR `docs/s4-sso-closeout`.)
 
 **Review gate:** high-effort `/code-review` workflow ran on the PR diff (9 findings, 2 refuted). Cleanups
-F-3/5/6/7/8/9 fixed + re-tested locally (SsoCallbackIT 7 incl. mock-IdP hop, RateLimitFilterTest 12, 687 FE
-unit + e2e + build). F-1 (SSO-only account can't set a password) deferred → S8 #113; F-2 (pre-existing S2
-register edge case) → follow-up; F-4 (IdP-error redirect) → S5 #116.
+F-3/5/6/7/8/9 fixed. F-CI (`PayoutModuleTest` module-isolation) + F-Sonar (3× S1075) fixed. F-1 (SSO-only
+account can't set a password) deferred → **S8 #113**; F-2 (pre-existing S2 register edge case) → **#252**;
+F-4 (IdP-error redirect) + the `email_verified` auto-link prerequisite → **S5 #116**.
+
+**Docs-freshness** (`e84f5be..main`): patched `CLAUDE.md` (customer-accounts narrative + module-table row:
+S4 landed, dropped from "remaining") + `RESPONSIBILITIES.md` (`customer` gained SSO identity linkage). No
+skill cites a changed example; CONTEXT/ADRs unaffected.
 
 **Verified so far:** Phase 0 — `SsoAccountProvisioningIT` (4) + `CustomerAccountServiceTest` (5) + S2
 regression. Phase 1 — `MockSsoGatewayTest` (2) + `RealSsoGatewayTest` (2) + `MockSsoProdGuardTest` (3).
@@ -258,8 +260,9 @@ with new stubs (`RateLimitFilterTest` 12, `WebCorsConfigTest` 2) + structural ne
 | 0 — V27 + customer SSO provisioning | ✅ | `e08e545` |
 | 1 — Edge SsoGateway + adapters + guard | ✅ | `852a343` |
 | 2 — SsoController (authorize/callback, session, rate-limit) | ✅ | `9a1ec27` |
-| 3 — Frontend buttons + mocked e2e | ✅ | (this commit) |
-| Close-out — docs + epic tick | | |
+| 3 — Frontend buttons + mocked e2e | ✅ | `002b6db` |
+| Review fixes (F-3/5/6/7/8/9 + F-CI + F-Sonar) | ✅ | `7aeb8d1`, `ad3a09c`, `b25d699` |
+| Close-out — docs + epic tick | ✅ | merged `208a8b4`; docs micro-PR |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

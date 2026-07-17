@@ -175,7 +175,11 @@ auto-claims a guest email's past bookings — linking those is a later, email-ve
 **Shipped** (S2 #111, epic #108): customer accounts — register + sign-in via a server-side
 session, non-enumerating (D-8). The module graduated **thin → full** (gained
 `CustomerAccountService`); no Spring Security type lives inside it, pinned by
-`CustomerAuthPlacementTests`.
+`CustomerAuthPlacementTests`. **S4 (#112)** added **SSO identity linkage** — the
+`SsoAccountProvisioning` port resolves-or-creates the account behind an external
+`(provider, subject)` (find-or-create by verified email, auto-link; V27 `customer_sso_identity`),
+still storing only identity + an opaque (now nullable, for SSO-only accounts) hash; the OIDC
+redirect/token-exchange machinery stays at the platform edge.
 
 ---
 
