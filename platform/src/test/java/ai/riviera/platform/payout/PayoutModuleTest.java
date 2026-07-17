@@ -20,6 +20,7 @@ import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -100,6 +101,11 @@ class PayoutModuleTest {
 	// via customer::api's SsoAccountProvisioning — same isolation story, so it is mocked here too.
 	@MockitoBean
 	SsoAccountProvisioning ssoAccountProvisioning;
+
+	// S8 #113: the root edge's CustomerRecovery drives customer::api's CustomerAccountRecovery (verify /
+	// reset / set-password) — same isolation story, so it is mocked here too.
+	@MockitoBean
+	CustomerAccountRecovery customerAccountRecovery;
 
 	@Autowired
 	JdbcClient jdbc;

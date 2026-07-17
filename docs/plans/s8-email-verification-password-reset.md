@@ -319,7 +319,8 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | (none yet) | |
+| F-CI-1 | CI-class (local full suite) | `PayoutModuleTest` (`@ApplicationModuleTest`) failed context load — the edge `CustomerRecovery` needs `customer::api CustomerAccountRecovery`, absent in module isolation (the R-7 / S4 F-CI trap). | fixed — `@MockitoBean CustomerAccountRecovery` (S4 pattern) |
+| F-CI-2 | CI-class (local full suite) | `SsoCallbackIT.identityRows("GOOGLE")` is a **global** count polluted by my new tests' GOOGLE SSO identities (full-suite-only; pre-existing fragility). | fixed — scoped the count to the mock flow's `%.tourist@example.com` canned identities |
 
 ---
 
