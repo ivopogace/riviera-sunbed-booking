@@ -133,3 +133,70 @@ export async function mockCustomerSsoApi(
     return route.fulfill({ status: 204 });
   });
 }
+
+/**
+ * Stateful mock of the CUSTOMER account-recovery API (S8 #113) for the CI-safe suite: forgot-password
+ * always answers a neutral 204 (non-enumeration, D-8); reset-password + verify-email accept only
+ * `validToken`, else the generic 400 `INVALID_OR_EXPIRED_TOKEN`. A successful reset rotates the mock's
+ * accepted password AND signs the session out (the real reset invalidates sessions, AC-3); a successful
+ * verify flips `emailVerified`, which `/me` + login then reflect. Login succeeds for the CURRENT password
+ * only — so the reset e2e can prove the old password stops working and the new one starts.
+ */
+export async function mockCustomerRecoveryApi(
+  page: Page,
+  options: {
+    readonly email: string;
+    readonly initialPassword: string;
+    readonly validToken: string;
+  },
+): Promise<void> {
+  const { email, validToken } = options;
+  let password = options.initialPassword;
+  let signedIn = false;
+  let emailVerified = false;
+
+  const principal = () => ({ username: email, principalType: 'CUSTOMER', emailVerified });
+
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    signedIn
+      ? route.fulfill({ json: principal() })
+      : route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED')),
+  );
+
+  await page.route(/\/api\/auth\/customer\/login$/, (route) => {
+    const body = route.request().postDataJSON() as { email?: string; password?: string };
+    if ((body.email ?? '').trim().toLowerCase() === email.toLowerCase() && body.password === password) {
+      signedIn = true;
+      return route.fulfill({ json: principal() });
+    }
+    return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
+  });
+
+  await page.route(/\/api\/auth\/customer\/forgot-password$/, (route) =>
+    route.fulfill({ status: 204 }),
+  );
+
+  await page.route(/\/api\/auth\/customer\/reset-password$/, (route) => {
+    const body = route.request().postDataJSON() as { token?: string; newPassword?: string };
+    if (body.token === validToken && body.newPassword) {
+      password = body.newPassword;
+      signedIn = false; // a reset invalidates existing sessions (AC-3)
+      return route.fulfill({ status: 204 });
+    }
+    return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
+  });
+
+  await page.route(/\/api\/auth\/customer\/verify-email$/, (route) => {
+    const body = route.request().postDataJSON() as { token?: string };
+    if (body.token === validToken) {
+      emailVerified = true;
+      return route.fulfill({ status: 204 });
+    }
+    return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
+  });
+
+  await page.route(/\/api\/auth\/logout$/, (route) => {
+    signedIn = false;
+    return route.fulfill({ status: 204 });
+  });
+}

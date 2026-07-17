@@ -66,6 +66,9 @@ import { SsoButtons } from './sso-buttons';
         <app-sso-buttons />
 
         <p class="auth-alt">
+          <a routerLink="/account/forgot" data-testid="signin-to-forgot">Forgot your password?</a>
+        </p>
+        <p class="auth-alt">
           New here?
           <a routerLink="/account/register" data-testid="signin-to-register">Create an account</a>
         </p>
