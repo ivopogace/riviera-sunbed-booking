@@ -284,7 +284,7 @@ Reuse `sso-buttons.ts`/`SessionAuth` idioms; styling per `riviera-tailwind` (no 
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement (phase 4 — frontend)` — Phases 2-3 committed (`6eb9ad4`), backend green locally.
+**Stage pointer:** `PR / review gate` — all phases committed; last `d983162`. Backend + FE green locally; opening PR.
 
 **Next action:** Phase 4 — Angular screens (`forgot-password`, `reset-password`, `verify-email`, `set-password`)
 + verify nudge + `CustomerAuth`/`SessionAuth` methods + flat `account/*` routes; mocked Playwright e2e for the
@@ -308,7 +308,7 @@ green locally; full suite = CI. (`RecoveryTokens` folded the planned `TokenHashe
 | 1 — Edge `Mailer` port + mock/real adapters + prod guard + `RecoveryTokens` | ✅ | `8d85280` |
 | 2 — recovery endpoints + set-password + session revoke + rate-limit + `me.emailVerified` + register issues verify | ✅ | `6eb9ad4` |
 | 3 — SSO=verified wiring + V28 backfill test | ✅ | `6eb9ad4` |
-| 4 — Frontend screens + nudge + mocked e2e | ⏳ | |
+| 4 — Frontend screens + nudge + mocked e2e | ✅ | `d983162` |
 | Review fixes | | |
 | Close-out — docs + epic tick | | |
 
