@@ -9,7 +9,9 @@ import { SetPassword } from './set-password';
 interface Overrides {
   readonly signedIn?: boolean;
   readonly restoring?: boolean;
+  readonly emailVerified?: boolean | undefined;
   readonly setPassword?: SetPasswordResult;
+  readonly requestVerification?: 'sent' | 'error';
 }
 
 function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
@@ -20,9 +22,9 @@ function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
     restoring: signal(o.restoring ?? false),
     signedIn: signal(o.signedIn ?? true),
     email: signal('ana@example.com'),
-    emailVerified: signal<boolean | undefined>(undefined),
+    emailVerified: signal<boolean | undefined>(o.emailVerified),
     setPassword: vi.fn(async () => o.setPassword ?? 'set'),
-    requestVerification: vi.fn(async () => 'sent' as const),
+    requestVerification: vi.fn(async () => o.requestVerification ?? 'sent'),
   } as unknown as Partial<CustomerAuth> & {
     setPassword: ReturnType<typeof vi.fn>;
     requestVerification: ReturnType<typeof vi.fn>;
@@ -96,5 +98,40 @@ describe('SetPassword', () => {
 
     expect(auth.setPassword).toHaveBeenCalledWith('brandnewpass2', 'wrong-current');
     expect(text(fixture, 'setpw-error')).toContain('current password is incorrect');
+  });
+
+  it('shows the generic error on a transport failure', async () => {
+    const auth = authStub({ setPassword: 'error' });
+    const fixture = await render(auth);
+
+    setModel(fixture, 'brandnewpass2', '');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'setpw-error')).toContain('Something went wrong');
+  });
+
+  it('shows the verify nudge for an unverified account and resends on click', async () => {
+    const auth = authStub({ emailVerified: false });
+    const fixture = await render(auth);
+
+    expect(text(fixture, 'setpw-unverified')).toContain("isn't verified");
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="setpw-resend"]')!
+      .click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(auth.requestVerification).toHaveBeenCalled();
+    expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
+  });
+
+  it('shows the verified badge for a verified account (no nudge)', async () => {
+    const fixture = await render(authStub({ emailVerified: true }));
+
+    expect(text(fixture, 'setpw-verified')).toContain('verified');
+    expect(text(fixture, 'setpw-unverified')).toBe('');
   });
 });
