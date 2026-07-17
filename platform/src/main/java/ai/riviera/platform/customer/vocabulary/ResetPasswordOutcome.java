@@ -10,8 +10,12 @@ package ai.riviera.platform.customer.vocabulary;
 public sealed interface ResetPasswordOutcome
 		permits ResetPasswordOutcome.Reset, ResetPasswordOutcome.InvalidOrExpired {
 
-	/** The token was valid and single-use; the account's password has been set to the new hash. */
-	record Reset(CustomerAccountId accountId) implements ResetPasswordOutcome {
+	/**
+	 * The token was valid and single-use; the account's password has been set to the new hash. Carries
+	 * the account's {@code email} (its session principal name) so the edge can invalidate that account's
+	 * existing sessions after a reset (S8 AC-3) without a second lookup.
+	 */
+	record Reset(CustomerAccountId accountId, String email) implements ResetPasswordOutcome {
 	}
 
 	/** No usable token matched — unknown, expired, or already consumed (indistinguishable, D-8). */

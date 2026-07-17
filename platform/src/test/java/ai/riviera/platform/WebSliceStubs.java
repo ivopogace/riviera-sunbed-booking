@@ -37,11 +37,17 @@ import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
+import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import java.util.Map;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -232,6 +238,104 @@ class WebSliceStubs {
 	@Bean
 	SsoAccountProvisioning ssoAccountProvisioning() {
 		return (_, _, _) -> new CustomerAccountId(0);
+	}
+
+	/**
+	 * S8 (#113): the edge account-recovery collaborators the recovery/set-password controllers +
+	 * {@code AuthController} depend on. All inert — the web slices (CORS + rate-limit) never redeem a token,
+	 * send mail, or revoke a session, so an always-invalid recovery port, a no-op mailer, and an
+	 * empty-session repository are enough for the context to load and for a rate-limit attempt to reach the
+	 * limiter. {@code RecoveryProperties} + {@code Clock} come from {@code SecurityConfig}'s
+	 * {@code @EnableConfigurationProperties} and the fixed {@link #clock()} bean above.
+	 */
+	@Bean
+	Mailer mailer() {
+		return new Mailer() {
+			@Override
+			public void sendEmailVerification(String toEmail, URI verificationLink) {
+			}
+
+			@Override
+			public void sendPasswordReset(String toEmail, URI resetLink) {
+			}
+		};
+	}
+
+	@Bean
+	CustomerAccountRecovery customerAccountRecovery() {
+		return new CustomerAccountRecovery() {
+			@Override
+			public void issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+			}
+
+			@Override
+			public void issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+			}
+
+			@Override
+			public VerifyEmailOutcome verifyEmail(String tokenHash) {
+				return new VerifyEmailOutcome.InvalidOrExpired();
+			}
+
+			@Override
+			public ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash) {
+				return new ResetPasswordOutcome.InvalidOrExpired();
+			}
+
+			@Override
+			public void setPassword(CustomerAccountId accountId, String newPasswordHash) {
+			}
+
+			@Override
+			public boolean isEmailVerified(CustomerAccountId accountId) {
+				return false;
+			}
+		};
+	}
+
+	@Bean
+	RecoveryTokens recoveryTokens() {
+		return new RecoveryTokens();
+	}
+
+	@Bean
+	CustomerRecovery customerRecovery(CustomerAccountRecovery recovery, Mailer mailer,
+			RecoveryTokens recoveryTokens, RecoveryProperties recoveryProperties, Clock clock) {
+		return new CustomerRecovery(recovery, mailer, recoveryTokens, recoveryProperties, clock);
+	}
+
+	/** An empty session repository — the web slices never revoke a session. */
+	@Bean
+	FindByIndexNameSessionRepository<? extends Session> sessionRepository() {
+		return new FindByIndexNameSessionRepository<>() {
+			@Override
+			public Session createSession() {
+				return null;
+			}
+
+			@Override
+			public void save(Session session) {
+			}
+
+			@Override
+			public Session findById(String id) {
+				return null;
+			}
+
+			@Override
+			public void deleteById(String id) {
+			}
+
+			@Override
+			public Map<String, Session> findByIndexNameAndIndexValue(String indexName, String indexValue) {
+				return Map.of();
+			}
+		};
+	}
+
+	@Bean
+	CustomerSessionRevoker customerSessionRevoker(FindByIndexNameSessionRepository<? extends Session> sessions) {
+		return new CustomerSessionRevoker(sessions);
 	}
 
 	@Bean

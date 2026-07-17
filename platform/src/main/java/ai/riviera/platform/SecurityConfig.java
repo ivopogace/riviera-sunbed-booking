@@ -54,7 +54,8 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
  */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class})
+@EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class,
+		RecoveryProperties.class})
 class SecurityConfig {
 
 	/** The single role that gates the U7 operator write surface. */
@@ -98,6 +99,16 @@ class SecurityConfig {
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	/**
+	 * Public customer account-recovery POSTs (S8 #113, design D-6/D-8): request a reset link, redeem a
+	 * reset token, redeem a verification token. Anonymous by definition — the emailed token is the bearer
+	 * credential (invariant #7); behind the {@code RateLimitFilter} recovery budget. CSRF-protected like the
+	 * customer login (the SPA holds the bootstrapped XSRF-TOKEN), so NOT added to the CSRF ignore list. The
+	 * authenticated set-password + resend endpoints live under {@code /api/me/**} (CUSTOMER-gated below).
+	 */
+	private static final String FORGOT_PASSWORD_PATH = "/api/auth/customer/forgot-password";
+	private static final String RESET_PASSWORD_PATH = "/api/auth/customer/reset-password";
+	private static final String VERIFY_EMAIL_PATH = "/api/auth/customer/verify-email";
 	/**
 	 * The SSO redirect/callback surface (S4 #112, D-3): the authorize + callback GETs and the mock IdP
 	 * authorize GET. Anonymous by definition — the callback completes the OIDC exchange and establishes the
@@ -159,6 +170,12 @@ class SecurityConfig {
 						// login — the endpoints authenticate/create internally. Register auto-signs-in on
 						// success. Both ride the login rate-limit budget (D-8, RateLimitFilter).
 						.requestMatchers(HttpMethod.POST, CUSTOMER_LOGIN_PATH, CUSTOMER_REGISTER_PATH).permitAll()
+						// Public customer account-recovery (S8 #113): forgot-password / reset-password /
+						// verify-email are anonymous — the emailed token is the credential (invariant #7) —
+						// and rate-limited per-IP (D-8, RateLimitFilter). The authenticated set-password +
+						// verification-resend endpoints are under /api/me/** (CUSTOMER-gated) below.
+						.requestMatchers(HttpMethod.POST, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH,
+								VERIFY_EMAIL_PATH).permitAll()
 						// SSO redirect/callback (S4 #112, D-3): anonymous GETs that complete the OIDC exchange
 						// and establish the session internally; rate-limited per-IP like the logins (D-8).
 						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()

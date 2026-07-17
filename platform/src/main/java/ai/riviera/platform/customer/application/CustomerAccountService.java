@@ -98,7 +98,7 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 		return tokens.consume(TokenPurpose.RESET_PASSWORD, tokenHash)
 				.<ResetPasswordOutcome>map(accountId -> {
 					store.updatePasswordHash(accountId, newPasswordHash);
-					return new ResetPasswordOutcome.Reset(accountId);
+					return new ResetPasswordOutcome.Reset(accountId, store.emailOf(accountId));
 				})
 				.orElseGet(ResetPasswordOutcome.InvalidOrExpired::new);
 	}

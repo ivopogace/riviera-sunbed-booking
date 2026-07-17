@@ -113,7 +113,7 @@ class CustomerAccountServiceTest {
 
 		ResetPasswordOutcome outcome = service.resetPassword("hash-r", "{bcrypt}new");
 
-		assertThat(outcome).isEqualTo(new ResetPasswordOutcome.Reset(id));
+		assertThat(outcome).isEqualTo(new ResetPasswordOutcome.Reset(id, "reset@example.com"));
 		assertThat(service.findByEmail("reset@example.com")).get()
 				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}new");
 		assertThat(service.resetPassword("hash-r", "{bcrypt}other"))
@@ -129,7 +129,8 @@ class CustomerAccountServiceTest {
 
 		assertThat(service.resetPassword("hash-old", "{bcrypt}x"))
 				.as("only the newest link works").isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
-		assertThat(service.resetPassword("hash-new", "{bcrypt}y")).isEqualTo(new ResetPasswordOutcome.Reset(id));
+		assertThat(service.resetPassword("hash-new", "{bcrypt}y"))
+				.isEqualTo(new ResetPasswordOutcome.Reset(id, "reissue@example.com"));
 	}
 
 	@Test
@@ -185,6 +186,7 @@ class CustomerAccountServiceTest {
 			// find-or-create by email (auto-link); an SSO-only account gets an id but no password credential.
 			long accountId = idByEmail.computeIfAbsent(normalizedEmail, e -> nextId++);
 			accountBySsoIdentity.put(provider.name() + '|' + subject, accountId);
+			verified.add(accountId); // SSO email is provider-verified (design D-6)
 			return new CustomerAccountId(accountId);
 		}
 
@@ -202,6 +204,11 @@ class CustomerAccountServiceTest {
 		@Override
 		public boolean isEmailVerified(CustomerAccountId accountId) {
 			return verified.contains(accountId.value());
+		}
+
+		@Override
+		public String emailOf(CustomerAccountId accountId) {
+			return emailForId(accountId.value()).orElseThrow();
 		}
 
 		private Optional<String> emailForId(long id) {

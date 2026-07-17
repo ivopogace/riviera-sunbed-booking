@@ -23,7 +23,9 @@ UPDATE customer_account ca
 -- redemption: invalid, expired, and already-used tokens are indistinguishable (zero rows -- D-8).
 CREATE TABLE customer_account_token (
     id           BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    account_id   BIGINT      NOT NULL REFERENCES customer_account (id),
+    -- ON DELETE CASCADE: recovery tokens are transient child records of the account (not an audit
+    -- ledger), so deleting an account takes its tokens with it (also future-proofs GDPR erasure).
+    account_id   BIGINT      NOT NULL REFERENCES customer_account (id) ON DELETE CASCADE,
     purpose      TEXT        NOT NULL CHECK (purpose IN ('VERIFY_EMAIL', 'RESET_PASSWORD')),
     token_hash   TEXT        NOT NULL,
     expires_at   TIMESTAMPTZ NOT NULL,

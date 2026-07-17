@@ -67,4 +67,7 @@ public interface CustomerAccountStore {
 
 	/** Whether the account's email is verified (S8 #113); {@code false} if the account is unknown. */
 	boolean isEmailVerified(CustomerAccountId accountId);
+
+	/** The account's (normalized) email — its session principal name (S8 #113, for reset session revocation). */
+	String emailOf(CustomerAccountId accountId);
 }

@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -75,6 +76,13 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
+	// and the authenticated verification-resend. Each is a mail-sending or token-guessing oracle, so they
+	// ride their OWN per-IP budget — separate from customerAuthBuckets, so recovery spam can never starve
+	// login (the S2 operator-lockout lesson, #127). Exact paths (all POST); no path templates needed.
+	private static final Set<String> RECOVERY_PATHS = Set.of(
+			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
+			"/api/auth/customer/verify-email", "/api/me/verify-email/request");
 	// The SSO redirect/callback GETs (S4 #112, D-3/D-8): unauthenticated oracles like the logins —
 	// authorize mints sessions, callback exchanges codes — so they ride a per-IP budget too. Templates
 	// (one {provider} segment) so the deeper mock-authorize path (/sso/mock/{provider}/authorize) never
@@ -96,6 +104,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// SSO authorize/callback GETs draw on their OWN per-IP budget (S4 #112), separate from the logins so
 	// tightening one never starves the other — same rationale as customerAuthBuckets.
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
+	// Account-recovery POSTs (S8 #113) on their OWN per-IP budget — see RECOVERY_PATHS.
+	private final Map<String, TokenBucket> recoveryBuckets = new ConcurrentHashMap<>();
 
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
@@ -173,6 +183,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			}
 			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
 				return Optional.of(customerAuthBuckets);
+			}
+			// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
+			if (RECOVERY_PATHS.contains(path)) {
+				return Optional.of(recoveryBuckets);
 			}
 		}
 		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too. A

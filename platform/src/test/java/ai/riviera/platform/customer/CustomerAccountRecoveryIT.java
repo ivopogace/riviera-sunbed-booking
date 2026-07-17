@@ -81,7 +81,7 @@ class CustomerAccountRecoveryIT {
 
 		ResetPasswordOutcome outcome = recovery.resetPassword("rh-valid", "{bcrypt}rotated");
 
-		assertThat(outcome).isEqualTo(new ResetPasswordOutcome.Reset(id));
+		assertThat(outcome).isEqualTo(new ResetPasswordOutcome.Reset(id, "reset@example.com"));
 		assertThat(accounts.findByEmail("reset@example.com")).get()
 				.extracting(c -> c.passwordHash()).isEqualTo("{bcrypt}rotated");
 
@@ -105,7 +105,8 @@ class CustomerAccountRecoveryIT {
 
 		assertThat(recovery.resetPassword("rh-old", "{bcrypt}x"))
 				.as("only the newest link works").isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
-		assertThat(recovery.resetPassword("rh-new", "{bcrypt}y")).isEqualTo(new ResetPasswordOutcome.Reset(id));
+		assertThat(recovery.resetPassword("rh-new", "{bcrypt}y"))
+				.isEqualTo(new ResetPasswordOutcome.Reset(id, "reissue@example.com"));
 	}
 
 	private CustomerAccountId register(String email) {

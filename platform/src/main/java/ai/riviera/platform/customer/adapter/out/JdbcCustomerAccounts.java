@@ -115,7 +115,12 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.query(Long.class)
 				.optional()
 				.orElseGet(() -> accountIdForIdentity(provider, subject).orElseThrow());
-		return new CustomerAccountId(linked);
+		// An SSO email is provider-verified (design D-6): mark the account verified on first sign-in / auto-link.
+		// Guarded (only writes email_verified = false), so a returning subject that short-circuits above never
+		// re-marks, and an already-verified password account is untouched.
+		CustomerAccountId resolved = new CustomerAccountId(linked);
+		markEmailVerified(resolved);
+		return resolved;
 	}
 
 	@Override
@@ -146,6 +151,14 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.query(Boolean.class)
 				.optional()
 				.orElse(false);
+	}
+
+	@Override
+	public String emailOf(CustomerAccountId accountId) {
+		return jdbc.sql("SELECT email FROM customer_account WHERE id = :id")
+				.param(ID, accountId.value())
+				.query(String.class)
+				.single();
 	}
 
 	private Optional<Long> accountIdForIdentity(SsoProvider provider, String subject) {

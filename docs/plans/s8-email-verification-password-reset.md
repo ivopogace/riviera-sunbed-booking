@@ -284,21 +284,23 @@ Reuse `sso-buttons.ts`/`SessionAuth` idioms; styling per `riviera-tailwind` (no 
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement (phase 1)` — Phase 0 committed (`306a79d`), green locally.
+**Stage pointer:** `implement (phase 2)` — Phase 1 committed (`8d85280`), green locally.
 
-**Next action:** Phase 1 — edge `Mailer` port + `MockMailer` (`@Profile("!mailer")`, recording) + throwing
-`SmtpMailer` (`@Profile("mailer")`) + `MockMailerProdGuard` (`@Profile("prod & !mailer")`) + `TokenHasher`
-/`RecoveryTokens`/`RecoveryProperties`. Load `riviera-java-conventions` + `riviera-modulith` before editing.
+**Next action:** Phase 2 — `AccountRecoveryController` (verify/forgot/reset + `/api/me/password` + resend),
+`CustomerSessionRevoker`, `CustomerPasswordPolicy`; modify `AuthController` (register issues verify;
+`me.emailVerified`), `SecurityConfig` (permit the 3 public recovery POSTs; enable `RecoveryProperties`),
+`RateLimitFilter` (own `recoveryBuckets`), `WebSliceStubs` (inert `Mailer`/`CustomerAccountRecovery`/session repo).
+Watch R-7 (module/web-slice beans) + the #127 full-suite rate-limit trap (unique `X-Forwarded-For` per IT login).
 
 **Verified so far:** Phase 0 — `CustomerAccountRecoveryIT` (3, real Postgres + V28) + `CustomerAccountServiceTest`
-(9) + structural net (`ModularityTests`, `PackageShape*`, `PublishedSurfacePlacement*`, `CustomerAuthPlacementTests`,
-`JdbcOnly*`) all green locally. Full suite = CI.
+(9) + structural net all green. Phase 1 — `RealMailerTest` (1) + `MockMailerProdGuardTest` (3) + `RecoveryTokensTest`
+(2) + `MockMailerTest` (1) all green. Full suite = CI. (`RecoveryTokens` folds in the planned `TokenHasher`.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | Plan — plan doc + D-6 amendment | ✅ | `1b537ce` |
 | 0 — V28 + `customer` `CustomerAccountRecovery` (issue/redeem/set/verified) | ✅ | `306a79d` |
-| 1 — Edge `Mailer` port + mock/real adapters + prod guard + `TokenHasher` | ⏳ | |
+| 1 — Edge `Mailer` port + mock/real adapters + prod guard + `RecoveryTokens` | ✅ | `8d85280` |
 | 2 — `AccountRecoveryController` (verify/forgot/reset + `/api/me/password` + resend), session revoke, rate-limit, `me.emailVerified`, register issues verify | | |
 | 3 — SSO=verified wiring + V28 backfill test | | |
 | 4 — Frontend screens + nudge + mocked e2e | | |
