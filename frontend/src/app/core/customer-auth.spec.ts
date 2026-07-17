@@ -148,4 +148,98 @@ describe('CustomerAuth', () => {
     await done;
     expect(auth.signedIn()).toBe(false);
   });
+
+  // --- S8 (#113) account recovery ---
+
+  const ME_API = `${environment.apiBaseUrl}/api/me`;
+
+  it('forgot-password maps 204 → sent, 429 → rate-limited, 500 → error', async () => {
+    const auth = await create('signed-out');
+
+    const sent = auth.forgotPassword('ana@example.com');
+    http.expectOne(`${AUTH_API}/customer/forgot-password`).flush(null, { status: 204, statusText: 'No Content' });
+    expect(await sent).toBe('sent');
+
+    const limited = auth.forgotPassword('ana@example.com');
+    http.expectOne(`${AUTH_API}/customer/forgot-password`).flush({}, { status: 429, statusText: 'Too Many' });
+    expect(await limited).toBe('rate-limited');
+
+    const errored = auth.forgotPassword('ana@example.com');
+    http.expectOne(`${AUTH_API}/customer/forgot-password`).flush({}, { status: 500, statusText: 'Error' });
+    expect(await errored).toBe('error');
+  });
+
+  it('reset-password maps 204 → reset, and 400 by code → invalid-token vs invalid-password', async () => {
+    const auth = await create('signed-out');
+
+    const ok = auth.resetPassword('tok', 'password123');
+    http.expectOne(`${AUTH_API}/customer/reset-password`).flush(null, { status: 204, statusText: 'No Content' });
+    expect(await ok).toBe('reset');
+
+    const badToken = auth.resetPassword('tok', 'password123');
+    http
+      .expectOne(`${AUTH_API}/customer/reset-password`)
+      .flush({ code: 'INVALID_OR_EXPIRED_TOKEN' }, { status: 400, statusText: 'Bad Request' });
+    expect(await badToken).toBe('invalid-token');
+
+    const weak = auth.resetPassword('tok', 'short');
+    http
+      .expectOne(`${AUTH_API}/customer/reset-password`)
+      .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+    expect(await weak).toBe('invalid-password');
+
+    const limited = auth.resetPassword('tok', 'password123');
+    http.expectOne(`${AUTH_API}/customer/reset-password`).flush({}, { status: 429, statusText: 'Too Many' });
+    expect(await limited).toBe('rate-limited');
+  });
+
+  it('verify-email reloads the principal when signed in (picks up emailVerified)', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' });
+
+    const result = auth.verifyEmail('tok');
+    http.expectOne(`${AUTH_API}/customer/verify-email`).flush(null, { status: 204, statusText: 'No Content' });
+    await tick(); // the signed-in branch reloads /me
+    http.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER', emailVerified: true });
+    expect(await result).toBe('verified');
+    expect(auth.emailVerified()).toBe(true);
+  });
+
+  it('verify-email maps a 400 → invalid-token (no /me reload when signed out)', async () => {
+    const auth = await create('signed-out');
+    const result = auth.verifyEmail('tok');
+    http.expectOne(`${AUTH_API}/customer/verify-email`).flush({}, { status: 400, statusText: 'Bad Request' });
+    expect(await result).toBe('invalid-token');
+  });
+
+  it('set-password posts to /api/me/password and maps codes (set / invalid-current / invalid-password)', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' });
+
+    const ok = auth.setPassword('brandnewpass1');
+    const req = http.expectOne(`${ME_API}/password`);
+    expect(req.request.body).toEqual({ newPassword: 'brandnewpass1', currentPassword: null }); // undefined → null
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    expect(await ok).toBe('set');
+
+    const wrongCurrent = auth.setPassword('brandnewpass1', 'wrong');
+    http
+      .expectOne(`${ME_API}/password`)
+      .flush({ code: 'INVALID_CURRENT_PASSWORD' }, { status: 400, statusText: 'Bad Request' });
+    expect(await wrongCurrent).toBe('invalid-current');
+
+    const weak = auth.setPassword('short');
+    http.expectOne(`${ME_API}/password`).flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+    expect(await weak).toBe('invalid-password');
+  });
+
+  it('request-verification maps 204 → sent and a failure → error', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' });
+
+    const sent = auth.requestVerification();
+    http.expectOne(`${ME_API}/verify-email/request`).flush(null, { status: 204, statusText: 'No Content' });
+    expect(await sent).toBe('sent');
+
+    const errored = auth.requestVerification();
+    http.expectOne(`${ME_API}/verify-email/request`).flush({}, { status: 500, statusText: 'Error' });
+    expect(await errored).toBe('error');
+  });
 });

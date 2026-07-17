@@ -29,6 +29,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	private static final String PROVIDER = "provider";
 	private static final String SUBJECT = "subject";
 	private static final String ACCOUNT_ID = "accountId";
+	private static final String ID = "id";
 
 	private final JdbcClient jdbc;
 
@@ -114,7 +115,50 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.query(Long.class)
 				.optional()
 				.orElseGet(() -> accountIdForIdentity(provider, subject).orElseThrow());
-		return new CustomerAccountId(linked);
+		// An SSO email is provider-verified (design D-6): mark the account verified on first sign-in / auto-link.
+		// Guarded (only writes email_verified = false), so a returning subject that short-circuits above never
+		// re-marks, and an already-verified password account is untouched.
+		CustomerAccountId resolved = new CustomerAccountId(linked);
+		markEmailVerified(resolved);
+		return resolved;
+	}
+
+	@Override
+	public void markEmailVerified(CustomerAccountId accountId) {
+		// Guarded (email_verified = false) so it is idempotent and never churns email_verified_at on a
+		// repeat call (e.g. a returning SSO sign-in re-marking an already-verified account).
+		jdbc.sql("""
+				UPDATE customer_account
+				SET email_verified = true, email_verified_at = NOW()
+				WHERE id = :id AND email_verified = false
+				""")
+				.param(ID, accountId.value())
+				.update();
+	}
+
+	@Override
+	public void updatePasswordHash(CustomerAccountId accountId, String passwordHash) {
+		jdbc.sql("UPDATE customer_account SET password_hash = :hash WHERE id = :id")
+				.param("hash", passwordHash)
+				.param(ID, accountId.value())
+				.update();
+	}
+
+	@Override
+	public boolean isEmailVerified(CustomerAccountId accountId) {
+		return jdbc.sql("SELECT email_verified FROM customer_account WHERE id = :id")
+				.param(ID, accountId.value())
+				.query(Boolean.class)
+				.optional()
+				.orElse(false);
+	}
+
+	@Override
+	public String emailOf(CustomerAccountId accountId) {
+		return jdbc.sql("SELECT email FROM customer_account WHERE id = :id")
+				.param(ID, accountId.value())
+				.query(String.class)
+				.single();
 	}
 
 	private Optional<Long> accountIdForIdentity(SsoProvider provider, String subject) {

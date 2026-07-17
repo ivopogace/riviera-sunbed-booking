@@ -160,8 +160,8 @@ refund reverses it.
 **Job:** Own tourist identity — the guest-checkout contact AND (S2 #111) the customer
 **account** (email + opaque credential hash) that backs register / sign-in. The account is a
 **separate identity** from the guest-contact row (no foreign key), so registration never
-auto-claims a guest email's past bookings — linking those is a later, email-verified step
-(design D-6).
+auto-claims a guest email's past bookings; back-linking guest bookings is a **permanent
+non-goal** (design D-6, amended at S8).
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
@@ -179,7 +179,13 @@ session, non-enumerating (D-8). The module graduated **thin → full** (gained
 `SsoAccountProvisioning` port resolves-or-creates the account behind an external
 `(provider, subject)` (find-or-create by verified email, auto-link; V27 `customer_sso_identity`),
 still storing only identity + an opaque (now nullable, for SSO-only accounts) hash; the OIDC
-redirect/token-exchange machinery stays at the platform edge.
+redirect/token-exchange machinery stays at the platform edge. **S8 (#113)** added the
+`CustomerAccountRecovery` `api/` port — issue/redeem single-use hashed **email-verification** and
+**password-reset** tokens (`customer_account_token`, V28), **set-password** (closing the S4 SSO-only
+gap), and a verified read — plus `email_verified` on the account (V28; SSO sign-in marks it
+provider-verified). Email verification is **soft/non-blocking** (v1). Still no Spring Security type
+inside the module (`CustomerAuthPlacementTests` green); the mailer, token digest, and
+recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 
 ---
 

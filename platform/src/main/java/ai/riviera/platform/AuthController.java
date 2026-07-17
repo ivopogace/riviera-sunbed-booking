@@ -1,8 +1,5 @@
 package ai.riviera.platform;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,10 +49,6 @@ class AuthController {
 	/** The authority a customer principal carries ({@code ROLE_} + type), used to label {@code /me}. */
 	private static final String CUSTOMER_ROLE_AUTHORITY = "ROLE_" + CUSTOMER_PRINCIPAL_TYPE;
 
-	/** Password policy (design D-8): a server-side minimum, capped at bcrypt's 72-byte input limit. */
-	private static final int MIN_PASSWORD_LENGTH = 8;
-	private static final int MAX_PASSWORD_BYTES = 72;
-
 	/**
 	 * A throwaway {@code {bcrypt}} hash computed ONCE at construction from a fixed non-secret string
 	 * (never a literal in source — so it is not an exposed credential), used solely to burn an
@@ -70,17 +63,23 @@ class AuthController {
 	private final SecurityContextRepository securityContextRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final CustomerAccountProvisioning customerAccounts;
+	private final CustomerRecovery recovery;
+	private final CurrentCustomer currentCustomer;
 
 	AuthController(@Qualifier("authenticationManager") AuthenticationManager operatorManager,
 			@Qualifier("customerAuthenticationManager") AuthenticationManager customerManager,
 			SecurityContextRepository securityContextRepository,
 			PasswordEncoder passwordEncoder,
-			CustomerAccountProvisioning customerAccounts) {
+			CustomerAccountProvisioning customerAccounts,
+			CustomerRecovery recovery,
+			CurrentCustomer currentCustomer) {
 		this.operatorManager = operatorManager;
 		this.customerManager = customerManager;
 		this.securityContextRepository = securityContextRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.customerAccounts = customerAccounts;
+		this.recovery = recovery;
+		this.currentCustomer = currentCustomer;
 		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-credential");
 	}
 
@@ -106,8 +105,14 @@ class AuthController {
 		}
 	}
 
-	/** The signed-in principal as the FE sees it (login/register responses and {@code /me} share it). */
-	record PrincipalResponse(String username, String principalType) {
+	/**
+	 * The signed-in principal as the FE sees it (login/register responses and {@code /me} share it).
+	 * {@code emailVerified} is the customer's soft email-verification state (S8 #113) for the "please
+	 * verify" nudge; {@code null} for an operator principal (not a customer concept). A fresh registration
+	 * is always {@code false}, and the neutral already-registered branch also reports {@code false} so the
+	 * response stays byte-identical (non-enumeration, D-8).
+	 */
+	record PrincipalResponse(String username, String principalType, Boolean emailVerified) {
 	}
 
 	@PostMapping("/api/auth/operator/login")
@@ -117,7 +122,7 @@ class AuthController {
 		// 401 INVALID_CREDENTIALS (no wrong-password/unknown-user/suspended distinction, D-8).
 		Authentication authentication =
 				establishSession(operatorManager, login.username(), login.password(), request, response);
-		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE);
+		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null);
 	}
 
 	@PostMapping("/api/auth/customer/login")
@@ -125,7 +130,7 @@ class AuthController {
 			HttpServletResponse response) {
 		Authentication authentication =
 				establishSession(customerManager, login.email(), login.password(), request, response);
-		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE);
+		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE, verifiedStatus(authentication));
 	}
 
 	/**
@@ -138,16 +143,19 @@ class AuthController {
 	@PostMapping("/api/auth/customer/register")
 	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerCredentials registration,
 			HttpServletRequest request, HttpServletResponse response) {
-		validatePassword(registration.password());
+		CustomerPasswords.validate(registration.password());
 		// Normalize at the edge so the response echoes the SAME canonical email that /me + login return
 		// (stored lower-cased/trimmed) — otherwise the displayed email would change after a reload. The
 		// module normalizes again internally (idempotent); the edge only encodes the password, never
 		// touching a Spring Security type inside the module (RV-BE-11).
-		String email = normalizeEmail(registration.email());
+		String email = CustomerPasswords.normalizeEmail(registration.email());
 		RegistrationOutcome outcome =
 				customerAccounts.register(email, passwordEncoder.encode(registration.password()));
-		if (outcome instanceof RegistrationOutcome.Registered) {
+		if (outcome instanceof RegistrationOutcome.Registered registered) {
 			establishSession(customerManager, email, registration.password(), request, response);
+			// S8 (#113): a fresh account gets a verification email (soft/non-blocking). Only on the
+			// Registered branch — the neutral already-registered branch sends nothing, so no enumeration leak.
+			recovery.sendVerificationEmail(registered.accountId(), email);
 		}
 		else {
 			// Constant-time (D-8): the fresh branch spends a bcrypt verify inside establishSession's
@@ -155,9 +163,10 @@ class AuthController {
 			// measurably faster — a latency gap would be an account-enumeration oracle.
 			passwordEncoder.matches(registration.password(), timingEqualizerHash);
 		}
-		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie.
+		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie + mailed.
+		// emailVerified is always false here (a fresh account is unverified; the neutral branch matches it).
 		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE));
+				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false));
 	}
 
 	/**
@@ -168,7 +177,8 @@ class AuthController {
 	 */
 	@GetMapping("/api/auth/me")
 	PrincipalResponse me(Authentication authentication) {
-		return new PrincipalResponse(authentication.getName(), principalTypeOf(authentication));
+		return new PrincipalResponse(authentication.getName(), principalTypeOf(authentication),
+				verifiedStatus(authentication));
 	}
 
 	/**
@@ -190,16 +200,8 @@ class AuthController {
 		return customer ? CUSTOMER_PRINCIPAL_TYPE : OPERATOR_PRINCIPAL_TYPE;
 	}
 
-	private static void validatePassword(String password) {
-		int bytes = password.getBytes(StandardCharsets.UTF_8).length;
-		if (password.length() < MIN_PASSWORD_LENGTH || bytes > MAX_PASSWORD_BYTES) {
-			throw new IllegalArgumentException("password outside the permitted length");
-		}
-	}
-
-	/** The canonical email form the module stores/looks up by (lower-cased + trimmed) — the edge echoes
-	 *  it in the register response so the displayed email matches {@code /me} and login. */
-	private static String normalizeEmail(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
+	/** The signed-in principal's soft email-verified state, or {@code null} for a non-customer (S8 #113). */
+	private Boolean verifiedStatus(Authentication authentication) {
+		return currentCustomer.optional(authentication).map(recovery::isVerified).orElse(null);
 	}
 }

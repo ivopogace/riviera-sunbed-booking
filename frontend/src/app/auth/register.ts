@@ -2,12 +2,14 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 
-import { CustomerAuth, customerRegisterMessage } from '../core/customer-auth';
+import {
+  CustomerAuth,
+  customerRegisterMessage,
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_LENGTH_MESSAGE,
+} from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
 import { SsoButtons } from './sso-buttons';
-
-/** Client-side minimum, mirrored on the server (bcrypt-capped there). Named, not a magic literal. */
-const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Customer registration page (epic #108 / S2 #111, design D-1/D-8). A tourist creates an account with
@@ -107,7 +109,7 @@ export class Register {
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
-      this.error.set('Choose a password of 8–72 characters.');
+      this.error.set(PASSWORD_LENGTH_MESSAGE);
       return;
     }
     this.submitting.set(true);

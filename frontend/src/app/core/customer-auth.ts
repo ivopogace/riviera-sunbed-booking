@@ -2,8 +2,40 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { environment } from '../../environments/environment';
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
 import { SsoProviderId, SsoRedirect } from './sso-redirect';
+
+/** The `/api/me` surface for the signed-in customer's own account writes (S8 #113). */
+const ME_API = `${environment.apiBaseUrl}/api/me`;
+
+/**
+ * The customer password policy surfaced client-side (the server is authoritative, bcrypt-capped). One
+ * source so the constant + the friendly message can't desync across the auth screens.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+export const PASSWORD_LENGTH_MESSAGE = 'Choose a password of 8–72 characters.';
+
+/** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
+export type ForgotPasswordResult = 'sent' | 'rate-limited' | 'error';
+/** How a reset-token redemption ended. */
+export type ResetPasswordResult =
+  | 'reset'
+  | 'invalid-token'
+  | 'invalid-password'
+  | 'rate-limited'
+  | 'error';
+/** How an email-verification token redemption ended. */
+export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
+/** How an authenticated set/change-password ended. */
+export type SetPasswordResult = 'set' | 'invalid-current' | 'invalid-password' | 'error';
+
+/** The stable machine-readable `code` on an RFC-7807 error body (the backend's error contract, #97). */
+function problemCode(error: unknown): string | undefined {
+  return error instanceof HttpErrorResponse
+    ? (error.error as { code?: string } | null)?.code
+    : undefined;
+}
 
 /** How a customer sign-in attempt ended (the shared {@link SignInResult}; aliased for the surfaces). */
 export type CustomerSignInResult = SignInResult;
@@ -36,6 +68,15 @@ export class CustomerAuth extends SessionAuth {
 
   private readonly ssoRedirect = inject(SsoRedirect);
   private readonly restoreOnStartup = this.restore();
+
+  /**
+   * Resolves once the initial `GET /api/auth/me` restore has completed. Awaiting it guarantees the CSRF
+   * cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN` on the first API response), so a page that
+   * fires a CSRF-protected write on load — the verify-email landing — doesn't race a cold browser to a 403.
+   */
+  whenReady(): Promise<void> {
+    return this.restoreOnStartup;
+  }
 
   /**
    * Start "Continue with Google/Apple" (S4, epic #108): a full-page navigation to the backend authorize
@@ -87,6 +128,81 @@ export class CustomerAuth extends SessionAuth {
     await this.loadPrincipal();
     return !wasSignedIn && this.signedIn() ? 'registered' : 'exists';
   }
+
+  /**
+   * Request a password-reset link (S8 #113). The response is deliberately uniform (non-enumeration,
+   * D-8), so a success here means "if that email has an account, a link was sent" — never that it exists.
+   */
+  async forgotPassword(email: string): Promise<ForgotPasswordResult> {
+    try {
+      await firstValueFrom(this.http.post<void>(`${AUTH_API}/customer/forgot-password`, { email }));
+      return 'sent';
+    } catch (error) {
+      return error instanceof HttpErrorResponse && error.status === 429 ? 'rate-limited' : 'error';
+    }
+  }
+
+  /** Redeem a reset token and set a new password (S8 #113). A bad/expired token is distinguished by `code`. */
+  async resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult> {
+    try {
+      await firstValueFrom(
+        this.http.post<void>(`${AUTH_API}/customer/reset-password`, { token, newPassword }),
+      );
+      return 'reset';
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 429) {
+        return 'rate-limited';
+      }
+      if (error instanceof HttpErrorResponse && error.status === 400) {
+        return problemCode(error) === 'INVALID_OR_EXPIRED_TOKEN' ? 'invalid-token' : 'invalid-password';
+      }
+      return 'error';
+    }
+  }
+
+  /** Redeem an email-verification token (S8 #113); refresh `emailVerified` if this device is signed in. */
+  async verifyEmail(token: string): Promise<VerifyEmailResult> {
+    try {
+      await firstValueFrom(this.http.post<void>(`${AUTH_API}/customer/verify-email`, { token }));
+      if (this.signedIn()) {
+        await this.loadPrincipal(); // pick up the flipped emailVerified for the account page/nudge
+      }
+      return 'verified';
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 429) {
+        return 'rate-limited';
+      }
+      return error instanceof HttpErrorResponse && error.status === 400 ? 'invalid-token' : 'error';
+    }
+  }
+
+  /**
+   * Set or change the signed-in customer's password (S8 #113, closes S4 F-1). An SSO-only account omits
+   * `currentPassword` to set its first one; an account that already has one must supply the correct current.
+   */
+  async setPassword(newPassword: string, currentPassword?: string): Promise<SetPasswordResult> {
+    try {
+      await firstValueFrom(
+        this.http.post<void>(`${ME_API}/password`, { newPassword, currentPassword: currentPassword ?? null }),
+      );
+      return 'set';
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 400) {
+        return problemCode(error) === 'INVALID_CURRENT_PASSWORD' ? 'invalid-current' : 'invalid-password';
+      }
+      return 'error';
+    }
+  }
+
+  /** Re-request a verification email to the signed-in customer's own address (S8 #113). */
+  async requestVerification(): Promise<'sent' | 'error'> {
+    try {
+      await firstValueFrom(this.http.post<void>(`${ME_API}/verify-email/request`, null));
+      return 'sent';
+    } catch {
+      return 'error';
+    }
+  }
 }
 
 /**
@@ -118,7 +234,7 @@ export function customerRegisterMessage(result: CustomerRegisterResult): string 
     case 'exists':
       return 'That email may already have an account. Try signing in instead.';
     case 'invalid-password':
-      return 'Choose a password of 8–72 characters.';
+      return PASSWORD_LENGTH_MESSAGE;
     case 'rate-limited':
       return 'Too many attempts. Please wait a minute and try again.';
     case 'error':

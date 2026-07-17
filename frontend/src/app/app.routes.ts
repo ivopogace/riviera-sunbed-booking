@@ -81,6 +81,30 @@ export const routes: Routes = [
     title: 'Create an account — Riviera',
   },
   {
+    // Forgot password → request a reset link (S8 #113). `account/*` literal segment, no param collision.
+    path: 'account/forgot',
+    loadComponent: () => import('./auth/forgot-password').then((m) => m.ForgotPassword),
+    title: 'Reset your password — Riviera',
+  },
+  {
+    // Reset landing (emailed link carries ?token=…) — set a new password (S8 #113).
+    path: 'account/reset',
+    loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
+    title: 'Set a new password — Riviera',
+  },
+  {
+    // Email-verification landing (emailed link carries ?token=…) — POST-verify on load (S8 #113).
+    path: 'account/verify',
+    loadComponent: () => import('./auth/verify-email').then((m) => m.VerifyEmail),
+    title: 'Verify your email — Riviera',
+  },
+  {
+    // Signed-in account page: set/change password + verification resend (S8 #113, closes S4 F-1).
+    path: 'account/password',
+    loadComponent: () => import('./auth/set-password').then((m) => m.SetPassword),
+    title: 'Your account — Riviera',
+  },
+  {
     // Venue onboarding (create a venue), reached from the console header. O8 (#177) retired this
     // page's in-page editing — layout/pricing/details/commodities are console tabs now — so it is no
     // longer a legacy compat surface: the `legacySurface` flag is dropped (its self-styled form

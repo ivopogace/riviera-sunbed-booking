@@ -8,6 +8,8 @@ import { environment } from '../../environments/environment';
 export interface AuthPrincipal {
   readonly username: string;
   readonly principalType: string;
+  /** Soft email-verification state (S8 #113) — customer-only; `null` for an operator principal. */
+  readonly emailVerified?: boolean | null;
 }
 
 /** How a sign-in attempt ended, for the surface to translate into a message. */
@@ -51,6 +53,8 @@ export abstract class SessionAuth {
   readonly signedIn = computed(() => this.principal() !== undefined);
   /** The signed-in principal's name (operator username / customer email), or undefined. */
   readonly principalName = computed(() => this.principal()?.username);
+  /** The signed-in principal's soft email-verified state (S8 #113), or undefined when unknown/signed out. */
+  readonly emailVerified = computed(() => this.principal()?.emailVerified ?? undefined);
 
   /** The principal type this service owns; a `/me` principal is adopted only when it matches (F2). */
   protected abstract readonly principalType: string;

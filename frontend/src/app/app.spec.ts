@@ -255,6 +255,11 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     // S2 (#111): the customer auth pages are new glass routes, born un-legacied (like my-bookings).
     'account/sign-in',
     'account/register',
+    // S8 (#113): the account-recovery pages (forgot / reset / verify) + the account page — new glass routes.
+    'account/forgot',
+    'account/reset',
+    'account/verify',
+    'account/password',
     'venues/:id',
     'booking/confirmation',
     'booking/pay',

@@ -175,7 +175,12 @@ class SsoCallbackIT {
 	}
 
 	private int identityRows(String provider) {
-		return jdbc.sql("SELECT count(*) FROM customer_sso_identity WHERE provider = :provider")
+		// Scope to this test's own canned mock identities (the emails clean() removes), so a sibling test's
+		// GOOGLE/APPLE identity in the shared full-suite DB can never inflate the count (full-suite isolation).
+		return jdbc.sql("""
+				SELECT count(*) FROM customer_sso_identity
+				WHERE provider = :provider AND email LIKE '%.tourist@example.com'
+				""")
 				.param("provider", provider).query(Integer.class).single();
 	}
 }
