@@ -284,14 +284,15 @@ Reuse `sso-buttons.ts`/`SessionAuth` idioms; styling per `riviera-tailwind` (no 
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `plan` — plan doc authored; design D-6 amendment pending in this commit window; awaiting Phase 0.
+**Stage pointer:** `implement (phase 0)` — plan + D-6 amendment committed (`1b537ce`); starting Phase 0.
 
-**Next action:** Amend design D-6 (`docs/architecture/auth-signin-register.md`) to record "no back-linking; soft
-verification", commit the plan + amendment, then start **Phase 0** (V28 migration + `customer` recovery port, TDD).
+**Next action:** Phase 0 — write `CustomerAccountRecoveryIT` (red), add V28 migration + the `customer::api`
+`CustomerAccountRecovery` port (issue/redeem/set/verified) with the atomic single-use claim (green). Load
+`riviera-local-debug` before the first `./gradlew`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| Plan — plan doc + D-6 amendment | ⏳ | |
+| Plan — plan doc + D-6 amendment | ✅ | `1b537ce` |
 | 0 — V28 + `customer` `CustomerAccountRecovery` (issue/redeem/set/verified) | | |
 | 1 — Edge `Mailer` port + mock/real adapters + prod guard + `TokenHasher` | | |
 | 2 — `AccountRecoveryController` (verify/forgot/reset + `/api/me/password` + resend), session revoke, rate-limit, `me.emailVerified`, register issues verify | | |

@@ -29,6 +29,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	private static final String PROVIDER = "provider";
 	private static final String SUBJECT = "subject";
 	private static final String ACCOUNT_ID = "accountId";
+	private static final String ID = "id";
 
 	private final JdbcClient jdbc;
 
@@ -115,6 +116,36 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.optional()
 				.orElseGet(() -> accountIdForIdentity(provider, subject).orElseThrow());
 		return new CustomerAccountId(linked);
+	}
+
+	@Override
+	public void markEmailVerified(CustomerAccountId accountId) {
+		// Guarded (email_verified = false) so it is idempotent and never churns email_verified_at on a
+		// repeat call (e.g. a returning SSO sign-in re-marking an already-verified account).
+		jdbc.sql("""
+				UPDATE customer_account
+				SET email_verified = true, email_verified_at = NOW()
+				WHERE id = :id AND email_verified = false
+				""")
+				.param(ID, accountId.value())
+				.update();
+	}
+
+	@Override
+	public void updatePasswordHash(CustomerAccountId accountId, String passwordHash) {
+		jdbc.sql("UPDATE customer_account SET password_hash = :hash WHERE id = :id")
+				.param("hash", passwordHash)
+				.param(ID, accountId.value())
+				.update();
+	}
+
+	@Override
+	public boolean isEmailVerified(CustomerAccountId accountId) {
+		return jdbc.sql("SELECT email_verified FROM customer_account WHERE id = :id")
+				.param(ID, accountId.value())
+				.query(Boolean.class)
+				.optional()
+				.orElse(false);
 	}
 
 	private Optional<Long> accountIdForIdentity(SsoProvider provider, String subject) {
