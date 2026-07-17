@@ -4,8 +4,17 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { CustomerAuth } from './customer-auth';
+import { SsoRedirect } from './sso-redirect';
 
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
+
+/** Records SSO start URLs instead of navigating (no `window.location` in jsdom). */
+class RecordingSsoRedirect extends SsoRedirect {
+  readonly urls: string[] = [];
+  go(url: string): void {
+    this.urls.push(url);
+  }
+}
 
 /** Let the service's async continuations (firstValueFrom → signal.set) run before asserting. */
 function tick(): Promise<void> {
@@ -14,10 +23,16 @@ function tick(): Promise<void> {
 
 describe('CustomerAuth', () => {
   let http: HttpTestingController;
+  let redirect: RecordingSsoRedirect;
 
   beforeEach(() => {
+    redirect = new RecordingSsoRedirect();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: SsoRedirect, useValue: redirect },
+      ],
     });
     http = TestBed.inject(HttpTestingController);
   });
@@ -111,6 +126,18 @@ describe('CustomerAuth', () => {
       .expectOne(`${AUTH_API}/customer/register`)
       .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
     expect(await result).toBe('invalid-password');
+  });
+
+  it('starts SSO with a full-page navigation to the provider authorize endpoint', async () => {
+    const auth = await create('signed-out');
+
+    auth.startSso('google');
+    auth.startSso('apple');
+
+    expect(redirect.urls).toEqual([
+      `${AUTH_API}/sso/google/authorize`,
+      `${AUTH_API}/sso/apple/authorize`,
+    ]);
   });
 
   it('signs out and clears the principal', async () => {

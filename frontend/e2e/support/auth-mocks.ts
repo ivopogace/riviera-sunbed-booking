@@ -100,3 +100,36 @@ export async function mockCustomerAuthApi(
     return route.fulfill({ status: 204 });
   });
 }
+
+/**
+ * Stateful mock of the CUSTOMER SSO flow (S4 #112) for the CI-safe suite. The FE starts SSO with a
+ * full-page navigation to `GET /api/auth/sso/{provider}/authorize`; here we intercept that navigation
+ * and mimic the backend's completed OIDC dance — flip the in-memory session to the provider's canned
+ * email and 302 back to the SPA root (`baseURL/`), where `restore()` reads `/api/auth/me` and shows the
+ * signed-in tourist. A different provider signs in as a different account. Logout flips the state back.
+ */
+export async function mockCustomerSsoApi(
+  page: Page,
+  options: { readonly baseURL: string; readonly google: string; readonly apple: string },
+): Promise<void> {
+  const emailByProvider: Record<string, string> = { google: options.google, apple: options.apple };
+  let signedInEmail: string | undefined;
+
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    signedInEmail
+      ? route.fulfill({ json: { username: signedInEmail, principalType: 'CUSTOMER' } })
+      : route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED')),
+  );
+
+  await page.route(/\/api\/auth\/sso\/(google|apple)\/authorize$/, (route) => {
+    const provider = /\/api\/auth\/sso\/(google|apple)\/authorize/.exec(route.request().url())?.[1];
+    signedInEmail = provider ? emailByProvider[provider] : undefined;
+    // The real backend completes the exchange server-side and returns to the SPA root with a session.
+    return route.fulfill({ status: 302, headers: { location: `${options.baseURL}/` } });
+  });
+
+  await page.route(/\/api\/auth\/logout$/, (route) => {
+    signedInEmail = undefined;
+    return route.fulfill({ status: 204 });
+  });
+}

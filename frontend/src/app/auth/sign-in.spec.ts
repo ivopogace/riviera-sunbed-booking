@@ -5,11 +5,14 @@ import { vi } from 'vitest';
 import { CustomerAuth, CustomerSignInResult } from '../core/customer-auth';
 import { SignIn } from './sign-in';
 
+type AuthStub = Partial<CustomerAuth> & {
+  signIn: ReturnType<typeof vi.fn>;
+  startSso: ReturnType<typeof vi.fn>;
+};
+
 /** A CustomerAuth stub whose signIn resolves to the given result; other members are inert. */
-function authStub(result: CustomerSignInResult): Partial<CustomerAuth> & { signIn: ReturnType<typeof vi.fn> } {
-  return { signIn: vi.fn(async () => result) } as unknown as Partial<CustomerAuth> & {
-    signIn: ReturnType<typeof vi.fn>;
-  };
+function authStub(result: CustomerSignInResult): AuthStub {
+  return { signIn: vi.fn(async () => result), startSso: vi.fn() } as unknown as AuthStub;
 }
 
 async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<SignIn>> {
@@ -95,5 +98,17 @@ describe('SignIn', () => {
 
     expect(auth.signIn).not.toHaveBeenCalled();
     expect(errorText(fixture)).toBe('Enter your email and password.');
+  });
+
+  it('starts SSO when a provider button is clicked', async () => {
+    const auth = authStub('signed-in');
+    const fixture = await render(auth);
+    const el = fixture.nativeElement as HTMLElement;
+
+    el.querySelector<HTMLButtonElement>('[data-testid="sso-google"]')!.click();
+    expect(auth.startSso).toHaveBeenCalledWith('google');
+
+    el.querySelector<HTMLButtonElement>('[data-testid="sso-apple"]')!.click();
+    expect(auth.startSso).toHaveBeenCalledWith('apple');
   });
 });

@@ -234,11 +234,10 @@ the redirect flow must leave the SPA and return with a session cookie, so the CS
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement (phase 3)` — Phases 0–2 green (backend complete).
+**Stage pointer:** `CI / PR` — all four build phases green locally; ready to merge `main`, push, open PR.
 
-**Next action:** Build Phase 3 (frontend) — load `riviera-frontend` + `angular-developer` + angular-cli
-MCP + `riviera-tailwind` + `playwright-cli`; add SSO buttons to sign-in/register + `startSso(provider)`
-nav helper; author the mocked e2e spec (button → routed authorize redirect → signed-in) + a11y.
+**Next action:** Merge latest `origin/main` into the branch, push, confirm CI green, open the PR into
+`main`; then the review gate (`riviera-review-overlay` + `/code-review`) → Sonar gate → merge close-out.
 
 **Verified so far:** Phase 0 — `SsoAccountProvisioningIT` (4) + `CustomerAccountServiceTest` (5) + S2
 regression. Phase 1 — `MockSsoGatewayTest` (2) + `RealSsoGatewayTest` (2) + `MockSsoProdGuardTest` (3).
@@ -252,8 +251,8 @@ with new stubs (`RateLimitFilterTest` 12, `WebCorsConfigTest` 2) + structural ne
 | Plan — plan doc | ✅ | `2cddfeb` |
 | 0 — V27 + customer SSO provisioning | ✅ | `e08e545` |
 | 1 — Edge SsoGateway + adapters + guard | ✅ | `852a343` |
-| 2 — SsoController (authorize/callback, session, rate-limit) | ✅ | (this commit) |
-| 3 — Frontend buttons + mocked e2e | ⏳ | |
+| 2 — SsoController (authorize/callback, session, rate-limit) | ✅ | `9a1ec27` |
+| 3 — Frontend buttons + mocked e2e | ✅ | (this commit) |
 | Close-out — docs + epic tick | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

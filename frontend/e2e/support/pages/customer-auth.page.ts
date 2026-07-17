@@ -22,6 +22,9 @@ export class CustomerAuthPage {
   readonly error: Locator;
   readonly registerSubmit: Locator;
   readonly signInSubmit: Locator;
+  /** SSO buttons (S4 #112 — present on both the sign-in and register cards). */
+  readonly ssoGoogle: Locator;
+  readonly ssoApple: Locator;
 
   constructor(private readonly page: Page) {
     this.signInLink = page.getByTestId('nav-signin');
@@ -34,6 +37,8 @@ export class CustomerAuthPage {
     this.error = page.getByRole('alert');
     this.registerSubmit = page.getByRole('button', { name: /^(Create account|Creating)/ });
     this.signInSubmit = page.getByRole('button', { name: /^Sign(ing)? in/ });
+    this.ssoGoogle = page.getByTestId('sso-google');
+    this.ssoApple = page.getByTestId('sso-apple');
   }
 
   async gotoRegister(): Promise<void> {
@@ -59,6 +64,15 @@ export class CustomerAuthPage {
 
   async signOut(): Promise<void> {
     await this.signOutButton.click();
+  }
+
+  /** Start "Continue with Google/Apple" — a full-page navigation (the caller awaits the signed-in state). */
+  async continueWithGoogle(): Promise<void> {
+    await this.ssoGoogle.click();
+  }
+
+  async continueWithApple(): Promise<void> {
+    await this.ssoApple.click();
   }
 
   /** Signed out ⇔ the header offers the Sign in link. */
