@@ -1,7 +1,6 @@
 package ai.riviera.platform;
 
 import java.net.URI;
-import java.util.Locale;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -37,7 +36,7 @@ class MockSsoGateway implements SsoGateway {
 		// Point at the in-app mock IdP on the same host as the callback (which the edge built from the
 		// request), carrying the state to echo and the callback to return to — the real redirect dance.
 		return UriComponentsBuilder.fromUri(redirectUri)
-				.replacePath(MOCK_IDP_PATH.replace("{provider}", providerSlug(provider)))
+				.replacePath(MOCK_IDP_PATH.replace("{provider}", SsoProviders.slug(provider)))
 				.replaceQuery(null)
 				.queryParam(STATE_PARAM, challenge.state())
 				.queryParam(REDIRECT_URI_PARAM, redirectUri.toString())
@@ -53,9 +52,5 @@ class MockSsoGateway implements SsoGateway {
 			case GOOGLE -> new ExternalIdentity(SsoProvider.GOOGLE, "google-mock-subject-001", "google.tourist@example.com");
 			case APPLE -> new ExternalIdentity(SsoProvider.APPLE, "apple-mock-subject-001", "apple.tourist@example.com");
 		};
-	}
-
-	private static String providerSlug(SsoProvider provider) {
-		return provider.name().toLowerCase(Locale.ROOT);
 	}
 }

@@ -3,8 +3,8 @@ import { FormField, form } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 
 import { CustomerAuth, customerRegisterMessage } from '../core/customer-auth';
-import { SsoProviderId } from '../core/sso-redirect';
 import { CardGlass } from '../shared/card-glass';
+import { SsoButtons } from './sso-buttons';
 
 /** Client-side minimum, mirrored on the server (bcrypt-capped there). Named, not a magic literal. */
 const MIN_PASSWORD_LENGTH = 8;
@@ -18,7 +18,7 @@ const MIN_PASSWORD_LENGTH = 8;
  */
 @Component({
   selector: 'app-register',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, SsoButtons],
   template: `
     <section class="auth-wrap" aria-labelledby="register-title">
       <div class="auth-card" appCardGlass>
@@ -68,26 +68,7 @@ const MIN_PASSWORD_LENGTH = 8;
           </button>
         </form>
 
-        <div class="auth-divider"><span>or</span></div>
-
-        <div class="auth-sso" role="group" aria-label="Continue with a provider">
-          <button
-            type="button"
-            class="auth-sso-btn"
-            data-testid="sso-google"
-            (click)="continueWith('google')"
-          >
-            Continue with Google
-          </button>
-          <button
-            type="button"
-            class="auth-sso-btn"
-            data-testid="sso-apple"
-            (click)="continueWith('apple')"
-          >
-            Continue with Apple
-          </button>
-        </div>
+        <app-sso-buttons />
 
         <p class="auth-alt">
           Already have an account?
@@ -113,11 +94,6 @@ export class Register {
 
   constructor() {
     afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
-  }
-
-  /** Start SSO sign-in/registration (S4 #112) — a full-page navigation to the backend authorize endpoint. */
-  protected continueWith(provider: SsoProviderId): void {
-    this.auth.startSso(provider);
   }
 
   protected async onSubmit(): Promise<void> {

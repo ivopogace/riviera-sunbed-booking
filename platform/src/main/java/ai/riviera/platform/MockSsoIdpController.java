@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -41,23 +42,41 @@ class MockSsoIdpController {
 			@RequestParam("redirect_uri") URI redirectUri,
 			HttpServletRequest request) {
 		SsoProvider parsed = SsoProviders.parse(provider);
-		requireOwnCallback(parsed, redirectUri, request);
-
-		URI callback = UriComponentsBuilder.fromUri(redirectUri)
+		// Build the callback target from THIS request's own origin (scheme/host/port/path) — NEVER from the
+		// client-supplied redirect_uri — so this endpoint can never be turned into an open redirect. The
+		// supplied redirect_uri is then required to equal that origin's callback, mimicking a real IdP's
+		// registered-redirect-uri check (a mismatch is a 400 — invalid redirect_uri).
+		URI ownCallback = ServletUriComponentsBuilder.fromRequestUri(request)
+				.replacePath(CALLBACK_PATH_TEMPLATE.formatted(SsoProviders.slug(parsed)))
 				.replaceQuery(null)
+				.build()
+				.toUri();
+		requireMatchesOwnCallback(redirectUri, ownCallback);
+
+		URI location = UriComponentsBuilder.fromUri(ownCallback)
 				.queryParam(CODE_PARAM, MOCK_CODE_PREFIX + SsoProviders.slug(parsed))
 				.queryParam(STATE_PARAM, state)
 				.build()
 				.toUri();
-		return ResponseEntity.status(HttpStatus.FOUND).location(callback).build();
+		return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
 	}
 
-	/** Only ever redirect back to this app's own {@code /api/auth/sso/{provider}/callback} (no open redirect). */
-	private static void requireOwnCallback(SsoProvider provider, URI redirectUri, HttpServletRequest request) {
-		String expectedPath = CALLBACK_PATH_TEMPLATE.formatted(SsoProviders.slug(provider));
-		boolean sameHost = request.getServerName().equalsIgnoreCase(redirectUri.getHost());
-		if (!expectedPath.equals(redirectUri.getPath()) || !sameHost) {
+	/**
+	 * The supplied {@code redirect_uri} must be exactly this app's own callback — scheme, host, port AND
+	 * path (the earlier host+path-only guard missed scheme/port). Belt-and-braces: the Location is already
+	 * built from the request origin above, so this only enforces the mock's IdP contract.
+	 */
+	private static void requireMatchesOwnCallback(URI redirectUri, URI ownCallback) {
+		boolean matches = equalsIgnoreCase(redirectUri.getScheme(), ownCallback.getScheme())
+				&& equalsIgnoreCase(redirectUri.getHost(), ownCallback.getHost())
+				&& redirectUri.getPort() == ownCallback.getPort()
+				&& ownCallback.getPath().equals(redirectUri.getPath());
+		if (!matches) {
 			throw new IllegalArgumentException("invalid redirect_uri");
 		}
+	}
+
+	private static boolean equalsIgnoreCase(String a, String b) {
+		return a == null ? b == null : a.equalsIgnoreCase(b);
 	}
 }

@@ -13,9 +13,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -110,6 +112,28 @@ class SsoCallbackIT {
 				.andExpect(status().isBadRequest());
 
 		assertEquals(0, accountRows(GOOGLE_EMAIL));
+	}
+
+	@Test
+	void mockIdpRedirectsBackToTheOwnCallbackWithACannedCode() throws Exception {
+		mvc.perform(get("/api/auth/sso/mock/{provider}/authorize", "google")
+				.param("state", "state-xyz")
+				.param("redirect_uri", "http://localhost/api/auth/sso/google/callback")
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
+				.andExpect(status().isFound())
+				.andExpect(header().string("Location", containsString("/api/auth/sso/google/callback")))
+				.andExpect(header().string("Location", containsString("code=mock-google")))
+				.andExpect(header().string("Location", containsString("state=state-xyz")));
+	}
+
+	@Test
+	void mockIdpRejectsAForeignRedirectUri() throws Exception {
+		// A redirect_uri on a different host/scheme must not be honoured (no open redirect).
+		mvc.perform(get("/api/auth/sso/mock/{provider}/authorize", "google")
+				.param("state", "s")
+				.param("redirect_uri", "https://evil.example/api/auth/sso/google/callback")
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
+				.andExpect(status().isBadRequest());
 	}
 
 	/** Run the full mock authorize→callback flow on a fresh unique IP; return the signed-in session. */

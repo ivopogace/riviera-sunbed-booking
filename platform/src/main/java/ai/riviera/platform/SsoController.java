@@ -7,6 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -99,11 +100,16 @@ class SsoController {
 
 		ExternalIdentity identity =
 				ssoGateway.exchangeCode(parsed, code, codeVerifier, callbackUri(request, parsed));
+		// Normalize the provider email to the SAME canonical form the account is stored/looked-up under
+		// (trim + lower-case, like AuthController's register), so a session established here and one from
+		// password login carry an identical principal name — /me never flips between two spellings (a real
+		// S5 provider may assert a mixed-case address; the S4 mock already returns a lower-cased one).
+		String email = normalizeEmail(identity.email());
 		// Resolve-or-create the account (find-or-create by verified email, auto-link); the session is keyed
 		// by the account email (principal name), exactly like password login, so CurrentCustomer resolves it.
-		ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), identity.email());
+		ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
 		Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
-				identity.email(), null, List.of(new SimpleGrantedAuthority(CUSTOMER_ROLE)));
+				email, null, List.of(new SimpleGrantedAuthority(CUSTOMER_ROLE)));
 		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
 		return redirectTo(URI.create(POST_LOGIN_REDIRECT));
 	}
@@ -157,6 +163,10 @@ class SsoController {
 				.replaceQuery(null)
 				.build()
 				.toUri();
+	}
+
+	private static String normalizeEmail(String email) {
+		return email.trim().toLowerCase(Locale.ROOT);
 	}
 
 	private static boolean constantTimeEquals(String a, String b) {

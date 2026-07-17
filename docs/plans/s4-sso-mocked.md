@@ -234,10 +234,16 @@ the redirect flow must leave the SPA and return with a session cookie, so the CS
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `CI / PR` — all four build phases green locally; ready to merge `main`, push, open PR.
+**Stage pointer:** `review gate — fixes applied, re-pushing` → then Sonar gate → merge close-out.
 
-**Next action:** Merge latest `origin/main` into the branch, push, confirm CI green, open the PR into
-`main`; then the review gate (`riviera-review-overlay` + `/code-review`) → Sonar gate → merge close-out.
+**Next action:** Push the review-fix batch (F-3/5/6/7/8/9), confirm CI green on the new push, pull the
+SonarCloud new-issue + duplication list for PR #251 and clear it, then the merge close-out. F-1/F-2/F-4
+deferred with rationale (findings register) — propagate to #113/#116/new follow-up at close-out.
+
+**Review gate:** high-effort `/code-review` workflow ran on the PR diff (9 findings, 2 refuted). Cleanups
+F-3/5/6/7/8/9 fixed + re-tested locally (SsoCallbackIT 7 incl. mock-IdP hop, RateLimitFilterTest 12, 687 FE
+unit + e2e + build). F-1 (SSO-only account can't set a password) deferred → S8 #113; F-2 (pre-existing S2
+register edge case) → follow-up; F-4 (IdP-error redirect) → S5 #116.
 
 **Verified so far:** Phase 0 — `SsoAccountProvisioningIT` (4) + `CustomerAccountServiceTest` (5) + S2
 regression. Phase 1 — `MockSsoGatewayTest` (2) + `RealSsoGatewayTest` (2) + `MockSsoProdGuardTest` (3).
@@ -262,7 +268,16 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-3 | review (high) | `SsoController` builds the session principal from the raw provider email, not normalized — S5-latent display drift | fixed |
+| F-5 | review (high) | `MockSsoIdpController` open-redirect guard misses scheme/port | fixed (Location rebuilt from the request, guard tightened) |
+| F-6 | review (high) | SSO button block duplicated across sign-in/register (also a Sonar-duplication risk) | fixed (extracted `auth/sso-buttons.ts`) |
+| F-7 | review (high) | `RateLimitFilter` runs two AntMatchers on every API GET | fixed (`startsWith` pre-check) |
+| F-8 | review (high) | new component SCSS vs the Tailwind go-forward | fixed (shared component is Tailwind; SSO SCSS removed) |
+| F-9 | review (high) | `MockSsoGateway.providerSlug()` duplicates `SsoProviders.slug()` | fixed |
+| F-1 | review (high) | An SSO-only (password-less) account can't set/use a password — no recovery path | **deferred → #113 (S8)**: safe set-password / verified-email reset is S8's job; the unsafe register-UPSERT is a takeover vector. Flagged on #113 + #116. |
+| F-2 | review (high) | FE `register()` misclassifies a fresh registration as `exists` when already signed in | **deferred → follow-up #252**: pre-existing S2 (#111) code (the `!wasSignedIn` "review F3" guard), untouched by this diff; rare edge case |
+| F-4 | review (high) | Callback returns raw 400 on an IdP error redirect (no `code`/`state`) | **deferred → #116 (S5)**: unreachable with the cooperative mock; graceful IdP-error handling belongs with the real provider flow |
+| — | review (high) | auto-link takeover (unverified email) | **refuted** — the mock returns only verified canned identities; real adapters throw. Documented for S5 (R-2) |
 
 ---
 

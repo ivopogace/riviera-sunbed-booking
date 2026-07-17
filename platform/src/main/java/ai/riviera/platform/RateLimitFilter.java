@@ -79,6 +79,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// authorize mints sessions, callback exchanges codes — so they ride a per-IP budget too. Templates
 	// (one {provider} segment) so the deeper mock-authorize path (/sso/mock/{provider}/authorize) never
 	// matches and is not throttled.
+	private static final String SSO_PATH_PREFIX = "/api/auth/sso/";
 	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
 	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
 
@@ -174,8 +175,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 				return Optional.of(customerAuthBuckets);
 			}
 		}
-		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too.
-		if (HttpMethod.GET.matches(method)
+		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too. A
+		// cheap prefix pre-check keeps the two AntPathMatcher matches off every hot public venue/booking GET.
+		if (HttpMethod.GET.matches(method) && path.startsWith(SSO_PATH_PREFIX)
 				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
 			return Optional.of(ssoBuckets);
 		}

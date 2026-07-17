@@ -3,8 +3,8 @@ import { FormField, form } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 
 import { CustomerAuth, customerSignInMessage } from '../core/customer-auth';
-import { SsoProviderId } from '../core/sso-redirect';
 import { CardGlass } from '../shared/card-glass';
+import { SsoButtons } from './sso-buttons';
 
 /**
  * Customer sign-in page (epic #108 / S2 #111, design D-1/D-8). A tourist enters email + password; on
@@ -15,7 +15,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-sign-in',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, SsoButtons],
   template: `
     <section class="auth-wrap" aria-labelledby="signin-title">
       <div class="auth-card" appCardGlass>
@@ -63,26 +63,7 @@ import { CardGlass } from '../shared/card-glass';
           </button>
         </form>
 
-        <div class="auth-divider"><span>or</span></div>
-
-        <div class="auth-sso" role="group" aria-label="Continue with a provider">
-          <button
-            type="button"
-            class="auth-sso-btn"
-            data-testid="sso-google"
-            (click)="continueWith('google')"
-          >
-            Continue with Google
-          </button>
-          <button
-            type="button"
-            class="auth-sso-btn"
-            data-testid="sso-apple"
-            (click)="continueWith('apple')"
-          >
-            Continue with Apple
-          </button>
-        </div>
+        <app-sso-buttons />
 
         <p class="auth-alt">
           New here?
@@ -109,11 +90,6 @@ export class SignIn {
   constructor() {
     // Move focus into the first field on load (form a11y).
     afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
-  }
-
-  /** Start SSO sign-in (S4 #112) — a full-page navigation to the backend authorize endpoint. */
-  protected continueWith(provider: SsoProviderId): void {
-    this.auth.startSso(provider);
   }
 
   protected async onSubmit(): Promise<void> {
