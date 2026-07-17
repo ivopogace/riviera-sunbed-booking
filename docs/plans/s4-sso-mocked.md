@@ -68,7 +68,8 @@ to nullable (SSO-only accounts carry no local password). No other table changes.
 - [ ] **AC-3 (SSO-only account cannot password-login):** Given an SSO-only `customer_account`
   (password_hash NULL), when `CustomerAccounts.findByEmail(email)` is called, then it returns
   `Optional.empty()` (no credential), so password login yields the generic 401 (non-enumeration, D-8).
-  *Pinned by:* `CustomerAccountServiceTest.findByEmail_ignoresPasswordlessSsoAccount`.
+  *Pinned by:* `SsoAccountProvisioningIT.ssoOnlyAccountHasNoPasswordCredentialButResolvesAsAnAccount`
+  (the null-hash filter is SQL behavior, proven against real Postgres).
 - [ ] **AC-4 (mock end-to-end, adapter/e2e):** With the default (mock) profile, a tourist clicks
   "Continue with Google", is redirected through the mock IdP and back to the callback, and ends
   **signed-in with a `SESSION` cookie**; the header shows their identity; clicking again reuses the
@@ -233,16 +234,21 @@ the redirect flow must leave the SPA and return with a session cookie, so the CS
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `plan` — plan doc authored, pending maintainer OK to start Phase 0.
+**Stage pointer:** `implement (phase 1)` — Phase 0 green (V27 + `SsoAccountProvisioning`), S2 regression green.
 
-**Next action:** Commit this plan doc on `feature/s4-sso-mocked`; then load `riviera-local-debug` +
-`riviera-java-conventions`, start Phase 0 (V27 migration + `SsoAccountProvisioning`) test-first.
+**Next action:** Build Phase 1 test-first — edge `SsoGateway` port + `MockSsoGateway`/mock-IdP +
+throwing `Google`/`Apple` adapters + `MockSsoProdGuard` (`RealSsoGatewayTest`, `MockSsoProdGuardTest`).
+
+**Verified so far:** `SsoAccountProvisioningIT` (4, real Postgres) + `CustomerAccountServiceTest` (5) +
+S2 regression (`JdbcCustomerAccountsIT`, `CustomerLoginIT`, `CustomerRegisterIT`, `CustomerRoleSeparationIT`,
+`CustomerAuthPlacementTests`) + structural net (`ModularityTests`, `JdbcOnly*`, `PackageShape*`,
+`PublishedSurfacePlacement*`) all pass locally. Full suite = CI.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| Plan — plan doc | ⏳ | |
-| 0 — V27 + customer SSO provisioning | | |
-| 1 — Edge SsoGateway + adapters + guard | | |
+| Plan — plan doc | ✅ | `2cddfeb` |
+| 0 — V27 + customer SSO provisioning | ✅ | (this commit) |
+| 1 — Edge SsoGateway + adapters + guard | ⏳ | |
 | 2 — SsoController (authorize/callback, session, rate-limit) | | |
 | 3 — Frontend buttons + mocked e2e | | |
 | Close-out — docs + epic tick | | |

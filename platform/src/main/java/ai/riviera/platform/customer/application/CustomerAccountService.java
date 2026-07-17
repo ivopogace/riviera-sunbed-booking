@@ -9,9 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
  * The {@code customer} module's account application service (S2, epic #108): the read side of an
@@ -28,7 +30,8 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
  * is a pure query.
  */
 @Service
-class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisioning, CustomerAccountDirectory {
+class CustomerAccountService
+		implements CustomerAccounts, CustomerAccountProvisioning, CustomerAccountDirectory, SsoAccountProvisioning {
 
 	private final CustomerAccountStore store;
 
@@ -50,6 +53,12 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Transactional
 	public RegistrationOutcome register(String email, String passwordHash) {
 		return store.insertIfAbsent(normalize(email), passwordHash);
+	}
+
+	@Override
+	@Transactional
+	public CustomerAccountId resolveOrCreate(SsoProvider provider, String subject, String email) {
+		return store.resolveSsoAccount(provider, subject, normalize(email));
 	}
 
 	private static String normalize(String email) {
