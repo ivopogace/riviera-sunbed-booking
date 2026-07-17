@@ -47,8 +47,8 @@ at Implement", it means this paragraph.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
-| **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what already exists — `graphify query "<idea>"` / `explain "<concept>"` (when the graph is present) so you refine against the real code, not assumptions. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs) |
-| **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. Any strategic document the issues reference must be committed to the repo before or with them (rule 10). | `to-issues` |
+| **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what already exists — `graphify query "<idea>"` / `explain "<concept>"` (when the graph is present) so you refine against the real code, not assumptions. A **foggy epic** (destination clear, route not) may first be charted with `wayfinder` — see *Epic front-end*, below. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs); `wayfinder` (foggy epics only) |
+| **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. For an **epic** (multi-slice), optionally first synthesize a committed epic **spec** — user stories + testing seams + out-of-scope — then slice its user stories (see *Epic front-end*, below). Any strategic document the issues reference must be committed to the repo before or with them (rule 10). | `to-spec` (epic spec, optional) → `to-issues` |
 | **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) with `graphify query`/`path` — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. Re-run the Skill-routing gate for each area you touch. | `implement` + `tdd` + the Skill-routing gate (below) |
 | **CI gate** | Every push/PR builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's CI run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
@@ -56,6 +56,40 @@ at Implement", it means this paragraph.
 | **Review** | **Mandatory gate.** Review the PR diff against the invariants; record findings; each fix re-enters at Implement (re-entry rule). Green CI is not a substitute — procedure: `references/pr-gates.md` §1. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | **Mandatory gate (PR-time; Sonar analyzes PRs + `main` only).** A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge; logic-changing findings re-enter at Implement (re-entry rule) — procedure: `references/pr-gates.md` §2. | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green **and** its issue list cleared + findings resolved through the loop → merge, then run the close-out checklist — procedure: `references/pr-gates.md` §3. | the Merge close-out (`references/pr-gates.md`) |
+
+## Epic front-end (optional — for multi-slice epics)
+
+Ahead of `Refine → Issue`, a big change can be authored top-down through three
+Matt-Pocock craft skills. This is **optional scaffolding for epics**, not a new gate —
+a single slice or a one-liner skips it entirely.
+
+```
+wayfinder            →   to-spec               →   to-issues
+chart foggy              formalize: user           slice user stories into
+decisions across         stories + testing         tracer-bullet vertical
+sessions (epic map)      seams + out-of-scope      issues (ready-for-agent)
+(foggy epics only)       (committed epic issue)    (the normal Issue stage)
+```
+
+- **`wayfinder` — foggy epics only.** Use it *only* when the destination is clear but
+  the route is fog and the decisions won't fit one session (candidate: SSO / #112). When
+  `to-issues` can already cut clean slices — the common case, since the product design spec
+  + domain model are captured up front — **skip it**. It charts a `wayfinder:map` issue of
+  **decision** tickets (not build slices), resolved one per session until the way is clear.
+- **`to-spec` — the epic spec.** Synthesizes the discussion into one committed epic issue
+  (Problem / Solution / numbered **User Stories** / Implementation Decisions / **Testing
+  Seams** / Out of scope). Its user stories are what `to-issues` then slices against.
+- **`to-issues` — unchanged.** The normal Issue stage; consumes the spec's user stories.
+
+**Two boundaries that keep this from fighting the rest of the loop:**
+
+1. **Altitude.** `to-spec` is **epic-level** (user stories, seams, out-of-scope, committed
+   once). `riviera-plan-doc` stays **slice-level** (testable ACs, risk register, invariant
+   proof, the Execution-status state store). Don't restate slice ACs in the spec — two spec
+   layers is the failure mode.
+2. **State store.** The `wayfinder:map` issue governs the **charting** phase only. The
+   moment a slice enters execution, the plan-doc **Execution status** section is the state
+   store (rules 10–11) — the map *indexes* decisions, it does not track build progress.
 
 ## Issue-intake grill gate (summary)
 
@@ -213,10 +247,11 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
   (backend Java idioms), `riviera-stripe-payments` (money), `riviera-frontend` (FE
   structure) + `angular-developer` + `playwright-cli` (frontend), `riviera-local-debug`
   (build/test recipes), `riviera-docs-freshness` (merge close-out step 5).
-- **Vendored craft skills (Matt Pocock, MIT):** `grilling`/`grill-me`, `to-issues`,
-  `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
-  `triage`, `improve-codebase-architecture` (use the last one once there is code to
-  deepen).
+- **Vendored craft skills (Matt Pocock, MIT):** `grilling`/`grill-me`, `wayfinder`
+  (foggy-epic charting) → `to-spec` (epic spec) → `to-issues` (slice) — the *Epic
+  front-end* chain — plus `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`,
+  `domain-modeling`, `triage`, `improve-codebase-architecture` (use the last one once
+  there is code to deepen).
 
 ## References
 

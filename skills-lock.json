@@ -32,7 +32,21 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/to-issues/SKILL.md",
       "ref": "main",
-      "vendored": true
+      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors"
+    },
+    "to-spec": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/to-spec/SKILL.md",
+      "ref": "main",
+      "vendored": "verbatim body + a riviera localization note (epic-vs-slice altitude, GitHub-MCP tracker + triage-labels, feeds to-issues)"
+    },
+    "wayfinder": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/wayfinder/SKILL.md",
+      "ref": "main",
+      "vendored": "verbatim body + a riviera localization note (foggy-epics-only, GitHub-MCP tracker + wayfinder:* labels, research/prototype subagent substitution, map-vs-plan-doc state-store boundary); upstream agents/openai.yaml dropped"
     },
     "implement": {
       "source": "mattpocock/skills",

@@ -31,6 +31,7 @@ Break the plan into **tracer bullet** issues. Each issue is a thin vertical slic
 - Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
 - A completed slice is demoable or verifiable on its own
 - Any prefactoring should be done first
+- A wide or breaking refactor is sequenced as **expand → migrate → contract** (parallel-change) across several slices — add the new shape, move callers, then remove the old — never as one big-bang slice
 
 </vertical-slice-rules>
 
@@ -54,7 +55,7 @@ Iterate until the user approves the breakdown.
 
 For each approved slice, publish a new issue to the issue tracker. Use the issue body template below. These issues are considered ready for AFK agents, so publish them with the correct triage label unless instructed otherwise.
 
-Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field.
+Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field. Where the tracker has a **native** dependency relationship (GitHub sub-issues / a "blocked by" link), wire it in a **second pass** once the ids exist — in addition to the body field — so the frontier (open, unblocked tickets) renders visually in the tracker's own UI, not only in prose.
 
 <issue-template>
 ## Parent
