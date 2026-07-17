@@ -234,22 +234,23 @@ the redirect flow must leave the SPA and return with a session cookie, so the CS
 > Session-recovery anchor. Re-read after any compaction / fresh session before acting. Update in the
 > same commit window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement (phase 1)` — Phase 0 green (V27 + `SsoAccountProvisioning`), S2 regression green.
+**Stage pointer:** `implement (phase 2)` — Phase 0 + Phase 1 green.
 
-**Next action:** Build Phase 1 test-first — edge `SsoGateway` port + `MockSsoGateway`/mock-IdP +
-throwing `Google`/`Apple` adapters + `MockSsoProdGuard` (`RealSsoGatewayTest`, `MockSsoProdGuardTest`).
+**Next action:** Build Phase 2 test-first — `SsoController` authorize+callback (state/PKCE in session,
+`establishSession(Authentication)`, 302 to `/`) + `RateLimitFilter` SSO GET paths (`SsoCallbackIT`,
+`SsoRateLimitIT`). Read `SecurityConfig`/`AuthController`/`RateLimitFilter` first; watch R-5 (WebSliceStubs).
 
-**Verified so far:** `SsoAccountProvisioningIT` (4, real Postgres) + `CustomerAccountServiceTest` (5) +
-S2 regression (`JdbcCustomerAccountsIT`, `CustomerLoginIT`, `CustomerRegisterIT`, `CustomerRoleSeparationIT`,
-`CustomerAuthPlacementTests`) + structural net (`ModularityTests`, `JdbcOnly*`, `PackageShape*`,
-`PublishedSurfacePlacement*`) all pass locally. Full suite = CI.
+**Verified so far:** Phase 0 — `SsoAccountProvisioningIT` (4, real Postgres) + `CustomerAccountServiceTest`
+(5) + S2 regression. Phase 1 — `MockSsoGatewayTest` (2) + `RealSsoGatewayTest` (2) + `MockSsoProdGuardTest`
+(3) + full-context boot with mock beans (`SsoAccountProvisioningIT`) + structural net (`ModularityTests`,
+`PackageShape*`, `PublishedSurfacePlacement*`, `ErrorContract*`). All pass locally. Full suite = CI.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | Plan — plan doc | ✅ | `2cddfeb` |
-| 0 — V27 + customer SSO provisioning | ✅ | (this commit) |
-| 1 — Edge SsoGateway + adapters + guard | ⏳ | |
-| 2 — SsoController (authorize/callback, session, rate-limit) | | |
+| 0 — V27 + customer SSO provisioning | ✅ | `e08e545` |
+| 1 — Edge SsoGateway + adapters + guard | ✅ | (this commit) |
+| 2 — SsoController (authorize/callback, session, rate-limit) | ⏳ | |
 | 3 — Frontend buttons + mocked e2e | | |
 | Close-out — docs + epic tick | | |
 
