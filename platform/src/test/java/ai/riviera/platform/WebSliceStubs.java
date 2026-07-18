@@ -489,7 +489,7 @@ class WebSliceStubs {
 
 	@Bean
 	OnboardVenue onboardVenue() {
-		return _ -> new VenueId(0);
+		return (operator, command) -> new VenueId(0);
 	}
 
 	@Bean

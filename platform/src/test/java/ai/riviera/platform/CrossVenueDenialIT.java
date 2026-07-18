@@ -17,6 +17,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import com.jayway.jsonpath.JsonPath;
 
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import jakarta.servlet.http.Cookie;
@@ -41,13 +44,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * platform-wide {@code /api/admin/**} surface plus {@code POST /api/venues} (no path {@code venueId})
  * stay role-gated only.
  *
- * <p>Two synthetic per-venue operators are seeded: <strong>A</strong> owns a fresh venue, <strong>B</strong>
- * owns Miramar (venue 1). The real {@code VenueOwnership} runs against the real {@code operator} tables;
- * only the edge {@link CurrentOperator} (principal → operator id — the seam #74 completes) is mocked, so
- * each request is attributed to A or B independently of the shared bootstrap login. The session cookie
- * (from one real login, issue #109) still satisfies the role gate. The staff-availability case is the spoofing test: A uses <em>its own</em>
- * venue in the URL path but a Miramar {@code setId}, and is still denied because the service resolves the
- * owning venue from the set, never the path.
+ * <p>Two synthetic per-venue operators are seeded, each owning its own fresh venue (<strong>A</strong>
+ * and <strong>B</strong>); Miramar (venue 1) is owned by neither (it is backfilled to the bootstrap
+ * admin, #115), so a non-owner denial can target it too. The real {@code VenueOwnership} runs against
+ * the real {@code operator} tables; only the edge {@link CurrentOperator} (principal → operator id —
+ * the seam #74 completes) is mocked, so each request is attributed to A or B independently of the
+ * shared bootstrap login. The session cookie (from one real login, issue #109) still satisfies the
+ * role gate. The staff-availability case is the spoofing test: A uses <em>its own</em> venue in the
+ * URL path but a Miramar {@code setId}, and is still denied because the service resolves the owning
+ * venue from the set, never the path.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -57,7 +62,7 @@ class CrossVenueDenialIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final long MIRAMAR = 1L; // seeded venue, owned by B in this test
+	private static final long MIRAMAR = 1L; // seeded venue, backfilled to the bootstrap admin — A/B own neither
 
 	@Autowired
 	MockMvc mvc;
@@ -71,6 +76,8 @@ class CrossVenueDenialIT {
 	private OperatorId operatorA;
 	private OperatorId operatorB;
 	private long venueOwnedByA;
+	private long venueOwnedByB;
+	private long bSetId; // an ONLINE set in venueOwnedByB, for the venue-resolved-from-set owner path
 	private long miramarSetId;
 	private Cookie operatorSession;
 
@@ -81,22 +88,31 @@ class CrossVenueDenialIT {
 				+ "(SELECT id FROM operator WHERE username IN ('op-a', 'op-b'))").update();
 		jdbc.sql("DELETE FROM operator WHERE username IN ('op-a', 'op-b')").update();
 
-		venueOwnedByA = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Operator A Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
-				RETURNING id
-				""").query(Long.class).single();
+		venueOwnedByA = newVenue("Operator A Venue");
+		venueOwnedByB = newVenue("Operator B Venue");
 		operatorA = insertOperator("op-a");
 		operatorB = insertOperator("op-b");
 		grant(operatorA, venueOwnedByA);
-		grant(operatorB, MIRAMAR);
+		grant(operatorB, venueOwnedByB);
+		bSetId = jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:v, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1) RETURNING id
+				""").param("v", venueOwnedByB).query(Long.class).single();
 		miramarSetId = jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT 1")
 				.param("v", MIRAMAR).query(Long.class).single();
 	}
 
+	private long newVenue(String name) {
+		return jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				""").param("name", name).query(Long.class).single();
+	}
+
 	private OperatorId insertOperator(String username) {
-		long id = jdbc.sql("INSERT INTO operator (username, status, owns_all_venues) "
-						+ "VALUES (:u, 'ACTIVE', FALSE) RETURNING id")
+		long id = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", username).query(Long.class).single();
 		return new OperatorId(id);
 	}
@@ -304,13 +320,13 @@ class CrossVenueDenialIT {
 		// #98 positive counterparts: for the owner the queue is 200, and accept/decline of an
 		// unknown request are 404 (the check passed; the id is simply not a pending request).
 		actingAs(operatorB);
-		mvc.perform(get("/api/venues/{v}/booking-requests", MIRAMAR).cookie(operatorSession))
+		mvc.perform(get("/api/venues/{v}/booking-requests", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
-		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", MIRAMAR, 999_999)
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueOwnedByB, 999_999)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));
-		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", MIRAMAR, 999_999)
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueOwnedByB, 999_999)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));
@@ -320,26 +336,26 @@ class CrossVenueDenialIT {
 	@Test
 	void ownerReadsAreNotForbidden() throws Exception {
 		actingAs(operatorB);
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
+		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
-		mvc.perform(get("/api/venues/{v}/payout-ledger", MIRAMAR).cookie(operatorSession))
+		mvc.perform(get("/api/venues/{v}/payout-ledger", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
-		mvc.perform(get("/api/venues/{v}/takings", MIRAMAR).cookie(operatorSession))
+		mvc.perform(get("/api/venues/{v}/takings", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
 		// A weather refund on a day with no bookings is a no-op (200), not a 403 — the check passed.
-		mvc.perform(post("/api/venues/{v}/weather-refund", MIRAMAR).cookie(operatorSession)
+		mvc.perform(post("/api/venues/{v}/weather-refund", venueOwnedByB).cookie(operatorSession)
 						.with(csrf()).param("date", "2019-02-02"))
 				.andExpect(status().isOk());
 	}
 
 	@Test
 	void ownerCanMarkItsOwnSet_venueResolvedFromTheSet() throws Exception {
-		// The positive counterpart to the spoof denial: B owns Miramar (via an explicit operator_venue
-		// mapping, not owns-all), so marking a Miramar set — whose owning venue is resolved from the
-		// setId, not the path — succeeds. Proves the venue-from-set happy path lets the real owner
-		// through, so the spoof denial's 403 is genuinely from ownership, not an always-deny bug.
+		// The positive counterpart to the spoof denial: B owns venueOwnedByB (explicit operator_venue
+		// mapping), so marking one of ITS sets — whose owning venue is resolved from the setId, not the
+		// path — succeeds. Proves the venue-from-set happy path lets the real owner through, so the
+		// spoof denial's 403 is genuinely from ownership, not an always-deny bug.
 		actingAs(operatorB);
-		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", MIRAMAR, miramarSetId)
+		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, bSetId)
 						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
 				.andExpect(status().isOk());
@@ -406,8 +422,37 @@ class CrossVenueDenialIT {
 				{"name":"A New Venue","beach":"Ksamil","region":"Riviera","description":"x",
 				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""";
+		// Any ACTIVE operator may create (role-gated, no prior owner to check) → 201.
 		mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(venueBody))
 				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void creatorOwnsCreatedVenueAndOthersAreDenied() throws Exception {
+		// Creator-owns-on-create (#115, invariant #13, BOLA): the operator that creates a venue owns it
+		// from creation (the ownership row is written in the application service, atomically with the
+		// insert), so the creator's venue-scoped reads pass and a DIFFERENT operator gets 403.
+		actingAs(operatorA);
+		String venueBody = """
+				{"name":"A Owned-On-Create Venue","beach":"Ksamil","region":"Riviera","description":"x",
+				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
+				""";
+		MvcResult created = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(venueBody))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long newVenue = ((Number) JsonPath.read(created.getResponse().getContentAsString(), "$.id"))
+				.longValue();
+
+		// A (the creator) owns it → its owner-scoped profile read passes.
+		mvc.perform(get("/api/venues/{v}/profile", newVenue).cookie(operatorSession))
+				.andExpect(status().isOk());
+
+		// B never created or was granted it → 403 NOT_VENUE_OWNER (owns-all is gone).
+		actingAs(operatorB);
+		mvc.perform(get("/api/venues/{v}/profile", newVenue).cookie(operatorSession))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 }

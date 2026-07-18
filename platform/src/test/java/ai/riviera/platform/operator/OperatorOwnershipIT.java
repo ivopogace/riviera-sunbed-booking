@@ -23,18 +23,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
- * Module test for the {@code operator} ownership port (issue #73, AC-1/AC-2) against Testcontainers
- * Postgres — the real {@link VenueOwnership}/{@link OperatorDirectory} beans over {@code JdbcOperators}
- * and the V16 schema. Seeds two synthetic per-venue operators plus relies on the seeded owns-all
- * bootstrap, and proves {@code assertOwns} passes/denies correctly, {@code ownedVenues} returns the
- * explicit mapping, and {@code operatorFor} resolves an ACTIVE username but not an unknown/suspended one.
+ * Module test for the {@code operator} ownership port (issue #73, AC-1/AC-2; extended by #115) against
+ * Testcontainers Postgres — the real {@link VenueOwnership}/{@link OperatorDirectory} beans over
+ * {@code JdbcOperators} and the schema. Seeds synthetic per-venue operators over fresh venues, and
+ * proves {@code assertOwns}/{@link VenueOwnership#assignOwner} pass/deny correctly, {@code ownedVenues}
+ * returns the explicit mapping, and {@code operatorFor} resolves an ACTIVE username but not an
+ * unknown/suspended one. With the owns-all bootstrap retired (#115), the seeded {@code operator} owns
+ * only its <em>backfilled</em> venue (Miramar, V29), not an arbitrary one.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class OperatorOwnershipIT {
 
-	private static final long MIRAMAR = 1L; // seeded venue (V3); the only venue an FK mapping can target here
+	private static final long MIRAMAR = 1L; // seeded venue (V3); backfilled to the bootstrap admin by V29
 
 	@Autowired
 	VenueOwnership ownership;
@@ -54,14 +56,22 @@ class OperatorOwnershipIT {
 
 	private OperatorId insertOperator(String username, String status) {
 		long id = jdbc.sql("""
-				INSERT INTO operator (username, status, owns_all_venues)
-				VALUES (:username, :status, FALSE) RETURNING id
+				INSERT INTO operator (username, status)
+				VALUES (:username, :status) RETURNING id
 				""")
 				.param("username", username)
 				.param("status", status)
 				.query(Long.class)
 				.single();
 		return new OperatorId(id);
+	}
+
+	/** A fresh venue (never Miramar — that is now owned by the backfilled bootstrap, one owner per venue). */
+	private long newVenue(String name) {
+		return jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				""").param("name", name).query(Long.class).single();
 	}
 
 	private void grant(OperatorId operator, long venueId) {
@@ -74,9 +84,25 @@ class OperatorOwnershipIT {
 	@Test
 	void assertOwnsPassesForAnExplicitlyMappedVenue() {
 		OperatorId owner = insertOperator("owner-a", "ACTIVE");
-		grant(owner, MIRAMAR);
+		long venue = newVenue("owner-a venue");
+		grant(owner, venue);
 
-		assertDoesNotThrow(() -> ownership.assertOwns(owner, new VenueRef(MIRAMAR)));
+		assertDoesNotThrow(() -> ownership.assertOwns(owner, new VenueRef(venue)));
+	}
+
+	@Test
+	void assignOwnerRecordsTheMapping() {
+		// The write side (#115, creator-owns-on-create): assignOwner then assertOwns passes for the
+		// owner and denies anyone else.
+		OperatorId owner = insertOperator("owner-w", "ACTIVE");
+		OperatorId other = insertOperator("owner-x", "ACTIVE");
+		long venue = newVenue("assign venue");
+
+		ownership.assignOwner(owner, new VenueRef(venue));
+
+		assertDoesNotThrow(() -> ownership.assertOwns(owner, new VenueRef(venue)));
+		assertThrows(NotVenueOwnerException.class,
+				() -> ownership.assertOwns(other, new VenueRef(venue)));
 	}
 
 	@Test
@@ -90,20 +116,24 @@ class OperatorOwnershipIT {
 	}
 
 	@Test
-	void bootstrapOperatorOwnsEveryVenue() {
+	void bootstrapOwnsOnlyBackfilledVenuesNotAll() {
+		// Owns-all retired (#115): the bootstrap owns Miramar via the V29 backfill (explicit mapping)…
 		OperatorId bootstrap = directory.operatorFor("operator").orElseThrow();
-
-		// owns-all short-circuit: passes for any venue, including one with no mapping row
 		assertDoesNotThrow(() -> ownership.assertOwns(bootstrap, new VenueRef(MIRAMAR)));
-		assertDoesNotThrow(() -> ownership.assertOwns(bootstrap, new VenueRef(424_242L)));
+
+		// …but NOT an arbitrary venue created after the migration — there is no owns-all short-circuit.
+		long fresh = newVenue("post-migration venue");
+		assertThrows(NotVenueOwnerException.class,
+				() -> ownership.assertOwns(bootstrap, new VenueRef(fresh)));
 	}
 
 	@Test
 	void ownedVenuesReturnsTheExplicitMapping() {
 		OperatorId owner = insertOperator("owner-c", "ACTIVE");
-		grant(owner, MIRAMAR);
+		long venue = newVenue("owner-c venue");
+		grant(owner, venue);
 
-		assertEquals(Set.of(new VenueRef(MIRAMAR)), ownership.ownedVenues(owner));
+		assertEquals(Set.of(new VenueRef(venue)), ownership.ownedVenues(owner));
 	}
 
 	@Test

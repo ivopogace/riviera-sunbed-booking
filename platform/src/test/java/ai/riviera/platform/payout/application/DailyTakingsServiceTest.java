@@ -126,6 +126,11 @@ class DailyTakingsServiceTest {
 			public Set<VenueRef> ownedVenues(OperatorId operator) {
 				return Set.of();
 			}
+
+			@Override
+			public void assignOwner(OperatorId operator, VenueRef venue) {
+				// not exercised by the takings read
+			}
 		};
 	}
 
@@ -139,6 +144,11 @@ class DailyTakingsServiceTest {
 			@Override
 			public Set<VenueRef> ownedVenues(OperatorId operator) {
 				return Set.of();
+			}
+
+			@Override
+			public void assignOwner(OperatorId operator, VenueRef venue) {
+				// not exercised by the takings read
 			}
 		};
 	}

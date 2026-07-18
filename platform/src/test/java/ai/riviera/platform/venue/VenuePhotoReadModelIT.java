@@ -61,6 +61,13 @@ class VenuePhotoReadModelIT {
 		return new VenueId(id);
 	}
 
+	/** Make the bootstrap admin the explicit owner (owns-all retired, #115) so a venue-scoped read passes. */
+	private void grantToBootstrap(VenueId venue) {
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
+						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
+				.param("v", venue.value()).update();
+	}
+
 	private static StoredVariant variant(PhotoSurface surface, String hashHex) {
 		return new StoredVariant(surface, new ContentHash(hashHex), "image/jpeg", 640, 384, new byte[] {1});
 	}
@@ -110,10 +117,11 @@ class VenuePhotoReadModelIT {
 
 	@Test
 	void operatorProfileExposesPerSlotPresenceAndPreviewUrl() throws Exception {
-		// The bootstrap operator owns all venues, so its session satisfies both the role gate and
-		// the ownership check on the profile read (#177); ownership denial is CrossVenueDenialIT's job.
+		// The bootstrap admin must explicitly own this fresh venue (owns-all retired, #115) to pass the
+		// ownership check on the profile read (#177); ownership denial is CrossVenueDenialIT's job.
 		Cookie session = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 		VenueId venue = newVenue("RM profile venue");
+		grantToBootstrap(venue);
 		seedCover(venue, "3a03", "3b03", "3c03");
 
 		// Emptiness IS the null previewUrl (review F-11) — all three slot keys are always present.

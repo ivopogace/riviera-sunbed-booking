@@ -247,13 +247,16 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
-	void addSetToUnknownVenueIs404() throws Exception {
+	void addSetToUnownedVenueIs403() throws Exception {
+		// Owns-all retired (#115): a venue-scoped edit asserts ownership FIRST (invariant #13), so a
+		// venue the operator does not own — including one that doesn't exist — is 403 before any
+		// existence check, never a 404 that would leak whether the venue exists to a non-owner.
 		mvc.perform(post("/api/venues/{v}/sets", 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1)))
-				.andExpect(status().isNotFound())
+				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 
 	@Test
@@ -605,12 +608,14 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
-	void profileEditUnknownVenueIs404() throws Exception {
+	void profileEditUnownedVenueIs403() throws Exception {
+		// Owns-all retired (#115): ownership is asserted before existence (invariant #13), so editing a
+		// venue the operator does not own — even a non-existent one — is 403, not a 404 existence leak.
 		mvc.perform(patch("/api/venues/{v}", 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(profileBody("Ghost", "INSTANT", "18:00", "[]", "null", 0)))
-				.andExpect(status().isNotFound())
+				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 }

@@ -23,8 +23,8 @@ public interface Operators {
 	Optional<OperatorCredential> credentialByUsername(String username);
 
 	/**
-	 * Insert a new {@code ACTIVE}, not-owns-all operator with this username + pre-encoded credential
-	 * hash; returns the generated id. Propagates the username unique-constraint violation on a clash.
+	 * Insert a new {@code ACTIVE} operator with this username + pre-encoded credential hash; returns
+	 * the generated id. Propagates the username unique-constraint violation on a clash.
 	 */
 	OperatorId insert(String username, String passwordHash);
 
@@ -32,11 +32,14 @@ public interface Operators {
 	int updatePassword(String username, String passwordHash);
 
 	/**
-	 * Whether {@code operator} owns {@code venue} — true if the operator is flagged owns-all (the
-	 * interim bootstrap operator) or an explicit {@code operator_venue} mapping row exists.
+	 * Whether {@code operator} owns {@code venue} — true iff an explicit {@code operator_venue}
+	 * mapping row exists (the owns-all short-circuit was retired in #115).
 	 */
 	boolean ownsVenue(OperatorId operator, VenueRef venue);
 
-	/** The venues explicitly mapped to {@code operator} (excludes the owns-all short-circuit). */
+	/** The venues explicitly mapped to {@code operator}. */
 	Set<VenueRef> ownedVenues(OperatorId operator);
+
+	/** Record an {@code operator_venue} mapping row (creator-owns-on-create, #115). */
+	void assignOwner(OperatorId operator, VenueRef venue);
 }

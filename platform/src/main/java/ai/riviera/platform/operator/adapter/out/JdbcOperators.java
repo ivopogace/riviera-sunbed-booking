@@ -58,8 +58,8 @@ class JdbcOperators implements Operators {
 	@Override
 	public OperatorId insert(String username, String passwordHash) {
 		long id = jdbc.sql("""
-				INSERT INTO operator (username, status, owns_all_venues, password_hash)
-				VALUES (:username, :active, FALSE, :hash) RETURNING id
+				INSERT INTO operator (username, status, password_hash)
+				VALUES (:username, :active, :hash) RETURNING id
 				""")
 				.param(USERNAME, username)
 				.param("active", OperatorStatus.ACTIVE.name())
@@ -79,15 +79,12 @@ class JdbcOperators implements Operators {
 
 	@Override
 	public boolean ownsVenue(OperatorId operator, VenueRef venue) {
-		// One statement: owns-all short-circuit OR an explicit mapping row. The row lookup uses the
-		// operator_venue PK (venue_id) + the operator FK index, so it is an index probe either way.
+		// Ownership is strictly the explicit operator_venue mapping (owns-all retired in #115). The
+		// lookup uses the operator_venue PK (venue_id) + the operator FK index, so it is an index probe.
 		return jdbc.sql("""
 				SELECT EXISTS (
-				    SELECT 1 FROM operator o
-				    WHERE o.id = :operator
-				      AND (o.owns_all_venues
-				           OR EXISTS (SELECT 1 FROM operator_venue ov
-				                      WHERE ov.operator_id = o.id AND ov.venue_id = :venue))
+				    SELECT 1 FROM operator_venue ov
+				    WHERE ov.operator_id = :operator AND ov.venue_id = :venue
 				)
 				""")
 				.param("operator", operator.value())
@@ -104,5 +101,15 @@ class JdbcOperators implements Operators {
 				.list().stream()
 				.map(VenueRef::new)
 				.collect(Collectors.toCollection(LinkedHashSet::new));
+	}
+
+	@Override
+	public void assignOwner(OperatorId operator, VenueRef venue) {
+		// One owner per venue (operator_venue.venue_id is the PK) — a plain INSERT so a second owner
+		// for the same venue surfaces as a constraint violation rather than silently no-op'ing.
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:venue, :operator)")
+				.param("venue", venue.value())
+				.param("operator", operator.value())
+				.update();
 	}
 }

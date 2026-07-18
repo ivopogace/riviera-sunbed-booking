@@ -214,12 +214,14 @@ class VenueRepriceIT {
 	}
 
 	@Test
-	void unknownVenueIsNotFound() throws Exception {
-		// Unknown venue → NO_SUCH_VENUE before the bump, so the token value is immaterial (0 present).
+	void unownedVenueIsForbidden() throws Exception {
+		// Owns-all retired (#115): ownership is asserted before existence (invariant #13), so repricing a
+		// venue the operator does not own — even a non-existent one — is 403 before the bump, not a 404
+		// existence leak (the token value is immaterial).
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", 999_999L, "A").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(priceBody(4200, 0)))
-				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.code").value("NO_SUCH_VENUE"));
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 
 	@Test

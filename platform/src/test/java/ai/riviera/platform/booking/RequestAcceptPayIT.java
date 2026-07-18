@@ -86,8 +86,8 @@ class RequestAcceptPayIT {
 				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
 				RETURNING id
 				""").param("venue", venueId).query(Long.class).single();
-		long operator = jdbc.sql("INSERT INTO operator (username, status, owns_all_venues) "
-						+ "VALUES ('accept-op-' || :v, 'ACTIVE', FALSE) RETURNING id")
+		long operator = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES ('accept-op-' || :v, 'ACTIVE') RETURNING id")
 				.param("v", venueId).query(Long.class).single();
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", operator).update();

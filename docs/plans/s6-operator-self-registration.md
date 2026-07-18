@@ -111,7 +111,8 @@ short-circuit). It is infrastructure, not a user surface, but its behavior is se
 | Bootstrap `operator` logs in via `RIVIERA_OPERATOR_PASSWORD` (boot provisioner) | **preserved** | Same env var, same `OperatorCredentialInitializer` boot re-stamp; the account is now ADMIN + explicit Miramar owner. |
 | Bootstrap `operator` is a plain `OPERATOR` role | **changed** | Gains `ROLE_ADMIN` (via `is_admin`) so it can approve; **keeps** `ROLE_OPERATOR` so it retains console access to its owned venues. |
 | `POST /api/venues` writes **no** ownership row (role-gated only) | **changed** | Now writes `operator_venue(newVenueId, creator)` in the same transaction (creator-owns-on-create). Create is still role-gated (any ACTIVE operator may create); it is not *ownership*-checked (there is no prior owner). |
-| `CrossVenueDenialIT.venueCreationIsNotOwnershipChecked` (create → `201`, any operator) | **preserved (+extended)** | Create still returns `201` for any ACTIVE operator; the test is **extended** to also assert the creator now owns it and others are denied (AC-6). |
+| `CrossVenueDenialIT.venueCreationIsNotOwnershipChecked` (create → `201`, any operator) | **preserved (+extended)** | Create still returns `201` for any ACTIVE operator; a new test `creatorOwnsCreatedVenueAndOthersAreDenied` asserts the creator now owns it and others are denied (AC-6). |
+| Bootstrap editing an **unknown** venue → `404 NO_SUCH_VENUE` (e.g. `addSetToUnknownVenueIs404`) | **changed → 403** | Owns-all was what let the bootstrap pass the ownership check on a venue it didn't own and reach the existence check. With it retired, a venue-scoped edit asserts ownership **first** (invariant #13), so an unowned/unknown venue is **`403 NOT_VENUE_OWNER`** — the *uniform, more-secure* contract every real per-venue operator already got (no existence leak to non-owners). Tests renamed `…UnownedVenueIs403` / assert `NOT_VENUE_OWNER`. The `NO_SUCH_VENUE` 404 mapping stays (defensive, for a delete-race) but is now unreachable for a never-existed venue. |
 
 ## Risk register
 
@@ -230,17 +231,15 @@ MCP consulted for the `resource()` + Signal-Forms idioms.
 > Session-recovery anchor. Re-read this section + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `plan` — plan doc authored; about to commit it and start phase 0.
+**Stage pointer:** `implement` — phases 0+1 done and green across the affected backend IT sweep; starting **phase 2** (operator registration backend).
 
-**Next action:** Commit this plan doc on `feature/operator-self-registration`, then begin **Phase 0** (V29
-migration + retire owns-all + `VenueOwnership.assignOwner`) test-first.
+**Next action:** Commit phases 0+1 (retire owns-all + creator-owns-on-create, one green change), then begin **Phase 2** test-first (`OperatorRegistrationIT`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| Plan — plan doc + branch | ⏳ | |
-| 0 — V29 migration + retire owns-all + ownership-write path | | |
-| 1 — creator-owns-on-create (venue service + endpoint) | | |
-| 2 — operator registration (PENDING) backend + edge endpoint | | |
+| Plan — plan doc + branch | ✅ | a8f6a67 |
+| 0+1 — retire owns-all + creator-owns-on-create (combined: phase 0 alone leaves create-then-edit red) | ✅ | (this commit) |
+| 2 — operator registration (PENDING) backend + edge endpoint | ⏳ | |
 | 3 — admin approval + ADMIN role + `/api/admin/operators` | | |
 | 4 — FE operator-register page + route | | |
 | 5 — FE admin-operators page + route + nav/admin flag | | |
@@ -248,6 +247,14 @@ migration + retire owns-all + `VenueOwnership.assignOwner`) test-first.
 | 7 — docs + merge close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+> **Phases 0+1 combined (rationale):** retiring owns-all and creator-owns-on-create are two halves of one
+> atomic change — phase 0 alone makes every "create a venue then edit it as the same operator" flow 403
+> (owns-all used to satisfy it implicitly; creator-owns satisfies it explicitly). Committed together so the
+> tree is green. Verified green locally: `OperatorOwnershipIT`, `CrossVenueDenialIT` (+creator-owns),
+> `PerOperatorLoginIT`, `VenuePhotoReadModelIT`, `PayoutLedgerViewIT`, `OperatorAccountProvisioningIT`, the
+> whole `venue` package, `Staff*`/`WeatherRefund*`/`AdminPayout*` security ITs, and the structural net
+> (`ModularityTests`, `PackageShape*`, `PublishedSurfacePlacement*`, `JdbcOnly*`, `OperatorAuthPlacementTests`).
 
 **Findings register**
 
@@ -496,6 +503,9 @@ Modify `frontend/e2e/support/auth-mocks.ts`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-18 | Phase 0 — drop `owns_all_venues` | column refs | `grep owns_all_venues platform/` | `JdbcOperators` + 9 test INSERTs | dropped the column from all; V16 (immutable history) left as-is |
+| 2026-07-18 | Phase 0 — retire owns-all short-circuit | tests relying on bootstrap owns-all | `grep operatorFor("operator")` / `operator_venue` | `OperatorOwnershipIT`, `PerOperatorLoginIT`, `CrossVenueDenialIT` (grant Miramar), `VenuePhotoReadModelIT` + `PayoutLedgerViewIT` (bootstrap on fresh venue) | fresh venues per operator + explicit `grant(bootstrap, freshVenue)`; Miramar reserved for the backfilled bootstrap |
+| 2026-07-18 | Phase 1 — creator-owns-on-create | create-then-edit-as-bootstrap + unknown-venue-404 | `grep post("/api/venues")` / `NO_SUCH_VENUE` | `BeachMapReplaceIT` (create+seedOwner PK clash → use bootstrap), `VenueAdminControllerIT`/`VenueRepriceIT` (unknown-venue 404→403) | fixed all; unit `NO_SUCH_VENUE` tests unaffected (FakeOwnership grants the owner) |
 
 ---
 

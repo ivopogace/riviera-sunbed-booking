@@ -310,7 +310,11 @@ class BeachMapReplaceIT {
 				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
 		long setX = setIds(venue).getFirst();
-		OperatorId owner = seedOwner(venue);
+		// The venue was created via POST as the bootstrap session, so creator-owns-on-create (#115)
+		// already made the bootstrap its owner — drive the replace as that owner (no second grant, which
+		// would violate the one-owner-per-venue PK).
+		OperatorId owner = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
+				.query(Long.class).single());
 		// The seed replace bumped set_version to 1; the racing replace loads it so it passes the token gate
 		// and exercises the invariant-#2 lock path (not STALE_WRITE — the mark never touches set_version).
 		long loadedSetVersion = setVersionOf(venue);
@@ -352,16 +356,6 @@ class BeachMapReplaceIT {
 				assertEquals(1L, holds);
 			}
 		}
-	}
-
-	private OperatorId seedOwner(long venueId) {
-		long id = jdbc.sql("""
-				INSERT INTO operator (username, status, owns_all_venues)
-				VALUES (:u, 'ACTIVE', FALSE) RETURNING id
-				""").param("u", "race-op-" + venueId).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
-				.param("v", venueId).param("o", id).update();
-		return new OperatorId(id);
 	}
 
 	private void seedBooking(long venueId, long setId) {

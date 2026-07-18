@@ -55,6 +55,12 @@ class PayoutLedgerViewIT {
 				""").query(Long.class).single();
 	}
 
+	/** Make the bootstrap the explicit owner (owns-all retired, #115) so the venue-scoped ledger read passes. */
+	private void grantToBootstrap(long venueId) {
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venueId).param("o", bootstrap().value()).update();
+	}
+
 	/** Reuse an existing seeded set as the booking's set FK — booking.set_id and booking.venue_id are
 	 *  independent FKs, so this avoids inserting set_position rows that would pollute global queries. */
 	private long anySeededSet() {
@@ -79,6 +85,7 @@ class PayoutLedgerViewIT {
 	@Test
 	void runningNetOwed() {
 		long venueId = newVenue();
+		grantToBootstrap(venueId);
 		long bookingId = newBooking(venueId, anySeededSet(), "LEDGERVIEW1");
 		// Accrual net 8500 (gross 10000, commission 1500), then a partial reversal net 4250.
 		jdbc.sql("""
@@ -114,6 +121,7 @@ class PayoutLedgerViewIT {
 	@Test
 	void emptyLedgerOwesNothing() {
 		long venueId = newVenue();
+		grantToBootstrap(venueId);
 
 		VenueLedger ledger = viewPayoutLedger.forVenue(bootstrap(), new VenueId(venueId));
 
