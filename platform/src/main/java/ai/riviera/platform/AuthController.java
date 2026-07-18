@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.operator.api.OperatorRegistration;
-import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -170,14 +169,14 @@ class AuthController {
 		// The shared server-side password policy (D-8 min length / bcrypt-input cap) — the same rule the
 		// customer register enforces; both principal types get one policy.
 		CustomerPasswords.validate(registration.password());
-		OperatorRegistrationOutcome outcome = operatorRegistration.register(registration.username().trim(),
+		// Constant-time (D-8): both branches spend exactly ONE bcrypt — the encode() below, evaluated on
+		// every request (fresh or taken). Unlike the customer register there is NO auto-sign-in bcrypt on
+		// the fresh branch, so NO equalizer is added: a taken-branch verify would make an existing username
+		// measurably SLOWER (a reverse enumeration oracle). The write is a bcrypt-free
+		// INSERT … ON CONFLICT DO NOTHING either way, so only a fresh username creates the PENDING row; the
+		// outcome distinction never surfaces (the response is byte-identical) so it is deliberately unused.
+		operatorRegistration.register(registration.username().trim(),
 				passwordEncoder.encode(registration.password()), registration.contactEmail().trim());
-		if (!(outcome instanceof OperatorRegistrationOutcome.Registered)) {
-			// Constant-time (D-8): the fresh branch spends a bcrypt hash in encode() above; burn an
-			// equivalent verify on the already-registered branch so a taken username is not measurably
-			// faster — a latency gap would be an account-enumeration oracle.
-			passwordEncoder.matches(registration.password(), timingEqualizerHash);
-		}
 		// No session either branch — a PENDING operator cannot sign in until approved. Byte-identical body.
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new OperatorRegistrationResponse("PENDING"));
 	}

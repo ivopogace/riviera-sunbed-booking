@@ -265,7 +265,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | (none yet) | — |
+| F-1 | review (high, CONFIRMED) | Operator-register timing equalizer was **backwards** — `encode()` runs on both branches and there's no fresh-branch auto-sign-in bcrypt, so the taken-branch `matches()` made a taken username ~1 bcrypt **slower** (a reverse enumeration oracle, defeats D-8). | fixed (review-fix commit) — removed the equalizer; both branches now spend exactly one `encode()` bcrypt |
+| F-2 | review (low, CONFIRMED) | `operator-auth.ts` redeclared the customer password-policy constants byte-for-byte → desync risk. | fixed (review-fix commit) — re-export `MIN_PASSWORD_LENGTH`/`PASSWORD_LENGTH_MESSAGE` from `customer-auth` (one source) |
+| — | review (refuted) | "operator password validated via customer-named `CustomerPasswords.validate`" — refuted (one shared server-side policy is intended). | no change |
 
 ---
 

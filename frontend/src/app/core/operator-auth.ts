@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Service, WritableSignal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from './customer-auth';
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
 
 // Re-exported for the operator surfaces + specs that import it from here (the type now lives on the
@@ -16,9 +17,11 @@ export type { SignInResult } from './session-auth';
  */
 export type OperatorRegisterResult = 'submitted' | 'invalid-password' | 'rate-limited' | 'error';
 
-/** Client-side operator password policy (server is authoritative) — one source for the constant + message. */
-export const MIN_OPERATOR_PASSWORD_LENGTH = 8;
-export const OPERATOR_PASSWORD_LENGTH_MESSAGE = 'Choose a password of 8–72 characters.';
+// The FE password policy is ONE rule for both principal types — the backend enforces both via the same
+// CustomerPasswords.validate — so re-export the customer constants under the operator names rather than
+// redeclare them (a byte-for-byte copy would silently desync when the policy changes).
+export const MIN_OPERATOR_PASSWORD_LENGTH = MIN_PASSWORD_LENGTH;
+export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**
  * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
