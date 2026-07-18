@@ -231,20 +231,25 @@ MCP consulted for the `resource()` + Signal-Forms idioms.
 > Session-recovery anchor. Re-read this section + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement` — backend done (phases 0–3, all green); starting the **frontend** (phase 4).
+**Stage pointer:** `implement` — backend (0–3) + FE (4–5) done and green (`npm run lint`/`test` 732 pass/`build`); starting **phase 6** (mocked e2e).
 
-**Next action:** Commit phase 3 (admin approval + ADMIN role), then begin the FE (**phase 4** operator-register page) — load the FE authorities + angular-cli MCP for the reactive bits.
+**Next action:** Commit phases 4–5 (FE register + admin pages), then author the **phase 6** mocked e2e (register → approve → sign-in → create-venue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | Plan — plan doc + branch | ✅ | a8f6a67 |
 | 0+1 — retire owns-all + creator-owns-on-create (combined: phase 0 alone leaves create-then-edit red) | ✅ | 8acb830 |
 | 2 — operator registration (PENDING) backend + edge endpoint | ✅ | 6d9fbd1 |
-| 3 — admin approval + ADMIN role + `/api/admin/operators` | ✅ | (this commit) |
-| 4 — FE operator-register page + route | ⏳ | |
-| 5 — FE admin-operators page + route + nav/admin flag | | |
-| 6 — e2e mocked (register→approve→sign-in→create-venue) | | |
+| 3 — admin approval + ADMIN role + `/api/admin/operators` | ✅ | f5e57e4 |
+| 4+5 — FE operator-register page + admin-operators page + admin flag/nav | ✅ | (this commit) |
+| 6 — e2e mocked (register→approve→sign-in→create-venue) | ⏳ | |
 | 7 — docs + merge close-out | | |
+
+> **Note (angular-cli MCP unavailable this session):** the angular-cli MCP server didn't connect, so the
+> admin-operators list uses the repo's established **imperative-async signal** pattern (as in
+> `customer-auth.ts` / the customer register component) — a `signal` list + `load()` on an admin-confirmed
+> `effect`, re-fetched after every decision — rather than an unverified `resource()` API. Reconcile-from-server
+> (never a local-only card removal) is deliberate (the O6 #176 lesson).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

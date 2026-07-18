@@ -121,6 +121,22 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    // Operator self-registration (S6 #115, epic #108) — porcelain page; creates a PENDING account
+    // that a platform admin approves. Literal segment MUST stay above 'operator/:venueId' (first
+    // match wins for parameterized siblings).
+    path: 'operator/register',
+    loadComponent: () => import('./operator/operator-register').then((m) => m.OperatorRegister),
+    title: 'Register as an operator — Riviera',
+  },
+  {
+    // Platform-admin operator-approval surface (S6 #115). Self-gates on the ADMIN session; the
+    // backend /api/admin/** role gate is the real authority. Reached from the console header's Admin
+    // link when signed in as an admin.
+    path: 'admin',
+    loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
+    title: 'Operator registrations — Riviera',
+  },
+  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
     // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
     // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the

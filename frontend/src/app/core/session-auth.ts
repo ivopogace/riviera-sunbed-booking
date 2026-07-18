@@ -10,6 +10,8 @@ export interface AuthPrincipal {
   readonly principalType: string;
   /** Soft email-verification state (S8 #113) — customer-only; `null` for an operator principal. */
   readonly emailVerified?: boolean | null;
+  /** Platform-admin flag (S6 #115) — `true` for an operator with `ROLE_ADMIN`; the FE gates the approval surface on it. */
+  readonly admin?: boolean;
 }
 
 /** How a sign-in attempt ended, for the surface to translate into a message. */
@@ -55,6 +57,8 @@ export abstract class SessionAuth {
   readonly principalName = computed(() => this.principal()?.username);
   /** The signed-in principal's soft email-verified state (S8 #113), or undefined when unknown/signed out. */
   readonly emailVerified = computed(() => this.principal()?.emailVerified ?? undefined);
+  /** Whether the signed-in principal is a platform admin (S6 #115); false when signed out / not admin. */
+  readonly isAdmin = computed(() => this.principal()?.admin ?? false);
 
   /** The principal type this service owns; a `/me` principal is adopted only when it matches (F2). */
   protected abstract readonly principalType: string;

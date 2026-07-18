@@ -53,6 +53,13 @@
       @if (signInError(); as msg) {
         <p class="oc-form-error" role="alert" data-testid="oc-signin-error">{{ msg }}</p>
       }
+
+      <p class="oc-signin-intro">
+        New operator?
+        <a class="oc-create-venue" routerLink="/operator/register" data-testid="oc-register-link"
+          >Register</a
+        >
+      </p>
     </form>
   </main>
 } @else {
@@ -71,6 +78,10 @@
           <a class="oc-create-venue" data-testid="oc-create-venue" routerLink="/venue-admin"
             >Create a venue</a
           >
+          @if (operator.isAdmin()) {
+            <!-- Platform-admin operator-approval surface (S6 #115); shown only to an ADMIN principal. -->
+            <a class="oc-create-venue" data-testid="oc-admin-link" routerLink="/admin">Admin</a>
+          }
           <span class="oc-signed-in-as" data-testid="oc-signed-in-as"
             >Signed in as <strong>{{ operator.username() }}</strong></span
           >
