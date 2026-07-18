@@ -47,6 +47,6 @@
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.60.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.0.8"
   }
 }
