@@ -110,7 +110,9 @@ model in `docs/architecture/domain-model.md`.
   this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
   availability, weather refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
-- **Bootstrap operator** — the interim account flagged *owns-all-venues*. Per-operator
-  DB-backed credentials have landed (#74), so it is no longer a shared login — it remains
-  only as the owns-all bridge until every operator is strictly per-venue. A launch
-  bridge, not the target.
+- **Bootstrap operator** — the seeded `operator` account. **Retired as owns-all in #115** and
+  **demoted to the platform admin** (`is_admin`): it no longer owns every venue — V29 dropped
+  `owns_all_venues` and backfilled the venues it previously reached to it — and now approves operator
+  self-registrations via the ADMIN-gated `/api/admin/operators`. Unlocked by `RIVIERA_OPERATOR_PASSWORD`
+  (no new prod secret). Every operator is now strictly per-venue, owning what it creates
+  (creator-owns-on-create).
