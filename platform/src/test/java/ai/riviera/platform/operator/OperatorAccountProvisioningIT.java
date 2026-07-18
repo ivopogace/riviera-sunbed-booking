@@ -89,7 +89,7 @@ class OperatorAccountProvisioningIT {
 	@Test
 	void anAccountWithNoProvisionedCredentialHasANullHash() {
 		// Insert a bare operator row (no password_hash) to mimic an unprovisioned account.
-		jdbc.sql("INSERT INTO operator (username, status, owns_all_venues) VALUES ('prov-bare', 'ACTIVE', FALSE)")
+		jdbc.sql("INSERT INTO operator (username, status) VALUES ('prov-bare', 'ACTIVE')")
 				.update();
 
 		OperatorCredential credential = accounts.findByUsername("prov-bare").orElseThrow();

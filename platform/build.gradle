@@ -40,6 +40,13 @@ dependencies {
 	// Stripe collection only (PaymentIntents + webhook signature verification) — NO Connect
 	// (ADR-0002 / invariant #8). Lives behind the payment module's outbound PaymentGateway.
 	implementation 'com.stripe:stripe-java:33.1.0'
+	// Venue photo pipeline (#142): TwelveMonkeys ImageIO plugins (JPEG + WebP readers, auto-registered
+	// via ServiceLoader) for robust decode of real-world uploads, and Thumbnailator for high-quality
+	// resize + EXIF-orientation. Output is re-encoded JPEG, which drops all source metadata incl. GPS
+	// EXIF (ADR-0008 / privacy). Behind the venue module's PhotoProcessor.
+	implementation 'net.coobird:thumbnailator:0.4.20'
+	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.12.0'
+	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	runtimeOnly 'org.postgresql:postgresql'

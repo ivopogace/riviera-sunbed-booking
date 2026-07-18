@@ -20,6 +20,7 @@ import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -38,6 +39,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_PENDING = "pending";
 	private static final String PARAM_CONFIRMED = "confirmed";
 	private static final String PARAM_VENUE = "venue";
+	private static final String PARAM_ACCOUNT = "account";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -53,6 +55,15 @@ class JdbcBookings implements Bookings {
 		this.jdbc = jdbc;
 	}
 
+	/**
+	 * The nullable account link (S3, #114) as a bindable {@code Long}: the signed-in
+	 * {@link ai.riviera.platform.customer.vocabulary.CustomerAccountId} value, or {@code null} for a
+	 * guest booking (the guest checkout path leaves {@code account_id} NULL).
+	 */
+	private static Long accountParam(NewBooking b) {
+		return b.accountId() == null ? null : b.accountId().value();
+	}
+
 	@Override
 	public OptionalLong insertAwaitingPayment(NewBooking b) {
 		// ON CONFLICT (code) DO NOTHING makes a code collision a no-op (empty result), NOT a
@@ -60,9 +71,9 @@ class JdbcBookings implements Bookings {
 		// the surrounding transaction (a thrown violation would poison it). FK/CHECK failures
 		// still throw, as they should. RETURNING yields the id only on a real insert.
 		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :amount, :currency, :status)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
@@ -70,6 +81,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
+				.param(PARAM_ACCOUNT, accountParam(b))
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
@@ -86,9 +98,9 @@ class JdbcBookings implements Bookings {
 		// AWAITING_PAYMENT insert — a code collision is an empty retry signal, never a poisoned
 		// transaction. The deadline is stored on the row so accept guard + expiry sweep share it.
 		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :customer, :date, :amount, :currency, :status, :expires)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :amount, :currency, :status, :expires)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
@@ -96,6 +108,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())
+				.param(PARAM_ACCOUNT, accountParam(b))
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
@@ -220,20 +233,41 @@ class JdbcBookings implements Bookings {
 				WHERE code = :code
 				""")
 				.param("code", code)
-				.query((rs, rowNum) -> {
-					java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
-					Long refundMinor = rs.getObject("refund_minor", Long.class);
-					java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
-					return new BookingRecord(
-							rs.getLong("id"), rs.getString("code"),
-							BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-							new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
-							rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-							rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-							cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
-							requestExpiresAt == null ? null : requestExpiresAt.toInstant());
-				})
+				.query(JdbcBookings::mapBookingRecord)
 				.optional();
+	}
+
+	@Override
+	public List<BookingRecord> findByAccountId(CustomerAccountId accountId) {
+		// The signed-in customer's bookings (S3, #114), newest first — account-scoped by account_id
+		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
+		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
+		// uniformly; a guest booking (NULL account_id) can never match.
+		return jdbc.sql("""
+				SELECT id, code, status, venue_id, set_id, booking_date,
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
+				FROM booking
+				WHERE account_id = :account
+				ORDER BY booking_date DESC, id DESC
+				""")
+				.param(PARAM_ACCOUNT, accountId.value())
+				.query(JdbcBookings::mapBookingRecord)
+				.list();
+	}
+
+	/** Shared {@link BookingRecord} row mapper for the by-code + by-account reads (S3, #114). */
+	private static BookingRecord mapBookingRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
+		Long refundMinor = rs.getObject("refund_minor", Long.class);
+		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
+		return new BookingRecord(
+				rs.getLong("id"), rs.getString("code"),
+				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+				new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
+				rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
+				requestExpiresAt == null ? null : requestExpiresAt.toInstant());
 	}
 
 	@Override

@@ -3,6 +3,7 @@ package ai.riviera.platform;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import jakarta.servlet.http.Cookie;
 
@@ -39,13 +40,25 @@ public final class SessionLoginSupport {
 		return "10.99.%d.%d".formatted((n >> 8) & 0xFF, n & 0xFF);
 	}
 
-	/** Log in as {@code username} and return the session cookie; fails the test on a rejected login. */
-	public static Cookie operatorSession(MockMvc mvc, String username, String password) throws Exception {
-		MvcResult result = mvc.perform(post("/api/auth/operator/login").with(csrf())
+	/**
+	 * Build a login POST — JSON body + a unique {@code X-Forwarded-For} (the login endpoint is per-IP
+	 * rate-limited, D-8) — WITHOUT the {@code csrf()} post-processor, so a caller driving the REAL
+	 * cookie-to-header CSRF flow ({@code LogoutThenLoginCsrfIT}) can supply its own token while a caller
+	 * that only needs a session adds {@code .with(csrf())}. Centralizes the login request shape so a
+	 * change to the endpoint's request format lands in one place, not per test.
+	 */
+	public static MockHttpServletRequestBuilder loginRequest(String path, String jsonBody) {
+		return post(path)
 				.header("X-Forwarded-For", uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"username": "%s", "password": "%s"}""".formatted(username, password)))
+				.content(jsonBody);
+	}
+
+	/** Log in as {@code username} and return the session cookie; fails the test on a rejected login. */
+	public static Cookie operatorSession(MockMvc mvc, String username, String password) throws Exception {
+		MvcResult result = mvc.perform(loginRequest("/api/auth/operator/login",
+				"""
+						{"username": "%s", "password": "%s"}""".formatted(username, password)).with(csrf()))
 				.andExpect(status().isOk())
 				.andReturn();
 		Cookie session = result.getResponse().getCookie(SESSION_COOKIE);

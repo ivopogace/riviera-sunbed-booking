@@ -26,9 +26,19 @@ public interface VenueOwnership {
 	void assertOwns(OperatorId operator, VenueRef venue);
 
 	/**
-	 * The venues explicitly mapped to {@code operator}. (An owns-all operator is not enumerable
-	 * here — it holds no explicit mapping rows — so this returns its explicit set, empty for the
-	 * interim bootstrap operator.)
+	 * The venues explicitly mapped to {@code operator}. With the owns-all bootstrap retired (#115),
+	 * ownership is strictly this explicit mapping.
 	 */
 	Set<VenueRef> ownedVenues(OperatorId operator);
+
+	/**
+	 * Record that {@code operator} owns {@code venue} — the write side of the ownership mapping,
+	 * used by <strong>creator-owns-on-create</strong> (#115): the {@code venue} application service
+	 * calls this in the same transaction as the venue insert so a newly-created venue is owned by its
+	 * creator atomically (never a window where the creator is {@code 403}'d on its own venue). A
+	 * venue is owned by at most one operator ({@code operator_venue.venue_id} is the PK), so calling
+	 * this for an already-owned venue is a constraint violation — expected only for a freshly-created
+	 * venue with no prior owner.
+	 */
+	void assignOwner(OperatorId operator, VenueRef venue);
 }

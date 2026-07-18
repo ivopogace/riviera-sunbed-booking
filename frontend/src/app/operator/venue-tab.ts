@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
@@ -11,11 +12,18 @@ import { parentVenueId } from '../shared/parent-venue-id';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../venue/venue.model';
 import {
+  PhotoSlotKey,
   VenueProfileErrorCode,
   VenueProfileUpdate,
   VenueProfileView,
 } from './operator-console.model';
 import { OperatorConsoleService, venueProfileErrorOf } from './operator-console.service';
+import {
+  PhotoErrorCode,
+  VenuePhotoService,
+  photoErrorOf,
+  previewUrlOf,
+} from './venue-photo.service';
 
 /** The editable venue-details fields, bound to the Signal Form (the read-only commission + payout
  *  currency are display-only signals, never part of the form/write). */
@@ -37,17 +45,33 @@ const EMPTY_DETAILS: VenueDetailsModel = {
   bookingCutoff: '18:00',
 };
 
-/** The three designed photo slots — VISUAL PLACEHOLDERS only; upload is deferred to issue #142. */
-const PHOTO_SLOTS: readonly { readonly key: string; readonly label: string }[] = [
+/** The three designed photo slots (#142). Only the cover is tourist-surfaced (card + map banner);
+ *  sunbeds/bar are stored + operator-preview only. */
+const PHOTO_SLOTS: readonly { readonly key: PhotoSlotKey; readonly label: string }[] = [
   { key: 'cover', label: 'Cover photo — the beach' },
   { key: 'sunbeds', label: 'Sunbeds' },
   { key: 'bar', label: 'Bar / restaurant' },
 ];
 
+/** Per-slot upload UI state: the current preview, an in-flight upload/delete, and the last failure. */
+interface SlotUi {
+  readonly previewUrl: string | null;
+  readonly busy: boolean;
+  readonly error: PhotoErrorCode | null;
+}
+
+const EMPTY_SLOT: SlotUi = { previewUrl: null, busy: false, error: null };
+const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
+  cover: EMPTY_SLOT,
+  sunbeds: EMPTY_SLOT,
+  bar: EMPTY_SLOT,
+};
+
 /**
  * The O8 Venue &amp; commodities tab (issue #177, epic #141) — the operator's venue-details form
  * (name/beach/region/description, booking mode, evening-before cutoff), the commodities amenity
- * toggle-chip row over the fixed catalogue, and photo upload-slot **placeholders** (upload is #142).
+ * toggle-chip row over the fixed catalogue, and the three photo slots with real upload / replace /
+ * delete (#142; pick = upload = replace, previewed from the returned PREVIEW variant URL).
  *
  * <p>Loads the owner-scoped profile (`GET /api/venues/{id}/profile`) — which carries the read-only
  * <strong>commission</strong> (shown as a %) and <strong>payout currency</strong> the tourist read
@@ -59,12 +83,13 @@ const PHOTO_SLOTS: readonly { readonly key: string; readonly label: string }[] =
  */
 @Component({
   selector: 'app-venue-tab',
-  imports: [FormField, CardGlass],
+  imports: [FormField, CardGlass, NgOptimizedImage],
   templateUrl: './venue-tab.html',
 })
 export class VenueTab {
   private readonly route = inject(ActivatedRoute);
   private readonly console = inject(OperatorConsoleService);
+  private readonly photos = inject(VenuePhotoService);
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if invalid). */
@@ -106,6 +131,8 @@ export class VenueTab {
   protected readonly distanceDraft = signal('');
 
   protected readonly photoSlots = PHOTO_SLOTS;
+  /** Per-slot photo UI state (#142), seeded from the profile's `photos` map on load/reload. */
+  protected readonly slotUi = signal<Readonly<Record<PhotoSlotKey, SlotUi>>>(EMPTY_SLOTS);
 
   constructor() {
     // Drop the "Saved" confirmation as soon as the operator edits any details field (a Signal-Form
@@ -265,7 +292,90 @@ export class VenueTab {
     this.commissionBps.set(profile.commissionBps);
     this.payoutCurrency.set(profile.payoutCurrency);
     this.loadedVersion.set(profile.version);
+    this.slotUi.set({
+      cover: { ...EMPTY_SLOT, previewUrl: profile.photos.cover.previewUrl },
+      sunbeds: { ...EMPTY_SLOT, previewUrl: profile.photos.sunbeds.previewUrl },
+      bar: { ...EMPTY_SLOT, previewUrl: profile.photos.bar.previewUrl },
+    });
     this.loaded.set(true);
+  }
+
+  private patchSlot(slot: PhotoSlotKey, patch: Partial<SlotUi>): void {
+    this.slotUi.update((all) => ({ ...all, [slot]: { ...all[slot], ...patch } }));
+  }
+
+  /**
+   * A file was picked for a slot (#142): upload it (the server replaces the slot, so pick = upload
+   * = replace) and show the returned PREVIEW variant. Validation is server-side — the processor's
+   * magic-byte/size/dimension rejections come back as displayable codes; the client never
+   * second-guesses the bytes. A 401 drops the lost session, like the profile save.
+   */
+  protected async onPhotoPicked(slot: PhotoSlotKey, input: HTMLInputElement): Promise<void> {
+    const file = input.files?.[0];
+    input.value = ''; // re-picking the same file later must re-fire (change)
+    const venueId = this.venueId;
+    if (!file || venueId === undefined || this.slotUi()[slot].busy) {
+      return;
+    }
+    this.patchSlot(slot, { busy: true, error: null });
+    try {
+      const uploaded = await firstValueFrom(this.photos.upload(venueId, slot, file));
+      this.patchSlot(slot, { previewUrl: previewUrlOf(uploaded) });
+    } catch (error) {
+      const code = photoErrorOf(error);
+      this.patchSlot(slot, { error: code });
+      if (code === 'UNAUTHORIZED') {
+        this.operator.sessionLost();
+      }
+    } finally {
+      this.patchSlot(slot, { busy: false });
+    }
+  }
+
+  /** Remove the slot's photo (#142) — a single-transaction erasure server-side (metadata + bytes). */
+  protected async onPhotoRemove(slot: PhotoSlotKey): Promise<void> {
+    const venueId = this.venueId;
+    if (venueId === undefined || this.slotUi()[slot].busy) {
+      return;
+    }
+    this.patchSlot(slot, { busy: true, error: null });
+    try {
+      await firstValueFrom(this.photos.remove(venueId, slot));
+      this.patchSlot(slot, { previewUrl: null });
+    } catch (error) {
+      const code = photoErrorOf(error);
+      this.patchSlot(slot, { error: code });
+      if (code === 'UNAUTHORIZED') {
+        this.operator.sessionLost();
+      }
+    } finally {
+      this.patchSlot(slot, { busy: false });
+    }
+  }
+
+  /** The operator-facing message for a photo upload/delete failure in a slot. */
+  protected photoErrorMessage(slot: PhotoSlotKey): string | undefined {
+    switch (this.slotUi()[slot].error) {
+      case 'TOO_LARGE':
+      case 'PAYLOAD_TOO_LARGE':
+        return 'This image is too large — please use a photo under 25 MB.';
+      case 'UNSUPPORTED_FORMAT':
+        return 'Only JPEG, PNG, or WebP images are accepted.';
+      case 'DIMENSIONS_EXCEEDED':
+        return 'This image’s dimensions are too large — please use a smaller photo.';
+      case 'UNREADABLE':
+        return 'This image could not be read — please try a different file.';
+      case 'NOT_VENUE_OWNER':
+        return 'You do not manage this venue, so its photos can’t be changed.';
+      case 'NO_SUCH_PHOTO':
+        return 'This slot is already empty.';
+      case 'UNAUTHORIZED':
+        return 'Your session has expired. Please sign in again.';
+      case 'UNKNOWN':
+        return 'Something went wrong with this photo. Please try again.';
+      default:
+        return undefined;
+    }
   }
 
   /**

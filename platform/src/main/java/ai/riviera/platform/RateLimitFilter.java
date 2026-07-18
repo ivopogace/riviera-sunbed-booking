@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -25,7 +27,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel} and
  * {@code POST /api/bookings} — plus, since issue #109, the session login
  * ({@code POST /api/auth/operator/login}) on its own stricter per-IP budget (D-8: the login is a
- * credential-guessing oracle exactly like the code endpoints). They are {@code permitAll} because
+ * credential-guessing oracle exactly like the code endpoints), and since S4 (#112) the SSO
+ * authorize/callback GETs on their own per-IP budget. They are {@code permitAll} because
  * the booking code is the bearer credential (invariant #7); the {@code 200}/{@code 404} answer is
  * otherwise a brute-force oracle, so this filter caps request volume.
  *
@@ -66,10 +69,30 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String CODE_VAR = "code";
-	// The session login (issue #109, D-8): per-IP throttled on its OWN, stricter budget — a
+	// The session logins (issue #109, D-8): per-IP throttled on their OWN, stricter budget — a
 	// credential-guessing oracle, like the booking-code endpoints, but a separate dimension so
-	// tightening one never starves the other. Mirrors SecurityConfig's LOGIN_PATH.
+	// tightening one never starves the other. Mirrors SecurityConfig's login/register paths. Customer
+	// register (S2 #111) shares the login budget: it is as abusable (spam / enumeration) as a login.
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	// Operator self-registration (S6 #115, D-8): its OWN per-IP budget, SEPARATE from operator login, so
+	// a burst of registrations can never starve operator login (the S2 operator-lockout lesson, #127).
+	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
+	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
+	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
+	// and the authenticated verification-resend. Each is a mail-sending or token-guessing oracle, so they
+	// ride their OWN per-IP budget — separate from customerAuthBuckets, so recovery spam can never starve
+	// login (the S2 operator-lockout lesson, #127). Exact paths (all POST); no path templates needed.
+	private static final Set<String> RECOVERY_PATHS = Set.of(
+			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
+			"/api/auth/customer/verify-email", "/api/me/verify-email/request");
+	// The SSO redirect/callback GETs (S4 #112, D-3/D-8): unauthenticated oracles like the logins —
+	// authorize mints sessions, callback exchanges codes — so they ride a per-IP budget too. Templates
+	// (one {provider} segment) so the deeper mock-authorize path (/sso/mock/{provider}/authorize) never
+	// matches and is not throttled.
+	private static final String SSO_PATH_PREFIX = "/api/auth/sso/";
+	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
+	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
 
 	private final RateLimitProperties props;
 	private final Clock clock;
@@ -77,6 +100,18 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final Map<String, TokenBucket> ipBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> codeBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> loginBuckets = new ConcurrentHashMap<>();
+	// Customer login + register draw on their OWN per-IP budget, separate from operator login
+	// (S2 #111): a burst of unauthenticated customer registrations from a shared IP (venue WiFi /
+	// CGNAT) must never exhaust the operator-login budget and lock operators out.
+	private final Map<String, TokenBucket> customerAuthBuckets = new ConcurrentHashMap<>();
+	// Operator self-registration (S6 #115) on its OWN per-IP budget, separate from operator login so a
+	// registration flood can never lock operators out (the #127 lockout lesson).
+	private final Map<String, TokenBucket> operatorRegisterBuckets = new ConcurrentHashMap<>();
+	// SSO authorize/callback GETs draw on their OWN per-IP budget (S4 #112), separate from the logins so
+	// tightening one never starves the other — same rationale as customerAuthBuckets.
+	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
+	// Account-recovery POSTs (S8 #113) on their OWN per-IP budget — see RECOVERY_PATHS.
+	private final Map<String, TokenBucket> recoveryBuckets = new ConcurrentHashMap<>();
 
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
@@ -86,18 +121,23 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-		// The session login rides its own per-IP budget (issue #109, D-8) — checked first because
-		// it is not one of the booking Targets below.
-		if (props.enabled() && isLoginAttempt(request)) {
-			Instant now = clock.instant();
-			String ip = ClientIpResolver.resolve(request);
-			TokenBucket loginBucket = bucketFor(loginBuckets, ip, props.login(), now);
-			if (!loginBucket.tryAcquire(now)) {
-				reject(response, loginBucket.retryAfterSeconds(now), ip, "login");
+		// The auth endpoints ride their own per-IP budgets (issue #109 / S2 #111, D-8) — checked first
+		// because they are not one of the booking Targets below. Operator login and the customer auth
+		// endpoints use SEPARATE bucket maps under the same limit, so customer traffic can't starve
+		// operator login from a shared IP.
+		if (props.enabled()) {
+			Optional<Map<String, TokenBucket>> authBuckets = authBucketsFor(request);
+			if (authBuckets.isPresent()) {
+				Instant now = clock.instant();
+				String ip = ClientIpResolver.resolve(request);
+				TokenBucket bucket = bucketFor(authBuckets.get(), ip, props.login(), now);
+				if (!bucket.tryAcquire(now)) {
+					reject(response, bucket.retryAfterSeconds(now), ip, "login");
+					return;
+				}
+				chain.doFilter(request, response);
 				return;
 			}
-			chain.doFilter(request, response);
-			return;
 		}
 
 		// Classify the request once: skip non-booking endpoints, preflights, and (when disabled) all.
@@ -133,10 +173,39 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private record Target(String code) {
 	}
 
-	/** The session login POST (never an OPTIONS preflight — the method check excludes it). */
-	private boolean isLoginAttempt(HttpServletRequest request) {
-		return HttpMethod.POST.matches(request.getMethod())
-				&& LOGIN_PATH.equals(pathWithinApplication(request));
+	/**
+	 * The per-IP auth budget a request draws on, or {@code null} if it is not an auth POST. Operator
+	 * login draws on {@code loginBuckets}; the customer auth endpoints (login + register) draw on the
+	 * SEPARATE {@code customerAuthBuckets} under the same {@code login} limit, so tourist-side traffic
+	 * can never exhaust operator login (a shared IP on venue WiFi / CGNAT). Never an OPTIONS preflight —
+	 * the method check excludes it.
+	 */
+	private Optional<Map<String, TokenBucket>> authBucketsFor(HttpServletRequest request) {
+		String method = request.getMethod();
+		String path = pathWithinApplication(request);
+		if (HttpMethod.POST.matches(method)) {
+			if (LOGIN_PATH.equals(path)) {
+				return Optional.of(loginBuckets);
+			}
+			// Operator self-registration (S6 #115) on its own budget, separate from operator login.
+			if (OPERATOR_REGISTER_PATH.equals(path)) {
+				return Optional.of(operatorRegisterBuckets);
+			}
+			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
+				return Optional.of(customerAuthBuckets);
+			}
+			// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
+			if (RECOVERY_PATHS.contains(path)) {
+				return Optional.of(recoveryBuckets);
+			}
+		}
+		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too. A
+		// cheap prefix pre-check keeps the two AntPathMatcher matches off every hot public venue/booking GET.
+		if (HttpMethod.GET.matches(method) && path.startsWith(SSO_PATH_PREFIX)
+				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
+			return Optional.of(ssoBuckets);
+		}
+		return Optional.empty();
 	}
 
 	/**

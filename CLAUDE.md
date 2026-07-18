@@ -22,8 +22,49 @@ riviera-sunbed-booking.onrender.com; GitHub Pages is retired. The tourist Liquid
 (epic #133, T2–T8) is done; the operator console (epic #141) is **complete** —
 O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view + O6 requests tab
 (which retired the legacy StaffDaily page) + O7 payouts tab (ledger + statement + weather refund)
-+ O8 venue & commodities tab (details form + amenity chips + photo placeholders; retired the legacy
-venue-editor page — now onboarding-only) all merged.
++ O8 venue & commodities tab (details form + amenity chips; retired the legacy
+venue-editor page — now onboarding-only) all merged. Venue photos (#142) are real end-to-end:
+operator upload/replace/delete per slot in the O8 tab, tourists see the cover on the Discover
+card + beach-map banner (ADR-0008 `bytea`-behind-port storage, Flyway V24). Customer accounts
+(epic #108) are underway: S1 session foundation (#109) + S7 same-origin hosting (#110) + **S2
+register/sign-in (#111, Flyway V25)** + **S3 signed-in checkout linking + my-bookings (#114, Flyway
+V26)** + **S4 mocked Google/Apple SSO (#112, Flyway V27)** + **S8 email verification + password reset
+(#113, Flyway V28)** have landed — tourists register + sign in via
+server-side sessions, with a **separate account
+identity** (own `customer_account` table, no FK to the guest row, so registration never auto-claims a
+guest email's bookings — D-6); login machinery stays at the platform edge (RV-BE-11). Since S3, a
+booking made while signed in links to the customer's `CustomerAccountId` (nullable `booking.account_id`,
+no guest-row FK); `GET /api/me/bookings` lists the customer's own bookings (CUSTOMER-only,
+session-principal-scoped, BOLA-safe) via the new `customer::api` `CustomerAccountDirectory` id-resolver
+(resolved at the edge by `CurrentCustomer`, mirroring `CurrentOperator`); the My bookings screen merges
+the account list with this device's remembered codes, deduped. Guest checkout is byte-for-byte
+unchanged. Back-linking past guest bookings is a **permanent non-goal** (D-6, amended at S8 — 2026-07-17; cleanups #246).
+**S4 (#112)** added "Continue with Google/Apple" **against mocked IdPs** (OIDC Authorization Code + PKCE
+completed server-side — D-3): the `SsoGateway` port + mock/real adapters + the redirect/callback flow are
+platform-edge machinery (RV-BE-11); the real `Google`/`Apple` adapters throw `UnsupportedOperationException`
+until S5 (#116) and the mock is barred from prod by a `@Profile("prod & !sso")` startup guard. First SSO
+sign-in resolves-or-creates the account by verified email — **auto-linking** to an existing account when
+the email is taken (D-6) — via the new `customer::api` `SsoAccountProvisioning` port (V27
+`customer_sso_identity` link table; `customer_account.password_hash` relaxed nullable for SSO-only
+accounts). **S8 (#113, Flyway V28)** added email verification + self-service password reset behind a
+**mocked mailer** (`Mailer` port + `MockMailer` / throwing `SmtpMailer` + a `@Profile("prod & !mailer")`
+prod-guard, all at the edge; single-use SHA-256-hashed tokens in the new `customer_account_token` table)
+via the `customer::api` `CustomerAccountRecovery` port (issue/redeem verify+reset, set-password, verified
+read) — **closing the S4 F-1 gap** so an SSO-only account can now gain a password (authenticated
+set-password **or** the token-proven reset). Email verification is **soft/non-blocking** (register mails a
+link, visiting it sets `email_verified`, SSO counts as provider-verified); `/api/auth/me` + customer login
+now return `emailVerified`; the real `SmtpMailer` is deferred (→ #255). **S6 (#115, Flyway V29)** landed
+operator self-registration → admin approval → **creator-owns-on-create**, retiring the owns-all bootstrap
+operator: an operator self-registers (`POST /api/auth/operator/register`, own rate-limit bucket,
+non-enumerating + constant-time — D-8) into a **PENDING** account that cannot authenticate until a platform
+**admin** approves it (`/api/admin/operators`, role-gated to a new `ADMIN` authority, NOT venue-scoped —
+invariant #13's exemption) → ACTIVE; an ACTIVE operator that creates a venue (`POST /api/venues`) **owns it
+from creation** (ownership written in the venue application service, atomically with the insert). **No
+account owns all venues anymore** — V29 drops `owns_all_venues` after backfilling every previously-unowned
+venue (Miramar + anything pre-existing) to the **demoted bootstrap operator**, now the platform admin
+(`is_admin`) that `RIVIERA_OPERATOR_PASSWORD` unlocks (no new prod secret; a venue-scoped edit on a venue
+you don't own is now `403 NOT_VENUE_OWNER` before any existence check, uniformly). Remaining epic slice: S5
+(#116) swaps the mock for real Google/Apple adapters.
 
 ## Tech stack (locked)
 
@@ -104,20 +145,25 @@ invariant #11.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
-| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water | `Venue`, `BeachMap` |
+| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water, venue photos (#142, ADR-0008) | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
 | `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired), request accept/decline + expiry sweep (#98), cancellation-policy enforcement | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting | `PayoutLedgerEntry`, `PayoutBatch` |
-| `customer` | light tourist identity / guest-checkout contact | `Customer` |
-| `operator` | operator accounts and the operator↔venue ownership mapping (per-venue authorization, invariant #13) | `Operator` |
+| `customer` | tourist identity: guest-checkout contact + the customer account (email + opaque credential hash) for register/sign-in (#111, thin→full) + SSO identity linkage (`(provider, subject)`→account resolve-or-create, #112) + email verification + password recovery/reset tokens + set-password (#113); account identity is separate from the guest row, no FK (D-6, guest-booking back-linking a permanent non-goal) | `Customer`, `CustomerAccount` |
+| `operator` | operator accounts + the operator↔venue ownership mapping (per-venue authorization, invariant #13); **self-registration + admin-approval state** (`PENDING`→`ACTIVE`/`REJECTED`) + the `is_admin` platform-admin flag (#115) | `Operator` |
 
 > **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed
-> credentials): every venue-scoped application service checks `assertOwns` → `403`
-> (pinned by `CrossVenueDenialIT`), and each operator authenticates with its own hashed
-> credential. Operator sessions are server-side in Postgres (Spring Session JDBC, #109).
-> Remaining follow-up: retire the owns-all **bootstrap operator** and add
-> creator-owns-on-create. See `riviera-modulith` + `RESPONSIBILITIES.md`.
+> credentials, **#115 self-registration → admin approval → creator-owns-on-create**): every
+> venue-scoped application service checks `assertOwns` → `403` (pinned by `CrossVenueDenialIT`),
+> and each operator authenticates with its own hashed credential; operator sessions are server-side
+> in Postgres (Spring Session JDBC, #109). Since #115 the **owns-all bootstrap operator is retired** —
+> ownership is strictly the explicit `operator_venue` mapping (creator-owns-on-create writes it on
+> `POST /api/venues`; a venue-scoped edit on a venue you don't own is `403 NOT_VENUE_OWNER` before any
+> existence check, even for a nonexistent one). The bootstrap `operator` is **demoted to the platform
+> admin** (`is_admin`, unlocked by `RIVIERA_OPERATOR_PASSWORD`, owns the V29-backfilled venues) that
+> approves self-registrations under the role-gated `/api/admin/operators`. All login/approval machinery
+> stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The spine flow: `BookingConfirmed` → `availability`
@@ -252,10 +298,11 @@ Repo-scoped — they load when working in this repository (tracked in
   frontend slice.
 - **`postgres`** (PlanetScale, MIT, trimmed) — table/schema/index design for
   Flyway migrations.
-- **Vendored craft skills** (Matt Pocock, MIT): `grilling`/`grill-me`, `to-issues`,
-  `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`, `domain-modeling`,
-  `triage`, `improve-codebase-architecture` — the generic engine the `riviera-*`
-  skills specialize.
+- **Vendored craft skills** (Matt Pocock, MIT): `grilling`/`grill-me`, `wayfinder` +
+  `to-spec` + `to-issues` (the optional *Epic front-end* chain — chart foggy epics →
+  epic spec → slice; see `riviera-sdlc`), `implement`, `tdd`, `diagnosing-bugs`,
+  `codebase-design`, `domain-modeling`, `triage`, `improve-codebase-architecture` —
+  the generic engine the `riviera-*` skills specialize.
 
 ## Where things are written down
 

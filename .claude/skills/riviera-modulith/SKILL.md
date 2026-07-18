@@ -56,12 +56,13 @@ so the inside never knows whether a real HTTP client, an `@ApplicationModuleTest
 caller is on the other side.
 
 **Assignment rule (mechanical): a module is THIN iff it has no application service** — its `api/`
-port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today: `customer` = thin;
-`booking`/`venue`/`payment`/`payout`/`availability`/`operator` = full. `availability` is "small but
+port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all seven modules are
+full**: `customer` graduated thin → full in S2 (#111), so no module is thin at present — the thin
+template below stays the documented shape for a future serviceless module. `availability` is "small but
 full" — it owns a published command port with real concurrency semantics; small LOC does not make a
 module thin, **having no service** does.
 
-### Thin template — serviceless modules (today: only `customer`)
+### Thin template — serviceless modules (none today; `customer` graduated to full in #111)
 ```
 ai.riviera.platform.<module>/
 ├── package-info.java          # @ApplicationModule(allowedDependencies = {...})

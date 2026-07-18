@@ -9,6 +9,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,13 +20,16 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
+import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 
 /**
@@ -49,15 +54,23 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
  */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class})
+@EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class,
+		RecoveryProperties.class})
 class SecurityConfig {
 
 	/** The single role that gates the U7 operator write surface. */
 	private static final String OPERATOR_ROLE = "OPERATOR";
+	/** The role gating the signed-in tourist's own-bookings surface (S3 #114). */
+	private static final String CUSTOMER_ROLE = "CUSTOMER";
+	/** The platform-admin role that gates the {@code /api/admin/operators/**} approval surface (S6 #115). */
+	private static final String ADMIN_ROLE = "ADMIN";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
+	// A single venue photo slot (#142): POST upload / DELETE remove, operator-only. The public GET
+	// serving path /api/venues/*/photos/(hash) falls under "GET /api/venues/**" below.
+	private static final String PHOTO_ITEM_PATH = "/api/venues/*/photos/*";
 	/** A set's per-day staff availability (U8 mark POST / release DELETE); session + CSRF token required. */
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read (U8); must be gated BEFORE the public venue GET. */
@@ -83,8 +96,44 @@ class SecurityConfig {
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
+	/**
+	 * The platform-admin operator-approval surface (S6 #115, design D-5): list pending registrations
+	 * (GET) and approve/reject them (POST). Role-gated to {@code ADMIN} and NOT venue-scoped — a
+	 * platform-wide admin action, exempt from the per-venue authorization of invariant #13 (the same
+	 * {@code /api/admin/**} exemption as the payout batches, but gated to the stricter ADMIN role).
+	 */
+	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
+	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
+	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	/**
+	 * Operator self-registration (S6 #115, design D-5/D-8): anonymous by definition — it creates a
+	 * {@code PENDING} account that cannot authenticate until a platform admin approves it, so nothing is
+	 * signed in here. On its OWN rate-limit budget (RateLimitFilter) so register spam can never starve
+	 * operator login. CSRF-protected like the other auth POSTs (the SPA holds the bootstrapped token).
+	 */
+	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
+	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
+	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
+	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	/**
+	 * Public customer account-recovery POSTs (S8 #113, design D-6/D-8): request a reset link, redeem a
+	 * reset token, redeem a verification token. Anonymous by definition — the emailed token is the bearer
+	 * credential (invariant #7); behind the {@code RateLimitFilter} recovery budget. CSRF-protected like the
+	 * customer login (the SPA holds the bootstrapped XSRF-TOKEN), so NOT added to the CSRF ignore list. The
+	 * authenticated set-password + resend endpoints live under {@code /api/me/**} (CUSTOMER-gated below).
+	 */
+	private static final String FORGOT_PASSWORD_PATH = "/api/auth/customer/forgot-password";
+	private static final String RESET_PASSWORD_PATH = "/api/auth/customer/reset-password";
+	private static final String VERIFY_EMAIL_PATH = "/api/auth/customer/verify-email";
+	/**
+	 * The SSO redirect/callback surface (S4 #112, D-3): the authorize + callback GETs and the mock IdP
+	 * authorize GET. Anonymous by definition — the callback completes the OIDC exchange and establishes the
+	 * session internally; GETs are never CSRF-challenged, and the {@code state} nonce is the callback's
+	 * forgery defence. Behind the {@code RateLimitFilter} per-IP budget.
+	 */
+	private static final String SSO_PATHS = "/api/auth/sso/**";
 	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
@@ -92,6 +141,10 @@ class SecurityConfig {
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock) {
+		// One shared CSRF cookie repository instance: the filter chain issues/reads the XSRF-TOKEN
+		// cookie through it, and the logout success handler (#247) re-issues a fresh one through the
+		// SAME hardened config, so both stay in lockstep.
+		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		http
 				// Scope this chain to the backend surface only (issue #110): the SPA shell is a
 				// separate, PUBLIC chain below. Ordered FIRST, so /api + /actuator match here and
@@ -122,7 +175,7 @@ class SecurityConfig {
 						.spa()
 						// spa()'s CookieCsrfTokenRepository, hardened: Secure + SameSite=Lax to
 						// mirror the session cookie's posture (the override keeps spa()'s handler).
-						.csrfTokenRepository(csrfCookieRepository())
+						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
@@ -131,6 +184,23 @@ class SecurityConfig {
 						// INSIDE the endpoint (AuthController → AuthenticationManager). /api/auth/me
 						// stays behind anyRequest().authenticated(); logout is the LogoutFilter below.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
+						// Operator self-registration (S6 #115): anonymous — it creates a PENDING account that
+						// cannot sign in until a platform admin approves it (D-5). Non-enumerating + on its own
+						// rate-limit budget (D-8, RateLimitFilter).
+						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()
+						// Customer session login + registration (S2 #111): anonymous like the operator
+						// login — the endpoints authenticate/create internally. Register auto-signs-in on
+						// success. Both ride the login rate-limit budget (D-8, RateLimitFilter).
+						.requestMatchers(HttpMethod.POST, CUSTOMER_LOGIN_PATH, CUSTOMER_REGISTER_PATH).permitAll()
+						// Public customer account-recovery (S8 #113): forgot-password / reset-password /
+						// verify-email are anonymous — the emailed token is the credential (invariant #7) —
+						// and rate-limited per-IP (D-8, RateLimitFilter). The authenticated set-password +
+						// verification-resend endpoints are under /api/me/** (CUSTOMER-gated) below.
+						.requestMatchers(HttpMethod.POST, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH,
+								VERIFY_EMAIL_PATH).permitAll()
+						// SSO redirect/callback (S4 #112, D-3): anonymous GETs that complete the OIDC exchange
+						// and establish the session internally; rate-limited per-IP like the logins (D-8).
+						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
 						// Staff daily-bookings read (U8) — operator-only because booking codes are bearer
 						// credentials (invariant #7). MUST precede the public "GET /api/venues/**" below,
 						// or codes would leak to anyone (first match wins in Spring Security).
@@ -160,6 +230,14 @@ class SecurityConfig {
 						// Weekly BKT payout-batch report (U9) — operator-only across all methods
 						// (generate/list/transition). A new /api/admin namespace, gated explicitly.
 						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						// Operator-approval surface (S6 #115) — platform-admin only, NOT venue-scoped
+						// (invariant #13's /api/admin/** exemption). Gated to the stricter ADMIN role: a
+						// plain OPERATOR reaching these is 403 (authenticated, wrong role). The GET is
+						// listed before the public "GET /api/venues/**" is irrelevant (different prefix),
+						// but stays above anyRequest() like every explicit rule.
+						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
+								ADMIN_OPERATOR_REJECT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
@@ -175,6 +253,12 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						// Venue photo upload/remove (#142) — operator-only writes. Object-level ownership
+						// (invariant #13) is enforced in VenuePhotoService; this is the role layer. The
+						// serving GET stays public via "GET /api/venues/**" above. Non-GET, so it never
+						// shadows that public read.
+						.requestMatchers(HttpMethod.POST, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.DELETE, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
 						// View a booking by its code (U6) — the code is the bearer credential
 						// (invariant #7), so knowing it authorizes the read. One path segment only.
@@ -183,12 +267,17 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
+						// The signed-in tourist's own bookings (S3 #114): CUSTOMER-only, session-principal-
+						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
+						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
+						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
-				// session and clears the context; 204 (no redirect — this is an SPA's API).
+				// session and clears the context; 204 (no redirect — this is an SPA's API). The
+				// success handler also re-issues a fresh XSRF-TOKEN cookie (#247) — see below.
 				.logout(logout -> logout
 						.logoutUrl(LOGOUT_PATH)
-						.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
+						.logoutSuccessHandler(csrfReissuingLogoutSuccessHandler(csrfTokenRepository)))
 				// Unauthenticated access to a protected endpoint → RFC-7807 401 UNAUTHENTICATED. This
 				// fires in the filter chain (never reaches ApiErrorHandler), so the body is
 				// hand-mirrored — the RateLimitFilter pattern (issue #97 conformance for #109).
@@ -234,6 +323,25 @@ class SecurityConfig {
 	}
 
 	/**
+	 * The CUSTOMER authentication manager (S2 #111, design D-2): an explicit {@link ProviderManager}
+	 * over a {@link DaoAuthenticationProvider} whose {@link CustomerUserDetailsService} is built INLINE.
+	 * Kept separate from the operator {@link #authenticationManager} so a customer credential can never
+	 * authenticate as an operator (AC-5) — {@code AuthController} selects the manager per principal-typed
+	 * endpoint. Deliberately NOT wired as a second {@code UserDetailsService} bean: that would make
+	 * {@link AuthenticationConfiguration} ambiguous and break the operator manager's auto-wiring, so S1's
+	 * operator path stays untouched. The stored hash is verified against the same delegating
+	 * {@link #passwordEncoder()}.
+	 */
+	@Bean
+	AuthenticationManager customerAuthenticationManager(CustomerAccounts customerAccounts,
+			PasswordEncoder passwordEncoder) {
+		DaoAuthenticationProvider provider =
+				new DaoAuthenticationProvider(new CustomerUserDetailsService(customerAccounts));
+		provider.setPasswordEncoder(passwordEncoder);
+		return new ProviderManager(provider);
+	}
+
+	/**
 	 * Where {@code AuthController} saves the authenticated context: the HTTP session — which
 	 * Spring Session transparently persists to Postgres (V20). The filter chain's default
 	 * delegating repository reads the same {@code SPRING_SECURITY_CONTEXT} attribute back on
@@ -242,6 +350,31 @@ class SecurityConfig {
 	@Bean
 	SecurityContextRepository securityContextRepository() {
 		return new HttpSessionSecurityContextRepository();
+	}
+
+	/**
+	 * Logout success handler that answers {@code 204} <strong>and</strong> re-issues a fresh
+	 * {@code XSRF-TOKEN} cookie (#247). The framework's {@code CsrfLogoutHandler} — added because CSRF
+	 * is enabled and {@code .logout(...)} is configured — <em>clears</em> the CSRF cookie during
+	 * logout, and {@code LogoutFilter} then writes this {@code 204} and short-circuits the chain, so
+	 * {@code .spa()}'s deferred-token machinery (which re-issues the cookie on ordinary responses)
+	 * never runs on the logout response. That left the SPA with <em>no</em> token, so its immediate
+	 * next CSRF-protected POST (the re-login) sent no {@code X-XSRF-TOKEN} and got
+	 * {@code 403 INVALID_CSRF_TOKEN}, succeeding only on the retry that the 403's re-seeded cookie
+	 * enabled. Generating + saving a new token here (this runs <em>after</em> {@code CsrfLogoutHandler}
+	 * cleared the old one, and before the {@code 204} commits) restores the invariant that every
+	 * response leaves a usable token. The repository is stateless — the token lives in the cookie, not
+	 * the just-invalidated session — so the fresh cookie authenticates the next request. Applies to
+	 * both principal types (operator + customer): one shared logout filter, one shared fix.
+	 */
+	private static LogoutSuccessHandler csrfReissuingLogoutSuccessHandler(CsrfTokenRepository csrfTokenRepository) {
+		HttpStatusReturningLogoutSuccessHandler noContent =
+				new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT);
+		return (request, response, authentication) -> {
+			// Save the cookie BEFORE the 204 commits (the status handler flushes the response).
+			csrfTokenRepository.saveToken(csrfTokenRepository.generateToken(request), request, response);
+			noContent.onLogoutSuccess(request, response, authentication);
+		};
 	}
 
 	/**

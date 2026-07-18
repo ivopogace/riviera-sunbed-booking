@@ -125,3 +125,90 @@ test('the empty My bookings state is accessible (no bookings on this device)', a
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings empty state');
 });
+
+// S3 (#114): signed-in union + dedupe. DEVICE_CODE is device-only; SHARED_CODE is on this device AND
+// in the account list (booked while signed in → shown once); ACCT_CODE is account-only (another
+// device → the account list ADDS it). Device codes render per-code (F2: device shows immediately);
+// the account list contributes only codes this device doesn't already have.
+const DEVICE_CODE = 'DEVICE99999';
+const SHARED_CODE = 'SHARED11111';
+const ACCT_CODE = 'ACCTONLY111';
+
+const ACCOUNT_ROWS = [
+  {
+    code: SHARED_CODE,
+    status: 'CONFIRMED',
+    venueId: 1,
+    venueName: 'Miramar Beach Club',
+    rowLabel: 'Front row · Sea view',
+    positionNo: 2,
+    bookingDate: '2026-12-01',
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    requestExpiresAt: null,
+  },
+  {
+    code: ACCT_CODE,
+    status: 'CONFIRMED',
+    venueId: 2,
+    venueName: 'Sunset Bar',
+    rowLabel: 'Back row',
+    positionNo: 3,
+    bookingDate: '2026-12-05',
+    amount: { minorUnits: 5000, currency: 'EUR' },
+    requestExpiresAt: null,
+  },
+];
+
+function deviceDetail(code: string, venueName: string, positionNo: number) {
+  return {
+    code,
+    status: 'CONFIRMED',
+    venueId: 1,
+    venueName,
+    rowLabel: 'Front row · Sea view',
+    positionNo,
+    bookingDate: '2026-12-01',
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    cancellable: true,
+    beforeCutoff: true,
+    refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
+    refundedAmount: null,
+    requestExpiresAt: null,
+    payment: null,
+  };
+}
+
+test('signed in: My bookings unions the account list with this device\'s codes, deduped (a11y)', async ({
+  page,
+}) => {
+  // A CUSTOMER session: /api/auth/me returns a customer principal, so the app restores signed-in.
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({ json: { username: 'tourist@example.com', principalType: 'CUSTOMER' } }),
+  );
+  // The account's server list: SHARED_CODE (also on this device) + ACCT_CODE (only on the account).
+  await page.route(/\/api\/me\/bookings(\?.*)?$/, (route) => route.fulfill({ json: ACCOUNT_ROWS }));
+  // This device's codes, fetched live by code.
+  await page.route(new RegExp(`/api/bookings/${DEVICE_CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: deviceDetail(DEVICE_CODE, 'Device Bar', 9) }),
+  );
+  await page.route(new RegExp(`/api/bookings/${SHARED_CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: deviceDetail(SHARED_CODE, 'Miramar Beach Club', 2) }),
+  );
+
+  // Seed this device's remembered codes (device-only + the shared one), then open My bookings signed in.
+  await page.goto('/');
+  await page.evaluate(
+    (codes) => localStorage.setItem('riviera.bookings.v1', JSON.stringify(codes)),
+    [DEVICE_CODE, SHARED_CODE],
+  );
+  await page.goto('/my-bookings');
+
+  const rows = page.getByTestId('booking-row');
+  await expect(rows).toHaveCount(3); // DEVICE_CODE + SHARED_CODE (once) + ACCT_CODE (merged from the account)
+  await expect(rows.filter({ hasText: SHARED_CODE })).toHaveCount(1); // deduped across device + account
+  await expect(rows.filter({ hasText: DEVICE_CODE })).toHaveCount(1);
+  await expect(rows.filter({ hasText: ACCT_CODE })).toHaveCount(1); // account-only, merged in
+  await expect(page.getByText('Sunset Bar')).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'my bookings signed-in union');
+});

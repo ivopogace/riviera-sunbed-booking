@@ -56,6 +56,16 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     expect(auth.restoring()).toBe(false);
   });
 
+  it('does NOT adopt a CUSTOMER /me principal — a customer session never signs an operator in (F2)', async () => {
+    // /me is polymorphic (S2 #111); OperatorAuth must filter to its own principal type.
+    const auth = TestBed.inject(OperatorAuth);
+    httpMock.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
+    await Promise.resolve();
+
+    expect(auth.signedIn()).toBe(false);
+    expect(auth.username()).toBeUndefined();
+  });
+
   it('signIn posts the credential once and holds only the principal — never the password', async () => {
     const auth = serviceWithRestore('signed-out');
 
@@ -122,6 +132,67 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     auth.sessionLost();
 
     expect(auth.signedIn()).toBe(false); // httpMock.verify() proves no request went out
+  });
+
+  describe('register (self-registration, S6 #115)', () => {
+    it('posts the fields and resolves submitted on 202 — never a session, never a /me', async () => {
+      const auth = serviceWithRestore('signed-out');
+
+      const result = auth.register('alice', 'password123', 'alice@venue.example');
+      const req = httpMock.expectOne(`${AUTH_API}/operator/register`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        username: 'alice',
+        password: 'password123',
+        contactEmail: 'alice@venue.example',
+      });
+      req.flush({ status: 'PENDING' }, { status: 202, statusText: 'Accepted' });
+
+      expect(await result).toBe('submitted');
+      // A PENDING account is never signed in; httpMock.verify() proves no /me was fetched.
+      expect(auth.signedIn()).toBe(false);
+    });
+
+    it('maps a 429 to rate-limited', async () => {
+      const auth = serviceWithRestore('signed-out');
+
+      const result = auth.register('alice', 'password123', 'alice@venue.example');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/register`)
+        .flush({ code: 'RATE_LIMITED' }, { status: 429, statusText: 'Too Many Requests' });
+
+      expect(await result).toBe('rate-limited');
+    });
+
+    it('maps a 400 to invalid-password', async () => {
+      const auth = serviceWithRestore('signed-out');
+
+      const result = auth.register('alice', 'short', 'alice@venue.example');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/register`)
+        .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toBe('invalid-password');
+    });
+  });
+
+  describe('isAdmin (S6 #115)', () => {
+    it('is true when /me reports an admin operator principal', async () => {
+      const auth = TestBed.inject(OperatorAuth);
+      httpMock
+        .expectOne(`${AUTH_API}/me`)
+        .flush({ username: 'operator', principalType: 'OPERATOR', admin: true });
+      await Promise.resolve();
+
+      expect(auth.isAdmin()).toBe(true);
+    });
+
+    it('is false for a plain operator (no admin flag) and when signed out', async () => {
+      const auth = serviceWithRestore({ username: 'operator' });
+      await Promise.resolve();
+
+      expect(auth.isAdmin()).toBe(false);
+    });
   });
 
   describe('runOperatorSignIn (shared operator sign-in handler, #170)', () => {

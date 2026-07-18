@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -31,11 +32,30 @@ import ai.riviera.platform.booking.application.request.DeclineOutcome;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
 import ai.riviera.platform.booking.application.request.PendingRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
+import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
+import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.CustomerAccountRecovery;
+import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
+import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import java.util.Map;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorApprovals;
 import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorRegistration;
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
@@ -66,9 +86,15 @@ import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.application.PhotoProcessingResult;
+import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.StoredBytes;
+import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
+import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 
 /**
  * Shared collaborators for {@code @WebMvcTest} slices that load the whole web layer (the CORS/security
@@ -157,10 +183,194 @@ class WebSliceStubs {
 		return _ -> Optional.empty();
 	}
 
+	/**
+	 * Customer account ports (S2 #111) that {@code SecurityConfig}'s {@code customerAuthenticationManager}
+	 * and {@code AuthController} require. Empty/inert like the operator store: the web slices never
+	 * authenticate or actually create a customer, so an empty credential store + an always-already-taken
+	 * registration are enough for the context to load and for a rate-limit attempt to reach the limiter.
+	 */
+	@Bean
+	CustomerAccounts customerAccounts() {
+		return _ -> Optional.empty();
+	}
+
+	@Bean
+	CustomerAccountProvisioning customerAccountProvisioning() {
+		return (_, _) -> new RegistrationOutcome.AlreadyRegistered();
+	}
+
+	@Bean
+	OperatorRegistration operatorRegistration() {
+		return (_, _, _) -> new OperatorRegistrationOutcome.AlreadyRegistered();
+	}
+
+	@Bean
+	OperatorApprovals operatorApprovals() {
+		return new OperatorApprovals() {
+			@Override
+			public java.util.List<PendingOperator> pending() {
+				return java.util.List.of();
+			}
+
+			@Override
+			public ApprovalOutcome approve(OperatorId operatorId) {
+				return ApprovalOutcome.NO_SUCH_OPERATOR;
+			}
+
+			@Override
+			public ApprovalOutcome reject(OperatorId operatorId) {
+				return ApprovalOutcome.NO_SUCH_OPERATOR;
+			}
+		};
+	}
+
 	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */
 	@Bean
 	CurrentOperator currentOperator(OperatorDirectory operatorDirectory) {
 		return new CurrentOperator(operatorDirectory);
+	}
+
+	/**
+	 * S3 (#114): the customer account-id resolver + the edge helper that {@code BookingController}
+	 * (signed-in checkout link) and {@code MyBookingsController} (my-bookings) now depend on. Inert:
+	 * the web slices hit permit-all / role-gated paths, never resolving a real account.
+	 */
+	@Bean
+	CustomerAccountDirectory customerAccountDirectory() {
+		return _ -> Optional.empty();
+	}
+
+	@Bean
+	CurrentCustomer currentCustomer(CustomerAccountDirectory customerAccountDirectory) {
+		return new CurrentCustomer(customerAccountDirectory);
+	}
+
+	/**
+	 * S4 (#112): the edge SSO ports {@code SsoController} requires. Inert — the web slices (CORS +
+	 * rate-limit) never drive the SSO redirect/callback, so a pass-through gateway + a fixed account id
+	 * are enough for the context to load and for a rate-limit attempt to reach the limiter.
+	 */
+	@Bean
+	SsoGateway ssoGateway() {
+		return new SsoGateway() {
+			@Override
+			public URI authorizationRequest(SsoProvider provider, SsoAuthorizationChallenge challenge, URI redirectUri) {
+				return redirectUri;
+			}
+
+			@Override
+			public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, URI redirectUri) {
+				return new ExternalIdentity(provider, "web-slice-subject", "web-slice@example.com");
+			}
+		};
+	}
+
+	@Bean
+	SsoAccountProvisioning ssoAccountProvisioning() {
+		return (_, _, _) -> new CustomerAccountId(0);
+	}
+
+	/**
+	 * S8 (#113): the edge account-recovery collaborators the recovery/set-password controllers +
+	 * {@code AuthController} depend on. All inert — the web slices (CORS + rate-limit) never redeem a token,
+	 * send mail, or revoke a session, so an always-invalid recovery port, a no-op mailer, and an
+	 * empty-session repository are enough for the context to load and for a rate-limit attempt to reach the
+	 * limiter. {@code RecoveryProperties} + {@code Clock} come from {@code SecurityConfig}'s
+	 * {@code @EnableConfigurationProperties} and the fixed {@link #clock()} bean above.
+	 */
+	@Bean
+	Mailer mailer() {
+		return new Mailer() {
+			@Override
+			public void sendEmailVerification(String toEmail, URI verificationLink) {
+			}
+
+			@Override
+			public void sendPasswordReset(String toEmail, URI resetLink) {
+			}
+		};
+	}
+
+	@Bean
+	CustomerAccountRecovery customerAccountRecovery() {
+		return new CustomerAccountRecovery() {
+			@Override
+			public void issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+			}
+
+			@Override
+			public void issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+			}
+
+			@Override
+			public VerifyEmailOutcome verifyEmail(String tokenHash) {
+				return new VerifyEmailOutcome.InvalidOrExpired();
+			}
+
+			@Override
+			public ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash) {
+				return new ResetPasswordOutcome.InvalidOrExpired();
+			}
+
+			@Override
+			public void setPassword(CustomerAccountId accountId, String newPasswordHash) {
+			}
+
+			@Override
+			public boolean isEmailVerified(CustomerAccountId accountId) {
+				return false;
+			}
+		};
+	}
+
+	@Bean
+	RecoveryTokens recoveryTokens() {
+		return new RecoveryTokens();
+	}
+
+	@Bean
+	CustomerRecovery customerRecovery(CustomerAccountRecovery recovery, Mailer mailer,
+			RecoveryTokens recoveryTokens, RecoveryProperties recoveryProperties, Clock clock) {
+		return new CustomerRecovery(recovery, mailer, recoveryTokens, recoveryProperties, clock);
+	}
+
+	/** An empty session repository — the web slices never revoke a session. */
+	@Bean
+	FindByIndexNameSessionRepository<? extends Session> sessionRepository() {
+		return new FindByIndexNameSessionRepository<>() {
+			@Override
+			public Session createSession() {
+				return null;
+			}
+
+			@Override
+			public void save(Session session) {
+			}
+
+			@Override
+			public Session findById(String id) {
+				return null;
+			}
+
+			@Override
+			public void deleteById(String id) {
+			}
+
+			@Override
+			public Map<String, Session> findByIndexNameAndIndexValue(String indexName, String indexValue) {
+				return Map.of();
+			}
+		};
+	}
+
+	@Bean
+	CustomerSessionRevoker customerSessionRevoker(FindByIndexNameSessionRepository<? extends Session> sessions) {
+		return new CustomerSessionRevoker(sessions);
+	}
+
+	@Bean
+	MyBookings myBookings() {
+		return _ -> List.of();
 	}
 
 	@Bean
@@ -309,7 +519,7 @@ class WebSliceStubs {
 
 	@Bean
 	OnboardVenue onboardVenue() {
-		return _ -> new VenueId(0);
+		return (operator, command) -> new VenueId(0);
 	}
 
 	@Bean
@@ -353,5 +563,27 @@ class WebSliceStubs {
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
 		return (_, _) -> Optional.empty();
+	}
+
+	/** #142: the photo port {@code VenuePhotoController} registers with — inert not-found defaults. */
+	@Bean
+	VenuePhotos venuePhotos() {
+		return new VenuePhotos() {
+			@Override
+			public PhotoUploadResult upload(OperatorId operator, VenueId venueId, PhotoSlot slot,
+					byte[] image) {
+				return new PhotoUploadResult.Rejected(PhotoProcessingResult.Reason.UNREADABLE);
+			}
+
+			@Override
+			public boolean delete(OperatorId operator, VenueId venueId, PhotoSlot slot) {
+				return false;
+			}
+
+			@Override
+			public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
+				return Optional.empty();
+			}
+		};
 	}
 }

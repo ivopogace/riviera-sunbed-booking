@@ -68,6 +68,43 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
+    // Customer sign-in (S2 #111, epic #108) — glass from the start. `account/*` literal segments,
+    // no param collision. Guest checkout is unaffected; an account is optional.
+    path: 'account/sign-in',
+    loadComponent: () => import('./auth/sign-in').then((m) => m.SignIn),
+    title: 'Sign in — Riviera',
+  },
+  {
+    // Customer registration (S2 #111, epic #108).
+    path: 'account/register',
+    loadComponent: () => import('./auth/register').then((m) => m.Register),
+    title: 'Create an account — Riviera',
+  },
+  {
+    // Forgot password → request a reset link (S8 #113). `account/*` literal segment, no param collision.
+    path: 'account/forgot',
+    loadComponent: () => import('./auth/forgot-password').then((m) => m.ForgotPassword),
+    title: 'Reset your password — Riviera',
+  },
+  {
+    // Reset landing (emailed link carries ?token=…) — set a new password (S8 #113).
+    path: 'account/reset',
+    loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
+    title: 'Set a new password — Riviera',
+  },
+  {
+    // Email-verification landing (emailed link carries ?token=…) — POST-verify on load (S8 #113).
+    path: 'account/verify',
+    loadComponent: () => import('./auth/verify-email').then((m) => m.VerifyEmail),
+    title: 'Verify your email — Riviera',
+  },
+  {
+    // Signed-in account page: set/change password + verification resend (S8 #113, closes S4 F-1).
+    path: 'account/password',
+    loadComponent: () => import('./auth/set-password').then((m) => m.SetPassword),
+    title: 'Your account — Riviera',
+  },
+  {
     // Venue onboarding (create a venue), reached from the console header. O8 (#177) retired this
     // page's in-page editing — layout/pricing/details/commodities are console tabs now — so it is no
     // longer a legacy compat surface: the `legacySurface` flag is dropped (its self-styled form
@@ -82,6 +119,22 @@ export const routes: Routes = [
     path: 'venue-admin/daily/:venueId',
     redirectTo: 'operator/:venueId/daily',
     pathMatch: 'full',
+  },
+  {
+    // Operator self-registration (S6 #115, epic #108) — porcelain page; creates a PENDING account
+    // that a platform admin approves. Literal segment MUST stay above 'operator/:venueId' (first
+    // match wins for parameterized siblings).
+    path: 'operator/register',
+    loadComponent: () => import('./operator/operator-register').then((m) => m.OperatorRegister),
+    title: 'Register as an operator — Riviera',
+  },
+  {
+    // Platform-admin operator-approval surface (S6 #115). Self-gates on the ADMIN session; the
+    // backend /api/admin/** role gate is the real authority. Reached from the console header's Admin
+    // link when signed in as an admin.
+    path: 'admin',
+    loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
+    title: 'Operator registrations — Riviera',
   },
   {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist

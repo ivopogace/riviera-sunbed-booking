@@ -70,7 +70,9 @@ review-only.
 ---
 
 ## `venue`
-**Job:** Own venue profiles (incl. amenities + distance-to-water), the beach map / layout, set
+**Job:** Own venue profiles (incl. amenities + distance-to-water), venue photos (#142: per-slot
+upload/replace/delete, processing, `bytea` storage behind the module-internal `PhotoStorage`
+port, and the public content-hash serving read — ADR-0008), the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
 (Instant / Request).
 
@@ -155,20 +157,44 @@ refund reverses it.
 ---
 
 ## `customer`
-**Job:** Own light tourist identity / guest-checkout contact.
+**Job:** Own tourist identity — the guest-checkout contact AND (S2 #111) the customer
+**account** (email + opaque credential hash) that backs register / sign-in. The account is a
+**separate identity** from the guest-contact row (no foreign key), so registration never
+auto-claims a guest email's past bookings; back-linking guest bookings is a **permanent
+non-goal** (design D-6, amended at S8).
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
 - Operator accounts or staff logins → **`operator`** (I am the *tourist*; `operator`
   is the *venue's* people)
-- Tourist accounts, marketing, or authentication → out of scope in v1 (guest checkout)
+- Marketing → out of scope
+- Encoding/verifying credentials + all login machinery (`UserDetailsService`, session,
+  the register/login endpoints) → the **platform edge** (RV-BE-11); I own the account
+  identity and store an opaque credential hash, never the login machinery
+
+**Shipped** (S2 #111, epic #108): customer accounts — register + sign-in via a server-side
+session, non-enumerating (D-8). The module graduated **thin → full** (gained
+`CustomerAccountService`); no Spring Security type lives inside it, pinned by
+`CustomerAuthPlacementTests`. **S4 (#112)** added **SSO identity linkage** — the
+`SsoAccountProvisioning` port resolves-or-creates the account behind an external
+`(provider, subject)` (find-or-create by verified email, auto-link; V27 `customer_sso_identity`),
+still storing only identity + an opaque (now nullable, for SSO-only accounts) hash; the OIDC
+redirect/token-exchange machinery stays at the platform edge. **S8 (#113)** added the
+`CustomerAccountRecovery` `api/` port — issue/redeem single-use hashed **email-verification** and
+**password-reset** tokens (`customer_account_token`, V28), **set-password** (closing the S4 SSO-only
+gap), and a verified read — plus `email_verified` on the account (V28; SSO sign-in marks it
+provider-verified). Email verification is **soft/non-blocking** (v1). Still no Spring Security type
+inside the module (`CustomerAuthPlacementTests` green); the mailer, token digest, and
+recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 
 ---
 
 ## `operator`
-**Job:** Own operator accounts and the **operator↔venue ownership mapping**. Answer
-one question for the rest of the system: *does this operator own this venue?*
-(invariant #13).
+**Job:** Own operator accounts — incl. their **self-registration + admin-approval state**
+(`PENDING`→`ACTIVE`/`REJECTED`, #115) and the `is_admin` platform-admin flag — and the
+**operator↔venue ownership mapping**, now writable (creator-owns-on-create). Answer two
+things for the rest of the system: *does this operator own this venue?* and *which
+operators are awaiting approval?* (invariant #13).
 
 **Not My Job:**
 - Tourist identity → **`customer`**
@@ -178,15 +204,21 @@ one question for the rest of the system: *does this operator own this venue?*
   **application service** performs it by asking me; I own the mapping and answer, I
   don't sit in everyone's request path
 - Bookings, payment, payout → their own modules
-- Encoding/verifying credentials → the **platform edge** (Spring Security
-  `UserDetailsService`); I own the account identity + ownership mapping and store an
-  opaque credential hash, never the login machinery (RV-BE-11)
+- Encoding/verifying credentials + the register/login/approval endpoints + the
+  `ROLE_ADMIN` mapping → the **platform edge** (Spring Security `UserDetailsService`,
+  `AuthController`, `AdminOperatorController`); I own the account identity + ownership
+  mapping + the approval **state transitions**, and store an opaque credential hash + an
+  opaque `is_admin` flag — never the login machinery or the role gate (RV-BE-11)
 
 **Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
-application service; #74 per-operator DB-backed credentials — no shared password). See
-`docs/runbooks/operator-credential-provisioning.md`. Remaining follow-up: fully retiring
-the owns-all **bootstrap operator** (every operator strictly per-venue) +
-creator-owns-on-create.
+application service; #74 per-operator DB-backed credentials — no shared password; **#115
+self-registration → admin approval → creator-owns-on-create**). Since #115 the owns-all
+**bootstrap operator is retired** — ownership is strictly the explicit `operator_venue`
+mapping (`POST /api/venues` writes the creator's row atomically with the insert); the
+bootstrap `operator` is **demoted to the platform admin** (`is_admin`, unlocked by
+`RIVIERA_OPERATOR_PASSWORD`) that approves self-registrations. Still no Spring Security
+type inside the module (`OperatorAuthPlacementTests` green). See
+`docs/runbooks/operator-credential-provisioning.md`.
 
 ---
 
@@ -210,6 +242,7 @@ sufficient.
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
+| No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
 
 Each rule is proven able to fail on every build, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking

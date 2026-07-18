@@ -16,9 +16,9 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 public interface OperatorProvisioning {
 
 	/**
-	 * Create a new {@code ACTIVE} operator (not owns-all) with this username and pre-encoded
-	 * credential hash; returns its {@link OperatorId}. Fails if the username already exists (the
-	 * {@code operator.username} unique constraint).
+	 * Create a new {@code ACTIVE} per-venue operator (owns no venue until one is granted; not an
+	 * admin) with this username and pre-encoded credential hash; returns its {@link OperatorId}. Fails
+	 * if the username already exists (the {@code operator.username} unique constraint).
 	 */
 	OperatorId provision(String username, String passwordHash);
 

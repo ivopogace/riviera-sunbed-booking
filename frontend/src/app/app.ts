@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router
 import { filter, map } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
+import { CustomerAuth } from './core/customer-auth';
 import { ThemeId, ThemeService } from './core/theme';
 
 /**
@@ -22,6 +23,8 @@ import { ThemeId, ThemeService } from './core/theme';
 })
 export class App {
   protected readonly themes = inject(ThemeService);
+  /** Customer session state for the header (S2 #111): sign-in/register links ↔ signed-in + sign-out. */
+  protected readonly customerAuth = inject(CustomerAuth);
   private readonly router = inject(Router);
 
   protected readonly menuOpen = signal(false);
@@ -126,6 +129,12 @@ export class App {
   protected selectTheme(id: ThemeId): void {
     this.themes.select(id);
     this.closeMenus();
+  }
+
+  /** Sign the customer out (S2 #111) — clears the session server-side; closes the mobile menu first. */
+  protected async signOut(): Promise<void> {
+    this.menuOpen.set(false);
+    await this.customerAuth.signOut();
   }
 
   /** Closes whichever surface is open and hands focus back to its trigger (AC-3). */

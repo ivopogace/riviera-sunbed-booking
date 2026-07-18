@@ -114,6 +114,31 @@ describe('VenueMap', () => {
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
+  it('renders the cover banner photo when present, keeping the scrim; no "coming soon" pill either way (#142)', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' },
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const img = el().querySelector<HTMLImageElement>('[data-testid="map-banner-img"]');
+    // The service resolves the wire's root-relative path against the API origin (F-7).
+    expect(img?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/bb02`);
+    // The scrim stays layered over the photo band, and the retired pill never renders.
+    expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
+    expect(el().textContent).not.toContain('coming soon');
+  });
+
+  it('falls back to the bare gradient band without the pill when there is no cover photo (#142)', async () => {
+    flushVenue(); // the fixture has no coverPhoto
+    await fixture.whenStable();
+
+    expect(el().querySelector('[data-testid="map-banner-img"]')).toBeNull();
+    expect(el().querySelector('.photo-band')).toBeTruthy();
+    expect(el().textContent).not.toContain('coming soon');
+  });
+
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();
@@ -300,13 +325,17 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
 
+    // A date guaranteed to differ from the component's default (tomorrow) on ANY calendar day —
+    // a hardcoded date that happens to equal "tomorrow" fires no change event (the 2026-07-14
+    // flake). Derived like the component derives its own default, a week out.
+    const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    input.value = '2026-07-15';
+    input.value = chosen;
     input.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
     const req = venueRequest();
-    expect(req.request.params.get('date')).toBe('2026-07-15');
+    expect(req.request.params.get('date')).toBe(chosen);
     req.flush(miramar());
   });
 

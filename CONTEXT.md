@@ -15,6 +15,18 @@ model in `docs/architecture/domain-model.md`.
   order-insensitive subset, validated server-side against the catalogue (an unknown tag → 400).
 - **Distance to water** — how far a venue's sunbeds sit from the shoreline: an optional positive
   integer in metres (rendered "15m to water").
+- **Venue photo** — venue profile media (#142): one image per photo slot, uploaded by the venue's
+  operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
+  guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
+  discarded — ADR-0008). Only the **cover** slot is tourist-surfaced.
+- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (shown on the Discover
+  card + beach-map banner), `SUNBEDS`, `BAR` (stored, operator-preview only). At most one photo
+  per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
+  transaction.
+- **Photo variant** — one stored rendition of a venue photo for a display surface: `CARD`
+  (≤640×384), `BANNER` (≤1280×480), `PREVIEW` (≤480×360) — fit-within-resized progressive JPEGs,
+  each served by its **content hash** at an immutable, long-cached public URL
+  (`/api/venues/{venueId}/photos/{hash}`); a replace mints new hashes → new URLs.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price.
@@ -74,7 +86,20 @@ model in `docs/architecture/domain-model.md`.
 ## Demand (tourist side)
 
 - **Tourist / Customer** — the person booking a set. Guest checkout (email only) is
-  allowed; identity is intentionally light.
+  allowed; an **account** is optional (S2 #111).
+- **Customer account** — a registered tourist identity (email + opaque credential hash) for
+  register / sign-in via a server-side session. Deliberately **separate** from the
+  guest-checkout contact row (no foreign key): registering never auto-claims a guest email's
+  past bookings — back-linking guest bookings is a **permanent non-goal** (design D-6, amended
+  at S8). The account's credential hash is stored by `customer`; all login machinery lives at
+  the platform edge (RV-BE-11).
+- **Email verification** — a soft, non-blocking signal that a customer account's email was
+  proven owned (`email_verified`, S8 #113). Set by visiting a tokenized link mailed at
+  registration, or granted automatically for SSO-created accounts (provider-verified).
+  Informational in v1 — it gates no sign-in or booking.
+- **Recovery token** — a single-use, expiring, **hashed** bearer credential mailed to an
+  account's email for one of two purposes: **verify-email** or **reset-password**
+  (`customer_account_token`, S8 #113). Treated like a secret (invariant #7); consumed on redeem.
 
 ## Operators (venue management side)
 

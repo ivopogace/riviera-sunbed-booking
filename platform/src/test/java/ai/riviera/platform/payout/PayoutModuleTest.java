@@ -18,8 +18,15 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
+import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.CustomerAccountRecovery;
+import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorApprovals;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
+import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.VenueRates;
@@ -76,6 +83,40 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	OperatorProvisioning provisioning;
+
+	// S6 #115: the root edge's AuthController register endpoint depends on operator::api's
+	// OperatorRegistration, and the AdminOperatorController on OperatorApprovals — same isolation story,
+	// so both are mocked here too; the accrual listener under test uses neither.
+	@MockitoBean
+	OperatorRegistration operatorRegistration;
+
+	@MockitoBean
+	OperatorApprovals operatorApprovals;
+
+	// S2 #111: the root edge (SecurityConfig + AuthController) now also depends on the customer::api
+	// account ports — the customer UserDetailsService/manager on CustomerAccounts, the register endpoint
+	// on CustomerAccountProvisioning. In module isolation the customer module isn't bootstrapped, so
+	// these are mocked to let the payout context load; the accrual listener under test uses neither.
+	@MockitoBean
+	CustomerAccounts customerAccounts;
+
+	@MockitoBean
+	CustomerAccountProvisioning customerAccountProvisioning;
+
+	// S3 #114: the root edge's CurrentCustomer resolves the signed-in principal to its account id via
+	// customer::api's CustomerAccountDirectory — same isolation story, so it is mocked here too.
+	@MockitoBean
+	CustomerAccountDirectory customerAccountDirectory;
+
+	// S4 #112: the root edge's SsoController resolve-or-creates the account behind an external SSO identity
+	// via customer::api's SsoAccountProvisioning — same isolation story, so it is mocked here too.
+	@MockitoBean
+	SsoAccountProvisioning ssoAccountProvisioning;
+
+	// S8 #113: the root edge's CustomerRecovery drives customer::api's CustomerAccountRecovery (verify /
+	// reset / set-password) — same isolation story, so it is mocked here too.
+	@MockitoBean
+	CustomerAccountRecovery customerAccountRecovery;
 
 	@Autowired
 	JdbcClient jdbc;

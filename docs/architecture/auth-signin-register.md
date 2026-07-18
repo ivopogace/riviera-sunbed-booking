@@ -71,6 +71,13 @@ login/register endpoints, sharing the platform-edge machinery. Module ownership
 - `customer` module: customer **account identity** + opaque credential hash +
   SSO subject linkage. (This supersedes the "tourist accounts out of scope in v1"
   line — update `RESPONSIBILITIES.md`/`CONTEXT.md` when the first slice ships.)
+  - **S2 realized (#111):** the account is a **separate identity** — its own
+    `customer_account` table (own PK, **no FK** to the guest `customer` row) — so
+    registration never auto-claims a guest email's past bookings; D-6's verified-email
+    linking (S3/S8) stays a deliberate step by construction. This refines D-6 and is a
+    recorded drift from #111's literal "keyed by CustomerId" wording (maintainer-approved
+    2026-07-13). The module graduated thin → full; login machinery stays at the edge
+    (RV-BE-11, `CustomerAuthPlacementTests`).
 - `operator` module: unchanged ownership (account identity + operator↔venue
   mapping), gains registration/approval state.
 - Platform edge (`ai.riviera.platform`): all login machinery — filter chain,
@@ -113,10 +120,23 @@ to be enforced in the application services.
 
 Email verification and self-service password reset ship in this epic against a
 **mock mailer adapter** (logs/records the tokenized link); a real SMTP/provider
-adapter is deferred exactly like the SSO credentials. A **verified email gates
-linking past guest bookings** to a new account — linking by unverified email would
-hand an attacker the victim's booking codes (invariant #7). Tokens are single-use,
+adapter is deferred exactly like the SSO credentials. Tokens are single-use,
 expiring, and stored hashed (they are bearer credentials, invariant #7 posture).
+
+> **Amended at S8 (#113), maintainer decision 2026-07-17.** The original D-6 said a
+> verified email would **gate linking past guest bookings** to a new account. That
+> back-linking is now a **permanent non-goal**: bookings made in guest mode are
+> **never** auto-attached to an account (it was the only functional consumer of the
+> verified-email flag, and the maintainer chose not to build it — guest bookings stay
+> device-/code-scoped, as S3's display-only merge already does). Email verification
+> still ships in S8, now as a **soft, non-blocking** signal: registration issues a
+> verification link, visiting it sets `email_verified`, and the flag is informational
+> in v1 (a "please verify" nudge + email-ownership/anti-spam trust) — it blocks no
+> sign-in or booking. SSO-created accounts count as provider-verified. **S8 also closes
+> the S4 F-1 gap** (an SSO-only, password-less account gains a password) via an
+> authenticated set-password while signed in **and** the token-proven reset flow —
+> never an unauthenticated register-time UPSERT (an account-takeover vector). Slice
+> plan: `docs/plans/s8-email-verification-password-reset.md`.
 
 ### D-7: Same-site FE/BE hosting is an architectural requirement (dev now, prod hoster later)
 
@@ -155,7 +175,7 @@ encoder (`{bcrypt}`); password minimum length enforced server-side.
 |---|---|---|
 | S1 | Session-auth foundation: login/logout + CSRF; operator FE off Basic | — |
 | S2 | Customer register + sign-in (form) | S1 |
-| S3 | Signed-in checkout linking + my-bookings (guest-mode extension) | S2 (back-linking gated by S8's verified email) |
+| S3 | Signed-in checkout linking + my-bookings (guest-mode extension) | S2 (guest-booking back-linking dropped — see D-6 amendment) |
 | S4 | `SsoGateway` port + mocked Google/Apple end-to-end; real adapters throw | S2 |
 | S5 | Real Google/Apple adapters (credentials are a ready-for-human prerequisite) | S4 |
 | S6 | Operator self-registration → approval → creator-owns-on-create; retire bootstrap owns-all | S1 |

@@ -75,7 +75,9 @@ class VenueAdminServiceTest {
 		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
 				"INSTANT", 1500, "EUR", LocalTime.of(18, 0));
 
-		assertEquals(new VenueId(99), service.onboard(command));
+		// Creator-owns-on-create writes ownership too (#115); the ownership write + non-owner denial is
+		// proven end-to-end by CrossVenueDenialIT.creatorOwnsCreatedVenueAndOthersAreDenied.
+		assertEquals(new VenueId(99), service.onboard(OWNER, command));
 		assertEquals(1, venues.insertedVenues);
 	}
 
@@ -440,6 +442,11 @@ class VenueAdminServiceTest {
 		public Set<VenueRef> ownedVenues(OperatorId operator) {
 			return operator.equals(owner) ? Set.of(new VenueRef(venue.value())) : Set.of();
 		}
+
+		@Override
+		public void assignOwner(OperatorId operator, VenueRef target) {
+			// creator-owns-on-create is wired in phase 1; verified end-to-end by CrossVenueDenialIT
+		}
 	}
 
 	/** Programmable in-memory {@link Venues}: seed {@code venues}/{@code sets}/{@code conflict}. */
@@ -534,7 +541,7 @@ class VenueAdminServiceTest {
 			return venues.contains(venueId.value())
 					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
 							BookingMode.INSTANT, LocalTime.of(18, 0), 1500, "EUR",
-							List.of(Amenity.WIFI), 20, 0))
+							List.of(Amenity.WIFI), 20, 0, List.of()))
 					: Optional.empty();
 		}
 

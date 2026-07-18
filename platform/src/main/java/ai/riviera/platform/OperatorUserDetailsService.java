@@ -17,18 +17,24 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
  * {@link OperatorAccounts} (the module owns the opaque hash; the edge verifies it against the
  * delegating {@code PasswordEncoder}) and hands a {@link UserDetails} to {@code DaoAuthenticationProvider}.
  *
- * <p>Every operator carries the single {@code OPERATOR} role (the per-<em>venue</em> authorization is
+ * <p>Every operator carries the {@code OPERATOR} role (the per-<em>venue</em> authorization is
  * object-level — resolved from the principal to an {@link ai.riviera.platform.operator.vocabulary.OperatorId}
- * and enforced in the application services, invariant #13 — not role-level). A {@code SUSPENDED}
- * account is built {@code disabled}, so the provider rejects it in its pre-authentication check
- * <em>before</em> the password is examined (no existence/timing oracle); an account with no
- * provisioned credential (null hash) or an unknown username is a {@link UsernameNotFoundException}.
+ * and enforced in the application services, invariant #13 — not role-level). A platform-<strong>admin</strong>
+ * account ({@code is_admin}, #115) additionally carries {@code ADMIN}, which gates the role-based
+ * {@code /api/admin/**} operator-approval surface (invariant #13's admin exemption); it keeps
+ * {@code OPERATOR} too, so an admin that also owns venues still reaches the operator console. A
+ * {@code SUSPENDED}/{@code PENDING}/{@code REJECTED} account is built {@code disabled}, so the provider
+ * rejects it in its pre-authentication check <em>before</em> the password is examined (no existence/timing
+ * oracle); an account with no provisioned credential (null hash) or an unknown username is a
+ * {@link UsernameNotFoundException}.
  */
 @NullMarked
 class OperatorUserDetailsService implements UserDetailsService {
 
 	/** The single role that gates the operator write surface (kept in lockstep with {@code SecurityConfig}). */
 	static final String OPERATOR_ROLE = "OPERATOR";
+	/** The platform-admin role that gates the {@code /api/admin/**} approval surface (#115). */
+	static final String ADMIN_ROLE = "ADMIN";
 
 	private final OperatorAccounts accounts;
 
@@ -41,9 +47,13 @@ class OperatorUserDetailsService implements UserDetailsService {
 		OperatorCredential credential = accounts.findByUsername(username)
 				.filter(c -> c.passwordHash() != null)
 				.orElseThrow(() -> new UsernameNotFoundException("no operator credential"));
+		// An admin carries both ADMIN (approval surface) and OPERATOR (console for any venues it owns).
+		String[] roles = credential.admin()
+				? new String[] {OPERATOR_ROLE, ADMIN_ROLE}
+				: new String[] {OPERATOR_ROLE};
 		return User.withUsername(credential.username())
 				.password(credential.passwordHash())
-				.roles(OPERATOR_ROLE)
+				.roles(roles)
 				.disabled(!credential.active())
 				.build();
 	}

@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.api.OperatorDirectory;
@@ -20,7 +21,8 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  *
  * <p>It performs no enforcement of its own beyond answering: each venue-scoped service calls
  * {@link #assertOwns} and maps the failure to {@code 403}. That keeps {@code operator} out of every
- * request path (RESPONSIBILITIES.md — it owns the mapping, not the check site).
+ * request path (RESPONSIBILITIES.md — it owns the mapping, not the check site). The one write is
+ * {@link #assignOwner} (creator-owns-on-create, #115), which joins the caller's transaction.
  */
 @Service
 class OperatorService implements VenueOwnership, OperatorDirectory {
@@ -41,6 +43,12 @@ class OperatorService implements VenueOwnership, OperatorDirectory {
 	@Override
 	public Set<VenueRef> ownedVenues(OperatorId operator) {
 		return operators.ownedVenues(operator);
+	}
+
+	@Override
+	@Transactional
+	public void assignOwner(OperatorId operator, VenueRef venue) {
+		operators.assignOwner(operator, venue);
 	}
 
 	@Override

@@ -22,8 +22,11 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * echoes it back on the next profile {@code PATCH}, so a stale write is rejected with 409 rather
  * than clobbering {@code bookingMode}/{@code bookingCutoff}. Read-only for the operator — the write
  * never sets it directly; the conditional {@code UPDATE} bumps it.
+ *
+ * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its preview URL
+ * ({@code null} = empty slot, #142) — always all three slots, so the tab renders a stable grid.
  */
 public record VenueProfileView(String name, String beach, String region, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-		List<Amenity> amenities, Integer distanceToWaterM, long version) {
+		List<Amenity> amenities, Integer distanceToWaterM, long version, List<PhotoSlotView> photos) {
 }

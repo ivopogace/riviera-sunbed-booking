@@ -92,8 +92,21 @@
             >
               <!-- The <a> carries the full accessible name via aria-label, so its visible content
                    is decorative to AT — the two inner blocks are aria-hidden. -->
+              <!-- The cover photo (#142) when uploaded; the gradient + sun placeholder as the empty
+                   state. The scrim ALWAYS layers over it — the location text's AA floor must hold
+                   over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
               <span class="card-photo" aria-hidden="true">
-                <span class="photo-sun"></span>
+                @if (venue.coverPhoto; as cover) {
+                  <img
+                    [ngSrc]="cover.card"
+                    fill
+                    class="object-cover"
+                    alt=""
+                    data-testid="card-photo-img"
+                  />
+                } @else {
+                  <span class="photo-sun"></span>
+                }
                 <span class="photo-scrim"></span>
                 <span class="mode-chip">{{ bookingModeLabel(venue.bookingMode) }}</span>
                 <span class="photo-location">{{ venue.beach }} · {{ venue.region }}</span>

@@ -1,8 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { resolveCoverPhoto } from './photo-url';
 import { VenueMapView, VenueSummary } from './venue.model';
 
 /** Optional discovery filters; an omitted dimension is no constraint (mirrors the backend). */
@@ -34,7 +35,12 @@ export class VenueService {
     if (filter.region) {
       params = params.set('region', filter.region);
     }
-    return this.http.get<VenueSummary[]>(`${environment.apiBaseUrl}/api/venues`, { params });
+    return this.http.get<VenueSummary[]>(`${environment.apiBaseUrl}/api/venues`, { params }).pipe(
+      // Photo paths resolve against the API origin (#142 review F-7; no-op in same-origin prod).
+      map((venues) =>
+        venues.map((venue) => ({ ...venue, coverPhoto: resolveCoverPhoto(venue.coverPhoto) })),
+      ),
+    );
   }
 
   /**
@@ -42,8 +48,10 @@ export class VenueService {
    * availability reflects the authoritative `set_availability` state for that date (issue #44).
    */
   getVenueMap(venueId: number, date: string): Observable<VenueMapView> {
-    return this.http.get<VenueMapView>(`${environment.apiBaseUrl}/api/venues/${venueId}`, {
-      params: new HttpParams().set('date', date),
-    });
+    return this.http
+      .get<VenueMapView>(`${environment.apiBaseUrl}/api/venues/${venueId}`, {
+        params: new HttpParams().set('date', date),
+      })
+      .pipe(map((venue) => ({ ...venue, coverPhoto: resolveCoverPhoto(venue.coverPhoto) })));
   }
 }

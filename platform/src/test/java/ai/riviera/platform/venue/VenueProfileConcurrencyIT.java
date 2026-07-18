@@ -118,8 +118,8 @@ class VenueProfileConcurrencyIT {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username = :u)").param("u", username).update();
 		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", username).update();
-		long id = jdbc.sql("INSERT INTO operator (username, status, owns_all_venues) "
-						+ "VALUES (:u, 'ACTIVE', FALSE) RETURNING id")
+		long id = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", username).query(Long.class).single();
 		return new OperatorId(id);
 	}
