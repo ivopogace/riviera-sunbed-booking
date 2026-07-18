@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.operator.api.OperatorRegistration;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -48,6 +49,8 @@ class AuthController {
 	private static final String CUSTOMER_PRINCIPAL_TYPE = "CUSTOMER";
 	/** The authority a customer principal carries ({@code ROLE_} + type), used to label {@code /me}. */
 	private static final String CUSTOMER_ROLE_AUTHORITY = "ROLE_" + CUSTOMER_PRINCIPAL_TYPE;
+	/** The authority a platform-admin operator carries (#115), surfaced on {@code /me} so the FE can gate the admin surface. */
+	private static final String ADMIN_ROLE_AUTHORITY = "ROLE_ADMIN";
 
 	/**
 	 * A throwaway {@code {bcrypt}} hash computed ONCE at construction from a fixed non-secret string
@@ -63,6 +66,7 @@ class AuthController {
 	private final SecurityContextRepository securityContextRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final CustomerAccountProvisioning customerAccounts;
+	private final OperatorRegistration operatorRegistration;
 	private final CustomerRecovery recovery;
 	private final CurrentCustomer currentCustomer;
 
@@ -71,6 +75,7 @@ class AuthController {
 			SecurityContextRepository securityContextRepository,
 			PasswordEncoder passwordEncoder,
 			CustomerAccountProvisioning customerAccounts,
+			OperatorRegistration operatorRegistration,
 			CustomerRecovery recovery,
 			CurrentCustomer currentCustomer) {
 		this.operatorManager = operatorManager;
@@ -78,6 +83,7 @@ class AuthController {
 		this.securityContextRepository = securityContextRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.customerAccounts = customerAccounts;
+		this.operatorRegistration = operatorRegistration;
 		this.recovery = recovery;
 		this.currentCustomer = currentCustomer;
 		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-credential");
@@ -96,6 +102,27 @@ class AuthController {
 		}
 	}
 
+	/**
+	 * Wire DTO for an operator self-registration (#115, S6): the login {@code username}, the
+	 * {@code password}, and a {@code contactEmail} for the admin's approval decision. Presence checks in
+	 * the compact constructor (§6b centralized-explicit style) → a malformed body is {@code 400 INVALID_REQUEST}.
+	 */
+	record OperatorRegistrationRequest(String username, String password, String contactEmail) {
+		OperatorRegistrationRequest {
+			if (username == null || username.isBlank() || password == null || password.isEmpty()
+					|| contactEmail == null || contactEmail.isBlank()) {
+				throw new IllegalArgumentException("username, password and contactEmail are required");
+			}
+		}
+	}
+
+	/**
+	 * The neutral acknowledgement of an operator self-registration — {@code status} is always
+	 * {@code "PENDING"}, byte-identical for a fresh vs. an already-taken username (non-enumeration, D-8).
+	 */
+	record OperatorRegistrationResponse(String status) {
+	}
+
 	/** Wire DTO for a customer login/register (email + password). Same presence discipline. */
 	record CustomerCredentials(String email, String password) {
 		CustomerCredentials {
@@ -110,9 +137,11 @@ class AuthController {
 	 * {@code emailVerified} is the customer's soft email-verification state (S8 #113) for the "please
 	 * verify" nudge; {@code null} for an operator principal (not a customer concept). A fresh registration
 	 * is always {@code false}, and the neutral already-registered branch also reports {@code false} so the
-	 * response stays byte-identical (non-enumeration, D-8).
+	 * response stays byte-identical (non-enumeration, D-8). {@code admin} (S6 #115) is {@code true} for a
+	 * platform-admin operator ({@code ROLE_ADMIN}), so the FE can reveal the approval surface; always
+	 * {@code false} for a customer.
 	 */
-	record PrincipalResponse(String username, String principalType, Boolean emailVerified) {
+	record PrincipalResponse(String username, String principalType, Boolean emailVerified, boolean admin) {
 	}
 
 	@PostMapping("/api/auth/operator/login")
@@ -122,7 +151,34 @@ class AuthController {
 		// 401 INVALID_CREDENTIALS (no wrong-password/unknown-user/suspended distinction, D-8).
 		Authentication authentication =
 				establishSession(operatorManager, login.username(), login.password(), request, response);
-		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null);
+		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null,
+				adminOf(authentication));
+	}
+
+	/**
+	 * Register an operator account (S6, #115). Unlike the customer register, a fresh registration does
+	 * <strong>NOT</strong> sign the operator in: the account is created {@code PENDING} and cannot
+	 * authenticate until a platform admin approves it (design D-5). Both a fresh username and an
+	 * already-taken one return the SAME {@code 202} body and NEVER a session (non-enumeration, D-8); only
+	 * the fresh branch writes the PENDING row. Password policy is enforced BEFORE any write; a violation
+	 * is {@code 400 INVALID_REQUEST}.
+	 */
+	@PostMapping("/api/auth/operator/register")
+	ResponseEntity<OperatorRegistrationResponse> operatorRegister(
+			@RequestBody OperatorRegistrationRequest registration) {
+		// The shared server-side password policy (D-8 min length / bcrypt-input cap) — the same rule the
+		// customer register enforces; both principal types get one policy.
+		CustomerPasswords.validate(registration.password());
+		// Constant-time (D-8): both branches spend exactly ONE bcrypt — the encode() below, evaluated on
+		// every request (fresh or taken). Unlike the customer register there is NO auto-sign-in bcrypt on
+		// the fresh branch, so NO equalizer is added: a taken-branch verify would make an existing username
+		// measurably SLOWER (a reverse enumeration oracle). The write is a bcrypt-free
+		// INSERT … ON CONFLICT DO NOTHING either way, so only a fresh username creates the PENDING row; the
+		// outcome distinction never surfaces (the response is byte-identical) so it is deliberately unused.
+		operatorRegistration.register(registration.username().trim(),
+				passwordEncoder.encode(registration.password()), registration.contactEmail().trim());
+		// No session either branch — a PENDING operator cannot sign in until approved. Byte-identical body.
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new OperatorRegistrationResponse("PENDING"));
 	}
 
 	@PostMapping("/api/auth/customer/login")
@@ -130,7 +186,8 @@ class AuthController {
 			HttpServletResponse response) {
 		Authentication authentication =
 				establishSession(customerManager, login.email(), login.password(), request, response);
-		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE, verifiedStatus(authentication));
+		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE,
+				verifiedStatus(authentication), false);
 	}
 
 	/**
@@ -164,9 +221,10 @@ class AuthController {
 			passwordEncoder.matches(registration.password(), timingEqualizerHash);
 		}
 		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie + mailed.
-		// emailVerified is always false here (a fresh account is unverified; the neutral branch matches it).
+		// emailVerified is always false here — a fresh account is unverified and the neutral branch matches it.
+		// admin is always false because a customer is never a platform admin.
 		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false));
+				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false, false));
 	}
 
 	/**
@@ -178,7 +236,7 @@ class AuthController {
 	@GetMapping("/api/auth/me")
 	PrincipalResponse me(Authentication authentication) {
 		return new PrincipalResponse(authentication.getName(), principalTypeOf(authentication),
-				verifiedStatus(authentication));
+				verifiedStatus(authentication), adminOf(authentication));
 	}
 
 	/**
@@ -198,6 +256,12 @@ class AuthController {
 		boolean customer = authentication.getAuthorities().stream()
 				.anyMatch(authority -> CUSTOMER_ROLE_AUTHORITY.equals(authority.getAuthority()));
 		return customer ? CUSTOMER_PRINCIPAL_TYPE : OPERATOR_PRINCIPAL_TYPE;
+	}
+
+	/** Whether the authenticated principal is a platform admin ({@code ROLE_ADMIN}, #115). */
+	private static boolean adminOf(Authentication authentication) {
+		return authentication.getAuthorities().stream()
+				.anyMatch(authority -> ADMIN_ROLE_AUTHORITY.equals(authority.getAuthority()));
 	}
 
 	/** The signed-in principal's soft email-verified state, or {@code null} for a non-customer (S8 #113). */

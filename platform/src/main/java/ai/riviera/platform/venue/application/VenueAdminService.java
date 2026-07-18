@@ -28,9 +28,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code removeSet}/{@code updateProfile} is {@link VenueOwnership#assertOwns} on the acting
  * {@link OperatorId}, so an operator cannot touch another operator's venue (invariant #13, BOLA) —
  * the check is here in the application service, not the controller, so no driving adapter can
- * bypass it. {@code onboard}
- * (venue creation) has no path {@code venueId} and stays role-gated only (creator-owns-on-create is
- * deferred to #74).
+ * bypass it. {@code onboard} (venue creation) has no path {@code venueId} to check against — instead
+ * it <em>writes</em> ownership: the creating operator is recorded as the new venue's owner in the same
+ * transaction (creator-owns-on-create, #115), so a create-then-edit flow works and no venue is ever
+ * left unowned.
  */
 @Service
 class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile {
@@ -50,8 +51,13 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 
 	@Override
 	@Transactional
-	public VenueId onboard(NewVenueCommand command) {
-		return new VenueId(venues.insertVenue(command));
+	public VenueId onboard(OperatorId creator, NewVenueCommand command) {
+		VenueId id = new VenueId(venues.insertVenue(command));
+		// Creator-owns-on-create (#115, invariant #13): record ownership atomically with the insert.
+		// If this write fails the whole create rolls back — a venue is never left owned by no one, and
+		// the creator is never 403'd on the venue it just made.
+		ownership.assignOwner(creator, new VenueRef(id.value()));
+		return id;
 	}
 
 	@Override

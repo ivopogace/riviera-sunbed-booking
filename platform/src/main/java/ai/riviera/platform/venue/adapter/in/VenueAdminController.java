@@ -48,7 +48,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
  * distance-to-water, T7 #140) are venue-scoped: the controller resolves the authenticated principal
  * to an {@link OperatorId} and hands it to {@link EditBeachMap} / {@link EditVenueProfile}, which
  * asserts ownership of {@code venueId} before acting (invariant #13); a mismatch is {@code 403} via
- * {@code ApiErrorHandler}. {@code create} takes no {@code venueId} and stays role-gated only.
+ * {@code ApiErrorHandler}. {@code create} takes no {@code venueId} — it resolves the authenticated
+ * operator and the service records it as the new venue's owner (creator-owns-on-create, #115).
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -74,8 +75,13 @@ class VenueAdminController {
 	}
 
 	@PostMapping
-	ResponseEntity<Map<String, Object>> create(@RequestBody CreateVenueRequest request) {
-		VenueId id = onboardVenue.onboard(request.toCommand());
+	ResponseEntity<Map<String, Object>> create(Authentication authentication,
+			@RequestBody CreateVenueRequest request) {
+		// Creator-owns-on-create (#115, invariant #13): resolve the authenticated operator and hand it
+		// to the service, which records ownership in the same transaction as the insert. Create is still
+		// role-gated only (any ACTIVE operator may create) — there is no prior owner to check against.
+		OperatorId creator = currentOperator.require(authentication);
+		VenueId id = onboardVenue.onboard(creator, request.toCommand());
 		return ResponseEntity.created(URI.create("/api/venues/" + id.value()))
 				.body(Map.of("id", id.value()));
 	}

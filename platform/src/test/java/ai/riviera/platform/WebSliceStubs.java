@@ -49,8 +49,13 @@ import java.util.Map;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorApprovals;
 import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorRegistration;
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
@@ -192,6 +197,31 @@ class WebSliceStubs {
 	@Bean
 	CustomerAccountProvisioning customerAccountProvisioning() {
 		return (_, _) -> new RegistrationOutcome.AlreadyRegistered();
+	}
+
+	@Bean
+	OperatorRegistration operatorRegistration() {
+		return (_, _, _) -> new OperatorRegistrationOutcome.AlreadyRegistered();
+	}
+
+	@Bean
+	OperatorApprovals operatorApprovals() {
+		return new OperatorApprovals() {
+			@Override
+			public java.util.List<PendingOperator> pending() {
+				return java.util.List.of();
+			}
+
+			@Override
+			public ApprovalOutcome approve(OperatorId operatorId) {
+				return ApprovalOutcome.NO_SUCH_OPERATOR;
+			}
+
+			@Override
+			public ApprovalOutcome reject(OperatorId operatorId) {
+				return ApprovalOutcome.NO_SUCH_OPERATOR;
+			}
+		};
 	}
 
 	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */
@@ -489,7 +519,7 @@ class WebSliceStubs {
 
 	@Bean
 	OnboardVenue onboardVenue() {
-		return _ -> new VenueId(0);
+		return (operator, command) -> new VenueId(0);
 	}
 
 	@Bean

@@ -1,10 +1,14 @@
 package ai.riviera.platform.operator.application;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
@@ -23,20 +27,42 @@ public interface Operators {
 	Optional<OperatorCredential> credentialByUsername(String username);
 
 	/**
-	 * Insert a new {@code ACTIVE}, not-owns-all operator with this username + pre-encoded credential
-	 * hash; returns the generated id. Propagates the username unique-constraint violation on a clash.
+	 * Insert a new {@code ACTIVE} operator with this username + pre-encoded credential hash; returns
+	 * the generated id. Propagates the username unique-constraint violation on a clash.
 	 */
 	OperatorId insert(String username, String passwordHash);
+
+	/**
+	 * Insert a self-registered {@code PENDING} operator with this username + pre-encoded hash + contact
+	 * email, non-enumerating: a free username returns {@link OperatorRegistrationOutcome.Registered}, a
+	 * taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (#115, D-8).
+	 */
+	OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail);
+
+	/** Every operator awaiting admin approval (status PENDING), oldest first (#115, S6). */
+	List<PendingOperator> pendingOperators();
+
+	/**
+	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the
+	 * pending/exists/absent cases (#115, S6).
+	 */
+	ApprovalOutcome activate(OperatorId operatorId);
+
+	/** Transition the PENDING operator with this id to REJECTED; see {@link ApprovalOutcome} (#115, S6). */
+	ApprovalOutcome rejectPending(OperatorId operatorId);
 
 	/** Update the stored credential of the operator with this username; returns rows affected. */
 	int updatePassword(String username, String passwordHash);
 
 	/**
-	 * Whether {@code operator} owns {@code venue} — true if the operator is flagged owns-all (the
-	 * interim bootstrap operator) or an explicit {@code operator_venue} mapping row exists.
+	 * Whether {@code operator} owns {@code venue} — true iff an explicit {@code operator_venue}
+	 * mapping row exists (the owns-all short-circuit was retired in #115).
 	 */
 	boolean ownsVenue(OperatorId operator, VenueRef venue);
 
-	/** The venues explicitly mapped to {@code operator} (excludes the owns-all short-circuit). */
+	/** The venues explicitly mapped to {@code operator}. */
 	Set<VenueRef> ownedVenues(OperatorId operator);
+
+	/** Record an {@code operator_venue} mapping row (creator-owns-on-create, #115). */
+	void assignOwner(OperatorId operator, VenueRef venue);
 }

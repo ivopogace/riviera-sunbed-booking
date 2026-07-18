@@ -1,11 +1,28 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Service, WritableSignal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { PASSWORD_LENGTH_MESSAGE } from './customer-auth';
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
 
 // Re-exported for the operator surfaces + specs that import it from here (the type now lives on the
 // shared SessionAuth base, S2 #111).
 export type { SignInResult } from './session-auth';
+
+/**
+ * How an operator self-registration ended (S6 #115). `submitted` = the registration was accepted and is
+ * now awaiting admin approval — deliberately the SAME outcome whether the username was fresh or already
+ * taken (non-enumeration, D-8): the backend answers an identical 202 and establishes NO session. The
+ * rest are input/transport failures.
+ */
+export type OperatorRegisterResult = 'submitted' | 'invalid-password' | 'rate-limited' | 'error';
+
+// The FE password policy is ONE rule for both principal types — the backend enforces both via the same
+// CustomerPasswords.validate — so source the customer constants rather than redeclare them (a byte-for-byte
+// copy would silently desync). The length is re-exported directly (used only by the register component);
+// the message is aliased into a local const because operatorRegisterMessage below references it.
+export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-auth';
+export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**
  * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
@@ -65,6 +82,50 @@ export class OperatorAuth extends SessionAuth {
       this.setPrincipal(undefined);
       return signInResultFor(error);
     }
+  }
+
+  /**
+   * Self-register an operator account (S6 #115). The backend creates a PENDING account and does NOT
+   * sign in — a fresh and an already-taken username both return 202 with no session (non-enumeration,
+   * D-8) — so this establishes no principal and always resolves to `submitted` on a 2xx. The account
+   * can sign in only once a platform admin approves it.
+   */
+  async register(
+    username: string,
+    password: string,
+    contactEmail: string,
+  ): Promise<OperatorRegisterResult> {
+    try {
+      await firstValueFrom(
+        this.http.post<void>(`${AUTH_API}/operator/register`, { username, password, contactEmail }),
+      );
+      return 'submitted';
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 429) {
+        return 'rate-limited';
+      }
+      if (error instanceof HttpErrorResponse && error.status === 400) {
+        return 'invalid-password';
+      }
+      return 'error';
+    }
+  }
+}
+
+/**
+ * The operator-facing message for a FAILED registration (a success shows the "pending approval" notice,
+ * not a message). Wording stays generic (D-8). `invalid-password` echoes the length policy.
+ */
+export function operatorRegisterMessage(result: OperatorRegisterResult): string | undefined {
+  switch (result) {
+    case 'submitted':
+      return undefined;
+    case 'invalid-password':
+      return OPERATOR_PASSWORD_LENGTH_MESSAGE;
+    case 'rate-limited':
+      return 'Too many attempts. Please wait a minute and try again.';
+    case 'error':
+      return 'Something went wrong submitting your registration. Please try again.';
   }
 }
 

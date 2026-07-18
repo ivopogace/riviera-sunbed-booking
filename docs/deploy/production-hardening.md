@@ -48,7 +48,7 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 | `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe) |
 | `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | env | Spring datasource auto-config | supplied entirely by the deploy target (Neon over `sslmode=require`) |
-| `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | bootstrap operator credential (#74) | empty → bootstrap login disabled, write API locked (logged at WARN, never the value) |
+| `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | the seeded `operator` account's credential — **the platform admin** since #115 (was the owns-all bootstrap; unchanged variable, no new secret) | empty → admin login disabled, cannot approve registrations (logged at WARN, never the value) |
 
 Notes:
 
@@ -59,8 +59,14 @@ Notes:
 - The frontend's `STRIPE_PUBLISHABLE_KEY` and `BACKEND_API_URL` are **not** secrets (a
   publishable `pk_` key and a public URL); they are GitHub *variables*, baked into the static
   build (see cd-pipeline.md). The Stripe **secret** key never reaches the frontend.
-- Per-operator credentials (beyond the bootstrap account) are stored **hashed** in the DB via
-  the operator module's provisioning port (#74) — never in config.
+- Per-operator credentials (beyond the admin account) are stored **hashed** in the DB via the
+  operator module's provisioning port (#74) or **self-registration → admin approval** (#115) —
+  never in config. Since #115 no account owns all venues (owns-all retired, V29): each operator owns
+  only its explicit `operator_venue` mappings (creator-owns-on-create), and the seeded `operator` is
+  the platform admin, owning the V29-backfilled venues.
+- **Deploy note (#115):** `RIVIERA_OPERATOR_PASSWORD` keeps the same value — no Render env change.
+  After V29 runs, the `operator` account is the admin + owner of the backfilled venues, not an
+  owns-all operator (see `operator-credential-provisioning.md`).
 - Deploy-time secrets (`RENDER_DEPLOY_HOOK_URL`, `SONAR_TOKEN`) live only in GitHub Actions
   secrets, not in the repo.
 

@@ -29,10 +29,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * so a request is attributed purely by which password authenticated.
  *
  * <p>Two synthetic per-venue operators are provisioned via the real {@link OperatorProvisioning}
- * port with edge-encoded hashes: <strong>A</strong> ({@code op-a}) owns a fresh venue,
- * <strong>B</strong> ({@code op-b}) owns Miramar (venue 1). The seeded bootstrap {@code operator}
- * (owns-all) is credentialled at startup from {@code riviera.operator.password} by
- * {@link OperatorCredentialInitializer}. Since issue #109 the login is the SESSION flow: each
+ * port with edge-encoded hashes: <strong>A</strong> ({@code op-a}) and <strong>B</strong>
+ * ({@code op-b}) each own their own fresh venue. The seeded bootstrap {@code operator} is
+ * credentialled at startup from {@code riviera.operator.password} by
+ * {@link OperatorCredentialInitializer}; with owns-all retired (#115) it owns only its backfilled
+ * venue (Miramar, venue 1). Since issue #109 the login is the SESSION flow: each
  * operator logs in once ({@code SessionLoginSupport}) and the staff daily-bookings read
  * ({@code GET /api/venues/{id}/bookings}) probes the resulting cookie: 200 for the owning
  * operator and 403 for any other, so the response encodes <em>which principal</em> the session
@@ -44,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class PerOperatorLoginIT {
 
-	private static final long MIRAMAR = 1L; // seeded venue, owned by B here
+	private static final long MIRAMAR = 1L; // seeded venue, backfilled to the bootstrap admin (V29)
 	private static final String BOOTSTRAP_PW = "bootstrap-pw";
 
 	@Autowired
@@ -57,6 +58,7 @@ class PerOperatorLoginIT {
 	PasswordEncoder encoder;
 
 	private long venueOwnedByA;
+	private long venueOwnedByB;
 
 	@BeforeEach
 	void provisionTwoOperators() {
@@ -64,14 +66,18 @@ class PerOperatorLoginIT {
 				+ "(SELECT id FROM operator WHERE username IN ('op-a', 'op-b', 'op-c'))").update();
 		jdbc.sql("DELETE FROM operator WHERE username IN ('op-a', 'op-b', 'op-c')").update();
 
-		venueOwnedByA = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Operator A Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
-				RETURNING id
-				""").query(Long.class).single();
+		venueOwnedByA = newVenue("Operator A Venue");
+		venueOwnedByB = newVenue("Operator B Venue");
 
 		grant(provisioning.provision("op-a", encoder.encode("pw-a")), venueOwnedByA);
-		grant(provisioning.provision("op-b", encoder.encode("pw-b")), MIRAMAR);
+		grant(provisioning.provision("op-b", encoder.encode("pw-b")), venueOwnedByB);
+	}
+
+	private long newVenue(String name) {
+		return jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				""").param("name", name).query(Long.class).single();
 	}
 
 	private void grant(OperatorId operator, long venueId) {
@@ -86,15 +92,15 @@ class PerOperatorLoginIT {
 		Cookie sessionA = SessionLoginSupport.operatorSession(mvc, "op-a", "pw-a");
 		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).cookie(sessionA))
 				.andExpect(status().isOk());
-		// A's own session must NOT resolve to any other principal → Miramar (B's) is forbidden.
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(sessionA))
+		// A's own session must NOT resolve to any other principal → B's venue is forbidden.
+		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByB).cookie(sessionA))
 				.andExpect(status().isForbidden());
 	}
 
 	@Test
 	void operatorBReachesItsOwnVenueButNotAnothers() throws Exception {
 		Cookie sessionB = SessionLoginSupport.operatorSession(mvc, "op-b", "pw-b");
-		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(sessionB))
+		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByB).cookie(sessionB))
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).cookie(sessionB))
 				.andExpect(status().isForbidden());
@@ -126,15 +132,17 @@ class PerOperatorLoginIT {
 		expectLoginRejected("ghost", "whatever");
 	}
 
-	// ---- AC-5: the bootstrap operator is credentialled at startup and still owns-all ----
+	// ---- AC-8 (#115): the bootstrap admin is credentialled at startup and owns only backfilled Miramar ----
 
 	@Test
-	void bootstrapOperatorLoginIsProvisionedAndOwnsEveryVenue() throws Exception {
+	void bootstrapIsProvisionedAndOwnsBackfilledMiramarOnly() throws Exception {
 		Cookie bootstrap = SessionLoginSupport.operatorSession(mvc, "operator", BOOTSTRAP_PW);
+		// Owns Miramar via the V29 backfill (its previously-implicit ownership made explicit)…
 		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(bootstrap))
 				.andExpect(status().isOk());
+		// …but no longer owns every venue: another operator's venue is now forbidden (owns-all retired).
 		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByA).cookie(bootstrap))
-				.andExpect(status().isOk());
+				.andExpect(status().isForbidden());
 	}
 
 	// ---- A suspended operator cannot authenticate at all ----

@@ -145,5 +145,10 @@ class VenuePhotoServiceTest {
 		public Set<VenueRef> ownedVenues(OperatorId operator) {
 			return operator.value() == operatorId ? Set.of(new VenueRef(venueId)) : Set.of();
 		}
+
+		@Override
+		public void assignOwner(OperatorId operator, VenueRef venue) {
+			// not exercised by the photo service
+		}
 	}
 }

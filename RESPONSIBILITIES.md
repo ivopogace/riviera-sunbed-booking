@@ -190,9 +190,11 @@ recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 ---
 
 ## `operator`
-**Job:** Own operator accounts and the **operator↔venue ownership mapping**. Answer
-one question for the rest of the system: *does this operator own this venue?*
-(invariant #13).
+**Job:** Own operator accounts — incl. their **self-registration + admin-approval state**
+(`PENDING`→`ACTIVE`/`REJECTED`, #115) and the `is_admin` platform-admin flag — and the
+**operator↔venue ownership mapping**, now writable (creator-owns-on-create). Answer two
+things for the rest of the system: *does this operator own this venue?* and *which
+operators are awaiting approval?* (invariant #13).
 
 **Not My Job:**
 - Tourist identity → **`customer`**
@@ -202,15 +204,21 @@ one question for the rest of the system: *does this operator own this venue?*
   **application service** performs it by asking me; I own the mapping and answer, I
   don't sit in everyone's request path
 - Bookings, payment, payout → their own modules
-- Encoding/verifying credentials → the **platform edge** (Spring Security
-  `UserDetailsService`); I own the account identity + ownership mapping and store an
-  opaque credential hash, never the login machinery (RV-BE-11)
+- Encoding/verifying credentials + the register/login/approval endpoints + the
+  `ROLE_ADMIN` mapping → the **platform edge** (Spring Security `UserDetailsService`,
+  `AuthController`, `AdminOperatorController`); I own the account identity + ownership
+  mapping + the approval **state transitions**, and store an opaque credential hash + an
+  opaque `is_admin` flag — never the login machinery or the role gate (RV-BE-11)
 
 **Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
-application service; #74 per-operator DB-backed credentials — no shared password). See
-`docs/runbooks/operator-credential-provisioning.md`. Remaining follow-up: fully retiring
-the owns-all **bootstrap operator** (every operator strictly per-venue) +
-creator-owns-on-create.
+application service; #74 per-operator DB-backed credentials — no shared password; **#115
+self-registration → admin approval → creator-owns-on-create**). Since #115 the owns-all
+**bootstrap operator is retired** — ownership is strictly the explicit `operator_venue`
+mapping (`POST /api/venues` writes the creator's row atomically with the insert); the
+bootstrap `operator` is **demoted to the platform admin** (`is_admin`, unlocked by
+`RIVIERA_OPERATOR_PASSWORD`) that approves self-registrations. Still no Spring Security
+type inside the module (`OperatorAuthPlacementTests` green). See
+`docs/runbooks/operator-credential-provisioning.md`.
 
 ---
 

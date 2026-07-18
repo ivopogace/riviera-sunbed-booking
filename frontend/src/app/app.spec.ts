@@ -268,6 +268,10 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     // O8 (#177): the /venue-admin editor was slimmed to onboarding-only and dropped its compat
     // surface (its editing jobs are console tabs now) — so it renders on the bare background, not LEGACY.
     'venue-admin',
+    // S6 (#115): operator self-registration + the platform-admin approval surface — new porcelain
+    // glass routes, born un-legacied (their own themed background, like the customer auth pages).
+    'operator/register',
+    'admin',
   ];
 
   // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither
