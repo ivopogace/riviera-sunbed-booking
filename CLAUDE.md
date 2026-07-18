@@ -53,8 +53,18 @@ via the `customer::api` `CustomerAccountRecovery` port (issue/redeem verify+rese
 read) — **closing the S4 F-1 gap** so an SSO-only account can now gain a password (authenticated
 set-password **or** the token-proven reset). Email verification is **soft/non-blocking** (register mails a
 link, visiting it sets `email_verified`, SSO counts as provider-verified); `/api/auth/me` + customer login
-now return `emailVerified`; the real `SmtpMailer` is deferred (→ #255). Remaining epic slices: S6 operator
-self-registration (#115); S5 (#116) swaps the mock for real Google/Apple adapters.
+now return `emailVerified`; the real `SmtpMailer` is deferred (→ #255). **S6 (#115, Flyway V29)** landed
+operator self-registration → admin approval → **creator-owns-on-create**, retiring the owns-all bootstrap
+operator: an operator self-registers (`POST /api/auth/operator/register`, own rate-limit bucket,
+non-enumerating + constant-time — D-8) into a **PENDING** account that cannot authenticate until a platform
+**admin** approves it (`/api/admin/operators`, role-gated to a new `ADMIN` authority, NOT venue-scoped —
+invariant #13's exemption) → ACTIVE; an ACTIVE operator that creates a venue (`POST /api/venues`) **owns it
+from creation** (ownership written in the venue application service, atomically with the insert). **No
+account owns all venues anymore** — V29 drops `owns_all_venues` after backfilling every previously-unowned
+venue (Miramar + anything pre-existing) to the **demoted bootstrap operator**, now the platform admin
+(`is_admin`) that `RIVIERA_OPERATOR_PASSWORD` unlocks (no new prod secret; a venue-scoped edit on a venue
+you don't own is now `403 NOT_VENUE_OWNER` before any existence check, uniformly). Remaining epic slice: S5
+(#116) swaps the mock for real Google/Apple adapters.
 
 ## Tech stack (locked)
 
@@ -141,14 +151,19 @@ invariant #11.
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | tourist identity: guest-checkout contact + the customer account (email + opaque credential hash) for register/sign-in (#111, thin→full) + SSO identity linkage (`(provider, subject)`→account resolve-or-create, #112) + email verification + password recovery/reset tokens + set-password (#113); account identity is separate from the guest row, no FK (D-6, guest-booking back-linking a permanent non-goal) | `Customer`, `CustomerAccount` |
-| `operator` | operator accounts and the operator↔venue ownership mapping (per-venue authorization, invariant #13) | `Operator` |
+| `operator` | operator accounts + the operator↔venue ownership mapping (per-venue authorization, invariant #13); **self-registration + admin-approval state** (`PENDING`→`ACTIVE`/`REJECTED`) + the `is_admin` platform-admin flag (#115) | `Operator` |
 
 > **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed
-> credentials): every venue-scoped application service checks `assertOwns` → `403`
-> (pinned by `CrossVenueDenialIT`), and each operator authenticates with its own hashed
-> credential. Operator sessions are server-side in Postgres (Spring Session JDBC, #109).
-> Remaining follow-up: retire the owns-all **bootstrap operator** and add
-> creator-owns-on-create. See `riviera-modulith` + `RESPONSIBILITIES.md`.
+> credentials, **#115 self-registration → admin approval → creator-owns-on-create**): every
+> venue-scoped application service checks `assertOwns` → `403` (pinned by `CrossVenueDenialIT`),
+> and each operator authenticates with its own hashed credential; operator sessions are server-side
+> in Postgres (Spring Session JDBC, #109). Since #115 the **owns-all bootstrap operator is retired** —
+> ownership is strictly the explicit `operator_venue` mapping (creator-owns-on-create writes it on
+> `POST /api/venues`; a venue-scoped edit on a venue you don't own is `403 NOT_VENUE_OWNER` before any
+> existence check, even for a nonexistent one). The bootstrap `operator` is **demoted to the platform
+> admin** (`is_admin`, unlocked by `RIVIERA_OPERATOR_PASSWORD`, owns the V29-backfilled venues) that
+> approves self-registrations under the role-gated `/api/admin/operators`. All login/approval machinery
+> stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The spine flow: `BookingConfirmed` → `availability`
