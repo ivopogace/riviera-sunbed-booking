@@ -1,11 +1,14 @@
 package ai.riviera.platform.operator.application;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
@@ -35,6 +38,18 @@ public interface Operators {
 	 * taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (#115, D-8).
 	 */
 	OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail);
+
+	/** Every operator awaiting admin approval (status PENDING), oldest first (#115, S6). */
+	List<PendingOperator> pendingOperators();
+
+	/**
+	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the
+	 * pending/exists/absent cases (#115, S6).
+	 */
+	ApprovalOutcome activate(OperatorId operatorId);
+
+	/** Transition the PENDING operator with this id to REJECTED; see {@link ApprovalOutcome} (#115, S6). */
+	ApprovalOutcome rejectPending(OperatorId operatorId);
 
 	/** Update the stored credential of the operator with this username; returns rows affected. */
 	int updatePassword(String username, String passwordHash);

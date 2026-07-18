@@ -1,6 +1,7 @@
 package ai.riviera.platform.operator.adapter.out;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,9 +10,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.application.Operators;
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.operator.domain.OperatorStatus;
 
@@ -46,13 +49,15 @@ class JdbcOperators implements Operators {
 	@Override
 	public Optional<OperatorCredential> credentialByUsername(String username) {
 		// Any status — the edge builds a disabled principal for a non-ACTIVE account so the framework
-		// rejects it before the password check. active is derived from the status token (invariant #6a).
-		return jdbc.sql("SELECT username, password_hash, status FROM operator WHERE username = :username")
+		// rejects it before the password check. active is derived from the status token (invariant #6a);
+		// is_admin drives the edge's ROLE_ADMIN grant (#115).
+		return jdbc.sql("SELECT username, password_hash, status, is_admin FROM operator WHERE username = :username")
 				.param(USERNAME, username)
 				.query((rs, rowNum) -> new OperatorCredential(
 						rs.getString(USERNAME),
 						rs.getString("password_hash"),
-						OperatorStatus.ACTIVE.name().equals(rs.getString("status"))))
+						OperatorStatus.ACTIVE.name().equals(rs.getString("status")),
+						rs.getBoolean("is_admin")))
 				.optional();
 	}
 
@@ -98,6 +103,54 @@ class JdbcOperators implements Operators {
 				.param("hash", passwordHash)
 				.param(USERNAME, username)
 				.update();
+	}
+
+	@Override
+	public List<PendingOperator> pendingOperators() {
+		return jdbc.sql("""
+				SELECT id, username, contact_email, created_at FROM operator
+				WHERE status = :pending ORDER BY created_at, id
+				""")
+				.param("pending", OperatorStatus.PENDING.name())
+				.query((rs, rowNum) -> new PendingOperator(
+						new OperatorId(rs.getLong("id")),
+						rs.getString(USERNAME),
+						rs.getString("contact_email"),
+						rs.getObject("created_at", java.time.OffsetDateTime.class).toInstant()))
+				.list();
+	}
+
+	@Override
+	public ApprovalOutcome activate(OperatorId operatorId) {
+		return transitionFromPending(operatorId, OperatorStatus.ACTIVE, ApprovalOutcome.APPROVED);
+	}
+
+	@Override
+	public ApprovalOutcome rejectPending(OperatorId operatorId) {
+		return transitionFromPending(operatorId, OperatorStatus.REJECTED, ApprovalOutcome.REJECTED);
+	}
+
+	/**
+	 * Move a PENDING operator to {@code target}, returning {@code success} on a hit. A miss is classified
+	 * by an existence read so the edge can distinguish {@code NOT_PENDING} (already decided) from
+	 * {@code NO_SUCH_OPERATOR} (unknown id) — the conditional {@code WHERE status = PENDING} is the
+	 * single source of truth, so two concurrent approvals cannot both win.
+	 */
+	private ApprovalOutcome transitionFromPending(OperatorId operatorId, OperatorStatus target,
+			ApprovalOutcome success) {
+		int rows = jdbc.sql("UPDATE operator SET status = :target WHERE id = :id AND status = :pending")
+				.param("target", target.name())
+				.param("id", operatorId.value())
+				.param("pending", OperatorStatus.PENDING.name())
+				.update();
+		if (rows == 1) {
+			return success;
+		}
+		boolean exists = jdbc.sql("SELECT EXISTS (SELECT 1 FROM operator WHERE id = :id)")
+				.param("id", operatorId.value())
+				.query(Boolean.class)
+				.single();
+		return exists ? ApprovalOutcome.NOT_PENDING : ApprovalOutcome.NO_SUCH_OPERATOR;
 	}
 
 	@Override

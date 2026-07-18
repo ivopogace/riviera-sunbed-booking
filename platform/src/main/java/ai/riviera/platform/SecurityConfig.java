@@ -62,6 +62,8 @@ class SecurityConfig {
 	private static final String OPERATOR_ROLE = "OPERATOR";
 	/** The role gating the signed-in tourist's own-bookings surface (S3 #114). */
 	private static final String CUSTOMER_ROLE = "CUSTOMER";
+	/** The platform-admin role that gates the {@code /api/admin/operators/**} approval surface (S6 #115). */
+	private static final String ADMIN_ROLE = "ADMIN";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
@@ -94,6 +96,15 @@ class SecurityConfig {
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
+	/**
+	 * The platform-admin operator-approval surface (S6 #115, design D-5): list pending registrations
+	 * (GET) and approve/reject them (POST). Role-gated to {@code ADMIN} and NOT venue-scoped — a
+	 * platform-wide admin action, exempt from the per-venue authorization of invariant #13 (the same
+	 * {@code /api/admin/**} exemption as the payout batches, but gated to the stricter ADMIN role).
+	 */
+	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
+	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
+	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -219,6 +230,14 @@ class SecurityConfig {
 						// Weekly BKT payout-batch report (U9) — operator-only across all methods
 						// (generate/list/transition). A new /api/admin namespace, gated explicitly.
 						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						// Operator-approval surface (S6 #115) — platform-admin only, NOT venue-scoped
+						// (invariant #13's /api/admin/** exemption). Gated to the stricter ADMIN role: a
+						// plain OPERATOR reaching these is 403 (authenticated, wrong role). The GET is
+						// listed before the public "GET /api/venues/**" is irrelevant (different prefix),
+						// but stays above anyRequest() like every explicit rule.
+						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
+								ADMIN_OPERATOR_REJECT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

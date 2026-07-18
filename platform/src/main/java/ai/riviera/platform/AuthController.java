@@ -50,6 +50,8 @@ class AuthController {
 	private static final String CUSTOMER_PRINCIPAL_TYPE = "CUSTOMER";
 	/** The authority a customer principal carries ({@code ROLE_} + type), used to label {@code /me}. */
 	private static final String CUSTOMER_ROLE_AUTHORITY = "ROLE_" + CUSTOMER_PRINCIPAL_TYPE;
+	/** The authority a platform-admin operator carries (#115), surfaced on {@code /me} so the FE can gate the admin surface. */
+	private static final String ADMIN_ROLE_AUTHORITY = "ROLE_ADMIN";
 
 	/**
 	 * A throwaway {@code {bcrypt}} hash computed ONCE at construction from a fixed non-secret string
@@ -136,9 +138,11 @@ class AuthController {
 	 * {@code emailVerified} is the customer's soft email-verification state (S8 #113) for the "please
 	 * verify" nudge; {@code null} for an operator principal (not a customer concept). A fresh registration
 	 * is always {@code false}, and the neutral already-registered branch also reports {@code false} so the
-	 * response stays byte-identical (non-enumeration, D-8).
+	 * response stays byte-identical (non-enumeration, D-8). {@code admin} (S6 #115) is {@code true} for a
+	 * platform-admin operator ({@code ROLE_ADMIN}), so the FE can reveal the approval surface; always
+	 * {@code false} for a customer.
 	 */
-	record PrincipalResponse(String username, String principalType, Boolean emailVerified) {
+	record PrincipalResponse(String username, String principalType, Boolean emailVerified, boolean admin) {
 	}
 
 	@PostMapping("/api/auth/operator/login")
@@ -148,7 +152,8 @@ class AuthController {
 		// 401 INVALID_CREDENTIALS (no wrong-password/unknown-user/suspended distinction, D-8).
 		Authentication authentication =
 				establishSession(operatorManager, login.username(), login.password(), request, response);
-		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null);
+		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null,
+				adminOf(authentication));
 	}
 
 	/**
@@ -182,7 +187,8 @@ class AuthController {
 			HttpServletResponse response) {
 		Authentication authentication =
 				establishSession(customerManager, login.email(), login.password(), request, response);
-		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE, verifiedStatus(authentication));
+		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE,
+				verifiedStatus(authentication), false);
 	}
 
 	/**
@@ -216,9 +222,10 @@ class AuthController {
 			passwordEncoder.matches(registration.password(), timingEqualizerHash);
 		}
 		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie + mailed.
-		// emailVerified is always false here (a fresh account is unverified; the neutral branch matches it).
+		// emailVerified is always false here (a fresh account is unverified; the neutral branch matches it);
+		// admin is always false (a customer is never a platform admin).
 		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false));
+				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false, false));
 	}
 
 	/**
@@ -230,7 +237,7 @@ class AuthController {
 	@GetMapping("/api/auth/me")
 	PrincipalResponse me(Authentication authentication) {
 		return new PrincipalResponse(authentication.getName(), principalTypeOf(authentication),
-				verifiedStatus(authentication));
+				verifiedStatus(authentication), adminOf(authentication));
 	}
 
 	/**
@@ -250,6 +257,12 @@ class AuthController {
 		boolean customer = authentication.getAuthorities().stream()
 				.anyMatch(authority -> CUSTOMER_ROLE_AUTHORITY.equals(authority.getAuthority()));
 		return customer ? CUSTOMER_PRINCIPAL_TYPE : OPERATOR_PRINCIPAL_TYPE;
+	}
+
+	/** Whether the authenticated principal is a platform admin ({@code ROLE_ADMIN}, #115). */
+	private static boolean adminOf(Authentication authentication) {
+		return authentication.getAuthorities().stream()
+				.anyMatch(authority -> ADMIN_ROLE_AUTHORITY.equals(authority.getAuthority()));
 	}
 
 	/** The signed-in principal's soft email-verified state, or {@code null} for a non-customer (S8 #113). */

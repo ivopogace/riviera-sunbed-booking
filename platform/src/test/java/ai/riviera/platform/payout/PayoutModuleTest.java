@@ -24,6 +24,7 @@ import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorApprovals;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.api.VenueOwnership;
@@ -84,9 +85,13 @@ class PayoutModuleTest {
 	OperatorProvisioning provisioning;
 
 	// S6 #115: the root edge's AuthController register endpoint depends on operator::api's
-	// OperatorRegistration — same isolation story, so it is mocked here too; the accrual listener uses none.
+	// OperatorRegistration, and the AdminOperatorController on OperatorApprovals — same isolation story,
+	// so both are mocked here too; the accrual listener under test uses neither.
 	@MockitoBean
 	OperatorRegistration operatorRegistration;
+
+	@MockitoBean
+	OperatorApprovals operatorApprovals;
 
 	// S2 #111: the root edge (SecurityConfig + AuthController) now also depends on the customer::api
 	// account ports — the customer UserDetailsService/manager on CustomerAccounts, the register endpoint
