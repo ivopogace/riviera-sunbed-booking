@@ -74,6 +74,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// tightening one never starves the other. Mirrors SecurityConfig's login/register paths. Customer
 	// register (S2 #111) shares the login budget: it is as abusable (spam / enumeration) as a login.
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	// Operator self-registration (S6 #115, D-8): its OWN per-IP budget, SEPARATE from operator login, so
+	// a burst of registrations can never starve operator login (the S2 operator-lockout lesson, #127).
+	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
@@ -101,6 +104,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// (S2 #111): a burst of unauthenticated customer registrations from a shared IP (venue WiFi /
 	// CGNAT) must never exhaust the operator-login budget and lock operators out.
 	private final Map<String, TokenBucket> customerAuthBuckets = new ConcurrentHashMap<>();
+	// Operator self-registration (S6 #115) on its OWN per-IP budget, separate from operator login so a
+	// registration flood can never lock operators out (the #127 lockout lesson).
+	private final Map<String, TokenBucket> operatorRegisterBuckets = new ConcurrentHashMap<>();
 	// SSO authorize/callback GETs draw on their OWN per-IP budget (S4 #112), separate from the logins so
 	// tightening one never starves the other — same rationale as customerAuthBuckets.
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
@@ -180,6 +186,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method)) {
 			if (LOGIN_PATH.equals(path)) {
 				return Optional.of(loginBuckets);
+			}
+			// Operator self-registration (S6 #115) on its own budget, separate from operator login.
+			if (OPERATOR_REGISTER_PATH.equals(path)) {
+				return Optional.of(operatorRegisterBuckets);
 			}
 			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
 				return Optional.of(customerAuthBuckets);

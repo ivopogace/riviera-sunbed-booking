@@ -5,6 +5,7 @@ import java.util.Set;
 
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
@@ -27,6 +28,13 @@ public interface Operators {
 	 * the generated id. Propagates the username unique-constraint violation on a clash.
 	 */
 	OperatorId insert(String username, String passwordHash);
+
+	/**
+	 * Insert a self-registered {@code PENDING} operator with this username + pre-encoded hash + contact
+	 * email, non-enumerating: a free username returns {@link OperatorRegistrationOutcome.Registered}, a
+	 * taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (#115, D-8).
+	 */
+	OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail);
 
 	/** Update the stored credential of the operator with this username; returns rows affected. */
 	int updatePassword(String username, String passwordHash);

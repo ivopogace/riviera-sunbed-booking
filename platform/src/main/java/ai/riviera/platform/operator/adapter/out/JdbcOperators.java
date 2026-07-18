@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import ai.riviera.platform.operator.application.Operators;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.operator.domain.OperatorStatus;
 
@@ -67,6 +68,28 @@ class JdbcOperators implements Operators {
 				.query(Long.class)
 				.single();
 		return new OperatorId(id);
+	}
+
+	@Override
+	public OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail) {
+		// ON CONFLICT DO NOTHING → non-enumerating + idempotent (D-8): a taken username writes nothing
+		// and RETURNING yields no row (empty → AlreadyRegistered), and an existing hash is never
+		// overwritten. Status PENDING + is_admin FALSE — a self-registered operator cannot log in until
+		// an admin approves it, and is never an admin. PENDING is bound, not inlined (invariant #6a).
+		return jdbc.sql("""
+				INSERT INTO operator (username, status, is_admin, password_hash, contact_email)
+				VALUES (:username, :pending, FALSE, :hash, :email)
+				ON CONFLICT (username) DO NOTHING
+				RETURNING id
+				""")
+				.param(USERNAME, username)
+				.param("pending", OperatorStatus.PENDING.name())
+				.param("hash", passwordHash)
+				.param("email", contactEmail)
+				.query(Long.class)
+				.optional()
+				.<OperatorRegistrationOutcome>map(id -> new OperatorRegistrationOutcome.Registered(new OperatorId(id)))
+				.orElseGet(OperatorRegistrationOutcome.AlreadyRegistered::new);
 	}
 
 	@Override

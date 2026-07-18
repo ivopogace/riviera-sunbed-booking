@@ -231,16 +231,16 @@ MCP consulted for the `resource()` + Signal-Forms idioms.
 > Session-recovery anchor. Re-read this section + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement` — phases 0+1 done and green across the affected backend IT sweep; starting **phase 2** (operator registration backend).
+**Stage pointer:** `implement` — phases 0+1+2 done and green; starting **phase 3** (admin approval + ADMIN role).
 
-**Next action:** Commit phases 0+1 (retire owns-all + creator-owns-on-create, one green change), then begin **Phase 2** test-first (`OperatorRegistrationIT`).
+**Next action:** Commit phase 2 (operator registration backend), then begin **Phase 3** test-first (`OperatorApprovalIT`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | Plan — plan doc + branch | ✅ | a8f6a67 |
-| 0+1 — retire owns-all + creator-owns-on-create (combined: phase 0 alone leaves create-then-edit red) | ✅ | (this commit) |
-| 2 — operator registration (PENDING) backend + edge endpoint | ⏳ | |
-| 3 — admin approval + ADMIN role + `/api/admin/operators` | | |
+| 0+1 — retire owns-all + creator-owns-on-create (combined: phase 0 alone leaves create-then-edit red) | ✅ | 8acb830 |
+| 2 — operator registration (PENDING) backend + edge endpoint | ✅ | (this commit) |
+| 3 — admin approval + ADMIN role + `/api/admin/operators` | ⏳ | |
 | 4 — FE operator-register page + route | | |
 | 5 — FE admin-operators page + route + nav/admin flag | | |
 | 6 — e2e mocked (register→approve→sign-in→create-venue) | | |

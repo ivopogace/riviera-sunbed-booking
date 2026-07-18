@@ -96,6 +96,13 @@ class SecurityConfig {
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
+	/**
+	 * Operator self-registration (S6 #115, design D-5/D-8): anonymous by definition — it creates a
+	 * {@code PENDING} account that cannot authenticate until a platform admin approves it, so nothing is
+	 * signed in here. On its OWN rate-limit budget (RateLimitFilter) so register spam can never starve
+	 * operator login. CSRF-protected like the other auth POSTs (the SPA holds the bootstrapped token).
+	 */
+	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
@@ -166,6 +173,10 @@ class SecurityConfig {
 						// INSIDE the endpoint (AuthController → AuthenticationManager). /api/auth/me
 						// stays behind anyRequest().authenticated(); logout is the LogoutFilter below.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
+						// Operator self-registration (S6 #115): anonymous — it creates a PENDING account that
+						// cannot sign in until a platform admin approves it (D-5). Non-enumerating + on its own
+						// rate-limit budget (D-8, RateLimitFilter).
+						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()
 						// Customer session login + registration (S2 #111): anonymous like the operator
 						// login — the endpoints authenticate/create internally. Register auto-signs-in on
 						// success. Both ride the login rate-limit budget (D-8, RateLimitFilter).

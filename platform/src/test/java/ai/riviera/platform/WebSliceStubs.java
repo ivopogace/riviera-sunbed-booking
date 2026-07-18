@@ -50,7 +50,9 @@ import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
@@ -192,6 +194,11 @@ class WebSliceStubs {
 	@Bean
 	CustomerAccountProvisioning customerAccountProvisioning() {
 		return (_, _) -> new RegistrationOutcome.AlreadyRegistered();
+	}
+
+	@Bean
+	OperatorRegistration operatorRegistration() {
+		return (_, _, _) -> new OperatorRegistrationOutcome.AlreadyRegistered();
 	}
 
 	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */

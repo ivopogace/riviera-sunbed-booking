@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.operator.api.OperatorRegistration;
+import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -63,6 +65,7 @@ class AuthController {
 	private final SecurityContextRepository securityContextRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final CustomerAccountProvisioning customerAccounts;
+	private final OperatorRegistration operatorRegistration;
 	private final CustomerRecovery recovery;
 	private final CurrentCustomer currentCustomer;
 
@@ -71,6 +74,7 @@ class AuthController {
 			SecurityContextRepository securityContextRepository,
 			PasswordEncoder passwordEncoder,
 			CustomerAccountProvisioning customerAccounts,
+			OperatorRegistration operatorRegistration,
 			CustomerRecovery recovery,
 			CurrentCustomer currentCustomer) {
 		this.operatorManager = operatorManager;
@@ -78,6 +82,7 @@ class AuthController {
 		this.securityContextRepository = securityContextRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.customerAccounts = customerAccounts;
+		this.operatorRegistration = operatorRegistration;
 		this.recovery = recovery;
 		this.currentCustomer = currentCustomer;
 		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-credential");
@@ -94,6 +99,27 @@ class AuthController {
 				throw new IllegalArgumentException("username and password are required");
 			}
 		}
+	}
+
+	/**
+	 * Wire DTO for an operator self-registration (#115, S6): the login {@code username}, the
+	 * {@code password}, and a {@code contactEmail} for the admin's approval decision. Presence checks in
+	 * the compact constructor (§6b centralized-explicit style) → a malformed body is {@code 400 INVALID_REQUEST}.
+	 */
+	record OperatorRegistrationRequest(String username, String password, String contactEmail) {
+		OperatorRegistrationRequest {
+			if (username == null || username.isBlank() || password == null || password.isEmpty()
+					|| contactEmail == null || contactEmail.isBlank()) {
+				throw new IllegalArgumentException("username, password and contactEmail are required");
+			}
+		}
+	}
+
+	/**
+	 * The neutral acknowledgement of an operator self-registration — {@code status} is always
+	 * {@code "PENDING"}, byte-identical for a fresh vs. an already-taken username (non-enumeration, D-8).
+	 */
+	record OperatorRegistrationResponse(String status) {
 	}
 
 	/** Wire DTO for a customer login/register (email + password). Same presence discipline. */
@@ -123,6 +149,32 @@ class AuthController {
 		Authentication authentication =
 				establishSession(operatorManager, login.username(), login.password(), request, response);
 		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null);
+	}
+
+	/**
+	 * Register an operator account (S6, #115). Unlike the customer register, a fresh registration does
+	 * <strong>NOT</strong> sign the operator in: the account is created {@code PENDING} and cannot
+	 * authenticate until a platform admin approves it (design D-5). Both a fresh username and an
+	 * already-taken one return the SAME {@code 202} body and NEVER a session (non-enumeration, D-8); only
+	 * the fresh branch writes the PENDING row. Password policy is enforced BEFORE any write; a violation
+	 * is {@code 400 INVALID_REQUEST}.
+	 */
+	@PostMapping("/api/auth/operator/register")
+	ResponseEntity<OperatorRegistrationResponse> operatorRegister(
+			@RequestBody OperatorRegistrationRequest registration) {
+		// The shared server-side password policy (D-8 min length / bcrypt-input cap) — the same rule the
+		// customer register enforces; both principal types get one policy.
+		CustomerPasswords.validate(registration.password());
+		OperatorRegistrationOutcome outcome = operatorRegistration.register(registration.username().trim(),
+				passwordEncoder.encode(registration.password()), registration.contactEmail().trim());
+		if (!(outcome instanceof OperatorRegistrationOutcome.Registered)) {
+			// Constant-time (D-8): the fresh branch spends a bcrypt hash in encode() above; burn an
+			// equivalent verify on the already-registered branch so a taken username is not measurably
+			// faster — a latency gap would be an account-enumeration oracle.
+			passwordEncoder.matches(registration.password(), timingEqualizerHash);
+		}
+		// No session either branch — a PENDING operator cannot sign in until approved. Byte-identical body.
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new OperatorRegistrationResponse("PENDING"));
 	}
 
 	@PostMapping("/api/auth/customer/login")
