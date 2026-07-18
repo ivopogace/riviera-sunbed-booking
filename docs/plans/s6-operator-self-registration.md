@@ -131,17 +131,15 @@ short-circuit). It is infrastructure, not a user surface, but its behavior is se
 
 ## Open questions / Assumptions
 
-- **Assumption (registration identity key = `username`):** operators authenticate by `username` today
-  (`/api/auth/operator/login`, `loadUserByUsername`); registration keys non-enumeration on `username`.
-  `contact_email` is informational, **not** a login key and **not** unique. — *Owner:* agent · *Resolves by:* phase 2.
-- **Assumption (register response = `202 Accepted`, fixed body `{"status":"PENDING"}`):** no principal is
-  established (unlike customer register's `201` + auto-sign-in), so a small fixed body, byte-identical fresh
-  vs duplicate. — *Owner:* agent · *Resolves by:* phase 2.
-- **Assumption (`admin` on `PrincipalResponse`/`/me`):** additive `admin` boolean derived from `ROLE_ADMIN`;
-  customer paths set `false`; keeps the customer register body byte-identical (both fresh+dup gain the same
-  field). — *Owner:* agent · *Resolves by:* phase 3.
+_None open._ All three plan-time assumptions were implemented as stated (moved to Resolved below).
 
 ### Resolved
+- **Registration identity key = `username`** — implemented in phase 2 (`insertPending` keys
+  non-enumeration on `username`; `contact_email` is informational, non-unique, not a login key).
+- **Register response = `202 Accepted`, fixed body `{"status":"PENDING"}`** — implemented in phase 2
+  (no principal established; byte-identical fresh vs duplicate).
+- **`admin` on `PrincipalResponse`/`/me`** — implemented in phase 3 (additive boolean from `ROLE_ADMIN`;
+  customer paths `false`; customer register body stayed byte-identical).
 - **Bootstrap fate** → **demote to platform admin** (keep row, drop owns-all, grant ADMIN, keep
   `RIVIERA_OPERATOR_PASSWORD`). *Maintainer, 2026-07-18.*
 - **Existing bootstrap-owned venues** → **backfill to the demoted admin** (all currently-unowned venues,
@@ -231,9 +229,12 @@ MCP consulted for the `resource()` + Signal-Forms idioms.
 > Session-recovery anchor. Re-read this section + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement` — backend (0–3) + FE (4–5) done and green (`npm run lint`/`test` 732 pass/`build`); starting **phase 6** (mocked e2e).
+**Stage pointer:** `merge` — all phases (0–7 docs) implemented (PR #258). **CI green**, **review gate ran**
+(high effort — F-1/F-2 fixed), **Sonar gate green** with the reported list cleared to **zero** (91.6%
+new-code coverage, 4 smells S-1..S-4 fixed). Ready to merge; close-out follows.
 
-**Next action:** Commit phases 4–5 (FE register + admin pages), then author the **phase 6** mocked e2e (register → approve → sign-in → create-venue).
+**Next action:** Merge PR #258, then close-out: verify #115 closed, tick epic #108's S6 line with the
+merge commit, `graphify update .`, run `riviera-docs-freshness` over the merge span, notify.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
