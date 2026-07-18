@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Service, WritableSignal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from './customer-auth';
+import { PASSWORD_LENGTH_MESSAGE } from './customer-auth';
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
 
 // Re-exported for the operator surfaces + specs that import it from here (the type now lives on the
@@ -18,9 +18,10 @@ export type { SignInResult } from './session-auth';
 export type OperatorRegisterResult = 'submitted' | 'invalid-password' | 'rate-limited' | 'error';
 
 // The FE password policy is ONE rule for both principal types — the backend enforces both via the same
-// CustomerPasswords.validate — so re-export the customer constants under the operator names rather than
-// redeclare them (a byte-for-byte copy would silently desync when the policy changes).
-export const MIN_OPERATOR_PASSWORD_LENGTH = MIN_PASSWORD_LENGTH;
+// CustomerPasswords.validate — so source the customer constants rather than redeclare them (a byte-for-byte
+// copy would silently desync). The length is re-exported directly (used only by the register component);
+// the message is aliased into a local const because operatorRegisterMessage below references it.
+export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-auth';
 export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**

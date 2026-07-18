@@ -221,8 +221,8 @@ class AuthController {
 			passwordEncoder.matches(registration.password(), timingEqualizerHash);
 		}
 		// Fresh and duplicate return the identical status + body; only the fresh branch set a cookie + mailed.
-		// emailVerified is always false here (a fresh account is unverified; the neutral branch matches it);
-		// admin is always false (a customer is never a platform admin).
+		// emailVerified is always false here — a fresh account is unverified and the neutral branch matches it.
+		// admin is always false because a customer is never a platform admin.
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false, false));
 	}

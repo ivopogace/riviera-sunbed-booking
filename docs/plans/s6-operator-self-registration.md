@@ -268,6 +268,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review (high, CONFIRMED) | Operator-register timing equalizer was **backwards** — `encode()` runs on both branches and there's no fresh-branch auto-sign-in bcrypt, so the taken-branch `matches()` made a taken username ~1 bcrypt **slower** (a reverse enumeration oracle, defeats D-8). | fixed (review-fix commit) — removed the equalizer; both branches now spend exactly one `encode()` bcrypt |
 | F-2 | review (low, CONFIRMED) | `operator-auth.ts` redeclared the customer password-policy constants byte-for-byte → desync risk. | fixed (review-fix commit) — re-export `MIN_PASSWORD_LENGTH`/`PASSWORD_LENGTH_MESSAGE` from `customer-auth` (one source) |
 | — | review (refuted) | "operator password validated via customer-named `CustomerPasswords.validate`" — refuted (one shared server-side policy is intended). | no change |
+| S-1 | sonar (S7763, minor) | `operator-auth.ts` re-declared `MIN_OPERATOR_PASSWORD_LENGTH` — should `export … from`. | fixed — `export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-auth'` (message stays a local const, used internally) |
+| S-2 | sonar (S125, major) | `AuthController.java` — the extended customer-register comment ended in a code-like `);` → flagged as commented-out code. | fixed — reworded to prose |
+| S-3/S-4 | sonar (S1192, critical ×2) | `JdbcOperators.java` — literals `"pending"` and `"operator"` each duplicated 3× (my `insertPending`/`assignOwner` added the 3rd). | fixed — extracted `PENDING_PARAM` / `OPERATOR_PARAM` constants |
+
+**Sonar gate (PR #258):** green — new-code coverage **91.6%** (≥80%), 0 dup blocks, 0 bugs, 0 vulns; the 4 reported new code smells above all fixed (verify the re-scan list reaches zero before merge).
 
 ---
 

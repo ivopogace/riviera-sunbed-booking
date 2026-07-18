@@ -29,6 +29,10 @@ class JdbcOperators implements Operators {
 
 	/** SQL named-param / column key for the operator username (named, not duplicated — invariant #6a). */
 	private static final String USERNAME = "username";
+	/** SQL named-param key bound to the {@code PENDING} status token (named, not duplicated — #6a / S1192). */
+	private static final String PENDING_PARAM = "pending";
+	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
+	private static final String OPERATOR_PARAM = "operator";
 
 	private final JdbcClient jdbc;
 
@@ -88,7 +92,7 @@ class JdbcOperators implements Operators {
 				RETURNING id
 				""")
 				.param(USERNAME, username)
-				.param("pending", OperatorStatus.PENDING.name())
+				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.param("hash", passwordHash)
 				.param("email", contactEmail)
 				.query(Long.class)
@@ -111,7 +115,7 @@ class JdbcOperators implements Operators {
 				SELECT id, username, contact_email, created_at FROM operator
 				WHERE status = :pending ORDER BY created_at, id
 				""")
-				.param("pending", OperatorStatus.PENDING.name())
+				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.query((rs, rowNum) -> new PendingOperator(
 						new OperatorId(rs.getLong("id")),
 						rs.getString(USERNAME),
@@ -141,7 +145,7 @@ class JdbcOperators implements Operators {
 		int rows = jdbc.sql("UPDATE operator SET status = :target WHERE id = :id AND status = :pending")
 				.param("target", target.name())
 				.param("id", operatorId.value())
-				.param("pending", OperatorStatus.PENDING.name())
+				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.update();
 		if (rows == 1) {
 			return success;
@@ -163,7 +167,7 @@ class JdbcOperators implements Operators {
 				    WHERE ov.operator_id = :operator AND ov.venue_id = :venue
 				)
 				""")
-				.param("operator", operator.value())
+				.param(OPERATOR_PARAM, operator.value())
 				.param("venue", venue.value())
 				.query(Boolean.class)
 				.single();
@@ -172,7 +176,7 @@ class JdbcOperators implements Operators {
 	@Override
 	public Set<VenueRef> ownedVenues(OperatorId operator) {
 		return jdbc.sql("SELECT venue_id FROM operator_venue WHERE operator_id = :operator ORDER BY venue_id")
-				.param("operator", operator.value())
+				.param(OPERATOR_PARAM, operator.value())
 				.query(Long.class)
 				.list().stream()
 				.map(VenueRef::new)
@@ -185,7 +189,7 @@ class JdbcOperators implements Operators {
 		// for the same venue surfaces as a constraint violation rather than silently no-op'ing.
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:venue, :operator)")
 				.param("venue", venue.value())
-				.param("operator", operator.value())
+				.param(OPERATOR_PARAM, operator.value())
 				.update();
 	}
 }
