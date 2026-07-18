@@ -241,9 +241,9 @@ MCP consulted for the `resource()` + Signal-Forms idioms.
 | 0+1 — retire owns-all + creator-owns-on-create (combined: phase 0 alone leaves create-then-edit red) | ✅ | 8acb830 |
 | 2 — operator registration (PENDING) backend + edge endpoint | ✅ | 6d9fbd1 |
 | 3 — admin approval + ADMIN role + `/api/admin/operators` | ✅ | f5e57e4 |
-| 4+5 — FE operator-register page + admin-operators page + admin flag/nav | ✅ | (this commit) |
-| 6 — e2e mocked (register→approve→sign-in→create-venue) | ⏳ | |
-| 7 — docs + merge close-out | | |
+| 4+5 — FE operator-register page + admin-operators page + admin flag/nav | ✅ | 8da8ccb |
+| 6 — e2e mocked (register→approve→sign-in→create-venue) | ✅ | (this commit) |
+| 7 — docs + merge close-out | ⏳ | |
 
 > **Note (angular-cli MCP unavailable this session):** the angular-cli MCP server didn't connect, so the
 > admin-operators list uses the repo's established **imperative-async signal** pattern (as in
