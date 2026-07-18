@@ -229,12 +229,14 @@ MCP consulted for the `resource()` + Signal-Forms idioms.
 > Session-recovery anchor. Re-read this section + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `merge` — all phases (0–7 docs) implemented (PR #258). **CI green**, **review gate ran**
-(high effort — F-1/F-2 fixed), **Sonar gate green** with the reported list cleared to **zero** (91.6%
-new-code coverage, 4 smells S-1..S-4 fixed). Ready to merge; close-out follows.
+**Stage pointer:** `done` — **merged as `aa4d3bf`** (PR #258, squash). CI green · review gate ran (high
+effort, F-1/F-2 fixed) · Sonar green with the reported list cleared to zero (91.6% new-code coverage,
+S-1..S-4 fixed). Close-out complete: #115 closed, epic #108 S6 ticked with the merge SHA,
+`graphify update .` run, `riviera-docs-freshness` over `HEAD~1..HEAD` patched 2 stale substrate facts
+(CONTEXT.md bootstrap glossary + `riviera-modulith` SKILL.md "remaining follow-up" line) via a close-out
+micro-PR.
 
-**Next action:** Merge PR #258, then close-out: verify #115 closed, tick epic #108's S6 line with the
-merge commit, `graphify update .`, run `riviera-docs-freshness` over the merge span, notify.
+**Next action:** merge the docs-freshness close-out micro-PR — then the slice is fully done.
 
 | Phase | Status | Commits |
 |-------|--------|---------|

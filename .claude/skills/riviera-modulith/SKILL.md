@@ -164,14 +164,17 @@ invariant #2), documented on `AvailabilityClaim`.
 
 ## The `operator` module (per-venue authorization)
 
-**Shipped** (#73 module + ownership, #74 per-operator credentials). It owns operator accounts and
-the **operator↔venue ownership mapping**, publishing `operator::api` (the `VenueOwnership` query
-port) + `operator::vocabulary`. Every venue-scoped **application service** consults it
-(`assertOwns` → `403` on mismatch, pinned by `CrossVenueDenialIT`) so no driving adapter can bypass
-the check — invariant #13. Platform-wide admin (`/api/admin/**`) stays role-gated. New venue-scoped
-command/query: grant `operator::api` + `::vocabulary` and put the ownership check in the service,
-not the controller. Remaining follow-up: retire the owns-all bootstrap operator +
-creator-owns-on-create (see `CLAUDE.md`).
+**Shipped** (#73 module + ownership, #74 per-operator credentials, **#115 self-registration → admin
+approval → creator-owns-on-create**). It owns operator accounts + registration/approval state and the
+**operator↔venue ownership mapping** (now writable — `VenueOwnership.assignOwner`), publishing
+`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorApprovals` ports) +
+`operator::vocabulary`. Every venue-scoped **application service** consults `assertOwns` → `403` on
+mismatch (pinned by `CrossVenueDenialIT`) so no driving adapter can bypass the check — invariant #13.
+Since #115 the **owns-all bootstrap is retired** (ownership is strictly the explicit `operator_venue`
+mapping; creator-owns writes it on venue create) and the bootstrap is **demoted to the platform admin**.
+Platform-wide admin (`/api/admin/**`, incl. the ADMIN-gated `/api/admin/operators` approval surface)
+stays role-gated. New venue-scoped command/query: grant `operator::api` + `::vocabulary` and put the
+ownership check in the service, not the controller.
 
 ## Verification
 
