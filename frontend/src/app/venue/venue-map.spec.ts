@@ -9,6 +9,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angul
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { formatBookingDate } from '../shared/booking-date-label';
 import { defaultBookingDate } from './booking-date';
 import { SetView, VenueMapView } from './venue.model';
 import { rowCode, VenueMap } from './venue-map';
@@ -343,8 +344,11 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
 
+    // Derived a week out, never hardcoded — a date equal to the component's default (tomorrow)
+    // fires no change event and no re-fetch (the 2026-07-14 flake class).
+    const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    input.value = '2026-07-20';
+    input.value = chosen;
     input.dispatchEvent(new Event('change'));
     await fixture.whenStable();
     venueRequest().flush(miramar()); // settle the re-fetch
@@ -356,7 +360,6 @@ describe('VenueMap', () => {
     // The dialog now shows the map's date read-only (the map owns the date, #44/#136) — assert the
     // formatted date display instead of an editable input.
     const dialogDate = el().querySelector('app-booking-dialog [data-testid="dialog-date"]');
-    expect(dialogDate?.textContent).toContain('20');
-    expect(dialogDate?.textContent).toContain('Jul');
+    expect(dialogDate?.textContent).toContain(formatBookingDate(chosen));
   });
 });
