@@ -38,7 +38,7 @@
     "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4.3.2",
     "@vitest/coverage-v8": "^4.1.9",
-    "angular-eslint": "22.0.0",
+    "angular-eslint": "22.1.0",
     "axe-core": "^4.12.1",
     "eslint": "^10.7.0",
     "jsdom": "^29.1.1",
