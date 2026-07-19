@@ -44,7 +44,7 @@ dependencies {
 	// via ServiceLoader) for robust decode of real-world uploads, and Thumbnailator for high-quality
 	// resize + EXIF-orientation. Output is re-encoded JPEG, which drops all source metadata incl. GPS
 	// EXIF (ADR-0008 / privacy). Behind the venue module's PhotoProcessor.
-	implementation 'net.coobird:thumbnailator:0.4.20'
+	implementation 'net.coobird:thumbnailator:0.4.21'
 	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.14.0'
 	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.14.0'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
