@@ -22,7 +22,7 @@
     "@angular/forms": "^22.0.7",
     "@angular/platform-browser": "^22.0.7",
     "@angular/router": "^22.0.7",
-    "@stripe/stripe-js": "^9.9.0",
+    "@stripe/stripe-js": "^9.10.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -46,7 +46,7 @@
     "prettier": "^3.9.5",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
-    "typescript-eslint": "8.60.1",
+    "typescript-eslint": "8.64.0",
     "vitest": "^4.1.10"
   }
 }
