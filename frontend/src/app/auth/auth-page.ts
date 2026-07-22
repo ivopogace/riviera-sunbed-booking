@@ -281,9 +281,7 @@ export class AuthPage {
 
   private readonly firstField = viewChild<ElementRef<HTMLInputElement>>('firstField');
 
-  // Live query params (#300): a query-param-only soft nav (the header Register/Sign-in links, the
-  // retired-route redirects) reuses this component under the default RouteReuseStrategy, so reading
-  // the one-shot snapshot left mode/audience/returnUrl stale. toSignal keeps them reactive.
+  // #300: read params live — a query-param-only soft nav reuses this component, so a snapshot goes stale.
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   private readonly returnUrl = computed(() => this.queryParams().get('returnUrl') ?? undefined);

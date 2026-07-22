@@ -117,15 +117,17 @@ what the existing bindings already read (`mode()`, `audience()`).
 
 ## Execution status
 
-**Stage pointer:** `implement complete → PR / review gate`. Phases 0–1 green locally (59 unit
-specs + 11 unified-auth e2e, incl. the new soft-nav case, all pass; lint clean).
+**Stage pointer:** `review gate passed → push`. Phases 0–1 green locally (59 unit specs + 11
+unified-auth e2e incl. the new soft-nav case; lint clean). Review gate run (overlay FE bank);
+one self-caught RV-STYLE-1 finding fixed.
 
-**Next action:** Push the branch, then run the review gate (`riviera-review-overlay` + `/code-review`).
+**Next action:** Push `claude/sdlc-300-khtyw9`. No PR requested; CI owns the full suite on push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Live query-param reactivity + unit specs | ✅ | `705bece` |
-| 1 — Soft-nav e2e coverage | ✅ | (this commit) |
+| 1 — Soft-nav e2e coverage | ✅ | `640b8fc` |
+| 2 — Review-gate fix (RV-STYLE-1) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -133,7 +135,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-STYLE-1) | `queryParams` field carried a 3-line inline comment | fixed-in this commit (shortened to one line) |
 
 ---
 
