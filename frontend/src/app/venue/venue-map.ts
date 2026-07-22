@@ -185,9 +185,9 @@ export class VenueMap {
   /** Seed the map date from a valid, in-range `?date=` query param, else the earliest bookable day. */
   private readInitialDate(): string {
     const raw = this.route.snapshot.queryParamMap.get('date');
-    if (raw && isIsoDate(raw)) {
-      // Clamp a past/today deep-link up to the floor (matches the picker `min`; invariant #4).
-      return raw < this.minDate ? this.minDate : raw;
+    // Honour a valid `?date=` on/after the floor; absent, malformed, or past/today falls back to it (#4).
+    if (raw && isIsoDate(raw) && raw >= this.minDate) {
+      return raw;
     }
     return this.minDate;
   }
