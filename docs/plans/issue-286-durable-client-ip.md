@@ -52,25 +52,25 @@ money).
 > HTTP-level assertions live in the filter contract test. AC-8 is deliberately *outside*
 > the test suite — see Non-goals and R-1 for why no in-JVM test can stand in for it.
 
-- [ ] **AC-1:** Given a trusted socket peer and a configured client-IP header carrying
+- [x] **AC-1:** Given a trusted socket peer and a configured client-IP header carrying
   exactly one valid IP literal, when resolved, then that value is the key and the
   `X-Forwarded-For` chain is not consulted at all. *Pinned by:*
   `ClientIpResolverTest.prefersTheEdgeSuppliedClientOverTheForwardedChain`
-- [ ] **AC-2:** Given a socket peer that is **not** trusted, when the request carries the
+- [x] **AC-2:** Given a socket peer that is **not** trusted, when the request carries the
   configured client-IP header, then the header is ignored and the socket address is the key
   — a direct caller cannot mint buckets with it, exactly as for `X-Forwarded-For` (#129
   AC-1). *Pinned by:* `ClientIpResolverTest.ignoresTheClientIpHeaderFromAnUntrustedPeer`
-- [ ] **AC-3:** Given the configured header is absent, when resolved behind a trusted peer,
+- [x] **AC-3:** Given the configured header is absent, when resolved behind a trusted peer,
   then resolution falls through to #129's right-most-untrusted-hop `X-Forwarded-For` walk
   and every #129 acceptance criterion still holds. *Pinned by:*
   `ClientIpResolverTest.fallsBackToTheForwardedWalkWhenTheHeaderIsAbsent` **plus the whole
   pre-existing `ClientIpResolverTest` + `RateLimitFilterTest` corpus staying green unchanged.**
-- [ ] **AC-4:** Given the configured header arrives **more than once**, or with a value that
+- [x] **AC-4:** Given the configured header arrives **more than once**, or with a value that
   is not a single IP literal, when resolved behind a trusted peer, then the header is
   ignored (never the first-of-many value), resolution falls through to the walk, and the
   anomaly is logged. *Pinned by:* `ClientIpResolverTest.ignoresAMultiValuedClientIpHeader`,
   `ClientIpResolverTest.ignoresANonLiteralClientIpHeader`
-- [ ] **AC-5 (the regression pin):** Given the **production chain shape** — trusted private
+- [x] **AC-5 (the regression pin):** Given the **production chain shape** — trusted private
   socket peer, `X-Forwarded-For: <forged>, <client>, <public CF edge>`, client-IP header set
   to `<client>` — and a trust list containing **only the shipped private ranges** (no
   Cloudflare CIDRs), when resolved, then the key is `<client>` and not the edge hop. A
@@ -78,12 +78,12 @@ money).
   documenting precisely the defect #286 reports. *Pinned by:*
   `ClientIpResolverTest.resolvesTheClientOnACloudflareShapedChainWithoutCloudflareCidrs`,
   `ClientIpResolverTest.withoutTheHeaderTheWalkStillKeysOnTheEdgeHop`
-- [ ] **AC-6:** Given the login limiter (capacity 2) and one client whose client-IP header is
+- [x] **AC-6:** Given the login limiter (capacity 2) and one client whose client-IP header is
   constant while the `X-Forwarded-For` edge hop **varies per request** (the measured
   production behaviour), when the budget is exceeded, then the 3rd request is `429` — one
   bucket, not one per edge node. *Pinned by:*
   `RateLimitFilterTest.oneClientBehindRotatingEdgeNodesSharesOneLoginBucket`
-- [ ] **AC-7:** Given the shipped `application.properties`, when the context binds
+- [x] **AC-7:** Given the shipped `application.properties`, when the context binds
   `RateLimitProperties`, then `trusted-proxies` is the 8 private/loopback CIDRs **including
   the colon-bearing IPv6 entries** (`::1/128`, `fc00::/7`, `fe80::/10`) and
   `client-ip-header` is `CF-Connecting-IP`; and when `RIVIERA_RATELIMIT_TRUSTED_PROXIES` /
@@ -95,7 +95,7 @@ money).
   `docs/runbooks/rate-limit-client-ip.md` returns **~10 non-`429` and the rest `429`** from
   one client. ~140 non-`429` means the header path is inert → roll back by re-setting the
   env var. *Verified by:* the runbook probe, recorded in this doc's Execution status.
-- [ ] **AC-9:** `docs/deploy/cd-pipeline.md` no longer says the variable "needs setting"; it
+- [x] **AC-9:** `docs/deploy/cd-pipeline.md` no longer says the variable "needs setting"; it
   records the current value, its provenance (`cloudflare.com/ips-v4`, `/ips-v6`), the drift
   risk, and the retirement step — and `application.properties` shows **both** rate-limit
   settings as explicit `${ENV_VAR:default}` placeholders like every other env-driven
@@ -144,12 +144,12 @@ money).
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **Render does not forward `CF-Connecting-IP` to the app** (strips or rewrites it), so the header path is inert and resolution silently degrades to the walk. This is the load-bearing unverified assumption of the whole slice — and it is *exactly* the class of assumption that made #129 wrong twice. No in-JVM test can settle it: unit and slice tests construct the chain they assert on. | med | high | (a) the walk fallback means "inert" = today's behaviour, not a new break; (b) the WARN fires on the first request that misses the header, greppable in Render logs; (c) AC-8's **two-step** rollout keeps the CF CIDRs set until the code is deployed, so the fallback is still *correct* during the interval; (d) unsetting the env var is what makes the probe discriminating, and re-setting it is a one-click rollback | Ivo | open — resolves at AC-8 |
-| R-2 | The `${RIVIERA_RATELIMIT_TRUSTED_PROXIES:…}` placeholder mis-parses because the default value contains colons (`::1/128`, `fc00::/7`) — Spring splits name from default on the **first** colon, but a silent mis-parse would ship a wrong or empty trust list, i.e. a security control quietly weakened by a cosmetic edit | med | high | `RateLimitPropertiesBindingTest` (AC-7) asserts the bound list is exactly the 8 expected CIDRs from the real `application.properties`, so a parse regression is a red build, not a production surprise | Ivo | open — closes in phase 1 |
+| R-2 | The `${RIVIERA_RATELIMIT_TRUSTED_PROXIES:…}` placeholder mis-parses because the default value contains colons (`::1/128`, `fc00::/7`) — Spring splits name from default on the **first** colon, but a silent mis-parse would ship a wrong or empty trust list, i.e. a security control quietly weakened by a cosmetic edit | med | high | `RateLimitPropertiesBindingTest` (AC-7) asserts the bound list is exactly the 8 expected CIDRs from the real `application.properties`, so a parse regression is a red build, not a production surprise | Ivo | **closed** — RateLimitPropertiesBindingTest green: the placeholder default parses correctly and all 8 CIDRs bind, IPv6 included |
 | R-3 | The once-per-JVM WARN latch is consumed by a benign first anomaly, so a *later* genuine breakage is silent | med | low | accepted + documented in the runbook: the WARN is a hint, the probe is the check. Render's health probe never reaches the resolver (`/actuator/health` matches no rate-limited target), so the latch is not consumed by liveness traffic | Ivo | accepted |
 | R-4 | An attacker deliberately sends a duplicate `CF-Connecting-IP` to force the fallback and regain the multi-bucket fan-out | low | low | bounded, and strictly better than the alternative: "exactly one value" can only ever *downgrade* to the #129-hardened walk, whereas taking first-of-many would let a client-supplied copy become the key — a full bypass. The ambiguity WARN fires. Cloudflare generates the header itself rather than appending to a client copy, so the multi-value case should not arise at all | Ivo | accepted |
 | R-5 | A request reaching the app from a trusted (private) peer **without** traversing Cloudflare could carry a forged `CF-Connecting-IP` and choose its own bucket key | low | med | identical in kind to the trust already placed in `X-Forwarded-For` since #129 (R-3 there), and the locked topology (ADR-0004) has no such ingress: `*.onrender.com` resolves to the Cloudflare-fronted Render edge. Documented in the resolver javadoc; narrowing/emptying `trusted-proxies` disables the whole header path without a release | Ivo | accepted |
-| R-6 | The IT corpus regresses the #127 operator-lockout way (bucket isolation collapses) | low | high | the ITs set only `X-Forwarded-For` and never the client-IP header, so they take the unchanged fallback; `SessionLoginSupport.uniqueClientIp()`'s 198.18.x.y (RFC 2544, deliberately untrusted) is untouched and still pinned by `integrationTestClientIpsStayDistinctBuckets` | Ivo | open — closes in phase 2 regression run |
-| R-7 | Sonar `java:S1313` (hardcoded IP address) fails the 0-new-issues merge bar | low | med | zero IP literals in **main** Java — every CIDR and header name lives in `application.properties`, the record component defaults to empty/`""`. Test-side literals are unchanged in kind from #129, which cleared the gate | Ivo | open — closes at the Sonar gate |
+| R-6 | The IT corpus regresses the #127 operator-lockout way (bucket isolation collapses) | low | high | the ITs set only `X-Forwarded-For` and never the client-IP header, so they take the unchanged fallback; `SessionLoginSupport.uniqueClientIp()`'s 198.18.x.y (RFC 2544, deliberately untrusted) is untouched and still pinned by `integrationTestClientIpsStayDistinctBuckets` | Ivo | **closed** — AuthSessionIT 5/5 vs real Postgres (0 skipped) and the full backend suite green in CI |
+| R-7 | Sonar `java:S1313` (hardcoded IP address) fails the 0-new-issues merge bar | low | med | zero IP literals in **main** Java — every CIDR and header name lives in `application.properties`, the record component defaults to empty/`""`. Test-side literals are unchanged in kind from #129, which cleared the gate | Ivo | **closed** — Sonar new-issue list is empty (total:0) on PR #287; no java:S1313 finding |
 | R-8 | The new WARN is noisy in local dev and every test JVM, where the header is legitimately absent on every request | high | low | once-per-JVM latch caps it at a single line per process; message names the fallback explicitly so it reads as informational, not alarming | Ivo | accepted |
 
 ## Open questions / Assumptions
@@ -234,18 +234,19 @@ verification for this slice is the deployed-app probe (AC-8), not a browser flow
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 2 done; next is phase 3 (PR + gates)`
+**Stage pointer:** `all three gates green on PR #287 — STOPPED before merge, awaiting the
+maintainer's go-ahead`
 
-**Next action:** Merge latest `origin/main` into the branch (strict status-check policy),
-push, open the PR into `main`, then run CI → review → Sonar per
-`.claude/skills/riviera-sdlc/references/pr-gates.md`.
+**Next action:** On merge authorization: merge PR #287, then run phase 4 (CD → probe →
+**unset** `RIVIERA_RATELIMIT_TRUSTED_PROXIES` → re-probe for AC-8) and the merge close-out
+(`references/pr-gates.md` §3). AC-8 is the only unverified acceptance criterion.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Resolver: header-preferred resolution + rot signal | ✅ | `201406c` — 23/23 `ClientIpResolverTest` green (15 pre-existing #129 cases unchanged + 8 new) |
 | 1 — Config surface: properties, wiring, binding + filter pins | ✅ | `<phase-1>` — 4/4 `RateLimitPropertiesBindingTest`, 15/15 `RateLimitFilterTest`, 23/23 `ClientIpResolverTest`. Resolver wiring (`RateLimitProperties.clientIpHeader`, `RateLimitFilter:120`) landed in phase 0 because it was needed to compile |
 | 2 — Docs, runbook, scoped regression, structural net | ✅ | `<phase-2>` — runbook created; cd-pipeline, production-hardening, ADR-0006, riviera-local-debug and the #129 plan patched. Structural net green (`ModularityTests`, `JdbcOnly`, `PackageShape`, `PublishedSurfacePlacement`); `AuthSessionIT` 5/5 green vs real Postgres, 0 skipped (R-6 closed) |
-| 3 — PR + gates (CI / review / Sonar) | ⏳ | |
+| 3 — PR + gates (CI / review / Sonar) | ✅ | PR **#287**, head `0297adb`. **CI:** 10/10 checks green (backend build+test incl. the full suite, frontend, CodeQL ×2, SonarCloud). **Review:** high-effort overlay walk, 2 findings (F-1, F-2), both fixed test-first and re-pushed. **Sonar:** issue list pulled from the API — `"total":0`, 0 duplicated blocks, 0 bugs/vulns/smells/hotspots, new-code coverage **98.1%** (bar ≥80%) |
 | 4 — Post-merge: CD, env retirement, AC-8 probe | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -767,11 +768,11 @@ with the comment block rewritten to describe the **real** topology (client → C
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS (new + all 14 #129 cases).
-- [ ] **AC-6:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS.
-- [ ] **AC-7:** `./gradlew test --tests "*RateLimitPropertiesBindingTest*"` → PASS.
+- [x] **AC-1..AC-5:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS, **25/25** (15 pre-existing #129 cases unchanged + 10 new). Verified at `0297adb`.
+- [x] **AC-6:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS, **15/15**. Verified at `0297adb`.
+- [x] **AC-7:** `./gradlew test --tests "*RateLimitPropertiesBindingTest*"` → PASS, **4/4**. Verified at `0297adb`.
 - [ ] **AC-8:** runbook probe against the deployed app, **after** step 3 of phase 4 → ~10 non-`429` / 200.
-- [ ] **AC-9:** review-gate read of the `docs/deploy/` + `application.properties` diff.
+- [x] **AC-9:** review-gate read of the `docs/deploy/` + `application.properties` diff — done at the review gate; both placeholders present, the "needs setting" claim replaced by value + provenance + drift risk + retirement pointer.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
