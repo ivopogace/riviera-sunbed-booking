@@ -383,7 +383,15 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `CI + review + Sonar gates run (5 findings, all fixed) — merge close-out next`
+**Stage pointer:** `DONE — merged to main via PR #279 as 5c9059d (squash), 2026-07-22`
+
+**Merge close-out:** issue **#277 closed** (completed) · epic **#108** checklist ticked on the S9 line
+with the PR + merge SHA, and S9 removed from its "Remaining" list · **nothing was deferred** from the
+review or Sonar gates, so there is nothing to propagate — the two out-of-scope items were split out
+*before* implementation began (**#278** creation-into-console + `/venue-admin` retirement, **#276**
+operator SSO, both already filed and now unblocked) · all 14 ACs verified with named tests · PR body
+Gates checkboxes ticked as each gate actually passed · substrate-doc sweep ran **inside** the code PR
+(3 findings, all patched) rather than as a second docs PR · branch deleted.
 
 **Sonar gate (PR #279, 2026-07-22):** quality gate green **and** the reported list cleared.
 Measures on the pre-fix head: `new_bugs 0`, `new_vulnerabilities 0`, `new_duplicated_blocks 0`,
