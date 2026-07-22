@@ -230,6 +230,39 @@ class RateLimitFilterTest {
 				.andExpect(status().isNotFound());
 	}
 
+	// ---- Trusted-proxy client-IP resolution closes the XFF-rotation bypass (#129) ----
+
+	private ResultActions loginFromProxiedClient(String peer, String forwardedFor) throws Exception {
+		return mvc.perform(post("/api/auth/operator/login").with(fromIp(peer)).with(csrf())
+				.header("X-Forwarded-For", forwardedFor)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "ghost", "password": "nope"}"""));
+	}
+
+	@Test
+	void spoofedForwardedPrefixCannotEscapeLoginBucket() throws Exception {
+		// One client behind the trusted proxy rotates a forged prefix per attempt while the
+		// proxy-appended tail (its true address) stays constant — all three must share ONE bucket.
+		loginFromProxiedClient("10.13.0.1", "6.6.6.1, 203.0.113.66").andExpect(status().isUnauthorized());
+		loginFromProxiedClient("10.13.0.1", "6.6.6.2, 203.0.113.66").andExpect(status().isUnauthorized());
+		loginFromProxiedClient("10.13.0.1", "6.6.6.3, 203.0.113.66")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
+		// A directly-connecting public client rotating XFF stays keyed on its socket address.
+		String peer = "203.0.113.80";
+		mvc.perform(get("/api/bookings/{code}", "untrusted-A").with(fromIp(peer))
+				.header("X-Forwarded-For", "1.1.1.1")).andExpect(status().isNotFound());
+		mvc.perform(get("/api/bookings/{code}", "untrusted-B").with(fromIp(peer))
+				.header("X-Forwarded-For", "2.2.2.2")).andExpect(status().isNotFound());
+		mvc.perform(get("/api/bookings/{code}", "untrusted-C").with(fromIp(peer))
+				.header("X-Forwarded-For", "3.3.3.3")).andExpect(status().isTooManyRequests());
+	}
+
 	@Test
 	void bookingCodeIsNeverLogged() throws Exception {
 		// Capture everything the filter logs at DEBUG while a per-code 429 fires, and assert the code

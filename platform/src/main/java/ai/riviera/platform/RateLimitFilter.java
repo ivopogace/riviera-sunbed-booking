@@ -96,6 +96,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	private final RateLimitProperties props;
 	private final Clock clock;
+	private final ClientIpResolver clientIps;
 	private final AntPathMatcher paths = new AntPathMatcher();
 	private final Map<String, TokenBucket> ipBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> codeBuckets = new ConcurrentHashMap<>();
@@ -116,6 +117,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
 		this.clock = clock;
+		this.clientIps = new ClientIpResolver(props.trustedProxies());
 	}
 
 	@Override
@@ -129,7 +131,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			Optional<Map<String, TokenBucket>> authBuckets = authBucketsFor(request);
 			if (authBuckets.isPresent()) {
 				Instant now = clock.instant();
-				String ip = ClientIpResolver.resolve(request);
+				String ip = clientIps.resolve(request);
 				TokenBucket bucket = bucketFor(authBuckets.get(), ip, props.login(), now);
 				if (!bucket.tryAcquire(now)) {
 					reject(response, bucket.retryAfterSeconds(now), ip, "login");
@@ -148,7 +150,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 
 		Instant now = clock.instant();
-		String ip = ClientIpResolver.resolve(request);
+		String ip = clientIps.resolve(request);
 
 		// Per-IP: all three endpoints.
 		TokenBucket ipBucket = bucketFor(ipBuckets, ip, props.perIp(), now);

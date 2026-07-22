@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.time.Duration;
+import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -24,6 +25,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       {@code application.properties}) so credential guessing is throttled without
  *                       coupling to the booking budget
  * @param maxTrackedKeys soft cap on tracked keys per dimension; full (idle) buckets are pruned when hit
+ * @param trustedProxies CIDR ranges whose peers may set {@code X-Forwarded-For} (issue #129); from any
+ *                       other peer the header is ignored and the socket address is the key. The
+ *                       default covers loopback + the RFC1918/link-local ranges every Render internal
+ *                       hop uses; an empty list means "trust no proxy". See {@link ClientIpResolver}
  */
 @ConfigurationProperties("riviera.ratelimit")
 record RateLimitProperties(
@@ -31,7 +36,9 @@ record RateLimitProperties(
 		@DefaultValue Limit perIp,
 		@DefaultValue Limit perCode,
 		@DefaultValue Limit login,
-		@DefaultValue("100000") int maxTrackedKeys) {
+		@DefaultValue("100000") int maxTrackedKeys,
+		@DefaultValue({"127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+				"169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10"}) List<String> trustedProxies) {
 
 	record Limit(@DefaultValue("60") int capacity, @DefaultValue("PT1M") Duration refillPeriod) {
 	}

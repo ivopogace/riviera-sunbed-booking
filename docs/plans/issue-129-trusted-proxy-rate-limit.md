@@ -114,9 +114,9 @@ change.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Render's chain inserts a public-IP internal hop after the client, so the walk stops at that hop and ALL clients share one bucket → legitimate-user lockout on login | low | high | default trusts all private/loopback ranges (internal hops are private on Render); `riviera.ratelimit.trusted-proxies` is env-overridable (`RIVIERA_RATELIMIT_TRUSTED_PROXIES`) to add a CIDR without a release; AC-7 verifies on the deployed sandbox before close-out | Ivo | open |
-| R-2 | Breaking the ~15 IT files that rely on unique XFF per request for bucket isolation (#127 operator-lockout lesson) | med | high | MockMvc peer is `127.0.0.1` (trusted) so single-value XFF still resolves to that value; AC-4 pins the corpus unchanged; scoped IT run in phase 3 | Ivo | open |
+| R-2 | Breaking the ~19 IT files that rely on unique XFF per request for bucket isolation (#127 operator-lockout lesson) | med | high | **The planned mitigation was wrong** — `SessionLoginSupport.uniqueClientIp()` minted `10.99.x.y`, an RFC1918 address the new trust list classifies as a *proxy hop*, so every IT login in the suite would have skipped it and collapsed onto the one loopback bucket (the #127 lockout, full-suite-only). Real fix: the helper now mints `198.18.x.y` (RFC 2544 benchmarking range — public, deliberately outside the trusted defaults), pinned by `ClientIpResolverTest.integrationTestClientIpsStayDistinctBuckets` so it cannot silently regress. Every IT *file* is still unchanged; only the shared helper moved. | Ivo | **closed** — helper fixed + pinned; `AuthSessionIT` (5 tests) and `RecoveryRateLimitIT` (1 test) verified green against real Postgres, 0 skipped |
 | R-3 | Trusting all RFC1918 peers means a hypothetical direct-exposed deployment on a private network would honor spoofed XFF | low | low | accepted for the locked Render topology (ADR-0004); documented in the resolver javadoc + production-hardening; the override property narrows it if topology ever changes | Ivo | open |
-| R-4 | A non-IP XFF token (`unknown`, hostname) makes `IpAddressMatcher`/`InetAddress.getByName` do DNS or throw | med | med | pre-validate every address with Java 25 `InetAddress.ofLiteral` (literal-only, no DNS); parse failure = untrusted; AC-6 pins it | Ivo | open |
+| R-4 | A non-IP XFF token (`unknown`, hostname) makes `IpAddressMatcher`/`InetAddress.getByName` do DNS or throw | med | med | pre-validate every address with Java 25 `InetAddress.ofLiteral` (literal-only, no DNS); parse failure = untrusted; AC-6 pins it | Ivo | **closed** — implemented as planned; `treatsNonIpLiteralHopAsClientWithoutDns` green |
 | R-5 | Interaction with `WebCorsConfig`'s same-origin null-config trick or session-cookie handling | low | med | no global forward-headers change (Non-goal 1) — nothing outside the rate-limit keying reads the resolver | Ivo | open |
 | R-6 | Per-controller error-shape drift on the new 429 path | — | — | none: the hand-mirrored `RATE_LIMITED` ProblemDetail body is untouched (§6b) | Ivo | closed — no contract change |
 
@@ -171,26 +171,38 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** plan — complete, awaiting implement (fresh session)
+**Stage pointer:** implement — phases 1+2 done; next is phase 3 (docs + scoped regression)
 
-**Next action:** Phase 1, step 1 — load `riviera-java-conventions` + `riviera-modulith` +
-`riviera-local-debug` (routing gate + first-build recipe), then write the failing
-`ClientIpResolverTest` cases.
+**Next action:** Phase 3, step 1 — update `docs/deploy/production-hardening.md` §forward headers
+and the ADR-0006 R-2 bullet, then run the scoped regression + structural net.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — branch + plan doc | ✅ | (this commit) |
-| 1 — resolver trust walk (unit) | | |
-| 2 — filter wiring + HTTP spoof-closure contract | | |
+| 0 — branch + plan doc | ✅ | 4e5c0c5 |
+| 1 — resolver trust walk (unit) | ✅ | (merged with phase 2 — see deviation) |
+| 2 — filter wiring + HTTP spoof-closure contract | ✅ | (merged with phase 1 — see deviation) |
 | 3 — docs + scoped regression + structural net | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Deviation — phases 1 and 2 merged into one red→green cycle and one commit.** The plan split
+`ClientIpResolver` (phase 1) from its two `RateLimitFilter` call sites (phase 2), but turning the
+static utility into an instantiable class *breaks compilation of the filter in the same change* —
+phase 1 could not have compiled, let alone been committed green, on its own. The TDD cycle was kept
+honest by writing **both** phases' tests first (unit + HTTP contract), confirming red (compile error
+on the absent constructor, then on the static call sites), then implementing. Phase 3 is untouched.
+
+**Skills loaded this session (routing gate):** `riviera-sdlc` (orchestrator), `riviera-java-conventions`
+(instantiable package-private class, constructor injection into a final field, one-line comments,
+specific `catch (IllegalArgumentException)`), `riviera-modulith` (confirmed root-package edge
+placement — no module surface touched), `riviera-local-debug` (scoped test runs; local `./gradlew`
+works, Docker present so targeted ITs ran for real).
 
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | none yet | |
+| I-1 | implement (phase 1/2) | R-2's planned mitigation was factually wrong: `SessionLoginSupport.uniqueClientIp()` minted RFC1918 `10.99.x.y`, which the new trust list treats as a proxy hop — the whole IT corpus would have collapsed onto one bucket (a full-suite-only #127 repeat that no scoped run would show) | fixed — helper now mints `198.18.x.y`; pinned by a resolver test |
 
 ---
 
@@ -212,6 +224,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   instance API; add AC-1/2/5/6 cases.
 - `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — add the AC-3
   spoof-closure case (+ an untrusted-peer variant on the booking per-IP dimension).
+- `platform/src/test/java/ai/riviera/platform/SessionLoginSupport.java` — **added during
+  implementation (finding I-1)**: the per-test unique client IP moves from RFC1918 `10.99.x.y` to
+  RFC 2544 `198.18.x.y`, so the whole IT corpus's bucket isolation survives the trust walk.
 - `docs/deploy/production-hardening.md` — update §forward headers: the anticipated
   "reconcile with `ClientIpResolver`" happened here; strategy still not enabled.
 - `docs/adr/0006-booking-code-stays-in-url-path.md` — mark the R-2 residual-risk bullet
@@ -450,6 +465,8 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-22 | phase 1/2 — client-IP trust walk | other consumers of client IP in production code | `grep -rn "Forwarded\|getRemoteAddr" platform/src/main` | 1 (`ClientIpResolver` itself; `WebCorsConfig` only mentions forward-headers in a comment) | none — the resolver is the single client-IP consumer, so the trust walk covers every keying dimension at once |
+| 2026-07-22 | phase 1/2 — trusted-range fallout | test fixtures that feed a *private* address through `X-Forwarded-For` (would now be skipped as a proxy hop) | `grep -rn 'X-Forwarded-For", "\(10\.\|192\.168\.\|172\.1[6-9]\|127\.\)' platform/src/test` | 2 (`SessionLoginSupport.uniqueClientIp()` → the whole IT corpus; `ClientIpResolverTest` all-trusted case) | helper switched to `198.18.x.y` + pinned by a test; the resolver case is deliberate (AC-5) |
 
 ---
 
