@@ -41,8 +41,11 @@ function stubService(opts: {
   cancel?: Cancellation;
   cancelCalls?: string[];
   handoffs?: PaymentHandoff[];
+  /** A primed detail (#168 find-a-booking hand-off); consumed one-shot for the matching code. */
+  prefetched?: BookingDetail;
 }): Partial<BookingService> {
   let served = 0;
+  let prefetched = opts.prefetched;
   return {
     getByCode: () => {
       const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
@@ -54,6 +57,14 @@ function stubService(opts: {
     },
     beginPayment: (handoff: PaymentHandoff) => {
       opts.handoffs?.push(handoff);
+    },
+    takePrefetched: (code: string) => {
+      if (prefetched?.code === code) {
+        const detail = prefetched;
+        prefetched = undefined;
+        return detail;
+      }
+      return undefined;
     },
   };
 }
@@ -334,6 +345,7 @@ describe('BookingView', () => {
         (calls++ === 0 ? of(DETAIL) : throwError(() => ({ status: 500 }))) as Observable<BookingDetail>,
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
+      takePrefetched: () => undefined,
     };
     const fixture = await render(service);
     const host = fixture.nativeElement as HTMLElement;
@@ -381,6 +393,46 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
+  // Issue #168: a find-a-booking hand-off primes the detail, so the initial load renders it WITHOUT
+  // a second GET /api/bookings/{code} (two GETs per success can 429 near the #56 ceiling).
+  it('renders a prefetched detail for the matching code without fetching (#168)', async () => {
+    const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
+    let prefetched: BookingDetail | undefined = DETAIL;
+    const service: Partial<BookingService> = {
+      getByCode,
+      cancel: () => of(CANCELLATION),
+      beginPayment: () => undefined,
+      takePrefetched: (code: string) => {
+        if (prefetched?.code === code) {
+          const d = prefetched;
+          prefetched = undefined;
+          return d;
+        }
+        return undefined;
+      },
+    };
+    const fixture = await render(service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('ABCD234567');
+    expect(getByCode).not.toHaveBeenCalled();
+  });
+
+  it('falls back to fetching when nothing is prefetched (deep-link / refresh, #168)', async () => {
+    const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
+    const service: Partial<BookingService> = {
+      getByCode,
+      cancel: () => of(CANCELLATION),
+      beginPayment: () => undefined,
+      takePrefetched: () => undefined,
+    };
+    const fixture = await render(service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(getByCode).toHaveBeenCalledWith('ABCD234567');
+    expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('ABCD234567');
+  });
+
   // T8 review finding [0]: the find modal (#148) makes booking→booking navigation reachable; the
   // view must reload on a route-code change, not reuse the instance and show the previous booking.
   it('reloads and re-renders when the route code changes (booking→booking, T8 finding [0])', async () => {
@@ -392,6 +444,7 @@ describe('BookingView', () => {
         of(code === 'AAAAAAAAAA' ? detailA : detailB) as Observable<BookingDetail>,
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
+      takePrefetched: () => undefined,
     };
     await TestBed.configureTestingModule({
       imports: [BookingView],

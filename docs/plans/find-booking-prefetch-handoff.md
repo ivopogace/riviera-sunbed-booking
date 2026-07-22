@@ -116,14 +116,18 @@ is purely how many times the client calls it per navigation.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement complete → push → CI gate → review gate
 
-**Next action:** consume the prefetch in `BookingView` + prime it in `FindBooking`, add the single-GET e2e.
+**Next action:** push the branch; run the review gate (RV-FE-*) on the diff; then CI + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `BookingService` prefetch hand-off (prime/take) | ✅ | pending |
-| 1 — `BookingView` consumes prefetch; `FindBooking` primes; e2e single-GET | ⏳ | |
+| 0 — `BookingService` prefetch hand-off (prime/take) | ✅ | committed |
+| 1 — `BookingView` consumes prefetch; `FindBooking` primes; e2e single-GET | ✅ | pending |
+
+**Verification:** `booking.service.spec` (17), `booking-view.spec` (29), `find-booking.spec` (16),
+full `booking/**` suite (204) — all green; `find-a-booking.e2e.ts` (3, incl. single-GET) green
+against the mocked config; `ng lint` clean.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
