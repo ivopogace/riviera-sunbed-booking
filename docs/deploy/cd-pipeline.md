@@ -67,6 +67,14 @@ must include `frontend/`, so:
   - `CORS_ALLOWED_ORIGINS` — **leave unset/empty.** The app is same-origin, so there is no
     cross-origin browser caller. (The env var name is `CORS_ALLOWED_ORIGINS`, **not**
     `APP_WEB_CORS_ALLOWED_ORIGINS`; overriding it is only for a cross-origin setup.)
+  - `RIVIERA_RATELIMIT_TRUSTED_PROXIES` (#129) — **leave unset.** The shipped default in
+    `application.properties` (loopback + RFC1918 + link-local + the IPv6 equivalents) already
+    covers Render's internal hop, so no Render env change was needed for #129. Set it (comma-
+    separated CIDRs) only if Render's peer address ever falls outside those ranges — the
+    symptom would be **every** client sharing one rate-limit bucket, i.e. widespread spurious
+    `429`s, because an untrusted peer makes the resolver ignore `X-Forwarded-For` and key on
+    the proxy's own address. An empty value means "trust no proxy" and causes exactly that,
+    so never set it to blank.
 - **Health Check Path:** `/actuator/health`.
 - Copy the service's **Deploy Hook** URL → GitHub secret `RENDER_DEPLOY_HOOK_URL`.
 - Note the service URL (`https://<name>.onrender.com`) → GitHub variable `BACKEND_API_URL`.

@@ -182,15 +182,32 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** gates — **all three passed** on `4804569` (PR #282). Stopped before merge by
-instruction; merge + close-out is the only remaining work.
+**Stage pointer:** merged — PR #282 squash-merged to `main` as **`bbcaa75`** (2026-07-22); issue #129
+auto-closed as completed. Close-out in progress.
 
-**Next action:** merge PR #282, then run the merge close-out (`riviera-sdlc/references/pr-gates.md`
-§3): verify #129 closed, propagate nothing deferred except AC-7 + plan risk R-1, do AC-7 on the
-deployed sandbox, run `riviera-docs-freshness` over the ADR-0006 / production-hardening edits, and
-`graphify update .` for the doc changes.
+**Next action:** finish close-out — land the two `riviera-docs-freshness` patches (this micro-PR),
+confirm AC-7 against the redeployed sandbox, and run `graphify update .` for the doc edits.
 
-**Gate results (all on `4804569`, the same SHA):**
+**Merge close-out (`pr-gates.md` §3):**
+
+1. ✅ Issue #129 closed as `completed` by the PR's `Closes #129`.
+2. ➖ No parent epic — #129 has no parent and no open issue references it in a checklist (searched).
+3. ➖ Nothing deferred needing a new home beyond AC-7 + risk R-1, both tracked in this doc.
+4. ⏳ Plan-doc final state (this edit); PR #282's Gates checkboxes ticked before merge.
+5. ⏳ **`riviera-docs-freshness` over `f9d14b5..bbcaa75` — 2 findings, both patched:**
+   - `.claude/skills/riviera-local-debug/SKILL.md` §full-suite-only failure class — its #127 fix
+     advice ("each test login presents a unique `X-Forwarded-For`") became **incomplete in exactly
+     the way that caused finding I-1**: since #129 a "unique" `10.x` value is read as a *proxy hop*
+     and silently recreates the lockout. Patched to require an untrusted address and name the
+     `198.18.x.y` helper.
+   - `docs/deploy/cd-pipeline.md` §Environment variables — the Render env-var list predated
+     `RIVIERA_RATELIMIT_TRUSTED_PROXIES`. Patched: **leave unset** (the shipped default covers
+     Render's internal hop), with the symptom to watch for if it ever needs setting.
+   - ADR-0006 + production-hardening were already updated by the slice itself; no other substrate
+     doc states a fact this diff contradicts (`CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md` clean).
+6. ⏳ `graphify update .` after the doc patches land.
+
+**Gate results (all on `4804569`; `915fd4a` re-confirmed identical before merge):**
 
 | Gate | Result |
 |---|---|
