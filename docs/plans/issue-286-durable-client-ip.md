@@ -234,16 +234,15 @@ verification for this slice is the deployed-app probe (AC-8), not a browser flow
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Write the failing `RateLimitPropertiesBindingTest` + the
-`oneClientBehindRotatingEdgeNodesSharesOneLoginBucket` filter pin, then add the two
-`application.properties` placeholders.
+**Next action:** Write `docs/runbooks/rate-limit-client-ip.md`, then correct
+`docs/deploy/cd-pipeline.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Resolver: header-preferred resolution + rot signal | ✅ | `<phase-0>` — 23/23 `ClientIpResolverTest` green (15 pre-existing #129 cases unchanged + 8 new) |
-| 1 — Config surface: properties, wiring, binding + filter pins | ⏳ | resolver wiring (`RateLimitProperties.clientIpHeader`, `RateLimitFilter:120`) landed in phase 0 — it was needed to compile |
+| 0 — Resolver: header-preferred resolution + rot signal | ✅ | `201406c` — 23/23 `ClientIpResolverTest` green (15 pre-existing #129 cases unchanged + 8 new) |
+| 1 — Config surface: properties, wiring, binding + filter pins | ✅ | `<phase-1>` — 4/4 `RateLimitPropertiesBindingTest`, 15/15 `RateLimitFilterTest`, 23/23 `ClientIpResolverTest`. Resolver wiring (`RateLimitProperties.clientIpHeader`, `RateLimitFilter:120`) landed in phase 0 because it was needed to compile |
 | 2 — Docs, runbook, scoped regression, structural net | | |
 | 3 — PR + gates (CI / review / Sonar) | | |
 | 4 — Post-merge: CD, env retirement, AC-8 probe | | |
@@ -737,6 +736,7 @@ with the comment block rewritten to describe the **real** topology (client → C
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-22 | phase 0 | other consumers of forwarding headers / the socket peer in main | `grep -rn "X-Forwarded-For\|getRemoteAddr\|CF-Connecting" platform/src/main/java --include=*.java` | `ClientIpResolver` only (all other hits are javadoc in it + `RateLimitProperties`) | skip — the resolver is still the single client-IP consumer, same conclusion as #129's audit; nothing to generalize |
+| 2026-07-22 | phase 1 | env-driven settings with no visible `${VAR:default}` placeholder (the scope-item-4 pattern) | `grep -n "^[a-z].*=" platform/src/main/resources/application.properties \| grep -v '\${'` | 29 lines | **subset.** Converted only the two this issue names. The rest are deliberate local constants (timeouts, bucket capacities, TTLs, multipart caps) whose deployed value is the shipped one; blanket-converting them would swell a security diff with 27 no-op edits. **One genuine gap surfaced and is deferred, not fixed here:** `riviera.recovery.link-base-url=http://localhost:4200` (S8 #113) is environment-specific, has no placeholder, and is documented in no deploy doc — so a production password-reset link would point at localhost. It is **inert today** because prod runs the mocked mailer (the real `SmtpMailer` is deferred to #255), which is also why it belongs with #255 rather than in a client-IP fix. Raised to the maintainer at the phase-1 report. |
 
 ---
 
