@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
@@ -77,7 +77,7 @@ import { RetryButton } from '../shared/retry-button';
     </section>
   `,
 })
-export class OperatorHome {
+export class OperatorHome implements OnInit {
   private readonly ownedVenues = inject(OwnedVenues);
   private readonly router = inject(Router);
   private readonly returnUrl =
@@ -86,7 +86,8 @@ export class OperatorHome {
   protected readonly venues = signal<readonly OwnedVenue[]>([]);
   protected readonly failed = signal(false);
 
-  constructor() {
+  // Not the constructor: an async call there is a testability/ordering smell (typescript:S7059).
+  ngOnInit(): void {
     void this.load();
   }
 

@@ -23,7 +23,7 @@ export interface LandingVenue {
  */
 export function safeReturnUrl(returnUrl: string | undefined): string | undefined {
   const candidate = returnUrl?.trim();
-  if (!candidate || !candidate.startsWith('/')) {
+  if (!candidate?.startsWith('/')) {
     return undefined; // missing, blank, relative ("operator/12"), or a scheme ("javascript:", "https:")
   }
   if (candidate.startsWith('//') || candidate.startsWith('/\\')) {
