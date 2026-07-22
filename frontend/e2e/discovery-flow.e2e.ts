@@ -199,6 +199,41 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
   await expectNoSeriousAxeViolations(page, 'discovery list after retry');
 });
 
+test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, accessibly (#154)', async ({ page }) => {
+  // A brand-new venue: ratingTenths/reviewsCount both 0. It must read as "New", never "rated 0.0".
+  const unrated = {
+    id: 2,
+    name: 'Miramare',
+    beach: 'Borsh',
+    region: 'Vlore',
+    ratingTenths: 0,
+    reviewsCount: 0,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 2000, currency: 'EUR' },
+    availability: { free: 10, total: 10 },
+  };
+  await page.route(/\/api\/venues\/2(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...unrated, description: 'Newly listed on the Borsh shoreline.', sets: VENUE_MAP.sets } }),
+  );
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [unrated] }));
+
+  await page.goto('/');
+  const card = page.getByTestId('venue-card').first();
+  await expect(card.getByTestId('new-chip')).toHaveText('New');
+  await expect(card).not.toContainText('0.0');
+  await expect(card).not.toContainText('0 reviews');
+  await expectNoSeriousAxeViolations(page, 'discovery list (unrated venue)');
+
+  // The map header carries the same "New" treatment with a descriptive accessible name.
+  await card.click();
+  await expect(page).toHaveURL(/\/venues\/2/);
+  const mapHeader = page.locator('.map-head');
+  await expect(mapHeader.getByTestId('new-chip')).toHaveText('New');
+  await expect(mapHeader.getByTestId('new-chip')).toHaveAttribute('aria-label', 'No reviews yet');
+  await expect(mapHeader).not.toContainText('0.0');
+  await expectNoSeriousAxeViolations(page, 'venue map (unrated venue)');
+});
+
 test('discovery shows an accessible empty state when no venues match', async ({ page }) => {
   // Override the list route to return nothing for this run.
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [] }));

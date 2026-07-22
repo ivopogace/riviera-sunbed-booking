@@ -158,6 +158,27 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain('18 of 24');
   });
 
+  it('shows the rating and review count for a rated venue', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const header = el().querySelector('header')!;
+    expect(header.textContent).toContain('4.8');
+    expect(header.textContent).toContain('326 reviews');
+    expect(header.querySelector('[data-testid="new-chip"]')).toBeNull();
+  });
+
+  it('renders a "New" pill (aria "No reviews yet", no ★ 0.0) for an unrated venue (#154)', async () => {
+    venueRequest().flush({ ...miramar(), name: 'Miramare', ratingTenths: 0, reviewsCount: 0 });
+    await fixture.whenStable();
+
+    const header = el().querySelector('header')!;
+    const chip = header.querySelector('[data-testid="new-chip"]')!;
+    expect(chip.textContent).toContain('New');
+    expect(chip.getAttribute('aria-label')).toBe('No reviews yet');
+    expect(header.textContent).not.toContain('0.0');
+    expect(header.textContent).not.toContain('0 reviews');
+  });
+
   it('renders rows with derived A/B/… codes in insertion order and per-row price from minor units', async () => {
     flushVenue();
     await fixture.whenStable();
