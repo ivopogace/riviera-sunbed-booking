@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -44,7 +45,10 @@ describe('AuthPage a11y (#277)', () => {
         },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+          useValue: {
+            snapshot: { queryParamMap: convertToParamMap(queryParams) },
+            queryParamMap: of(convertToParamMap(queryParams)),
+          },
         },
       ],
     });
