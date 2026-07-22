@@ -178,12 +178,20 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** gates — PR #282 open against `main` (`origin/main` was already current, nothing
-to integrate). Review gate **run** (note below; one Blocker found and fixed). CI + Sonar pending.
+**Stage pointer:** gates — PR #282 open against `main`. **CI green** at `f0b374c` (backend, frontend,
+both CodeQL analyses). **Review gate run** (note below; one Blocker + one Minor, both fixed). **Sonar
+gate was RED** at `f0b374c` (4 × S1313); fix pushed, re-run pending.
 
-**Next action:** confirm the CI run for `46ec591` is green, then pull the SonarCloud issue +
-duplication list from the API (not the gate conclusion) and clear every entry. Do **not** merge until
-all three gates pass. AC-7 (manual sandbox curl) stays open until merge close-out.
+**Next action:** confirm CI stays green on the Sonar-fix commit, then re-pull the SonarCloud issue list
+**and** measures from the API (cache-bust the URL — WebFetch caches 15 min) and confirm the list is
+literally empty before merge. Do **not** merge until all three gates pass on the same SHA. AC-7
+(manual sandbox curl) stays open until merge close-out.
+
+**Gate results so far (at `f0b374c`):** CI ✅ — Backend (build + test) success, Frontend (lint + test +
+build) success, CodeQL java-kotlin + javascript-typescript success. This is **AC-4's CI half**: the
+full suite ran the whole IT corpus through one cached context with the new `198.18.x.y` client IPs and
+no rate-limit lockout. Sonar measures: 0 new bugs, 0 new vulnerabilities, 0 duplicated blocks,
+**95.24%** new-code coverage (bar: ≥80%), 4 new code smells → gate FAIL, now fixed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -244,6 +252,7 @@ is the right direction for a security control, and it can never silently degrade
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | I-1 | implement (phase 1/2) | R-2's planned mitigation was factually wrong: `SessionLoginSupport.uniqueClientIp()` minted RFC1918 `10.99.x.y`, which the new trust list treats as a proxy hop — the whole IT corpus would have collapsed onto one bucket (a full-suite-only #127 repeat that no scoped run would show) | fixed — helper now mints `198.18.x.y`; pinned by a resolver test |
+| S-1 | sonar gate (PR #282) | **Gate RED** (this project's bar is 0 new issues): 4 × `java:S1313` "hardcoded IP address" on the `@DefaultValue` CIDR array in `RateLimitProperties`. Sonar is right for the wrong reason — the array was a *duplicate* of the same list in `application.properties`, two sources that could silently drift | fixed — the properties file is now the single source; the record defaults to the **empty** list ("trust no proxy"), because a security control must never grant trust nobody configured. The binding is pinned by `RateLimitFilterTest.usesForwardedForClientIp`, whose 429 requires the `10.6.0.x` peers to be trusted |
 | R-1 | review gate (RV-BE-13 / library-behaviour check) | **Blocker.** Spring Security 7.1's `IpInetAddressMatcher` compares raw address bytes with **no length check** (the guard the pre-7.1 `IpAddressMatcher` had). An attacker-supplied `X-Forwarded-For: 0.0.0.0` hop matches `::1/128`'s four leading zero bytes and then indexes past the end of the 4-byte IPv4 array — `ArrayIndexOutOfBoundsException` inside the filter, i.e. a **remote 500 on every rate-limited endpoint**. The same missing check also mis-trusts across families (`252.x` vs `fc00::/7`, `a9fe::` vs `169.254.0.0/16`) | fixed — the new `TrustedProxy` record guards on address-family length before delegating; pinned by three resolver tests (all three were red first) |
 
 ---
