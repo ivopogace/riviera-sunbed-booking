@@ -77,11 +77,11 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (owned-venues read):** Given operator `O` owns venues `{12, 15}` and operator `P`
+- [x] **AC-1 (owned-venues read):** Given operator `O` owns venues `{12, 15}` and operator `P`
       owns `{20}`, when the owned-venues read is invoked for `O`, then it returns exactly the
       summaries for `12` and `15` — never `20` — ordered by name. *Pinned by:*
       `VenueAdminServiceTest.ownedByReturnsOnlyTheOperatorsOwnVenues`
-- [ ] **AC-2 (BOLA-safe by construction):** Given an authenticated operator session, when
+- [x] **AC-2 (BOLA-safe by construction):** Given an authenticated operator session, when
       `GET /api/venues/mine` is called, then the venue set is derived **solely** from the session
       principal (no id in the path or query), and an anonymous call is `401`, a customer session
       `403`. *Pinned by:* `MyVenuesControllerTest.deniesAnonymousAndCustomerSessions` +
@@ -221,9 +221,9 @@ object is repointed), so no flow silently loses coverage.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Guard bounces a signed-in operator to sign-in because the `/me` restore hasn't settled | high | high | guard awaits `SessionAuth.whenReady()` (promoted from `CustomerAuth` to the base) before deciding; AC-8 pins it | Ivo | open |
-| R-2 | `GET /api/venues/mine` is shadowed by `GET /api/venues/{id}` and 400s on `"mine"` | med | med | literal segments outrank path variables in Spring's pattern comparator; `MyVenuesControllerTest` asserts the literal route resolves | Ivo | open |
-| R-3 | The new `GET /api/venues/mine` falls through to the public `GET /api/venues/**` `permitAll` rule | med | **high** (leaks ownership) | its `hasRole(OPERATOR)` matcher is placed **above** the public rule, matching the payout-ledger / profile / takings precedent; AC-2 pins anonymous → 401 | Ivo | open |
-| R-4 | A new controller breaks `@WebMvcTest` slices (missing bean) or `@ApplicationModuleTest` | high | med | recurring in this repo — add the stub to `WebSliceStubs`; run the module tests in the same phase, not at CI | Ivo | open |
+| R-2 | `GET /api/venues/mine` is shadowed by `GET /api/venues/{id}` and 400s on `"mine"` | med | med | literal segments outrank path variables in Spring's pattern comparator; `MyVenuesControllerTest` asserts the literal route resolves | Ivo | **closed** (Phase 0) — `MyVenuesControllerTest.theLiteralMineSegmentOutranksTheVenueIdPattern` green: 200 + array, not a 400 |
+| R-3 | The new `GET /api/venues/mine` falls through to the public `GET /api/venues/**` `permitAll` rule | med | **high** (leaks ownership) | its `hasRole(OPERATOR)` matcher is placed **above** the public rule, matching the payout-ledger / profile / takings precedent; AC-2 pins anonymous → 401 | Ivo | **closed** (Phase 0) — `MY_VENUES_PATH` sits directly after `TAKINGS_PATH`, above the public GET; `deniesAnonymousAndCustomerSessions` green (401 + 403) |
+| R-4 | A new controller breaks `@WebMvcTest` slices (missing bean) or `@ApplicationModuleTest` | high | med | recurring in this repo — add the stub to `WebSliceStubs`; run the module tests in the same phase, not at CI | Ivo | **closed** (Phase 0) — `ListOwnedVenues` stub added to `WebSliceStubs`; the five shared web slices + `ModularityTests` re-run green |
 | R-5 | Retiring four surfaces silently drops a behavior (the O6 #176 failure mode) | med | high | the behavior-parity ledger above is enumerated from code; each `preserved` row names its new home | Ivo | open |
 | R-6 | Audience toggle leaks credentials across principal types (a tourist password posted to the operator endpoint) | low | **high** | the toggle picks the *service*, never a shared endpoint; separate submit paths, no shared credential state; password field cleared on audience switch | Ivo | open |
 | R-7 | Focus/ARIA regression on the toggles (radiogroup semantics, roving tabindex) | med | med | `SegmentedControl` is a shared primitive with its own keyboard spec; axe in both modes × both audiences | Ivo | open |
@@ -233,8 +233,10 @@ object is repointed), so no flow silently loses coverage.
 
 ## Open questions / Assumptions
 
-- **Assumption:** `GET /api/venues/mine` returns `{id, name, beach}` — enough for a picker row —
-  and no availability/pricing data. *Owner:* Ivo · *Resolves by:* Phase 0.
+- ~~**Assumption:** `GET /api/venues/mine` returns `{id, name, beach}` — enough for a picker row —
+  and no availability/pricing data.~~ **Confirmed at Phase 0**: `OwnedVenueView(long id, String name,
+  String beach)` is both the port's return type and the wire shape; no commission, payout currency,
+  availability or pricing is selected.
 - **Assumption:** the operator audience shows no SSO buttons at all (rather than disabled ones)
   until #276; the layout slot is reserved so #276 is additive. *Owner:* Ivo · *Resolves by:* Phase 3.
 - **Open question:** does the tourist landing honor `returnUrl` too (e.g. a deep-linked
@@ -343,16 +345,14 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `plan — complete; ready to implement (Phase 0 not started)`
+**Stage pointer:** `implement — Phase 0 done; Phase 1 next`
 
-**Next action:** Start **Phase 0** (owned-venues read, backend). Load `riviera-local-debug` before
-the session's first `./gradlew`. The plan's two GitHub writes are **done**: #277's acceptance
-criteria were patched to the corrected reality, and the creation-into-console follow-up is filed as
-**#278** (both 2026-07-22).
+**Next action:** Start **Phase 1** (shared Tailwind primitives). Run the Skill-routing gate for the
+frontend first: `riviera-frontend` + `riviera-tailwind` + `angular-developer` + the angular-cli MCP.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Owned-venues read (backend) | | |
+| 0 — Owned-venues read (backend) | ✅ | `<phase-0>` |
 | 1 — Shared Tailwind primitives | | |
 | 2 — Session/landing plumbing (`core/`) | | |
 | 3 — The unified auth page + route redirects | | |
@@ -417,7 +417,17 @@ new DOM
 `venue/application/Venues.java`, `venue/adapter/out/JdbcVenues.java`, `SecurityConfig.java`,
 `WebSliceStubs.java` · Test `VenueAdminServiceTest`, `MyVenuesControllerTest`, `MyVenuesIT`
 
-- [ ] **Step 1: Write the failing test**
+> **As-built note (Phase 0):** the two service tests were written with the class's existing
+> hand-written-fake idiom (`FakeVenues` / a new `MultiOwnership`) rather than the Mockito sketch
+> below — `VenueAdminServiceTest` has no Mockito in it and the assertions are identical in force
+> (the `summaryQueries` log proves a non-owned venue is never queried). `MyVenuesControllerTest`
+> lives in the **root** test package, not `venue.adapter.in`, because the web slice must import the
+> package-private `SecurityConfig`/`WebCorsConfig`/`WebSliceStubs` — the convention every other
+> web-slice test here follows. `JdbcVenues.findSummaries` uses an explicit row mapper (house style)
+> rather than `query(OwnedVenueView.class)`, and orders by `name, id` so a duplicate name is still
+> stable.
+
+- [x] **Step 1: Write the failing test**
 
 ```java
 @Test
@@ -444,12 +454,12 @@ void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminServiceTest*"` →
-      FAIL: `cannot find symbol: method ownedBy(OperatorId)`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminServiceTest*"` →
+      FAIL: `cannot find symbol: method ownedBy(OperatorId)` (observed verbatim)
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 public interface ListOwnedVenues {
@@ -493,19 +503,22 @@ public List<OwnedVenueView> findSummaries(Collection<VenueId> ids) {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS
-- [ ] **Step 5: Add the controller + its slice test** (`MyVenuesControllerTest`): the literal route
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS
+- [x] **Step 5: Add the controller + its slice test** (`MyVenuesControllerTest`): the literal route
       resolves (R-2), anonymous → 401, customer session → 403, operator session → own venues only.
       Register the stub in `WebSliceStubs` (R-4).
-- [ ] **Step 6: Add the `SecurityConfig` matcher above the public `GET /api/venues/**`** (R-3) and
-      `MyVenuesIT` against the real schema.
-- [ ] **Step 7: Run the structural net** — `./gradlew test --tests "*ModularityTests*" --tests
-      "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests
-      "*VenueApiRoleSplitTests*"` → PASS
-- [ ] **Step 8: Generalization-audit pass** — search for other reads that derive a venue set from
-      the session rather than a path id; record the decision below.
-- [ ] **Step 9: Commit** — `git commit -m "Add operator-session-scoped owned-venues read (#277)"`
-- [ ] **Step 10: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Add the `SecurityConfig` matcher above the public `GET /api/venues/**`** (R-3) and
+      `MyVenuesIT` against the real schema. → PASS (Docker present locally, 3 tests green)
+- [x] **Step 7: Run the structural net** — `ModularityTests`, `JdbcOnlyArchitectureTests`,
+      `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
+      `VenueApiRoleSplitTests`, `ErrorContractArchitectureTests`,
+      `ResponsibilitiesArchitectureTests` → PASS. Plus the R-4 guard batch: `RateLimitFilterTest`,
+      `RateLimitDefaultsTest`, `RateLimitDisabledTest`, `WebCorsConfigTest`,
+      `WebCorsConfigEmptyOriginsTest`, `SpaShellTest`, `VenueAdminControllerIT` → PASS
+- [x] **Step 8: Generalization-audit pass** — search for other reads that derive a venue set from
+      the session rather than a path id; recorded below (no other site to change).
+- [x] **Step 9: Commit** — `git commit -m "Add operator-session-scoped owned-venues read (#277)"`
+- [x] **Step 10: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -668,6 +681,7 @@ objects · Modify `CLAUDE.md`, `RESPONSIBILITIES.md` (if the read changes a stat
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-22 | Phase 0 — session-scoped venue-set read | Reads that derive a venue set from the **session principal** rather than a path id (the BOLA-safe-by-construction shape) | `grep -rn "ownedVenues" src/main/java` + `grep -rn "@GetMapping…" --include=*Controller.java` filtered to mappings with no path variable | `VenueOwnership.ownedVenues` had **no** production caller before this slice (published since #73, unused). One pre-existing analogue: `MyBookingsController` `GET /api/me/bookings` (S3 #114). The other id-less operator mappings are the role-gated `/api/admin/**` exemptions (`AdminOperatorController`, `AdminPayoutBatchController`) and `POST /api/venues` (creator-owns-on-create, no prior owner). | **No change needed** — `MyBookingsController` already implements the same pattern correctly (principal-scoped, no id in the request, role-gated above the public rules). `MyVenuesController` is the operator mirror of it; its javadoc names the shape so the next such read copies it. |
 
 ---
 

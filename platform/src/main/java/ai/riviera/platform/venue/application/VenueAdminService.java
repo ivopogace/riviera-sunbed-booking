@@ -2,6 +2,8 @@ package ai.riviera.platform.venue.application;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +36,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * left unowned.
  */
 @Service
-class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile {
+class VenueAdminService
+		implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile, ListOwnedVenues {
 
 	private final Venues venues;
 	private final VenueOwnership ownership;
@@ -85,6 +88,21 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 		// commission rate + payout currency); a mismatch throws NotVenueOwnerException → 403 (#13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		return venues.findProfile(venueId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<OwnedVenueView> ownedBy(OperatorId operator) {
+		// No assertOwns here — and that is the point (invariant #13, S9 #277): the id set IS the
+		// ownership mapping, so the result is scoped to the authenticated principal by construction.
+		// There is no venue id in the request to tamper with, which is what makes GET /api/venues/mine
+		// BOLA-safe without an object-level check.
+		Set<VenueId> ids = ownership.ownedVenues(operator).stream()
+				.map(ref -> new VenueId(ref.value()))
+				.collect(Collectors.toSet());
+		// Short-circuit an operator that owns nothing (a freshly-approved one, #115): an empty list,
+		// never null — and no `IN ()` predicate reaches the database.
+		return ids.isEmpty() ? List.of() : venues.findSummaries(ids);
 	}
 
 	@Override

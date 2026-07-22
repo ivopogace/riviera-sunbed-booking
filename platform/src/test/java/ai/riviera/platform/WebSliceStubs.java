@@ -82,6 +82,7 @@ import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
+import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
@@ -563,6 +564,17 @@ class WebSliceStubs {
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
 		return (_, _) -> Optional.empty();
+	}
+
+	/**
+	 * S9 (#277): the owned-venues read behind {@code GET /api/venues/mine} ({@code MyVenuesController}).
+	 * Inert — the shared web slices (CORS + rate-limit + SPA shell) never authenticate an operator, so an
+	 * empty list is enough for the context to load. {@code MyVenuesControllerTest} replaces this bean to
+	 * drive the real payload.
+	 */
+	@Bean
+	ListOwnedVenues listOwnedVenues() {
+		return _ -> List.of();
 	}
 
 	/** #142: the photo port {@code VenuePhotoController} registers with — inert not-found defaults. */

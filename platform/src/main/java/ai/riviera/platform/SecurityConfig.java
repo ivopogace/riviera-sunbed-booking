@@ -87,6 +87,14 @@ class SecurityConfig {
 	private static final String VENUE_PROFILE_PATH = "/api/venues/*/profile";
 	/** The operator-only per-venue daily online-takings read (#171, O2); gated BEFORE the public venue GET. */
 	private static final String TAKINGS_PATH = "/api/venues/*/takings";
+	/**
+	 * The signed-in operator's own-venues read (S9 #277) — {@code MyVenuesController}. It returns the
+	 * operator↔venue ownership map for the session principal, so it MUST be gated BEFORE the public
+	 * "GET /api/venues/**" below (first match wins): without that ordering it would fall through to
+	 * {@code permitAll} and hand the ownership map to anyone. A literal segment, so it never collides
+	 * with the venue-scoped {@code /api/venues/*} rules.
+	 */
+	private static final String MY_VENUES_PATH = "/api/venues/mine";
 	/** The operator-only pending-requests queue (#98); must be gated BEFORE the public venue GET. */
 	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
 	/** Accept/decline a pending request (#98); operator-session POSTs, CSRF token required (issue #109). */
@@ -217,6 +225,12 @@ class SecurityConfig {
 						// MUST precede the public "GET /api/venues/**" below (first match wins); the
 						// per-venue ownership check itself lives in the application service (invariant #13).
 						.requestMatchers(HttpMethod.GET, TAKINGS_PATH).hasRole(OPERATOR_ROLE)
+						// The signed-in operator's own venues (S9 #277) — the post-sign-in landing read.
+						// MUST precede the public "GET /api/venues/**" below (first match wins), or the
+						// ownership map leaks to anonymous callers (R-3). Session-principal-scoped with no
+						// id in the path, so it is BOLA-safe by construction (invariant #13) — the role
+						// gate here is the only authorization layer it needs.
+						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
 						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
 						// venue demand are operator data. The GET MUST precede the public venue GET below
 						// (first match wins). The ownership check itself lives in the application services
