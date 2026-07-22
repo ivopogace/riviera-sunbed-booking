@@ -43,9 +43,11 @@ root-package class.
 creation the resolver now keys SEVEN bucket dimensions — booking per-IP, operator login,
 operator register S6, customer login/register S2, SSO S4, recovery S8 — one resolver fix
 covers all); `riviera-plan-doc` (this template); `riviera-java-conventions` (constructor
-injection into final fields, package-private class, no new deps — reuse Spring Security's
-`IpAddressMatcher`; Java 25 `InetAddress.ofLiteral` for DNS-free literal parsing; one-line
-comments); `riviera-modulith` (placement: root-package edge concern, NOT a module — login
+injection into final fields, package-private class, no new deps — reuse Spring Security's CIDR
+matcher, which the review gate then narrowed from `web`'s `IpAddressMatcher` to `core`'s
+`InetAddressMatchers` behind an address-family guard, finding R-1; Java 25
+`InetAddress.ofLiteral` for DNS-free literal parsing; one-line comments, RV-STYLE-1);
+`riviera-modulith` (placement: root-package edge concern, NOT a module — login
 machinery stays at the platform edge, RV-BE-11; no module surface changes). `postgres`
 N/A — no schema change. Frontend/`playwright-cli` N/A — backend-only, no user-visible flow
 change.
@@ -73,9 +75,11 @@ change.
   `RateLimitFilterTest.spoofedForwardedPrefixCannotEscapeLoginBucket`
 - [x] **AC-4:** Given the existing IT convention (MockMvc loopback peer + a unique
   single-value `X-Forwarded-For` per test), when the suite runs, then each unique value
-  still gets its own bucket — the ~15 auth/booking IT files pass **unchanged**. *Pinned
-  by:* existing `RateLimitFilterTest` XFF cases + the untouched IT corpus
-  (`AuthSessionIT`, `CustomerLoginIT`, `OperatorRegistrationIT`, …) staying green.
+  still gets its own bucket — the ~19 auth/booking IT **files** pass **unchanged** (only the
+  shared `SessionLoginSupport` helper moved — finding I-1). *Pinned by:* existing
+  `RateLimitFilterTest` XFF cases, `ClientIpResolverTest.integrationTestClientIpsStayDistinctBuckets`,
+  and the IT corpus (`AuthSessionIT`, `CustomerLoginIT`, `OperatorRegistrationIT`, …) staying green
+  on the CI full suite.
 - [x] **AC-5:** Given an absent/blank header, or a header whose hops are ALL trusted
   addresses, when resolved behind a trusted peer, then the resolver falls back to the
   socket address; control-character sanitisation is preserved on every returned value.
@@ -178,20 +182,26 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** gates — PR #282 open against `main`. **CI green** at `f0b374c` (backend, frontend,
-both CodeQL analyses). **Review gate run** (note below; one Blocker + one Minor, both fixed). **Sonar
-gate was RED** at `f0b374c` (4 × S1313); fix pushed, re-run pending.
+**Stage pointer:** gates — **all three passed** on `4804569` (PR #282). Stopped before merge by
+instruction; merge + close-out is the only remaining work.
 
-**Next action:** confirm CI stays green on the Sonar-fix commit, then re-pull the SonarCloud issue list
-**and** measures from the API (cache-bust the URL — WebFetch caches 15 min) and confirm the list is
-literally empty before merge. Do **not** merge until all three gates pass on the same SHA. AC-7
-(manual sandbox curl) stays open until merge close-out.
+**Next action:** merge PR #282, then run the merge close-out (`riviera-sdlc/references/pr-gates.md`
+§3): verify #129 closed, propagate nothing deferred except AC-7 + plan risk R-1, do AC-7 on the
+deployed sandbox, run `riviera-docs-freshness` over the ADR-0006 / production-hardening edits, and
+`graphify update .` for the doc changes.
 
-**Gate results so far (at `f0b374c`):** CI ✅ — Backend (build + test) success, Frontend (lint + test +
-build) success, CodeQL java-kotlin + javascript-typescript success. This is **AC-4's CI half**: the
-full suite ran the whole IT corpus through one cached context with the new `198.18.x.y` client IPs and
-no rate-limit lockout. Sonar measures: 0 new bugs, 0 new vulnerabilities, 0 duplicated blocks,
-**95.24%** new-code coverage (bar: ≥80%), 4 new code smells → gate FAIL, now fixed.
+**Gate results (all on `4804569`, the same SHA):**
+
+| Gate | Result |
+|---|---|
+| CI | ✅ Backend (build + test), Frontend (lint + test + build), CodeQL java-kotlin, CodeQL javascript-typescript — all success |
+| Review (`riviera-review-overlay`, high effort) | ✅ run; 2 findings (R-1 Blocker, RV-STYLE-1 Minor), both fixed through the loop and re-verified |
+| Sonar | ✅ gate success **and** reported issue list literally **0**; 0 new bugs / vulnerabilities / security hotspots / duplicated blocks; new-code coverage **95.24%** (bar ≥80%) |
+
+The backend CI job is **AC-4's CI half**: the full suite ran the whole IT corpus through one cached
+Spring context with the new `198.18.x.y` client IPs and no rate-limit lockout — the #127 failure class
+that no scoped run can surface. Sonar was RED at `f0b374c` (4 × `java:S1313`, this project's bar being
+0 new issues) before the S-1 fix.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -532,8 +542,8 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
   `SessionLoginSupport` helper moved (finding I-1). Docker was available locally, so the assumption
   was verified for real rather than deferred: `AuthSessionIT` (5 tests) + `RecoveryRateLimitIT`
   (1 test) PASS against real Postgres, 0 skipped, at commit `ac3205c`.
-- [ ] **AC-4 (CI half):** full suite green on the PR — the only run that exercises suite-cumulative
-  login traffic through one cached context. Verified at run `<link>`.
+- [x] **AC-4 (CI half):** full suite green on the PR — the only run that exercises suite-cumulative
+  login traffic through one cached context. Verified at run https://github.com/ivopogace/riviera-sunbed-booking/pull/282 (Backend build + test, commit `4804569`).
 - [ ] **AC-7:** manual sandbox check post-deploy (rotating-XFF curl → 429). Verified `<date>`.
 
 **Structural net** (invariant #11, run at phase 3): `ModularityTests` (1), `PackageShapeArchitectureTests`
@@ -542,7 +552,7 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
+- [x] Every AC has an implementing task and a verifying test.
 - [ ] No placeholders / TODO / TBD anywhere in the doc.
 - [x] Type & method-signature consistency across phases.
 - [x] **No JPA** introduced; no new dependencies at all (invariant #1; `IpAddressMatcher` is already on the classpath).
@@ -552,4 +562,4 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 - [x] Booking codes never logged; the resolved IP stays sanitised before any debug log (invariant #7 discipline preserved).
 - [x] Error contract untouched (§6b — the hand-mirrored `RATE_LIMITED` body).
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows (R-1 closes with AC-7; R-2 with AC-4); Open Questions empty or deferred with an issue #.
+- [x] Risk register has no stale `open` rows (R-1 closes with AC-7; R-2 with AC-4); Open Questions empty or deferred with an issue #.
