@@ -1,6 +1,13 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  ParamMap,
+  provideRouter,
+  Router,
+} from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { CustomerAuth } from '../core/customer-auth';
@@ -41,11 +48,20 @@ describe('AuthPage', () => {
   let operator: FakeOperatorAuth;
   let owned: FakeOwnedVenues;
   let navigate: ReturnType<typeof vi.spyOn>;
+  // Live query-param source: the component seeds mode/audience/returnUrl from this and reacts to it (#300).
+  let queryParams$: BehaviorSubject<ParamMap>;
+
+  /** Emit a live query-param change post-mount (a query-param-only soft nav under the default reuse strategy). */
+  async function navigateQueryParams(params: Record<string, string>): Promise<void> {
+    queryParams$.next(convertToParamMap(params));
+    await fixture.whenStable();
+  }
 
   async function render(queryParams: Record<string, string> = {}): Promise<void> {
     customer = new FakeCustomerAuth();
     operator = new FakeOperatorAuth();
     owned = new FakeOwnedVenues();
+    queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(queryParams));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -54,13 +70,20 @@ describe('AuthPage', () => {
         { provide: OwnedVenues, useValue: owned },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+          useValue: {
+            snapshot: { queryParamMap: queryParams$.value },
+            queryParamMap: queryParams$,
+          },
         },
       ],
     });
     navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fixture = TestBed.createComponent(AuthPage);
     await fixture.whenStable();
+  }
+
+  function title(): string {
+    return el('auth-form') ? (fixture.nativeElement.querySelector('#auth-title')?.textContent ?? '') : '';
   }
 
   function el<T extends HTMLElement>(testId: string): T {
@@ -333,6 +356,58 @@ describe('AuthPage', () => {
 
       await chooseAudience('audience-operator');
       expect(el('sso-google')).toBeNull();
+    });
+  });
+
+  describe('reacts to live query-param changes (#300)', () => {
+    it('reacts to a live mode query-param change after mount', async () => {
+      // The header Register link is a query-param-only soft nav; the reused component must still flip.
+      await render();
+      expect(title()).toContain('Welcome back');
+
+      await navigateQueryParams({ mode: 'register' });
+
+      expect(title()).toContain('Create your account');
+      expect(fixture.nativeElement.querySelector('#auth-hint')).not.toBeNull();
+    });
+
+    it('reverts to sign-in when the mode param is cleared', async () => {
+      await render({ mode: 'register' });
+      expect(title()).toContain('Create your account');
+
+      await navigateQueryParams({});
+
+      expect(title()).toContain('Welcome back');
+      expect(fixture.nativeElement.querySelector('#auth-hint')).toBeNull();
+    });
+
+    it('reacts to a live audience query-param change', async () => {
+      await render();
+      expect(el('auth-identifier-label').textContent).toContain('Email');
+
+      await navigateQueryParams({ audience: 'operator' });
+
+      expect(el('auth-identifier-label').textContent).toContain('Username');
+    });
+
+    it('honours a live returnUrl query-param change', async () => {
+      await render();
+      await navigateQueryParams({ returnUrl: '/my-bookings' });
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'password123');
+      await submit();
+
+      expect(navigate).toHaveBeenCalledWith('/my-bookings');
+    });
+
+    it('clears the password on a live audience query-param change', async () => {
+      // R-6: a live nav that flips the audience must not carry a tourist credential to the operator endpoint.
+      await render();
+      type('auth-password', 'tourist-secret');
+
+      await navigateQueryParams({ audience: 'operator' });
+
+      expect(el<HTMLInputElement>('auth-password').value).toBe('');
     });
   });
 

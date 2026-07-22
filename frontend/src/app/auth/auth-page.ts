@@ -2,12 +2,15 @@ import {
   afterNextRender,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   Injector,
+  linkedSignal,
   signal,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { form, FormField } from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -278,13 +281,17 @@ export class AuthPage {
 
   private readonly firstField = viewChild<ElementRef<HTMLInputElement>>('firstField');
 
-  private readonly returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? undefined;
+  // #300: read params live — a query-param-only soft nav reuses this component, so a snapshot goes stale.
+  private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
-  protected readonly audience = signal<Audience>(
-    this.route.snapshot.queryParamMap.get('audience') === 'operator' ? 'operator' : 'tourist',
+  private readonly returnUrl = computed(() => this.queryParams().get('returnUrl') ?? undefined);
+
+  // linkedSignal: recompute from the URL on a live nav, but let the in-card toggle set a local value.
+  protected readonly audience = linkedSignal<Audience>(() =>
+    this.queryParams().get('audience') === 'operator' ? 'operator' : 'tourist',
   );
-  protected readonly mode = signal<Mode>(
-    this.route.snapshot.queryParamMap.get('mode') === 'register' ? 'register' : 'signin',
+  protected readonly mode = linkedSignal<Mode>(() =>
+    this.queryParams().get('mode') === 'register' ? 'register' : 'signin',
   );
 
   protected readonly submitting = signal(false);
@@ -363,14 +370,29 @@ export class AuthPage {
   );
 
   constructor() {
+    // One place owns the reset-on-change behaviour, so it fires for the in-card toggle AND a live nav.
+    let previousMode = this.mode();
+    let previousAudience = this.audience();
+    effect(() => {
+      const mode = this.mode();
+      const audience = this.audience();
+      if (mode === previousMode && audience === previousAudience) {
+        return;
+      }
+      if (audience !== previousAudience) {
+        // R-6: never carry a credential across principal types, even on a live query-param nav.
+        this.model.update((m) => ({ ...m, password: '' }));
+      }
+      previousMode = mode;
+      previousAudience = audience;
+      this.error.set(undefined);
+    });
     afterNextRender(() => this.focusFirstField());
   }
 
   protected onAudienceChange(next: Audience): void {
     this.audience.set(next);
-    // R-6: never carry a credential across principal types, even by accident.
-    this.model.update((m) => ({ ...m, password: '' }));
-    this.error.set(undefined);
+    // Password + error reset (incl. R-6) is owned by the audience/mode effect above.
     // No refocus: arrows move focus WITHIN a radiogroup (caught by unified-auth.e2e.ts).
   }
 
@@ -434,7 +456,7 @@ export class AuthPage {
     if (this.audience() === 'tourist') {
       const result = await this.customerAuth.signIn(identifier, password);
       if (result === 'signed-in') {
-        await this.land(touristLandingRoute(this.returnUrl));
+        await this.land(touristLandingRoute(this.returnUrl()));
       } else {
         this.error.set(customerSignInMessage(result));
       }
@@ -451,7 +473,7 @@ export class AuthPage {
   /** Where the operator goes next; an unreadable venue list falls back to the picker, not onboarding. */
   private async operatorLandingRoute(): Promise<string> {
     // A safe returnUrl outranks the venue count, so don't pay for the read at all.
-    const target = safeReturnUrl(this.returnUrl);
+    const target = safeReturnUrl(this.returnUrl());
     if (target) {
       return target;
     }
@@ -467,7 +489,7 @@ export class AuthPage {
     if (this.audience() === 'tourist') {
       const result = await this.customerAuth.register(identifier, password);
       if (result === 'registered') {
-        await this.land(touristLandingRoute(this.returnUrl));
+        await this.land(touristLandingRoute(this.returnUrl()));
       } else {
         this.error.set(customerRegisterMessage(result));
       }
