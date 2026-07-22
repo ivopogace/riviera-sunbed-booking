@@ -52,9 +52,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('finds a booking by code and opens its detail view (+ axe, riviera)', async ({ page }) => {
-  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
-    route.fulfill({ json: DETAIL }),
-  );
+  // Count GETs to the code endpoint: the prefetch hand-off (#168) means a successful lookup opens
+  // the detail view with exactly ONE GET, not two (the second could 429 near the #56 ceiling).
+  let getCount = 0;
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) => {
+    getCount += 1;
+    return route.fulfill({ json: DETAIL });
+  });
 
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
@@ -74,6 +78,8 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
   await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
   await expect(page.getByTestId('booking-code')).toContainText(CODE);
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  // The detail rendered from the primed hand-off — only the modal's own lookup hit the endpoint.
+  expect(getCount).toBe(1);
 });
 
 test('audits the open find modal in the porcelain theme', async ({ page }) => {
