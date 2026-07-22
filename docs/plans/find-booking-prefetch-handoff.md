@@ -116,9 +116,9 @@ is purely how many times the client calls it per navigation.
 
 ## Execution status
 
-**Stage pointer:** review gate passed → CI gate + Sonar gate (awaiting PR-time analysis)
+**Stage pointer:** PR #303 open → CI + Sonar gates → merge (user authorized "merge if green")
 
-**Next action:** confirm CI green on the pushed branch; if a PR is opened, clear the Sonar new-issue list.
+**Next action:** confirm PR CI green + Sonar quality gate green with its new-issue list cleared, then merge + close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
