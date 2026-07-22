@@ -240,10 +240,12 @@ class RateLimitFilterTest {
 						{"username": "ghost", "password": "nope"}"""));
 	}
 
+	/**
+	 * One client behind the trusted proxy rotates a forged prefix per attempt while the proxy-appended
+	 * tail (its true address) stays constant — all three attempts must share ONE bucket.
+	 */
 	@Test
 	void spoofedForwardedPrefixCannotEscapeLoginBucket() throws Exception {
-		// One client behind the trusted proxy rotates a forged prefix per attempt while the
-		// proxy-appended tail (its true address) stays constant — all three must share ONE bucket.
 		loginFromProxiedClient("10.13.0.1", "6.6.6.1, 203.0.113.66").andExpect(status().isUnauthorized());
 		loginFromProxiedClient("10.13.0.1", "6.6.6.2, 203.0.113.66").andExpect(status().isUnauthorized());
 		loginFromProxiedClient("10.13.0.1", "6.6.6.3, 203.0.113.66")

@@ -116,12 +116,14 @@ class ClientIpResolverTest {
 		assertEquals("unknown", resolver.resolve(request));
 	}
 
+	/**
+	 * Spring Security 7.1's {@code IpInetAddressMatcher} compares raw address bytes without a length
+	 * check, so a 4-byte IPv4 hop walked against {@code ::1/128} (16 bytes, leading zeros) indexes past
+	 * the end of the array. Any {@code 0.x.y.z} hop is attacker-supplied, so an unguarded walk is a
+	 * remote 500 on every rate-limited endpoint.
+	 */
 	@Test
 	void survivesAnIpv4HopComparedAgainstTheIpv6TrustRanges() {
-		// Spring Security 7.1's IpInetAddressMatcher compares raw bytes WITHOUT a length check, so a
-		// 4-byte IPv4 hop walked against ::1/128 (16 bytes, leading zeros) indexes past the array end.
-		// Any 0.x.y.z hop is attacker-supplied, so an unguarded walk is a remote 500 on every limited
-		// endpoint.
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRemoteAddr("10.0.0.1");
 		request.addHeader("X-Forwarded-For", "0.0.0.0");
@@ -129,10 +131,12 @@ class ClientIpResolverTest {
 		assertEquals("0.0.0.0", resolver.resolve(request));
 	}
 
+	/**
+	 * {@code 252.x}/{@code 253.x} share {@code fc00::/7}'s masked leading byte, so without the family
+	 * guard the byte compare would call a public IPv4 hop a trusted proxy and skip past it.
+	 */
 	@Test
 	void doesNotTrustAnIpv4HopThatCollidesWithAnIpv6Range() {
-		// 252.x/253.x share fc00::/7's masked leading byte; without a family guard the byte compare
-		// would call a public IPv4 hop a trusted proxy and skip it.
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRemoteAddr("10.0.0.1");
 		request.addHeader("X-Forwarded-For", "252.1.2.3");
@@ -150,12 +154,14 @@ class ClientIpResolverTest {
 		assertEquals("a9fe::1", resolver.resolve(request)); // the raw hop is the key, not a normalised form
 	}
 
+	/**
+	 * AC-4 / #127: the IT corpus isolates its rate buckets with a unique single-hop
+	 * {@code X-Forwarded-For} from the loopback MockMvc peer. That only works while the generated
+	 * address is <em>untrusted</em> — a private-range one would be skipped as a proxy hop and every IT
+	 * in the suite would collapse onto the one {@code 127.0.0.1} bucket.
+	 */
 	@Test
 	void integrationTestClientIpsStayDistinctBuckets() {
-		// AC-4 / #127: the ~19 IT files isolate their rate buckets with a unique single-hop
-		// X-Forwarded-For from the loopback MockMvc peer. That only works while the generated address
-		// is UNTRUSTED — a private-range one would be skipped as a proxy hop and every IT in the suite
-		// would collapse onto the 127.0.0.1 bucket.
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRemoteAddr("127.0.0.1");
 		String testClient = SessionLoginSupport.uniqueClientIp();
