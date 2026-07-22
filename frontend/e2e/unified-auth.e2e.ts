@@ -73,6 +73,26 @@ test('a tourist registers from the same card and is signed in', async ({ page })
   await expect(page).toHaveURL(/\/$/);
 });
 
+test('the header Register / Sign-in links switch the card mode via soft nav (#300)', async ({
+  page,
+}) => {
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+
+  await page.goto('/account/sign-in');
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+
+  // A query-param-only soft nav (NOT a fresh page load): the reused component must still switch.
+  await page.getByTestId('nav-register').click();
+  await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
+  await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'unified auth card — register via header link');
+
+  // Symmetric: the header Sign-in link returns to the sign-in view.
+  await page.getByTestId('nav-signin').click();
+  await expect(page).toHaveURL(/\/account\/sign-in$/);
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+});
+
 test('an operator signs in and lands in its only venue’s console', async ({ page }) => {
   await mockAuthApi(page, {
     validPassword: 'good-pw',

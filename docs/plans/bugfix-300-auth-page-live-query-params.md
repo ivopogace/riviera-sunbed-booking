@@ -117,14 +117,15 @@ what the existing bindings already read (`mode()`, `audience()`).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — phase 0 green (unit + a11y specs), writing the soft-nav e2e next.
+**Stage pointer:** `implement complete → PR / review gate`. Phases 0–1 green locally (59 unit
+specs + 11 unified-auth e2e, incl. the new soft-nav case, all pass; lint clean).
 
-**Next action:** Add the soft-nav header-link spec to `unified-auth.e2e.ts` (AC-3); run/commit.
+**Next action:** Push the branch, then run the review gate (`riviera-review-overlay` + `/code-review`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Live query-param reactivity + unit specs | ✅ | (this commit) |
-| 1 — Soft-nav e2e coverage | ⏳ | |
+| 0 — Live query-param reactivity + unit specs | ✅ | `705bece` |
+| 1 — Soft-nav e2e coverage | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
