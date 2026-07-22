@@ -9,6 +9,7 @@ import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
+import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../venue/booking-date';
 import { MoneyView, VenueSummary } from '../../venue/venue.model';
@@ -170,7 +171,12 @@ export class Home {
   }
 
   protected rating(venue: VenueSummary): string {
-    return (venue.ratingTenths / 10).toFixed(1);
+    return ratingScore(venue.ratingTenths);
+  }
+
+  /** True once the venue has reviews; a no-review venue shows a "New" state, not "★ 0.0" (#154). */
+  protected isRated(venue: VenueSummary): boolean {
+    return isRated(venue);
   }
 
   protected bookingModeLabel(mode: VenueSummary['bookingMode']): string {
@@ -210,7 +216,8 @@ export class Home {
     const waterText = water ? `${water}. ` : '';
     const amenities = this.cardAmenities(venue).map((code) => this.amenityText(code));
     const amenitiesText = amenities.length ? `Amenities: ${amenities.join(', ')}. ` : '';
-    return `${venue.name}, ${venue.beach} · ${venue.region}, rated ${this.rating(venue)} out of 5${price}, `
+    const ratingText = this.isRated(venue) ? `rated ${this.rating(venue)} out of 5` : 'no reviews yet';
+    return `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, `
       + `${venue.availability.free} of ${venue.availability.total} sets free on ${this.dateLabel()}. `
       + `${waterText}${amenitiesText}`
       + `View beach map.`;

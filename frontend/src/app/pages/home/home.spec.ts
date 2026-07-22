@@ -114,6 +114,31 @@ describe('Home (venue discovery)', () => {
     expect(first.querySelector('[data-testid="card-availability"]')?.textContent).toContain('18 of 24');
   });
 
+  it('renders a "New" state (no ★ 0.0 / "0 reviews") for an unrated venue (#154)', async () => {
+    const [rated] = venues();
+    const unrated: VenueSummary = { ...rated, id: 2, name: 'Miramare', ratingTenths: 0, reviewsCount: 0 };
+    listRequest().flush([unrated]);
+    await fixture.whenStable();
+
+    const card = el().querySelector('[data-testid="venue-card"]')!;
+    expect(card.querySelector('[data-testid="new-chip"]')?.textContent).toContain('New');
+    expect(card.querySelector('.card-meta .star')).toBeNull();
+    expect(card.querySelector('.card-meta .rating')).toBeNull();
+    expect(card.querySelector('.card-meta')?.textContent).not.toContain('0.0');
+    expect(card.querySelector('.card-meta')?.textContent).not.toContain('0 reviews');
+  });
+
+  it('does not announce "rated 0.0 out of 5" for an unrated venue (#154)', async () => {
+    const [rated] = venues();
+    const unrated: VenueSummary = { ...rated, id: 2, name: 'Miramare', ratingTenths: 0, reviewsCount: 0 };
+    listRequest().flush([unrated]);
+    await fixture.whenStable();
+
+    const label = el().querySelector('[data-testid="venue-card"]')?.getAttribute('aria-label') ?? '';
+    expect(label).toContain('no reviews yet');
+    expect(label).not.toContain('rated 0.0 out of 5');
+  });
+
   it('links each card to the venue beach map, carrying the selected date (#294)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();

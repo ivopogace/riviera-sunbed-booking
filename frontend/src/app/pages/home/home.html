@@ -118,9 +118,13 @@
                 <span class="card-name">{{ venue.name }}</span>
 
                 <span class="card-meta">
-                  <span class="star">★</span>
-                  <span class="rating">{{ rating(venue) }}</span>
-                  <span class="dot">·</span> {{ venue.reviewsCount }} reviews
+                  @if (isRated(venue)) {
+                    <span class="star">★</span>
+                    <span class="rating">{{ rating(venue) }}</span>
+                    <span class="dot">·</span> {{ venue.reviewsCount }} reviews
+                  } @else {
+                    <span class="new-chip" data-testid="new-chip">New</span>
+                  }
                 </span>
 
                 <!-- T7 (#140): to-water chip first, then ≤3 amenity chips in catalogue order. The

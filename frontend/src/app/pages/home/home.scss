@@ -317,6 +317,16 @@
   color: rgba(12, 42, 51, 0.3); /* decorative separator */
 }
 
+/* "New" / unrated state (#154): a bordered pill in the proven card-ink token — no 0.0 star.
+   Border is decorative; the text carries the meaning (AA via --riv-card-ink, already proven). */
+.card-meta .new-chip {
+  font-weight: 700;
+  color: var(--riv-card-ink);
+  border: 1px solid var(--riv-card-border);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
 /* T7 (#140) slot. :empty removes it from the flex flow until chips exist — otherwise a
    zero-height item still costs an extra 8px column gap (review finding). Comment anchors from
    the @if/@for don't count for :empty, so the slot still collapses when the venue has no chips. */

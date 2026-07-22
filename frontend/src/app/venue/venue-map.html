@@ -26,9 +26,18 @@
         <p class="mb-[5px] text-(--riv-ink-soft) text-[15px]">{{ v.beach }} · {{ v.region }}</p>
 
         <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-(--riv-ink-soft)">
-          <span class="text-[#ffd16b]" aria-hidden="true">★</span>
-          <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ rating(v) }} out of 5">{{ rating(v) }}</span>
-          <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> {{ v.reviewsCount }} reviews
+          @if (isRated(v)) {
+            <span class="text-[#ffd16b]" aria-hidden="true">★</span>
+            <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ rating(v) }} out of 5">{{ rating(v) }}</span>
+            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> {{ v.reviewsCount }} reviews
+          } @else {
+            <span
+              class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[3px]"
+              aria-label="No reviews yet"
+              data-testid="new-chip"
+              >New</span
+            >
+          }
           @if (v.fromPrice; as from) {
             <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from <strong class="font-bold text-(--riv-ink)">{{ money(from) }}</strong> / set
           }

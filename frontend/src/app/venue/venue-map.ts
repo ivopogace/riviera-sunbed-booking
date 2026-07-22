@@ -18,6 +18,7 @@ import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { formatMoney } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
+import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, isIsoDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
@@ -287,7 +288,12 @@ export class VenueMap {
   }
 
   protected rating(venue: VenueMapView): string {
-    return (venue.ratingTenths / 10).toFixed(1);
+    return ratingScore(venue.ratingTenths);
+  }
+
+  /** True once the venue has reviews; a no-review venue shows a "New" pill, not "★ 0.0" (#154). */
+  protected isRated(venue: VenueMapView): boolean {
+    return isRated(venue);
   }
 
   protected bookingModeLabel(mode: VenueMapView['bookingMode']): string {
