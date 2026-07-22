@@ -1,25 +1,73 @@
 package ai.riviera.platform;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Pins client-IP resolution for per-IP rate-limit keying (issue #56, AC-6): the first
- * {@code X-Forwarded-For} hop is the client behind the Render proxy (ADR-0004); absence falls back to
- * the socket address; control characters in the (user-controlled) header are neutralised so it can
- * never forge a log line or inject terminal escapes.
+ * Pins client-IP resolution for per-IP rate-limit keying (issue #56 AC-6, tightened by #129): the
+ * header is honored only behind a <em>trusted</em> proxy peer, and the key is then the right-most
+ * <em>untrusted</em> hop — the one Render appended, which a client cannot forge (ADR-0006 R-2).
+ * Absence, blankness, or an all-trusted chain falls back to the socket address; control characters in
+ * the (user-controlled) header are neutralised so it can never forge a log line or inject terminal
+ * escapes.
  */
 class ClientIpResolverTest {
 
+	private static final List<String> DEFAULT_TRUSTED = List.of(
+			"127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+			"169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10");
+
+	private final ClientIpResolver resolver = new ClientIpResolver(DEFAULT_TRUSTED);
+
 	@Test
-	void usesFirstForwardedForHop() {
+	void resolvesClientBehindTrustedProxy() {
 		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setRemoteAddr("10.0.0.1"); // the proxy hop — must be ignored
+		request.setRemoteAddr("10.0.0.1"); // the proxy hop — trusted, so the header is honored
 		request.addHeader("X-Forwarded-For", "203.0.113.7, 10.0.0.1");
 
-		assertEquals("203.0.113.7", ClientIpResolver.resolve(request));
+		assertEquals("203.0.113.7", resolver.resolve(request));
+	}
+
+	@Test
+	void ignoresForwardedForFromUntrustedPeer() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("198.51.100.4"); // public peer — not a trusted proxy
+		request.addHeader("X-Forwarded-For", "6.6.6.6");
+
+		assertEquals("198.51.100.4", resolver.resolve(request));
+	}
+
+	@Test
+	void resolvesRightmostUntrustedHopBehindTrustedProxy() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		// Attacker-forged prefix + the hop Render appended; only the right-most one is trustworthy.
+		request.addHeader("X-Forwarded-For", "6.6.6.6, 203.0.113.7");
+
+		assertEquals("203.0.113.7", resolver.resolve(request));
+	}
+
+	@Test
+	void fallsBackToPeerWhenAllHopsTrusted() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("127.0.0.1");
+		request.addHeader("X-Forwarded-For", "10.1.1.1, 192.168.0.9");
+
+		assertEquals("127.0.0.1", resolver.resolve(request));
+	}
+
+	@Test
+	void treatsNonIpLiteralHopAsClientWithoutDns() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("127.0.0.1");
+		// A non-literal can never be proven trusted, so it is treated as the client value — no DNS (R-4).
+		request.addHeader("X-Forwarded-For", "unknown, 10.0.0.1");
+
+		assertEquals("unknown", resolver.resolve(request));
 	}
 
 	@Test
@@ -27,35 +75,37 @@ class ClientIpResolverTest {
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRemoteAddr("198.51.100.4");
 
-		assertEquals("198.51.100.4", ClientIpResolver.resolve(request));
+		assertEquals("198.51.100.4", resolver.resolve(request));
 	}
 
 	@Test
 	void fallsBackWhenHeaderBlank() {
 		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setRemoteAddr("198.51.100.9");
+		request.setRemoteAddr("10.0.0.9"); // trusted, so the blank header is genuinely reached
 		request.addHeader("X-Forwarded-For", "   ");
 
-		assertEquals("198.51.100.9", ClientIpResolver.resolve(request));
+		assertEquals("10.0.0.9", resolver.resolve(request));
 	}
 
 	@Test
 	void sanitisesNewlinesToPreventLogForging() {
 		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("127.0.0.1");
 		request.addHeader("X-Forwarded-For", "203.0.113.7\r\nFAKE LOG LINE");
 
-		assertEquals("203.0.113.7__FAKE LOG LINE", ClientIpResolver.resolve(request));
+		assertEquals("203.0.113.7__FAKE LOG LINE", resolver.resolve(request));
 	}
 
 	@Test
 	void sanitisesOtherControlCharsAndSeparators() {
 		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("127.0.0.1");
 		// A tab, an ANSI ESC (0x1B) and a Unicode line separator (U+2028) must all be neutralised; an
 		// ordinary space is preserved. Built via casts so the source carries no raw control bytes.
 		String forged = "1.2.3.4" + ((char) 0x09) + ((char) 0x1b) + ((char) 0x2028) + " x";
 		request.addHeader("X-Forwarded-For", forged);
 
-		assertEquals("1.2.3.4___ x", ClientIpResolver.resolve(request));
+		assertEquals("1.2.3.4___ x", resolver.resolve(request));
 	}
 
 	@Test
@@ -63,6 +113,69 @@ class ClientIpResolverTest {
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRemoteAddr(null);
 
-		assertEquals("unknown", ClientIpResolver.resolve(request));
+		assertEquals("unknown", resolver.resolve(request));
+	}
+
+	/**
+	 * Spring Security 7.1's {@code IpInetAddressMatcher} compares raw address bytes without a length
+	 * check, so a 4-byte IPv4 hop walked against {@code ::1/128} (16 bytes, leading zeros) indexes past
+	 * the end of the array. Any {@code 0.x.y.z} hop is attacker-supplied, so an unguarded walk is a
+	 * remote 500 on every rate-limited endpoint.
+	 */
+	@Test
+	void survivesAnIpv4HopComparedAgainstTheIpv6TrustRanges() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "0.0.0.0");
+
+		assertEquals("0.0.0.0", resolver.resolve(request));
+	}
+
+	/**
+	 * {@code 252.x}/{@code 253.x} share {@code fc00::/7}'s masked leading byte, so without the family
+	 * guard the byte compare would call a public IPv4 hop a trusted proxy and skip past it.
+	 */
+	@Test
+	void doesNotTrustAnIpv4HopThatCollidesWithAnIpv6Range() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "252.1.2.3");
+
+		assertEquals("252.1.2.3", resolver.resolve(request));
+	}
+
+	@Test
+	void doesNotTrustAnIpv6HopThatCollidesWithAnIpv4Range() {
+		// a9fe:… shares 169.254.0.0/16's first two bytes; the family guard keeps it a client value.
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "a9fe::1");
+
+		assertEquals("a9fe::1", resolver.resolve(request)); // the raw hop is the key, not a normalised form
+	}
+
+	/**
+	 * AC-4 / #127: the IT corpus isolates its rate buckets with a unique single-hop
+	 * {@code X-Forwarded-For} from the loopback MockMvc peer. That only works while the generated
+	 * address is <em>untrusted</em> — a private-range one would be skipped as a proxy hop and every IT
+	 * in the suite would collapse onto the one {@code 127.0.0.1} bucket.
+	 */
+	@Test
+	void integrationTestClientIpsStayDistinctBuckets() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("127.0.0.1");
+		String testClient = SessionLoginSupport.uniqueClientIp();
+		request.addHeader("X-Forwarded-For", testClient);
+
+		assertEquals(testClient, resolver.resolve(request));
+	}
+
+	@Test
+	void emptyTrustListTrustsNoProxyAndKeysOnTheSocketAddress() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("127.0.0.1");
+		request.addHeader("X-Forwarded-For", "6.6.6.6");
+
+		assertEquals("127.0.0.1", new ClientIpResolver(List.of()).resolve(request));
 	}
 }

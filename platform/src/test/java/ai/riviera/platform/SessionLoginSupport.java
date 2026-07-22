@@ -34,10 +34,15 @@ public final class SessionLoginSupport {
 	private SessionLoginSupport() {
 	}
 
-	/** A unique per-call test client IP, so suite-cumulative logins never share a rate bucket. */
+	/**
+	 * A unique per-call test client IP, so suite-cumulative logins never share a rate bucket. Drawn from
+	 * the RFC 2544 benchmarking range, which is deliberately <em>outside</em> the trusted-proxy defaults
+	 * (#129): a private-range address would be skipped as a proxy hop and every IT in the suite would
+	 * collapse onto the one loopback MockMvc bucket — the #127 lockout, again.
+	 */
 	public static String uniqueClientIp() {
 		int n = CLIENT_COUNTER.incrementAndGet();
-		return "10.99.%d.%d".formatted((n >> 8) & 0xFF, n & 0xFF);
+		return "198.18.%d.%d".formatted((n >> 8) & 0xFF, n & 0xFF);
 	}
 
 	/**
