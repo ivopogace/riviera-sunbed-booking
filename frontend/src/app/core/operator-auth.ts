@@ -65,7 +65,7 @@ export class OperatorAuth extends SessionAuth {
   readonly username = this.principalName;
 
   /** Fire the one-time restore once `principalType` is set (field-initializer, a valid DI context). */
-  private readonly restoreOnStartup = this.restore();
+  protected readonly restoreOnStartup = this.restore();
 
   /**
    * Server-validated sign-in: unlike the old capture-and-hope Basic flow, a wrong credential is

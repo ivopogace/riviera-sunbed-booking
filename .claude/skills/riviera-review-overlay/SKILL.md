@@ -54,6 +54,18 @@ frontend-only review never pays for the backend bank:
   surface must verify the operator owns the path `venueId` in the **application service**
   (`assertOwns`, pinned by `CrossVenueDenialIT`). Default **Blocker**. Full item: `references/backend-conventions.md`.
 
+## RV-STYLE-1 — inline comments are one-liners, or they are not written
+
+An inline code comment must fit on **one line**. If it doesn't fit, don't write it — cut it, or make
+the code say it instead (a named constant, an extracted function, a clearer signature). A multi-line
+inline comment in the diff is a **Minor** finding; the fix is to shorten it to one line or delete it.
+
+Scope: **inline comments** — `//` / `#` / `/* … */` / `<!-- … -->` sitting inside a body, a template,
+or between statements. **Doc comments are exempt**: Javadoc/TSDoc (`/** … */`) on a type, port,
+method, or field is the repo's documented convention (`riviera-java-conventions`, and every module's
+`api/` surface depends on it) and stays as long as it earns its length. Applies to what the diff
+writes; don't reflow untouched comments to satisfy it.
+
 ## RV-PROC-1 — skill-routing gate honored (when a plan doc is in scope)
 
 Cross-check the plan doc's **Skills consulted** line against what the diff actually
@@ -88,6 +100,7 @@ Frontend (run in `frontend/`):
 | "`LocalDateTime.now()` is fine for the cutoff." | Use `Europe/Tirane`; store UTC `Instant` (invariant #6). |
 | "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
 | "I'll call the other module's service directly." | Cross-module only via `api/` or events (invariant #11). |
+| "This needs a four-line comment to explain properly." | One line or nothing (RV-STYLE-1). If it won't fit, the code needs the change — not the prose. |
 | "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding (PR #37). |
 
 ## Output integration & done criteria

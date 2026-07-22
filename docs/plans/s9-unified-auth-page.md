@@ -230,6 +230,8 @@ object is repointed), so no flow silently loses coverage.
 | R-8 | Glass card contrast drifts from the AA-proven token set | low | med | reuse `CardGlass` + `--riv-*` tokens only, no palette literals; `auth-page.contrast.spec.ts` composites the maths | Ivo | open |
 | R-9 | The mode/audience state and `returnUrl` desync across a full-page SSO redirect | med | med | audience + mode + `returnUrl` live in query params, so the SSO return re-enters with the same state | Ivo | open |
 | R-10 | Flyway collision | **none** | — | no migration in this slice; V30 stays free | Ivo | closed |
+| R-11 | **Open redirect via `returnUrl`** — the param is attacker-controllable, so `…/sign-in?returnUrl=https://evil.example` would bounce the user off-origin *after* they authenticate (found while building Phase 2; not in the original register) | med | **high** | `safeReturnUrl()` accepts only a single-leading-slash in-app path, rejecting absolute, protocol-relative (`//`, `/\`) and scheme URLs; both landing resolvers route through it | Ivo | **closed** (Phase 2) — `auth-landing.spec.ts` pins all five rejection cases and that an unsafe value falls through to the normal rule |
+| R-12 | A failed owned-venues read reads as "owns no venues" and forwards a real operator to onboarding | med | med | `OwnedVenues.load()` returns a typed `{status:'loaded'|'error'}` outcome, never a bare list; a failure is not cached so the caller can retry | Ivo | **closed** (Phase 2) — `owned-venues.spec.ts` pins error≠empty and the retry |
 
 ## Open questions / Assumptions
 
@@ -345,17 +347,18 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — Phases 0–1 done; Phase 2 next`
+**Stage pointer:** `implement — Phases 0–2 done; Phase 3 next`
 
-**Next action:** Start **Phase 2** (session/landing plumbing in `core/`): promote `whenReady()` onto
-`SessionAuth`, add `OwnedVenues` + `landingRouteFor` + the restore-aware `operator-session.guard`
-(R-1/AC-8). Frontend skills stay loaded from Phase 1.
+**Next action:** Start **Phase 3** (the unified auth page + route redirects). Frontend skills stay
+loaded from Phase 1. Note the new review-gate item **RV-STYLE-1** (inline comments are one-liners or
+they are not written, added 2026-07-22 at the user's request) — it applies to everything from here,
+and a sweep commit brings Phases 0–2 into line.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Owned-venues read (backend) | ✅ | `73a62dc` |
-| 1 — Shared Tailwind primitives | ✅ | `<phase-1>` |
-| 2 — Session/landing plumbing (`core/`) | | |
+| 1 — Shared Tailwind primitives | ✅ | `66aedec` |
+| 2 — Session/landing plumbing (`core/`) | ✅ | `<phase-2>` |
 | 3 — The unified auth page + route redirects | | |
 | 4 — Operator surfaces behind the guard + `/operator` home | | |
 | 5 — e2e, a11y/contrast, substrate docs | | |
@@ -583,7 +586,7 @@ it('exposes radiogroup semantics and moves selection with arrow keys', async () 
 **Files:** Modify `core/session-auth.ts` · Create `core/owned-venues.ts`,
 `core/operator-session.guard.ts`, `shared/auth-landing.ts` (+ specs)
 
-- [ ] **Step 1: Write the failing landing spec**
+- [x] **Step 1: Write the failing landing spec**
 
 ```ts
 describe('landingRouteFor', () => {
@@ -606,17 +609,29 @@ describe('landingRouteFor', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- auth-landing` → FAIL
-- [ ] **Step 3: Minimal implementation** — the pure function, plus `OwnedVenues` (`@Service()`,
+- [x] **Step 2: Run it, verify it fails** — FAIL: `Could not resolve "./auth-landing"`
+- [x] **Step 3: Minimal implementation** — the pure functions, plus `OwnedVenues` (`@Service()`,
       typed `OwnedVenue`), plus `whenReady()` promoted onto `SessionAuth` so `OperatorAuth` has it.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- auth-landing owned-venues` → PASS
-- [ ] **Step 5: Red→green the guard** — `operator-session.guard.spec.ts` proves it **awaits**
+- [x] **Step 4: Run it, verify it passes** — 9/9 landing + 6/6 owned-venues PASS
+- [x] **Step 5: Red→green the guard** — `operator-session.guard.spec.ts` proves it **awaits**
       `whenReady()` before deciding (R-1, AC-8), returns a `UrlTree` carrying
-      `audience=operator&returnUrl=…`, and lets a signed-in operator through untouched.
-- [ ] **Step 6: Generalization-audit pass** — does any other surface make a redirect decision
-      before the restore settles? Record the search below.
-- [ ] **Step 7: Commit** — `git commit -m "Add owned-venues client, landing resolver and restore-aware operator guard (#277)"`
-- [ ] **Step 8: Update plan-doc execution status.**
+      `audience=operator&returnUrl=…`, and lets a signed-in operator through untouched. 4/4 PASS
+- [x] **Step 6: Generalization-audit pass** — recorded below; no other site to change.
+- [x] **Step 7: Commit** — `git commit -m "Add owned-venues client, landing resolver and restore-aware operator guard (#277)"`
+- [x] **Step 8: Update plan-doc execution status.**
+
+> **As-built note (Phase 2), two additions the plan didn't call for:**
+> 1. **`safeReturnUrl()`** — `returnUrl` is a query param and therefore attacker-controllable, so
+>    both landing resolvers validate it (in-app absolute paths only; absolute, protocol-relative and
+>    scheme URLs rejected) before honouring it. Filed as **R-11**.
+> 2. **`OwnedVenues.load()` returns a typed outcome**, not a bare list — a failed read must not read
+>    as "owns no venues" and forward a real operator to onboarding. Filed as **R-12**.
+>
+> `landingRouteFor` takes a structural `LandingVenue { id }` rather than importing `OwnedVenue`:
+> `shared/` may not import `core/` (`riviera-frontend` import direction), and `core`'s `OwnedVenue`
+> satisfies it structurally, so neither side imports the other. `whenReady()` moved onto
+> `SessionAuth` with an abstract `restoreOnStartup` the subclasses assign, so both principals expose
+> it and `CustomerAuth`'s copy was deleted rather than duplicated.
 
 ---
 
@@ -692,6 +707,7 @@ objects · Modify `CLAUDE.md`, `RESPONSIBILITIES.md` (if the read changes a stat
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-22 | Phase 2 — decide-before-restore-settles | Surfaces that branch on session state before the startup `GET /api/auth/me` has landed (R-1's failure mode) | `grep -rn "restoring()"` + `grep -rln "signedIn()"` + `grep -rn "canActivate\|CanActivateFn"` over `frontend/src/app` | `operatorSessionGuard` is the app's **first** route guard — no other surface makes a *redirect* decision at all. The six session-branching surfaces (`admin-operators`, `app.html`, `set-password`, `my-bookings`, `operator-console.html`, `venue-editor.html`) all already gate on `restoring()`, rendering a checking-state instead of deciding. | **No change needed** — the defence is already applied everywhere it applies; the guard expresses it in routing rather than in a template. Phase 4 *removes* two of those templates (console + venue editor) because the guard now owns their gate. |
 | 2026-07-22 | Phase 0 — session-scoped venue-set read | Reads that derive a venue set from the **session principal** rather than a path id (the BOLA-safe-by-construction shape) | `grep -rn "ownedVenues" src/main/java` + `grep -rn "@GetMapping…" --include=*Controller.java` filtered to mappings with no path variable | `VenueOwnership.ownedVenues` had **no** production caller before this slice (published since #73, unused). One pre-existing analogue: `MyBookingsController` `GET /api/me/bookings` (S3 #114). The other id-less operator mappings are the role-gated `/api/admin/**` exemptions (`AdminOperatorController`, `AdminPayoutBatchController`) and `POST /api/venues` (creator-owns-on-create, no prior owner). | **No change needed** — `MyBookingsController` already implements the same pattern correctly (principal-scoped, no id in the request, role-gated above the public rules). `MyVenuesController` is the operator mirror of it; its javadoc names the shape so the next such read copies it. |
 
 ---
