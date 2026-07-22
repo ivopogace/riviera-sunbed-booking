@@ -114,11 +114,29 @@ describe('Home (venue discovery)', () => {
     expect(first.querySelector('[data-testid="card-availability"]')?.textContent).toContain('18 of 24');
   });
 
-  it('links each card to the venue beach map', async () => {
+  it('links each card to the venue beach map, carrying the selected date (#294)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
     const link = el().querySelector('[data-testid="venue-card"]');
-    expect(link?.getAttribute('href')).toBe('/venues/1');
+    // The chosen date rides along as ?date= so it persists into the map (default = tomorrow, Tirane).
+    expect(link?.getAttribute('href')).toBe(`/venues/1?date=${defaultBookingDate(new Date())}`);
+  });
+
+  it('updates the venue link’s date when the discovery date changes (#294)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    // A date guaranteed to differ from the default (tomorrow) on any calendar day (the 2026-07-14 flake).
+    const future = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    input.value = future;
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    listRequest().flush(venues()); // settle the date-change reload
+    await fixture.whenStable();
+
+    const href = el().querySelector('[data-testid="venue-card"]')?.getAttribute('href');
+    expect(href).toBe(`/venues/1?date=${future}`);
   });
 
   it('gives each card a single accessible name carrying every fact (not layout-only)', async () => {

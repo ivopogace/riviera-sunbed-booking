@@ -1,4 +1,11 @@
-import { defaultBookingDate, formatCivilDate, todayBookingDate } from './booking-date';
+import {
+  defaultBookingDate,
+  formatCivilDate,
+  formatIsoDate,
+  isIsoDate,
+  parseIsoDate,
+  todayBookingDate,
+} from './booking-date';
 
 /**
  * Pins the map/dialog default date (issue #44): tomorrow in Europe/Tirane, as ISO YYYY-MM-DD,
@@ -50,5 +57,34 @@ describe('todayBookingDate', () => {
 describe('formatCivilDate', () => {
   it('renders an ISO civil day as a UTC-anchored weekday/day/month/year label', () => {
     expect(formatCivilDate('2026-06-30')).toBe('Tue 30 Jun 2026');
+  });
+});
+
+/**
+ * Guards the validation of an externally-supplied date — the `?date=` query param the discovery page
+ * carries into the venue map (#294). Must reject the wrong shape and calendar overflow (which would
+ * otherwise silently roll into a different day), and round-trip a UTC-anchored date to ISO.
+ */
+describe('isIsoDate', () => {
+  it('accepts a well-formed ISO calendar date', () => {
+    expect(isIsoDate('2026-07-25')).toBe(true);
+  });
+
+  it('rejects the wrong shape', () => {
+    expect(isIsoDate('2026-7-5')).toBe(false); // unpadded
+    expect(isIsoDate('25-07-2026')).toBe(false); // wrong field order
+    expect(isIsoDate('not-a-date')).toBe(false);
+    expect(isIsoDate('')).toBe(false);
+  });
+
+  it('rejects calendar overflow that would silently roll over', () => {
+    expect(isIsoDate('2026-02-30')).toBe(false); // Feb 30 → would roll into March
+    expect(isIsoDate('2026-13-01')).toBe(false); // month 13
+  });
+});
+
+describe('formatIsoDate', () => {
+  it('formats a UTC-anchored date as ISO YYYY-MM-DD, round-tripping parseIsoDate', () => {
+    expect(formatIsoDate(parseIsoDate('2026-07-01'))).toBe('2026-07-01');
   });
 });

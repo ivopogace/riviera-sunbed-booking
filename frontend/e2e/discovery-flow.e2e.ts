@@ -121,6 +121,27 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expectNoSeriousAxeViolations(page, 'venue beach map');
 });
 
+test('the date chosen on discovery carries into the venue map (#294)', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
+
+  // Pick a date a month past the picker floor — clearly NOT the map's own default (tomorrow), so
+  // seeing it on the map proves the carry rather than the map's fallback. Clock-free (derived in-page).
+  const dateInput = page.getByTestId('filter-date');
+  const chosen = await dateInput.evaluate((el: HTMLInputElement) => {
+    const d = new Date(`${el.min}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
+  await dateInput.fill(chosen);
+
+  // Open the first venue → the map opens on the carried date (URL + picker), not tomorrow.
+  await page.getByTestId('venue-card').first().click();
+  await expect(page).toHaveURL(new RegExp(`/venues/1\\?date=${chosen}`));
+  await expect(page.getByTestId('map-date')).toHaveValue(chosen);
+  await expectNoSeriousAxeViolations(page, 'venue map (date carried from discovery)');
+});
+
 test('hero panel fills the content width, matching the search bar (#153)', async ({ page }) => {
   // The AC is about desktop: at >= 1080px the .discover column is at its max, so the hero and the
   // filter bar directly below it share one content width. Pin the viewport so the measurement is

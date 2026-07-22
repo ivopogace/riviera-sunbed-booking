@@ -40,6 +40,26 @@ export function parseIsoDate(isoDate: string): Date {
 }
 
 /**
+ * Format a UTC-anchored `Date` (see {@link parseIsoDate}) as an ISO `YYYY-MM-DD` string — the
+ * inverse of the parse, reading the same UTC fields so it stays free of the viewer's zone.
+ */
+export function formatIsoDate(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Whether `value` is a well-formed calendar date in ISO `YYYY-MM-DD` form — used to validate an
+ * externally-supplied date (e.g. a `?date=` query param) before trusting it. Rejects the wrong shape
+ * and calendar overflow (`2026-02-30`, which {@link parseIsoDate} would silently roll into March).
+ */
+export function isIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && formatIsoDate(parseIsoDate(value)) === value;
+}
+
+/**
  * Render an ISO `YYYY-MM-DD` civil day (a Europe/Tirane booking date, invariant #6) as a human label
  * like `"Tue 30 Jun 2026"`. Formatted in **UTC** because {@link parseIsoDate} anchors the day at
  * midnight UTC — so the label is the civil day itself, free of the viewer's zone. Locale pinned like
@@ -60,8 +80,5 @@ export function formatCivilDate(isoDate: string): string {
 function addOneDay(isoDate: string): string {
   const next = parseIsoDate(isoDate);
   next.setUTCDate(next.getUTCDate() + 1);
-  const y = next.getUTCFullYear();
-  const m = String(next.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(next.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return formatIsoDate(next);
 }
