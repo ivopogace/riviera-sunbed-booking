@@ -383,7 +383,14 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `review gate run (3 findings, all fixed) — Sonar gate + merge close-out next`
+**Stage pointer:** `CI + review + Sonar gates run (5 findings, all fixed) — merge close-out next`
+
+**Sonar gate (PR #279, 2026-07-22):** quality gate green **and** the reported list cleared.
+Measures on the pre-fix head: `new_bugs 0`, `new_vulnerabilities 0`, `new_duplicated_blocks 0`,
+`new_duplicated_lines_density 0.0`, **`new_coverage 96.24%`** (bar: ≥80%) — but
+`new_code_smells 2`, which the gate's own thresholds let pass. Both were pulled from
+`/api/issues/search` and **fixed in code** (F-4, F-5), not resolved-with-rationale. Re-verified on
+the fixed head. *(Reminder for the re-check: `WebFetch` caches 15 min — cache-bust the Sonar URL.)*
 
 **Review gate (PR #279, 2026-07-22, high effort — the diff touches authorization, invariant #13):**
 `riviera-review-overlay` walked fullstack scope (backend + frontend + FE↔BE contract banks).
@@ -425,6 +432,8 @@ the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | Review gate — **RV-STYLE-1** (Minor ×14) | Multi-line inline comments in code this diff wrote: `auth-page.ts` ×2, `app.routes.ts` ×4, `segmented-control.ts`, `operator-console.ts`, and 6 spec/e2e files. The rule landed mid-slice, so Phases 3–5 were partly written against the old bar. | **fixed** — each cut to one line; doc comments left alone (exempt). Lint + 802 tests re-run green |
 | F-2 | Review gate — **RV-PROC-1** (Major) | The plan's *Skills consulted* line omitted three skills the work actually loaded: `riviera-local-debug` (every phase's scoped test runs), `riviera-docs-freshness` (the Phase 5 sweep) and `riviera-review-overlay` (this gate). RV-PROC-1 exists precisely to catch a line that under-reports the diff. | **fixed** — all three added with what they changed |
+| F-4 | Sonar gate — `typescript:S7059` (CRITICAL smell) | `operator-home.ts` ran the owned-venues load from the **constructor**. Not a false positive — an async call in a constructor is a genuine testability/ordering smell. | **fixed** — moved to `ngOnInit` |
+| F-5 | Sonar gate — `typescript:S6582` (MINOR smell) | `auth-landing.ts`: `!candidate \|\| !candidate.startsWith('/')` is an optional-chain in disguise. | **fixed** — `!candidate?.startsWith('/')`, which covers missing / blank-after-trim / non-slash identically; all five open-redirect rejection cases still pass |
 | F-3 | Review gate — **RV-CT-4 / landing correctness** (Major) | `OwnedVenues.reset()`'s own docstring says "call after creating a venue" — **and nothing ever did.** A first-time operator (0 venues → forwarded to `/venue-admin` → creates one) kept the stale empty list, so any later visit to `/operator` would forward them **back to onboarding** despite owning a venue. Only reachable after this slice's own landing rules, so no existing test covered it. | **fixed** — `VenueEditor` resets the cache on a successful create; pinned by `venue-editor.spec.ts › creates a venue and links the operator into its console` (asserts the next `load()` refetches) |
 
 ---
