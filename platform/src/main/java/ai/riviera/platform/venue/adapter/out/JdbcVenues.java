@@ -292,10 +292,7 @@ class JdbcVenues implements Venues {
 
 	@Override
 	public List<OwnedVenueView> findSummaries(Collection<VenueId> ids) {
-		// A PK-set lookup (S9 #277) — the caller has already reduced `ids` to the acting operator's own
-		// venues, so no ownership predicate belongs here. ORDER BY name is the picker's contract; id is
-		// the tiebreaker so two venues sharing a name still come back in a stable order. Never called
-		// with an empty collection (the service short-circuits), so `IN (:ids)` always has members.
+		// PK-set lookup on ids the caller already filtered; ORDER BY name, id keeps the picker stable.
 		return jdbc.sql("""
 				SELECT id, name, beach
 				  FROM venue

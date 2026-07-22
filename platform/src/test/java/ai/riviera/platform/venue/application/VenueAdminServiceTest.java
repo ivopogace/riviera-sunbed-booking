@@ -435,8 +435,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void ownedByReturnsOnlyTheOperatorsOwnVenues() {
-		// AC-1: O owns {12, 15}; P owns {20}. Note "Aurora" sorts BEFORE both of O's venues, so a leak
-		// would land first in the list — the order assertion below cannot hide one.
+		// AC-1: "Aurora" (P's) sorts BEFORE both of O's, so a leak would land first and fail the assert.
 		FakeVenues store = new FakeVenues();
 		store.summaries.put(12L, new OwnedVenueView(12, "Miramar Beach Club", "Dhërmi"));
 		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "Jal"));
@@ -450,16 +449,14 @@ class VenueAdminServiceTest {
 		assertEquals(List.of(12L, 15L), result.stream().map(OwnedVenueView::id).toList());
 		assertEquals(List.of("Miramar Beach Club", "Sereno"),
 				result.stream().map(OwnedVenueView::name).toList());
-		// Invariant #13 / AC-2: the store is never even asked about a venue this operator doesn't own —
-		// the id set handed to the repository IS the ownership mapping, so there is nothing to tamper with.
+		// AC-2: the store is never even asked about a venue this operator doesn't own (invariant #13).
 		assertEquals(List.of(Set.of(new VenueId(12), new VenueId(15))),
 				store.summaryQueries.stream().map(Set::copyOf).toList());
 	}
 
 	@Test
 	void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
-		// A freshly-approved operator owns nothing: an empty list (never null, never 404) and no SQL —
-		// an `IN ()` predicate is both pointless and, on some drivers, invalid.
+		// A freshly-approved operator owns nothing: an empty list, and no `IN ()` predicate at all.
 		FakeVenues store = new FakeVenues();
 		VenueAdminService owned =
 				new VenueAdminService(store, new MultiOwnership(Map.of()), availability, bookings);
@@ -629,8 +626,7 @@ class VenueAdminServiceTest {
 			insertedInLayout += sets.size();
 		}
 
-		// S9 (#277): seeded venue summaries by id, plus every id set the service actually asked for —
-		// so a test can assert a non-owned venue is never even queried.
+		// S9 (#277): seeded summaries, plus every id set asked for (so a test can assert what was NOT).
 		final Map<Long, OwnedVenueView> summaries = new HashMap<>();
 		final List<Collection<VenueId>> summaryQueries = new ArrayList<>();
 

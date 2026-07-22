@@ -53,8 +53,7 @@ describe('OwnedVenues', () => {
   });
 
   it('reports an error instead of an empty list when the read fails', async () => {
-    // Critical: a transient failure must NOT look like "owns no venues", or the landing resolver
-    // would forward a real operator to venue onboarding on a network blip.
+    // A transient failure must NOT look like "owns no venues" (that forwards to onboarding).
     const loading = service.load();
     http.expectOne(MINE).flush(null, { status: 500, statusText: 'Server Error' });
 

@@ -93,15 +93,11 @@ class VenueAdminService
 	@Override
 	@Transactional(readOnly = true)
 	public List<OwnedVenueView> ownedBy(OperatorId operator) {
-		// No assertOwns here — and that is the point (invariant #13, S9 #277): the id set IS the
-		// ownership mapping, so the result is scoped to the authenticated principal by construction.
-		// There is no venue id in the request to tamper with, which is what makes GET /api/venues/mine
-		// BOLA-safe without an object-level check.
+		// No assertOwns: the ownership mapping IS the filter, so there is no id to tamper with (#13).
 		Set<VenueId> ids = ownership.ownedVenues(operator).stream()
 				.map(ref -> new VenueId(ref.value()))
 				.collect(Collectors.toSet());
-		// Short-circuit an operator that owns nothing (a freshly-approved one, #115): an empty list,
-		// never null — and no `IN ()` predicate reaches the database.
+		// Short-circuit an operator that owns nothing, so no `IN ()` predicate reaches the database.
 		return ids.isEmpty() ? List.of() : venues.findSummaries(ids);
 	}
 

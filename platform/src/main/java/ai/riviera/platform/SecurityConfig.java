@@ -225,11 +225,7 @@ class SecurityConfig {
 						// MUST precede the public "GET /api/venues/**" below (first match wins); the
 						// per-venue ownership check itself lives in the application service (invariant #13).
 						.requestMatchers(HttpMethod.GET, TAKINGS_PATH).hasRole(OPERATOR_ROLE)
-						// The signed-in operator's own venues (S9 #277) — the post-sign-in landing read.
-						// MUST precede the public "GET /api/venues/**" below (first match wins), or the
-						// ownership map leaks to anonymous callers (R-3). Session-principal-scoped with no
-						// id in the path, so it is BOLA-safe by construction (invariant #13) — the role
-						// gate here is the only authorization layer it needs.
+						// S9 #277: MUST precede the public "GET /api/venues/**" below, or ownership leaks.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
 						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
 						// venue demand are operator data. The GET MUST precede the public venue GET below

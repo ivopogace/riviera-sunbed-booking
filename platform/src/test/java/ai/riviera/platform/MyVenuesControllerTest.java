@@ -82,21 +82,19 @@ class MyVenuesControllerTest {
 
 	@Test
 	void deniesAnonymousAndCustomerSessions() throws Exception {
-		// R-3: if the hasRole(OPERATOR) matcher were placed BELOW the public "GET /api/venues/**"
-		// permitAll rule, this would be a 200 and the ownership map would be public.
+		// R-3: below the public "GET /api/venues/**" permitAll rule this would be a 200.
 		mvc.perform(get(MINE)).andExpect(status().isUnauthorized());
 		// AC-9: a tourist session is authenticated but carries no ROLE_OPERATOR → 403, never 401/200.
 		mvc.perform(get(MINE).with(user("tourist@example.com").roles("CUSTOMER")))
 				.andExpect(status().isForbidden());
 
-		// Neither reached the application service — the filter chain rejected both before the controller.
+		// Neither reached the service: the filter chain rejected both before the controller.
 		verify(listOwnedVenues, never()).ownedBy(any());
 	}
 
 	@Test
 	void theLiteralMineSegmentOutranksTheVenueIdPattern() throws Exception {
-		// R-2: "mine" must never bind as a {venueId} path variable. Were VenueReadController to win,
-		// the response would be 400 (NumberFormatException on "mine"), not 200 with an array.
+		// R-2: were VenueReadController's /{venueId} to win, "mine" would be a 400, not a 200 array.
 		when(listOwnedVenues.ownedBy(new OperatorId(1))).thenReturn(List.of());
 
 		mvc.perform(get(MINE).with(user("op").roles("OPERATOR")))

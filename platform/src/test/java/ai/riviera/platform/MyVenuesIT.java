@@ -68,8 +68,7 @@ class MyVenuesIT {
 		jdbc.sql("DELETE FROM venue WHERE name IN (:a, :z, :n)")
 				.param("a", M_FIRST_BY_NAME).param("z", M_LAST_BY_NAME).param("n", N_VENUE).update();
 
-		// Inserted last-by-name FIRST: identity ids therefore run counter to alphabetical order, so the
-		// ORDER BY name assertion below cannot be satisfied by accidentally returning insertion order.
+		// Inserted last-by-name FIRST, so ids run counter to alphabetical order (see the ORDER BY assert).
 		mZeta = newVenue(M_LAST_BY_NAME, "Jal");
 		mAlpha = newVenue(M_FIRST_BY_NAME, "Dhërmi");
 		long nVenue = newVenue(N_VENUE, "Borsh");
@@ -98,8 +97,7 @@ class MyVenuesIT {
 
 	@Test
 	void anotherOperatorSeesOnlyItsOwnVenue() throws Exception {
-		// The counterpart that turns the assertion above into a real isolation proof rather than a
-		// "the query returned something" check (invariant #13).
+		// Turns the assertion above into a real isolation proof, not a "it returned something" check.
 		actingAs(operatorN);
 
 		mvc.perform(get(MINE).cookie(operatorSession))

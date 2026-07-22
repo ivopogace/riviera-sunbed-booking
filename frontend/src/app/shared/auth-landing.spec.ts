@@ -37,8 +37,7 @@ describe('safeReturnUrl', () => {
   });
 
   it('rejects anything that could leave the app (open redirect)', () => {
-    // returnUrl arrives from a query param, so it is attacker-controllable: a signed-in operator
-    // must never be bounced to another origin after authenticating.
+    // returnUrl is attacker-controllable: never bounce off-origin after authenticating.
     expect(safeReturnUrl('https://evil.example/steal')).toBeUndefined();
     expect(safeReturnUrl('//evil.example/steal')).toBeUndefined();
     expect(safeReturnUrl('/\\evil.example')).toBeUndefined();

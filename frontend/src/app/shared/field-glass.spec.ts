@@ -29,12 +29,11 @@ describe('FieldGlass', () => {
   });
 
   it('sets no border-radius or padding, so each consumer keeps its own', () => {
-    // riviera-tailwind rule 3: two competing radius utilities resolve by stylesheet order, not class
-    // order, so a radius baked into a shared surface directive is a coin-flip against the consumer's.
+    // rule 3: competing radius utilities resolve by stylesheet order, so a baked-in one is a coin-flip.
     const el = host();
-    expect([...el.classList].some((c) => c.startsWith('rounded-') && c !== 'rounded-[14px]')).toBe(
-      false,
-    );
-    expect([...el.classList].some((c) => /^p[xytblr]?-/.test(c) && !c.startsWith('px-[13px]') && !c.startsWith('py-[11px]'))).toBe(false);
+    const own = ['rounded-[14px]', 'px-[13px]', 'py-[11px]'];
+    const added = [...el.classList].filter((c) => !own.includes(c));
+    expect(added.some((c) => c.startsWith('rounded-'))).toBe(false);
+    expect(added.some((c) => /^p[xytblr]?-/.test(c))).toBe(false);
   });
 });

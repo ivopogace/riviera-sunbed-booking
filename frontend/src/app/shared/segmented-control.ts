@@ -139,8 +139,7 @@ export class SegmentedControl<T extends string> {
     if (option.value !== this.value()) {
       this.value.set(option.value);
     }
-    // Focus follows selection in a radiogroup. Also runs on click: Safari does not focus a button on
-    // mousedown, so without this the roving tabindex would resume from the wrong option.
+    // Focus follows selection in a radiogroup — also on click, which Safari does not focus.
     this.optionButtons()[index]?.nativeElement.focus();
   }
 
@@ -155,9 +154,7 @@ export class SegmentedControl<T extends string> {
           : 'font-semibold text-(--riv-card-ink-faint) bg-transparent')
       );
     }
-    // Border width is 1.5px in BOTH states (the design thickens only the selected one). Keeping it
-    // constant and varying only the colour avoids a half-pixel reflow of the blurb on every switch;
-    // Chromium reports the snapped "1px" either way (riviera-tailwind's border-snapping note).
+    // 1.5px in BOTH states (design thickens only the selected): constant width, no reflow on switch.
     return (
       `${base} rounded-[18px] border-[1.5px] px-[15px] py-3.5 text-left text-(--riv-card-ink) shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ` +
       (selected

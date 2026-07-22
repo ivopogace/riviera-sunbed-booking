@@ -52,8 +52,7 @@ describe('operatorSessionGuard', () => {
   }
 
   it('awaits restore before deciding', async () => {
-    // R-1 / AC-8. A guard that read signedIn() eagerly would see `false` here and redirect a
-    // signed-in operator to sign-in on every reload.
+    // R-1 / AC-8: reading signedIn() eagerly would see `false` here and redirect on every reload.
     let decision: boolean | UrlTree | undefined;
     const guard = run('/operator/12').then((d) => (decision = d));
 

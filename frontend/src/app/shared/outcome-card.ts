@@ -54,9 +54,7 @@ export class OutcomeCard {
 
   protected readonly glyph = computed(() => (this.tone() === 'pending' ? '⏳' : '✓'));
 
-  // The circle is purely decorative (aria-hidden), so its tint is exempt from the text-contrast
-  // minimum; the heading and body above use the AA-proven --riv-card-ink* tokens. The two tints
-  // mirror the design file: accent teal for success, amber for awaiting-review.
+  // The circle is decorative (aria-hidden), so its tint is exempt from the text-contrast minimum.
   protected readonly glyphClasses = computed(
     () =>
       'mx-auto mb-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ' +
