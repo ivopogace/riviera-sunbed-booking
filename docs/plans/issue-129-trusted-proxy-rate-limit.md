@@ -178,19 +178,20 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** implement — complete; next is the PR stage (merge `origin/main`, open PR, run
-the CI / review / Sonar gates)
+**Stage pointer:** gates — PR #282 open against `main` (`origin/main` was already current, nothing
+to integrate). Review gate **run** (note below; one Blocker found and fixed). CI + Sonar pending.
 
-**Next action:** merge latest `origin/main` into the branch, push, open the PR into `main`, then
-run the three gates per `riviera-sdlc/references/pr-gates.md`. AC-7 (manual sandbox curl) stays
-open until merge close-out.
+**Next action:** confirm the CI run for `46ec591` is green, then pull the SonarCloud issue +
+duplication list from the API (not the gate conclusion) and clear every entry. Do **not** merge until
+all three gates pass. AC-7 (manual sandbox curl) stays open until merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — branch + plan doc | ✅ | 4e5c0c5 |
 | 1 — resolver trust walk (unit) | ✅ | ac3205c (merged with phase 2 — see deviation) |
 | 2 — filter wiring + HTTP spoof-closure contract | ✅ | ac3205c (merged with phase 1 — see deviation) |
-| 3 — docs + scoped regression + structural net | ✅ | (this commit) |
+| 3 — docs + scoped regression + structural net | ✅ | 31836d9 |
+| review-gate fixes (re-entry) | ✅ | 35e4adc (R-1 family guard), 46ec591 (RV-STYLE-1) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -206,6 +207,37 @@ on the absent constructor, then on the static call sites), then implementing. Ph
 specific `catch (IllegalArgumentException)`), `riviera-modulith` (confirmed root-package edge
 placement — no module surface touched), `riviera-local-debug` (scoped test runs; local `./gradlew`
 works, Docker present so targeted ITs ran for real).
+
+**Review-gate note (PR #282, `riviera-review-overlay` + backend bank, high effort).** High effort
+chosen because the slice changes how *every* per-IP security budget is keyed. Bank walk:
+
+- **RV-BE-1 availability / #2** ➖ no availability write path in the diff.
+- **RV-BE-2 JDBC-only / #1** ✅ no persistence touched; `JdbcOnlyArchitectureTests` green.
+- **RV-BE-3 / 3b / 3c / RV-BE-12 boundaries + package shape / #11** ✅ all three changed classes stay
+  in the platform root (edge concern, like `SecurityConfig`); no named interface added or moved;
+  `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` green.
+- **RV-BE-4 events** ➖ none. **RV-BE-5 money / RV-BE-6 time** ➖ none in scope. **RV-BE-7/8/16 payment,
+  payout, refund** ➖ none. **RV-BE-15 pool/cutoff** ➖ untouched. **RV-BE-17 Flyway** ➖ no schema change.
+- **RV-BE-9 BOLA / #13** ➖ no venue-scoped surface touched; the resolver is venue-agnostic.
+- **RV-BE-10 error contract** ✅ the hand-mirrored `RATE_LIMITED` ProblemDetail body is byte-identical;
+  `ErrorContractArchitectureTests` green.
+- **RV-BE-11 responsibility placement** ✅ rate-limit keying is deployment-topology machinery owned by
+  the edge (RV-BE-11 / `RESPONSIBILITIES.md` names no module owner); the plan's §4a table matches
+  where the code landed.
+- **RV-BE-13 injection** ✅ `sanitise(...)` still applies on **every** return path (untrusted peer, the
+  chosen hop, and the fallback); no SQL involved. **This item is what surfaced finding R-1** — walking
+  the attacker-controlled hop into the library matcher is where the crash lives.
+- **RV-BE-14 booking codes / #7** ✅ unchanged; `bookingCodeIsNeverLogged` still green.
+- **RV-STYLE-1** ⛔→✅ four inline comments the diff wrote ran past one line; each moved to method
+  Javadoc (commit `46ec591`). Pre-existing multi-line comments left untouched, per the rule.
+- **RV-PROC-1 skill routing** ✅ the diff is backend Java + placement only; both routed skills
+  (`riviera-java-conventions`, `riviera-modulith`) are on the *Skills consulted* line and were loaded
+  before writing. The R-1 fix stayed inside the same area, so no new skill was pulled in.
+
+**Considered, not filed as findings:** (a) the right-to-left walk is O(hops), and a hostile header can
+carry ~800 all-trusted hops within Tomcat's 8 KB header cap — ~1 ms of parsing, judged not worth a hop
+cap; (b) a malformed `trusted-proxies` CIDR fails at filter construction, i.e. app startup — fail-fast
+is the right direction for a security control, and it can never silently degrade to "trust everything".
 
 **Findings register**
 
@@ -483,8 +515,8 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1/2/5/6:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS (12 tests, 0 skipped).
-  Verified at commit `ac3205c`.
+- [x] **AC-1/2/5/6:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS (15 tests, 0 skipped)
+  at commit `46ec591` (12 at `ac3205c`; the review gate's R-1 fix added the three address-family cases).
 - [x] **AC-3:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS (14 tests, 0 skipped);
   `spoofedForwardedPrefixCannotEscapeLoginBucket` was red before the fix. Verified at commit `ac3205c`.
 - [x] **AC-4 (local half):** every IT *file* is unchanged in the diff; only the shared
