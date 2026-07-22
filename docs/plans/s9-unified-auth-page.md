@@ -86,19 +86,19 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
       principal (no id in the path or query), and an anonymous call is `401`, a customer session
       `403`. *Pinned by:* `MyVenuesControllerTest.deniesAnonymousAndCustomerSessions` +
       `MyVenuesIT.returnsOnlyOwnVenuesAgainstRealSchema`
-- [ ] **AC-3 (audience routing):** Given the page in sign-in mode, when the audience is *Tourist*
+- [x] **AC-3 (audience routing):** Given the page in sign-in mode, when the audience is *Tourist*
       and the form is submitted, then `CustomerAuth.signIn` is called and `OperatorAuth` is not;
       when the audience is *Venue operator*, the reverse. *Pinned by:*
       `auth-page.spec.ts › routes sign-in by audience`
-- [ ] **AC-4 (generic, non-enumerating failures):** Given a failed sign-in on either audience,
+- [x] **AC-4 (generic, non-enumerating failures):** Given a failed sign-in on either audience,
       when the response is `401` or `429`, then the card shows the existing generic message for
       that principal type (`customerSignInMessage` / `signInFailureMessage`) and never reveals
       whether the account exists. *Pinned by:* `auth-page.spec.ts › shows only generic failures`
-- [ ] **AC-5 (tourist register):** Given audience *Tourist* in register mode with a valid email
+- [x] **AC-5 (tourist register):** Given audience *Tourist* in register mode with a valid email
       and an 8+ character password, when submitted, then `CustomerAuth.register` runs and a
       `registered` outcome navigates to `/`; an `exists` outcome shows the existing
       `customerRegisterMessage` and stays put. *Pinned by:* `auth-page.spec.ts › tourist register`
-- [ ] **AC-6 (operator register):** Given audience *Venue operator* in register mode, when
+- [x] **AC-6 (operator register):** Given audience *Venue operator* in register mode, when
       submitted, then `OperatorAuth.register` runs, **no session is established**, and the card
       switches to the pending-approval outcome state (PENDING, S6 #115) — identical for a fresh
       and an already-taken username. *Pinned by:* `auth-page.spec.ts › operator register lands pending`
@@ -115,12 +115,12 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
       opened, then the guard redirects to the operator audience (a tourist session grants no
       operator surface); and given an operator session, `GET /api/me/bookings` stays `403`.
       *Pinned by:* `operator-session.guard.spec.ts` + existing `AuthSessionIT` (unchanged, re-run)
-- [ ] **AC-10 (a11y):** Given the card, when axe runs in both modes and both audiences, then there
+- [x] **AC-10 (a11y):** Given the card, when axe runs in both modes and both audiences, then there
       are no serious violations; the audience toggle exposes `role="radiogroup"` with roving
       tabindex and arrow-key movement, errors are `role="alert"`, and focus moves to the first
       field on load **and** on every audience/mode switch. *Pinned by:* `auth-page.a11y.spec.ts` +
       `segmented-control.spec.ts › keyboard semantics`
-- [ ] **AC-11 (glass contrast):** Given the card's translucent surface over the theme's worst-case
+- [x] **AC-11 (glass contrast):** Given the card's translucent surface over the theme's worst-case
       gradient stops, when composited, then every ink pair is ≥ AA. *Pinned by:*
       `auth-page.contrast.spec.ts`
 - [ ] **AC-12 (e2e, mocked suite):** Given the mocked backend, when each of the four flows runs
@@ -227,8 +227,8 @@ object is repointed), so no flow silently loses coverage.
 | R-5 | Retiring four surfaces silently drops a behavior (the O6 #176 failure mode) | med | high | the behavior-parity ledger above is enumerated from code; each `preserved` row names its new home | Ivo | open |
 | R-6 | Audience toggle leaks credentials across principal types (a tourist password posted to the operator endpoint) | low | **high** | the toggle picks the *service*, never a shared endpoint; separate submit paths, no shared credential state; password field cleared on audience switch | Ivo | open |
 | R-7 | Focus/ARIA regression on the toggles (radiogroup semantics, roving tabindex) | med | med | `SegmentedControl` is a shared primitive with its own keyboard spec; axe in both modes × both audiences | Ivo | **mitigated** (Phase 1) — `segmented-control.spec.ts` pins radiogroup semantics, roving tabindex, arrow/Home/End with wrap, and that other keys fall through to the browser; axe over the composed page still owes Phase 3 |
-| R-8 | Glass card contrast drifts from the AA-proven token set | low | med | reuse `CardGlass` + `--riv-*` tokens only, no palette literals; `auth-page.contrast.spec.ts` composites the maths | Ivo | open |
-| R-9 | The mode/audience state and `returnUrl` desync across a full-page SSO redirect | med | med | audience + mode + `returnUrl` live in query params, so the SSO return re-enters with the same state | Ivo | open |
+| R-8 | Glass card contrast drifts from the AA-proven token set | low | med | reuse `CardGlass` + `--riv-*` tokens only, no palette literals; `auth-page.contrast.spec.ts` composites the maths | Ivo | **closed** (Phase 3) — and it **fired**: the inactive pill label at ink-faint measured 4.38:1 over the pill track on the darkest riviera stop; the label moved to ink-soft |
+| R-9 | The mode/audience state and `returnUrl` desync across a full-page SSO redirect | med | med | audience + mode + `returnUrl` live in query params, so the SSO return re-enters with the same state | Ivo | **closed** (Phase 3) — all three read from `queryParamMap`; the redirect rows set them too |
 | R-10 | Flyway collision | **none** | — | no migration in this slice; V30 stays free | Ivo | closed |
 | R-11 | **Open redirect via `returnUrl`** — the param is attacker-controllable, so `…/sign-in?returnUrl=https://evil.example` would bounce the user off-origin *after* they authenticate (found while building Phase 2; not in the original register) | med | **high** | `safeReturnUrl()` accepts only a single-leading-slash in-app path, rejecting absolute, protocol-relative (`//`, `/\`) and scheme URLs; both landing resolvers route through it | Ivo | **closed** (Phase 2) — `auth-landing.spec.ts` pins all five rejection cases and that an unsafe value falls through to the normal rule |
 | R-12 | A failed owned-venues read reads as "owns no venues" and forwards a real operator to onboarding | med | med | `OwnedVenues.load()` returns a typed `{status:'loaded'|'error'}` outcome, never a bare list; a failure is not cached so the caller can retry | Ivo | **closed** (Phase 2) — `owned-venues.spec.ts` pins error≠empty and the retry |
@@ -347,19 +347,20 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — Phases 0–2 done; Phase 3 next`
+**Stage pointer:** `implement — Phases 0–3 done; Phase 4 next`
 
-**Next action:** Start **Phase 3** (the unified auth page + route redirects). Frontend skills stay
-loaded from Phase 1. Note the new review-gate item **RV-STYLE-1** (inline comments are one-liners or
-they are not written, added 2026-07-22 at the user's request) — it applies to everything from here,
-and a sweep commit brings Phases 0–2 into line.
+**Next action:** Start **Phase 4** (operator surfaces behind the guard + the `/operator` home):
+`OperatorHome`, apply `operatorSessionGuard` to `/operator`, `/operator/:venueId` and
+`/venue-admin`, strip the two inline sign-in cards, delete `runOperatorSignIn`, then walk the
+behavior-parity ledger row by row. Frontend skills stay loaded. **RV-STYLE-1** (inline comments are
+one-liners or they are not written, added 2026-07-22) applies to everything from here.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Owned-venues read (backend) | ✅ | `73a62dc` |
 | 1 — Shared Tailwind primitives | ✅ | `66aedec` |
-| 2 — Session/landing plumbing (`core/`) | ✅ | `<phase-2>` |
-| 3 — The unified auth page + route redirects | | |
+| 2 — Session/landing plumbing (`core/`) | ✅ | `c3da52d` (+ `ab6461e` style sweep) |
+| 3 — The unified auth page + route redirects | ✅ | `<phase-3>` |
 | 4 — Operator surfaces behind the guard + `/operator` home | | |
 | 5 — e2e, a11y/contrast, substrate docs | | |
 
@@ -640,23 +641,40 @@ describe('landingRouteFor', () => {
 **Files:** Create `auth/auth-page.ts` (+ 3 specs) · Modify `auth/sso-buttons.ts`, `app.routes.ts` ·
 Delete `auth/sign-in.ts`, `auth/register.ts`, `operator/operator-register.ts` (+ their specs)
 
-- [ ] **Step 1: Write the failing audience-routing spec** (AC-3) — assert `CustomerAuth.signIn` is
-      called and `OperatorAuth.signIn` is not, then flip the toggle and assert the reverse; assert
-      the password field is cleared on audience switch (R-6).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- auth-page` → FAIL
-- [ ] **Step 3: Minimal implementation** — one `CardGlass` card composing `SegmentedControl`
-      (audience, pill variant / role picker, card variant), Signal Forms `form()` over
-      `{ identifier, email, password, contactEmail }` with the audience-conditional field set, one
-      `role="alert"` region, `OutcomeCard` for the three landed states, focus moved to the first
-      field on load and on every switch (AC-10).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- auth-page` → PASS
-- [ ] **Step 5: Red→green the remaining flows** — tourist register (AC-5), operator register
+- [x] **Step 1: Write the failing audience-routing spec** (AC-3)
+- [x] **Step 2: Run it, verify it fails** — FAIL: `Could not resolve "./auth-page"`
+- [x] **Step 3: Minimal implementation** — one `CardGlass` card composing `SegmentedControl`
+      (audience pill in sign-in mode / role-picker cards in register mode), Signal Forms `form()`
+      over `{ identifier, contactEmail, password }` with the audience-conditional field set, one
+      `role="alert"` region, `OutcomeCard` for the landed states, focus moved to the first field on
+      load and on every switch (AC-10).
+- [x] **Step 4: Run it, verify it passes** — 23/23 PASS
+- [x] **Step 5: Red→green the remaining flows** — tourist register (AC-5), operator register
       pending (AC-6), generic failures (AC-4), already-signed-in observation (#252 row).
-- [ ] **Step 6: Routes** — `account/sign-in` → `AuthPage`; redirect rows for `account/register` and
-      `operator/register` with audience/mode preselected; delete the three components and their specs.
-- [ ] **Step 7: a11y + contrast specs** (AC-10, AC-11).
-- [ ] **Step 8: Commit** — `git commit -m "Replace the four auth surfaces with one audience-aware page (#277)"`
-- [ ] **Step 9: Update plan-doc execution status.**
+- [x] **Step 6: Routes** — `account/sign-in` → `AuthPage`; redirect rows for `account/register` and
+      `operator/register` with audience/mode preselected; deleted the three components + 6 specs.
+      Pinned by the new `app.routes.spec.ts` (3/3).
+- [x] **Step 7: a11y + contrast specs** (AC-10 7/7, AC-11 21/21).
+- [x] **Step 8: Commit** — `git commit -m "Replace the four auth surfaces with one audience-aware page (#277)"`
+- [x] **Step 9: Update plan-doc execution status.**
+
+> **As-built note (Phase 3):**
+> - **The contrast spec caught a real AA failure.** The inactive pill label at
+>   `--riv-card-ink-faint` (0.72) measures **4.38:1** on the darkest riviera stop, because the pill
+>   *track* tint darkens the glass beneath it — a third composite the rest of the card doesn't have.
+>   Fixed in the code (that one label uses `--riv-card-ink-soft`), not in the test.
+> - **The model is `{ identifier, contactEmail, password }`**, not the plan's
+>   `{ identifier, email, password, contactEmail }`: one credential field serves both audiences
+>   (labelled Email/Username), so a separate `email` key would be dead state.
+> - **No Signal-Forms `applyWhen` schema.** The angular-cli MCP's `applyWhen` API was evaluated;
+>   validity stays gated in `onSubmit` with one `role="alert"` message, because that is exactly what
+>   the three retired cards did — a per-field validator schema would be a *behaviour change* against
+>   the parity ledger, not a port of it. The conditional field set is plain `@if`.
+> - **Redirects use the `redirectTo` function form** returning a `UrlTree`; the string form cannot
+>   carry query params, and the whole point is to preselect the tab.
+> - **The two header "Register" links now deep-link** to `/account/sign-in?mode=register` rather than
+>   relying on the redirect hop.
+> - `auth/auth.scss` stays — its four remaining consumers are the recovery pages.
 
 ---
 

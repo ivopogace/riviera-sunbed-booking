@@ -108,9 +108,10 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(
       nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-signin"]')?.getAttribute('href'),
     ).toBe('/account/sign-in');
+    // S9 (#277): Register now deep-links into the unified card's register mode.
     expect(
       nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-register"]')?.getAttribute('href'),
-    ).toBe('/account/register');
+    ).toBe('/account/sign-in?mode=register');
     // No signed-in affordances when signed out.
     expect(nav?.querySelector('[data-testid="nav-user"]')).toBeNull();
     expect(nav?.querySelector('[data-testid="nav-signout"]')).toBeNull();
@@ -252,9 +253,9 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   const RESTYLED_PATHS = [
     '',
     'my-bookings',
-    // S2 (#111): the customer auth pages are new glass routes, born un-legacied (like my-bookings).
+    // S2 (#111) → S9 (#277): the one unified auth card. `account/register` and `operator/register`
+    // are redirect-only now (the loop below skips them), so they left this list.
     'account/sign-in',
-    'account/register',
     // S8 (#113): the account-recovery pages (forgot / reset / verify) + the account page — new glass routes.
     'account/forgot',
     'account/reset',
@@ -268,9 +269,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     // O8 (#177): the /venue-admin editor was slimmed to onboarding-only and dropped its compat
     // surface (its editing jobs are console tabs now) — so it renders on the bare background, not LEGACY.
     'venue-admin',
-    // S6 (#115): operator self-registration + the platform-admin approval surface — new porcelain
-    // glass routes, born un-legacied (their own themed background, like the customer auth pages).
-    'operator/register',
+    // S6 (#115): the platform-admin approval surface — a porcelain glass route, born un-legacied.
     'admin',
   ];
 

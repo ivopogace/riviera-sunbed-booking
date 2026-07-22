@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 
 // The operator-console tab child routes (issue #170). Every tab has now graduated to its real
 // component (O3 beach-map through O8 venue — no placeholders remain); `data.tab` identifies the
@@ -68,17 +69,19 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
-    // Customer sign-in (S2 #111, epic #108) — glass from the start. `account/*` literal segments,
-    // no param collision. Guest checkout is unaffected; an account is optional.
+    // S9 (#277): the ONE audience-aware auth card — tourist/operator × sign-in/register. Replaces
+    // the separate sign-in, register and operator-register pages. `?audience=` and `?mode=`
+    // preselect a tab; `?returnUrl=` is where a guard sent the visitor from.
     path: 'account/sign-in',
-    loadComponent: () => import('./auth/sign-in').then((m) => m.SignIn),
+    loadComponent: () => import('./auth/auth-page').then((m) => m.AuthPage),
     title: 'Sign in — Riviera',
   },
   {
-    // Customer registration (S2 #111, epic #108).
+    // S9 (#277): retired customer-register page → the unified card in register mode. Kept for one
+    // release so existing links/bookmarks and the emailed copy still land somewhere live.
     path: 'account/register',
-    loadComponent: () => import('./auth/register').then((m) => m.Register),
-    title: 'Create an account — Riviera',
+    redirectTo: () => inject(Router).parseUrl('/account/sign-in?mode=register'),
+    pathMatch: 'full',
   },
   {
     // Forgot password → request a reset link (S8 #113). `account/*` literal segment, no param collision.
@@ -121,12 +124,11 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    // Operator self-registration (S6 #115, epic #108) — porcelain page; creates a PENDING account
-    // that a platform admin approves. Literal segment MUST stay above 'operator/:venueId' (first
-    // match wins for parameterized siblings).
+    // S9 (#277): retired operator-register page → the unified card, operator tab, register mode.
+    // Literal segment MUST stay above 'operator/:venueId' (first match wins).
     path: 'operator/register',
-    loadComponent: () => import('./operator/operator-register').then((m) => m.OperatorRegister),
-    title: 'Register as an operator — Riviera',
+    redirectTo: () => inject(Router).parseUrl('/account/sign-in?audience=operator&mode=register'),
+    pathMatch: 'full',
   },
   {
     // Platform-admin operator-approval surface (S6 #115). Self-gates on the ADMIN session; the
