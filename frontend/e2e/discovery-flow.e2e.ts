@@ -90,6 +90,13 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cardChips).not.toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'discovery list');
 
+  // #155: the date picker is floored at the earliest bookable day, so past/today can't be picked.
+  // Clock-free assertion (no timezone math to flake): a non-empty ISO `min` equal to the default.
+  const dateInput = page.getByTestId('filter-date');
+  const dateMin = await dateInput.evaluate((el: HTMLInputElement) => el.min);
+  expect(dateMin).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(await dateInput.inputValue()).toBe(dateMin);
+
   // Filter by beach → the list narrows to the matching venue (server-side filter, mocked);
   // the in-bar count follows, with the singular noun.
   await page.getByTestId('filter-beach').selectOption('Dhërmi');

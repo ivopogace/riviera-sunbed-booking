@@ -174,6 +174,57 @@ describe('Home (venue discovery)', () => {
     req.flush(venues());
   });
 
+  it('floors the date picker at tomorrow in Europe/Tirane (no past/today via the native picker) (#155)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    expect(input.min).toBe(defaultBookingDate(new Date()));
+    expect(input.min).toBe(input.value); // the default selection sits on that floor
+  });
+
+  it('clamps a hand-typed past date up to the earliest bookable date, re-querying for it (#155)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    const min = defaultBookingDate(new Date());
+
+    // Move off the floor to a valid future date, so the later clamp is observable as a change back.
+    const future = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    input.value = future;
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    listRequest().flush(venues());
+
+    // Typing a past date (bypasses the native `min`) clamps to the floor and re-queries for it.
+    input.value = '2020-01-01';
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    const req = listRequest();
+    expect(req.request.params.get('date')).toBe(min);
+    req.flush(venues());
+    expect(input.value).toBe(min); // the rejected past date is reflected back to the floor
+  });
+
+  it('rejects a hand-typed past date when already on the floor — no extra query, field restored (#155)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    const min = defaultBookingDate(new Date());
+    expect(input.value).toBe(min); // the default selection is the earliest bookable date
+
+    input.value = '2020-01-01';
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    // Clamped value equals the current selection → no re-query, and the field snaps back to the floor.
+    httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues`);
+    expect(input.value).toBe(min);
+  });
+
   it('renders the hero per the Liquid Glass design (chip + display headline)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
