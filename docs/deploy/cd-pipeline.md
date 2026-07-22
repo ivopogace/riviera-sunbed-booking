@@ -78,14 +78,19 @@ must include `frontend/`, so:
     10/min, i.e. **~14 buckets for one client**. Trusting Cloudflare's ranges made the walk
     skip the edge and land on the client (re-measured after: 11 allowed / 189 throttled = one
     bucket).
-    **Drift risk — the reason it is a stopgap:** those 22 CIDRs are a hand-copied snapshot of
-    a third-party list. When Cloudflare adds a range, the walk lands on an untrusted edge
-    again and the defect returns **with no signal**. #286 removes the dependency: the app now
-    prefers `CF-Connecting-IP` behind a trusted peer, which needs no chain walk and therefore
-    no CDN ranges — so this variable should be **unset**, leaving the shipped
-    private-range default whose only job is classifying Render's own internal hop.
-    **Do not just delete it:** the retirement is a two-step, probe-verified procedure with a
-    rollback — `docs/runbooks/rate-limit-client-ip.md`.
+    **KEEP IT SET. Do not unset this variable** — measured 2026-07-22, see below.
+    **Drift risk — the reason it is still called a stopgap:** those 22 CIDRs are a hand-copied
+    snapshot of a third-party list. When Cloudflare adds a range, the defect returns **with no
+    signal**. #286 was meant to remove the dependency by preferring `CF-Connecting-IP` behind a
+    trusted peer (shipped in #287, `c8e111a`), which needs no chain walk. **It did not remove
+    it**, for a reason only the deployed probe could surface: the socket peer this app sees is
+    **itself a Cloudflare edge address, not a private Render hop**, so the trust gate in front
+    of *every* forwarding header — the new one included — still needs Cloudflare's ranges to
+    classify the peer. Unsetting the variable was tried and measured: **166 of 200 requests
+    allowed against a cap of 10/min (~17 buckets)**, versus 11 with it set. It was rolled back
+    within minutes; production is protected. #286 stays open for the durable answer.
+    The earlier note claiming Render's peer is private was an incorrect inference — the peer
+    was trusted because the Cloudflare ranges had just been added, not because it was private.
     Never set this blank: empty means "trust no proxy", which keys every client on the
     proxy's own address and throttles everyone together.
   - `RIVIERA_RATELIMIT_CLIENT_IP_HEADER` (#286) — **leave unset.** The shipped default is
