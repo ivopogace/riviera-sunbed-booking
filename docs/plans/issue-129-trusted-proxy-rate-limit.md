@@ -89,9 +89,17 @@ change.
   when resolved, then it is treated as an untrusted client value (sanitised, used as key),
   never throws, and never triggers DNS resolution. *Pinned by:*
   `ClientIpResolverTest.treatsNonIpLiteralHopAsClientWithoutDns`
-- [ ] **AC-7 (manual, merge close-out):** On the deployed sandbox, 3+ rapid failed logins
-  via `curl` each sending a fresh random `X-Forwarded-For` still exhaust ONE login budget
-  (429 observed). Verified by hand; recorded in the Execution status.
+- [x] **AC-7 (manual, merge close-out): PASSES on its literal wording, but the probe exposed a
+  deployment-topology defect — see #286.** The rotation bypass *is* closed: a client cannot
+  influence the key at all any more, because the hop the walk lands on is appended downstream
+  of it. But the hop it lands on is **not the client** — `*.onrender.com` is fronted by
+  Cloudflare, so the chain is client → Cloudflare edge → Render → app and the nearest hop is a
+  public, per-request-varying edge address. Measured: 200 concurrent logins, one client,
+  constant `X-Forwarded-For`, cap 10/min → 143 × `403` + 57 × `429`, i.e. **~14 buckets for one
+  client**. Under-throttles a single caller ~14× and lets unrelated clients behind one edge
+  node share a bucket. **This is risk R-1 materialising**, in a subtler form than predicted.
+  Fix is config (add the Cloudflare + Render ranges to `trusted-proxies`) or honouring
+  `CF-Connecting-IP`; tracked in **#286**.
 
 ## Non-goals
 
@@ -124,7 +132,7 @@ change.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Render's chain inserts a public-IP internal hop after the client, so the walk stops at that hop and ALL clients share one bucket → legitimate-user lockout on login | low | high | default trusts all private/loopback ranges (internal hops are private on Render); `riviera.ratelimit.trusted-proxies` is env-overridable (`RIVIERA_RATELIMIT_TRUSTED_PROXIES`) to add a CIDR without a release; AC-7 verifies on the deployed sandbox before close-out | Ivo | open |
+| R-1 | Render's chain inserts a public-IP internal hop after the client, so the walk stops at that hop and ALL clients share one bucket → legitimate-user lockout on login | low | high | default trusts all private/loopback ranges (internal hops are private on Render); `riviera.ratelimit.trusted-proxies` is env-overridable (`RIVIERA_RATELIMIT_TRUSTED_PROXIES`) to add a CIDR without a release; AC-7 verifies on the deployed sandbox before close-out | Ivo | **MATERIALISED — see #286.** Not "low": `*.onrender.com` is Cloudflare-fronted, so the hop nearest the app is a public, PER-REQUEST-VARYING edge address — the walk keys on it, not the client. Measured 143x403 + 57x429 for 200 same-client constant-XFF requests on a cap of 10, i.e. ~14 buckets per client: under-throttles one caller ~14x AND makes unrelated clients behind one edge node share a bucket. Fix is config (add the Cloudflare + Render ranges) or honouring `CF-Connecting-IP` |
 | R-2 | Breaking the ~19 IT files that rely on unique XFF per request for bucket isolation (#127 operator-lockout lesson) | med | high | **The planned mitigation was wrong** — `SessionLoginSupport.uniqueClientIp()` minted `10.99.x.y`, an RFC1918 address the new trust list classifies as a *proxy hop*, so every IT login in the suite would have skipped it and collapsed onto the one loopback bucket (the #127 lockout, full-suite-only). Real fix: the helper now mints `198.18.x.y` (RFC 2544 benchmarking range — public, deliberately outside the trusted defaults), pinned by `ClientIpResolverTest.integrationTestClientIpsStayDistinctBuckets` so it cannot silently regress. Every IT *file* is still unchanged; only the shared helper moved. | Ivo | **closed** — helper fixed + pinned; `AuthSessionIT` (5 tests) and `RecoveryRateLimitIT` (1 test) verified green against real Postgres, 0 skipped |
 | R-3 | Trusting all RFC1918 peers means a hypothetical direct-exposed deployment on a private network would honor spoofed XFF | low | low | accepted for the locked Render topology (ADR-0004); documented in the resolver javadoc + production-hardening; the override property narrows it if topology ever changes | Ivo | **closed — accepted** as planned; documented in the `ClientIpResolver` javadoc, the `application.properties` block, and production-hardening. An empty `trusted-proxies` list ("trust no proxy") is supported and pinned by `emptyTrustListTrustsNoProxyAndKeysOnTheSocketAddress`, so a topology change needs config, not a release |
 | R-4 | A non-IP XFF token (`unknown`, hostname) makes `IpAddressMatcher`/`InetAddress.getByName` do DNS or throw | med | med | pre-validate every address with Java 25 `InetAddress.ofLiteral` (literal-only, no DNS); parse failure = untrusted; AC-6 pins it | Ivo | **closed** — implemented as planned; `treatsNonIpLiteralHopAsClientWithoutDns` green |
@@ -182,15 +190,32 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** gates — **all three passed** on `4804569` (PR #282). Stopped before merge by
-instruction; merge + close-out is the only remaining work.
+**Stage pointer:** merged — PR #282 squash-merged to `main` as **`bbcaa75`** (2026-07-22); issue #129
+auto-closed as completed. Close-out in progress.
 
-**Next action:** merge PR #282, then run the merge close-out (`riviera-sdlc/references/pr-gates.md`
-§3): verify #129 closed, propagate nothing deferred except AC-7 + plan risk R-1, do AC-7 on the
-deployed sandbox, run `riviera-docs-freshness` over the ADR-0006 / production-hardening edits, and
-`graphify update .` for the doc changes.
+**Next action:** finish close-out — land the two `riviera-docs-freshness` patches (this micro-PR),
+confirm AC-7 against the redeployed sandbox, and run `graphify update .` for the doc edits.
 
-**Gate results (all on `4804569`, the same SHA):**
+**Merge close-out (`pr-gates.md` §3):**
+
+1. ✅ Issue #129 closed as `completed` by the PR's `Closes #129`.
+2. ➖ No parent epic — #129 has no parent and no open issue references it in a checklist (searched).
+3. ✅ Deferred items propagated: **AC-7 → #286** (the limiter appears inactive on the deployed sandbox, so AC-7 is unobservable there); plan risk **R-1** rides with it, since the same probe is what would confirm Render's hop is private-range.
+4. ⏳ Plan-doc final state (this edit); PR #282's Gates checkboxes ticked before merge.
+5. ⏳ **`riviera-docs-freshness` over `f9d14b5..bbcaa75` — 2 findings, both patched:**
+   - `.claude/skills/riviera-local-debug/SKILL.md` §full-suite-only failure class — its #127 fix
+     advice ("each test login presents a unique `X-Forwarded-For`") became **incomplete in exactly
+     the way that caused finding I-1**: since #129 a "unique" `10.x` value is read as a *proxy hop*
+     and silently recreates the lockout. Patched to require an untrusted address and name the
+     `198.18.x.y` helper.
+   - `docs/deploy/cd-pipeline.md` §Environment variables — the Render env-var list predated
+     `RIVIERA_RATELIMIT_TRUSTED_PROXIES`. Patched: **leave unset** (the shipped default covers
+     Render's internal hop), with the symptom to watch for if it ever needs setting.
+   - ADR-0006 + production-hardening were already updated by the slice itself; no other substrate
+     doc states a fact this diff contradicts (`CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md` clean).
+6. ⏳ `graphify update .` after the doc patches land.
+
+**Gate results (all on `4804569`; `915fd4a` re-confirmed identical before merge):**
 
 | Gate | Result |
 |---|---|
