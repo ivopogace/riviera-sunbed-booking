@@ -95,8 +95,18 @@ We deliberately do **not** enable Spring's `ForwardedHeaderFilter`
 - Nothing currently consumes the forwarded **scheme** (no server-side absolute-URL generation,
   no `requiresSecure()` redirect — TLS is enforced at the edge, not in-app).
 
-If a future need arises (e.g. app-generated absolute HTTPS URLs), enable it together with a
-trusted-proxy review and reconcile it with `ClientIpResolver`.
+**Update (2026-07-22, issue #129): the trusted-proxy reconciliation this section anticipated has
+happened — inside `ClientIpResolver`, not via the framework filter.** The resolver now takes a
+trusted-proxy CIDR list (`riviera.ratelimit.trusted-proxies`, default: loopback + RFC1918 +
+link-local + the IPv6 equivalents, overridable per environment with
+`RIVIERA_RATELIMIT_TRUSTED_PROXIES`). It honors `X-Forwarded-For` only from a peer in that list and
+keys on the right-most *untrusted* hop — Render appends its own observation of the client rather
+than overwriting the header, so that hop is unforgeable. `server.forward-headers-strategy` remains
+deliberately **unset**, for the same two reasons above: the framework filter would still strip the
+header before the rate-limit filter runs, and `WebCorsConfig`'s same-origin null-config trick assumes
+no forwarded-scheme processing. If app-generated absolute HTTPS URLs ever become a need, enabling it
+now means re-pointing the resolver at the rewritten `getRemoteAddr()` — a deliberate change, not a
+silent one.
 
 ## Single instance only (the two lockless sweeps)
 

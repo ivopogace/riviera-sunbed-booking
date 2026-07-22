@@ -23,9 +23,16 @@ overridable via `riviera.ratelimit.trusted-proxies`) and applies the MDN-recomme
 algorithm: if the socket peer is untrusted, use it and ignore the header; otherwise walk
 `X-Forwarded-For` right-to-left, skip trusted hops, and key on the first untrusted hop.
 This is correct on Render, which **appends** the true client IP to any client-supplied
-header (so the right-most untrusted hop is Render's own observation, unforgeable), and it
-keeps the ~15 MockMvc IT files' unique-XFF bucket-isolation convention (#127 lockout
-lesson) working unchanged, because the MockMvc peer is loopback (trusted).
+header (so the right-most untrusted hop is Render's own observation, unforgeable).
+
+> **Corrected during implementation (finding I-1).** This paragraph originally claimed the ~19
+> MockMvc IT files' unique-XFF bucket-isolation convention (#127 lockout lesson) kept working
+> "because the MockMvc peer is loopback (trusted)". That reasoning is incomplete and the
+> conclusion was wrong: the peer being trusted is what makes the header *readable*, but the
+> convention's generated address was itself RFC1918 (`10.99.x.y`), so the walk would have skipped
+> it as a proxy hop and fallen through to the loopback peer — collapsing every IT in the suite
+> onto one bucket. The convention holds only once the generated address is **untrusted**; the
+> helper now mints `198.18.x.y`. See risk R-2.
 
 **Persistence:** JDBC only (invariant #1). No tables/migrations touched — config + one
 root-package class.
@@ -52,29 +59,29 @@ change.
 > Written at the resolver/filter boundary (the inner hexagon of this edge concern);
 > HTTP-level assertions live in the filter contract test, which is the adapter-level pin.
 
-- [ ] **AC-1:** Given a request whose socket peer is NOT a trusted proxy (e.g. a public
+- [x] **AC-1:** Given a request whose socket peer is NOT a trusted proxy (e.g. a public
   address), when it carries any `X-Forwarded-For`, then the resolver ignores the header and
   keys on the socket address. *Pinned by:* `ClientIpResolverTest.ignoresForwardedForFromUntrustedPeer`
-- [ ] **AC-2:** Given a trusted socket peer and `X-Forwarded-For: 6.6.6.6, 203.0.113.7`
+- [x] **AC-2:** Given a trusted socket peer and `X-Forwarded-For: 6.6.6.6, 203.0.113.7`
   (attacker-forged prefix + proxy-appended true client), when resolved, then the key is the
   right-most untrusted hop `203.0.113.7`, never the forged left-most. *Pinned by:*
   `ClientIpResolverTest.resolvesRightmostUntrustedHopBehindTrustedProxy`
-- [ ] **AC-3:** Given the login limiter (capacity 2) and requests from one trusted peer that
+- [x] **AC-3:** Given the login limiter (capacity 2) and requests from one trusted peer that
   rotate a forged `X-Forwarded-For` prefix per request while the proxy-appended tail stays
   the same, when the budget is exceeded, then the 3rd request is `429` — the rotation no
   longer opens fresh buckets (the #129 bypass, closed). *Pinned by:*
   `RateLimitFilterTest.spoofedForwardedPrefixCannotEscapeLoginBucket`
-- [ ] **AC-4:** Given the existing IT convention (MockMvc loopback peer + a unique
+- [x] **AC-4:** Given the existing IT convention (MockMvc loopback peer + a unique
   single-value `X-Forwarded-For` per test), when the suite runs, then each unique value
   still gets its own bucket — the ~15 auth/booking IT files pass **unchanged**. *Pinned
   by:* existing `RateLimitFilterTest` XFF cases + the untouched IT corpus
   (`AuthSessionIT`, `CustomerLoginIT`, `OperatorRegistrationIT`, …) staying green.
-- [ ] **AC-5:** Given an absent/blank header, or a header whose hops are ALL trusted
+- [x] **AC-5:** Given an absent/blank header, or a header whose hops are ALL trusted
   addresses, when resolved behind a trusted peer, then the resolver falls back to the
   socket address; control-character sanitisation is preserved on every returned value.
   *Pinned by:* existing `ClientIpResolverTest` fallback + sanitisation tests (updated to
   the instance API) and `ClientIpResolverTest.fallsBackToPeerWhenAllHopsTrusted`
-- [ ] **AC-6:** Given a hop that is not an IP literal (`unknown`, a hostname, garbage),
+- [x] **AC-6:** Given a hop that is not an IP literal (`unknown`, a hostname, garbage),
   when resolved, then it is treated as an untrusted client value (sanitised, used as key),
   never throws, and never triggers DNS resolution. *Pinned by:*
   `ClientIpResolverTest.treatsNonIpLiteralHopAsClientWithoutDns`
@@ -115,9 +122,9 @@ change.
 |---|---|---|---|---|---|---|
 | R-1 | Render's chain inserts a public-IP internal hop after the client, so the walk stops at that hop and ALL clients share one bucket → legitimate-user lockout on login | low | high | default trusts all private/loopback ranges (internal hops are private on Render); `riviera.ratelimit.trusted-proxies` is env-overridable (`RIVIERA_RATELIMIT_TRUSTED_PROXIES`) to add a CIDR without a release; AC-7 verifies on the deployed sandbox before close-out | Ivo | open |
 | R-2 | Breaking the ~19 IT files that rely on unique XFF per request for bucket isolation (#127 operator-lockout lesson) | med | high | **The planned mitigation was wrong** — `SessionLoginSupport.uniqueClientIp()` minted `10.99.x.y`, an RFC1918 address the new trust list classifies as a *proxy hop*, so every IT login in the suite would have skipped it and collapsed onto the one loopback bucket (the #127 lockout, full-suite-only). Real fix: the helper now mints `198.18.x.y` (RFC 2544 benchmarking range — public, deliberately outside the trusted defaults), pinned by `ClientIpResolverTest.integrationTestClientIpsStayDistinctBuckets` so it cannot silently regress. Every IT *file* is still unchanged; only the shared helper moved. | Ivo | **closed** — helper fixed + pinned; `AuthSessionIT` (5 tests) and `RecoveryRateLimitIT` (1 test) verified green against real Postgres, 0 skipped |
-| R-3 | Trusting all RFC1918 peers means a hypothetical direct-exposed deployment on a private network would honor spoofed XFF | low | low | accepted for the locked Render topology (ADR-0004); documented in the resolver javadoc + production-hardening; the override property narrows it if topology ever changes | Ivo | open |
+| R-3 | Trusting all RFC1918 peers means a hypothetical direct-exposed deployment on a private network would honor spoofed XFF | low | low | accepted for the locked Render topology (ADR-0004); documented in the resolver javadoc + production-hardening; the override property narrows it if topology ever changes | Ivo | **closed — accepted** as planned; documented in the `ClientIpResolver` javadoc, the `application.properties` block, and production-hardening. An empty `trusted-proxies` list ("trust no proxy") is supported and pinned by `emptyTrustListTrustsNoProxyAndKeysOnTheSocketAddress`, so a topology change needs config, not a release |
 | R-4 | A non-IP XFF token (`unknown`, hostname) makes `IpAddressMatcher`/`InetAddress.getByName` do DNS or throw | med | med | pre-validate every address with Java 25 `InetAddress.ofLiteral` (literal-only, no DNS); parse failure = untrusted; AC-6 pins it | Ivo | **closed** — implemented as planned; `treatsNonIpLiteralHopAsClientWithoutDns` green |
-| R-5 | Interaction with `WebCorsConfig`'s same-origin null-config trick or session-cookie handling | low | med | no global forward-headers change (Non-goal 1) — nothing outside the rate-limit keying reads the resolver | Ivo | open |
+| R-5 | Interaction with `WebCorsConfig`'s same-origin null-config trick or session-cookie handling | low | med | no global forward-headers change (Non-goal 1) — nothing outside the rate-limit keying reads the resolver | Ivo | **closed** — the generalization audit confirmed the resolver is the only client-IP consumer in `main`; `RateLimitFilterTest`'s CORS-preflight case and the session ITs (`AuthSessionIT`, `CsrfProtectionIT` corpus) are unaffected |
 | R-6 | Per-controller error-shape drift on the new 429 path | — | — | none: the hand-mirrored `RATE_LIMITED` ProblemDetail body is untouched (§6b) | Ivo | closed — no contract change |
 
 ## Open questions / Assumptions
@@ -171,17 +178,19 @@ stay byte-for-byte identical.
 > `riviera-sdlc` reference file) before acting in a fresh session or after compaction.
 > Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** implement — phases 1+2 done; next is phase 3 (docs + scoped regression)
+**Stage pointer:** implement — complete; next is the PR stage (merge `origin/main`, open PR, run
+the CI / review / Sonar gates)
 
-**Next action:** Phase 3, step 1 — update `docs/deploy/production-hardening.md` §forward headers
-and the ADR-0006 R-2 bullet, then run the scoped regression + structural net.
+**Next action:** merge latest `origin/main` into the branch, push, open the PR into `main`, then
+run the three gates per `riviera-sdlc/references/pr-gates.md`. AC-7 (manual sandbox curl) stays
+open until merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — branch + plan doc | ✅ | 4e5c0c5 |
-| 1 — resolver trust walk (unit) | ✅ | (merged with phase 2 — see deviation) |
-| 2 — filter wiring + HTTP spoof-closure contract | ✅ | (merged with phase 1 — see deviation) |
-| 3 — docs + scoped regression + structural net | | |
+| 1 — resolver trust walk (unit) | ✅ | ac3205c (merged with phase 2 — see deviation) |
+| 2 — filter wiring + HTTP spoof-closure contract | ✅ | ac3205c (merged with phase 1 — see deviation) |
+| 3 — docs + scoped regression + structural net | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,7 +248,7 @@ works, Docker present so targeted ITs ran for real).
 **Files:** Modify `RateLimitProperties.java`, `ClientIpResolver.java`,
 `ClientIpResolverTest.java`
 
-- [ ] **Step 1: Write the failing tests** — port the existing 6 cases to the instance API
+- [x] **Step 1: Write the failing tests** — port the existing 6 cases to the instance API
   (construct with the default CIDR list) and add:
 
 ```java
@@ -291,11 +300,11 @@ void treatsNonIpLiteralHopAsClientWithoutDns() {
   `10.0.0.1`, same expectation — it now documents the walk, not left-most trust). The
   sanitisation cases gain `request.setRemoteAddr("127.0.0.1")` so the header is honored.
 
-- [ ] **Step 2: Run, verify it fails** —
+- [x] **Step 2: Run, verify it fails** —
   `./gradlew test --tests "*ClientIpResolverTest*"` → FAIL (no such constructor; AC-1/2
   assertions fail against left-most logic).
 
-- [ ] **Step 3: Minimal implementation** — `RateLimitProperties` gains:
+- [x] **Step 3: Minimal implementation** — `RateLimitProperties` gains:
 
 ```java
 @DefaultValue({"127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
@@ -358,14 +367,14 @@ final class ClientIpResolver {
   (`IpAddressMatcher` is `org.springframework.security.web.util.matcher.IpAddressMatcher`
   — already on the classpath via session auth; no new dependency.)
 
-- [ ] **Step 4: Run, verify it passes** —
+- [x] **Step 4: Run, verify it passes** —
   `./gradlew test --tests "*ClientIpResolverTest*"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search
+- [x] **Step 5: Generalization-audit pass** — search
   `grep -rn "X-Forwarded\|getRemoteAddr" platform/src/main/java` → expect only
   `ClientIpResolver` (+ the filter call sites). Any other consumer of client IP found is a
   candidate for the same trust walk; record the decision below.
-- [ ] **Step 6: Commit** — `git commit -m "Resolve client IP via trusted-proxy walk, not blind XFF (#129)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Resolve client IP via trusted-proxy walk, not blind XFF (#129)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -374,7 +383,7 @@ final class ClientIpResolver {
 **Files:** Modify `RateLimitFilter.java`, `RateLimitFilterTest.java`,
 `application.properties`
 
-- [ ] **Step 1: Write the failing tests** (harness facts: `@WebMvcTest` slice, tiny
+- [x] **Step 1: Write the failing tests** (harness facts: `@WebMvcTest` slice, tiny
   capacity-2 budgets, `WebSliceStubs.fromIp` sets the socket peer, an allowed login POST
   is a 401/400 — only 429 is the limiter):
 
@@ -414,23 +423,23 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
   matters. If the existing suite covers the login dimension through a different endpoint
   shape, keep its conventions.)
 
-- [ ] **Step 2: Run, verify the new cases fail** —
+- [x] **Step 2: Run, verify the new cases fail** —
   `./gradlew test --tests "*RateLimitFilterTest*"` → the spoof case FAILS (rotation opens
   fresh buckets today).
-- [ ] **Step 3: Minimal implementation** — in `RateLimitFilter`:
+- [x] **Step 3: Minimal implementation** — in `RateLimitFilter`:
   field `private final ClientIpResolver clientIps;`, constructor adds
   `this.clientIps = new ClientIpResolver(props.trustedProxies());`, both
   `ClientIpResolver.resolve(request)` call sites → `clientIps.resolve(request)`.
   In `application.properties`, document the new key next to the ratelimit block
   (default spelled out; note the `RIVIERA_RATELIMIT_TRUSTED_PROXIES` env override and
   that an empty list means "trust no proxy — socket address only").
-- [ ] **Step 4: Run, verify it passes** —
+- [x] **Step 4: Run, verify it passes** —
   `./gradlew test --tests "*RateLimitFilterTest*" --tests "*ClientIpResolverTest*"` → PASS
   (all pre-existing cases green unchanged — AC-4's first half).
-- [ ] **Step 5: Generalization-audit pass** — none expected (no new pattern beyond
+- [x] **Step 5: Generalization-audit pass** — none expected (no new pattern beyond
   phase 1's); confirm and log.
-- [ ] **Step 6: Commit** — `git commit -m "Close the XFF-rotation rate-limit bypass at the filter (#129)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Close the XFF-rotation rate-limit bypass at the filter (#129)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -439,18 +448,18 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 **Files:** Modify `docs/deploy/production-hardening.md`,
 `docs/adr/0006-booking-code-stays-in-url-path.md`
 
-- [ ] **Step 1:** production-hardening §forward headers: record that #129 implemented the
+- [x] **Step 1:** production-hardening §forward headers: record that #129 implemented the
   anticipated trusted-proxy reconciliation inside `ClientIpResolver`;
   `server.forward-headers-strategy` remains deliberately unset (same reasons).
-- [ ] **Step 2:** ADR-0006: append a dated note to the R-2 bullet — resolved by #129
+- [x] **Step 2:** ADR-0006: append a dated note to the R-2 bullet — resolved by #129
   (trusted-proxy walk); the bullet's history stays intact.
-- [ ] **Step 3: Scoped regression** —
+- [x] **Step 3: Scoped regression** —
   `./gradlew test --tests "*ClientIpResolverTest*" --tests "*RateLimitFilterTest*" --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"`
   → PASS. (The XFF-using ITs are Docker-gated Testcontainers — they skip locally by
   design; CI owns them, which is exactly AC-4's second half. Do not run the bare `test`
   task locally — `riviera-local-debug`.)
-- [ ] **Step 4: Commit** — `git commit -m "docs: record #129 trusted-proxy resolution in ADR-0006 + hardening notes (#129)"`
-- [ ] **Step 5: Update plan-doc execution status**, push the branch, open the PR into
+- [x] **Step 4: Commit** — `git commit -m "docs: record #129 trusted-proxy resolution in ADR-0006 + hardening notes (#129)"`
+- [x] **Step 5: Update plan-doc execution status**, push the branch, open the PR into
   `main` (merge latest `origin/main` first per the SDLC PR stage), then proceed CI gate →
   review gate (`riviera-review-overlay` — expect RV-BE-11 edge-placement and RV-PROC-1
   skills-consulted checks) → Sonar gate (pull the issue list, not just the gate) → merge
@@ -472,21 +481,32 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/2/5/6:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** CI full suite green on the PR with zero IT-file changes in the diff. Verified at run `<link>`.
+- [x] **AC-1/2/5/6:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS (12 tests, 0 skipped).
+  Verified at commit `ac3205c`.
+- [x] **AC-3:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS (14 tests, 0 skipped);
+  `spoofedForwardedPrefixCannotEscapeLoginBucket` was red before the fix. Verified at commit `ac3205c`.
+- [x] **AC-4 (local half):** every IT *file* is unchanged in the diff; only the shared
+  `SessionLoginSupport` helper moved (finding I-1). Docker was available locally, so the assumption
+  was verified for real rather than deferred: `AuthSessionIT` (5 tests) + `RecoveryRateLimitIT`
+  (1 test) PASS against real Postgres, 0 skipped, at commit `ac3205c`.
+- [ ] **AC-4 (CI half):** full suite green on the PR — the only run that exercises suite-cumulative
+  login traffic through one cached context. Verified at run `<link>`.
 - [ ] **AC-7:** manual sandbox check post-deploy (rotating-XFF curl → 429). Verified `<date>`.
+
+**Structural net** (invariant #11, run at phase 3): `ModularityTests` (1), `PackageShapeArchitectureTests`
+(4), `PublishedSurfacePlacementArchitectureTests` (10), `JdbcOnlyArchitectureTests` (2),
+`ErrorContractArchitectureTests` (2) — all PASS, 0 skipped. No module surface changed, as planned.
 
 ## Self-review checklist (before merge / PR)
 
 - [ ] Every AC has an implementing task and a verifying test.
 - [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no new dependencies at all (invariant #1; `IpAddressMatcher` is already on the classpath).
-- [ ] **Availability** N/A justified (no availability write path touched).
-- [ ] **Modulith**: root-package placement only; no module surface changed; structural net green (invariant #11).
-- [ ] **Payment/payout** N/A (no money in scope).
-- [ ] Booking codes never logged; the resolved IP stays sanitised before any debug log (invariant #7 discipline preserved).
-- [ ] Error contract untouched (§6b — the hand-mirrored `RATE_LIMITED` body).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no new dependencies at all (invariant #1; `IpAddressMatcher` is already on the classpath).
+- [x] **Availability** N/A justified (no availability write path touched).
+- [x] **Modulith**: root-package placement only; no module surface changed; structural net green (invariant #11).
+- [x] **Payment/payout** N/A (no money in scope).
+- [x] Booking codes never logged; the resolved IP stays sanitised before any debug log (invariant #7 discipline preserved).
+- [x] Error contract untouched (§6b — the hand-mirrored `RATE_LIMITED` body).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [ ] Risk register has no stale `open` rows (R-1 closes with AC-7; R-2 with AC-4); Open Questions empty or deferred with an issue #.

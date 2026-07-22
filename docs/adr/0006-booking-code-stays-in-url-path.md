@@ -53,6 +53,13 @@ with the real authentication model** that will replace the `SecurityConfig` plac
   Render instance, ADR-0004); a forged header can dodge the per-IP limit. The per-code limit
   and code entropy back it up; a proper proxy-trust config is part of the same auth-model
   follow-up.
+  - **Resolved 2026-07-22 by issue #129.** `ClientIpResolver` now takes a trusted-proxy CIDR
+    list (`riviera.ratelimit.trusted-proxies`): the header is honored only when the socket peer
+    is a trusted proxy, and the key is then the right-most *untrusted* hop — the one Render
+    appends and a client therefore cannot forge. From any other peer the header is ignored
+    outright. This closed the bypass for all seven per-IP dimensions at once (booking, operator
+    login/register, customer login/register, SSO, recovery). The URL contract was **not**
+    touched, as the bullet below requires.
 - A future implementer must not silently "fix" this by changing the URL contract — that
   breaks the merged FE and belongs with the auth model.
 
