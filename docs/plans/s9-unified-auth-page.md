@@ -251,6 +251,7 @@ object is repointed), so no flow silently loses coverage.
 | R-10 | Flyway collision | **none** | — | no migration in this slice; V30 stays free | Ivo | closed |
 | R-11 | **Open redirect via `returnUrl`** — the param is attacker-controllable, so `…/sign-in?returnUrl=https://evil.example` would bounce the user off-origin *after* they authenticate (found while building Phase 2; not in the original register) | med | **high** | `safeReturnUrl()` accepts only a single-leading-slash in-app path, rejecting absolute, protocol-relative (`//`, `/\`) and scheme URLs; both landing resolvers route through it | Ivo | **closed** (Phase 2) — `auth-landing.spec.ts` pins all five rejection cases and that an unsafe value falls through to the normal rule |
 | R-12 | A failed owned-venues read reads as "owns no venues" and forwards a real operator to onboarding | med | med | `OwnedVenues.load()` returns a typed `{status:'loaded'|'error'}` outcome, never a bare list; a failure is not cached so the caller can retry | Ivo | **closed** (Phase 2) — `owned-venues.spec.ts` pins error≠empty and the retry |
+| R-13 | **The e2e blast radius is 4× the plan's estimate** — 17 files, not 4, because 15 e2e specs sign in through the console's deleted inline card via `operator-sign-in.page.ts` (measured at the Phase-4 close, not at plan time) | **certain** | med | fix the two **page objects** first and re-measure before touching any spec; mock `GET /api/venues/mine` in `support/auth-mocks.ts` (the operator landing now resolves through it). Full table in the Phase 5 header | Ivo | open — Phase 5 |
 
 ## Open questions / Assumptions
 
@@ -729,6 +730,26 @@ Delete `auth/sign-in.ts`, `auth/register.ts`, `operator/operator-register.ts` (+
 
 **Files:** Create `frontend/e2e/unified-auth.e2e.ts` · Modify the four old e2e specs + both page
 objects · Modify `CLAUDE.md`, `RESPONSIBILITIES.md` (if the read changes a stated fact)
+
+> **⚠ Scope correction measured at the Phase-4 close (2026-07-22) — read this first.** The plan says
+> "four retired e2e specs". The real blast radius is **17 files**, because almost every operator e2e
+> signs in through the console's now-deleted inline card:
+>
+> | Surface | Files |
+> |---|---|
+> | `support/pages/operator-sign-in.page.ts` consumers | **15** — `layout-editor`, `operator-console`, `operator-daily`, `operator-payouts`, `operator-pricing`, `operator-registration`, `operator-requests`, `operator-sign-in`, `operator-venue`, `operator-venue-photos` (mocked) + `real-backend/{daily,payouts,pricing,venue-editor}` and `real-backend/support/operator.ts` |
+> | `support/pages/customer-auth.page.ts` consumers | 2 — `customer-auth`, `sso-sign-in` |
+> | Retired `data-testid`s used directly | 2 — `operator-registration`, `password-reset` |
+>
+> **The leverage is the page objects, not the specs.** Repointing `operator-sign-in.page.ts` at
+> `/account/sign-in?audience=operator` (fill `auth-identifier`/`auth-password`, submit `auth-submit`)
+> and `customer-auth.page.ts` at the unified card should keep most of the 15 green **unchanged** —
+> do that first and re-measure before editing any spec. Note the operator flow now also needs
+> `GET /api/venues/mine` mocked (`support/auth-mocks.ts`), since sign-in resolves landing through it;
+> a single-venue mock reproduces today's "straight into the console" behaviour.
+>
+> `password-reset.e2e.ts` and `operator-registration.e2e.ts` additionally reference retired test ids
+> (`signin-email`, `op-register-*`) and need their own edits.
 
 - [ ] **Step 1: Author the mocked-suite spec** — four flows + the multi-venue landing, mocking
       `/api/auth/*` and `/api/venues/mine` via `page.route`; axe through
