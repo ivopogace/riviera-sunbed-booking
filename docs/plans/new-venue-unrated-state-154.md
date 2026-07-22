@@ -48,8 +48,10 @@ MCP (`@if/@else` native control flow, delegate helpers, no new component needed)
 ## Non-goals
 
 - Changing the rating source/precision — `ratingTenths` stays the API contract.
-- New e2e spec: the observable change (text swap + aria) is fully covered by unit +
-  a11y/contrast specs; no new user *flow*. The existing home/venue-map e2e stay green.
+- ~~New e2e spec~~ — **reversed at the review gate (F-1):** RV-FE-E2E warranted
+  real-browser axe on the new "New" pill (the venue-map chip is *not* inside an
+  aria-hidden region, unlike the home card), so an unrated-venue case was added to the
+  mocked CI suite `discovery-flow.e2e.ts`.
 - Backfilling review data or any backend change.
 
 ## Behavior-parity ledger
@@ -119,7 +121,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-FE-E2E) | Frontend change lacked real-browser e2e coverage of the "New" state | fixed — added unrated case to `discovery-flow.e2e.ts` (6/6 green) |
 
 ---
 
