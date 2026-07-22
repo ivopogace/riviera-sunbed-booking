@@ -141,9 +141,10 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
   out so #276 lights up its buttons with no rework.
 - **Operator self-service password reset** — customer-only today; "Forgot password?" stays
   tourist-only.
-- **Folding venue creation into the console / deleting `/venue-admin`** — the agreed **follow-up
-  issue**. This slice only removes that page's *sign-in card* and forwards the 0-venue case to it.
-- **Restyling the create-venue form** to Liquid Glass — same follow-up.
+- **Folding venue creation into the console / deleting `/venue-admin`** — split out to **#278**
+  (filed 2026-07-22, blocked by this slice). This slice only removes that page's *sign-in card* and
+  forwards the 0-venue case to it.
+- **Restyling the create-venue form** to Liquid Glass — same follow-up (#278).
 - Adding display names, venue-name-at-registration, or any `customer_account`/`operator` column.
 - Any change to guest checkout, the booking-code flow, or `/admin` (the platform-admin surface).
 
@@ -246,9 +247,9 @@ object is repointed), so no flow silently loses coverage.
   2026-07-22).
 - **Operator credential label** → "Username" on the operator tab; "Email" on the tourist tab (user
   decision, 2026-07-22).
-- **Scope split** → creation-into-console + `/venue-admin` deletion is a **separate follow-up
-  issue**; #277 ships auth unification + the owned-venues read + the `/operator` home (user
-  decision, 2026-07-22).
+- **Scope split** → creation-into-console + `/venue-admin` deletion is **#278** (filed 2026-07-22);
+  #277 ships auth unification + the owned-venues read + the `/operator` home (user decision,
+  2026-07-22).
 - **Old routes** → redirect for one release with audience/mode preselected (user decision,
   2026-07-22).
 - **Endpoint path** → `GET /api/venues/mine`, not `/api/me/venues` (which is CUSTOMER-gated) and
@@ -342,11 +343,12 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `plan — authored, awaiting go-ahead to implement`
+**Stage pointer:** `plan — complete; ready to implement (Phase 0 not started)`
 
-**Next action:** Run the two GitHub writes the plan implies (patch #277's stale ACs; file the
-follow-up issue for folding venue creation into the console + deleting `/venue-admin`), then start
-Phase 0.
+**Next action:** Start **Phase 0** (owned-venues read, backend). Load `riviera-local-debug` before
+the session's first `./gradlew`. The plan's two GitHub writes are **done**: #277's acceptance
+criteria were patched to the corrected reality, and the creation-into-console follow-up is filed as
+**#278** (both 2026-07-22).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
