@@ -115,9 +115,18 @@ it gave one client ~14 buckets while strangers behind one edge shared one. Behin
 resolver now prefers a configurable edge-supplied client-IP header
 (`riviera.ratelimit.client-ip-header`, shipped default `CF-Connecting-IP`), which Cloudflare
 generates from the connection it terminated rather than appending to a client copy — unforgeable
-behind a trusted peer, and needing no chain walk, so the trust list never has to enumerate the CDN's
-own rotating ranges. The `X-Forwarded-For` walk is preserved unchanged for the no-CDN case. The
-trusted-proxy list's remaining job is to classify the **socket peer** only.
+behind a trusted peer, and needing no chain walk. The `X-Forwarded-For` walk is preserved unchanged
+for the no-CDN case. The trusted-proxy list's remaining job is to classify the **socket peer** only.
+
+**Corrected 2026-07-22 (#288), same day:** an earlier version of this note claimed the header meant
+"the trust list never has to enumerate the CDN's own rotating ranges." **That is false here.** The
+socket peer this app sees *is* a Cloudflare edge address, not a private Render hop, so the trust
+gate in front of every forwarding header — the client-IP header included — still needs those ranges.
+Measured: narrowing `RIVIERA_RATELIMIT_TRUSTED_PROXIES` to the shipped private defaults allowed
+**166 of 200** requests against a cap of 10/min (~17 buckets) and produced **no** resolver warning at
+all, i.e. resolution stopped at the untrusted-peer branch before ever reading the header; restoring
+the ranges returned it to 11 of 200. **The variable must stay set.** The header removes the *walk*,
+not the *list* — #286 stays open for that half.
 `server.forward-headers-strategy` stays unset for the reasons above — and now for a third: the
 framework filter would also drop the resolver's preferred header path. Verification procedure (no
 unit or slice test can prove this class of change): `docs/runbooks/rate-limit-client-ip.md`.
