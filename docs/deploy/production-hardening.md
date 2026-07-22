@@ -108,6 +108,20 @@ no forwarded-scheme processing. If app-generated absolute HTTPS URLs ever become
 now means re-pointing the resolver at the rewritten `getRemoteAddr()` — a deliberate change, not a
 silent one.
 
+**Update (2026-07-22, issue #286): the walk is now the _fallback_, not the primary path.** #129's
+premise — that the hop Render appends is the client — does not hold here: `*.onrender.com` is
+Cloudflare-fronted, so the appended hop is a public, per-request-varying **edge node**, and keying on
+it gave one client ~14 buckets while strangers behind one edge shared one. Behind a trusted peer the
+resolver now prefers a configurable edge-supplied client-IP header
+(`riviera.ratelimit.client-ip-header`, shipped default `CF-Connecting-IP`), which Cloudflare
+generates from the connection it terminated rather than appending to a client copy — unforgeable
+behind a trusted peer, and needing no chain walk, so the trust list never has to enumerate the CDN's
+own rotating ranges. The `X-Forwarded-For` walk is preserved unchanged for the no-CDN case. The
+trusted-proxy list's remaining job is to classify the **socket peer** only.
+`server.forward-headers-strategy` stays unset for the reasons above — and now for a third: the
+framework filter would also drop the resolver's preferred header path. Verification procedure (no
+unit or slice test can prove this class of change): `docs/runbooks/rate-limit-client-ip.md`.
+
 ## Single instance only (the two lockless sweeps)
 
 Run **exactly one instance** of the backend until ShedLock (or equivalent) is added.

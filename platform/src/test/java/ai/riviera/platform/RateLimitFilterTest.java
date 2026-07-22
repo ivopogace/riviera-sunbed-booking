@@ -253,6 +253,32 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	// ---- One client, many edge nodes: still ONE bucket (#286) ----
+
+	private ResultActions loginViaEdge(String client, String edge) throws Exception {
+		return mvc.perform(post("/api/auth/operator/login").with(fromIp("10.14.0.1")).with(csrf())
+				.header("X-Forwarded-For", client + ", " + edge)
+				.header("CF-Connecting-IP", client)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "ghost", "password": "nope"}"""));
+	}
+
+	/**
+	 * The production defect (#286): one client is load-balanced across Cloudflare edge nodes, so the
+	 * right-most forwarded hop — the one Render appended — varies per request. Keyed on that hop it is
+	 * ~14 buckets; keyed on the edge-supplied client header it is one. The trust list here is the
+	 * SHIPPED default (private ranges only, no Cloudflare CIDRs), so this fails without the header path.
+	 */
+	@Test
+	void oneClientBehindRotatingEdgeNodesSharesOneLoginBucket() throws Exception {
+		loginViaEdge("203.0.113.90", "162.158.1.1").andExpect(status().isUnauthorized());
+		loginViaEdge("203.0.113.90", "104.16.2.2").andExpect(status().isUnauthorized());
+		loginViaEdge("203.0.113.90", "172.64.3.3")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
 	@Test
 	void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 		// A directly-connecting public client rotating XFF stays keyed on its socket address.

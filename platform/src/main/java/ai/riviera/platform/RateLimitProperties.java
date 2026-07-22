@@ -33,6 +33,14 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       Absent here it defaults to the <strong>empty</strong> list, i.e. "trust no
  *                       proxy": a security control must never grant trust nobody configured, so an
  *                       unset property throttles more, never less. See {@link ClientIpResolver}
+ * @param clientIpHeader name of the header a trusted upstream edge sets to the ORIGINATING client
+ *                       address (issue #286). When it is set and the socket peer is trusted, its
+ *                       single value is the rate-limit key directly — no {@code X-Forwarded-For}
+ *                       walk — so the trust list never has to enumerate the CDN's own rotating,
+ *                       hand-copied ranges. The shipped value lives in {@code application.properties},
+ *                       again the only place it is written. Absent here it defaults to
+ *                       <strong>empty</strong>, i.e. "no edge header — walk only", which is exactly
+ *                       the pre-#286 behaviour
  */
 @ConfigurationProperties("riviera.ratelimit")
 record RateLimitProperties(
@@ -41,7 +49,8 @@ record RateLimitProperties(
 		@DefaultValue Limit perCode,
 		@DefaultValue Limit login,
 		@DefaultValue("100000") int maxTrackedKeys,
-		@DefaultValue List<String> trustedProxies) {
+		@DefaultValue List<String> trustedProxies,
+		@DefaultValue("") String clientIpHeader) {
 
 	record Limit(@DefaultValue("60") int capacity, @DefaultValue("PT1M") Duration refillPeriod) {
 	}

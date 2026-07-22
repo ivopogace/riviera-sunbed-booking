@@ -60,6 +60,13 @@ with the real authentication model** that will replace the `SecurityConfig` plac
     outright. This closed the bypass for all seven per-IP dimensions at once (booking, operator
     login/register, customer login/register, SSO, recovery). The URL contract was **not**
     touched, as the bullet below requires.
+  - **Amended 2026-07-22 by issue #286.** The hop Render appends is not the client:
+    `*.onrender.com` is Cloudflare-fronted, so it is a public, per-request-varying **edge
+    node**, and keying on it gave one client ~14 buckets while unrelated clients behind one
+    edge shared one. Behind a trusted peer the resolver now prefers a configurable
+    edge-supplied client-IP header (`riviera.ratelimit.client-ip-header`, shipped default
+    `CF-Connecting-IP`) and keeps the walk above as the fallback. The bypass closure described
+    above is unchanged — both paths are gated on the same trusted-peer check.
 - A future implementer must not silently "fix" this by changing the URL contract — that
   breaks the merged FE and belongs with the auth model.
 

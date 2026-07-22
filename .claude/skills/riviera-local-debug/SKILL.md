@@ -76,7 +76,11 @@ It has bitten twice in one day:
   _untrusted_** — the resolver now skips hops inside `riviera.ratelimit.trusted-proxies`
   (loopback + RFC1918 + link-local), so a "unique" `10.x`/`192.168.x` value is read as a proxy
   hop, falls through to the loopback MockMvc peer, and silently recreates the #127 lockout.
-  The helper mints `198.18.x.y` (RFC 2544) for exactly this reason.
+  The helper mints `198.18.x.y` (RFC 2544) for exactly this reason. **Since #286 the resolver
+  also prefers an edge-supplied client-IP header** (`riviera.ratelimit.client-ip-header`,
+  shipped `CF-Connecting-IP`) ahead of the `X-Forwarded-For` walk — the ITs deliberately do
+  **not** set it, so they keep taking the walk and this isolation rule is unchanged. A test
+  that *does* set that header takes over the key outright; don't mix the two in one test.
 - **#98/#122:** an unconditional `@EnableScheduling` background sweep interfered with a
   race IT's timing window. Fix: a long `initial-delay` pushes the sweep out of test windows.
 
