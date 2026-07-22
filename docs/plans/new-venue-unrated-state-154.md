@@ -101,9 +101,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** Review gate walked (self-review) → awaiting CI + Sonar on the PR.
+**Stage pointer:** PR #296 open (into `main`) → watching CI + running the Sonar gate.
 
-**Next action:** confirm CI green on HEAD; run the Sonar gate when the PR exists.
+**Next action:** confirm PR CI green; pull the Sonar new-issue/duplication list and clear it; then await merge approval.
 
 **Review-gate verdict (riviera-review-overlay, FE scope):** RV-FE-1 ✅ (`@if/@else`,
 no `ngClass`/`ngStyle`, pure helper in `shared/`); RV-FE-7 ✅ (venue-map reuses the
