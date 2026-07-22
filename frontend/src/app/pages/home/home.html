@@ -35,6 +35,7 @@
         id="filter-date"
         type="date"
         data-testid="filter-date"
+        [min]="minDate"
         [value]="selectedDate()"
         (change)="onDateChange($event)"
       />
@@ -88,6 +89,7 @@
               appCardGlass
               data-testid="venue-card"
               [routerLink]="['/venues', venue.id]"
+              [queryParams]="{ date: selectedDate() }"
               [attr.aria-label]="cardLabel(venue)"
             >
               <!-- The <a> carries the full accessible name via aria-label, so its visible content

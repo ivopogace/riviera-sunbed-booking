@@ -114,11 +114,29 @@ describe('Home (venue discovery)', () => {
     expect(first.querySelector('[data-testid="card-availability"]')?.textContent).toContain('18 of 24');
   });
 
-  it('links each card to the venue beach map', async () => {
+  it('links each card to the venue beach map, carrying the selected date (#294)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
     const link = el().querySelector('[data-testid="venue-card"]');
-    expect(link?.getAttribute('href')).toBe('/venues/1');
+    // The chosen date rides along as ?date= so it persists into the map (default = tomorrow, Tirane).
+    expect(link?.getAttribute('href')).toBe(`/venues/1?date=${defaultBookingDate(new Date())}`);
+  });
+
+  it('updates the venue link’s date when the discovery date changes (#294)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    // A date guaranteed to differ from the default (tomorrow) on any calendar day (the 2026-07-14 flake).
+    const future = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    input.value = future;
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    listRequest().flush(venues()); // settle the date-change reload
+    await fixture.whenStable();
+
+    const href = el().querySelector('[data-testid="venue-card"]')?.getAttribute('href');
+    expect(href).toBe(`/venues/1?date=${future}`);
   });
 
   it('gives each card a single accessible name carrying every fact (not layout-only)', async () => {
@@ -172,6 +190,57 @@ describe('Home (venue discovery)', () => {
     const req = listRequest();
     expect(req.request.params.get('date')).toBe(chosen);
     req.flush(venues());
+  });
+
+  it('floors the date picker at tomorrow in Europe/Tirane (no past/today via the native picker) (#155)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    expect(input.min).toBe(defaultBookingDate(new Date()));
+    expect(input.min).toBe(input.value); // the default selection sits on that floor
+  });
+
+  it('clamps a hand-typed past date up to the earliest bookable date, re-querying for it (#155)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    const min = defaultBookingDate(new Date());
+
+    // Move off the floor to a valid future date, so the later clamp is observable as a change back.
+    const future = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    input.value = future;
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    listRequest().flush(venues());
+
+    // Typing a past date (bypasses the native `min`) clamps to the floor and re-queries for it.
+    input.value = '2020-01-01';
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    const req = listRequest();
+    expect(req.request.params.get('date')).toBe(min);
+    req.flush(venues());
+    expect(input.value).toBe(min); // the rejected past date is reflected back to the floor
+  });
+
+  it('rejects a hand-typed past date when already on the floor — no extra query, field restored (#155)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+
+    const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
+    const min = defaultBookingDate(new Date());
+    expect(input.value).toBe(min); // the default selection is the earliest bookable date
+
+    input.value = '2020-01-01';
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    // Clamped value equals the current selection → no re-query, and the field snaps back to the floor.
+    httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues`);
+    expect(input.value).toBe(min);
   });
 
   it('renders the hero per the Liquid Glass design (chip + display headline)', async () => {

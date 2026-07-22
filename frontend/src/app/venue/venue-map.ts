@@ -19,7 +19,7 @@ import { formatMoney } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { RetryButton } from '../shared/retry-button';
-import { defaultBookingDate } from './booking-date';
+import { defaultBookingDate, isIsoDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
 
@@ -107,10 +107,14 @@ export class VenueMap {
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
 
-  /** The day the map reflects (ISO YYYY-MM-DD); defaults to tomorrow in Europe/Tirane. */
-  protected readonly selectedDate = signal(defaultBookingDate(new Date()));
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display). */
   protected readonly minDate = defaultBookingDate(new Date());
+  /**
+   * The day the map reflects (ISO YYYY-MM-DD). Seeded from the `?date=` query param the discovery
+   * page carries when a venue is opened, so the chosen date persists across the hop (#294) — validated
+   * and clamped to {@link minDate}; an absent or malformed param falls back to it (tomorrow, Tirane).
+   */
+  protected readonly selectedDate = signal(this.readInitialDate());
 
   private readonly venueId: number | undefined;
 
@@ -176,6 +180,16 @@ export class VenueMap {
     }
     this.venueId = id;
     this.load();
+  }
+
+  /** Seed the map date from a valid, in-range `?date=` query param, else the earliest bookable day. */
+  private readInitialDate(): string {
+    const raw = this.route.snapshot.queryParamMap.get('date');
+    // Honour a valid `?date=` on/after the floor; absent, malformed, or past/today falls back to it (#4).
+    if (raw && isIsoDate(raw) && raw >= this.minDate) {
+      return raw;
+    }
+    return this.minDate;
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */

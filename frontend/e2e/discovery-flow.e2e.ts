@@ -90,6 +90,13 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cardChips).not.toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'discovery list');
 
+  // #155: the date picker is floored at the earliest bookable day, so past/today can't be picked.
+  // Clock-free assertion (no timezone math to flake): a non-empty ISO `min` equal to the default.
+  const dateInput = page.getByTestId('filter-date');
+  const dateMin = await dateInput.evaluate((el: HTMLInputElement) => el.min);
+  expect(dateMin).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(await dateInput.inputValue()).toBe(dateMin);
+
   // Filter by beach → the list narrows to the matching venue (server-side filter, mocked);
   // the in-bar count follows, with the singular noun.
   await page.getByTestId('filter-beach').selectOption('Dhërmi');
@@ -112,6 +119,27 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(headerChips).toContainText('15m to water');
   await expect(headerChips).toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'venue beach map');
+});
+
+test('the date chosen on discovery carries into the venue map (#294)', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
+
+  // Pick a date a month past the picker floor — clearly NOT the map's own default (tomorrow), so
+  // seeing it on the map proves the carry rather than the map's fallback. Clock-free (derived in-page).
+  const dateInput = page.getByTestId('filter-date');
+  const chosen = await dateInput.evaluate((el: HTMLInputElement) => {
+    const d = new Date(`${el.min}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
+  await dateInput.fill(chosen);
+
+  // Open the first venue → the map opens on the carried date (URL + picker), not tomorrow.
+  await page.getByTestId('venue-card').first().click();
+  await expect(page).toHaveURL(new RegExp(`/venues/1\\?date=${chosen}`));
+  await expect(page.getByTestId('map-date')).toHaveValue(chosen);
+  await expectNoSeriousAxeViolations(page, 'venue map (date carried from discovery)');
 });
 
 test('hero panel fills the content width, matching the search bar (#153)', async ({ page }) => {

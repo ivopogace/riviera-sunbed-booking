@@ -81,7 +81,12 @@ describe('VenueMap', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '1' }) } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ id: '1' }), queryParamMap: convertToParamMap({}) },
+          },
+        },
       ],
     }).compileComponents();
 
@@ -361,5 +366,74 @@ describe('VenueMap', () => {
     // formatted date display instead of an editable input.
     const dialogDate = el().querySelector('app-booking-dialog [data-testid="dialog-date"]');
     expect(dialogDate?.textContent).toContain(formatBookingDate(chosen));
+  });
+});
+
+/**
+ * The venue map seeds its date from the `?date=` query param the discovery page carries when a
+ * venue is opened (#294), so the tourist's chosen date persists across the hop. The param is
+ * validated (well-formed ISO calendar date) and clamped to the map's floor (tomorrow, invariant #4);
+ * an absent or malformed value falls back to the default. Each case needs its own ActivatedRoute, so
+ * this block configures TestBed per test rather than sharing the suite's beforeEach.
+ */
+describe('VenueMap — date carried from the discovery page (#294)', () => {
+  let fixture: ComponentFixture<VenueMap>;
+  let httpMock: HttpTestingController;
+
+  async function setup(queryParams: Record<string, string>): Promise<void> {
+    await TestBed.configureTestingModule({
+      imports: [VenueMap],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ id: '1' }),
+              queryParamMap: convertToParamMap(queryParams),
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(VenueMap);
+    httpMock = TestBed.inject(HttpTestingController);
+  }
+
+  afterEach(() => httpMock.verify());
+
+  function venueReq(): TestRequest {
+    return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
+  }
+
+  it('seeds the map date from a valid ?date= param and requests that date', async () => {
+    const chosen = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    await setup({ date: chosen });
+
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(chosen);
+    req.flush(miramar());
+    await fixture.whenStable();
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
+      '[data-testid="map-date"]',
+    )!;
+    expect(input.value).toBe(chosen); // the picker shows the carried date, not the default
+  });
+
+  it('clamps a past ?date= param up to the earliest bookable day (invariant #4)', async () => {
+    await setup({ date: '2020-01-01' });
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+    req.flush(miramar());
+  });
+
+  it('ignores a malformed ?date= param, falling back to tomorrow', async () => {
+    await setup({ date: 'not-a-date' });
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+    req.flush(miramar());
   });
 });

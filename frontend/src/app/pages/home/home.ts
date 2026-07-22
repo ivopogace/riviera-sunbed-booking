@@ -46,8 +46,14 @@ export class Home {
   /** Current filter selection. Empty string = "all" (no constraint). */
   protected readonly beach = signal('');
   protected readonly region = signal('');
-  /** The day availability is counted for (ISO YYYY-MM-DD); defaults to tomorrow in Europe/Tirane. */
-  protected readonly selectedDate = signal(defaultBookingDate(new Date()));
+  /**
+   * The earliest selectable booking date — tomorrow in Europe/Tirane. Backs the date input's `min`
+   * and clamps a hand-typed date so past/today dates can't be presented as bookable (#155,
+   * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
+   */
+  protected readonly minDate = defaultBookingDate(new Date());
+  /** The day availability is counted for (ISO YYYY-MM-DD); defaults to the earliest bookable date. */
+  protected readonly selectedDate = signal(this.minDate);
 
   /** Distinct beaches/regions for the filter selects, captured once from the unfiltered catalogue. */
   protected readonly beaches = signal<readonly string[]>([]);
@@ -139,8 +145,14 @@ export class Home {
   }
 
   protected onDateChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    if (!value || value === this.selectedDate()) {
+    const input = event.target as HTMLInputElement;
+    if (!input.value) {
+      return;
+    }
+    // Clamp a hand-typed past/today date up to the earliest day — typing bypasses the picker `min` (#155).
+    const value = input.value < this.minDate ? this.minDate : input.value;
+    input.value = value; // reflect any clamp back into the field, even when the model is unchanged
+    if (value === this.selectedDate()) {
       return;
     }
     this.selectedDate.set(value);
