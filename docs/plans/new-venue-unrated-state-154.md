@@ -101,9 +101,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR #296 open (into `main`) → watching CI + running the Sonar gate.
+**Stage pointer:** ✅ DONE — merged to `main` as `3d446c6` (squash of PR #296); #154 closed.
 
-**Next action:** confirm PR CI green; pull the Sonar new-issue/duplication list and clear it; then await merge approval.
+**Next action:** none — slice complete. Follow-up #297 (component `computed()` view-model refactor) filed separately.
 
 **Review-gate verdict (riviera-review-overlay, FE scope):** RV-FE-1 ✅ (`@if/@else`,
 no `ngClass`/`ngStyle`, pure helper in `shared/`); RV-FE-7 ✅ (venue-map reuses the
@@ -115,13 +115,14 @@ covers every touched area).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — shared `rating.ts` helper + spec | ✅ | pending push |
-| 1 — home card New state + specs | ✅ | pending push |
-| 2 — venue-map header New state + specs | ✅ | pending push |
+| 0 — shared `rating.ts` helper + spec | ✅ | in `3d446c6` |
+| 1 — home card New state + specs | ✅ | in `3d446c6` |
+| 2 — venue-map header New state + specs | ✅ | in `3d446c6` |
 
 Local verification: `rating.spec.ts` (4), `home.spec.ts` (26), `venue-map.spec.ts` (29),
 home+venue-map a11y/contrast (56) all green; `ng lint` clean; `ng build` OK (pre-existing
-`.scss` budget warnings only).
+`.scss` budget warnings only). CI green on the PR; **Sonar gate API-verified** — 0 new
+issues, 0 duplication, 100% new-code coverage.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
