@@ -23,12 +23,26 @@ client → Cloudflare edge → Render → app
 Render appends *its* peer — the Cloudflare edge node — to `X-Forwarded-For`, and that
 address is public and **varies per request** as a client is load-balanced across the CDN.
 
-Since #286 the app prefers `CF-Connecting-IP` (name configurable via
+Since #286/#287 the app prefers `CF-Connecting-IP` (name configurable via
 `riviera.ratelimit.client-ip-header`), which Cloudflare **generates** from the connection it
 terminated rather than appending to a client-supplied copy. It is read **only when the
 socket peer is trusted**, so it cannot be forged by a direct caller, and it needs no chain
-walk — which is what keeps Cloudflare's own published ranges out of
-`riviera.ratelimit.trusted-proxies`.
+walk.
+
+> **Measured correction (2026-07-22) — read before changing `trusted-proxies`.** The header
+> was expected to make Cloudflare's published ranges unnecessary. **It does not**, because
+> **the socket peer this app sees is itself a Cloudflare edge address, not a private Render
+> hop.** The trust gate in front of *every* forwarding header — the client-IP header
+> included — therefore still needs those ranges to classify the peer.
+>
+> Evidence: with only the private ranges trusted, the probe returned **166 of 200 allowed**
+> (~17 buckets) and the resolver logged **no WARN at all** — meaning `resolve` returned at its
+> first branch (`peer not trusted`) and never reached the header. With Cloudflare's ranges
+> restored: 11 of 200. An earlier note asserting the peer was private was an incorrect
+> inference; the peer was trusted because those ranges had just been added.
+>
+> **`RIVIERA_RATELIMIT_TRUSTED_PROXIES` must stay set.** #286 remains open for the durable
+> answer to the drift risk.
 
 ## The probe
 
@@ -82,36 +96,43 @@ check.**
 | `riviera.ratelimit.client-ip-header` | `RIVIERA_RATELIMIT_CLIENT_IP_HEADER` | `CF-Connecting-IP` |
 | `riviera.ratelimit.trusted-proxies` | `RIVIERA_RATELIMIT_TRUSTED_PROXIES` | loopback + RFC1918 + link-local + IPv6 equivalents (8 CIDRs) |
 
-The trust list has exactly one job now: **classify the socket peer**, which on Render is an
-internal private-range hop. It is deliberately *not* a list of the CDN's addresses.
+The trust list has exactly one job now: **classify the socket peer** — down from two, since
+the header path removes the chain walk. But on this deployment that peer is a **Cloudflare
+edge address** (measured above), so the list must still contain the CDN's ranges. That is the
+open half of #286.
 
 Setting `RIVIERA_RATELIMIT_CLIENT_IP_HEADER` to empty disables the preferred path and falls
 back to the #129 `X-Forwarded-For` walk. Setting `RIVIERA_RATELIMIT_TRUSTED_PROXIES` to empty
 is the kill switch: no peer is trusted, every forwarding header is ignored, and the socket
 address is the key.
 
-## Retiring the Cloudflare CIDR stopgap (#286, one-time)
+## The Cloudflare CIDR stopgap — **attempted retirement, 2026-07-22: FAILED and rolled back**
 
-Between #129 and #286, `RIVIERA_RATELIMIT_TRUSTED_PROXIES` was set on Render to the 8
-shipped defaults **plus Cloudflare's 15 IPv4 + 7 IPv6 published ranges** (30 CIDRs, fetched
-from <https://www.cloudflare.com/ips-v4> and <https://www.cloudflare.com/ips-v6> on
-2026-07-22). That made the walk skip the edge and land on the client — correct, but it made
-correctness depend on a hand-copied third-party list that rots with no signal.
+`RIVIERA_RATELIMIT_TRUSTED_PROXIES` is set on Render to the 8 shipped defaults **plus
+Cloudflare's 15 IPv4 + 7 IPv6 published ranges** (30 CIDRs, fetched from
+<https://www.cloudflare.com/ips-v4> and <https://www.cloudflare.com/ips-v6> on 2026-07-22).
 
-Retire it in **two steps**, in this order:
+The two-step retirement below was run after #287 deployed. **Step 2 failed**, and the
+procedure is kept here because it is still the right *method* — it is what caught the false
+premise, and it is what a future attempt must re-run.
 
-1. **Deploy the #286 code with the env var still set.** Run the probe: expect ~10 non-`429`.
-   This proves no regression. It **cannot** prove the header path works — while Cloudflare's
-   ranges are trusted, the walk and the header resolve to the *same* key, so a silently
-   broken header path still passes.
-2. **Unset `RIVIERA_RATELIMIT_TRUSTED_PROXIES`** so only the shipped private ranges are
-   trusted, wait for the restart, and re-run the probe. **This is the discriminating test:**
-   - ~10 non-`429` ⇒ the header path is confirmed; the CIDR list is retired for good.
-   - ~140 non-`429` ⇒ the header path is inert (Render is not forwarding the header).
-     **Roll back by re-setting the env var to the 30-CIDR value**, then reopen #286 with the
-     measurement.
+1. **Deploy with the env var still set.** Probe: expect ~10 non-`429`. Proves no regression.
+   It **cannot** prove the header path works — while Cloudflare's ranges are trusted, the
+   walk and the header resolve to the *same* key, so a broken header path still passes.
+   *Result 2026-07-22: 11 of 200. ✅*
+2. **Narrow `RIVIERA_RATELIMIT_TRUSTED_PROXIES` to the private ranges only**, wait for the
+   restart, re-probe. **This is the discriminating test:**
+   - ~10 non-`429` ⇒ the header path is confirmed; the CIDR list can be retired.
+   - ~140+ non-`429` ⇒ the header path is inert. **Roll back to the 30-CIDR value**, then
+     reopen #286 with the measurement.
+   *Result 2026-07-22: **166 of 200 (~17 buckets) — FAILED.** Rolled back the same minute;
+   re-probed at 11 of 200. Cause: the socket peer is a Cloudflare address, so narrowing the
+   list made the peer itself untrusted and the resolver never reached the header.*
 
-Do not skip step 1. It keeps a correct fallback in place while the new code is proven.
+**Diagnostic tip that paid off:** check the resolver's WARN *first*. Its **absence** during a
+failing probe is the tell that the peer is untrusted — a present WARN would instead mean the
+peer was fine and the header was missing. (#286 tracks adding an explicit warning for the
+untrusted-peer-with-header case, so this no longer has to be deduced from silence.)
 
 ## Related
 

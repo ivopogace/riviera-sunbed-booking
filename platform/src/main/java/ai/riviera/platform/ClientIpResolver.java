@@ -36,8 +36,10 @@ import jakarta.servlet.http.HttpServletRequest;
  * <li>otherwise, if the configured client-IP header carries exactly one IP literal, that is the key.
  * A CDN sets this header itself from the connection it terminated (Cloudflare's
  * {@code CF-Connecting-IP} is generated, not appended to a client-supplied copy), so behind a trusted
- * peer it is unforgeable, and it needs no chain walk — which is what keeps the CDN's own address
- * ranges out of the trust list entirely;</li>
+ * peer it is unforgeable, and it needs no chain walk. Note what this does <em>not</em> buy: the
+ * trust list still has to classify the peer, and on this deployment the peer is itself a
+ * Cloudflare address (measured — #286), so the CDN's ranges stay in the list. The header removes
+ * the walk, not the list;</li>
  * <li>otherwise walk {@code X-Forwarded-For} right-to-left and key on the first <em>untrusted</em>
  * hop — correct wherever the app sits directly behind an appending proxy, and the reason a non-CDN
  * deployment needs no configuration change;</li>
@@ -47,6 +49,9 @@ import jakarta.servlet.http.HttpServletRequest;
  * guessed at, because taking the first of several would let a client-supplied copy become the key.
  * Each way of losing the preferred path is logged once per process, so a topology change that
  * silently demotes resolution to the walk leaves a trace (see {@code docs/runbooks/rate-limit-client-ip.md}).
+ * One case is deliberately <em>not</em> covered yet: a client-IP header arriving from an
+ * <em>untrusted</em> peer — the signature of a trust list missing the CDN's ranges — is currently
+ * silent, and is what made the failed #286 retirement need a log-<em>absence</em> deduction.
  *
  * <p>A hop that is not an IP literal ({@code unknown}, a hostname, garbage) can never be proven
  * trusted, so it is treated as a client value; it is validated with {@link InetAddress#ofLiteral}
@@ -54,8 +59,11 @@ import jakarta.servlet.http.HttpServletRequest;
  *
  * <p>An empty trusted-proxy list means "trust no proxy" — the socket address is always the key, and
  * the client-IP header is never read. The shipped default trusts loopback, the RFC1918 private
- * ranges, link-local, and their IPv6 equivalents, which is what classifies Render's own internal hop;
- * a deployment exposed directly on a private network would want to narrow it via the property.
+ * ranges, link-local, and their IPv6 equivalents, which is right for an app sitting directly behind
+ * a private proxy hop. <strong>It is not sufficient on the deployed topology</strong>, where the peer
+ * is a public CDN address: there the list is widened per environment via the property (see
+ * {@code docs/deploy/cd-pipeline.md}). A deployment exposed directly on a private network would
+ * instead want to narrow it.
  *
  * <p>The headers are partly user-controlled, so the returned value is stripped of control characters
  * (ASCII C0/C1 including CR/LF/TAB/ESC) and the Unicode line/paragraph separators before it can reach

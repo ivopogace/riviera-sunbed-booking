@@ -89,12 +89,14 @@ money).
   `client-ip-header` is `CF-Connecting-IP`; and when `RIVIERA_RATELIMIT_TRUSTED_PROXIES` /
   `RIVIERA_RATELIMIT_CLIENT_IP_HEADER` are supplied, each overrides its property. *Pinned
   by:* `RateLimitPropertiesBindingTest`
-- [ ] **AC-8 (manual, post-merge, two-step — the only end-to-end proof):** After CD deploys
-  this slice **and** `RIVIERA_RATELIMIT_TRUSTED_PROXIES` is unset on Render (so only the
-  shipped private ranges are trusted), the 200-request probe in
-  `docs/runbooks/rate-limit-client-ip.md` returns **~10 non-`429` and the rest `429`** from
-  one client. ~140 non-`429` means the header path is inert → roll back by re-setting the
-  env var. *Verified by:* the runbook probe, recorded in this doc's Execution status.
+- [ ] **AC-8 — RUN 2026-07-22 AND FAILED (the criterion did its job).** After CD deployed
+  `c8e111a` and the trust list was narrowed to the shipped private ranges, the 200-request
+  probe returned **166 non-`429`** (~17 buckets), not ~10. Rolled back to the 30-CIDR value
+  the same minute; the confirming re-probe gave **11 non-`429`**, so production is protected
+  at the stopgap level. **Cause:** the socket peer is a Cloudflare edge address, so narrowing
+  the list made the *peer* untrusted and the resolver never reached the header — see the
+  corrected model in Execution status and R-1. This AC stays **unticked**: the slice's stated
+  goal is not achieved, and #286 is reopened.
 - [x] **AC-9:** `docs/deploy/cd-pipeline.md` no longer says the variable "needs setting"; it
   records the current value, its provenance (`cloudflare.com/ips-v4`, `/ips-v6`), the drift
   risk, and the retirement step — and `application.properties` shows **both** rate-limit
@@ -143,7 +145,7 @@ money).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Render does not forward `CF-Connecting-IP` to the app** (strips or rewrites it), so the header path is inert and resolution silently degrades to the walk. This is the load-bearing unverified assumption of the whole slice — and it is *exactly* the class of assumption that made #129 wrong twice. No in-JVM test can settle it: unit and slice tests construct the chain they assert on. | med | high | (a) the walk fallback means "inert" = today's behaviour, not a new break; (b) the WARN fires on the first request that misses the header, greppable in Render logs; (c) AC-8's **two-step** rollout keeps the CF CIDRs set until the code is deployed, so the fallback is still *correct* during the interval; (d) unsetting the env var is what makes the probe discriminating, and re-setting it is a one-click rollback | Ivo | open — resolves at AC-8 |
+| R-1 | **Render does not forward `CF-Connecting-IP` to the app** (strips or rewrites it), so the header path is inert and resolution silently degrades to the walk. This is the load-bearing unverified assumption of the whole slice — and it is *exactly* the class of assumption that made #129 wrong twice. No in-JVM test can settle it: unit and slice tests construct the chain they assert on. | med | high | (a) the walk fallback means "inert" = today's behaviour, not a new break; (b) the WARN fires on the first request that misses the header, greppable in Render logs; (c) AC-8's **two-step** rollout keeps the CF CIDRs set until the code is deployed, so the fallback is still *correct* during the interval; (d) unsetting the env var is what makes the probe discriminating, and re-setting it is a one-click rollback | Ivo | **MATERIALISED 2026-07-22 — but not in the shape predicted.** The resolver never got as far as reading the header. With only private ranges trusted the probe gave 166/200 allowed (~17 buckets) and logged NO warning at all, which means `resolve` returned at its FIRST branch: the socket peer is not trusted. The peer is a **Cloudflare edge address**, not a private Render hop, so narrowing the list made the peer itself untrusted. Mitigations (a) and (c) worked exactly as designed — the fallback held through step 2 and the rollback restored 11/200 within the minute. Mitigation (b) did NOT fire, because the warn sits on the wrong branch. #286 reopened |
 | R-2 | The `${RIVIERA_RATELIMIT_TRUSTED_PROXIES:…}` placeholder mis-parses because the default value contains colons (`::1/128`, `fc00::/7`) — Spring splits name from default on the **first** colon, but a silent mis-parse would ship a wrong or empty trust list, i.e. a security control quietly weakened by a cosmetic edit | med | high | `RateLimitPropertiesBindingTest` (AC-7) asserts the bound list is exactly the 8 expected CIDRs from the real `application.properties`, so a parse regression is a red build, not a production surprise | Ivo | **closed** — RateLimitPropertiesBindingTest green: the placeholder default parses correctly and all 8 CIDRs bind, IPv6 included |
 | R-3 | The once-per-JVM WARN latch is consumed by a benign first anomaly, so a *later* genuine breakage is silent | med | low | accepted + documented in the runbook: the WARN is a hint, the probe is the check. Render's health probe never reaches the resolver (`/actuator/health` matches no rate-limited target), so the latch is not consumed by liveness traffic | Ivo | accepted |
 | R-4 | An attacker deliberately sends a duplicate `CF-Connecting-IP` to force the fallback and regain the multi-bucket fan-out | low | low | bounded, and strictly better than the alternative: "exactly one value" can only ever *downgrade* to the #129-hardened walk, whereas taking first-of-many would let a client-supplied copy become the key — a full bypass. The ambiguity WARN fires. Cloudflare generates the header itself rather than appending to a client copy, so the multi-value case should not arise at all | Ivo | accepted |
@@ -234,12 +236,21 @@ verification for this slice is the deployed-app probe (AC-8), not a browser flow
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `all three gates green on PR #287 — STOPPED before merge, awaiting the
-maintainer's go-ahead`
+**Stage pointer:** `merged (c8e111a) and deployed — AC-8 FAILED on the deployed app, rolled
+back, production protected. #286 REOPENED; slice is NOT done.`
 
-**Next action:** On merge authorization: merge PR #287, then run phase 4 (CD → probe →
-**unset** `RIVIERA_RATELIMIT_TRUSTED_PROXIES` → re-probe for AC-8) and the merge close-out
-(`references/pr-gates.md` §3). AC-8 is the only unverified acceptance criterion.
+**Next action:** Land the docs-correction PR (branch `bugfix/286-correct-peer-trust-model`),
+which removes the now-falsified "unset the variable" guidance from `main`. Then a design pass
+on the reopened #286 for the durable answer — the CIDR list is still load-bearing, see below.
+
+> **The corrected model (measured 2026-07-22, supersedes this plan's premise).** The socket
+> peer this app sees is **a Cloudflare edge address, not a private Render hop.** The header
+> path removes the *chain walk*, but the trust gate in front of every forwarding header still
+> has to classify the peer — and here the peer is the CDN. So Cloudflare's ranges remain
+> load-bearing and **`RIVIERA_RATELIMIT_TRUSTED_PROXIES` must stay set**. The plan's
+> Architecture section ("the only CIDRs that stay load-bearing are the private ranges of the
+> socket peer") is **wrong**; it is left as written, with this correction, because the
+> falsification is the useful record.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -247,7 +258,8 @@ maintainer's go-ahead`
 | 1 — Config surface: properties, wiring, binding + filter pins | ✅ | `<phase-1>` — 4/4 `RateLimitPropertiesBindingTest`, 15/15 `RateLimitFilterTest`, 23/23 `ClientIpResolverTest`. Resolver wiring (`RateLimitProperties.clientIpHeader`, `RateLimitFilter:120`) landed in phase 0 because it was needed to compile |
 | 2 — Docs, runbook, scoped regression, structural net | ✅ | `<phase-2>` — runbook created; cd-pipeline, production-hardening, ADR-0006, riviera-local-debug and the #129 plan patched. Structural net green (`ModularityTests`, `JdbcOnly`, `PackageShape`, `PublishedSurfacePlacement`); `AuthSessionIT` 5/5 green vs real Postgres, 0 skipped (R-6 closed) |
 | 3 — PR + gates (CI / review / Sonar) | ✅ | PR **#287**, head `0297adb`. **CI:** 10/10 checks green (backend build+test incl. the full suite, frontend, CodeQL ×2, SonarCloud). **Review:** high-effort overlay walk, 2 findings (F-1, F-2), both fixed test-first and re-pushed. **Sonar:** issue list pulled from the API — `"total":0`, 0 duplicated blocks, 0 bugs/vulns/smells/hotspots, new-code coverage **98.1%** (bar ≥80%) |
-| 4 — Post-merge: CD, env retirement, AC-8 probe | | |
+| 4 — Post-merge: CD, env retirement, AC-8 probe | ❌ | Merged `c8e111a`, CD green, deploy live. Step 2 probe (CF CIDRs set): **11/189 — no regression** ✅. **AC-8 (CF CIDRs removed): 166/34 — ~17 buckets, FAILED** ❌. Rolled back within the minute; re-probed **11/189**, production protected ✅. R-1 materialised — see the corrected model above |
+| 5 — Docs correction (`bugfix/286-correct-peer-trust-model`) | ⏳ | removes the falsified "unset it" guidance from `main` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -771,7 +783,7 @@ with the comment block rewritten to describe the **real** topology (client → C
 - [x] **AC-1..AC-5:** `./gradlew test --tests "*ClientIpResolverTest*"` → PASS, **25/25** (15 pre-existing #129 cases unchanged + 10 new). Verified at `0297adb`.
 - [x] **AC-6:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS, **15/15**. Verified at `0297adb`.
 - [x] **AC-7:** `./gradlew test --tests "*RateLimitPropertiesBindingTest*"` → PASS, **4/4**. Verified at `0297adb`.
-- [ ] **AC-8:** runbook probe against the deployed app, **after** step 3 of phase 4 → ~10 non-`429` / 200.
+- [ ] **AC-8: FAILED** — runbook probe after narrowing the trust list returned **166** non-`429` / 200, not ~10. Rolled back (re-probe: 11/200). #286 reopened; see R-1.
 - [x] **AC-9:** review-gate read of the `docs/deploy/` + `application.properties` diff — done at the review gate; both placeholders present, the "needs setting" claim replaced by value + provenance + drift risk + retirement pointer.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
