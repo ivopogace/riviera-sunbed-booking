@@ -234,17 +234,18 @@ verification for this slice is the deployed-app probe (AC-8), not a browser flow
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `implement — phase 2 done; next is phase 3 (PR + gates)`
 
-**Next action:** Write `docs/runbooks/rate-limit-client-ip.md`, then correct
-`docs/deploy/cd-pipeline.md`.
+**Next action:** Merge latest `origin/main` into the branch (strict status-check policy),
+push, open the PR into `main`, then run CI → review → Sonar per
+`.claude/skills/riviera-sdlc/references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Resolver: header-preferred resolution + rot signal | ✅ | `201406c` — 23/23 `ClientIpResolverTest` green (15 pre-existing #129 cases unchanged + 8 new) |
 | 1 — Config surface: properties, wiring, binding + filter pins | ✅ | `<phase-1>` — 4/4 `RateLimitPropertiesBindingTest`, 15/15 `RateLimitFilterTest`, 23/23 `ClientIpResolverTest`. Resolver wiring (`RateLimitProperties.clientIpHeader`, `RateLimitFilter:120`) landed in phase 0 because it was needed to compile |
-| 2 — Docs, runbook, scoped regression, structural net | | |
-| 3 — PR + gates (CI / review / Sonar) | | |
+| 2 — Docs, runbook, scoped regression, structural net | ✅ | `<phase-2>` — runbook created; cd-pipeline, production-hardening, ADR-0006, riviera-local-debug and the #129 plan patched. Structural net green (`ModularityTests`, `JdbcOnly`, `PackageShape`, `PublishedSurfacePlacement`); `AuthSessionIT` 5/5 green vs real Postgres, 0 skipped (R-6 closed) |
+| 3 — PR + gates (CI / review / Sonar) | ⏳ | |
 | 4 — Post-merge: CD, env retirement, AC-8 probe | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -736,6 +737,7 @@ with the comment block rewritten to describe the **real** topology (client → C
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-22 | phase 0 | other consumers of forwarding headers / the socket peer in main | `grep -rn "X-Forwarded-For\|getRemoteAddr\|CF-Connecting" platform/src/main/java --include=*.java` | `ClientIpResolver` only (all other hits are javadoc in it + `RateLimitProperties`) | skip — the resolver is still the single client-IP consumer, same conclusion as #129's audit; nothing to generalize |
+| 2026-07-22 | phase 2 | substrate docs still asserting the pre-#286 keying story | `grep -rln "right-most\|trusted-proxies\|X-Forwarded-For" docs/ .claude/skills/ CLAUDE.md CONTEXT.md RESPONSIBILITIES.md --include=*.md` | 13 files | **fix all live ones, leave the historical record alone.** Patched the 4 that state current behaviour: `docs/adr/0006` (amended the #129 resolution note — the appended hop is the CDN edge, not the client), `docs/deploy/cd-pipeline.md`, `docs/deploy/production-hardening.md`, `.claude/skills/riviera-local-debug/SKILL.md` (the IT bucket-isolation rule still holds because the ITs set no client-IP header — made explicit). The 8 other hits are **past** plan docs (#56, #129, session-auth, customer-accounts, S6, #247, actuator) — point-in-time records, correct as written; only #129's AC-7 + R-1 rows were closed out, since they explicitly deferred to #286. `CLAUDE.md`/`CONTEXT.md`/`RESPONSIBILITIES.md` had no hits |
 | 2026-07-22 | phase 1 | env-driven settings with no visible `${VAR:default}` placeholder (the scope-item-4 pattern) | `grep -n "^[a-z].*=" platform/src/main/resources/application.properties \| grep -v '\${'` | 29 lines | **subset.** Converted only the two this issue names. The rest are deliberate local constants (timeouts, bucket capacities, TTLs, multipart caps) whose deployed value is the shipped one; blanket-converting them would swell a security diff with 27 no-op edits. **One genuine gap surfaced and is deferred, not fixed here:** `riviera.recovery.link-base-url=http://localhost:4200` (S8 #113) is environment-specific, has no placeholder, and is documented in no deploy doc — so a production password-reset link would point at localhost. It is **inert today** because prod runs the mocked mailer (the real `SmtpMailer` is deferred to #255), which is also why it belongs with #255 rather than in a client-IP fix. Raised to the maintainer at the phase-1 report. |
 
 ---
