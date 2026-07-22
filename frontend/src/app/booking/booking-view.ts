@@ -255,8 +255,7 @@ export class BookingView {
    *   stale-but-cancelled detail plus the live result region stay on screen instead.
    */
   private load(isRefresh = false): void {
-    // Initial load only: consume a find-a-booking prefetch for this exact code (issue #168) so a
-    // valid lookup opens without a second GET. A refresh (post-cancel) always re-fetches live state.
+    // Initial load consumes a matching find-a-booking prefetch (#168) instead of a second GET.
     if (!isRefresh) {
       const prefetched = this.bookings.takePrefetched(this.code);
       if (prefetched) {

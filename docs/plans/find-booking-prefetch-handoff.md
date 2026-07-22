@@ -116,18 +116,29 @@ is purely how many times the client calls it per navigation.
 
 ## Execution status
 
-**Stage pointer:** implement complete → push → CI gate → review gate
+**Stage pointer:** review gate passed → CI gate + Sonar gate (awaiting PR-time analysis)
 
-**Next action:** push the branch; run the review gate (RV-FE-*) on the diff; then CI + Sonar gates.
+**Next action:** confirm CI green on the pushed branch; if a PR is opened, clear the Sonar new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `BookingService` prefetch hand-off (prime/take) | ✅ | committed |
-| 1 — `BookingView` consumes prefetch; `FindBooking` primes; e2e single-GET | ✅ | pending |
+| 1 — `BookingView` consumes prefetch; `FindBooking` primes; e2e single-GET | ✅ | committed |
 
 **Verification:** `booking.service.spec` (17), `booking-view.spec` (29), `find-booking.spec` (16),
 full `booking/**` suite (204) — all green; `find-a-booking.e2e.ts` (3, incl. single-GET) green
 against the mocked config; `ng lint` clean.
+
+**Review gate:** `riviera-review-overlay` FE bank walked (RV-FE-1 ✅ Angular standards; RV-FE-2/3/4/5/6/7
+➖ not in scope; RV-FE-E2E ✅ mocked/CI suite, best-practice locators, single-GET assertion; RV-PROC-1
+✅ Skills consulted covers the touched surface). Independent correctness review of the six hand-off
+properties (one-shot/code-match/refresh/route-change/no-op-discard/error-path) → no defects.
+
+**Findings register**
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| F-1 | review (RV-STYLE-1) | two newly-added inline comments ran to 2 lines | fixed pre-push (one-liners) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
