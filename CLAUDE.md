@@ -63,7 +63,17 @@ from creation** (ownership written in the venue application service, atomically 
 account owns all venues anymore** — V29 drops `owns_all_venues` after backfilling every previously-unowned
 venue (Miramar + anything pre-existing) to the **demoted bootstrap operator**, now the platform admin
 (`is_admin`) that `RIVIERA_OPERATOR_PASSWORD` unlocks (no new prod secret; a venue-scoped edit on a venue
-you don't own is now `403 NOT_VENUE_OWNER` before any existence check, uniformly). Remaining epic slice: S5
+you don't own is now `403 NOT_VENUE_OWNER` before any existence check, uniformly). **S9 (#277, no migration)**
+unified the five scattered auth surfaces into **one audience-aware page** at `/account/sign-in`: the four
+flows (tourist/operator × sign-in/register) share one Liquid Glass card whose audience toggle picks the
+client *service* — D-2's backend separation is untouched, still two principal types and two login endpoints,
+login machinery at the edge (RV-BE-11). `auth/sign-in`, `auth/register` and `operator/operator-register` are
+deleted (their routes redirect for one release); the operator console's and venue editor's **inline sign-in
+cards are gone**, replaced by a restore-aware `operatorSessionGuard` on `/operator`, `/operator/:venueId`
+and `/venue-admin` that awaits `SessionAuth.whenReady()` before deciding. The one backend addition is
+`GET /api/venues/mine` in `venue/adapter/in` (`hasRole(OPERATOR)`, matcher **above** the public
+`GET /api/venues/**`), which drives the new post-sign-in landing: 0 owned venues → venue onboarding,
+1 → that console, 2+ → the new `/operator` picker; a `returnUrl` outranks all three. Remaining epic slice: S5
 (#116) swaps the mock for real Google/Apple adapters.
 
 ## Tech stack (locked)
@@ -145,7 +155,7 @@ invariant #11.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
-| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water, venue photos (#142, ADR-0008) | `Venue`, `BeachMap` |
+| `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water, venue photos (#142, ADR-0008), the signed-in operator's own-venues read (`GET /api/venues/mine`, S9 #277) | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
 | `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired), request accept/decline + expiry sweep (#98), cancellation-policy enforcement | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |

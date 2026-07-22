@@ -338,12 +338,29 @@ describe('AuthPage', () => {
   });
 
   describe('focus management', () => {
-    it('focuses the first field on load and again on every switch', async () => {
+    it('focuses the first field on load', async () => {
       await render();
       expect(document.activeElement).toBe(el('auth-identifier'));
+    });
 
+    it('keeps focus inside the radiogroup when the audience switches', async () => {
+      // Arrow keys move focus WITHIN a radiogroup; pulling it to the first field mid-navigation
+      // breaks the ARIA pattern. Caught by unified-auth.e2e.ts in a real browser.
+      await render();
+      const operatorRadio = el('audience-operator');
+      operatorRadio.focus();
+      operatorRadio.click();
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(el('audience-operator'));
+    });
+
+    it('moves focus to the first field when the mode toggle replaces the form', async () => {
+      await render();
       el<HTMLInputElement>('auth-password').focus();
-      await chooseAudience('audience-operator');
+
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
 
       expect(document.activeElement).toBe(el('auth-identifier'));
     });

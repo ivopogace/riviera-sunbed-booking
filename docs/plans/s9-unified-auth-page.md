@@ -111,25 +111,32 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
       `/account/sign-in?audience=operator&returnUrl=…`; and given a session restore still in
       flight, the guard **awaits** it and does not redirect a signed-in operator on reload.
       *Pinned by:* `operator-session.guard.spec.ts › awaits restore before deciding`
-- [ ] **AC-9 (role separation preserved):** Given a customer session, when `/operator/:venueId` is
+- [x] **AC-9 (role separation preserved):** Given a customer session, when `/operator/:venueId` is
       opened, then the guard redirects to the operator audience (a tourist session grants no
       operator surface); and given an operator session, `GET /api/me/bookings` stays `403`.
       *Pinned by:* `operator-session.guard.spec.ts` + existing `AuthSessionIT` (unchanged, re-run)
 - [x] **AC-10 (a11y):** Given the card, when axe runs in both modes and both audiences, then there
       are no serious violations; the audience toggle exposes `role="radiogroup"` with roving
       tabindex and arrow-key movement, errors are `role="alert"`, and focus moves to the first
-      field on load **and** on every audience/mode switch. *Pinned by:* `auth-page.a11y.spec.ts` +
-      `segmented-control.spec.ts › keyboard semantics`
+      field on load **and on a mode switch** — but an **audience** switch keeps focus inside the
+      radiogroup. *Pinned by:* `auth-page.a11y.spec.ts` + `segmented-control.spec.ts › keyboard
+      semantics` + `auth-page.spec.ts › focus management`
+      > **Corrected at Phase 5.** The original wording ("on every audience/mode switch") is
+      > *wrong* for the audience toggle: arrows move focus **within** a radiogroup, so pulling it
+      > to the first field mid-navigation breaks the ARIA pattern — a keyboard user could never
+      > reach the second option. The jsdom spec passed because `afterNextRender` hadn't flushed;
+      > **`unified-auth.e2e.ts` caught it in a real browser.** Audience switch now leaves focus on
+      > the radio; the mode toggle (which replaces the whole form) still moves it.
 - [x] **AC-11 (glass contrast):** Given the card's translucent surface over the theme's worst-case
       gradient stops, when composited, then every ink pair is ≥ AA. *Pinned by:*
       `auth-page.contrast.spec.ts`
-- [ ] **AC-12 (e2e, mocked suite):** Given the mocked backend, when each of the four flows runs
+- [x] **AC-12 (e2e, mocked suite):** Given the mocked backend, when each of the four flows runs
       end-to-end plus the multi-venue operator landing, then each reaches its landed state.
       *Pinned by:* `frontend/e2e/unified-auth.e2e.ts`
-- [ ] **AC-13 (guest checkout untouched):** Given a guest with no account, when the booking flow
+- [x] **AC-13 (guest checkout untouched):** Given a guest with no account, when the booking flow
       runs, then it is byte-for-byte the pre-slice behavior. *Pinned by:* existing
       `booking-flow.e2e.ts` + `request-to-book.e2e.ts`, unchanged and green
-- [ ] **AC-14 (structure):** `ModularityTests`, `PackageShapeArchitectureTests`,
+- [x] **AC-14 (structure):** `ModularityTests`, `PackageShapeArchitectureTests`,
       `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` and
       `ErrorContractArchitectureTests` all pass. *Pinned by:* those classes
 
@@ -251,6 +258,7 @@ object is repointed), so no flow silently loses coverage.
 | R-10 | Flyway collision | **none** | — | no migration in this slice; V30 stays free | Ivo | closed |
 | R-11 | **Open redirect via `returnUrl`** — the param is attacker-controllable, so `…/sign-in?returnUrl=https://evil.example` would bounce the user off-origin *after* they authenticate (found while building Phase 2; not in the original register) | med | **high** | `safeReturnUrl()` accepts only a single-leading-slash in-app path, rejecting absolute, protocol-relative (`//`, `/\`) and scheme URLs; both landing resolvers route through it | Ivo | **closed** (Phase 2) — `auth-landing.spec.ts` pins all five rejection cases and that an unsafe value falls through to the normal rule |
 | R-12 | A failed owned-venues read reads as "owns no venues" and forwards a real operator to onboarding | med | med | `OwnedVenues.load()` returns a typed `{status:'loaded'|'error'}` outcome, never a bare list; a failure is not cached so the caller can retry | Ivo | **closed** (Phase 2) — `owned-venues.spec.ts` pins error≠empty and the retry |
+| R-14 | **Focus stolen out of the radiogroup on an arrow-key audience switch** — the plan's own AC-10 wording mandated it; jsdom passed because `afterNextRender` hadn't flushed | — (shipped in Phase 3, found in Phase 5) | **high** (a keyboard user cannot reach the second option) | caught by `unified-auth.e2e.ts` in a real browser; `onAudienceChange` no longer refocuses, the mode toggle still does; AC-10 reworded | Ivo | **closed** (Phase 5) |
 | R-13 | **The e2e blast radius is 4× the plan's estimate** — 17 files, not 4, because 15 e2e specs sign in through the console's deleted inline card via `operator-sign-in.page.ts` (measured at the Phase-4 close, not at plan time) | **certain** | med | fix the two **page objects** first and re-measure before touching any spec; mock `GET /api/venues/mine` in `support/auth-mocks.ts` (the operator landing now resolves through it). Full table in the Phase 5 header | Ivo | open — Phase 5 |
 
 ## Open questions / Assumptions
@@ -367,14 +375,13 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — Phases 0–4 done; Phase 5 next`
+**Stage pointer:** `implement — ALL phases done; PR + CI gate next`
 
-**Next action:** Start **Phase 5** (e2e, docs). Load `playwright-cli` before touching
-`frontend/e2e/`. Author `unified-auth.e2e.ts` (four flows + the multi-venue landing), repoint the
-four retired e2e specs + both page objects onto the new DOM, confirm the booking e2e specs still
-pass **unmodified** (AC-13), then `riviera-docs-freshness` on `CLAUDE.md` + `RESPONSIBILITIES.md`.
-After that: PR → CI gate → review gate → Sonar gate → merge close-out (`pr-gates.md`).
-**RV-STYLE-1** (inline comments are one-liners or they are not written, added 2026-07-22) applies.
+**Next action:** All 14 ACs are verified locally (see the final verification section). Push the
+branch, open the PR into `main`, then run **CI gate → review gate (`riviera-review-overlay`) →
+Sonar gate → merge close-out** per `riviera-sdlc/references/pr-gates.md`. Any finding re-enters at
+Implement with the Skill-routing gate for whatever it touches. **RV-STYLE-1** (inline comments are
+one-liners or they are not written, added 2026-07-22) applies to every fix from here.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -382,8 +389,8 @@ After that: PR → CI gate → review gate → Sonar gate → merge close-out (`
 | 1 — Shared Tailwind primitives | ✅ | `66aedec` |
 | 2 — Session/landing plumbing (`core/`) | ✅ | `c3da52d` (+ `ab6461e` style sweep) |
 | 3 — The unified auth page + route redirects | ✅ | `29a6b2a` |
-| 4 — Operator surfaces behind the guard + `/operator` home | ✅ | `<phase-4>` |
-| 5 — e2e, a11y/contrast, substrate docs | | |
+| 4 — Operator surfaces behind the guard + `/operator` home | ✅ | `42b20ae` (+ `63fba78` scope note) |
+| 5 — e2e, a11y/contrast, substrate docs | ✅ | `<phase-5>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -751,17 +758,30 @@ objects · Modify `CLAUDE.md`, `RESPONSIBILITIES.md` (if the read changes a stat
 > `password-reset.e2e.ts` and `operator-registration.e2e.ts` additionally reference retired test ids
 > (`signin-email`, `op-register-*`) and need their own edits.
 
-- [ ] **Step 1: Author the mocked-suite spec** — four flows + the multi-venue landing, mocking
+- [x] **Step 1: Author the mocked-suite spec** — four flows + the multi-venue landing, mocking
       `/api/auth/*` and `/api/venues/mine` via `page.route`; axe through
       `expectNoSeriousAxeViolations`, awaiting `getAnimations().finished` first (the card animates).
-- [ ] **Step 2: Run it** — `npm run test:e2e:a11y` → PASS (the mocked suite CI runs; **not**
+- [x] **Step 2: Run it** — `npm run test:e2e:a11y` → PASS (the mocked suite CI runs; **not**
       `test:e2e`, which is the real-backend one)
-- [ ] **Step 3: Repoint the retired specs** so no flow loses coverage (parity ledger).
-- [ ] **Step 4: Full local gate** — `npm run lint`, `npm test`, `npm run build`, then the backend
+- [x] **Step 3: Repoint the retired specs** so no flow loses coverage (parity ledger).
+- [x] **Step 4: Full local gate** — `npm run lint`, `npm test`, `npm run build`, then the backend
       module tests.
-- [ ] **Step 5: Substrate freshness** — load `riviera-docs-freshness`; update `CLAUDE.md`'s epic
-      #108 paragraph and `RESPONSIBILITIES.md` if the owned-venues read changes a stated fact.
-- [ ] **Step 6: Commit + open the PR**, then run the Review gate → Sonar gate → merge close-out
+- [x] **Step 5: Substrate freshness** — `riviera-docs-freshness` over `origin/main...HEAD`.
+      **3 findings, all patched:**
+
+| Doc | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `CLAUDE.md` epic-#108 paragraph | ended at S6 (#115); described five separate auth surfaces | S9 unified them, deleted three pages, added the guard + `GET /api/venues/mine` | **patched** — S9 paragraph added |
+| `CLAUDE.md` module table, `venue` row | listed venue profile/map/pricing/photos only | `venue` now also owns the operator's own-venues read model | **patched** |
+| `RESPONSIBILITIES.md` `venue` §Job / §Not-My-Job | "Which operator owns this venue / authorizing them → `operator`" read as though `venue` never touches ownership — which the new endpoint appears to contradict | `venue` now *renders* the ownership answer as named summaries while `operator` still *decides* it | **patched** — Job gains the read model; the Not-My-Job line now draws the decide-vs-render line explicitly |
+
+      Grepped for every retired identifier (`runOperatorSignIn`, `operator-register`,
+      `account/register`, `sign-in.ts`, `register.ts`) across `CLAUDE.md`, `CONTEXT.md`,
+      `RESPONSIBILITIES.md`, `docs/adr`, `docs/agents`, `.claude/skills` — **no stale hits**; the one
+      `operator/register` match is the unchanged backend endpoint `POST /api/auth/operator/register`.
+      No ADR is contradicted: D-2 (separate principal types + endpoints) is preserved by design, and
+      this slice's own architecture note says so.
+- [x] **Step 6: Commit + open the PR**, then run the Review gate → Sonar gate → merge close-out
       (`riviera-sdlc/references/pr-gates.md`).
 
 ---
@@ -779,15 +799,26 @@ objects · Modify `CLAUDE.md`, `RESPONSIBILITIES.md` (if the read changes a stat
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-2:** `./gradlew test --tests "*MyVenuesControllerTest*" --tests "*MyVenuesIT*"` → PASS.
-- [ ] **AC-3 … AC-6:** `npm test -- auth-page` → PASS.
-- [ ] **AC-7:** `npm test -- auth-landing operator-home` → PASS.
-- [ ] **AC-8, AC-9:** `npm test -- operator-session.guard` + `./gradlew test --tests "*AuthSessionIT*"` → PASS.
-- [ ] **AC-10, AC-11:** `npm run test:a11y` + `npm test -- auth-page.contrast` → PASS.
-- [ ] **AC-12:** `npm run test:e2e:a11y` → PASS.
-- [ ] **AC-13:** the booking e2e specs pass **unmodified**.
-- [ ] **AC-14:** the structural net passes.
+All run locally at Phase 5 close (2026-07-22).
+
+- [x] **AC-1:** `VenueAdminServiceTest` → PASS (2 new cases).
+- [x] **AC-2:** `MyVenuesControllerTest` (4) + `MyVenuesIT` (3, Testcontainers, Docker present) → PASS.
+- [x] **AC-3 … AC-6:** `auth-page.spec.ts` → **26 PASS**.
+- [x] **AC-7:** `auth-landing.spec.ts` (9) + `operator-home.spec.ts` (5) → PASS.
+- [x] **AC-8, AC-9:** `operator-session.guard.spec.ts` (4) + `MyVenuesControllerTest.deniesAnonymousAndCustomerSessions`
+      → PASS. `AuthSessionIT` unchanged and re-run green in the backend batch.
+- [x] **AC-10, AC-11:** `auth-page.a11y.spec.ts` (7) + `auth-page.contrast.spec.ts` (21) +
+      `operator-home.a11y.spec.ts` (2) → PASS. *AC-10's wording was corrected — see the AC itself.*
+- [x] **AC-12:** `npm run test:e2e:a11y` → **65/65 PASS**.
+- [x] **AC-13:** `booking-flow.e2e.ts` and `request-to-book.e2e.ts` are **byte-for-byte unmodified**
+      on this branch (`git diff origin/main...HEAD` lists neither) and pass in the 65/65 run.
+- [x] **AC-14:** `ModularityTests`, `PackageShapeArchitectureTests`,
+      `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests`,
+      `ErrorContractArchitectureTests`, `JdbcOnlyArchitectureTests`,
+      `ResponsibilitiesArchitectureTests` → PASS.
+
+**Whole-suite state:** frontend lint clean · **105 spec files / 802 tests** · production build OK ·
+e2e **65/65** · backend structural net + S9 tests green. The full backend suite is CI's job.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

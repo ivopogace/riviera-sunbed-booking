@@ -39,13 +39,13 @@ test('a tourist resets their password from the emailed link and signs in with th
 
   // Sign in: the OLD password is now rejected, the NEW one works.
   await page.goto('/account/sign-in');
-  await page.getByTestId('signin-email').fill('ana@example.com');
-  await page.getByTestId('signin-password').fill('oldpassword1');
-  await page.getByTestId('signin-submit').click();
-  await expect(page.getByTestId('signin-error')).toBeVisible();
+  await page.getByTestId('auth-identifier').fill('ana@example.com');
+  await page.getByTestId('auth-password').fill('oldpassword1');
+  await page.getByTestId('auth-submit').click();
+  await expect(page.getByTestId('auth-error')).toBeVisible();
 
-  await page.getByTestId('signin-password').fill('brandnewpass2');
-  await page.getByTestId('signin-submit').click();
+  await page.getByTestId('auth-password').fill('brandnewpass2');
+  await page.getByTestId('auth-submit').click();
   await expect(page).toHaveURL(/\/$/); // signed in → navigated home
 });
 

@@ -372,7 +372,8 @@ export class AuthPage {
     // R-6: never carry a credential across principal types, even by accident.
     this.model.update((m) => ({ ...m, password: '' }));
     this.error.set(undefined);
-    this.refocusAfterRender();
+    // Deliberately NO refocus: arrows move focus WITHIN a radiogroup, so pulling it to the first
+    // field would break the ARIA pattern mid-navigation (caught by unified-auth.e2e.ts).
   }
 
   protected toggleMode(): void {
@@ -451,10 +452,13 @@ export class AuthPage {
 
   /** Where the operator goes next; an unreadable venue list falls back to the picker, not onboarding. */
   private async operatorLandingRoute(): Promise<string> {
+    // A safe returnUrl outranks the venue count, so don't pay for the read at all.
+    const target = safeReturnUrl(this.returnUrl);
+    if (target) {
+      return target;
+    }
     const owned = await this.ownedVenues.load();
-    return owned.status === 'loaded'
-      ? landingRouteFor(owned.venues, this.returnUrl)
-      : (safeReturnUrl(this.returnUrl) ?? '/operator');
+    return owned.status === 'loaded' ? landingRouteFor(owned.venues, undefined) : '/operator';
   }
 
   private async runRegister(

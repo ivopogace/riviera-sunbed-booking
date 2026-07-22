@@ -95,20 +95,22 @@ async function mockConsole(
 }
 
 async function signIn(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByTestId('oc-user').fill('operator');
-  await page.getByTestId('oc-pass').fill('pw');
-  await page.getByTestId('oc-signin-submit').click();
+  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  await page.getByLabel('Username', { exact: true }).fill('operator');
+  await page.getByLabel('Password', { exact: true }).fill('pw');
+  await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
 }
 
 test('signs in, renders the console, switches tabs, and signs out (+ axe)', async ({ page }) => {
   await mockConsole(page, 3);
   await page.goto('/operator/1');
 
-  // Signed out: the glass sign-in card, not the shell.
-  await expect(page.getByTestId('oc-signin-title')).toBeVisible();
+  // Signed out: S9 (#277) redirects to the unified auth card's operator tab, never the shell.
+  await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator&returnUrl=/);
+  await expect(page.getByTestId('auth-form')).toBeVisible();
   await expect(page.getByTestId('oc-header')).toHaveCount(0);
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'operator sign-in card');
+  await expectNoSeriousAxeViolations(page, 'unified auth card (operator redirect)');
 
   // Sign in → the porcelain shell, with the venue title and a Requests badge of 3.
   await signIn(page);
@@ -137,9 +139,10 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   );
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
-  // Sign out → back to the sign-in card.
+  // Sign out → the console leaves for the unified auth card (the guard gates on activation, #277).
   await page.getByTestId('oc-signout').click();
-  await expect(page.getByTestId('oc-signin-title')).toBeVisible();
+  await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator$/);
+  await expect(page.getByTestId('auth-form')).toBeVisible();
   await expect(page.getByTestId('oc-header')).toHaveCount(0);
 });
 
@@ -175,9 +178,10 @@ test('keeps the operator signed in across a reload (session restored from /me)',
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
   await page.reload();
-  // /me now returns the principal → the shell renders without re-entering credentials.
+  // /me now returns the principal → the guard awaits the restore, then lets the shell render without
+  // re-entering credentials. Without that await this is exactly where the bounce-on-reload bug lives.
   await expect(page.getByTestId('oc-header')).toBeVisible();
-  await expect(page.getByTestId('oc-signin-title')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/operator\/1/);
 });
 
 test('renders porcelain over the tourist theme with a responsive tab row (#170)', async ({

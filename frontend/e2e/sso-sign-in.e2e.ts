@@ -37,7 +37,7 @@ test('Continue with Apple signs the tourist in from the register card', async ({
 
   await page.goto('/');
   await auth.gotoRegister();
-  await expect(page).toHaveURL(/\/account\/register$/);
+  await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
   await expectNoSeriousAxeViolations(page, 'register page with SSO buttons');
 
   await auth.continueWithApple();
