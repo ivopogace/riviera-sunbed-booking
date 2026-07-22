@@ -89,9 +89,13 @@ change.
   when resolved, then it is treated as an untrusted client value (sanitised, used as key),
   never throws, and never triggers DNS resolution. *Pinned by:*
   `ClientIpResolverTest.treatsNonIpLiteralHopAsClientWithoutDns`
-- [ ] **AC-7 (manual, merge close-out):** On the deployed sandbox, 3+ rapid failed logins
-  via `curl` each sending a fresh random `X-Forwarded-For` still exhaust ONE login budget
-  (429 observed). Verified by hand; recorded in the Execution status.
+- [ ] **AC-7 (manual, merge close-out): BLOCKED — see #286.** Attempted against the deployed
+  sandbox after CD shipped `bbcaa75`; the limiter never returned a `429` on **any** dimension
+  or keying (60 concurrent same-key logins against a 10/min budget; also SSO-authorize GET and
+  145 booking GETs). CSRF ordering, edge caching and multi-instance dilution were each ruled
+  out, so the limiter is almost certainly **disabled in that environment**
+  (`riviera.ratelimit.enabled=false`). AC-7 cannot be observed while the control it exercises
+  is off — this is blocked, not failed. Tracked in **#286**.
 
 ## Non-goals
 
@@ -192,7 +196,7 @@ confirm AC-7 against the redeployed sandbox, and run `graphify update .` for the
 
 1. ✅ Issue #129 closed as `completed` by the PR's `Closes #129`.
 2. ➖ No parent epic — #129 has no parent and no open issue references it in a checklist (searched).
-3. ➖ Nothing deferred needing a new home beyond AC-7 + risk R-1, both tracked in this doc.
+3. ✅ Deferred items propagated: **AC-7 → #286** (the limiter appears inactive on the deployed sandbox, so AC-7 is unobservable there); plan risk **R-1** rides with it, since the same probe is what would confirm Render's hop is private-range.
 4. ⏳ Plan-doc final state (this edit); PR #282's Gates checkboxes ticked before merge.
 5. ⏳ **`riviera-docs-freshness` over `f9d14b5..bbcaa75` — 2 findings, both patched:**
    - `.claude/skills/riviera-local-debug/SKILL.md` §full-suite-only failure class — its #127 fix
