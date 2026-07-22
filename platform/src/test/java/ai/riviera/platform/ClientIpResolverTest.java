@@ -117,6 +117,40 @@ class ClientIpResolverTest {
 	}
 
 	@Test
+	void survivesAnIpv4HopComparedAgainstTheIpv6TrustRanges() {
+		// Spring Security 7.1's IpInetAddressMatcher compares raw bytes WITHOUT a length check, so a
+		// 4-byte IPv4 hop walked against ::1/128 (16 bytes, leading zeros) indexes past the array end.
+		// Any 0.x.y.z hop is attacker-supplied, so an unguarded walk is a remote 500 on every limited
+		// endpoint.
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "0.0.0.0");
+
+		assertEquals("0.0.0.0", resolver.resolve(request));
+	}
+
+	@Test
+	void doesNotTrustAnIpv4HopThatCollidesWithAnIpv6Range() {
+		// 252.x/253.x share fc00::/7's masked leading byte; without a family guard the byte compare
+		// would call a public IPv4 hop a trusted proxy and skip it.
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "252.1.2.3");
+
+		assertEquals("252.1.2.3", resolver.resolve(request));
+	}
+
+	@Test
+	void doesNotTrustAnIpv6HopThatCollidesWithAnIpv4Range() {
+		// a9fe:… shares 169.254.0.0/16's first two bytes; the family guard keeps it a client value.
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "a9fe::1");
+
+		assertEquals("a9fe::1", resolver.resolve(request)); // the raw hop is the key, not a normalised form
+	}
+
+	@Test
 	void integrationTestClientIpsStayDistinctBuckets() {
 		// AC-4 / #127: the ~19 IT files isolate their rate buckets with a unique single-hop
 		// X-Forwarded-For from the loopback MockMvc peer. That only works while the generated address

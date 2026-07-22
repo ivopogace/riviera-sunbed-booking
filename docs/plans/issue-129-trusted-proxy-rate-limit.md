@@ -212,6 +212,7 @@ works, Docker present so targeted ITs ran for real).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | I-1 | implement (phase 1/2) | R-2's planned mitigation was factually wrong: `SessionLoginSupport.uniqueClientIp()` minted RFC1918 `10.99.x.y`, which the new trust list treats as a proxy hop — the whole IT corpus would have collapsed onto one bucket (a full-suite-only #127 repeat that no scoped run would show) | fixed — helper now mints `198.18.x.y`; pinned by a resolver test |
+| R-1 | review gate (RV-BE-13 / library-behaviour check) | **Blocker.** Spring Security 7.1's `IpInetAddressMatcher` compares raw address bytes with **no length check** (the guard the pre-7.1 `IpAddressMatcher` had). An attacker-supplied `X-Forwarded-For: 0.0.0.0` hop matches `::1/128`'s four leading zero bytes and then indexes past the end of the 4-byte IPv4 array — `ArrayIndexOutOfBoundsException` inside the filter, i.e. a **remote 500 on every rate-limited endpoint**. The same missing check also mis-trusts across families (`252.x` vs `fc00::/7`, `a9fe::` vs `169.254.0.0/16`) | fixed — the new `TrustedProxy` record guards on address-family length before delegating; pinned by three resolver tests (all three were red first) |
 
 ---
 
@@ -476,6 +477,7 @@ void forwardedForFromUntrustedPeerIsIgnored() throws Exception {
 |---|---|---|---|---|---|
 | 2026-07-22 | phase 1/2 — client-IP trust walk | other consumers of client IP in production code | `grep -rn "Forwarded\|getRemoteAddr" platform/src/main` | 1 (`ClientIpResolver` itself; `WebCorsConfig` only mentions forward-headers in a comment) | none — the resolver is the single client-IP consumer, so the trust walk covers every keying dimension at once |
 | 2026-07-22 | phase 1/2 — trusted-range fallout | test fixtures that feed a *private* address through `X-Forwarded-For` (would now be skipped as a proxy hop) | `grep -rn 'X-Forwarded-For", "\(10\.\|192\.168\.\|172\.1[6-9]\|127\.\)' platform/src/test` | 2 (`SessionLoginSupport.uniqueClientIp()` → the whole IT corpus; `ClientIpResolverTest` all-trusted case) | helper switched to `198.18.x.y` + pinned by a test; the resolver case is deliberate (AC-5) |
+| 2026-07-22 | review gate — finding R-1 | other callers passing attacker-controlled values into a Spring Security CIDR matcher (same unguarded byte compare) | `grep -rn "IpAddressMatcher\|InetAddressMatcher" platform/src` | 1 (`ClientIpResolver` only — the matcher is not used anywhere else in the codebase) | none beyond the fix; the family guard lives with the single caller rather than as a shared helper |
 
 ---
 

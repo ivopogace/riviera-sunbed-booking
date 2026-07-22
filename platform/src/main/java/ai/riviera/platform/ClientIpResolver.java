@@ -3,7 +3,8 @@ package ai.riviera.platform;
 import java.net.InetAddress;
 import java.util.List;
 
-import org.springframework.security.web.util.matcher.IpAddressMatcher;
+import org.springframework.security.util.matcher.InetAddressMatcher;
+import org.springframework.security.util.matcher.InetAddressMatchers;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -45,10 +46,10 @@ final class ClientIpResolver {
 	private static final String FORWARDED_FOR = "X-Forwarded-For";
 	private static final String UNKNOWN = "unknown";
 
-	private final List<IpAddressMatcher> trustedProxies;
+	private final List<TrustedProxy> trustedProxies;
 
 	ClientIpResolver(List<String> trustedProxyCidrs) {
-		this.trustedProxies = trustedProxyCidrs.stream().map(IpAddressMatcher::new).toList();
+		this.trustedProxies = trustedProxyCidrs.stream().map(TrustedProxy::of).toList();
 	}
 
 	String resolve(HttpServletRequest request) {
@@ -73,13 +74,38 @@ final class ClientIpResolver {
 		if (address == null || address.isBlank()) {
 			return false;
 		}
+		InetAddress candidate;
 		try {
-			InetAddress.ofLiteral(address); // literal-only parse, so a hostile hop can never cause DNS
+			candidate = InetAddress.ofLiteral(address); // literal-only parse — a hostile hop never causes DNS
 		}
 		catch (IllegalArgumentException notAnIpLiteral) {
 			return false;
 		}
-		return trustedProxies.stream().anyMatch(proxy -> proxy.matches(address));
+		return trustedProxies.stream().anyMatch(proxy -> proxy.matches(candidate));
+	}
+
+	/**
+	 * One trusted-proxy CIDR, guarded by address family. The guard is ours to keep: Spring Security
+	 * 7.1's {@code IpInetAddressMatcher} compares the raw address bytes <em>without</em> checking that
+	 * both are the same length, so a 4-byte IPv4 candidate walked against a 16-byte IPv6 range either
+	 * matches across families by accident (any {@code 252.x} against {@code fc00::/7}) or indexes past
+	 * the end of the shorter array (any {@code 0.x.y.z} against {@code ::1/128}, an
+	 * {@code ArrayIndexOutOfBoundsException}). Every candidate here is attacker-supplied, so both
+	 * outcomes are reachable from the internet — the length check must happen before the delegate runs.
+	 *
+	 * @param addressLength byte length of the CIDR's network address: 4 for IPv4, 16 for IPv6
+	 */
+	private record TrustedProxy(int addressLength, InetAddressMatcher matcher) {
+
+		static TrustedProxy of(String cidr) {
+			String network = cidr.split("/", 2)[0];
+			return new TrustedProxy(InetAddress.ofLiteral(network).getAddress().length,
+					InetAddressMatchers.fromIpAddress(cidr));
+		}
+
+		boolean matches(InetAddress candidate) {
+			return candidate.getAddress().length == addressLength && matcher.matches(candidate);
+		}
 	}
 
 	private static String sanitise(String value) {
