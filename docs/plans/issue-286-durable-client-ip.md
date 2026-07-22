@@ -256,7 +256,30 @@ what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-CT / AC audit) | **AC-4 was not fully pinned.** It claims an anomalous client-IP header "is logged", but only the *absence* WARN had an assertion — the ambiguous case, which is the one an attacker can trigger at will, had none. | fixed in `<review-fixes>` — `ClientIpResolverTest.warnsWhenTheConfiguredHeaderIsAmbiguous` |
+| F-2 | review (test-coverage) | The `clientIpHeader == null` fail-safe in the constructor had **no test**: an untested default on a security control, and an uncovered condition heading into the ≥80%-new-code-coverage Sonar bar. | fixed in `<review-fixes>` — `ClientIpResolverTest.anUnconfiguredHeaderNameFallsBackToTheWalk` (covers `null` **and** blank) |
+
+**Review-gate note (PR #287, high effort — `riviera-review-overlay` + the backend bank).**
+Walked `references/backend-conventions.md` in full. **RV-BE-1** (availability), **RV-BE-4..8**
+(events, money, timezone, Stripe webhook, payout), **RV-BE-14..17** (booking codes, pool/cutoff,
+refund policy, Flyway) — all **➖ not in scope**, and verified so against the diff, not assumed:
+zero files under `booking`/`availability`/`payment`/`payout`, no schema, no money, no time
+arithmetic. **RV-BE-2** ✅ no persistence touched at all. **RV-BE-3/3b/3c/12** ✅ every changed
+class is root-package edge code; the root package is not a module, so there is no published
+surface, no `@NamedInterface`, no `allowedDependencies` and no package move — confirmed green by
+`ModularityTests` + `PackageShapeArchitectureTests` + `PublishedSurfacePlacementArchitectureTests`.
+**RV-BE-9** ➖ no venue-scoped surface; the diff changes *how a rate-limit key is derived*, never an
+object-level authorization decision. **RV-BE-10** ✅ the `429` + `Retry-After` + `RATE_LIMITED`
+`ProblemDetail` shape is byte-for-byte untouched. **RV-BE-11** ✅ code landed exactly where the
+plan's §4a table said (root/edge), consistent with RV-BE-11's own "auth machinery is a platform/edge
+concern" tell. **RV-BE-13 (the load-bearing one here)** ✅ the new WARN interpolates only the
+configured header **name** and hard-coded problem text — never the header **value**, which is
+attacker-influenced precisely when it fires; every return path still goes through the unchanged
+`sanitise(...)`; no SQL, no deserialization. **RV-STYLE-1** ✅ every inline comment added is one
+line; the multi-line prose sits in Javadoc, which is exempt. **RV-PROC-1** ✅ *Skills consulted*
+covers each area the diff touches (backend Java → `riviera-java-conventions` + `riviera-modulith`;
+plan → `riviera-plan-doc`; build/test → `riviera-local-debug`), and no untouched-area skill is
+claimed. Two findings raised against my own diff (F-1, F-2) and fixed test-first before push.
 
 ---
 

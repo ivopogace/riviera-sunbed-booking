@@ -266,20 +266,49 @@ class ClientIpResolverTest {
 		return request;
 	}
 
+	/** An unconfigured header name disables the preferred path — the fail-safe for a missing property. */
+	@Test
+	void anUnconfiguredHeaderNameFallsBackToTheWalk() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader(CF_HEADER, "6.6.6.6");
+		request.addHeader("X-Forwarded-For", "1.2.3.4, 198.51.100.9");
+
+		assertEquals("198.51.100.9", new ClientIpResolver(DEFAULT_TRUSTED, null).resolve(request));
+		assertEquals("198.51.100.9", new ClientIpResolver(DEFAULT_TRUSTED, "   ").resolve(request));
+	}
+
 	@Test
 	void warnsOnceWhenTheConfiguredHeaderIsMissing() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+
+		assertEquals(1, warningsWhileResolving(request, request));
+	}
+
+	/** The ambiguous case is the one an attacker can trigger, so it must leave a trace too (AC-4). */
+	@Test
+	void warnsWhenTheConfiguredHeaderIsAmbiguous() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader(CF_HEADER, "6.6.6.6");
+		request.addHeader(CF_HEADER, "203.0.113.7");
+
+		assertEquals(1, warningsWhileResolving(request));
+	}
+
+	/** WARNs emitted by ONE fresh resolver across the given requests — the once-per-process latch. */
+	private long warningsWhileResolving(MockHttpServletRequest... requests) {
 		Logger logger = (Logger) LoggerFactory.getLogger(ClientIpResolver.class);
 		ListAppender<ILoggingEvent> appender = new ListAppender<>();
 		appender.start();
 		logger.addAppender(appender);
 		try {
 			ClientIpResolver fresh = new ClientIpResolver(DEFAULT_TRUSTED, CF_HEADER);
-			MockHttpServletRequest request = new MockHttpServletRequest();
-			request.setRemoteAddr("10.0.0.1");
-			fresh.resolve(request);
-			fresh.resolve(request);
-
-			assertEquals(1, appender.list.stream().filter(e -> e.getLevel() == Level.WARN).count());
+			for (MockHttpServletRequest request : requests) {
+				fresh.resolve(request);
+			}
+			return appender.list.stream().filter(event -> event.getLevel() == Level.WARN).count();
 		}
 		finally {
 			logger.detachAppender(appender);
