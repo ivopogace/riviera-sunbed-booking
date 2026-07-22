@@ -101,9 +101,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** Implement complete (all phases green) → CI gate / PR.
+**Stage pointer:** Review gate walked (self-review) → awaiting CI + Sonar on the PR.
 
-**Next action:** push branch, confirm CI green, then run the Review + Sonar gates.
+**Next action:** confirm CI green on HEAD; run the Sonar gate when the PR exists.
+
+**Review-gate verdict (riviera-review-overlay, FE scope):** RV-FE-1 ✅ (`@if/@else`,
+no `ngClass`/`ngStyle`, pure helper in `shared/`); RV-FE-7 ✅ (venue-map reuses the
+proven mode-chip token recipe — no `@apply`/new `.scss`; home keeps its SCSS idiom,
+test-hook classes `.star`/`.rating`/`.dot` retained, no drift on the unchanged rated
+path); RV-FE-3 ➖ (no money math — rating display only); RV-FE-E2E → F-1 fixed;
+RV-STYLE-1 → F-2 fixed (2-line SCSS comment shortened); RV-PROC-1 ✅ (Skills consulted
+covers every touched area).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -122,6 +130,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source | Finding | Status |
 |---|---|---|---|
 | F-1 | review (RV-FE-E2E) | Frontend change lacked real-browser e2e coverage of the "New" state | fixed — added unrated case to `discovery-flow.e2e.ts` (6/6 green) |
+| F-2 | review (RV-STYLE-1) | 2-line inline comment in `home.scss` | fixed — shortened to one line |
 
 ---
 

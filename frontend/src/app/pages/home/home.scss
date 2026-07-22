@@ -317,8 +317,7 @@
   color: rgba(12, 42, 51, 0.3); /* decorative separator */
 }
 
-/* "New" / unrated state (#154): a bordered pill in the proven card-ink token — no 0.0 star.
-   Border is decorative; the text carries the meaning (AA via --riv-card-ink, already proven). */
+/* "New" / unrated state (#154): a bordered pill; text in the already-AA-proven --riv-card-ink. */
 .card-meta .new-chip {
   font-weight: 700;
   color: var(--riv-card-ink);
