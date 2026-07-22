@@ -133,9 +133,18 @@ Nothing is changed or dropped.
 
 ## Execution status
 
-- **Stage:** Implement complete → push → CI gate → Review gate.
-- **Next action:** Push branch; run the Review gate (`/code-review` + `riviera-review-overlay`).
-- **Phases:** P1 home ✅ · P2 venue-map ✅ · P3 verify ✅ (local).
+- **Stage:** Implemented + pushed; **CI green**; **Review gate passed (no findings)**. Awaiting
+  user decision on opening a PR (which triggers the Sonar gate + Merge close-out).
+- **Next action:** Open a PR into `main` iff the user asks — that runs the SonarCloud gate and
+  enables merge. Not opening one unprompted (task said implement/commit/push).
+- **CI:** run on commit `323623e` — success (backend build+test, frontend lint/test/build **incl.
+  the mocked e2e suite that could not boot locally**, CodeQL).
+- **Review gate:** `riviera-review-overlay` walked (FE scope) + independent adversarial parity
+  review — CONFIRMED byte-parity on the home aria-label, gate-signal equivalence
+  (`venueView()` undefined ⇔ `venue()` undefined), full VM field coverage, no leftover template
+  derivations, amenity cap/order + edge cases (total 0 → 0%, null price → "No sets yet") preserved.
+  Zero class/style drift (RV-FE-7). No findings.
+- **Phases:** P1 home ✅ · P2 venue-map ✅ · P3 verify ✅ (local + CI).
 - **Local verification:** `npm run lint` clean; scoped `ng test` — 6 files / 111 specs green
   (`home.spec`, `home.a11y`, `home.contrast`, `venue-map.spec`, `venue-map.a11y`,
   `venue-map.contrast`); `npm run build` clean (pre-existing SCSS-budget warnings only, untouched
