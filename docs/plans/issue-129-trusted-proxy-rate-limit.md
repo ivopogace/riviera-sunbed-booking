@@ -89,13 +89,17 @@ change.
   when resolved, then it is treated as an untrusted client value (sanitised, used as key),
   never throws, and never triggers DNS resolution. *Pinned by:*
   `ClientIpResolverTest.treatsNonIpLiteralHopAsClientWithoutDns`
-- [ ] **AC-7 (manual, merge close-out): BLOCKED — see #286.** Attempted against the deployed
-  sandbox after CD shipped `bbcaa75`; the limiter never returned a `429` on **any** dimension
-  or keying (60 concurrent same-key logins against a 10/min budget; also SSO-authorize GET and
-  145 booking GETs). CSRF ordering, edge caching and multi-instance dilution were each ruled
-  out, so the limiter is almost certainly **disabled in that environment**
-  (`riviera.ratelimit.enabled=false`). AC-7 cannot be observed while the control it exercises
-  is off — this is blocked, not failed. Tracked in **#286**.
+- [x] **AC-7 (manual, merge close-out): PASSES on its literal wording, but the probe exposed a
+  deployment-topology defect — see #286.** The rotation bypass *is* closed: a client cannot
+  influence the key at all any more, because the hop the walk lands on is appended downstream
+  of it. But the hop it lands on is **not the client** — `*.onrender.com` is fronted by
+  Cloudflare, so the chain is client → Cloudflare edge → Render → app and the nearest hop is a
+  public, per-request-varying edge address. Measured: 200 concurrent logins, one client,
+  constant `X-Forwarded-For`, cap 10/min → 143 × `403` + 57 × `429`, i.e. **~14 buckets for one
+  client**. Under-throttles a single caller ~14× and lets unrelated clients behind one edge
+  node share a bucket. **This is risk R-1 materialising**, in a subtler form than predicted.
+  Fix is config (add the Cloudflare + Render ranges to `trusted-proxies`) or honouring
+  `CF-Connecting-IP`; tracked in **#286**.
 
 ## Non-goals
 
@@ -128,7 +132,7 @@ change.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Render's chain inserts a public-IP internal hop after the client, so the walk stops at that hop and ALL clients share one bucket → legitimate-user lockout on login | low | high | default trusts all private/loopback ranges (internal hops are private on Render); `riviera.ratelimit.trusted-proxies` is env-overridable (`RIVIERA_RATELIMIT_TRUSTED_PROXIES`) to add a CIDR without a release; AC-7 verifies on the deployed sandbox before close-out | Ivo | open |
+| R-1 | Render's chain inserts a public-IP internal hop after the client, so the walk stops at that hop and ALL clients share one bucket → legitimate-user lockout on login | low | high | default trusts all private/loopback ranges (internal hops are private on Render); `riviera.ratelimit.trusted-proxies` is env-overridable (`RIVIERA_RATELIMIT_TRUSTED_PROXIES`) to add a CIDR without a release; AC-7 verifies on the deployed sandbox before close-out | Ivo | **MATERIALISED — see #286.** Not "low": `*.onrender.com` is Cloudflare-fronted, so the hop nearest the app is a public, PER-REQUEST-VARYING edge address — the walk keys on it, not the client. Measured 143x403 + 57x429 for 200 same-client constant-XFF requests on a cap of 10, i.e. ~14 buckets per client: under-throttles one caller ~14x AND makes unrelated clients behind one edge node share a bucket. Fix is config (add the Cloudflare + Render ranges) or honouring `CF-Connecting-IP` |
 | R-2 | Breaking the ~19 IT files that rely on unique XFF per request for bucket isolation (#127 operator-lockout lesson) | med | high | **The planned mitigation was wrong** — `SessionLoginSupport.uniqueClientIp()` minted `10.99.x.y`, an RFC1918 address the new trust list classifies as a *proxy hop*, so every IT login in the suite would have skipped it and collapsed onto the one loopback bucket (the #127 lockout, full-suite-only). Real fix: the helper now mints `198.18.x.y` (RFC 2544 benchmarking range — public, deliberately outside the trusted defaults), pinned by `ClientIpResolverTest.integrationTestClientIpsStayDistinctBuckets` so it cannot silently regress. Every IT *file* is still unchanged; only the shared helper moved. | Ivo | **closed** — helper fixed + pinned; `AuthSessionIT` (5 tests) and `RecoveryRateLimitIT` (1 test) verified green against real Postgres, 0 skipped |
 | R-3 | Trusting all RFC1918 peers means a hypothetical direct-exposed deployment on a private network would honor spoofed XFF | low | low | accepted for the locked Render topology (ADR-0004); documented in the resolver javadoc + production-hardening; the override property narrows it if topology ever changes | Ivo | **closed — accepted** as planned; documented in the `ClientIpResolver` javadoc, the `application.properties` block, and production-hardening. An empty `trusted-proxies` list ("trust no proxy") is supported and pinned by `emptyTrustListTrustsNoProxyAndKeysOnTheSocketAddress`, so a topology change needs config, not a release |
 | R-4 | A non-IP XFF token (`unknown`, hostname) makes `IpAddressMatcher`/`InetAddress.getByName` do DNS or throw | med | med | pre-validate every address with Java 25 `InetAddress.ofLiteral` (literal-only, no DNS); parse failure = untrusted; AC-6 pins it | Ivo | **closed** — implemented as planned; `treatsNonIpLiteralHopAsClientWithoutDns` green |

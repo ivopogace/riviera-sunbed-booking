@@ -67,14 +67,24 @@ must include `frontend/`, so:
   - `CORS_ALLOWED_ORIGINS` — **leave unset/empty.** The app is same-origin, so there is no
     cross-origin browser caller. (The env var name is `CORS_ALLOWED_ORIGINS`, **not**
     `APP_WEB_CORS_ALLOWED_ORIGINS`; overriding it is only for a cross-origin setup.)
-  - `RIVIERA_RATELIMIT_TRUSTED_PROXIES` (#129) — **leave unset.** The shipped default in
-    `application.properties` (loopback + RFC1918 + link-local + the IPv6 equivalents) already
-    covers Render's internal hop, so no Render env change was needed for #129. Set it (comma-
-    separated CIDRs) only if Render's peer address ever falls outside those ranges — the
-    symptom would be **every** client sharing one rate-limit bucket, i.e. widespread spurious
-    `429`s, because an untrusted peer makes the resolver ignore `X-Forwarded-For` and key on
-    the proxy's own address. An empty value means "trust no proxy" and causes exactly that,
-    so never set it to blank.
+  - `RIVIERA_RATELIMIT_TRUSTED_PROXIES` (#129) — **needs setting; the shipped default is NOT
+    sufficient on this topology. Tracked in #286.** The default (loopback + RFC1918 +
+    link-local + IPv6 equivalents) assumed the app sits directly behind a single private
+    Render hop. It does not: `*.onrender.com` is fronted by **Cloudflare**, so the real chain
+    is client → Cloudflare edge → Render → app, and the hop nearest the app is a **public,
+    per-request-varying** edge address. The right-most-untrusted-hop walk therefore keys on
+    that edge address rather than on the client.
+    Measured on the deployed sandbox (2026-07-22): 200 concurrent logins from **one** client
+    sending a **constant** `X-Forwarded-For`, against a cap of 10/min, produced 143 × `403`
+    and only 57 × `429` — roughly **14 buckets for one client** instead of one. It cuts both
+    ways: one caller gets ~14× its intended budget, while unrelated clients arriving through
+    the same edge node share a bucket.
+    The fix is to add the upstream infrastructure ranges (Cloudflare's published IPv4/IPv6
+    lists plus Render's internal range) so the walk skips them and lands on the true client.
+    #286 tracks that, and weighs the alternative of honouring `CF-Connecting-IP` behind a
+    trusted peer.
+    Never set this blank: empty means "trust no proxy", which keys every client on the
+    proxy's own address and throttles everyone together.
 - **Health Check Path:** `/actuator/health`.
 - Copy the service's **Deploy Hook** URL → GitHub secret `RENDER_DEPLOY_HOOK_URL`.
 - Note the service URL (`https://<name>.onrender.com`) → GitHub variable `BACKEND_API_URL`.
