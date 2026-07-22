@@ -117,7 +117,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	RateLimitFilter(RateLimitProperties props, Clock clock) {
 		this.props = props;
 		this.clock = clock;
-		this.clientIps = new ClientIpResolver(props.trustedProxies());
+		this.clientIps = new ClientIpResolver(props.trustedProxies(), props.clientIpHeader());
 	}
 
 	@Override

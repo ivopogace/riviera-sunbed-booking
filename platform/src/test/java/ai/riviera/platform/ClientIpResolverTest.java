@@ -3,25 +3,35 @@ package ai.riviera.platform;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.mock.web.MockHttpServletRequest;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Pins client-IP resolution for per-IP rate-limit keying (issue #56 AC-6, tightened by #129): the
- * header is honored only behind a <em>trusted</em> proxy peer, and the key is then the right-most
- * <em>untrusted</em> hop — the one Render appended, which a client cannot forge (ADR-0006 R-2).
- * Absence, blankness, or an all-trusted chain falls back to the socket address; control characters in
- * the (user-controlled) header are neutralised so it can never forge a log line or inject terminal
- * escapes.
+ * Pins client-IP resolution for per-IP rate-limit keying (issue #56 AC-6, tightened by #129, made
+ * durable by #286): the forwarding headers are honored only behind a <em>trusted</em> proxy peer.
+ * Behind one, an edge-supplied client-IP header wins outright when it is usable; otherwise the key is
+ * the right-most <em>untrusted</em> {@code X-Forwarded-For} hop, which a client cannot forge (ADR-0006
+ * R-2). Absence, blankness, or an all-trusted chain falls back to the socket address; control
+ * characters in the (user-controlled) header are neutralised so it can never forge a log line or
+ * inject terminal escapes.
  */
 class ClientIpResolverTest {
 
 	private static final List<String> DEFAULT_TRUSTED = List.of(
 			"127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
 			"169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10");
+	private static final String CF_HEADER = "CF-Connecting-IP";
 
-	private final ClientIpResolver resolver = new ClientIpResolver(DEFAULT_TRUSTED);
+	/** No edge header configured — every #129 case below asserts the walk is unchanged (#286 AC-3). */
+	private final ClientIpResolver resolver = new ClientIpResolver(DEFAULT_TRUSTED, "");
+	private final ClientIpResolver edgeAware = new ClientIpResolver(DEFAULT_TRUSTED, CF_HEADER);
 
 	@Test
 	void resolvesClientBehindTrustedProxy() {
@@ -176,6 +186,103 @@ class ClientIpResolverTest {
 		request.setRemoteAddr("127.0.0.1");
 		request.addHeader("X-Forwarded-For", "6.6.6.6");
 
-		assertEquals("127.0.0.1", new ClientIpResolver(List.of()).resolve(request));
+		assertEquals("127.0.0.1", new ClientIpResolver(List.of(), CF_HEADER).resolve(request));
+	}
+
+	// ---- The edge-supplied client-IP header is preferred over the chain walk (#286) ----
+
+	@Test
+	void prefersTheEdgeSuppliedClientOverTheForwardedChain() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "6.6.6.6, 198.51.100.9");
+		request.addHeader(CF_HEADER, "203.0.113.7");
+
+		assertEquals("203.0.113.7", edgeAware.resolve(request));
+	}
+
+	@Test
+	void ignoresTheClientIpHeaderFromAnUntrustedPeer() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("198.51.100.4"); // public peer — not a trusted proxy
+		request.addHeader(CF_HEADER, "6.6.6.6");
+
+		assertEquals("198.51.100.4", edgeAware.resolve(request));
+	}
+
+	@Test
+	void fallsBackToTheForwardedWalkWhenTheHeaderIsAbsent() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader("X-Forwarded-For", "6.6.6.6, 203.0.113.7");
+
+		assertEquals("203.0.113.7", edgeAware.resolve(request));
+	}
+
+	@Test
+	void ignoresAMultiValuedClientIpHeader() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		// Taking first-of-many would hand the key to a client-supplied copy, so all of it is discarded.
+		request.addHeader(CF_HEADER, "6.6.6.6");
+		request.addHeader(CF_HEADER, "203.0.113.7");
+		request.addHeader("X-Forwarded-For", "1.2.3.4, 198.51.100.9");
+
+		assertEquals("198.51.100.9", edgeAware.resolve(request));
+	}
+
+	@Test
+	void ignoresANonLiteralClientIpHeader() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1");
+		request.addHeader(CF_HEADER, "203.0.113.7, 6.6.6.6"); // a chain, not a single address
+		request.addHeader("X-Forwarded-For", "1.2.3.4, 198.51.100.9");
+
+		assertEquals("198.51.100.9", edgeAware.resolve(request));
+	}
+
+	/**
+	 * The measured production shape (#286): client → Cloudflare edge → Render → app, with only the
+	 * SHIPPED private ranges trusted. The chain's right-most hop is the public, per-request-varying
+	 * Cloudflare edge, so the walk keys on the edge node; the edge-supplied header keys on the client.
+	 */
+	@Test
+	void resolvesTheClientOnACloudflareShapedChainWithoutCloudflareCidrs() {
+		assertEquals("203.0.113.7", edgeAware.resolve(cloudflareShaped(true)));
+	}
+
+	@Test
+	void withoutTheHeaderTheWalkStillKeysOnTheEdgeHop() {
+		assertEquals("162.158.1.1", resolver.resolve(cloudflareShaped(false)));
+	}
+
+	private static MockHttpServletRequest cloudflareShaped(boolean withEdgeHeader) {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("10.0.0.1"); // Render's internal hop — private, trusted by default
+		request.addHeader("X-Forwarded-For", "6.6.6.6, 203.0.113.7, 162.158.1.1");
+		if (withEdgeHeader) {
+			request.addHeader(CF_HEADER, "203.0.113.7");
+		}
+		return request;
+	}
+
+	@Test
+	void warnsOnceWhenTheConfiguredHeaderIsMissing() {
+		Logger logger = (Logger) LoggerFactory.getLogger(ClientIpResolver.class);
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		logger.addAppender(appender);
+		try {
+			ClientIpResolver fresh = new ClientIpResolver(DEFAULT_TRUSTED, CF_HEADER);
+			MockHttpServletRequest request = new MockHttpServletRequest();
+			request.setRemoteAddr("10.0.0.1");
+			fresh.resolve(request);
+			fresh.resolve(request);
+
+			assertEquals(1, appender.list.stream().filter(e -> e.getLevel() == Level.WARN).count());
+		}
+		finally {
+			logger.detachAppender(appender);
+		}
 	}
 }
