@@ -35,7 +35,6 @@ function venueMap(): VenueMapView {
 describe('OperatorConsole accessibility (axe, #170)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
-  let operator: OperatorAuth;
 
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
@@ -51,11 +50,11 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
         },
       ],
     });
-    operator = TestBed.inject(OperatorAuth);
+    TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
     httpMock
       .expectOne(`${BASE}/api/auth/me`)
-      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -66,16 +65,7 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  async function signIn(): Promise<void> {
-    const result = operator.signIn('operator', 'pw');
-    httpMock
-      .expectOne(`${BASE}/api/auth/operator/login`)
-      .flush({ username: 'operator', principalType: 'OPERATOR' });
-    await result;
-  }
-
   async function createSignedIn(pending: number): Promise<void> {
-    await signIn();
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable();
     httpMock.expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET').flush(venueMap());
@@ -96,12 +86,6 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
       });
     await fixture.whenStable();
   }
-
-  it('has no violations on the sign-in card', async () => {
-    fixture = TestBed.createComponent(OperatorConsole);
-    await fixture.whenStable();
-    await expectNoAxeViolations(host());
-  });
 
   it('has no violations on the signed-in shell (header + tabs)', async () => {
     await createSignedIn(0);

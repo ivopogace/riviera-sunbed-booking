@@ -1,9 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
-import { OperatorAuth, signInFailureMessage } from '../core/operator-auth';
+import { OperatorAuth } from '../core/operator-auth';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../venue/venue.model';
 import { VenueAdminErrorCode } from './venue-admin.model';
@@ -26,11 +26,8 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 })
 export class VenueEditor {
   private readonly admin = inject(VenueAdminService);
+  private readonly router = inject(Router);
   protected readonly operator = inject(OperatorAuth);
-
-  /** Operator sign-in (plain signals — trivial, no per-field validation messaging). */
-  protected readonly username = signal('');
-  protected readonly password = signal('');
 
   /** The created venue's id (undefined until the create form succeeds) — then we link to its console. */
   protected readonly venueId = signal<number | undefined>(undefined);
@@ -57,31 +54,10 @@ export class VenueEditor {
     required(path.bookingCutoff, { message: 'Cutoff time is required' });
   });
 
-  /** True while the sign-in POST is in flight (button disabled, no double submit). */
-  protected readonly signingIn = signal(false);
-  /** A sign-in failure message, distinct from the write-flow errors in {@link errorMessage}. */
-  protected readonly signInError = signal<string | undefined>(undefined);
-
-  protected async onSignIn(): Promise<void> {
-    if (!this.username() || !this.password() || this.signingIn()) {
-      return;
-    }
-    this.signingIn.set(true);
-    this.signInError.set(undefined);
-    // Server-validated (issue #109): the session is established here or the failure is known here.
-    const result = await this.operator.signIn(this.username(), this.password());
-    this.signingIn.set(false);
-    if (result === 'signed-in') {
-      this.password.set('');
-      this.errorCode.set(undefined);
-    } else {
-      this.signInError.set(signInFailureMessage(result));
-    }
-  }
-
   protected async onSignOut(): Promise<void> {
     await this.operator.signOut();
-    this.password.set('');
+    // The guard gates on ACTIVATION, so leave the page ourselves rather than sit on a dead session.
+    await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 
   protected onCreateVenue(): void {

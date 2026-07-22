@@ -102,11 +102,11 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
       submitted, then `OperatorAuth.register` runs, **no session is established**, and the card
       switches to the pending-approval outcome state (PENDING, S6 #115) — identical for a fresh
       and an already-taken username. *Pinned by:* `auth-page.spec.ts › operator register lands pending`
-- [ ] **AC-7 (post-sign-in landing):** Given a signed-in operator, when landing is resolved, then
+- [x] **AC-7 (post-sign-in landing):** Given a signed-in operator, when landing is resolved, then
       exactly one owned venue navigates to `/operator/:id`, more than one renders the picker, and
       zero forwards to venue onboarding; a present `returnUrl` **wins over all three**. *Pinned by:*
       `auth-landing.spec.ts › landingRouteFor` (all four cases)
-- [ ] **AC-8 (console redirects, no bounce while restoring):** Given an unauthenticated visit to
+- [x] **AC-8 (console redirects, no bounce while restoring):** Given an unauthenticated visit to
       `/operator/:venueId`, when the operator-session guard runs, then it returns a `UrlTree` to
       `/account/sign-in?audience=operator&returnUrl=…`; and given a session restore still in
       flight, the guard **awaits** it and does not redirect a signed-in operator on reload.
@@ -211,6 +211,25 @@ joined server-side; that is what makes this a fullstack slice rather than a pure
 | create-venue Signal Form + its validation/errors | preserved | untouched this slice (restyle is the follow-up) |
 | reachable from the console header | preserved | link unchanged |
 
+### Ledger walk against the final diff (Phase 4, 2026-07-22)
+
+Every `preserved` row re-checked in code, not from memory. All hold, with **two behaviours the ledger
+did not anticipate** — both found by walking it, both now implemented and tested:
+
+| # | Gap found | Resolution |
+|---|---|---|
+| L-1 | **Sign-out left the operator stranded.** The guard gates on *activation*, so signing out while on `/operator/:venueId` (or `/venue-admin`) previously flipped the template to the inline card — with that card gone, the shell would have stayed rendered over a dead session. | Both `onSignOut` handlers now navigate to `/account/sign-in?audience=operator`. Pinned by `operator-console.spec.ts › leaves for the unified auth page on sign-out` and `venue-editor.spec.ts › signs out and leaves for the unified auth page`. |
+| L-2 | **The owned-venues cache outlived the session.** The next operator to sign in on the same device would have been routed by — and shown — the previous operator's venues. | `OperatorAuth.signOut()` overrides the base to call `OwnedVenues.reset()`, so one place covers every caller. Pinned by `operator-auth.spec.ts › drops the cached owned-venues list`. |
+
+Confirmed unchanged: the invalid-`:venueId` "Venue not found" state, the post-sign-in `effect` that
+loads the venue name + requests badge (it keys off `signedIn()`, which the guard's return satisfies),
+the venue-editor's create-venue Signal Form and its validation, and the console-header link to
+`/venue-admin`. The console's "New operator? Register" link went out with the card it lived in — the
+unified page's own mode toggle replaces it. `runOperatorSignIn`'s rules survive in `AuthPage`: the
+blank-field gate, the generic message, and the no-op-while-in-flight (that last one now pinned by
+`auth-page.spec.ts › no-ops while a submit is already in flight`, so the helper's deleted spec loses
+no coverage).
+
 **Retired e2e coverage** — `customer-auth.e2e.ts`, `operator-registration.e2e.ts`,
 `operator-sign-in.e2e.ts`, `sso-sign-in.e2e.ts` and their page objects target the old DOM. Verdict:
 **rewritten, not deleted** — each flow's assertions move into `unified-auth.e2e.ts` (or the page
@@ -224,7 +243,7 @@ object is repointed), so no flow silently loses coverage.
 | R-2 | `GET /api/venues/mine` is shadowed by `GET /api/venues/{id}` and 400s on `"mine"` | med | med | literal segments outrank path variables in Spring's pattern comparator; `MyVenuesControllerTest` asserts the literal route resolves | Ivo | **closed** (Phase 0) — `MyVenuesControllerTest.theLiteralMineSegmentOutranksTheVenueIdPattern` green: 200 + array, not a 400 |
 | R-3 | The new `GET /api/venues/mine` falls through to the public `GET /api/venues/**` `permitAll` rule | med | **high** (leaks ownership) | its `hasRole(OPERATOR)` matcher is placed **above** the public rule, matching the payout-ledger / profile / takings precedent; AC-2 pins anonymous → 401 | Ivo | **closed** (Phase 0) — `MY_VENUES_PATH` sits directly after `TAKINGS_PATH`, above the public GET; `deniesAnonymousAndCustomerSessions` green (401 + 403) |
 | R-4 | A new controller breaks `@WebMvcTest` slices (missing bean) or `@ApplicationModuleTest` | high | med | recurring in this repo — add the stub to `WebSliceStubs`; run the module tests in the same phase, not at CI | Ivo | **closed** (Phase 0) — `ListOwnedVenues` stub added to `WebSliceStubs`; the five shared web slices + `ModularityTests` re-run green |
-| R-5 | Retiring four surfaces silently drops a behavior (the O6 #176 failure mode) | med | high | the behavior-parity ledger above is enumerated from code; each `preserved` row names its new home | Ivo | open |
+| R-5 | Retiring four surfaces silently drops a behavior (the O6 #176 failure mode) | med | high | the behavior-parity ledger above is enumerated from code; each `preserved` row names its new home | Ivo | **closed** (Phase 4) — and it **fired twice**: the ledger walk found the stranded-after-sign-out gap (L-1) and the owned-venues cache outliving the session (L-2). Both fixed + pinned |
 | R-6 | Audience toggle leaks credentials across principal types (a tourist password posted to the operator endpoint) | low | **high** | the toggle picks the *service*, never a shared endpoint; separate submit paths, no shared credential state; password field cleared on audience switch | Ivo | open |
 | R-7 | Focus/ARIA regression on the toggles (radiogroup semantics, roving tabindex) | med | med | `SegmentedControl` is a shared primitive with its own keyboard spec; axe in both modes × both audiences | Ivo | **mitigated** (Phase 1) — `segmented-control.spec.ts` pins radiogroup semantics, roving tabindex, arrow/Home/End with wrap, and that other keys fall through to the browser; axe over the composed page still owes Phase 3 |
 | R-8 | Glass card contrast drifts from the AA-proven token set | low | med | reuse `CardGlass` + `--riv-*` tokens only, no palette literals; `auth-page.contrast.spec.ts` composites the maths | Ivo | **closed** (Phase 3) — and it **fired**: the inactive pill label at ink-faint measured 4.38:1 over the pill track on the darkest riviera stop; the label moved to ink-soft |
@@ -347,21 +366,22 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — Phases 0–3 done; Phase 4 next`
+**Stage pointer:** `implement — Phases 0–4 done; Phase 5 next`
 
-**Next action:** Start **Phase 4** (operator surfaces behind the guard + the `/operator` home):
-`OperatorHome`, apply `operatorSessionGuard` to `/operator`, `/operator/:venueId` and
-`/venue-admin`, strip the two inline sign-in cards, delete `runOperatorSignIn`, then walk the
-behavior-parity ledger row by row. Frontend skills stay loaded. **RV-STYLE-1** (inline comments are
-one-liners or they are not written, added 2026-07-22) applies to everything from here.
+**Next action:** Start **Phase 5** (e2e, docs). Load `playwright-cli` before touching
+`frontend/e2e/`. Author `unified-auth.e2e.ts` (four flows + the multi-venue landing), repoint the
+four retired e2e specs + both page objects onto the new DOM, confirm the booking e2e specs still
+pass **unmodified** (AC-13), then `riviera-docs-freshness` on `CLAUDE.md` + `RESPONSIBILITIES.md`.
+After that: PR → CI gate → review gate → Sonar gate → merge close-out (`pr-gates.md`).
+**RV-STYLE-1** (inline comments are one-liners or they are not written, added 2026-07-22) applies.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Owned-venues read (backend) | ✅ | `73a62dc` |
 | 1 — Shared Tailwind primitives | ✅ | `66aedec` |
 | 2 — Session/landing plumbing (`core/`) | ✅ | `c3da52d` (+ `ab6461e` style sweep) |
-| 3 — The unified auth page + route redirects | ✅ | `<phase-3>` |
-| 4 — Operator surfaces behind the guard + `/operator` home | | |
+| 3 — The unified auth page + route redirects | ✅ | `29a6b2a` |
+| 4 — Operator surfaces behind the guard + `/operator` home | ✅ | `<phase-4>` |
 | 5 — e2e, a11y/contrast, substrate docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -684,18 +704,24 @@ Delete `auth/sign-in.ts`, `auth/register.ts`, `operator/operator-register.ts` (+
 `operator/operator-console.ts`/`.html`, `venue-admin/venue-editor.ts`/`.html`,
 `core/operator-auth.ts` (delete `runOperatorSignIn`)
 
-- [ ] **Step 1: Write the failing `/operator` home spec** — 0 venues redirects to `/venue-admin`,
-      1 redirects to `/operator/:id`, N renders a picker list with names (AC-7).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- operator-home` → FAIL
-- [ ] **Step 3: Minimal implementation** — `OperatorHome` consuming `OwnedVenues` + `landingRouteFor`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- operator-home` → PASS
-- [ ] **Step 5: Strip the two inline sign-in cards**, apply the guard to `/operator`,
-      `/operator/:venueId` and `/venue-admin`, and delete `runOperatorSignIn` + its specs. Walk the
-      behavior-parity ledger row by row and confirm each `preserved` row still holds — especially
-      the `restoring()` state and the console's post-sign-in `effect` (R-5).
-- [ ] **Step 6: Run the operator suite** — `npm test -- operator venue-editor` → PASS
-- [ ] **Step 7: Commit** — `git commit -m "Route operators through the unified page and add the /operator home (#277)"`
-- [ ] **Step 8: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing `/operator` home spec** (AC-7).
+- [x] **Step 2: Run it, verify it fails** — FAIL: `Could not resolve "./operator-home"`
+- [x] **Step 3: Minimal implementation** — `OperatorHome` consuming `OwnedVenues` + `landingRouteFor`.
+- [x] **Step 4: Run it, verify it passes** — 5/5 PASS (+ 2/2 a11y)
+- [x] **Step 5: Stripped the two inline sign-in cards**, applied the guard to `/operator`,
+      `/operator/:venueId` and `/venue-admin`, deleted `runOperatorSignIn` + its spec block. Ledger
+      walked row by row — see the walk table above; **two gaps found and fixed** (L-1, L-2).
+- [x] **Step 6: Run the whole frontend suite** — lint clean, **105 files / 800 tests PASS**,
+      production build succeeds.
+- [x] **Step 7: Commit** — `git commit -m "Route operators through the unified page and add the /operator home (#277)"`
+- [x] **Step 8: Update plan-doc execution status.**
+
+> **As-built note (Phase 4):** the console's and venue editor's `restoring()` "Checking your
+> session…" templates are **gone**, not moved — the guard awaits `whenReady()` before activating the
+> route, so neither page can render mid-restore any more. That is the ledger's "preserved — critical"
+> row honoured at a better layer. `/operator` carries `data.operatorConsole` so the tourist shell
+> suppresses its chrome, like the console itself. Three operator specs were rewritten onto the
+> guard-gated model (they previously drove the deleted inline cards); no flow lost coverage.
 
 ---
 

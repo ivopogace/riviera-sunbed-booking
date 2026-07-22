@@ -1,46 +1,12 @@
 <section class="editor">
   <h1>Create a venue</h1>
 
-  <!-- Operator sign-in (U7 write API; session-validated on submit since issue #109) -->
-  @if (operator.restoring()) {
-    <output class="card hint">Checking your session…</output>
-  } @else if (!operator.signedIn()) {
-    <form class="card sign-in" (submit)="onSignIn(); $event.preventDefault()" novalidate>
-      <h2>Operator sign-in</h2>
-      <p class="hint">Creating a venue requires an operator sign-in.</p>
-      <label class="field">
-        <span>Username</span>
-        <input
-          type="text"
-          name="operator-username"
-          autocomplete="username"
-          [value]="username()"
-          (input)="username.set($any($event.target).value)"
-        />
-      </label>
-      <label class="field">
-        <span>Password</span>
-        <input
-          type="password"
-          name="operator-password"
-          autocomplete="current-password"
-          [value]="password()"
-          (input)="password.set($any($event.target).value)"
-        />
-      </label>
-      <button type="submit" class="btn-primary" [disabled]="signingIn()">
-        {{ signingIn() ? 'Signing in…' : 'Sign in' }}
-      </button>
-      @if (signInError(); as msg) {
-        <p class="form-error" role="alert">{{ msg }}</p>
-      }
-    </form>
-  } @else {
-    <div class="card signed-in">
-      <p>Signed in as <strong>{{ operator.username() }}</strong>.</p>
-      <button type="button" class="btn-secondary" (click)="onSignOut()">Sign out</button>
-    </div>
-  }
+  <!-- S9 (#277): no sign-in card here — operatorSessionGuard gates this route and awaits the
+       session restore, so the page only renders for a signed-in operator. -->
+  <div class="card signed-in">
+    <p>Signed in as <strong>{{ operator.username() }}</strong>.</p>
+    <button type="button" class="btn-secondary" (click)="onSignOut()">Sign out</button>
+  </div>
 
   @if (errorMessage(); as msg) {
     <p class="form-error" role="alert">{{ msg }}</p>

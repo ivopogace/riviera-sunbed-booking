@@ -1,6 +1,8 @@
 import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
 
+import { operatorSessionGuard } from './core/operator-session.guard';
+
 // The operator-console tab child routes (issue #170). Every tab has now graduated to its real
 // component (O3 beach-map through O8 venue — no placeholders remain); `data.tab` identifies the
 // section. A child reads `:venueId` from the PARENT route (child routes don't inherit it under the
@@ -115,6 +117,7 @@ export const routes: Routes = [
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
     title: 'Create a venue — Riviera',
+    canActivate: [operatorSessionGuard],
   },
   {
     // O6 (#176): the retired /venue-admin/daily/:venueId StaffDaily page forwards to the console's
@@ -129,6 +132,17 @@ export const routes: Routes = [
     path: 'operator/register',
     redirectTo: () => inject(Router).parseUrl('/account/sign-in?audience=operator&mode=register'),
     pathMatch: 'full',
+  },
+  {
+    // S9 (#277): where a signed-in operator lands when the venue isn't already known — 0 owned
+    // venues forwards to onboarding, 1 opens that console, 2+ renders the picker. Literal segment,
+    // so it MUST stay above 'operator/:venueId'.
+    path: 'operator',
+    loadComponent: () => import('./operator/operator-home').then((m) => m.OperatorHome),
+    title: 'Your venues — Riviera',
+    canActivate: [operatorSessionGuard],
+    // Chromeless like the console: this is operator surface, so the tourist header/footer stay off.
+    data: { operatorConsole: true },
   },
   {
     // Platform-admin operator-approval surface (S6 #115). Self-gates on the ADMIN session; the
@@ -147,6 +161,7 @@ export const routes: Routes = [
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',
     data: { operatorConsole: true },
+    canActivate: [operatorSessionGuard],
     children: [{ path: '', pathMatch: 'full', redirectTo: 'beach-map' }, ...consoleTabRoutes],
   },
   {

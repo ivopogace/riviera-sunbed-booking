@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Service, WritableSignal } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { PASSWORD_LENGTH_MESSAGE } from './customer-auth';
+import { OwnedVenues } from './owned-venues';
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
 
 // Re-exported for the operator surfaces + specs that import it from here (the type now lives on the
@@ -67,6 +68,17 @@ export class OperatorAuth extends SessionAuth {
   /** Fire the one-time restore once `principalType` is set (field-initializer, a valid DI context). */
   protected readonly restoreOnStartup = this.restore();
 
+  private readonly ownedVenues = inject(OwnedVenues);
+
+  /**
+   * Sign out, then drop the cached owned-venues list (S9 #277). Without this the next operator to
+   * sign in on this device would be routed by — and shown — the previous operator's venues.
+   */
+  override async signOut(): Promise<void> {
+    await super.signOut();
+    this.ownedVenues.reset();
+  }
+
   /**
    * Server-validated sign-in: unlike the old capture-and-hope Basic flow, a wrong credential is
    * known HERE (generic 401 — the backend never says why, D-8), not on the first write.
@@ -129,36 +141,3 @@ export function operatorRegisterMessage(result: OperatorRegisterResult): string 
   }
 }
 
-/** The mutable state an operator sign-in form drives: the in-flight flag, the error message, and the
- *  password field (cleared on success). */
-export interface OperatorSignInForm {
-  readonly signingIn: WritableSignal<boolean>;
-  readonly error: WritableSignal<string | undefined>;
-  readonly password: WritableSignal<string>;
-}
-
-/**
- * Run an operator sign-in against {@link OperatorAuth}, driving a sign-in form's in-flight / error /
- * password state. Extracted at issue #170 so the operator-console sign-in card doesn't duplicate the
- * venue-editor / staff-daily handler. No-ops while a field is blank or a sign-in is already in flight;
- * clears the password on success and sets the generic {@link signInFailureMessage} on failure.
- */
-export async function runOperatorSignIn(
-  auth: OperatorAuth,
-  username: string,
-  password: string,
-  form: OperatorSignInForm,
-): Promise<void> {
-  if (!username || !password || form.signingIn()) {
-    return;
-  }
-  form.signingIn.set(true);
-  form.error.set(undefined);
-  const result = await auth.signIn(username, password);
-  form.signingIn.set(false);
-  if (result === 'signed-in') {
-    form.password.set('');
-  } else {
-    form.error.set(signInFailureMessage(result));
-  }
-}

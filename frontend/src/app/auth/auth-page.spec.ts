@@ -159,6 +159,23 @@ describe('AuthPage', () => {
       expect(customer.signIn).not.toHaveBeenCalled();
       expect(el('auth-error').textContent).toContain('Enter your email and password.');
     });
+
+    it('no-ops while a submit is already in flight', async () => {
+      // Inherited from the deleted runOperatorSignIn helper (#170) — a double submit must not
+      // fire two logins.
+      await render();
+      let release!: (value: string) => void;
+      customer.signIn.mockReturnValue(new Promise<string>((resolve) => (release = resolve)));
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'password123');
+
+      el<HTMLFormElement>('auth-form').dispatchEvent(new Event('submit'));
+      el<HTMLFormElement>('auth-form').dispatchEvent(new Event('submit'));
+      release('signed-in');
+      await fixture.whenStable();
+
+      expect(customer.signIn).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('tourist register', () => {
