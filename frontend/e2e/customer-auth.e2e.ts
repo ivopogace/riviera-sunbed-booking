@@ -22,8 +22,9 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
   await auth.expectSignedOut(); // header offers Sign in / Register
 
   // Register a fresh account from the header.
+  // S9 (#277): the header's Register link deep-links into the unified card's register mode.
   await auth.gotoRegister();
-  await expect(page).toHaveURL(/\/account\/register$/);
+  await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
   await expectNoSeriousAxeViolations(page, 'register page');
 
   await auth.register('ana@example.com', 'password123');

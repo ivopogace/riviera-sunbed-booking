@@ -2,6 +2,8 @@ package ai.riviera.platform.venue.application;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +36,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * left unowned.
  */
 @Service
-class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile {
+class VenueAdminService
+		implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile, ListOwnedVenues {
 
 	private final Venues venues;
 	private final VenueOwnership ownership;
@@ -85,6 +88,17 @@ class VenueAdminService implements OnboardVenue, EditBeachMap, EditVenueProfile,
 		// commission rate + payout currency); a mismatch throws NotVenueOwnerException → 403 (#13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		return venues.findProfile(venueId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<OwnedVenueView> ownedBy(OperatorId operator) {
+		// No assertOwns: the ownership mapping IS the filter, so there is no id to tamper with (#13).
+		Set<VenueId> ids = ownership.ownedVenues(operator).stream()
+				.map(ref -> new VenueId(ref.value()))
+				.collect(Collectors.toSet());
+		// Short-circuit an operator that owns nothing, so no `IN ()` predicate reaches the database.
+		return ids.isEmpty() ? List.of() : venues.findSummaries(ids);
 	}
 
 	@Override

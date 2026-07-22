@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.adapter.out;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.NewVenueCommand;
+import ai.riviera.platform.venue.application.OwnedVenueView;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.RowPriceCommand;
@@ -286,6 +288,21 @@ class JdbcVenues implements Venues {
 					.update();
 		}
 		return rows;
+	}
+
+	@Override
+	public List<OwnedVenueView> findSummaries(Collection<VenueId> ids) {
+		// PK-set lookup on ids the caller already filtered; ORDER BY name, id keeps the picker stable.
+		return jdbc.sql("""
+				SELECT id, name, beach
+				  FROM venue
+				 WHERE id IN (:ids)
+				 ORDER BY name, id
+				""")
+				.param("ids", ids.stream().map(VenueId::value).toList())
+				.query((rs, rowNum) -> new OwnedVenueView(
+						rs.getLong("id"), rs.getString(COL_NAME), rs.getString(COL_BEACH)))
+				.list();
 	}
 
 	@Override

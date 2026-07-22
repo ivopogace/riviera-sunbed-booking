@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,6 +119,15 @@ public interface Venues {
 	 * caller (application service) has already asserted ownership (invariant #13).
 	 */
 	Optional<VenueProfileView> findProfile(VenueId venueId);
+
+	/**
+	 * Picker summaries for the given venue ids, <strong>ordered by name</strong> (S9 #277). The caller
+	 * has already reduced {@code ids} to what the acting operator owns, so this is a plain PK-set
+	 * lookup with no authorization of its own — never call it with an unfiltered id set. Missing ids
+	 * are simply absent from the result (no exception, no placeholder row). Never called with an empty
+	 * collection: the caller short-circuits, so the adapter's {@code IN (:ids)} always has members.
+	 */
+	List<OwnedVenueView> findSummaries(Collection<VenueId> ids);
 
 	/** A layout-uniqueness conflict, in priority order for reporting. */
 	enum Conflict {

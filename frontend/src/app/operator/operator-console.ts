@@ -1,8 +1,8 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
-import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
-import { OperatorAuth, runOperatorSignIn } from '../core/operator-auth';
+import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../venue/booking-date';
 import { VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
@@ -19,18 +19,19 @@ interface ConsoleTab {
 
 /**
  * Operator console shell (issue #170, epic #141 foundation). The porcelain-light glass chrome that
- * wraps the operator surface at `/operator/:venueId`: a sign-in gate, a sticky header (Operator
- * wordmark, venue title, signed-in-as, sign out) and — from Phase 2 — the pill tab nav with a live
- * Requests badge, hosting each tab as a child route. The tourist app shell (`app.ts`) suppresses its
- * own chrome for `/operator/**`, so this component owns the full viewport.
+ * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, venue
+ * title, signed-in-as, sign out) and the pill tab nav with a live Requests badge, hosting each tab
+ * as a child route. The tourist app shell (`app.ts`) suppresses its own chrome for `/operator/**`,
+ * so this component owns the full viewport.
  *
  * <p><strong>Always porcelain</strong>: the `data-riv-theme="porcelain"` host attribute re-scopes the
  * `--riv-*` tokens for the console subtree WITHOUT writing the document-level theme — so a tourist who
  * chose the dark `riviera` theme still sees a light console, and their choice is preserved on return
  * (AC-6). The console never injects `ThemeService` and exposes no theme switcher.
  *
- * <p>Sign-in reuses the session-based {@link OperatorAuth} (issue #109) — plain signals mirroring the
- * venue-editor / staff-daily operator sign-in; failure copy stays generic (`signInFailureMessage`).
+ * <p>Since S9 (#277) it carries <strong>no sign-in gate</strong>: {@code operatorSessionGuard} owns
+ * that, and because the guard awaits the session restore before deciding, the console no longer needs
+ * its own "Checking your session…" state either — it only ever renders for a signed-in operator.
  */
 @Component({
   selector: 'app-operator-console',
@@ -41,6 +42,7 @@ interface ConsoleTab {
 })
 export class OperatorConsole {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly venues = inject(VenueService);
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
@@ -58,14 +60,6 @@ export class OperatorConsole {
     { path: 'payouts', label: 'Payouts' },
     { path: 'venue', label: 'Venue & commodities' },
   ];
-
-  /** Operator sign-in (plain signals — trivial, no per-field validation messaging). */
-  protected readonly username = signal('');
-  protected readonly password = signal('');
-  /** True while the sign-in POST is in flight (button disabled, no double submit). */
-  protected readonly signingIn = signal(false);
-  /** A generic sign-in failure message (design D-8), or undefined. */
-  protected readonly signInError = signal<string | undefined>(undefined);
 
   /** The venue name shown in the header, from the public venue read (best-effort). */
   protected readonly venueName = signal<string | undefined>(undefined);
@@ -92,22 +86,13 @@ export class OperatorConsole {
     });
   }
 
-  protected onSignIn(): Promise<void> {
-    // Server-validated (issue #109): the session is established here or the generic failure is known
-    // here. Shared with the venue-editor / staff-daily sign-in via the core helper.
-    return runOperatorSignIn(this.operator, this.username(), this.password(), {
-      signingIn: this.signingIn,
-      error: this.signInError,
-      password: this.password,
-    });
-  }
-
   protected async onSignOut(): Promise<void> {
     await this.operator.signOut();
-    this.password.set('');
     this.venueName.set(undefined);
     this.venue.set(undefined);
     this.requests.reset();
+    // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session (#277).
+    await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 
   /**

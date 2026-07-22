@@ -1,10 +1,12 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
+import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
+import { OwnedVenues } from '../core/owned-venues';
 import { apiSessionInterceptor } from '../core/api-session.interceptor';
 import { VenueEditor } from './venue-editor';
 
@@ -32,11 +34,10 @@ describe('VenueEditor (onboarding, #177)', () => {
     httpMock = TestBed.inject(HttpTestingController);
     auth = TestBed.inject(OperatorAuth);
     fixture.detectChanges();
-    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109);
-    // answer 401 so every test starts signed out with restoring() settled.
+    // Guard-gated since #277: the page only mounts signed in, so /me answers a principal.
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/me`)
-      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
     await fixture.whenStable();
     fixture.detectChanges();
   });
@@ -45,16 +46,6 @@ describe('VenueEditor (onboarding, #177)', () => {
 
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
-  }
-
-  /** Establish an operator session: submit the credential and flush the login POST (issue #109). */
-  async function signIn(): Promise<void> {
-    const result = auth.signIn('operator', 'pw');
-    httpMock
-      .expectOne(`${environment.apiBaseUrl}/api/auth/operator/login`)
-      .flush({ username: 'operator', principalType: 'OPERATOR' });
-    await result;
-    fixture.detectChanges();
   }
 
   /** Set a Signal Forms field by the text of its label, then notify the form. */
@@ -75,14 +66,15 @@ describe('VenueEditor (onboarding, #177)', () => {
     button!.click();
   }
 
-  it('shows the operator sign-in until signed in', () => {
-    expect(host().textContent).toContain('Operator sign-in');
-    expect(host().textContent).not.toContain('Create venue');
+  it('carries no inline sign-in card — the guard owns the gate (#277)', () => {
+    expect(host().textContent).not.toContain('Operator sign-in');
+    expect(host().querySelector('[name="operator-username"]')).toBeNull();
+    // The signed-in-as strip and the create form render straight away.
+    expect(host().textContent).toContain('Signed in as');
+    expect(host().textContent).toContain('Create venue');
   });
 
   it('creates a venue and links the operator into its console', async () => {
-    await signIn();
-
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -114,10 +106,20 @@ describe('VenueEditor (onboarding, #177)', () => {
     expect(host().textContent).toContain('Venue #5 created');
     const link = host().querySelector<HTMLAnchorElement>('[data-testid="venue-console-link"]');
     expect(link?.getAttribute('href')).toBe('/operator/5');
+
+    // S9 (#277): the landing cache must be invalidated, or /operator keeps forwarding a first-time
+    // creator back to onboarding on the strength of the pre-create empty list.
+    const reloaded = TestBed.inject(OwnedVenues).load();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/venues/mine`)
+      .flush([{ id: 5, name: 'Sunset Bar', beach: 'Ksamil' }]);
+    expect(await reloaded).toEqual({
+      status: 'loaded',
+      venues: [{ id: 5, name: 'Sunset Bar', beach: 'Ksamil' }],
+    });
   });
 
   it('rejects a non-integer commission client-side without calling the server', async () => {
-    await signIn();
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
     setField('Region', 'Riviera');
@@ -133,10 +135,7 @@ describe('VenueEditor (onboarding, #177)', () => {
   });
 
   it('surfaces a mid-flow 401 as a session-expired error AND drops the lost session', async () => {
-    // Signed in, but the session dies before the write (expired/invalidated server-side): the 401
-    // on the venue POST surfaces the session-expired alert AND clears local auth state via
-    // sessionLost(), so the sign-in form re-renders instead of stranding the operator (issue #109).
-    await signIn();
+    // A mid-flow 401 shows the expired alert and clears local state — what makes the guard redirect.
     expect(auth.signedIn()).toBe(true);
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');
@@ -153,37 +152,21 @@ describe('VenueEditor (onboarding, #177)', () => {
 
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('session has expired');
     expect(auth.signedIn()).toBe(false);
-    expect(host().querySelector('#operator-username, [name="operator-username"]')).not.toBeNull();
   });
 
-  it('signs the operator in and out through the form', async () => {
-    setField('Username', 'operator');
-    setField('Password', 'pw');
-    fixture.detectChanges();
-    clickButton('Sign in');
-    httpMock
-      .expectOne(`${environment.apiBaseUrl}/api/auth/operator/login`)
-      .flush({ username: 'operator', principalType: 'OPERATOR' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(auth.signedIn()).toBe(true);
-    expect(host().textContent).toContain('Signed in as');
-    expect(host().textContent).toContain('Create venue');
+  it('signs out and leaves for the unified auth page (#277)', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     clickButton('Sign out');
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/logout`)
       .flush(null, { status: 204, statusText: 'No Content' });
     await fixture.whenStable();
-    fixture.detectChanges();
-    expect(auth.signedIn()).toBe(false);
-    expect(host().textContent).toContain('Operator sign-in');
 
-    // Submitting with an empty password is a no-op (the guard short-circuits, no login POST).
-    clickButton('Sign in');
-    await fixture.whenStable();
-    fixture.detectChanges();
     expect(auth.signedIn()).toBe(false);
+    // The guard gates on ACTIVATION, so the page must navigate away rather than sit on a dead session.
+    expect(navigate).toHaveBeenCalledWith(['/account/sign-in'], {
+      queryParams: { audience: 'operator' },
+    });
   });
 });

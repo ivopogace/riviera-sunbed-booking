@@ -45,7 +45,13 @@
             </button>
           } @else {
             <a routerLink="/account/sign-in" class="riv-nav-link" data-testid="nav-signin">Sign in</a>
-            <a routerLink="/account/register" class="riv-nav-link" data-testid="nav-register">Register</a>
+            <a
+              routerLink="/account/sign-in"
+              [queryParams]="{ mode: 'register' }"
+              class="riv-nav-link"
+              data-testid="nav-register"
+              >Register</a
+            >
           }
         }
 
@@ -140,7 +146,8 @@
                 >Sign in</a
               >
               <a
-                routerLink="/account/register"
+                routerLink="/account/sign-in"
+                [queryParams]="{ mode: 'register' }"
                 class="riv-mobile-link"
                 data-testid="nav-register-mobile"
                 (click)="closeMenus()"

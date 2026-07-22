@@ -1,4 +1,7 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
+
+import { operatorSessionGuard } from './core/operator-session.guard';
 
 // The operator-console tab child routes (issue #170). Every tab has now graduated to its real
 // component (O3 beach-map through O8 venue — no placeholders remain); `data.tab` identifies the
@@ -68,17 +71,16 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
-    // Customer sign-in (S2 #111, epic #108) — glass from the start. `account/*` literal segments,
-    // no param collision. Guest checkout is unaffected; an account is optional.
+    // S9 (#277): the ONE auth card; ?audience=/?mode=/?returnUrl= preselect its state.
     path: 'account/sign-in',
-    loadComponent: () => import('./auth/sign-in').then((m) => m.SignIn),
+    loadComponent: () => import('./auth/auth-page').then((m) => m.AuthPage),
     title: 'Sign in — Riviera',
   },
   {
-    // Customer registration (S2 #111, epic #108).
+    // S9 (#277): retired page → the card in register mode; kept one release for existing links.
     path: 'account/register',
-    loadComponent: () => import('./auth/register').then((m) => m.Register),
-    title: 'Create an account — Riviera',
+    redirectTo: () => inject(Router).parseUrl('/account/sign-in?mode=register'),
+    pathMatch: 'full',
   },
   {
     // Forgot password → request a reset link (S8 #113). `account/*` literal segment, no param collision.
@@ -112,6 +114,7 @@ export const routes: Routes = [
     path: 'venue-admin',
     loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
     title: 'Create a venue — Riviera',
+    canActivate: [operatorSessionGuard],
   },
   {
     // O6 (#176): the retired /venue-admin/daily/:venueId StaffDaily page forwards to the console's
@@ -121,12 +124,19 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    // Operator self-registration (S6 #115, epic #108) — porcelain page; creates a PENDING account
-    // that a platform admin approves. Literal segment MUST stay above 'operator/:venueId' (first
-    // match wins for parameterized siblings).
+    // S9 (#277): retired page → the card's operator tab. MUST stay above 'operator/:venueId'.
     path: 'operator/register',
-    loadComponent: () => import('./operator/operator-register').then((m) => m.OperatorRegister),
-    title: 'Register as an operator — Riviera',
+    redirectTo: () => inject(Router).parseUrl('/account/sign-in?audience=operator&mode=register'),
+    pathMatch: 'full',
+  },
+  {
+    // S9 (#277): operator landing — 0 → onboarding, 1 → that console, 2+ → picker. Above ':venueId'.
+    path: 'operator',
+    loadComponent: () => import('./operator/operator-home').then((m) => m.OperatorHome),
+    title: 'Your venues — Riviera',
+    canActivate: [operatorSessionGuard],
+    // Chromeless like the console: this is operator surface, so the tourist header/footer stay off.
+    data: { operatorConsole: true },
   },
   {
     // Platform-admin operator-approval surface (S6 #115). Self-gates on the ADMIN session; the
@@ -145,6 +155,7 @@ export const routes: Routes = [
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',
     data: { operatorConsole: true },
+    canActivate: [operatorSessionGuard],
     children: [{ path: '', pathMatch: 'full', redirectTo: 'beach-map' }, ...consoleTabRoutes],
   },
   {

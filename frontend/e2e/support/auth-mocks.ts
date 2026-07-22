@@ -25,7 +25,12 @@ function problem(status: number, title: string, code: string) {
  */
 export async function mockAuthApi(
   page: Page,
-  options: { readonly validPassword: string; readonly username?: string },
+  options: {
+    readonly validPassword: string;
+    readonly username?: string;
+    /** The operator's venues for the S9 landing read; defaults to one (straight into its console). */
+    readonly venues?: readonly { id: number; name: string; beach: string }[];
+  },
 ): Promise<void> {
   const username = options.username ?? 'operator';
   let signedIn = false;
@@ -43,10 +48,25 @@ export async function mockAuthApi(
     }
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
+  await mockOwnedVenues(page, options.venues ?? [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
+
   await page.route(/\/api\/auth\/logout$/, (route) => {
     signedIn = false;
     return route.fulfill({ status: 204 });
   });
+}
+
+/**
+ * The operator's own venues (S9 #277) — `GET /api/venues/mine`, which the unified auth page consults
+ * to decide where a signed-in operator lands (0 → onboarding, 1 → that console, 2+ → the picker).
+ * Defaults to one venue, which reproduces the pre-#277 "straight into the console" behaviour that
+ * most operator e2e specs assume.
+ */
+export async function mockOwnedVenues(
+  page: Page,
+  venues: readonly { id: number; name: string; beach: string }[],
+): Promise<void> {
+  await page.route(/\/api\/venues\/mine$/, (route) => route.fulfill({ json: venues }));
 }
 
 /**
@@ -219,6 +239,9 @@ export async function mockOperatorLifecycleApi(
       ? route.fulfill({ status: 201, json: { id: nextVenueId++ } })
       : route.fulfill({ json: [] }),
   );
+
+  // S9 (#277): owning nothing forwards to onboarding — where this spec creates its first venue.
+  await mockOwnedVenues(page, []);
 
   await page.route(/\/api\/auth\/logout$/, (route) => {
     session = undefined;

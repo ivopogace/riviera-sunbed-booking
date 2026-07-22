@@ -67,16 +67,7 @@ export class CustomerAuth extends SessionAuth {
   readonly email = this.principalName;
 
   private readonly ssoRedirect = inject(SsoRedirect);
-  private readonly restoreOnStartup = this.restore();
-
-  /**
-   * Resolves once the initial `GET /api/auth/me` restore has completed. Awaiting it guarantees the CSRF
-   * cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN` on the first API response), so a page that
-   * fires a CSRF-protected write on load — the verify-email landing — doesn't race a cold browser to a 403.
-   */
-  whenReady(): Promise<void> {
-    return this.restoreOnStartup;
-  }
+  protected readonly restoreOnStartup = this.restore();
 
   /**
    * Start "Continue with Google/Apple" (S4, epic #108): a full-page navigation to the backend authorize

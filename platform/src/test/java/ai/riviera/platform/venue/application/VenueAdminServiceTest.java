@@ -3,10 +3,12 @@ package ai.riviera.platform.venue.application;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -426,6 +428,63 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too (#226)
 	}
 
+	// ---- Owned-venues read (S9, issue #277) ----
+
+	private static final OperatorId MULTI_OWNER = new OperatorId(7);
+	private static final OperatorId OTHER_OWNER = new OperatorId(8);
+
+	@Test
+	void ownedByReturnsOnlyTheOperatorsOwnVenues() {
+		// AC-1: "Aurora" (P's) sorts BEFORE both of O's, so a leak would land first and fail the assert.
+		FakeVenues store = new FakeVenues();
+		store.summaries.put(12L, new OwnedVenueView(12, "Miramar Beach Club", "Dhërmi"));
+		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "Jal"));
+		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "Borsh"));
+		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of(
+				MULTI_OWNER, Set.of(new VenueRef(12), new VenueRef(15)),
+				OTHER_OWNER, Set.of(new VenueRef(20)))), availability, bookings);
+
+		List<OwnedVenueView> result = owned.ownedBy(MULTI_OWNER);
+
+		assertEquals(List.of(12L, 15L), result.stream().map(OwnedVenueView::id).toList());
+		assertEquals(List.of("Miramar Beach Club", "Sereno"),
+				result.stream().map(OwnedVenueView::name).toList());
+		// AC-2: the store is never even asked about a venue this operator doesn't own (invariant #13).
+		assertEquals(List.of(Set.of(new VenueId(12), new VenueId(15))),
+				store.summaryQueries.stream().map(Set::copyOf).toList());
+	}
+
+	@Test
+	void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
+		// A freshly-approved operator owns nothing: an empty list, and no `IN ()` predicate at all.
+		FakeVenues store = new FakeVenues();
+		VenueAdminService owned =
+				new VenueAdminService(store, new MultiOwnership(Map.of()), availability, bookings);
+
+		assertEquals(List.of(), owned.ownedBy(MULTI_OWNER));
+		assertEquals(List.of(), store.summaryQueries);
+	}
+
+	/** Stub {@link VenueOwnership} over an explicit operator→venues map (the S9 owned-venues read). */
+	private record MultiOwnership(Map<OperatorId, Set<VenueRef>> byOperator) implements VenueOwnership {
+		@Override
+		public void assertOwns(OperatorId operator, VenueRef target) {
+			if (!ownedVenues(operator).contains(target)) {
+				throw new NotVenueOwnerException(operator, target);
+			}
+		}
+
+		@Override
+		public Set<VenueRef> ownedVenues(OperatorId operator) {
+			return byOperator.getOrDefault(operator, Set.of());
+		}
+
+		@Override
+		public void assignOwner(OperatorId operator, VenueRef target) {
+			// not exercised by the owned-venues read
+		}
+	}
+
 	/**
 	 * Stub {@link VenueOwnership}: one operator owns one venue; {@code assertOwns} throws for anyone
 	 * else. {@code ownedVenues} is unused here.
@@ -565,6 +624,21 @@ class VenueAdminServiceTest {
 		@Override
 		public void insertSets(VenueId venueId, List<SetCommand> sets) {
 			insertedInLayout += sets.size();
+		}
+
+		// S9 (#277): seeded summaries, plus every id set asked for (so a test can assert what was NOT).
+		final Map<Long, OwnedVenueView> summaries = new HashMap<>();
+		final List<Collection<VenueId>> summaryQueries = new ArrayList<>();
+
+		@Override
+		public List<OwnedVenueView> findSummaries(Collection<VenueId> ids) {
+			summaryQueries.add(List.copyOf(ids));
+			// Models the port's contract: only the requested ids, ordered by name (the adapter's ORDER BY).
+			return ids.stream()
+					.map(id -> summaries.get(id.value()))
+					.filter(Objects::nonNull)
+					.sorted(Comparator.comparing(OwnedVenueView::name))
+					.toList();
 		}
 
 		int repricedRows;
