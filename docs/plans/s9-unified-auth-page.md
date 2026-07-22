@@ -226,7 +226,7 @@ object is repointed), so no flow silently loses coverage.
 | R-4 | A new controller breaks `@WebMvcTest` slices (missing bean) or `@ApplicationModuleTest` | high | med | recurring in this repo — add the stub to `WebSliceStubs`; run the module tests in the same phase, not at CI | Ivo | **closed** (Phase 0) — `ListOwnedVenues` stub added to `WebSliceStubs`; the five shared web slices + `ModularityTests` re-run green |
 | R-5 | Retiring four surfaces silently drops a behavior (the O6 #176 failure mode) | med | high | the behavior-parity ledger above is enumerated from code; each `preserved` row names its new home | Ivo | open |
 | R-6 | Audience toggle leaks credentials across principal types (a tourist password posted to the operator endpoint) | low | **high** | the toggle picks the *service*, never a shared endpoint; separate submit paths, no shared credential state; password field cleared on audience switch | Ivo | open |
-| R-7 | Focus/ARIA regression on the toggles (radiogroup semantics, roving tabindex) | med | med | `SegmentedControl` is a shared primitive with its own keyboard spec; axe in both modes × both audiences | Ivo | open |
+| R-7 | Focus/ARIA regression on the toggles (radiogroup semantics, roving tabindex) | med | med | `SegmentedControl` is a shared primitive with its own keyboard spec; axe in both modes × both audiences | Ivo | **mitigated** (Phase 1) — `segmented-control.spec.ts` pins radiogroup semantics, roving tabindex, arrow/Home/End with wrap, and that other keys fall through to the browser; axe over the composed page still owes Phase 3 |
 | R-8 | Glass card contrast drifts from the AA-proven token set | low | med | reuse `CardGlass` + `--riv-*` tokens only, no palette literals; `auth-page.contrast.spec.ts` composites the maths | Ivo | open |
 | R-9 | The mode/audience state and `returnUrl` desync across a full-page SSO redirect | med | med | audience + mode + `returnUrl` live in query params, so the SSO return re-enters with the same state | Ivo | open |
 | R-10 | Flyway collision | **none** | — | no migration in this slice; V30 stays free | Ivo | closed |
@@ -345,15 +345,16 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — Phase 0 done; Phase 1 next`
+**Stage pointer:** `implement — Phases 0–1 done; Phase 2 next`
 
-**Next action:** Start **Phase 1** (shared Tailwind primitives). Run the Skill-routing gate for the
-frontend first: `riviera-frontend` + `riviera-tailwind` + `angular-developer` + the angular-cli MCP.
+**Next action:** Start **Phase 2** (session/landing plumbing in `core/`): promote `whenReady()` onto
+`SessionAuth`, add `OwnedVenues` + `landingRouteFor` + the restore-aware `operator-session.guard`
+(R-1/AC-8). Frontend skills stay loaded from Phase 1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Owned-venues read (backend) | ✅ | `<phase-0>` |
-| 1 — Shared Tailwind primitives | | |
+| 0 — Owned-venues read (backend) | ✅ | `73a62dc` |
+| 1 — Shared Tailwind primitives | ✅ | `<phase-1>` |
 | 2 — Session/landing plumbing (`core/`) | | |
 | 3 — The unified auth page + route redirects | | |
 | 4 — Operator surfaces behind the guard + `/operator` home | | |
@@ -531,7 +532,16 @@ Built **before** the page so the page composes them rather than growing its own 
 each primitive is unit-testable on its own (`riviera-tailwind` rule 1: share at the component /
 directive layer, never `@apply`).
 
-- [ ] **Step 1: Write the failing keyboard/ARIA spec** for `SegmentedControl`
+> **As-built note (Phase 1):** the `(keydown)` handler is bound on each **radio button**, not on the
+> `role="radiogroup"` wrapper — a keydown handler on a non-focusable `<div>` is an
+> `@angular-eslint/template/interactive-supports-focus` error, correctly so (a keyboard user could
+> never reach it). Behaviour is identical: arrow keys only ever arrive while a radio has focus.
+> `SegmentedControl` is generic over the value type (`<T extends string>`), so a consumer's
+> `'tourist' | 'operator'` union survives into the template. The card variant keeps `border-[1.5px]`
+> in **both** states (the design thickens only the selected one) and varies colour only, so a switch
+> cannot reflow the blurb by half a pixel.
+
+- [x] **Step 1: Write the failing keyboard/ARIA spec** for `SegmentedControl`
 
 ```ts
 it('exposes radiogroup semantics and moves selection with arrow keys', async () => {
@@ -552,18 +562,19 @@ it('exposes radiogroup semantics and moves selection with arrow keys', async () 
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- segmented-control` → FAIL (no component)
-- [ ] **Step 3: Minimal implementation** — `model<T>()` for the two-way value (per the angular-cli
-      MCP's Signal-Forms model guidance), `input()` for options + variant, host object for
-      `role="radiogroup"`, arrow/Home/End handling, `variant` switching pill vs card markup. Host
-      `class` strings hold the Tailwind utilities; **no `border-radius` in a shared surface
-      directive** (rule 3) — each consumer sets its own.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- segmented-control` → PASS
-- [ ] **Step 5: Repeat red→green for `OutcomeCard`** (tone + projected CTA) and `FieldGlass`
-      (directive host class only; a spec asserting the class string is applied and that consumers
-      may override radius).
-- [ ] **Step 6: Commit** — `git commit -m "Add reusable segmented control, outcome card and field surface (#277)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `ng test --include=".../segmented-control.spec.ts"` →
+      FAIL: `Could not resolve "./segmented-control"`
+- [x] **Step 3: Minimal implementation** — `model.required<T>()` for the two-way value (per the
+      angular-cli MCP's model-input guidance), `input()` for options + variant + label,
+      `role="radiogroup"` with a roving tabindex, arrow/Home/End handling with wrap, `variant`
+      switching pill vs card markup. `[class]` computed strings hold the Tailwind utilities; **no
+      `border-radius` in a shared surface directive** (rule 3) — each consumer sets its own.
+- [x] **Step 4: Run it, verify it passes** — 7/7 PASS
+- [x] **Step 5: Repeat red→green for `OutcomeCard`** (tone + projected CTA) and `FieldGlass`
+      (directive host class only; a spec asserting the class string is applied and that the
+      directive adds neither radius nor padding). → 14/14 PASS across the three primitives
+- [x] **Step 6: Commit** — `git commit -m "Add reusable segmented control, outcome card and field surface (#277)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
