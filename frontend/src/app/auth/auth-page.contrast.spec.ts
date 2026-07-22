@@ -95,9 +95,7 @@ describe.each(THEMES)('AuthPage contrast — $name', (theme: Theme) => {
   });
 
   it('the unselected pill label is AA over the pill track', () => {
-    // The track is a dark tint ON the card glass, so the ink sits on a THIRD composite — which is
-    // why this label uses ink-soft (0.78) where the rest of the card's muted copy uses faint (0.72):
-    // at 0.72 it measures 4.38:1 on the darkest riviera stop.
+    // A THIRD composite (track tint on card glass) — why this label is ink-soft: faint gives 4.38:1.
     for (const stop of theme.stops) {
       const card = surfaceOver(theme.cardGlass, stop);
       const track = composite(CARD_INK, CARD_TRACK_ALPHA, card);

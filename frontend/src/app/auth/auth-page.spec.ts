@@ -161,8 +161,7 @@ describe('AuthPage', () => {
     });
 
     it('no-ops while a submit is already in flight', async () => {
-      // Inherited from the deleted runOperatorSignIn helper (#170) — a double submit must not
-      // fire two logins.
+      // From the deleted runOperatorSignIn helper (#170): a double submit fires ONE login.
       await render();
       let release!: (value: string) => void;
       customer.signIn.mockReturnValue(new Promise<string>((resolve) => (release = resolve)));
@@ -344,8 +343,7 @@ describe('AuthPage', () => {
     });
 
     it('keeps focus inside the radiogroup when the audience switches', async () => {
-      // Arrow keys move focus WITHIN a radiogroup; pulling it to the first field mid-navigation
-      // breaks the ARIA pattern. Caught by unified-auth.e2e.ts in a real browser.
+      // Arrows move focus WITHIN a radiogroup — caught by unified-auth.e2e.ts in a real browser.
       await render();
       const operatorRadio = el('audience-operator');
       operatorRadio.focus();

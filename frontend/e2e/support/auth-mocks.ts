@@ -240,8 +240,7 @@ export async function mockOperatorLifecycleApi(
       : route.fulfill({ json: [] }),
   );
 
-  // S9 (#277): a freshly-approved operator owns nothing, so the landing forwards it to onboarding —
-  // which is exactly where this lifecycle spec goes next to create its first venue.
+  // S9 (#277): owning nothing forwards to onboarding — where this spec creates its first venue.
   await mockOwnedVenues(page, []);
 
   await page.route(/\/api\/auth\/logout$/, (route) => {

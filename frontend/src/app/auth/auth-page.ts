@@ -294,8 +294,7 @@ export class AuthPage {
   private readonly handingOff = signal(false);
 
   protected readonly model = signal({ identifier: '', contactEmail: '', password: '' });
-  // form() drives the two-way [formField] bindings; validity is gated in onSubmit and surfaced by the
-  // one `error` alert, exactly as the retired sign-in/register cards did (behavior parity).
+  // Validity is gated in onSubmit and shown by the one alert — the retired cards' exact behaviour.
   protected readonly authForm = form(this.model);
 
   protected readonly stage = computed(() => {
@@ -372,8 +371,7 @@ export class AuthPage {
     // R-6: never carry a credential across principal types, even by accident.
     this.model.update((m) => ({ ...m, password: '' }));
     this.error.set(undefined);
-    // Deliberately NO refocus: arrows move focus WITHIN a radiogroup, so pulling it to the first
-    // field would break the ARIA pattern mid-navigation (caught by unified-auth.e2e.ts).
+    // No refocus: arrows move focus WITHIN a radiogroup (caught by unified-auth.e2e.ts).
   }
 
   protected toggleMode(): void {

@@ -253,8 +253,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   const RESTYLED_PATHS = [
     '',
     'my-bookings',
-    // S2 (#111) → S9 (#277): the one unified auth card. `account/register` and `operator/register`
-    // are redirect-only now (the loop below skips them), so they left this list.
+    // S9 (#277): account/register + operator/register are redirect-only now, so they left this list.
     'account/sign-in',
     // S8 (#113): the account-recovery pages (forgot / reset / verify) + the account page — new glass routes.
     'account/forgot',

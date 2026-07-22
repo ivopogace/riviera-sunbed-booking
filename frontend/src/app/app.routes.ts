@@ -71,16 +71,13 @@ export const routes: Routes = [
     title: 'My bookings — Riviera',
   },
   {
-    // S9 (#277): the ONE audience-aware auth card — tourist/operator × sign-in/register. Replaces
-    // the separate sign-in, register and operator-register pages. `?audience=` and `?mode=`
-    // preselect a tab; `?returnUrl=` is where a guard sent the visitor from.
+    // S9 (#277): the ONE auth card; ?audience=/?mode=/?returnUrl= preselect its state.
     path: 'account/sign-in',
     loadComponent: () => import('./auth/auth-page').then((m) => m.AuthPage),
     title: 'Sign in — Riviera',
   },
   {
-    // S9 (#277): retired customer-register page → the unified card in register mode. Kept for one
-    // release so existing links/bookmarks and the emailed copy still land somewhere live.
+    // S9 (#277): retired page → the card in register mode; kept one release for existing links.
     path: 'account/register',
     redirectTo: () => inject(Router).parseUrl('/account/sign-in?mode=register'),
     pathMatch: 'full',
@@ -127,16 +124,13 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    // S9 (#277): retired operator-register page → the unified card, operator tab, register mode.
-    // Literal segment MUST stay above 'operator/:venueId' (first match wins).
+    // S9 (#277): retired page → the card's operator tab. MUST stay above 'operator/:venueId'.
     path: 'operator/register',
     redirectTo: () => inject(Router).parseUrl('/account/sign-in?audience=operator&mode=register'),
     pathMatch: 'full',
   },
   {
-    // S9 (#277): where a signed-in operator lands when the venue isn't already known — 0 owned
-    // venues forwards to onboarding, 1 opens that console, 2+ renders the picker. Literal segment,
-    // so it MUST stay above 'operator/:venueId'.
+    // S9 (#277): operator landing — 0 → onboarding, 1 → that console, 2+ → picker. Above ':venueId'.
     path: 'operator',
     loadComponent: () => import('./operator/operator-home').then((m) => m.OperatorHome),
     title: 'Your venues — Riviera',

@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { OwnedVenues } from '../core/owned-venues';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../venue/venue.model';
 import { VenueAdminErrorCode } from './venue-admin.model';
@@ -27,6 +28,7 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 export class VenueEditor {
   private readonly admin = inject(VenueAdminService);
   private readonly router = inject(Router);
+  private readonly ownedVenues = inject(OwnedVenues);
   protected readonly operator = inject(OperatorAuth);
 
   /** The created venue's id (undefined until the create form succeeds) — then we link to its console. */
@@ -84,6 +86,9 @@ export class VenueEditor {
           }),
         );
         this.venueId.set(created.id);
+        // The operator now owns one more venue, so the cached landing list is stale (S9 #277):
+        // without this, /operator would keep forwarding a first-time creator back to onboarding.
+        this.ownedVenues.reset();
       } catch (error) {
         this.failWrite(error);
       } finally {

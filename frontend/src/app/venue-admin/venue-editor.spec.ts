@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
+import { OwnedVenues } from '../core/owned-venues';
 import { apiSessionInterceptor } from '../core/api-session.interceptor';
 import { VenueEditor } from './venue-editor';
 
@@ -33,8 +34,7 @@ describe('VenueEditor (onboarding, #177)', () => {
     httpMock = TestBed.inject(HttpTestingController);
     auth = TestBed.inject(OperatorAuth);
     fixture.detectChanges();
-    // Since S9 (#277) operatorSessionGuard gates this route, so the page only mounts for a signed-in
-    // operator — the startup restore answers a principal rather than the old 401.
+    // Guard-gated since #277: the page only mounts signed in, so /me answers a principal.
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/me`)
       .flush({ username: 'operator', principalType: 'OPERATOR' });
@@ -106,6 +106,17 @@ describe('VenueEditor (onboarding, #177)', () => {
     expect(host().textContent).toContain('Venue #5 created');
     const link = host().querySelector<HTMLAnchorElement>('[data-testid="venue-console-link"]');
     expect(link?.getAttribute('href')).toBe('/operator/5');
+
+    // S9 (#277): the landing cache must be invalidated, or /operator keeps forwarding a first-time
+    // creator back to onboarding on the strength of the pre-create empty list.
+    const reloaded = TestBed.inject(OwnedVenues).load();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/venues/mine`)
+      .flush([{ id: 5, name: 'Sunset Bar', beach: 'Ksamil' }]);
+    expect(await reloaded).toEqual({
+      status: 'loaded',
+      venues: [{ id: 5, name: 'Sunset Bar', beach: 'Ksamil' }],
+    });
   });
 
   it('rejects a non-integer commission client-side without calling the server', async () => {
@@ -124,10 +135,7 @@ describe('VenueEditor (onboarding, #177)', () => {
   });
 
   it('surfaces a mid-flow 401 as a session-expired error AND drops the lost session', async () => {
-    // Signed in, but the session dies before the write (expired/invalidated server-side): the 401 on
-    // the venue POST surfaces the session-expired alert AND clears local auth state via
-    // sessionLost(). Since #277 the operator is not re-prompted here — the guard redirects on the
-    // next activation — but dropping the local state is what makes that redirect happen.
+    // A mid-flow 401 shows the expired alert and clears local state — what makes the guard redirect.
     expect(auth.signedIn()).toBe(true);
     setField('Name', 'Sunset Bar');
     setField('Beach', 'Ksamil');

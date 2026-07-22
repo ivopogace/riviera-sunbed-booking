@@ -178,8 +178,7 @@ test('keeps the operator signed in across a reload (session restored from /me)',
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
   await page.reload();
-  // /me now returns the principal → the guard awaits the restore, then lets the shell render without
-  // re-entering credentials. Without that await this is exactly where the bounce-on-reload bug lives.
+  // /me returns the principal → the guard awaits the restore instead of bouncing us to sign-in.
   await expect(page.getByTestId('oc-header')).toBeVisible();
   await expect(page).toHaveURL(/\/operator\/1/);
 });

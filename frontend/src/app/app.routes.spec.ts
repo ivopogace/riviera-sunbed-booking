@@ -16,8 +16,7 @@ describe('app.routes — retired auth surfaces', () => {
   let router: Router;
 
   beforeEach(() => {
-    // Swap the lazy destination for a blank component: this test is about the redirect target URL,
-    // not about booting the real page (which would need HttpClient and the auth services).
+    // A blank destination: this asserts the redirect TARGET, not that the real page boots.
     const redirectRoutes: Routes = routes
       .filter((route) => route.redirectTo !== undefined)
       .concat([{ path: 'account/sign-in', component: BlankPage }]);

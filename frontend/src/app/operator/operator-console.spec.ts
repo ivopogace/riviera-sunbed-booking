@@ -132,8 +132,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
   });
 
   it('leaves for the unified auth page on sign-out, clearing venue + badge state', async () => {
-    // The guard gates on ACTIVATION, so the console must navigate away itself — otherwise the shell
-    // would stay rendered over a dead session (#277).
+    // The guard gates on ACTIVATION, so the console must navigate away itself (#277).
     await createSignedIn('Miramar Beach Club', 2);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 

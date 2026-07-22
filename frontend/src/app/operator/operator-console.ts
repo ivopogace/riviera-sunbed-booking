@@ -91,8 +91,7 @@ export class OperatorConsole {
     this.venueName.set(undefined);
     this.venue.set(undefined);
     this.requests.reset();
-    // The guard gates on ACTIVATION, so signing out in place would leave this shell rendered over a
-    // dead session — leave for the auth page ourselves (S9 #277).
+    // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session (#277).
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 

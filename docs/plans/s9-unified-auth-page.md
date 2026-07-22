@@ -48,8 +48,16 @@ for whoever needs it first.
 - `angular-developer` + **angular-cli MCP** (`get_best_practices`, `search_documentation` on
   Signal Forms models/conditional rules and `CanActivate`) — v22 APIs: `input()`/`output()`/
   `model()`, Signal Forms for the one form, no `@HostBinding`, guard returns a `UrlTree`.
-- `playwright-cli` — the mocked-suite e2e shape for the four flows + the multi-venue landing.
+- `playwright-cli` — the mocked-suite e2e shape for the four flows + the multi-venue landing; at
+  Phase 5 it also settled *where* the fix belonged (the two **page objects**, not the 15 specs).
 - `postgres` — **N/A**, no migration and no new index (the read is a PK-set lookup).
+- `riviera-local-debug` — the scoped-test discipline every phase ran under (`--tests "*Class*"`,
+  never the bare `test` task) and the Docker-gated IT recipe `MyVenuesIT` uses. *(added at the
+  review gate — RV-PROC-1: it was loaded in Phase 0 but never recorded here.)*
+- `riviera-docs-freshness` — the Phase 5 substrate sweep (3 findings, all patched). *(added at the
+  review gate.)*
+- `riviera-review-overlay` — the review gate itself; its bank found the RV-STYLE-1 and RV-PROC-1
+  findings below. *(added at the review gate.)*
 
 **Branch:** `feature/s9-unified-auth-page` — created off `main` at `e3d885e`.
 
@@ -375,7 +383,22 @@ does not retire; the new page uses no SCSS.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — ALL phases done; PR + CI gate next`
+**Stage pointer:** `review gate run (3 findings, all fixed) — Sonar gate + merge close-out next`
+
+**Review gate (PR #279, 2026-07-22, high effort — the diff touches authorization, invariant #13):**
+`riviera-review-overlay` walked fullstack scope (backend + frontend + FE↔BE contract banks).
+**3 findings, all fixed in-branch** (F-1..F-3 below). Everything else ✅ or N/A:
+RV-BE-1/3/4/5/6/7/8/14/15/16/17 are N/A (no availability, event, money, time, payment, payout,
+booking-code, pool/cutoff, refund or schema change); RV-BE-2 ✅ (JdbcClient + text-block SQL, no
+JPA); RV-BE-3b/3c ✅ (`ListOwnedVenues` is an **internal** driving port — nothing added to
+`venue.api`, `VenueApiRoleSplitTests` green); **RV-BE-9 ✅ (the Blocker item)** — the new endpoint is
+not venue-scoped, so there is no path id to `assertOwns`; the ownership mapping *is* the filter, and
+its `hasRole(OPERATOR)` matcher sits above the public `GET /api/venues/**` (pinned by
+`deniesAnonymousAndCustomerSessions`); every existing `assertOwns` path is untouched and
+`CrossVenueDenialIT` is unchanged. RV-BE-10 ✅ (no per-controller `@ExceptionHandler`), RV-BE-11 ✅
+(landed in the module the plan's ownership table named), RV-BE-12 ✅, RV-BE-13 ✅ (bound `:ids`, no
+new logging of untrusted text). RV-CT-1 ✅ (hand-typed `OwnedVenue` mirrors `OwnedVenueView`, no
+`as any`), RV-CT-2/3 N/A, RV-CT-4 → **F-3**, RV-CT-5 ✅.
 
 **Next action:** All 14 ACs are verified locally (see the final verification section). Push the
 branch, open the PR into `main`, then run **CI gate → review gate (`riviera-review-overlay`) →
@@ -400,7 +423,9 @@ the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | Review gate — **RV-STYLE-1** (Minor ×14) | Multi-line inline comments in code this diff wrote: `auth-page.ts` ×2, `app.routes.ts` ×4, `segmented-control.ts`, `operator-console.ts`, and 6 spec/e2e files. The rule landed mid-slice, so Phases 3–5 were partly written against the old bar. | **fixed** — each cut to one line; doc comments left alone (exempt). Lint + 802 tests re-run green |
+| F-2 | Review gate — **RV-PROC-1** (Major) | The plan's *Skills consulted* line omitted three skills the work actually loaded: `riviera-local-debug` (every phase's scoped test runs), `riviera-docs-freshness` (the Phase 5 sweep) and `riviera-review-overlay` (this gate). RV-PROC-1 exists precisely to catch a line that under-reports the diff. | **fixed** — all three added with what they changed |
+| F-3 | Review gate — **RV-CT-4 / landing correctness** (Major) | `OwnedVenues.reset()`'s own docstring says "call after creating a venue" — **and nothing ever did.** A first-time operator (0 venues → forwarded to `/venue-admin` → creates one) kept the stale empty list, so any later visit to `/operator` would forward them **back to onboarding** despite owning a venue. Only reachable after this slice's own landing rules, so no existing test covered it. | **fixed** — `VenueEditor` resets the cache on a successful create; pinned by `venue-editor.spec.ts › creates a venue and links the operator into its console` (asserts the next `load()` refetches) |
 
 ---
 
