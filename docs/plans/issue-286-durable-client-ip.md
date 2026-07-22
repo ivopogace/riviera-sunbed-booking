@@ -156,11 +156,17 @@ money).
 
 ## Open questions / Assumptions
 
-- **Assumption:** Render forwards `CF-Connecting-IP` unmodified from the Cloudflare edge to
-  the container. Cloudflare's docs confirm the edge *sets* it (it generates the header rather
-  than appending to a client-supplied copy), and Render demonstrably passes `X-Forwarded-For`
-  through while appending to it — but pass-through of this specific header is unverified.
-  — *Owner:* Ivo · *Resolves by:* AC-8, post-merge (R-1 carries the rollback).
+- **Open question (still open, and now known to be unanswerable by AC-8):** does Render
+  forward `CF-Connecting-IP` to the container at all? AC-8 was meant to settle this, but it
+  could not: resolution stopped at the untrusted-peer branch **before** any header was read,
+  so the run says nothing about the header's presence. Answering it needs the trust list to
+  contain the peer's range first — i.e. it is downstream of **#291**, or of a temporary
+  diagnostic. — *Owner:* Ivo · *Resolves by:* **#291**.
+- **Open question:** what makes trust-list rot detectable in the meantime? — *Owner:* Ivo ·
+  *Resolves by:* **#290** (warn when a client-IP header arrives from an untrusted peer).
+- **Open question:** how much of the auth posture should ride on client-IP attribution at
+  all? — *Owner:* Ivo · *Resolves by:* **#292** (per-username login throttling), independent
+  of this issue.
 
 ### Resolved
 
@@ -169,10 +175,14 @@ money).
   from one client with a constant `X-Forwarded-For`: **11 × `403`, 189 × `429`** = one bucket
   at a cap of 10/min (the 11th is refill during the ~30 s burst). The stopgap env var is
   live and working; this slice must **preserve** that number, not restore it.
-- **Is Render's own socket peer inside the trusted private ranges?** — **Yes**, settled
-  empirically in #286's stopgap comment (the key demonstrably varied with header content,
-  which is only possible from a trusted peer). #129's plan risk R-1 assumption is closed; do
-  not re-litigate it.
+- **Is Render's own socket peer inside the trusted private ranges?** — ~~Yes~~ **NO —
+  DISPROVEN 2026-07-22 by AC-8. This entry was wrong when written, and the whole slice was
+  designed on it.** The stopgap-comment reasoning ("the key varied with header content, which
+  is only possible from a trusted peer") observed correctly but concluded wrongly: the peer
+  *was* trusted, because the Cloudflare ranges had just been added to the trust list — not
+  because it was private. The peer is **a Cloudflare edge address**. Left visible rather than
+  deleted: a plan-doc "Resolved" entry is exactly where a bad inference hides, and this one
+  cost a full slice.
 - **Does Cloudflare append to `CF-Connecting-IP` or set it?** — **Sets it.** Cloudflare
   generates the header from the connecting IP rather than modifying a client-supplied value;
   `X-Forwarded-For`, by contrast, is *appended* to. This is why the header needs no chain
@@ -183,6 +193,9 @@ money).
   key**, so the probe passes either way and cannot detect a broken header path — keeping
   them would disarm the only end-to-end check we have. The env var itself survives as a
   documented per-environment escape hatch and as the R-1 rollback.
+  **Outcome: retirement attempted 2026-07-22 and REVERSED.** The reasoning above held up
+  exactly — the narrowed list is what made the probe discriminating, and it discriminated:
+  166/200 allowed. The variable **stays set** with all 30 CIDRs. Durable answer: **#291**.
 
 ## Availability & concurrency (invariant #2)
 
@@ -239,9 +252,18 @@ verification for this slice is the deployed-app probe (AC-8), not a browser flow
 **Stage pointer:** `merged (c8e111a) and deployed — AC-8 FAILED on the deployed app, rolled
 back, production protected. #286 REOPENED; slice is NOT done.`
 
-**Next action:** Land the docs-correction PR (branch `bugfix/286-correct-peer-trust-model`),
-which removes the now-falsified "unset the variable" guidance from `main`. Then a design pass
-on the reopened #286 for the durable answer — the CIDR list is still load-bearing, see below.
+**Next action:** **Start #290** — `ready-for-agent`, no infra, and it delivers most of this
+issue's intent (rot becomes loud instead of silent) in about an hour. **This plan doc is
+closed**; #290 / #291 / #292 get their own. Read the corrected model below first.
+
+**Follow-ups — this slice's remaining intent lives here now:**
+
+| Issue | What | State |
+|---|---|---|
+| **#290** | Warn when a client-IP header arrives from an **untrusted** peer, + a CIDR-refresh procedure. Turns silent rot into a `WARN` on the first affected request. | `ready-for-agent` — **do this first** |
+| **#291** | Authenticate the upstream edge **cryptographically** (our own Cloudflare zone on a custom domain → mTLS or a secret header) so peer trust stops being a hand-maintained IP list. | `ready-for-human` — needs the domain decision |
+| **#292** | Throttle logins **per username** as well as per IP, so less of the auth posture rides on client-IP attribution at all. | `ready-for-agent`, independent |
+| **#255** | (commented, pre-existing) `riviera.recovery.link-base-url` is still `http://localhost:4200`, has no placeholder, and is in no deploy doc — inert only while the mailer is mocked. | pre-existing |
 
 > **The corrected model (measured 2026-07-22, supersedes this plan's premise).** The socket
 > peer this app sees is **a Cloudflare edge address, not a private Render hop.** The header
