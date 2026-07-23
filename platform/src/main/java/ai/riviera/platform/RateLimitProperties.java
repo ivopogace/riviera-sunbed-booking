@@ -29,8 +29,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       client IP, so guessing one account from many source addresses is throttled even
  *                       when IP attribution is imperfect. Shipped default 15/15min in
  *                       {@code application.properties}, env-overridable. Only <em>failed</em> logins
- *                       consume it (the filter counts a token after a {@code 401}), so a legitimate
- *                       sign-in is never throttled
+ *                       net-consume it (the filter spends a token before the request and refunds it on
+ *                       any non-{@code 401} outcome), so a legitimate sign-in is never throttled by its
+ *                       own success
  * @param maxTrackedKeys soft cap on tracked keys per dimension; full (idle) buckets are pruned when hit
  * @param trustedProxies CIDR ranges whose peers may set {@code X-Forwarded-For} (issue #129); from any
  *                       other peer the header is ignored and the socket address is the key. The

@@ -48,13 +48,14 @@ final class TokenBucket {
 	}
 
 	/**
-	 * True when a token is available now (refilling first) WITHOUT spending it. Used by the per-identity
-	 * login dimension (issue #292), which gates on availability before the request runs and spends only
-	 * afterwards, and only on a failed authentication — so a successful login never consumes.
+	 * Return one token (capped at capacity), refilling first for the elapsed time. The refund half of the
+	 * per-identity login gate's spend-then-refund (issue #292): the filter spends a token with
+	 * {@link #tryAcquire} before the request runs and, on any non-failed outcome, releases it here — so
+	 * only a failed authentication net-consumes a token and a successful login is refunded.
 	 */
-	synchronized boolean hasToken(Instant now) {
+	synchronized void release(Instant now) {
 		refill(now);
-		return tokens >= 1.0;
+		tokens = Math.min(capacity, tokens + 1.0);
 	}
 
 	/** Whole seconds until the next token is available; {@code 0} when one is available now. */

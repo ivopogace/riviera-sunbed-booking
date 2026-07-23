@@ -135,9 +135,9 @@ N/A — no API shape change. Same login request/response DTOs; same `429` `Probl
 
 ## Execution status
 
-**Stage pointer:** implement complete → CI gate (push), then PR + review + sonar gates
+**Stage pointer:** review gate run → fixes applied → re-verify (CI push), then sonar gate (PR-time)
 
-**Next action:** push branch; confirm the push's CI run is green (R-1 full-suite verification), then open PR and run the review + sonar gates.
+**Next action:** push the review-fix commit; confirm CI green (R-1 full-suite). Sonar runs only at PR time.
 
 **Local verification (scoped, this session):** `RateLimitFilterTest` (19 tests incl. AC-1/2/3/5 + 3 defensive branches), `RateLimitPropertiesBindingTest` (AC-7, 6 tests), `RateLimitDisabledTest`, `PerOperatorLoginIT` (8) + `AuthSessionIT` (5) — real successful logins through the wrapper (AC-4), 0 skipped — and the structural net + `OperatorAuthPlacementTests`/`CustomerAuthPlacementTests` all green. Full suite (R-1) is CI's.
 
@@ -150,11 +150,16 @@ N/A — no API shape change. Same login request/response DTOs; same `429` `Probl
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Findings register**
+**Findings register** (review gate, subagent RV-BE pass — verdict: mergeable, no Blocker/Major)
 
-| # | Source (review / sonar / CI) | Finding | Status |
+| # | Source | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (Minor) | Peek-then-spend not atomic → concurrent guesses for one identity burst past capacity | fixed — switched to **spend-then-refund** (`TokenBucket.release`, atomic acquire before chain, refund on non-401) |
+| F-2 | review (Minor) | Numeric-username bypass: filter's `isString()` skipped a JSON number the DTO coerces to String | fixed — `readJsonField` now accepts any scalar value node; pinned by `numericUsernameIsPerUsernameThrottledLikeTheControllerBindsIt` |
+| F-3 | review (Minor) | No test proved a **successful** login does not consume (also a Sonar new-code-coverage gap) | fixed — new `PerUsernameLoginThrottleIT.aSuccessfulLoginNeverConsumesTheUsernameBudget` (real DB) |
+| F-4 | review (Minor) | Per-identity check silently no-ops when the login body has no `Content-Length` (chunked) | fixed (observability) — `log.debug` when a login body is skipped for buffering |
+| F-5 | review (Nit) | Javadoc "never throttled" overstates (lock-out-by-proxy can 429 a correct password) | fixed — reworded to "never throttled by its own success" + the accepted trade-off noted |
+| F-6 | review (Nit) | Unsalted SHA-256 keys could be dictionary-confirmed against a candidate username list | fixed — per-process random salt (`identitySalt`) prefixes the digest |
 
 ---
 

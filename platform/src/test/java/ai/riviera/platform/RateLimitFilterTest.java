@@ -303,6 +303,24 @@ class RateLimitFilterTest {
 	}
 
 	@Test
+	void numericUsernameIsPerUsernameThrottledLikeTheControllerBindsIt() throws Exception {
+		// A JSON number for username: the login DTO coerces it to its String field, so the filter must key
+		// on the same value (not skip it as "not a string"), else an all-digits username bypasses the
+		// per-identity dimension. Three attempts (cap 2) from distinct IPs → the 3rd is the per-username 429.
+		numericUsernameLogin("10.27.0.1").andExpect(status().isUnauthorized());
+		numericUsernameLogin("10.27.0.2").andExpect(status().isUnauthorized());
+		numericUsernameLogin("10.27.0.3")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	private ResultActions numericUsernameLogin(String ip) throws Exception {
+		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"username\": 1234567, \"password\": \"nope\"}"));
+	}
+
+	@Test
 	void malformedLoginBodyIsNotPerUsernameThrottledAndStillReachesTheController() throws Exception {
 		// A malformed body: the filter cannot extract an identity, so it applies NO per-username bucket,
 		// and the wrapped body still reaches the controller (which 400s the unreadable JSON). Repeating

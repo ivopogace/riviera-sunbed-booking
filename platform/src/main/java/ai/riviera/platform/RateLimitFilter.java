@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -61,13 +62,16 @@ import jakarta.servlet.http.HttpServletResponse;
  * edge). A login is rejected if <em>either</em> the per-IP or the per-identity bucket is empty. Reading
  * the identity means reading the request body, so the two login requests are wrapped in a re-readable
  * {@link CachedBodyRequest} (the servlet stream is single-consumption) — invisible downstream. Two
- * deliberate properties: (1) only a <em>failed</em> authentication ({@code 401}) consumes an identity
- * token — the filter peeks before the chain and spends after it only on a {@code 401} — so a
- * legitimate sign-in is never throttled and the auth-IT corpus's session logins stay free (the #127
- * full-suite lockout class); (2) the bucket key is a SHA-256 <em>hash</em> of the identity, so the
- * tracking map cannot be inspected for valid usernames and no identity (PII + a credential half) is
- * ever held in clear or logged (non-enumeration, D-8). Per-IP stays count-all (request-volume
- * control); per-identity is failure-only (credential-guess control) — a deliberate asymmetry.
+ * deliberate properties: (1) only a <em>failed</em> authentication ({@code 401}) net-consumes an
+ * identity token — the filter spends a token before the chain and refunds it after on any non-401
+ * outcome — so a legitimate sign-in is never throttled <em>by its own success</em> and the auth-IT
+ * corpus's session logins stay free (the #127 full-suite lockout class); a known account can still be
+ * denied login by an attacker draining its budget (the accepted lock-out-by-proxy trade-off, tuned by a
+ * modest capacity + steady refill). (2) the bucket key is a per-process-salted SHA-256 <em>hash</em> of
+ * the identity, so the tracking map cannot be dictionary-confirmed for valid usernames and no identity
+ * (PII + a credential half) is ever held in clear or logged (non-enumeration, D-8). Per-IP stays
+ * count-all (request-volume control); per-identity is failure-only (credential-guess control) — a
+ * deliberate asymmetry.
  *
  * <p><strong>State.</strong> In-memory token buckets in bounded {@link ConcurrentHashMap}s — correct
  * for the single Render instance (ADR-0004); no Redis. Each map is hard-bounded by
@@ -181,12 +185,17 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final Map<String, TokenBucket> usernameBuckets = new ConcurrentHashMap<>();
 
 	private final ObjectMapper objectMapper;
+	// A per-process random salt for the per-identity bucket keys (issue #292), so the map keys cannot be
+	// dictionary-confirmed against a candidate username list; regenerated each restart (buckets are
+	// in-memory, so nothing depends on key stability across restarts).
+	private final byte[] identitySalt = new byte[16];
 
 	RateLimitFilter(RateLimitProperties props, Clock clock, ObjectMapper objectMapper) {
 		this.props = props;
 		this.clock = clock;
 		this.objectMapper = objectMapper;
 		this.clientIps = new ClientIpResolver(props.trustedProxies(), props.clientIpHeader());
+		new SecureRandom().nextBytes(identitySalt);
 	}
 
 	@Override
@@ -354,6 +363,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			throws ServletException, IOException {
 		byte[] body = cacheableBody(request);
 		if (body == null) {
+			// An unknown-length (chunked) or oversized login body is not buffered — the per-identity check
+			// is skipped and only the per-IP budget applies. Logged so the skip is observable in prod.
+			log.debug("Login body not buffered — per-username dimension skipped, from {}", ip);
 			chain.doFilter(request, response);
 			return;
 		}
@@ -363,14 +375,17 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			chain.doFilter(cached, response); // no identity to key on — the controller will reject a bad body
 			return;
 		}
+		// Spend-then-refund so the cap is exact under concurrency: acquire before the request runs (an
+		// empty bucket rejects it), then release on any non-401 outcome — so only a failed authentication
+		// net-consumes a token and a successful login is refunded (never throttled by its own success).
 		TokenBucket bucket = bucketFor(usernameBuckets, identityKey, props.username(), now);
-		if (!bucket.hasToken(now)) {
+		if (!bucket.tryAcquire(now)) {
 			reject(response, bucket.retryAfterSeconds(now), ip, "username");
 			return;
 		}
 		chain.doFilter(cached, response);
-		if (response.getStatus() == FAILED_AUTH_STATUS) {
-			bucket.tryAcquire(now); // spend ONLY on a failed authentication (never on a successful login)
+		if (response.getStatus() != FAILED_AUTH_STATUS) {
+			bucket.release(now);
 		}
 	}
 
@@ -400,14 +415,19 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			return null;
 		}
 		String identity = login.normalizeEmail ? CustomerPasswords.normalizeEmail(raw) : raw;
-		return login.scope + ':' + sha256Hex(identity);
+		return login.scope + ':' + saltedSha256Hex(identity);
 	}
 
-	/** The string value of {@code field} in the JSON {@code body}, or {@code null} if absent or malformed. */
+	/**
+	 * The scalar value of {@code field} in the JSON {@code body} as a string, or {@code null} if absent,
+	 * a container/null, or malformed. Accepts any scalar node — not just a JSON string — because the login
+	 * DTO binding coerces a scalar (e.g. a bare number) to its {@code String} field, so an all-digits
+	 * username submitted as {@code "username": 123} must key the same bucket the controller authenticates.
+	 */
 	private String readJsonField(byte[] body, String field) {
 		try {
 			JsonNode value = objectMapper.readTree(body).path(field);
-			return value.isString() ? value.asString() : null;
+			return value.isValueNode() && !value.isNull() ? value.asString() : null;
 		}
 		catch (JacksonException malformedBody) {
 			return null;
@@ -427,10 +447,17 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		return request.getInputStream().readAllBytes();
 	}
 
-	private static String sha256Hex(String value) {
+	/**
+	 * A SHA-256 hex digest of {@code value}, prefixed with a per-process random {@link #identitySalt} so
+	 * the tracking-map keys cannot be dictionary-confirmed against a candidate username list (the salt is
+	 * unknown outside the process and changes each restart) — only the same identity within one run maps
+	 * to the same bucket, which is all the limiter needs.
+	 */
+	private String saltedSha256Hex(String value) {
 		try {
-			byte[] hash = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-			return HexFormat.of().formatHex(hash);
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			digest.update(identitySalt);
+			return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
 		}
 		catch (NoSuchAlgorithmException impossible) {
 			throw new IllegalStateException("SHA-256 is a required JDK algorithm", impossible);
