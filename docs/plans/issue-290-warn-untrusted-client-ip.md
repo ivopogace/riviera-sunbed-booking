@@ -148,16 +148,29 @@ not triggered.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement complete → PR + gates (phase 2)`
+**Stage pointer:** `pushed to claude/sdlc-290-io1r0m — review gate self-run (clean); PR not
+opened (task did not request one). Awaiting the maintainer's PR decision, at which point the
+CI + Sonar gates run.`
 
-**Next action:** Merge latest `origin/main`, push the branch, open the PR into `main`
-referencing #290/#286, then run the CI / review / Sonar gates.
+**Next action:** On request, open the PR into `main` (referencing #290/#286); then confirm
+the CI run green and pull the Sonar new-issue list via the API (watch `java:S1313`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Resolver: untrusted-peer-with-header WARN + latch | ✅ | `<phase-0>` — 28/28 `ClientIpResolverTest` (25 pre-existing unchanged + 3 new AC-1..AC-3), 15/15 `RateLimitFilterTest` (AC-5), structural net green |
-| 1 — Runbook: Cloudflare-range refresh procedure + WARN meaning | ✅ | this commit — AC-6: "Refreshing the Cloudflare ranges" procedure + the #290 untrusted-peer WARN documented in "Reading the app's own signal" |
-| 2 — PR + gates (CI / review / Sonar) | ⏳ | |
+| 1 — Runbook: Cloudflare-range refresh procedure + WARN meaning | ✅ | `<phase-1>` — AC-6: "Refreshing the Cloudflare ranges" procedure + the #290 untrusted-peer WARN documented in "Reading the app's own signal" |
+| 2 — PR + gates (CI / review / Sonar) | ⏳ | Review gate self-run: **0 findings** (backend bank walked; RV-BE-13 log-injection is the load-bearing item — WARN carries only the header name, never its value). CI + Sonar pending a PR. |
+
+**Review-gate note (self-run, `riviera-review-overlay` + backend bank).** Backend-only diff
+(one root-package edge class + its test + two docs). **RV-BE-1..8, 14..17** ➖ not in scope,
+verified against the diff (no availability/booking/payment/payout/money/time/schema).
+**RV-BE-2** ✅ no persistence. **RV-BE-3/3b/3c/11/12** ✅ root-package edge, not a module — no
+published surface, no package move; `ModularityTests`/`PackageShapeArchitectureTests` green.
+**RV-BE-9** ➖ no venue-scoped surface. **RV-BE-10** ✅ error contract untouched. **RV-BE-13
+(load-bearing)** ✅ the WARN interpolates only the configured header **name** + hard-coded
+text; `request.getHeader(clientIpHeader)` is a null presence-check only, its value never
+logged (AC-4). **RV-STYLE-1** ✅ inline comments one line; prose in Javadoc. **RV-PROC-1** ✅
+*Skills consulted* covers each touched area.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
