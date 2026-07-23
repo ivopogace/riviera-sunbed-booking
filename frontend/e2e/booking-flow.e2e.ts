@@ -122,6 +122,33 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'booking confirmation');
 });
 
+test('booking dialog stays laptop-friendly at a ~700px viewport (#186 height guard)', async ({ page }) => {
+  // Regression guard for #186 (PR #187): keep the dialog off the fold on laptop-height viewports.
+  const VIEWPORT_HEIGHT = 700;
+  await page.setViewportSize({ width: 1280, height: VIEWPORT_HEIGHT });
+
+  await page.goto('/venues/1');
+  await page.getByRole('button', { name: /Select to book/ }).first().click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  // Step 1 (Details) is the tallest step and the one #186 measured.
+  await expect(page.getByTestId('step-1')).toHaveAttribute('aria-current', 'step');
+  await settle(page);
+
+  const panel = await dialog.boundingBox();
+  const button = await dialog.getByTestId('dialog-primary').boundingBox();
+  expect(panel, 'panel box').not.toBeNull();
+  expect(button, 'Continue button box').not.toBeNull();
+
+  // Panel not capped at its `max-height: calc(100vh - 40px)` → step-1 content fits without scrolling (2px absorbs rounding).
+  const maxPanelHeight = VIEWPORT_HEIGHT - 40;
+  expect(panel!.height).toBeLessThan(maxPanelHeight - 2);
+
+  // Continue button clears the fold with margin below it (the #186 symptom was it jammed there).
+  expect(button!.y + button!.height).toBeLessThanOrEqual(VIEWPORT_HEIGHT - 16);
+});
+
 test('a taken-set rejection surfaces an accessible error in the dialog', async ({ page }) => {
   // Overrides the beforeEach 201 route: the API rejects on the RFC-7807 contract (issue #97) —
   // application/problem+json whose stable identity is the `code` extension.
