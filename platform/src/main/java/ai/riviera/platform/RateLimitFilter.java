@@ -361,14 +361,15 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private void throttlePerIdentity(LoginEndpoint login, HttpServletRequest request,
 			HttpServletResponse response, FilterChain chain, String ip, Instant now)
 			throws ServletException, IOException {
-		byte[] body = cacheableBody(request);
-		if (body == null) {
+		Optional<byte[]> buffered = cacheableBody(request);
+		if (buffered.isEmpty()) {
 			// An unknown-length (chunked) or oversized login body is not buffered — the per-identity check
 			// is skipped and only the per-IP budget applies. Logged so the skip is observable in prod.
 			log.debug("Login body not buffered — per-username dimension skipped, from {}", ip);
 			chain.doFilter(request, response);
 			return;
 		}
+		byte[] body = buffered.get();
 		HttpServletRequest cached = new CachedBodyRequest(request, body);
 		String identityKey = identityKeyOf(login, body);
 		if (identityKey == null) {
@@ -436,15 +437,16 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * The login body as bytes when it is safe to buffer (a known Content-Length within
-	 * {@link #MAX_CACHED_BODY_BYTES}), else {@code null} — an unknown or oversized body is not read here,
-	 * so the input stream is left untouched for the downstream controller and only the per-IP budget bites.
+	 * {@link #MAX_CACHED_BODY_BYTES}), else {@link Optional#empty()} — an unknown or oversized body is not
+	 * read here, so the input stream is left untouched for the downstream controller and only the per-IP
+	 * budget bites. {@code Optional} (not {@code null}) so "don't buffer" is not confused with an empty body.
 	 */
-	private static byte[] cacheableBody(HttpServletRequest request) throws IOException {
+	private static Optional<byte[]> cacheableBody(HttpServletRequest request) throws IOException {
 		long length = request.getContentLengthLong();
 		if (length < 0 || length > MAX_CACHED_BODY_BYTES) {
-			return null;
+			return Optional.empty();
 		}
-		return request.getInputStream().readAllBytes();
+		return Optional.of(request.getInputStream().readAllBytes());
 	}
 
 	/**

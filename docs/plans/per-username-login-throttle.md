@@ -161,6 +161,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | review (Minor) | Per-identity check silently no-ops when the login body has no `Content-Length` (chunked) | fixed (observability) — `log.debug` when a login body is skipped for buffering |
 | F-5 | review (Nit) | Javadoc "never throttled" overstates (lock-out-by-proxy can 429 a correct password) | fixed — reworded to "never throttled by its own success" + the accepted trade-off noted |
 | F-6 | review (Nit) | Unsalted SHA-256 keys could be dictionary-confirmed against a candidate username list | fixed — per-process random salt (`identitySalt`) prefixes the digest |
+| F-7 | sonar (`java:S1168`, Major) | `cacheableBody` returned `null` for an array-typed method (gate green, 87.2% new-cov, 0 dup, but 1 new issue) | fixed — returns `Optional<byte[]>` (also the repo convention: never return `null` from a query) |
 
 ---
 
