@@ -1,6 +1,6 @@
 import { Service, signal } from '@angular/core';
 
-import { readStorage, writeStorage } from './safe-storage';
+import { readStorage, writeStorage } from '../shared/safe-storage';
 
 /**
  * The Liquid Glass themes shipped so far (issue #134). Palettes themselves are CSS custom
