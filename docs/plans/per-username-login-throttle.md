@@ -135,9 +135,10 @@ N/A — no API shape change. Same login request/response DTOs; same `429` `Probl
 
 ## Execution status
 
-**Stage pointer:** review gate run → fixes applied → re-verify (CI push), then sonar gate (PR-time)
+**Stage pointer:** CI green on both commits (R-1 cleared) → awaiting PR decision for the Sonar gate
 
-**Next action:** push the review-fix commit; confirm CI green (R-1 full-suite). Sonar runs only at PR time.
+**Next action:** open a PR into `main` (on request) to run the Sonar gate, then merge close-out. CI backend
+full-suite passed on `f3ef10e` (run #1138) and `ec196a4` (run #1139) — the #127 lockout class did not bite.
 
 **Local verification (scoped, this session):** `RateLimitFilterTest` (19 tests incl. AC-1/2/3/5 + 3 defensive branches), `RateLimitPropertiesBindingTest` (AC-7, 6 tests), `RateLimitDisabledTest`, `PerOperatorLoginIT` (8) + `AuthSessionIT` (5) — real successful logins through the wrapper (AC-4), 0 skipped — and the structural net + `OperatorAuthPlacementTests`/`CustomerAuthPlacementTests` all green. Full suite (R-1) is CI's.
 
