@@ -148,16 +148,16 @@ not triggered.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 1 (runbook)`
+**Stage pointer:** `implement complete → PR + gates (phase 2)`
 
-**Next action:** Add the "Refreshing the Cloudflare ranges" procedure + the untrusted-peer
-WARN meaning to `docs/runbooks/rate-limit-client-ip.md` (AC-6).
+**Next action:** Merge latest `origin/main`, push the branch, open the PR into `main`
+referencing #290/#286, then run the CI / review / Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Resolver: untrusted-peer-with-header WARN + latch | ✅ | this commit — 28/28 `ClientIpResolverTest` (25 pre-existing unchanged + 3 new AC-1..AC-3), 15/15 `RateLimitFilterTest` (AC-5), structural net green |
-| 1 — Runbook: Cloudflare-range refresh procedure + WARN meaning | ⏳ | |
-| 2 — PR + gates (CI / review / Sonar) | | |
+| 0 — Resolver: untrusted-peer-with-header WARN + latch | ✅ | `<phase-0>` — 28/28 `ClientIpResolverTest` (25 pre-existing unchanged + 3 new AC-1..AC-3), 15/15 `RateLimitFilterTest` (AC-5), structural net green |
+| 1 — Runbook: Cloudflare-range refresh procedure + WARN meaning | ✅ | this commit — AC-6: "Refreshing the Cloudflare ranges" procedure + the #290 untrusted-peer WARN documented in "Reading the app's own signal" |
+| 2 — PR + gates (CI / review / Sonar) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

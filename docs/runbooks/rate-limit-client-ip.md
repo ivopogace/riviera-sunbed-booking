@@ -84,10 +84,30 @@ Variants: `arrived more than once` (a client-supplied copy survived alongside th
 the header is discarded wholesale rather than guessing which is which) and `is not a single
 IP literal`.
 
-Two limits worth knowing: it fires **at most once per process**, so a benign first anomaly
-consumes the latch and a later genuine breakage is silent; and it is expected on **every**
-local-dev and test JVM, where no CDN is in front. **The WARN is a hint; the probe is the
-check.**
+Since **#290** there is a fourth, opposite signal — the one that actually fingerprints
+**trust-list rot**:
+
+```
+Client-IP header 'CF-Connecting-IP' arrived from an UNTRUSTED socket peer and was ignored
+(bypass closure #129). This is the fingerprint of the trusted-proxy list missing the
+upstream edge's ranges — see docs/runbooks/rate-limit-client-ip.md
+```
+
+The three variants above all fire behind a **trusted** peer (the header path was reached but
+unusable). This one fires on the *other* branch: the socket peer was **not** trusted, so
+`resolve` returned at its first branch and the header was (correctly) ignored — yet the
+header was present, which is exactly what happens when Cloudflare adds a range that
+`RIVIERA_RATELIMIT_TRUSTED_PROXIES` no longer covers, so the CDN edge is no longer classified
+as trusted. **Seeing this WARN on the deployed app means the trust list has drifted: apply
+the refresh procedure below.** (It is *absence* of any WARN during a failing probe that told
+the same story before #290 — see the diagnostic tip in the retirement record.)
+
+Two limits worth knowing: each WARN fires **at most once per process**, so a benign first
+anomaly consumes the latch and a later genuine breakage is silent; and the trusted-peer
+variants are expected on **every** local-dev and test JVM, where no CDN is in front. The
+untrusted-peer variant, by contrast, does **not** fire locally or in the IT corpus — their
+peers are loopback, which *is* trusted — so on the deployed app it is a specific tell, not
+background noise. **The WARN is a hint; the probe is the check.**
 
 ## Configuration
 
@@ -133,6 +153,52 @@ premise, and it is what a future attempt must re-run.
 failing probe is the tell that the peer is untrusted — a present WARN would instead mean the
 peer was fine and the header was missing. (#286 tracks adding an explicit warning for the
 untrusted-peer-with-header case, so this no longer has to be deduced from silence.)
+
+## Refreshing the Cloudflare ranges
+
+Until #291 replaces IP-based peer trust with a cryptographic upstream check, the Cloudflare
+portion of `RIVIERA_RATELIMIT_TRUSTED_PROXIES` is a **hand-maintained copy of a third-party
+list**. Cloudflare adds ranges from time to time; when they do, the new edge nodes stop being
+classified as trusted, `resolve` returns at its first branch, and the rate limiter silently
+falls back to keying on the per-request-varying edge — the #286 defect, returning. The **#290
+untrusted-peer WARN** (above) is the trigger to run this: it names the drift on the first
+affected request instead of leaving it to be deduced from a failing probe.
+
+**When to run:** on seeing the untrusted-peer WARN in Render logs; or as a periodic hygiene
+check; or whenever the probe regresses to a high non-`429` count with the env var still set.
+
+1. **Re-fetch Cloudflare's published ranges** (the same two sources the current value came
+   from — `docs/deploy/cd-pipeline.md` records the provenance and the 2026-07-22 fetch):
+
+   ```bash
+   curl -s https://www.cloudflare.com/ips-v4 -o /tmp/cf-v4.txt
+   curl -s https://www.cloudflare.com/ips-v6 -o /tmp/cf-v6.txt
+   cat /tmp/cf-v4.txt /tmp/cf-v6.txt   # 15 IPv4 + 7 IPv6 = 22 CIDRs as of 2026-07-22
+   ```
+
+2. **Diff against what is deployed.** The env var is the **8 shipped private/loopback CIDRs
+   plus** Cloudflare's ranges; only the Cloudflare portion is under review here. Pull the
+   current value from the Render service (`srv-d904jdbtqb8s73fera5g`) and compare its
+   Cloudflare CIDRs, comma-separated, against the freshly fetched set — a line-by-line
+   `comm`/`diff` of the two sorted lists shows any **added** range (must be appended) or
+   **removed** one (safe to drop). Never remove the 8 private defaults; they classify Render's
+   own internal hop.
+
+3. **Update the env var** to `<8 private defaults>,<current Cloudflare list ∪ new ranges>`
+   (keep the private ranges first, matching `application.properties`), redeploy, and wait for
+   the restart. The colon-bearing IPv6 defaults (`::1/128`, `fc00::/7`, `fe80::/10`) and any
+   IPv6 Cloudflare ranges must survive intact — a dropped or mangled CIDR silently weakens the
+   control.
+
+4. **Re-run [the probe](#the-probe)** with the env var set → expect ~10–11 non-`429`. This
+   confirms the refreshed list once again classifies the edge as trusted. The untrusted-peer
+   WARN should not reappear for a client whose edge is now covered (subject to the
+   once-per-process latch — a fresh deploy resets it).
+
+> **Do not automate this fetch into the app** (startup or scheduled). Rejected in #286's
+> plan: it trades silent rot for a startup network dependency and a supply-chain input to a
+> security control. The durable fix is #291 (authenticate the upstream edge cryptographically
+> so peer trust stops being an IP list), not a faster copy.
 
 ## Related
 
