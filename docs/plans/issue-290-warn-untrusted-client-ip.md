@@ -148,12 +148,10 @@ not triggered.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `pushed to claude/sdlc-290-io1r0m — review gate self-run (clean); PR not
-opened (task did not request one). Awaiting the maintainer's PR decision, at which point the
-CI + Sonar gates run.`
+**Stage pointer:** `PR #309 open → CI + Sonar gates running`
 
-**Next action:** On request, open the PR into `main` (referencing #290/#286); then confirm
-the CI run green and pull the Sonar new-issue list via the API (watch `java:S1313`).
+**Next action:** Confirm PR #309 CI green; pull the Sonar new-issue list via the API (watch
+`java:S1313`); then merge + close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
