@@ -2,6 +2,8 @@ package ai.riviera.platform;
 
 import java.time.Clock;
 
+import tools.jackson.databind.ObjectMapper;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -148,7 +150,7 @@ class SecurityConfig {
 	@Bean
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
-			Clock clock) {
+			Clock clock, ObjectMapper objectMapper) {
 		// One shared CSRF cookie repository instance: the filter chain issues/reads the XSRF-TOKEN
 		// cookie through it, and the logout success handler (#247) re-issues a fresh one through the
 		// SAME hardened config, so both stay in lockstep.
@@ -166,7 +168,7 @@ class SecurityConfig {
 				// just after CORS so a preflight is handled first (and is skipped by the filter anyway),
 				// and before authorization — the booking endpoints are permitAll, so the code IS the
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
-				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock), CorsFilter.class)
+				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
 				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
 				// so its writes REQUIRE the cookie-to-header token. `.spa()` is Spring Security 7's
 				// native single-page-app posture: CookieCsrfTokenRepository issues the JS-readable

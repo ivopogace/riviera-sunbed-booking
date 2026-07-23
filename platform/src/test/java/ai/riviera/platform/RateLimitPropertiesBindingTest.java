@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
@@ -39,6 +41,27 @@ class RateLimitPropertiesBindingTest {
 	void bindsTheShippedClientIpHeaderDefault() {
 		runner.run(context -> assertThat(context.getBean(RateLimitProperties.class).clientIpHeader())
 				.isEqualTo("CF-Connecting-IP"));
+	}
+
+	@Test
+	void bindsTheShippedPerUsernameLoginBudgetDefault() {
+		runner.run(context -> {
+			RateLimitProperties.Limit username = context.getBean(RateLimitProperties.class).username();
+			assertThat(username.capacity()).isEqualTo(15);
+			assertThat(username.refillPeriod()).isEqualTo(Duration.ofMinutes(15));
+		});
+	}
+
+	@Test
+	void theEnvironmentOverridesThePerUsernameBudget() {
+		runner.withSystemProperties(
+				"RIVIERA_RATELIMIT_USERNAME_CAPACITY=3",
+				"RIVIERA_RATELIMIT_USERNAME_REFILL=PT30S")
+				.run(context -> {
+					RateLimitProperties.Limit username = context.getBean(RateLimitProperties.class).username();
+					assertThat(username.capacity()).isEqualTo(3);
+					assertThat(username.refillPeriod()).isEqualTo(Duration.ofSeconds(30));
+				});
 	}
 
 	@Test
