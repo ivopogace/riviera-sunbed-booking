@@ -1,6 +1,6 @@
 import { Service, signal } from '@angular/core';
 
-import { readJson, writeJson } from './safe-storage';
+import { readJson, writeJson } from '../shared/safe-storage';
 
 const STORAGE_KEY = 'riviera.bookings.v1';
 
