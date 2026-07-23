@@ -148,15 +148,15 @@ not triggered.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan committed → implement (phase 0)`
+**Stage pointer:** `implement — phase 1 (runbook)`
 
-**Next action:** Write the three failing `ClientIpResolverTest` cases (AC-1..AC-3), watch
-them fail, then add the untrusted-peer WARN branch + latch.
+**Next action:** Add the "Refreshing the Cloudflare ranges" procedure + the untrusted-peer
+WARN meaning to `docs/runbooks/rate-limit-client-ip.md` (AC-6).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Resolver: untrusted-peer-with-header WARN + latch | | |
-| 1 — Runbook: Cloudflare-range refresh procedure + WARN meaning | | |
+| 0 — Resolver: untrusted-peer-with-header WARN + latch | ✅ | this commit — 28/28 `ClientIpResolverTest` (25 pre-existing unchanged + 3 new AC-1..AC-3), 15/15 `RateLimitFilterTest` (AC-5), structural net green |
+| 1 — Runbook: Cloudflare-range refresh procedure + WARN meaning | ⏳ | |
 | 2 — PR + gates (CI / review / Sonar) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -316,6 +316,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-23 | phase 0 | other silent-loss branches / other consumers of the socket peer + client-IP header | `grep -rn "getRemoteAddr\|getHeader(clientIpHeader)\|warnOnce" platform/src/main/java` | `ClientIpResolver` only — the two sibling silent-loss paths (absence, ambiguity) already warn; this closes the last one | skip generalizing — `ClientIpResolver` is still the sole client-IP consumer (same conclusion as #129/#286 audits); the pattern is now uniformly applied within it |
 
 ---
 
