@@ -8,61 +8,9 @@
       </p>
     </div>
   </main>
-} @else if (operator.restoring()) {
-  <output class="oc-loading" data-testid="oc-loading">Checking your session…</output>
-} @else if (!operator.signedIn()) {
-  <main class="oc-signin">
-    <form class="oc-signin-card" (submit)="onSignIn(); $event.preventDefault()" novalidate>
-      <h1 class="oc-signin-title" id="oc-signin-title" data-testid="oc-signin-title">
-        Sign in to your venue
-      </h1>
-      <p class="oc-signin-intro">The operator console uses your Riviera account.</p>
-
-      <label class="oc-field">
-        <span>Username</span>
-        <input
-          type="text"
-          data-testid="oc-user"
-          name="operator-username"
-          autocomplete="username"
-          [value]="username()"
-          (input)="username.set($any($event.target).value)"
-        />
-      </label>
-      <label class="oc-field">
-        <span>Password</span>
-        <input
-          type="password"
-          data-testid="oc-pass"
-          name="operator-password"
-          autocomplete="current-password"
-          [value]="password()"
-          (input)="password.set($any($event.target).value)"
-        />
-      </label>
-
-      <button
-        type="submit"
-        class="oc-signin-btn"
-        data-testid="oc-signin-submit"
-        [disabled]="signingIn()"
-      >
-        {{ signingIn() ? 'Signing in…' : 'Sign in' }}
-      </button>
-
-      @if (signInError(); as msg) {
-        <p class="oc-form-error" role="alert" data-testid="oc-signin-error">{{ msg }}</p>
-      }
-
-      <p class="oc-signin-intro">
-        New operator?
-        <a class="oc-create-venue" routerLink="/operator/register" data-testid="oc-register-link"
-          >Register</a
-        >
-      </p>
-    </form>
-  </main>
 } @else {
+  <!-- S9 (#277): no sign-in gate here — operatorSessionGuard owns it, and it awaits the session
+       restore before deciding, so this shell only ever renders for a signed-in operator. -->
   <div class="oc-shell">
     <header class="oc-header" data-testid="oc-header">
       <div class="oc-header-inner">

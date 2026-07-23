@@ -81,7 +81,12 @@ describe('VenueMap', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '1' }) } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ id: '1' }), queryParamMap: convertToParamMap({}) },
+          },
+        },
       ],
     }).compileComponents();
 
@@ -151,6 +156,27 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain('18 of 24');
+  });
+
+  it('shows the rating and review count for a rated venue', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const header = el().querySelector('header')!;
+    expect(header.textContent).toContain('4.8');
+    expect(header.textContent).toContain('326 reviews');
+    expect(header.querySelector('[data-testid="new-chip"]')).toBeNull();
+  });
+
+  it('renders a "New" pill (aria "No reviews yet", no ★ 0.0) for an unrated venue (#154)', async () => {
+    venueRequest().flush({ ...miramar(), name: 'Miramare', ratingTenths: 0, reviewsCount: 0 });
+    await fixture.whenStable();
+
+    const header = el().querySelector('header')!;
+    const chip = header.querySelector('[data-testid="new-chip"]')!;
+    expect(chip.textContent).toContain('New');
+    expect(chip.getAttribute('aria-label')).toBe('No reviews yet');
+    expect(header.textContent).not.toContain('0.0');
+    expect(header.textContent).not.toContain('0 reviews');
   });
 
   it('renders rows with derived A/B/… codes in insertion order and per-row price from minor units', async () => {
@@ -361,5 +387,74 @@ describe('VenueMap', () => {
     // formatted date display instead of an editable input.
     const dialogDate = el().querySelector('app-booking-dialog [data-testid="dialog-date"]');
     expect(dialogDate?.textContent).toContain(formatBookingDate(chosen));
+  });
+});
+
+/**
+ * The venue map seeds its date from the `?date=` query param the discovery page carries when a
+ * venue is opened (#294), so the tourist's chosen date persists across the hop. The param is
+ * validated (well-formed ISO calendar date) and clamped to the map's floor (tomorrow, invariant #4);
+ * an absent or malformed value falls back to the default. Each case needs its own ActivatedRoute, so
+ * this block configures TestBed per test rather than sharing the suite's beforeEach.
+ */
+describe('VenueMap — date carried from the discovery page (#294)', () => {
+  let fixture: ComponentFixture<VenueMap>;
+  let httpMock: HttpTestingController;
+
+  async function setup(queryParams: Record<string, string>): Promise<void> {
+    await TestBed.configureTestingModule({
+      imports: [VenueMap],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ id: '1' }),
+              queryParamMap: convertToParamMap(queryParams),
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(VenueMap);
+    httpMock = TestBed.inject(HttpTestingController);
+  }
+
+  afterEach(() => httpMock.verify());
+
+  function venueReq(): TestRequest {
+    return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
+  }
+
+  it('seeds the map date from a valid ?date= param and requests that date', async () => {
+    const chosen = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    await setup({ date: chosen });
+
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(chosen);
+    req.flush(miramar());
+    await fixture.whenStable();
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
+      '[data-testid="map-date"]',
+    )!;
+    expect(input.value).toBe(chosen); // the picker shows the carried date, not the default
+  });
+
+  it('clamps a past ?date= param up to the earliest bookable day (invariant #4)', async () => {
+    await setup({ date: '2020-01-01' });
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+    req.flush(miramar());
+  });
+
+  it('ignores a malformed ?date= param, falling back to tomorrow', async () => {
+    await setup({ date: 'not-a-date' });
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+    req.flush(miramar());
   });
 });

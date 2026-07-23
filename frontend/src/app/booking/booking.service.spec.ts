@@ -63,6 +63,23 @@ const REQUESTED: RequestedBooking = {
   requestExpiresAt: '2026-11-30T16:00:00Z',
 };
 
+const DETAIL: BookingDetail = {
+  code: 'ABCD234567',
+  status: 'CONFIRMED',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
+  cancellable: true,
+  beforeCutoff: true,
+  refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
+  refundedAmount: null,
+  requestExpiresAt: null,
+  payment: null,
+};
+
 describe('BookingService', () => {
   let service: BookingService;
   let httpMock: HttpTestingController;
@@ -188,6 +205,27 @@ describe('BookingService', () => {
     expect(service.lastConfirmation()).toBeUndefined();
     expect(service.lastAwaitingPayment()).toBeUndefined();
     expect(service.lastRequested()).toBeUndefined();
+  });
+
+  it('takePrefetched returns the primed detail once for the matching code (one-shot, #168)', () => {
+    service.primeDetail(DETAIL);
+
+    // First take for the matching code hands off the detail…
+    expect(service.takePrefetched(DETAIL.code)).toEqual(DETAIL);
+    // …and is consumed, so a later deep-link/refresh re-fetches instead of serving stale data.
+    expect(service.takePrefetched(DETAIL.code)).toBeUndefined();
+  });
+
+  it('takePrefetched ignores a primed detail for a different code and leaves it intact (#168)', () => {
+    service.primeDetail(DETAIL);
+
+    expect(service.takePrefetched('ZZZZ999999')).toBeUndefined();
+    // The mismatched take must not consume the primed detail — the real code still gets it.
+    expect(service.takePrefetched(DETAIL.code)).toEqual(DETAIL);
+  });
+
+  it('takePrefetched returns undefined when nothing was primed (#168)', () => {
+    expect(service.takePrefetched('ABCD234567')).toBeUndefined();
   });
 
   it('getByCode GETs the booking by code', () => {

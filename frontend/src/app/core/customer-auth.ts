@@ -67,16 +67,7 @@ export class CustomerAuth extends SessionAuth {
   readonly email = this.principalName;
 
   private readonly ssoRedirect = inject(SsoRedirect);
-  private readonly restoreOnStartup = this.restore();
-
-  /**
-   * Resolves once the initial `GET /api/auth/me` restore has completed. Awaiting it guarantees the CSRF
-   * cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN` on the first API response), so a page that
-   * fires a CSRF-protected write on load — the verify-email landing — doesn't race a cold browser to a 403.
-   */
-  whenReady(): Promise<void> {
-    return this.restoreOnStartup;
-  }
+  protected readonly restoreOnStartup = this.restore();
 
   /**
    * Start "Continue with Google/Apple" (S4, epic #108): a full-page navigation to the backend authorize
@@ -106,12 +97,15 @@ export class CustomerAuth extends SessionAuth {
   /**
    * Register a customer account. The backend returns 201 for BOTH a fresh email (auto-signed-in, a
    * session cookie set) and an already-registered one (identical body, NO session — non-enumeration,
-   * D-8), so we learn the session state from `/me`. A fresh account is a signed-out → signed-in
-   * transition; if we were ALREADY signed in (a live session opened `/account/register`), a taken email
-   * leaves us signed in unchanged, so we must NOT read that as a new account (review F3).
+   * D-8), so we learn the outcome from `/me`. A fresh account SWITCHES the session to a different
+   * principal (signed out → the new email, or a live session → the new email), whereas a taken email
+   * leaves the session untouched. So we compare the pre/post principal IDENTITY, not just the
+   * signed-in boolean: `registered` iff `/me` now reports a signed-in principal whose email differs
+   * from before. The boolean alone misclassified a signed-in user registering a genuinely new,
+   * different account as `exists` (#252, review F3).
    */
   async register(email: string, password: string): Promise<CustomerRegisterResult> {
-    const wasSignedIn = this.signedIn();
+    const previousEmail = this.email();
     try {
       await firstValueFrom(
         this.http.post<AuthPrincipal>(`${AUTH_API}/customer/register`, { email, password }),
@@ -126,7 +120,7 @@ export class CustomerAuth extends SessionAuth {
       return 'error';
     }
     await this.loadPrincipal();
-    return !wasSignedIn && this.signedIn() ? 'registered' : 'exists';
+    return this.signedIn() && this.email() !== previousEmail ? 'registered' : 'exists';
   }
 
   /**

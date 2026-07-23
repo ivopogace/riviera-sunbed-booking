@@ -35,6 +35,7 @@
         id="filter-date"
         type="date"
         data-testid="filter-date"
+        [min]="minDate"
         [value]="selectedDate()"
         (change)="onDateChange($event)"
       />
@@ -74,21 +75,22 @@
       </p>
       <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
     </div>
-  } @else if (venues(); as list) {
+  } @else if (venuesView(); as list) {
     @if (isEmpty()) {
       <p class="state" appPanelGlass data-testid="empty" aria-live="polite">
         No venues match these filters. Try another beach, region, or date.
       </p>
     } @else {
       <ul class="venue-grid">
-        @for (venue of list; track venue.id) {
+        @for (card of list; track card.id) {
           <li>
             <a
               class="card"
               appCardGlass
               data-testid="venue-card"
-              [routerLink]="['/venues', venue.id]"
-              [attr.aria-label]="cardLabel(venue)"
+              [routerLink]="['/venues', card.id]"
+              [queryParams]="{ date: selectedDate() }"
+              [attr.aria-label]="card.ariaLabel"
             >
               <!-- The <a> carries the full accessible name via aria-label, so its visible content
                    is decorative to AT — the two inner blocks are aria-hidden. -->
@@ -96,7 +98,7 @@
                    state. The scrim ALWAYS layers over it — the location text's AA floor must hold
                    over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
               <span class="card-photo" aria-hidden="true">
-                @if (venue.coverPhoto; as cover) {
+                @if (card.coverPhoto; as cover) {
                   <img
                     [ngSrc]="cover.card"
                     fill
@@ -108,43 +110,47 @@
                   <span class="photo-sun"></span>
                 }
                 <span class="photo-scrim"></span>
-                <span class="mode-chip">{{ bookingModeLabel(venue.bookingMode) }}</span>
-                <span class="photo-location">{{ venue.beach }} · {{ venue.region }}</span>
+                <span class="mode-chip">{{ card.modeLabel }}</span>
+                <span class="photo-location">{{ card.beach }} · {{ card.region }}</span>
               </span>
 
               <span class="card-body" aria-hidden="true">
-                <span class="card-name">{{ venue.name }}</span>
+                <span class="card-name">{{ card.name }}</span>
 
                 <span class="card-meta">
-                  <span class="star">★</span>
-                  <span class="rating">{{ rating(venue) }}</span>
-                  <span class="dot">·</span> {{ venue.reviewsCount }} reviews
+                  @if (card.isRated) {
+                    <span class="star">★</span>
+                    <span class="rating">{{ card.rating }}</span>
+                    <span class="dot">·</span> {{ card.reviewsCount }} reviews
+                  } @else {
+                    <span class="new-chip" data-testid="new-chip">New</span>
+                  }
                 </span>
 
                 <!-- T7 (#140): to-water chip first, then ≤3 amenity chips in catalogue order. The
-                     card body is aria-hidden, so this text is also folded into cardLabel(); the slot
-                     collapses (:empty) when the venue states neither. -->
+                     card body is aria-hidden, so this text is also folded into card.ariaLabel; the
+                     slot collapses (:empty) when the venue states neither. -->
                 <span class="card-chips" data-testid="card-chips">
-                  @if (toWater(venue); as water) {
+                  @if (card.water; as water) {
                     <span appAmenityChip water>{{ water }}</span>
                   }
-                  @for (code of cardAmenities(venue); track code) {
-                    <span appAmenityChip>{{ amenityText(code) }}</span>
+                  @for (amenity of card.amenities; track amenity.code) {
+                    <span appAmenityChip>{{ amenity.label }}</span>
                   }
                 </span>
 
                 <span class="avail-track">
-                  <span class="avail-fill" [style.width.%]="freePercent(venue)"></span>
+                  <span class="avail-fill" [style.width.%]="card.freePercent"></span>
                 </span>
 
                 <span class="card-footer">
-                  @if (venue.fromPrice; as from) {
-                    <span class="price">from <strong>{{ money(from) }}</strong> / set</span>
+                  @if (card.priceLabel; as price) {
+                    <span class="price">from <strong>{{ price }}</strong> / set</span>
                   } @else {
                     <span class="price">No sets yet</span>
                   }
                   <span class="availability" data-testid="card-availability">
-                    <strong>{{ venue.availability.free }}</strong> of {{ venue.availability.total }} free
+                    <strong>{{ card.free }}</strong> of {{ card.total }} free
                   </span>
                 </span>
               </span>

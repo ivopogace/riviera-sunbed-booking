@@ -158,12 +158,16 @@ export class FindBooking {
       // Validate the code against the (rate-limited, #56) lookup endpoint, THEN navigate to the
       // existing /booking/:code deep link — so an unknown/rate-limited code stays inline here
       // without navigating.
-      await firstValueFrom(this.bookings.getByCode(code));
+      const detail = await firstValueFrom(this.bookings.getByCode(code));
+      // Prime the fetched detail so BookingView opens without a second GET (#168, #56 ceiling).
+      this.bookings.primeDetail(detail);
       const navigated = await this.router.navigate(['/booking', code]);
       if (!navigated) {
         // Same-URL (the guest is already on this booking) or a blocked nav produces no
         // NavigationEnd, so the shell won't close the modal — close it here (the target is already
         // shown) and stop the spinner, or the modal freezes on "Opening…" (review finding [1]).
+        // Discard the prime the un-navigated view won't consume, so a later deep-link re-fetches (#168).
+        this.bookings.takePrefetched(code);
         this.submitting.set(false);
         this.dismissed.emit();
       }

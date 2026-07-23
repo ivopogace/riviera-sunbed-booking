@@ -24,22 +24,28 @@ const DETAIL: BookingDetail = {
   payment: null,
 };
 
-/** A found-by-code stub; `getByCode` is a spy so tests assert the normalized code sent. */
+/** A found-by-code stub; `getByCode`/`primeDetail`/`takePrefetched` are spies for assertions. */
 function foundService(detail: BookingDetail = DETAIL): {
   service: Partial<BookingService>;
   getByCode: ReturnType<typeof vi.fn>;
+  primeDetail: ReturnType<typeof vi.fn>;
+  takePrefetched: ReturnType<typeof vi.fn>;
 } {
   const getByCode = vi.fn(() => of(detail) as Observable<BookingDetail>);
-  return { service: { getByCode }, getByCode };
+  const primeDetail = vi.fn();
+  const takePrefetched = vi.fn(() => undefined);
+  return { service: { getByCode, primeDetail, takePrefetched }, getByCode, primeDetail, takePrefetched };
 }
 
 /** A stub whose lookup fails with the given HTTP-ish error (e.g. `{ status: 404 }`). */
 function erroringService(error: unknown): {
   service: Partial<BookingService>;
   getByCode: ReturnType<typeof vi.fn>;
+  primeDetail: ReturnType<typeof vi.fn>;
 } {
   const getByCode = vi.fn(() => throwError(() => error) as Observable<BookingDetail>);
-  return { service: { getByCode }, getByCode };
+  const primeDetail = vi.fn();
+  return { service: { getByCode, primeDetail }, getByCode, primeDetail };
 }
 
 async function render(service: Partial<BookingService>): Promise<ComponentFixture<FindBooking>> {
@@ -87,6 +93,32 @@ describe('FindBooking', () => {
     expect(getByCode).toHaveBeenCalledWith('ABCD234567');
     expect(navigate).toHaveBeenCalledWith(['/booking', 'ABCD234567']);
     expect(errorText(fixture)).toBe('');
+  });
+
+  it('primes the fetched detail before navigating so the view skips a second GET (#168)', async () => {
+    const { service, primeDetail } = foundService();
+    const fixture = await render(service);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    setCode(fixture, 'ABCD234567');
+    submit(fixture);
+    await fixture.whenStable();
+
+    expect(primeDetail).toHaveBeenCalledWith(DETAIL);
+    expect(navigate).toHaveBeenCalledWith(['/booking', 'ABCD234567']);
+  });
+
+  it('does not prime the detail when the lookup fails (#168)', async () => {
+    const { service, primeDetail } = erroringService({ status: 404 });
+    const fixture = await render(service);
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    setCode(fixture, 'ZZZZ999999');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(primeDetail).not.toHaveBeenCalled();
   });
 
   it('normalizes the entered code (trim, uppercase, strip spaces/dashes) before lookup', async () => {
@@ -234,7 +266,7 @@ describe('FindBooking', () => {
   // Review finding [1]: a no-op navigation (Angular drops a same-URL navigate → resolves false, no
   // NavigationEnd) must still close the modal, not freeze it on "Opening…".
   it('closes the modal without freezing when the navigation is a no-op (same URL)', async () => {
-    const { service } = foundService();
+    const { service, takePrefetched } = foundService();
     const fixture = await render(service);
     const closes = vi.fn();
     fixture.componentInstance.dismissed.subscribe(closes);
@@ -247,6 +279,9 @@ describe('FindBooking', () => {
     fixture.detectChanges();
 
     expect(closes).toHaveBeenCalledTimes(1);
+    // The un-navigated view never mounts to consume the prime, so it must be discarded here (#168)
+    // — otherwise a later deep-link to the same code would serve a now-stale detail.
+    expect(takePrefetched).toHaveBeenCalledWith('ABCD234567');
     const button = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="find-submit"]',
     ) as HTMLButtonElement;

@@ -74,7 +74,9 @@ review-only.
 upload/replace/delete, processing, `bytea` storage behind the module-internal `PhotoStorage`
 port, and the public content-hash serving read — ADR-0008), the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
-(Instant / Request).
+(Instant / Request). Since S9 (#277) also **assemble the signed-in operator's own-venues read model**
+(`GET /api/venues/mine`): I ask `operator::api` for the ownership set and join the names, because
+naming venues is my job and `operator → venue` would cycle.
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`** (I own the
@@ -84,7 +86,9 @@ positions, the online-vs-walk-in pool assignment for each set, pricing, and the 
   price; `payment` charges it)
 - The payout math or commission arithmetic → **`payout`** (I store the commission
   *rate*; `payout` computes with it)
-- Which operator owns this venue / authorizing them → **`operator`**
+- Deciding *which* venues an operator owns, or authorizing them → **`operator`** (it owns the
+  mapping and answers the question; since #277 I *render* that answer as named summaries, but the
+  set itself is always its call)
 
 ---
 

@@ -23,12 +23,13 @@ test('operator registers, is approved by an admin, then signs in and creates a v
   const signIn = new OperatorSignInPage(page);
 
   // 1. The prospective operator self-registers → PENDING; it sees the approval notice, not a session.
+  //    Since S9 (#277) /operator/register redirects into the unified card's operator+register tab.
   await page.goto('/operator/register');
-  await page.getByTestId('op-register-username').fill(NEW_OP.username);
-  await page.getByTestId('op-register-email').fill(NEW_OP.contactEmail);
-  await page.getByTestId('op-register-password').fill(NEW_OP.password);
-  await page.getByTestId('op-register-submit').click();
-  await expect(page.getByTestId('op-register-pending')).toBeVisible();
+  await page.getByLabel('Username', { exact: true }).fill(NEW_OP.username);
+  await page.getByLabel('Contact email', { exact: true }).fill(NEW_OP.contactEmail);
+  await page.getByLabel('Password', { exact: true }).fill(NEW_OP.password);
+  await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
+  await expect(page.getByTestId('auth-pending')).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'operator registration pending');
 
   // 2. A PENDING operator cannot sign in yet — approval is required (generic failure, D-8).

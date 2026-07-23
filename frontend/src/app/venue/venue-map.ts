@@ -18,8 +18,9 @@ import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { formatMoney } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
+import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
-import { defaultBookingDate } from './booking-date';
+import { defaultBookingDate, isIsoDate } from './booking-date';
 import { MoneyView, SetView, VenueMapView } from './venue.model';
 import { VenueService } from './venue.service';
 
@@ -43,6 +44,30 @@ interface MapRow {
   readonly code: string;
   readonly price: MoneyView;
   readonly tiles: readonly MapTile[];
+}
+
+/**
+ * The venue header's ready-to-render view (issue #297): every per-venue display value the header
+ * needs, precomputed once from the {@link VenueMapView} by {@link VenueMap.venueView} rather than
+ * re-derived from the template each change-detection tick. The pure `shared/` helpers stay
+ * signal-free; this record memoizes their outputs off the `venue` signal. `bookingMode` is carried
+ * raw for the booking dialog; `modeLabel` is its display string.
+ */
+interface VenueHeader {
+  readonly name: string;
+  readonly beach: string;
+  readonly region: string;
+  readonly description: string;
+  readonly coverPhoto: VenueMapView['coverPhoto'];
+  readonly bookingMode: VenueMapView['bookingMode'];
+  readonly modeLabel: string;
+  readonly isRated: boolean;
+  readonly rating: string;
+  readonly reviewsCount: number;
+  /** The "from €X / set" price string, or `null` when the venue has no sets. */
+  readonly priceLabel: string | null;
+  readonly water: string | null;
+  readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
 }
 
 /**
@@ -107,10 +132,14 @@ export class VenueMap {
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
 
-  /** The day the map reflects (ISO YYYY-MM-DD); defaults to tomorrow in Europe/Tirane. */
-  protected readonly selectedDate = signal(defaultBookingDate(new Date()));
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display). */
   protected readonly minDate = defaultBookingDate(new Date());
+  /**
+   * The day the map reflects (ISO YYYY-MM-DD). Seeded from the `?date=` query param the discovery
+   * page carries when a venue is opened, so the chosen date persists across the hop (#294) — validated
+   * and clamped to {@link minDate}; an absent or malformed param falls back to it (tomorrow, Tirane).
+   */
+  protected readonly selectedDate = signal(this.readInitialDate());
 
   private readonly venueId: number | undefined;
 
@@ -135,6 +164,33 @@ export class VenueMap {
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
+
+  /**
+   * The header's render+a11y view, precomputed off `venue()` (issue #297): the template reads these
+   * ready-made fields instead of calling parameterized pure methods each CD tick. `undefined` while
+   * the venue is loading/failed, mirroring `venue()` — so it also gates the loaded branch.
+   */
+  protected readonly venueView = computed<VenueHeader | undefined>(() => {
+    const v = this.venue();
+    if (v === undefined) {
+      return undefined;
+    }
+    return {
+      name: v.name,
+      beach: v.beach,
+      region: v.region,
+      description: v.description,
+      coverPhoto: v.coverPhoto,
+      bookingMode: v.bookingMode,
+      modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
+      isRated: isRated(v),
+      rating: ratingScore(v.ratingTenths),
+      reviewsCount: v.reviewsCount,
+      priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
+      water: distanceToWaterLabel(v.distanceToWaterM ?? null),
+      amenities: orderedAmenities(v.amenities ?? []).map((code) => ({ code, label: amenityLabel(code) })),
+    };
+  });
 
   /** Uniform column count so every row's grid aligns with the label/price side columns. */
   protected readonly mapCols = computed(() =>
@@ -176,6 +232,16 @@ export class VenueMap {
     }
     this.venueId = id;
     this.load();
+  }
+
+  /** Seed the map date from a valid, in-range `?date=` query param, else the earliest bookable day. */
+  private readInitialDate(): string {
+    const raw = this.route.snapshot.queryParamMap.get('date');
+    // Honour a valid `?date=` on/after the floor; absent, malformed, or past/today falls back to it (#4).
+    if (raw && isIsoDate(raw) && raw >= this.minDate) {
+      return raw;
+    }
+    return this.minDate;
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
@@ -270,29 +336,6 @@ export class VenueMap {
   /** Currency formatting for the template + accessible labels (shared helper, invariant #5). */
   protected money(amount: MoneyView): string {
     return formatMoney(amount);
-  }
-
-  protected rating(venue: VenueMapView): string {
-    return (venue.ratingTenths / 10).toFixed(1);
-  }
-
-  protected bookingModeLabel(mode: VenueMapView['bookingMode']): string {
-    return mode === 'INSTANT' ? 'Instant Book' : 'Request to Book';
-  }
-
-  /** The venue's full amenity row in canonical catalogue order (T7 #140) — the map shows all. */
-  protected headerAmenities(venue: VenueMapView): Amenity[] {
-    return orderedAmenities(venue.amenities ?? []);
-  }
-
-  /** The display label for an amenity code. */
-  protected amenityText(code: Amenity): string {
-    return amenityLabel(code);
-  }
-
-  /** The "Xm to water" chip label, or null when the venue states no distance. */
-  protected toWater(venue: VenueMapView): string | null {
-    return distanceToWaterLabel(venue.distanceToWaterM ?? null);
   }
 
   protected select(set: SetView, event?: Event): void {

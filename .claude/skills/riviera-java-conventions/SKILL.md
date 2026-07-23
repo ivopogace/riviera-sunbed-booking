@@ -137,6 +137,22 @@ factory for the wire shape — controllers use it when a typed-outcome `switch` 
 Never leak internals into `detail`: no booking code (invariant #7), no exception message. Full
 mechanics, the status map, and the #97 no-`@Valid` decision: `references/error-contract.md`.
 
+### 6c. Comments: one line, or none (authoring side of RV-STYLE-1)
+
+Write the comment you would keep after review, not the one you would have to trim.
+
+- **An inline comment must fit on one line.** If it needs two, the comment is doing work the code
+  should do: name the constant, extract the method, or sharpen the signature — then delete it.
+- **Default to zero inline comments in a method.** Reach for one only when the *why* is genuinely
+  unavailable from the code: a race, an ordering constraint, a spec/invariant reference, a
+  deliberate deviation. "What the next line does" is never worth a line.
+- **Javadoc is the opposite** — it is the repo's documented surface (§every `api/` port depends on
+  it) and is exempt from the one-line rule. Put the long explanation *there*, on the type or method,
+  where it is discoverable; don't scatter it through the body.
+
+The review bank enforces this as **RV-STYLE-1** — but a rule that only fires at review means the
+prose gets written and then deleted. This section exists so the first draft is already right.
+
 ### 7. Money & time (invariants #5, #6 — canonical in CLAUDE.md)
 
 Money is integer **minor units** + ISO currency (invariant #5); time is UTC `Instant`, with booking
@@ -187,6 +203,7 @@ belongs to `riviera-stripe-payments`.
 | "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (e.g. `ONLINE_POOL`); no magic literals. |
 | "`.collect(Collectors.toList())`." | Stale — use `.toList()` (Java 16+); method refs over trivial lambdas. |
 | "`if (x instanceof T) { T t = (T) x; … }`." | Bind in the pattern: `if (x instanceof T t)` — test + extract in one. |
+| "This needs a four-line comment to explain properly." | One line or none (§6c). If it won't fit, change the code — or move the prose to the Javadoc, which is exempt. |
 | "`log.info("user " + email + " booked")` — it's parameterized-ish." | Untrusted text can carry `\r\n` (log forging). Sanitize newlines or use a structured appender. |
 | "Store the amount as a `BigDecimal` euro." | Integer minor units + currency (invariant #5). |
 | "`new Date()` / `LocalDateTime.now()` for the cutoff." | UTC `Instant`; reason in `Europe/Tirane` (invariant #6). |

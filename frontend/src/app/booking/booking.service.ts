@@ -50,6 +50,8 @@ export class BookingService {
   /** The last pending request (202 `PENDING_REQUEST` path), consumed by the requested route. */
   readonly lastRequested = this.requested.asReadonly();
 
+  private readonly prefetched = signal<BookingDetail | undefined>(undefined);
+
   createBooking(request: CreateBookingRequest): Observable<CreateBookingResult> {
     return this.http
       .post<BookingConfirmation | AwaitingPayment | RequestedBooking>(
@@ -102,6 +104,31 @@ export class BookingService {
     this.confirmation.set(undefined);
     this.awaiting.set(undefined);
     this.requested.set(undefined);
+  }
+
+  /**
+   * Prime the booking-view route with a detail the caller already fetched, so a find-a-booking
+   * lookup (issue #168) opens `/booking/{code}` without a second `GET /api/bookings/{code}` —
+   * two GETs per success could 429 near the #56 rate-limit ceiling and drop a valid code on the
+   * generic error. Mirrors {@link beginPayment}: hand off what we have across the navigation.
+   */
+  primeDetail(detail: BookingDetail): void {
+    this.prefetched.set(detail);
+  }
+
+  /**
+   * Consume a primed detail for {@link BookingView}'s initial load — but only when it matches the
+   * route code (never serve one booking's detail for another) and only once (one-shot: a later
+   * deep-link/refresh on the same code re-fetches fresh). A mismatch leaves the primed detail
+   * intact and returns `undefined`, so the view falls back to a fetch.
+   */
+  takePrefetched(code: string): BookingDetail | undefined {
+    const detail = this.prefetched();
+    if (detail?.code === code) {
+      this.prefetched.set(undefined);
+      return detail;
+    }
+    return undefined;
   }
 
   /** Fetch a booking and its server-computed cancellation terms by code (U6, `GET /api/bookings/{code}`). */

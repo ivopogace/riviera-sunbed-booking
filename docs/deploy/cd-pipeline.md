@@ -67,6 +67,37 @@ must include `frontend/`, so:
   - `CORS_ALLOWED_ORIGINS` — **leave unset/empty.** The app is same-origin, so there is no
     cross-origin browser caller. (The env var name is `CORS_ALLOWED_ORIGINS`, **not**
     `APP_WEB_CORS_ALLOWED_ORIGINS`; overriding it is only for a cross-origin setup.)
+  - `RIVIERA_RATELIMIT_TRUSTED_PROXIES` (#129) — **currently SET, and #286 makes it
+    retirable.** It was set on 2026-07-22 as a stopgap: the 8 shipped defaults **plus
+    Cloudflare's 15 IPv4 + 7 IPv6 published ranges** (30 CIDRs), taken from
+    <https://www.cloudflare.com/ips-v4> and <https://www.cloudflare.com/ips-v6> that day.
+    Why it was needed: `*.onrender.com` is fronted by **Cloudflare**, so the chain is client →
+    Cloudflare edge → Render → app, and the hop Render appends is a **public,
+    per-request-varying** edge address. #129's right-most-untrusted-hop walk keyed on that
+    edge — measured at 143 × `403` + 57 × `429` for 200 same-client requests against a cap of
+    10/min, i.e. **~14 buckets for one client**. Trusting Cloudflare's ranges made the walk
+    skip the edge and land on the client (re-measured after: 11 allowed / 189 throttled = one
+    bucket).
+    **KEEP IT SET. Do not unset this variable** — measured 2026-07-22, see below.
+    **Drift risk — the reason it is still called a stopgap:** those 22 CIDRs are a hand-copied
+    snapshot of a third-party list. When Cloudflare adds a range, the defect returns **with no
+    signal**. #286 was meant to remove the dependency by preferring `CF-Connecting-IP` behind a
+    trusted peer (shipped in #287, `c8e111a`), which needs no chain walk. **It did not remove
+    it**, for a reason only the deployed probe could surface: the socket peer this app sees is
+    **itself a Cloudflare edge address, not a private Render hop**, so the trust gate in front
+    of *every* forwarding header — the new one included — still needs Cloudflare's ranges to
+    classify the peer. Unsetting the variable was tried and measured: **166 of 200 requests
+    allowed against a cap of 10/min (~17 buckets)**, versus 11 with it set. It was rolled back
+    within minutes; production is protected. #286 stays open for the durable answer.
+    The earlier note claiming Render's peer is private was an incorrect inference — the peer
+    was trusted because the Cloudflare ranges had just been added, not because it was private.
+    Never set this blank: empty means "trust no proxy", which keys every client on the
+    proxy's own address and throttles everyone together.
+  - `RIVIERA_RATELIMIT_CLIENT_IP_HEADER` (#286) — **leave unset.** The shipped default is
+    `CF-Connecting-IP`, which is correct for this Cloudflare-fronted topology. Override only
+    when moving to a CDN that publishes the originating client under a different name (e.g.
+    `True-Client-IP`); an empty value disables the preferred path and falls back to the #129
+    `X-Forwarded-For` walk.
 - **Health Check Path:** `/actuator/health`.
 - Copy the service's **Deploy Hook** URL → GitHub secret `RENDER_DEPLOY_HOOK_URL`.
 - Note the service URL (`https://<name>.onrender.com`) → GitHub variable `BACKEND_API_URL`.

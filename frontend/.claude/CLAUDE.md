@@ -55,6 +55,17 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   the **`riviera-tailwind`** skill before writing or refactoring any Tailwind — it owns the
   share-via-directive-not-`@apply` rule, the test-hook-class convention, and the no-drift check.
 
+## Comments
+
+- **Inline comments are one line, or they are not written.** If it needs two, the comment is doing
+  work the code should do — name the constant, extract the function, sharpen the type — then delete
+  it. Default to zero inline comments in a function; reach for one only when the *why* is genuinely
+  unavailable from the code (an ordering constraint, an ARIA/spec rule, a deliberate deviation).
+- **TSDoc (`/** … */`) on a component, service, directive or exported type is exempt** — that is the
+  documented surface. Put the long explanation there, not scattered through the body.
+- Enforced at the review gate as **RV-STYLE-1**; this section exists so the first draft already
+  complies instead of being trimmed later.
+
 ## Services
 
 - Design services around a single responsibility

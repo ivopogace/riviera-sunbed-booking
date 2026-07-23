@@ -1,5 +1,7 @@
 import { Service, signal } from '@angular/core';
 
+import { readJson, writeJson } from '../shared/safe-storage';
+
 const STORAGE_KEY = 'riviera.bookings.v1';
 
 /**
@@ -12,8 +14,9 @@ const STORAGE_KEY = 'riviera.bookings.v1';
  * and nothing but the low-sensitivity bearer code is persisted. Codes are treated as secrets —
  * this service never logs them. Newest-first order: a freshly remembered code leads the list.
  *
- * <p>Storage access is guarded exactly like {@link ThemeService}: a blocked (`private mode`,
- * quota) or malformed `localStorage` degrades to session-only memory, never an error.
+ * <p>Storage access goes through the shared {@link readJson}/{@link writeJson} guard (issue #163),
+ * so a blocked (`private mode`, quota) or malformed `localStorage` degrades to session-only memory,
+ * never an error.
  */
 @Service()
 export class DeviceLocalBookings {
@@ -49,22 +52,10 @@ export class DeviceLocalBookings {
 
 /** Read the persisted codes, tolerating a blocked or hand-corrupted store (→ empty, never throw). */
 function load(): readonly string[] {
-  try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === 'string') : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJson(STORAGE_KEY);
+  return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === 'string') : [];
 }
 
 function persist(codes: readonly string[]): void {
-  try {
-    globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(codes));
-  } catch {
-    // Storage unavailable (private mode / quota): the in-memory signal still serves this session.
-  }
+  writeJson(STORAGE_KEY, codes);
 }

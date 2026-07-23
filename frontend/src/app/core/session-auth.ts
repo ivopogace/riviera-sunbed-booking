@@ -63,6 +63,26 @@ export abstract class SessionAuth {
   /** The principal type this service owns; a `/me` principal is adopted only when it matches (F2). */
   protected abstract readonly principalType: string;
 
+  /**
+   * The subclass's one-time startup restore, assigned from its field initializer. Declared here so
+   * {@link whenReady} is available on both principals (S9 #277 — promoted from `CustomerAuth`).
+   */
+  protected abstract readonly restoreOnStartup: Promise<void>;
+
+  /**
+   * Resolves once the initial `GET /api/auth/me` restore has completed — i.e. once {@link signedIn}
+   * is trustworthy. **Anything that branches on the session must await this first**: a route guard
+   * that reads `signedIn()` while the restore is still in flight sees `false` and bounces a
+   * signed-in principal to sign-in on every page reload (S9 R-1).
+   *
+   * Awaiting it also guarantees the CSRF cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN`
+   * on the first API response), so a page that fires a CSRF-protected write on load — the
+   * verify-email landing — doesn't race a cold browser to a 403.
+   */
+  whenReady(): Promise<void> {
+    return this.restoreOnStartup;
+  }
+
   /** Adopt a principal from a successful login response (the caller has verified the type). */
   protected setPrincipal(principal: AuthPrincipal | undefined): void {
     this.principal.set(principal);

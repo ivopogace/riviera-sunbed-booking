@@ -9,10 +9,38 @@ import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
+import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../venue/booking-date';
-import { MoneyView, VenueSummary } from '../../venue/venue.model';
+import { VenueSummary } from '../../venue/venue.model';
 import { VenueService } from '../../venue/venue.service';
+
+/**
+ * A discovery card's ready-to-render view (issue #297): every per-venue display value the
+ * template needs, precomputed once from a {@link VenueSummary} by {@link Home.venuesView} rather
+ * than re-derived per item on each change-detection tick. The pure `shared/` helpers stay
+ * signal-free; this record is where their outputs are memoized off the `venues` signal.
+ */
+interface VenueCard {
+  readonly id: number;
+  readonly name: string;
+  readonly beach: string;
+  readonly region: string;
+  readonly coverPhoto: VenueSummary['coverPhoto'];
+  readonly modeLabel: string;
+  readonly isRated: boolean;
+  readonly rating: string;
+  readonly reviewsCount: number;
+  readonly water: string | null;
+  readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
+  readonly freePercent: number;
+  /** The "from €X / set" price string, or `null` when the venue has no sets ("No sets yet"). */
+  readonly priceLabel: string | null;
+  readonly free: number;
+  readonly total: number;
+  /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
+  readonly ariaLabel: string;
+}
 
 /**
  * Tourist venue discovery — the app's landing page (`/`, issue #61; Liquid Glass restyle #135).
@@ -46,8 +74,14 @@ export class Home {
   /** Current filter selection. Empty string = "all" (no constraint). */
   protected readonly beach = signal('');
   protected readonly region = signal('');
-  /** The day availability is counted for (ISO YYYY-MM-DD); defaults to tomorrow in Europe/Tirane. */
-  protected readonly selectedDate = signal(defaultBookingDate(new Date()));
+  /**
+   * The earliest selectable booking date — tomorrow in Europe/Tirane. Backs the date input's `min`
+   * and clamps a hand-typed date so past/today dates can't be presented as bookable (#155,
+   * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
+   */
+  protected readonly minDate = defaultBookingDate(new Date());
+  /** The day availability is counted for (ISO YYYY-MM-DD); defaults to the earliest bookable date. */
+  protected readonly selectedDate = signal(this.minDate);
 
   /** Distinct beaches/regions for the filter selects, captured once from the unfiltered catalogue. */
   protected readonly beaches = signal<readonly string[]>([]);
@@ -57,6 +91,20 @@ export class Home {
   protected readonly isEmpty = computed(() => {
     const list = this.venues();
     return list !== undefined && list.length === 0;
+  });
+
+  /**
+   * The discovery cards, precomputed off `venues()` + the selected date (issue #297): the template
+   * iterates these ready-made fields instead of calling parameterized pure methods per item per CD
+   * tick. `undefined` while a request is in flight, mirroring `venues()`.
+   */
+  protected readonly venuesView = computed<readonly VenueCard[] | undefined>(() => {
+    const list = this.venues();
+    if (list === undefined) {
+      return undefined;
+    }
+    const dateLabel = this.dateLabel();
+    return list.map((venue) => this.toCard(venue, dateLabel));
   });
 
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
@@ -139,8 +187,14 @@ export class Home {
   }
 
   protected onDateChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    if (!value || value === this.selectedDate()) {
+    const input = event.target as HTMLInputElement;
+    if (!input.value) {
+      return;
+    }
+    // Clamp a hand-typed past/today date up to the earliest day — typing bypasses the picker `min` (#155).
+    const value = input.value < this.minDate ? this.minDate : input.value;
+    input.value = value; // reflect any clamp back into the field, even when the model is unchanged
+    if (value === this.selectedDate()) {
       return;
     }
     this.selectedDate.set(value);
@@ -152,55 +206,56 @@ export class Home {
     this.lastLoad();
   }
 
-  /** Currency formatting for the template + accessible labels (shared helper, invariant #5). */
-  protected money(amount: MoneyView): string {
-    return formatMoney(amount);
-  }
-
-  protected rating(venue: VenueSummary): string {
-    return (venue.ratingTenths / 10).toFixed(1);
-  }
-
-  protected bookingModeLabel(mode: VenueSummary['bookingMode']): string {
-    return mode === 'INSTANT' ? 'Instant Book' : 'Request to Book';
-  }
-
-  /** Availability-bar fill width; a venue with no sets renders 0% (no division by zero). */
-  protected freePercent(venue: VenueSummary): number {
-    const { free, total } = venue.availability;
-    return total === 0 ? 0 : Math.round((free / total) * 100);
-  }
-
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
     return formatBookingDate(this.selectedDate(), { withYear: true });
   }
 
-  /** The ≤3 amenities the card shows, in canonical catalogue order (T7 #140). */
-  protected cardAmenities(venue: VenueSummary): Amenity[] {
-    return orderedAmenities(venue.amenities ?? []).slice(0, 3);
-  }
+  /**
+   * Derive one card's render+a11y view from a summary (issue #297). All logic is the pure `shared/`
+   * helpers, called here — never from the template. `dateLabel` is passed in so it is read once per
+   * `venuesView` evaluation, not re-read per card.
+   */
+  private toCard(venue: VenueSummary, dateLabel: string): VenueCard {
+    const rated = isRated(venue);
+    const rating = ratingScore(venue.ratingTenths);
+    const water = distanceToWaterLabel(venue.distanceToWaterM ?? null);
+    const amenities = orderedAmenities(venue.amenities ?? [])
+      .slice(0, 3)
+      .map((code) => ({ code, label: amenityLabel(code) }));
+    const priceLabel = venue.fromPrice ? formatMoney(venue.fromPrice) : null;
+    const { free, total } = venue.availability;
+    const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
 
-  /** The display label for an amenity code (template + accessible name). */
-  protected amenityText(code: Amenity): string {
-    return amenityLabel(code);
-  }
-
-  /** The "Xm to water" chip label, or null when the venue states no distance. */
-  protected toWater(venue: VenueSummary): string | null {
-    return distanceToWaterLabel(venue.distanceToWaterM ?? null);
-  }
-
-  /** A single accessible name carrying every card fact, so nothing is conveyed by layout alone. */
-  protected cardLabel(venue: VenueSummary): string {
-    const price = venue.fromPrice ? `, from ${this.money(venue.fromPrice)} per set` : '';
-    const water = this.toWater(venue);
+    const price = priceLabel ? `, from ${priceLabel} per set` : '';
     const waterText = water ? `${water}. ` : '';
-    const amenities = this.cardAmenities(venue).map((code) => this.amenityText(code));
-    const amenitiesText = amenities.length ? `Amenities: ${amenities.join(', ')}. ` : '';
-    return `${venue.name}, ${venue.beach} · ${venue.region}, rated ${this.rating(venue)} out of 5${price}, `
-      + `${venue.availability.free} of ${venue.availability.total} sets free on ${this.dateLabel()}. `
+    const amenitiesText = amenities.length
+      ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
+      : '';
+    const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
+    const ariaLabel =
+      `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, `
+      + `${free} of ${total} sets free on ${dateLabel}. `
       + `${waterText}${amenitiesText}`
       + `View beach map.`;
+
+    return {
+      id: venue.id,
+      name: venue.name,
+      beach: venue.beach,
+      region: venue.region,
+      coverPhoto: venue.coverPhoto,
+      modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
+      isRated: rated,
+      rating,
+      reviewsCount: venue.reviewsCount,
+      water,
+      amenities,
+      freePercent,
+      priceLabel,
+      free,
+      total,
+      ariaLabel,
+    };
   }
 }

@@ -1,14 +1,20 @@
 import { expect, Locator, Page } from '@playwright/test';
 
 /**
- * Page Object for the operator sign-in card (issue #109; the POM convention adopted per
- * issue #120 item 1 — auth-flow objects first, other flows migrate opportunistically).
- * Models the venue-admin editor's sign-in surface; shared by the CI-safe mocked suite and
- * the local real-backend suite so selectors and the sign-in gesture live in ONE place as
- * the auth epic (#108) multiplies the specs that need them.
+ * Page Object for signing an operator in (issue #109; POM convention from #120).
+ *
+ * Since S9 (#277) there is no per-page operator sign-in card: `operatorSessionGuard` redirects every
+ * operator surface to the **one** auth page at `/account/sign-in?audience=operator&returnUrl=…`, and
+ * the card labels its credential field "Username" on that tab. The gesture is unchanged, which is
+ * why the 15 specs that use this object needed no edits — the locators are accessible-name based and
+ * the unified card exposes the same names.
+ *
+ * Shared by the CI-safe mocked suite and the local real-backend suite, so the selectors and the
+ * sign-in gesture live in ONE place.
  */
 export class OperatorSignInPage {
-  readonly heading: Locator;
+  /** The unified auth card in its operator tab (replaces the old "Operator sign-in" heading). */
+  readonly card: Locator;
   readonly username: Locator;
   readonly password: Locator;
   readonly submit: Locator;
@@ -18,13 +24,19 @@ export class OperatorSignInPage {
   readonly signOutButton: Locator;
 
   constructor(private readonly page: Page) {
-    this.heading = page.getByRole('heading', { name: 'Operator sign-in' });
+    this.card = page.getByTestId('auth-form');
     this.username = page.getByLabel('Username', { exact: true });
     this.password = page.getByLabel('Password', { exact: true });
     this.submit = page.getByRole('button', { name: /^Sign(ing)? in/ });
     this.error = page.getByRole('alert');
     this.signedInCard = page.getByText(/^Signed in as/);
     this.signOutButton = page.getByRole('button', { name: 'Sign out' });
+  }
+
+  /** Go straight to the auth page with the operator tab preselected (no guard round-trip needed). */
+  async goto(returnUrl?: string): Promise<void> {
+    const target = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : '';
+    await this.page.goto(`/account/sign-in?audience=operator${target}`);
   }
 
   /** Fill the card and submit — the session round-trip is the caller's to await via expectations. */
@@ -34,8 +46,10 @@ export class OperatorSignInPage {
     await this.submit.click();
   }
 
+  /** Signed out ⇔ the guard has landed us on the unified card's operator tab. */
   async expectSignedOut(): Promise<void> {
-    await expect(this.heading).toBeVisible();
+    await expect(this.card).toBeVisible();
+    await expect(this.page.getByTestId('auth-identifier-label')).toHaveText('Username');
   }
 
   async expectSignedInAs(username: string): Promise<void> {

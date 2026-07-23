@@ -95,8 +95,41 @@ We deliberately do **not** enable Spring's `ForwardedHeaderFilter`
 - Nothing currently consumes the forwarded **scheme** (no server-side absolute-URL generation,
   no `requiresSecure()` redirect — TLS is enforced at the edge, not in-app).
 
-If a future need arises (e.g. app-generated absolute HTTPS URLs), enable it together with a
-trusted-proxy review and reconcile it with `ClientIpResolver`.
+**Update (2026-07-22, issue #129): the trusted-proxy reconciliation this section anticipated has
+happened — inside `ClientIpResolver`, not via the framework filter.** The resolver now takes a
+trusted-proxy CIDR list (`riviera.ratelimit.trusted-proxies`, default: loopback + RFC1918 +
+link-local + the IPv6 equivalents, overridable per environment with
+`RIVIERA_RATELIMIT_TRUSTED_PROXIES`). It honors `X-Forwarded-For` only from a peer in that list and
+keys on the right-most *untrusted* hop — Render appends its own observation of the client rather
+than overwriting the header, so that hop is unforgeable. `server.forward-headers-strategy` remains
+deliberately **unset**, for the same two reasons above: the framework filter would still strip the
+header before the rate-limit filter runs, and `WebCorsConfig`'s same-origin null-config trick assumes
+no forwarded-scheme processing. If app-generated absolute HTTPS URLs ever become a need, enabling it
+now means re-pointing the resolver at the rewritten `getRemoteAddr()` — a deliberate change, not a
+silent one.
+
+**Update (2026-07-22, issue #286): the walk is now the _fallback_, not the primary path.** #129's
+premise — that the hop Render appends is the client — does not hold here: `*.onrender.com` is
+Cloudflare-fronted, so the appended hop is a public, per-request-varying **edge node**, and keying on
+it gave one client ~14 buckets while strangers behind one edge shared one. Behind a trusted peer the
+resolver now prefers a configurable edge-supplied client-IP header
+(`riviera.ratelimit.client-ip-header`, shipped default `CF-Connecting-IP`), which Cloudflare
+generates from the connection it terminated rather than appending to a client copy — unforgeable
+behind a trusted peer, and needing no chain walk. The `X-Forwarded-For` walk is preserved unchanged
+for the no-CDN case. The trusted-proxy list's remaining job is to classify the **socket peer** only.
+
+**Corrected 2026-07-22 (#288), same day:** an earlier version of this note claimed the header meant
+"the trust list never has to enumerate the CDN's own rotating ranges." **That is false here.** The
+socket peer this app sees *is* a Cloudflare edge address, not a private Render hop, so the trust
+gate in front of every forwarding header — the client-IP header included — still needs those ranges.
+Measured: narrowing `RIVIERA_RATELIMIT_TRUSTED_PROXIES` to the shipped private defaults allowed
+**166 of 200** requests against a cap of 10/min (~17 buckets) and produced **no** resolver warning at
+all, i.e. resolution stopped at the untrusted-peer branch before ever reading the header; restoring
+the ranges returned it to 11 of 200. **The variable must stay set.** The header removes the *walk*,
+not the *list* — #286 stays open for that half.
+`server.forward-headers-strategy` stays unset for the reasons above — and now for a third: the
+framework filter would also drop the resolver's preferred header path. Verification procedure (no
+unit or slice test can prove this class of change): `docs/runbooks/rate-limit-client-ip.md`.
 
 ## Single instance only (the two lockless sweeps)
 

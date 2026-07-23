@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
@@ -73,7 +74,13 @@ function flushStrip(httpMock: HttpTestingController): void {
     });
 }
 
-describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
+/**
+ * The console shell. Since S9 (#277) it carries NO sign-in gate: `operatorSessionGuard` owns that
+ * and awaits the session restore, so the component only ever mounts for a signed-in operator — which
+ * is what every test here models by answering the startup `/me` with a principal. The signed-out
+ * redirect itself is pinned by `core/operator-session.guard.spec.ts`.
+ */
+describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
   let operator: OperatorAuth;
@@ -83,11 +90,10 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     TestBed.configureTestingModule({ imports: [OperatorConsole], providers: baseProviders() });
     operator = TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
-    // Constructing OperatorAuth fires the session restore (GET /api/auth/me, issue #109); answer 401
-    // so the test starts signed out, then drain microtasks so restoring() settles.
+    // The guard only activates this route for a signed-in operator, so the restore answers a principal.
     httpMock
       .expectOne(`${BASE}/api/auth/me`)
-      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -98,16 +104,7 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  async function signIn(): Promise<void> {
-    const result = operator.signIn('operator', 'pw');
-    httpMock
-      .expectOne(`${BASE}/api/auth/operator/login`)
-      .flush({ username: 'operator', principalType: 'OPERATOR' });
-    await result;
-  }
-
   async function createSignedIn(name = 'Miramar Beach Club', pending = 0): Promise<void> {
-    await signIn();
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable(); // the signedIn effect fires the venue-title + badge-count loads
     flushVenue(httpMock, name);
@@ -116,16 +113,7 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     await fixture.whenStable();
   }
 
-  it('shows the glass sign-in card, not the shell, when signed out', async () => {
-    fixture = TestBed.createComponent(OperatorConsole);
-    await fixture.whenStable();
-    expect(host().querySelector('[data-testid="oc-signin-title"]')).not.toBeNull();
-    expect(host().querySelector('[data-testid="oc-header"]')).toBeNull();
-    // No venue read while signed out — only the (already flushed) /me restore has gone out.
-    httpMock.expectNone(() => true);
-  });
-
-  it('renders the porcelain shell with the venue title + signed-in-as after a successful sign-in', async () => {
+  it('renders the porcelain shell with the venue title + signed-in-as', async () => {
     await createSignedIn('Miramar Beach Club');
     expect(host().querySelector('[data-testid="oc-header"]')).not.toBeNull();
     expect(host().querySelector('[data-testid="oc-venue-title"]')?.textContent).toContain(
@@ -134,52 +122,35 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
     expect(host().querySelector('[data-testid="oc-signed-in-as"]')?.textContent).toContain(
       'operator',
     );
-    expect(host().querySelector('[data-testid="oc-signin-title"]')).toBeNull();
   });
 
-  it('shows generic failure copy on a bad sign-in and stays on the card', async () => {
-    fixture = TestBed.createComponent(OperatorConsole);
-    await fixture.whenStable();
-
-    const user = host().querySelector<HTMLInputElement>('[data-testid="oc-user"]')!;
-    user.value = 'operator';
-    user.dispatchEvent(new Event('input'));
-    const pass = host().querySelector<HTMLInputElement>('[data-testid="oc-pass"]')!;
-    pass.value = 'wrong';
-    pass.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-
-    host().querySelector('form')!.dispatchEvent(new Event('submit'));
-    httpMock
-      .expectOne(`${BASE}/api/auth/operator/login`)
-      .flush({}, { status: 401, statusText: 'Unauthorized' });
-    await fixture.whenStable();
-
-    // Generic copy (design D-8): the card never says whether the username or password was wrong.
-    expect(host().querySelector('[data-testid="oc-signin-error"]')?.textContent).toContain(
-      'Sign-in failed',
-    );
-    expect(host().querySelector('[data-testid="oc-header"]')).toBeNull();
-  });
-
-  it('returns to the sign-in card on sign-out', async () => {
+  it('carries no inline sign-in card — the guard owns the gate (#277)', async () => {
     await createSignedIn();
+    expect(host().querySelector('[data-testid="oc-signin-title"]')).toBeNull();
+    expect(host().querySelector('[data-testid="oc-user"]')).toBeNull();
+    expect(host().querySelector('[data-testid="oc-pass"]')).toBeNull();
+  });
 
-    const signOut = host().querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!;
-    signOut.click();
+  it('leaves for the unified auth page on sign-out, clearing venue + badge state', async () => {
+    // The guard gates on ACTIVATION, so the console must navigate away itself (#277).
+    await createSignedIn('Miramar Beach Club', 2);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    host().querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!.click();
     httpMock
       .expectOne(`${BASE}/api/auth/logout`)
       .flush(null, { status: 204, statusText: 'No Content' });
     await fixture.whenStable();
 
     expect(operator.signedIn()).toBe(false);
-    expect(host().querySelector('[data-testid="oc-signin-title"]')).not.toBeNull();
-    expect(host().querySelector('[data-testid="oc-header"]')).toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/account/sign-in'], {
+      queryParams: { audience: 'operator' },
+    });
+    expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
   });
 
   it('scopes porcelain to its own host and never mutates the global theme (#170, AC-6)', async () => {
-    fixture = TestBed.createComponent(OperatorConsole);
-    await fixture.whenStable();
+    await createSignedIn();
     // The console renders always-porcelain by scoping the token attribute to its own host element…
     expect(host().getAttribute('data-riv-theme')).toBe('porcelain');
     // …and never writes the document-level theme (the tourist choice is preserved).
@@ -231,7 +202,6 @@ describe('OperatorConsole — signed out (sign-in gate, #170)', () => {
   });
 
   it('keeps the shell working when the badge fetch fails — no badge (#170, R-4)', async () => {
-    await signIn();
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable();
     flushVenue(httpMock, 'Miramar Beach Club');
@@ -276,7 +246,6 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
 
     const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('[data-testid="oc-header"]')).not.toBeNull();
-    expect(host.querySelector('[data-testid="oc-signin-title"]')).toBeNull();
   });
 });
 

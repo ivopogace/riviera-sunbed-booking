@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.time.Duration;
+import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -24,6 +25,22 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       {@code application.properties}) so credential guessing is throttled without
  *                       coupling to the booking budget
  * @param maxTrackedKeys soft cap on tracked keys per dimension; full (idle) buckets are pruned when hit
+ * @param trustedProxies CIDR ranges whose peers may set {@code X-Forwarded-For} (issue #129); from any
+ *                       other peer the header is ignored and the socket address is the key. The
+ *                       shipped value lives in {@code application.properties} — deliberately the
+ *                       <em>only</em> place it is written, so the two cannot drift — and covers
+ *                       loopback + the RFC1918/link-local ranges every Render internal hop uses.
+ *                       Absent here it defaults to the <strong>empty</strong> list, i.e. "trust no
+ *                       proxy": a security control must never grant trust nobody configured, so an
+ *                       unset property throttles more, never less. See {@link ClientIpResolver}
+ * @param clientIpHeader name of the header a trusted upstream edge sets to the ORIGINATING client
+ *                       address (issue #286). When it is set and the socket peer is trusted, its
+ *                       single value is the rate-limit key directly — no {@code X-Forwarded-For}
+ *                       walk — so the trust list never has to enumerate the CDN's own rotating,
+ *                       hand-copied ranges. The shipped value lives in {@code application.properties},
+ *                       again the only place it is written. Absent here it defaults to
+ *                       <strong>empty</strong>, i.e. "no edge header — walk only", which is exactly
+ *                       the pre-#286 behaviour
  */
 @ConfigurationProperties("riviera.ratelimit")
 record RateLimitProperties(
@@ -31,7 +48,9 @@ record RateLimitProperties(
 		@DefaultValue Limit perIp,
 		@DefaultValue Limit perCode,
 		@DefaultValue Limit login,
-		@DefaultValue("100000") int maxTrackedKeys) {
+		@DefaultValue("100000") int maxTrackedKeys,
+		@DefaultValue List<String> trustedProxies,
+		@DefaultValue("") String clientIpHeader) {
 
 	record Limit(@DefaultValue("60") int capacity, @DefaultValue("PT1M") Duration refillPeriod) {
 	}

@@ -151,9 +151,10 @@ async function mockVenue(
 }
 
 async function signInAndOpenVenue(page: Page): Promise<void> {
-  await page.getByTestId('oc-user').fill('operator');
-  await page.getByTestId('oc-pass').fill('pw');
-  await page.getByTestId('oc-signin-submit').click();
+  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  await page.getByLabel('Username', { exact: true }).fill('operator');
+  await page.getByLabel('Password', { exact: true }).fill('pw');
+  await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
   await expect(page.getByTestId('oc-header')).toBeVisible();
   await page.getByTestId('oc-tabs').getByRole('link', { name: 'Venue & commodities' }).click();
   await expect(page).toHaveURL(/\/operator\/1\/venue/);

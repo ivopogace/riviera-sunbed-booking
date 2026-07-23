@@ -8,14 +8,14 @@
     <span aria-hidden="true">←</span> All beaches
   </button>
 
-  @if (venue(); as v) {
+  @if (venueView(); as v) {
     <article aria-labelledby="venue-name">
       <header
         class="map-head text-(--riv-ink) px-[22px] py-5 rounded-[26px] shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.25)]"
         appPanelGlass
       >
         <p class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[5px] mb-[13px]">
-          {{ bookingModeLabel(v.bookingMode) }}
+          {{ v.modeLabel }}
         </p>
         <h1
           id="venue-name"
@@ -26,11 +26,20 @@
         <p class="mb-[5px] text-(--riv-ink-soft) text-[15px]">{{ v.beach }} · {{ v.region }}</p>
 
         <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-(--riv-ink-soft)">
-          <span class="text-[#ffd16b]" aria-hidden="true">★</span>
-          <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ rating(v) }} out of 5">{{ rating(v) }}</span>
-          <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> {{ v.reviewsCount }} reviews
-          @if (v.fromPrice; as from) {
-            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from <strong class="font-bold text-(--riv-ink)">{{ money(from) }}</strong> / set
+          @if (v.isRated) {
+            <span class="text-[#ffd16b]" aria-hidden="true">★</span>
+            <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ v.rating }} out of 5">{{ v.rating }}</span>
+            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> {{ v.reviewsCount }} reviews
+          } @else {
+            <span
+              class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[3px]"
+              aria-label="No reviews yet"
+              data-testid="new-chip"
+              >New</span
+            >
+          }
+          @if (v.priceLabel; as price) {
+            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from <strong class="font-bold text-(--riv-ink)">{{ price }}</strong> / set
           }
         </p>
 
@@ -44,11 +53,11 @@
              is real (not aria-hidden) content, so the chip text is read directly; the slot collapses
              (:empty) when the venue states neither. -->
         <div class="flex flex-wrap gap-[7px] mt-[14px] empty:hidden" data-testid="venue-chips">
-          @if (toWater(v); as water) {
+          @if (v.water; as water) {
             <span appAmenityChip water>{{ water }}</span>
           }
-          @for (code of headerAmenities(v); track code) {
-            <span appAmenityChip>{{ amenityText(code) }}</span>
+          @for (amenity of v.amenities; track amenity.code) {
+            <span appAmenityChip>{{ amenity.label }}</span>
           }
         </div>
 

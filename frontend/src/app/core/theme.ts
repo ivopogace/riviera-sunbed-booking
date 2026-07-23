@@ -1,5 +1,7 @@
 import { Service, signal } from '@angular/core';
 
+import { readStorage, writeStorage } from '../shared/safe-storage';
+
 /**
  * The Liquid Glass themes shipped so far (issue #134). Palettes themselves are CSS custom
  * properties under `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the
@@ -50,22 +52,14 @@ export class ThemeService {
   select(id: ThemeId): void {
     this.current.set(id);
     applyToDocument(id);
-    try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, id);
-    } catch {
-      // Storage unavailable (private mode / quota): theme still applies for this session.
-    }
+    writeStorage(STORAGE_KEY, id);
   }
 }
 
 function initialTheme(): ThemeId {
-  try {
-    const stored = globalThis.localStorage?.getItem(STORAGE_KEY) ?? null;
-    if (isThemeId(stored)) {
-      return stored;
-    }
-  } catch {
-    // fall through to the OS preference
+  const stored = readStorage(STORAGE_KEY);
+  if (isThemeId(stored)) {
+    return stored;
   }
   const prefersLight =
     typeof globalThis.matchMedia === 'function' &&

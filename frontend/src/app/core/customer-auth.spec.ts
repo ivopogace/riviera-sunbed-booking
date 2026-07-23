@@ -119,6 +119,32 @@ describe('CustomerAuth', () => {
     expect(auth.signedIn()).toBe(false);
   });
 
+  it('registers a fresh DIFFERENT account while already signed in (session switches principal → registered)', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' }); // signed in as ana@example.com
+    const result = auth.register('new@example.com', 'password123');
+    http
+      .expectOne(`${AUTH_API}/customer/register`)
+      .flush({ username: 'new@example.com', principalType: 'CUSTOMER' }, { status: 201, statusText: 'Created' });
+    await tick(); // let register's await resolve so loadPrincipal issues the follow-up /me
+    http
+      .expectOne(`${AUTH_API}/me`)
+      .flush({ username: 'new@example.com', principalType: 'CUSTOMER' });
+    expect(await result).toBe('registered');
+    expect(auth.email()).toBe('new@example.com');
+  });
+
+  it('reports exists for a taken email while signed in (session unchanged → same principal)', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' }); // signed in as ana@example.com
+    const result = auth.register('taken@example.com', 'password123');
+    http
+      .expectOne(`${AUTH_API}/customer/register`)
+      .flush({ username: 'taken@example.com', principalType: 'CUSTOMER' }, { status: 201, statusText: 'Created' });
+    await tick(); // let register's await resolve so loadPrincipal issues the follow-up /me
+    http.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
+    expect(await result).toBe('exists');
+    expect(auth.email()).toBe('ana@example.com');
+  });
+
   it('maps a 400 register to invalid-password with no /me follow-up', async () => {
     const auth = await create('signed-out');
     const result = auth.register('new@example.com', 'short');
