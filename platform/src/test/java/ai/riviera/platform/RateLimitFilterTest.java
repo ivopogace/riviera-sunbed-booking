@@ -10,6 +10,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -46,6 +48,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"riviera.ratelimit.per-code.refill-period=PT1H",
 		"riviera.ratelimit.login.capacity=2",
 		"riviera.ratelimit.login.refill-period=PT1H",
+		"riviera.ratelimit.username.capacity=2",
+		"riviera.ratelimit.username.refill-period=PT1H",
 		"riviera.ratelimit.max-tracked-keys=100000",
 })
 class RateLimitFilterTest {
@@ -125,13 +129,36 @@ class RateLimitFilterTest {
 
 	// ---- The session login is per-IP limited on its own budget (issue #109, D-8) ----
 
-	private ResultActions loginFromIp(String ip) throws Exception {
+	// A unique identity per call, so a test exercising ONLY the per-IP login dimension never
+	// accumulates on the per-username bucket (issue #292) — the username analogue of uniqueClientIp().
+	private static final AtomicInteger IDENTITY_SEQ = new AtomicInteger();
+
+	private static String uniqueUsername() {
+		return "user-" + IDENTITY_SEQ.incrementAndGet();
+	}
+
+	private static String uniqueEmail() {
+		return "user-" + IDENTITY_SEQ.incrementAndGet() + "@example.com";
+	}
+
+	/** An operator login for an EXPLICIT username (fixed, so the per-username bucket can be exercised). */
+	private ResultActions operatorLogin(String ip, String username) throws Exception {
 		// csrf() satisfies the CSRF gate (the limiter runs BEFORE CsrfFilter); the stubbed empty
 		// credential store means an allowed attempt lands as the generic 401 — a 429 is the limiter.
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"username": "ghost", "password": "nope"}"""));
+				.content("{\"username\": \"%s\", \"password\": \"nope\"}".formatted(username)));
+	}
+
+	/** A customer login for an EXPLICIT email (fixed, so the per-email bucket can be exercised). */
+	private ResultActions customerLogin(String ip, String email) throws Exception {
+		return mvc.perform(post("/api/auth/customer/login").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\": \"%s\", \"password\": \"nope-nope\"}".formatted(email)));
+	}
+
+	private ResultActions loginFromIp(String ip) throws Exception {
+		return operatorLogin(ip, uniqueUsername());
 	}
 
 	@Test
@@ -163,11 +190,7 @@ class RateLimitFilterTest {
 	// ---- Customer login + registration ride the same login budget (S2 #111, D-8) ----
 
 	private ResultActions customerLoginFromIp(String ip) throws Exception {
-		// Empty stub credential store → an allowed attempt is the generic 401; a 429 is the limiter.
-		return mvc.perform(post("/api/auth/customer/login").with(fromIp(ip)).with(csrf())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"email": "ghost@example.com", "password": "nope-nope"}"""));
+		return customerLogin(ip, uniqueEmail());
 	}
 
 	private ResultActions registerFromIp(String ip) throws Exception {
@@ -211,6 +234,108 @@ class RateLimitFilterTest {
 		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
+	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----
+
+	@Test
+	void perUsernameOverLimitIs429AcrossIps() throws Exception {
+		// AC-1: the SAME username from THREE DIFFERENT client IPs. Each per-IP login bucket (cap 2) is
+		// hit once, so it cannot trip — a 429 is unambiguously the per-username budget (cap 2). Only
+		// failed logins (401, empty stub store) consume it, so the 3rd attempt finds it empty.
+		operatorLogin("10.20.0.1", "victim").andExpect(status().isUnauthorized());
+		operatorLogin("10.20.0.2", "victim").andExpect(status().isUnauthorized());
+		operatorLogin("10.20.0.3", "victim")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+				// AC-6: the body is the fixed neutral ProblemDetail — it carries no identity field.
+				.andExpect(jsonPath("$.detail").value("Too many requests. Retry later."));
+	}
+
+	@Test
+	void perUsernameBucketsAreKeyedByIdentity() throws Exception {
+		// AC-2: exhaust one username's budget across IPs…
+		operatorLogin("10.21.0.1", "alice").andExpect(status().isUnauthorized());
+		operatorLogin("10.21.0.2", "alice").andExpect(status().isUnauthorized());
+		operatorLogin("10.21.0.3", "alice").andExpect(status().isTooManyRequests());
+
+		// …a DIFFERENT username from fresh IPs is unaffected — separate bucket.
+		operatorLogin("10.21.0.4", "bob").andExpect(status().isUnauthorized());
+		operatorLogin("10.21.0.5", "bob").andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void customerLoginPerEmailBucketIsCaseAndWhitespaceInsensitive() throws Exception {
+		// AC-3: three case/whitespace variants of ONE email from three IPs share ONE normalised bucket
+		// (cap 2), so the 3rd trips — proving the key is the trim+lowercase email, not the raw string.
+		customerLogin("10.22.0.1", "Victim@Example.com").andExpect(status().isUnauthorized());
+		customerLogin("10.22.0.2", " victim@example.com ").andExpect(status().isUnauthorized());
+		customerLogin("10.22.0.3", "VICTIM@EXAMPLE.COM")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void identityIsNeverLogged() throws Exception {
+		// AC-5: capture everything the filter logs at DEBUG while a per-username 429 fires, and assert the
+		// submitted username (PII + a credential half) never appears — only the sanitised IP + dimension do.
+		Logger filterLogger = (Logger) LoggerFactory.getLogger(RateLimitFilter.class);
+		Level original = filterLogger.getLevel();
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		filterLogger.setLevel(Level.DEBUG);
+		filterLogger.addAppender(appender);
+		try {
+			String username = "SecretUser42";
+			operatorLogin("10.23.0.1", username).andExpect(status().isUnauthorized());
+			operatorLogin("10.23.0.2", username).andExpect(status().isUnauthorized());
+			operatorLogin("10.23.0.3", username).andExpect(status().isTooManyRequests());
+
+			boolean leaked = appender.list.stream()
+					.map(ILoggingEvent::getFormattedMessage)
+					.anyMatch(message -> message.contains(username));
+			assertFalse(leaked, "the submitted identity must never appear in logs (AC-5)");
+		}
+		finally {
+			filterLogger.detachAppender(appender);
+			filterLogger.setLevel(original);
+		}
+	}
+
+	@Test
+	void malformedLoginBodyIsNotPerUsernameThrottledAndStillReachesTheController() throws Exception {
+		// A malformed body: the filter cannot extract an identity, so it applies NO per-username bucket,
+		// and the wrapped body still reaches the controller (which 400s the unreadable JSON). Repeating
+		// from distinct IPs never yields a per-username 429 — there is no identity to key on.
+		for (int i = 1; i <= 3; i++) {
+			mvc.perform(post("/api/auth/operator/login").with(fromIp("10.24.0." + i)).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON).content("not-json"))
+					.andExpect(status().isBadRequest());
+		}
+	}
+
+	@Test
+	void loginBodyWithoutAnIdentityFieldIsNotPerUsernameThrottled() throws Exception {
+		// Valid JSON but no username field: no identity to key on → no per-username bucket. The controller
+		// rejects the missing credential (400); three from distinct IPs never 429 on the username dimension.
+		for (int i = 1; i <= 3; i++) {
+			mvc.perform(post("/api/auth/operator/login").with(fromIp("10.25.0." + i)).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON).content("{\"password\": \"nope\"}"))
+					.andExpect(status().isBadRequest());
+		}
+	}
+
+	@Test
+	void oversizedLoginBodySkipsIdentityBufferingButStillAuthenticates() throws Exception {
+		// A login body beyond the 8 KiB buffer cap is not read for an identity (per-IP still applies); the
+		// original, unwrapped stream reaches the controller, which authenticates it (401, empty stub store).
+		String hugePassword = "x".repeat(9000);
+		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.26.0.1")).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"username\": \"whoever\", \"password\": \"%s\"}".formatted(hugePassword)))
+				.andExpect(status().isUnauthorized());
+	}
+
 	@Test
 	void usesForwardedForClientIp() throws Exception {
 		// The XFF client is constant while the socket address varies → the limiter must key on XFF.
@@ -233,11 +358,11 @@ class RateLimitFilterTest {
 	// ---- Trusted-proxy client-IP resolution closes the XFF-rotation bypass (#129) ----
 
 	private ResultActions loginFromProxiedClient(String peer, String forwardedFor) throws Exception {
+		// Unique username per call so this per-IP-dimension test never trips the per-username bucket (#292).
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp(peer)).with(csrf())
 				.header("X-Forwarded-For", forwardedFor)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"username": "ghost", "password": "nope"}"""));
+				.content("{\"username\": \"%s\", \"password\": \"nope\"}".formatted(uniqueUsername())));
 	}
 
 	/**
@@ -256,12 +381,12 @@ class RateLimitFilterTest {
 	// ---- One client, many edge nodes: still ONE bucket (#286) ----
 
 	private ResultActions loginViaEdge(String client, String edge) throws Exception {
+		// Unique username per call so this per-IP-dimension test never trips the per-username bucket (#292).
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp("10.14.0.1")).with(csrf())
 				.header("X-Forwarded-For", client + ", " + edge)
 				.header("CF-Connecting-IP", client)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"username": "ghost", "password": "nope"}"""));
+				.content("{\"username\": \"%s\", \"password\": \"nope\"}".formatted(uniqueUsername())));
 	}
 
 	/**

@@ -47,6 +47,16 @@ final class TokenBucket {
 		return false;
 	}
 
+	/**
+	 * True when a token is available now (refilling first) WITHOUT spending it. Used by the per-identity
+	 * login dimension (issue #292), which gates on availability before the request runs and spends only
+	 * afterwards, and only on a failed authentication — so a successful login never consumes.
+	 */
+	synchronized boolean hasToken(Instant now) {
+		refill(now);
+		return tokens >= 1.0;
+	}
+
 	/** Whole seconds until the next token is available; {@code 0} when one is available now. */
 	synchronized long retryAfterSeconds(Instant now) {
 		refill(now);

@@ -135,16 +135,18 @@ N/A — no API shape change. Same login request/response DTOs; same `429` `Probl
 
 ## Execution status
 
-**Stage pointer:** plan committed → implement (phase 0)
+**Stage pointer:** implement complete → CI gate (push), then PR + review + sonar gates
 
-**Next action:** phase 0 — add the `riviera.ratelimit.username.*` property + binding test (AC-7), TDD.
+**Next action:** push branch; confirm the push's CI run is green (R-1 full-suite verification), then open PR and run the review + sonar gates.
+
+**Local verification (scoped, this session):** `RateLimitFilterTest` (19 tests incl. AC-1/2/3/5 + 3 defensive branches), `RateLimitPropertiesBindingTest` (AC-7, 6 tests), `RateLimitDisabledTest`, `PerOperatorLoginIT` (8) + `AuthSessionIT` (5) — real successful logins through the wrapper (AC-4), 0 skipped — and the structural net + `OperatorAuthPlacementTests`/`CustomerAuthPlacementTests` all green. Full suite (R-1) is CI's.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `username` limit property + binding test (AC-7) | | |
-| 1 — `TokenBucket.hasToken` peek | | |
-| 2 — filter: cached-body wrapper + per-identity failure-only dimension (AC-1/2/3/5/6) | | |
-| 3 — isolate existing `RateLimitFilterTest` per-IP tests on unique identities (AC-4/R-1) | | |
+| 0 — `username` limit property + binding test (AC-7) | ✅ | (this commit) |
+| 1 — `TokenBucket.hasToken` peek | ✅ | (this commit) |
+| 2 — filter: cached-body wrapper + per-identity failure-only dimension (AC-1/2/3/5/6) | ✅ | (this commit) |
+| 3 — isolate existing `RateLimitFilterTest` per-IP tests on unique identities (AC-4/R-1) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
