@@ -298,8 +298,7 @@ class SecurityConfig {
 						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
 						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
 						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
-						// Self-service erasure (#101 [D5]) — a CUSTOMER-only POST under /api/me. Explicit
-						// because the GET rule above is method-scoped (see ME_ERASURE_PATH). CSRF-protected.
+						// Self-service erasure (#101): CUSTOMER-only POST; the GET /api/me/** rule is method-scoped.
 						.requestMatchers(HttpMethod.POST, ME_ERASURE_PATH).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server

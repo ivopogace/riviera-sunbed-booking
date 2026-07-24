@@ -243,11 +243,20 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `PR` — Phases 0–4 done (backend end-to-end + FE self-service + docs). Ready to open the
-PR; then the mandatory Review gate → Sonar gate → merge close-out.
+**Stage pointer:** `sonar gate` — PR #316 open; Review gate run (HIGH effort, adversarial) — clean bar one
+Minor RV-STYLE-1, now fixed. Awaiting CI + SonarCloud on the PR.
 
-**Next action:** Merge latest `origin/main` into the branch, push, open the PR into `main`; then run the
-Review gate (`riviera-review-overlay` + `/code-review`) and the Sonar gate before merge.
+**Next action:** Confirm PR #316 CI green; pull the SonarCloud PR issue + duplication list (project
+`ivopogace_riviera-sunbed-booking`, PR 316) and clear every entry; then merge close-out. Merge is
+maintainer-gated (main is push-protected).
+
+**Review gate note (2026-07-24):** HIGH-effort adversarial review over `origin/main...HEAD` with
+`riviera-review-overlay` (RV-BE/FE/CT + RV-BE-9 auth, RV-BE-11 ownership, RV-PROC-1, RV-STYLE-1).
+Verified clean: authorization (matcher + `CurrentCustomer.require`), scrub SQL (unique tombstone,
+`erased_at IS NULL` idempotency, email-read-before-tombstone), invariant #9 (ledger/payment untouched),
+no PII in logs/error bodies, Modulith boundaries (api-vs-spi, internal store), session-revoke ordering,
+FE two-step confirm + sign-out-only-on-success, non-vacuous tests. One Minor (F-1). One out-of-scope
+pre-existing gap → **deferred to #317**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -263,7 +272,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | (none yet) | — |
+| F-1 | review (RV-STYLE-1) | Two-line inline comment on the `ME_ERASURE_PATH` matcher in `SecurityConfig` | fixed-in-`<this commit>` |
+| F-2 | review (out-of-scope) | Pre-existing: `POST /api/me/password`+`verify-email/request` lack an explicit CUSTOMER filter matcher (safe via `CurrentCustomer.require`) | deferred → issue #317 |
 
 ---
 
