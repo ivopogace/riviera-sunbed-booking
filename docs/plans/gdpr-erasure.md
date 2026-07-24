@@ -243,12 +243,11 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement (Phase 4 — docs)` — Phases 0–3 done (backend end-to-end + FE self-service;
-FE: lint clean, 846 unit green incl. 4 new erase specs, 2 mocked e2e green).
+**Stage pointer:** `PR` — Phases 0–4 done (backend end-to-end + FE self-service + docs). Ready to open the
+PR; then the mandatory Review gate → Sonar gate → merge close-out.
 
-**Next action:** Phase 4 — ADR-0010 (pseudonymize-in-place) + `docs/runbooks/data-erasure.md` +
-CONTEXT.md glossary + RESPONSIBILITIES/CLAUDE.md notes; then `riviera-docs-freshness` over the branch +
-`graphify update .`. Then PR → review gate → Sonar gate → merge.
+**Next action:** Merge latest `origin/main` into the branch, push, open the PR into `main`; then run the
+Review gate (`riviera-review-overlay` + `/code-review`) and the Sonar gate before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -256,7 +255,7 @@ CONTEXT.md glossary + RESPONSIBILITIES/CLAUDE.md notes; then `riviera-docs-fresh
 | 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ✅ | 75222b5 |
 | 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | ✅ | c0deca1 |
 | 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/Playwright | ✅ | this commit |
-| 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | ⏳ | |
+| 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

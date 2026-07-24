@@ -165,7 +165,10 @@ refund reverses it.
 **account** (email + opaque credential hash) that backs register / sign-in. The account is a
 **separate identity** from the guest-contact row (no foreign key), so registration never
 auto-claims a guest email's past bookings; back-linking guest bookings is a **permanent
-non-goal** (design D-6, amended at S8).
+non-goal** (design D-6, amended at S8). Also own **right-to-erasure** (#101): scrub-in-place
+(tombstone) of the account + guest-contact PII and delete the transient SSO/token children,
+retaining the booking/payment/payout records under the **statutory-retention exception**
+(ADR-0010) — the edge authenticates the request and revokes sessions (RV-BE-11).
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
