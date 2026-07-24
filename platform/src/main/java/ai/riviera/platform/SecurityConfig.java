@@ -128,6 +128,14 @@ class SecurityConfig {
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	/**
+	 * Self-service right-to-erasure (#101 [D5]) — a CUSTOMER-only POST under {@code /api/me/**}. Needs its
+	 * OWN explicit matcher: the {@code GET /api/me/**} rule below is method-scoped, so without this a
+	 * {@code POST} would fall through to {@code anyRequest().authenticated()} and an operator session could
+	 * reach it (defence-in-depth with {@code CurrentCustomer.require}). CSRF-protected like the other
+	 * {@code /api/me} POSTs (the SPA holds the bootstrapped XSRF-TOKEN).
+	 */
+	private static final String ME_ERASURE_PATH = "/api/me/erasure";
+	/**
 	 * Public customer account-recovery POSTs (S8 #113, design D-6/D-8): request a reset link, redeem a
 	 * reset token, redeem a verification token. Anonymous by definition — the emailed token is the bearer
 	 * credential (invariant #7); behind the {@code RateLimitFilter} recovery budget. CSRF-protected like the
@@ -283,6 +291,9 @@ class SecurityConfig {
 						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
 						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
 						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
+						// Self-service erasure (#101 [D5]) — a CUSTOMER-only POST under /api/me. Explicit
+						// because the GET rule above is method-scoped (see ME_ERASURE_PATH). CSRF-protected.
+						.requestMatchers(HttpMethod.POST, ME_ERASURE_PATH).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
 				// session and clears the context; 204 (no redirect — this is an SPA's API). The

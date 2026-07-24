@@ -35,12 +35,14 @@ import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
+import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -198,6 +200,27 @@ class WebSliceStubs {
 	@Bean
 	CustomerAccountProvisioning customerAccountProvisioning() {
 		return (_, _) -> new RegistrationOutcome.AlreadyRegistered();
+	}
+
+	/**
+	 * #101 [D5] right-to-erasure port that {@code MyErasureController} + {@code AdminErasureController}
+	 * register with. Inert (nothing to erase): the shared web slices never drive a real erasure, so a
+	 * {@code NOT_FOUND} is enough for the context to load. {@code MeErasureControllerTest} /
+	 * {@code AdminErasureControllerTest} replace this bean to drive the flow.
+	 */
+	@Bean
+	AccountErasure accountErasure() {
+		return new AccountErasure() {
+			@Override
+			public EraseOutcome eraseAccount(CustomerAccountId accountId) {
+				return EraseOutcome.NOT_FOUND;
+			}
+
+			@Override
+			public EraseOutcome eraseByEmail(String email) {
+				return EraseOutcome.NOT_FOUND;
+			}
+		};
 	}
 
 	@Bean

@@ -82,8 +82,10 @@ remote stand-in).
   admin calls `POST /api/admin/erasure {email}`, then the guest row is tombstoned and bookings retained.
   *Pinned by:* `AdminErasureControllerTest.adminErasesGuestByEmail` + `AccountErasureServiceTest`.
 - [ ] **AC-5 (authorization):** Given a non-CUSTOMER (operator) session, when it calls `POST /api/me/erasure`,
-  then `403`; and given a non-ADMIN principal (operator or customer), when it calls `POST /api/admin/erasure`,
-  then `403`. *Pinned by:* `ErasureAuthorizationIT` (Spring Security matchers, mirrors `CrossVenueDenialIT` style).
+  then `403` (anonymous → `401`); and given a non-ADMIN principal (operator or customer), when it calls
+  `POST /api/admin/erasure`, then `403`. *Pinned by:* `MeErasureControllerTest` + `AdminErasureControllerTest`
+  (`@WebMvcTest` slices through the real `SecurityConfig` filter chain, Docker-free — the `MyVenuesControllerTest`
+  pattern; replaces the planned `@SpringBootTest ErasureAuthorizationIT`, which would need Docker for no extra proof).
 - [ ] **AC-6 (idempotent):** Given an already-erased subject (`erased_at` set), when erasure is requested
   again, then it returns `ALREADY_ERASED`, performs no second scrub, and leaves `erased_at` unchanged.
   *Pinned by:* `AccountErasureServiceTest.erasureIsIdempotent`.
@@ -238,17 +240,17 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement (Phase 1)` — Phase 0 done (unit 7 + IT 5 green against real Postgres, structural
-net green).
+**Stage pointer:** `implement (Phase 2)` — Phase 1 done (`MeErasureControllerTest` 3 green + shared web slices
+still load with the new controller + `WebSliceStubs` `AccountErasure` bean).
 
-**Next action:** Phase 1 — `MeErasureControllerTest` (failing), then `MyErasureController` + the
-`POST /api/me/erasure` CUSTOMER matcher (closes R-1) + `CustomerSessionRevoker.revokeAll`.
+**Next action:** Phase 2 — `AdminErasureControllerTest` (failing), then `AdminErasureController`
+(`POST /api/admin/erasure`, ADMIN) + the ADMIN `SecurityConfig` matcher + blank-email `400` RFC-7807.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V30 migration + `customer` scrub service + `AccountErasure` port | ✅ | scrub service + V30 |
-| 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ⏳ | |
-| 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | | |
+| 0 — V30 migration + `customer` scrub service + `AccountErasure` port | ✅ | 648297b |
+| 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ✅ | this commit |
+| 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | ⏳ | |
 | 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/a11y/Playwright | | |
 | 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | | |
 
@@ -280,8 +282,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   matcher for `POST /api/admin/erasure`.
 
 **Backend tests (`platform/src/test/java/ai/riviera/platform/`)**
-- `customer/AccountErasureServiceTest.java`, `customer/AccountErasureIT.java` (Testcontainers),
-  `MeErasureControllerTest.java`, `AdminErasureControllerTest.java`, `ErasureAuthorizationIT.java`.
+- `customer/application/AccountErasureServiceTest.java` (unit), `customer/AccountErasureIT.java` (Testcontainers),
+  `MeErasureControllerTest.java` + `AdminErasureControllerTest.java` (`@WebMvcTest` slices — authorization +
+  happy path through the real filter chain, Docker-free). `WebSliceStubs.java` gains an inert `AccountErasure`
+  bean (shared-slice contexts load every controller).
 
 **Frontend (`frontend/src/app/`)**
 - `auth/set-password.ts` (+ `set-password.spec.ts`, `set-password.a11y.spec.ts`) — **modify**.
