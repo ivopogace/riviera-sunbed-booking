@@ -116,6 +116,18 @@ covered by AC-3.
 - **Assumption:** Spring Boot 4's native `logging.structured.format.console=ecs` emits JSON including
   MDC fields with no `logstash-logback-encoder` dependency. — *Owner:* Ivo · *Resolves by:* phase 1.
 
+### Resolved
+
+- **Boot 4 named-registry export gate (phase 0):** adding `micrometer-registry-prometheus` + exposing
+  `prometheus` is **not** enough on Boot 4.1 — a named registry's export is skipped unless enabled
+  (`PrometheusMetricsExportAutoConfiguration` fails `@ConditionalOnEnabledMetricsExport`, since
+  `management.defaults.metrics.export.enabled` resolves false; only `simple` is on by default). Fixed
+  by `management.prometheus.metrics.export.enabled=true`. — resolved in phase 0.
+- **SecurityConfig needs no change (phase 0):** the `@Order(1)` chain's `securityMatcher` already
+  covers `/actuator/**` and terminates in `anyRequest().authenticated()`, so an exposed
+  `/actuator/prometheus` is 401-anon / 200-operator automatically. No new matcher added (avoids a
+  redundant rule); pinned by the extended `ActuatorHardeningIT`. — resolved in phase 0.
+
 ## Availability & concurrency (invariant #2)
 
 N/A — does not affect availability. This slice adds no write path to `availability(set_id,
@@ -181,14 +193,15 @@ SPA); the `X-Correlation-Id` response header is additive and not part of any typ
 > Session-recovery anchor. Re-read this + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `plan — drafted, pending commit` → next: implement (phase 0).
+**Stage pointer:** `implement — phase 1` (phase 0 merged to branch, GREEN).
 
-**Next action:** Commit this plan doc on `feature/observability`; load `riviera-local-debug`; then
-start phase 0 (Prometheus endpoint + lockdown-preserving `ActuatorHardeningIT` extension), TDD.
+**Next action:** Phase 1 — write `CorrelationIdFilterTest` (RED), implement the edge
+`CorrelationIdFilter` (MDC + `X-Correlation-Id` + CRLF-injection guard), then `StructuredLoggingIT`
+for Boot 4 native JSON console format.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Prometheus endpoint + dependency, lockdown preserved | | |
+| 0 — Prometheus endpoint + dependency, lockdown preserved | ✅ | prometheus dep + export-enable + `ActuatorHardeningIT` (6 green) |
 | 1 — Correlation-id filter + structured JSON logging | | |
 | 2 — Money-path metrics (outbox gauge · failed-refund · webhook 5xx) | | |
 | 3 — In-app scheduled self-check → ERROR alert + runbook | | |
