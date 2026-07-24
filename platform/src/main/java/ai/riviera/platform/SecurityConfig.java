@@ -115,6 +115,11 @@ class SecurityConfig {
 	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
 	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
 	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
+	/**
+	 * Platform-admin data-subject erasure (#101 [D5]) — role-gated to {@code ADMIN}, NOT venue-scoped
+	 * (the same {@code /api/admin/**} exemption from invariant #13 as the operator-approval surface).
+	 */
+	private static final String ADMIN_ERASURE_PATH = "/api/admin/erasure";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -127,6 +132,14 @@ class SecurityConfig {
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	/**
+	 * Self-service right-to-erasure (#101 [D5]) — a CUSTOMER-only POST under {@code /api/me/**}. Needs its
+	 * OWN explicit matcher: the {@code GET /api/me/**} rule below is method-scoped, so without this a
+	 * {@code POST} would fall through to {@code anyRequest().authenticated()} and an operator session could
+	 * reach it (defence-in-depth with {@code CurrentCustomer.require}). CSRF-protected like the other
+	 * {@code /api/me} POSTs (the SPA holds the bootstrapped XSRF-TOKEN).
+	 */
+	private static final String ME_ERASURE_PATH = "/api/me/erasure";
 	/**
 	 * Public customer account-recovery POSTs (S8 #113, design D-6/D-8): request a reset link, redeem a
 	 * reset token, redeem a verification token. Anonymous by definition — the emailed token is the bearer
@@ -250,6 +263,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
 								ADMIN_OPERATOR_REJECT_PATH).hasRole(ADMIN_ROLE)
+						// Platform-admin data-subject erasure (#101 [D5]) — ADMIN only, not venue-scoped.
+						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
@@ -283,6 +298,8 @@ class SecurityConfig {
 						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
 						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
 						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
+						// Self-service erasure (#101): CUSTOMER-only POST; the GET /api/me/** rule is method-scoped.
+						.requestMatchers(HttpMethod.POST, ME_ERASURE_PATH).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
 				// session and clears the context; 204 (no redirect — this is an SPA's API). The

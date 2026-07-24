@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
-import { CustomerAuth, SetPasswordResult } from '../core/customer-auth';
+import { CustomerAuth, EraseAccountResult, SetPasswordResult } from '../core/customer-auth';
 import { SetPassword } from './set-password';
 
 interface Overrides {
@@ -12,11 +12,13 @@ interface Overrides {
   readonly emailVerified?: boolean | undefined;
   readonly setPassword?: SetPasswordResult;
   readonly requestVerification?: 'sent' | 'error';
+  readonly eraseAccount?: EraseAccountResult;
 }
 
 function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
   setPassword: ReturnType<typeof vi.fn>;
   requestVerification: ReturnType<typeof vi.fn>;
+  eraseAccount: ReturnType<typeof vi.fn>;
 } {
   return {
     restoring: signal(o.restoring ?? false),
@@ -25,10 +27,19 @@ function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
     emailVerified: signal<boolean | undefined>(o.emailVerified),
     setPassword: vi.fn(async () => o.setPassword ?? 'set'),
     requestVerification: vi.fn(async () => o.requestVerification ?? 'sent'),
+    eraseAccount: vi.fn(async () => o.eraseAccount ?? 'erased'),
   } as unknown as Partial<CustomerAuth> & {
     setPassword: ReturnType<typeof vi.fn>;
     requestVerification: ReturnType<typeof vi.fn>;
+    eraseAccount: ReturnType<typeof vi.fn>;
   };
+}
+
+function click(fixture: ComponentFixture<SetPassword>, testid: string): void {
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLButtonElement>(`[data-testid="${testid}"]`)!
+    .click();
+  fixture.detectChanges();
 }
 
 async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<SetPassword>> {
@@ -133,5 +144,48 @@ describe('SetPassword', () => {
 
     expect(text(fixture, 'setpw-verified')).toContain('verified');
     expect(text(fixture, 'setpw-unverified')).toBe('');
+  });
+
+  it('requires an explicit confirm before erasing, then erases and shows the done screen', async () => {
+    const auth = authStub({ eraseAccount: 'erased' });
+    const fixture = await render(auth);
+
+    // The trigger only reveals the confirm — it does not erase on its own.
+    click(fixture, 'erase-account');
+    expect(auth.eraseAccount).not.toHaveBeenCalled();
+    expect(text(fixture, 'erase-warning')).toContain('cannot be undone');
+
+    click(fixture, 'erase-confirm');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(auth.eraseAccount).toHaveBeenCalledOnce();
+    expect(text(fixture, 'erase-done')).toContain('have been erased');
+    // The account form is gone once erased.
+    expect(fixture.nativeElement.querySelector('[data-testid="setpw-email"]')).toBeNull();
+  });
+
+  it('can cancel the erase confirmation without erasing', async () => {
+    const auth = authStub();
+    const fixture = await render(auth);
+
+    click(fixture, 'erase-account');
+    click(fixture, 'erase-cancel');
+
+    expect(auth.eraseAccount).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('[data-testid="erase-account"]')).not.toBeNull();
+  });
+
+  it('surfaces an error and stays signed in when erasure fails', async () => {
+    const auth = authStub({ eraseAccount: 'error' });
+    const fixture = await render(auth);
+
+    click(fixture, 'erase-account');
+    click(fixture, 'erase-confirm');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'erase-error')).toContain('Something went wrong');
+    expect(fixture.nativeElement.querySelector('[data-testid="erase-done"]')).toBeNull();
   });
 });

@@ -5,7 +5,9 @@
  * {@code UserDetailsService}) + {@link CustomerAccountProvisioning} (registration) + (S4, #112)
  * {@link SsoAccountProvisioning} (resolve-or-create the account behind an external SSO identity), and
  * (S8, #113) {@link CustomerAccountRecovery} (email-verification + password-recovery token lifecycle +
- * authenticated set-password). The value types these ports speak ({@code GuestContact}, {@code CustomerId},
+ * authenticated set-password), and (#101 [D5]) {@link AccountErasure} (right-to-erasure: scrub-in-place of
+ * account + guest-contact PII, retaining the statutory-retention financial rows). The value types these
+ * ports speak ({@code GuestContact}, {@code CustomerId},
  * {@code CustomerAccountCredential}, {@code RegistrationOutcome}, {@code CustomerAccountId},
  * {@code SsoProvider}, {@code VerifyEmailOutcome}, {@code ResetPasswordOutcome}) live in the sibling
  * {@code vocabulary} named interface (issue #95). Login and all credential-material transformation

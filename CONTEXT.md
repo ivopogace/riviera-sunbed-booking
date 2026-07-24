@@ -100,6 +100,21 @@ model in `docs/architecture/domain-model.md`.
 - **Recovery token** — a single-use, expiring, **hashed** bearer credential mailed to an
   account's email for one of two purposes: **verify-email** or **reset-password**
   (`customer_account_token`, S8 #113). Treated like a secret (invariant #7); consumed on redeem.
+- **Data subject** — the identified person behind the PII (the tourist), the party who exercises
+  the right to **erasure** (GDPR Art 17 / Law 9887). Distinct from the technical `customer` /
+  `customer_account` rows that hold their data.
+- **Erasure** — honouring a data subject's right to be forgotten (#101). Because bookings are
+  retained tax records (the **statutory-retention exception**, GDPR Art 17(3)(b)), erasure does not
+  delete rows — it **pseudonymizes in place** the `customer` + `customer_account` PII and deletes the
+  transient SSO identities + recovery tokens, leaving the booking / payment / payout records intact.
+  Self-service (a signed-in customer's own account) or admin-actioned by email (ADR-0010).
+- **Tombstone** — an erased row kept for referential integrity but stripped of PII: `email` becomes a
+  unique non-routable placeholder (`erased+<id>@erased.invalid`), name/phone become `ERASED`, the
+  credential hash is nulled, and `erased_at` is stamped. A tombstoned account can no longer sign in.
+- **Statutory-retention exception** — the legal duty to keep booking/payment/payout records for a
+  retention period (tax/accounting) that **overrides** erasure for those rows; it is why erasure
+  pseudonymizes rather than deletes, and why the payout ledger (which holds no PII) stays auditable
+  (invariant #9).
 
 ## Operators (venue management side)
 

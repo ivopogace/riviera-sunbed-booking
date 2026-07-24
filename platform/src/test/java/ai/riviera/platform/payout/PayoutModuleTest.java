@@ -18,6 +18,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
@@ -117,6 +118,11 @@ class PayoutModuleTest {
 	// reset / set-password) — same isolation story, so it is mocked here too.
 	@MockitoBean
 	CustomerAccountRecovery customerAccountRecovery;
+
+	// #101 [D5]: the root edge's MyErasureController + AdminErasureController drive customer::api's
+	// AccountErasure (right-to-erasure) — same isolation story, so it is mocked here too.
+	@MockitoBean
+	AccountErasure accountErasure;
 
 	@Autowired
 	JdbcClient jdbc;
