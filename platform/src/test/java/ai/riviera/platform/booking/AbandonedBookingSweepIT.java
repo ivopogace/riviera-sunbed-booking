@@ -252,4 +252,28 @@ class AbandonedBookingSweepIT {
 		assertEquals("REQUIRES_PAYMENT", paymentStatusOf("pi_succeeded"), "the payment record is untouched");
 		verify(succeeded, never()).cancel();
 	}
+
+	@Test
+	void expiresAStaleBookingWithNoPaymentRecord() throws Exception {
+		// #125: a pay() that threw after the reserve commit can leave a stale AWAITING_PAYMENT booking
+		// with NO payment row — previously skipped by the sweep forever (no collection on record),
+		// stranding the set until manual DB surgery. It is now released. No Stripe stubbing: the gateway
+		// reports NoCollection before any Stripe call (nothing on record to retrieve).
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2027, 8, 10);
+		long booking = insertBooking("SWEEPAC0006", set, date, "AWAITING_PAYMENT", STALE_AGE_MINUTES);
+		claim(set, date);
+		assertEquals(1L, availabilityRows(set, date), "precondition: the set is claimed");
+
+		int expired = sweep.sweep(TTL, PAY_WINDOW);
+
+		assertEquals(1, expired, "the stale no-collection booking is expired");
+		assertEquals("CANCELLED", statusOf(booking), "the stranded booking is cancelled");
+		assertEquals(0L, availabilityRows(set, date), "and its (set, date) claim is released (invariant #2)");
+		verify(intents, never()).retrieve(anyString());
+
+		// The freed set is genuinely re-claimable by another online booking.
+		assertEquals(ClaimOutcome.CLAIMED, availability.claim(new SetId(set.setId()), date),
+				"the released set can be claimed again");
+	}
 }

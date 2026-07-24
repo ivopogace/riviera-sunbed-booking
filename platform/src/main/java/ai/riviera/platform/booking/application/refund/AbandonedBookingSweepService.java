@@ -23,16 +23,19 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
  *   <li>cancels the Stripe PaymentIntent via {@link CancelPaymentPort} (collect-only — voids an
  *       uncollected intent, no money moves) so Stripe stops retrying and the payment can no longer
  *       succeed — the authoritative step done <strong>before</strong> any state change;</li>
- *   <li>only on a {@link PaymentCancellation.Canceled} outcome, runs the shared
- *       {@link ReleaseAbandonedBooking} (the same guarded transition + release the
- *       {@code payment_intent.canceled} webhook uses) — so the sweep and the webhook can never
+ *   <li>on a {@link PaymentCancellation.Canceled} <em>or</em> {@link PaymentCancellation.NoCollection}
+ *       outcome, runs the shared {@link ReleaseAbandonedBooking} (the same guarded transition + release
+ *       the {@code payment_intent.canceled} webhook uses) — so the sweep and the webhook can never
  *       double-act.</li>
  * </ol>
  *
- * <p>A {@link PaymentCancellation.NotCancellable} (the payment already {@code succeeded}, or no
- * collection on record) leaves the booking untouched — the confirm webhook is the source of truth
- * for a successful payment (invariant #8). A {@link PaymentCancellation.Failed} (transient gateway
- * error) is skipped and retried on the next run. The Stripe call is outside any DB transaction (no
+ * <p>A {@link PaymentCancellation.NoCollection} (no payment on record — issue #125: a {@code pay()}
+ * that threw after the reserve commit) is <strong>released</strong>: past the TTL the row is stranded,
+ * not in-flight, so leaving it would hold the set forever (the abandoned sweep's whole purpose). A
+ * {@link PaymentCancellation.NotCancellable} (the payment already {@code succeeded}) leaves the booking
+ * untouched — the confirm webhook is the source of truth for a successful payment (invariant #8). A
+ * {@link PaymentCancellation.Failed} (transient gateway error) is skipped and retried on the next run.
+ * The Stripe call is outside any DB transaction (no
  * row lock held across the network round-trip); the transition + release are transactional inside
  * {@code ReleaseAbandonedBooking}. Package-private; only the {@code application.in} port is exposed
  * (invariant #11). Booking codes are never logged — ids only (invariant #7).
@@ -79,19 +82,18 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 		return expired;
 	}
 
-	/** Cancel the PaymentIntent then, only if authoritatively canceled, release the booking. */
+	/** Cancel the PaymentIntent then, only if authoritatively canceled or absent, release the booking. */
 	private boolean expire(BookingId id) {
 		PaymentCancellation outcome = cancelPaymentPort.cancel(new BookingRef(id.value()));
 		return switch (outcome) {
-			case PaymentCancellation.Canceled ignored -> {
-				boolean released = releaseAbandonedBooking.release(id);
-				if (released) {
-					log.info("expired abandoned booking {} and released its set (TTL sweep)", id.value());
-				}
-				yield released;
-			}
+			case PaymentCancellation.Canceled ignored -> release(id, "canceled its PaymentIntent");
+			case PaymentCancellation.NoCollection ignored ->
+				// #125: no payment on record (a pay() that threw after the reserve commit). Past the TTL
+				// this is a stranded booking, not an in-flight one — release it so the set isn't held
+				// forever. Any orphan intent is inert (client secret never delivered) and auto-expires.
+				release(id, "no PaymentIntent on record");
 			case PaymentCancellation.NotCancellable notCancellable -> {
-				// Payment succeeded (confirm webhook wins, invariant #8) or no collection — leave it.
+				// Payment succeeded — the confirm webhook wins (invariant #8). Leave it.
 				log.info("sweep skipped booking {} — payment not cancellable ({})",
 						id.value(), notCancellable.reason());
 				yield false;
@@ -103,5 +105,14 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 				yield false;
 			}
 		};
+	}
+
+	/** The shared #51 guarded transition + claim release; {@code why} names the cancel outcome for the log. */
+	private boolean release(BookingId id, String why) {
+		boolean released = releaseAbandonedBooking.release(id);
+		if (released) {
+			log.info("expired abandoned booking {} and released its set (TTL sweep — {})", id.value(), why);
+		}
+		return released;
 	}
 }

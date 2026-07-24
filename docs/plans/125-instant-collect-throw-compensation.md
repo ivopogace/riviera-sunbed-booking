@@ -182,16 +182,16 @@ the existing `ApiErrorHandler` 5xx to the client, unchanged).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — Phase 1 (synchronous compensation) done + green; Phase 2 next.
+**Stage pointer:** `implement — done, ready for CI/PR gate`. Both phases implemented + green locally
+(unit + structural net + the sweep IT under real-DB Testcontainers).
 
-**Next action:** Phase 2 — add `PaymentCancellation.NoCollection`, return it from the gateway, and
-teach the sweep to release on it (tests first).
+**Next action:** Push to `claude/sdlc-125-378z7g`, confirm CI green, then run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | afc6f4d |
-| 1 — Synchronous compensation (`CreateBookingService`) | ✅ | (this commit) |
-| 2 — Sweep backstop (`NoCollection` typed outcome + sweep release) | ⏳ | |
+| 1 — Synchronous compensation (`CreateBookingService`) | ✅ | af0c41e |
+| 2 — Sweep backstop (`NoCollection` typed outcome + sweep release) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -354,6 +354,7 @@ return switch (outcome) {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-24 | Phase 1 (thrown-`pay` compensation) | driven-network call after a committed `(set,date)` claim | `grep -rn '\.pay(' platform/src/main` | `CreateBookingService.collect` (fixed here), `RespondToRequestService.collect` (already guarded #98) | No other sites; accept path already compensates (revert-to-pending). |
+| 2026-07-24 | Phase 2 (`NoCollection` case) | exhaustive `switch` over `PaymentCancellation` that must handle the new case | `grep -rn 'PaymentCancellation\.' platform/src` + a clean `compileJava`/`compileTestJava` (sealed → compiler-enforced) | Only `AbandonedBookingSweepService.expire` switches; gateways/tests only construct | Updated the one switch; compilation proves exhaustiveness. |
 
 ---
 

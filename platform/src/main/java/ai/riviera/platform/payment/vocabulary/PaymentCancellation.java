@@ -12,7 +12,7 @@ package ai.riviera.platform.payment.vocabulary;
  */
 public sealed interface PaymentCancellation
 		permits PaymentCancellation.Canceled, PaymentCancellation.NotCancellable,
-		PaymentCancellation.Failed {
+		PaymentCancellation.NoCollection, PaymentCancellation.Failed {
 
 	/**
 	 * The PaymentIntent is now canceled (or was already canceled). The payment can no longer
@@ -22,11 +22,21 @@ public sealed interface PaymentCancellation
 	}
 
 	/**
-	 * The PaymentIntent must not be canceled — it reached a terminal {@code succeeded} (the payment
-	 * went through; a confirm webhook will/has confirmed the booking), or no collection is on record.
-	 * The caller leaves the booking untouched. {@code reason} is a short, non-PII code.
+	 * The PaymentIntent must not be canceled — it reached a terminal {@code succeeded}: the payment
+	 * went through and a confirm webhook will/has confirmed the booking (invariant #8). The caller
+	 * leaves the booking untouched. {@code reason} is a short, non-PII code.
 	 */
 	record NotCancellable(String reason) implements PaymentCancellation {
+	}
+
+	/**
+	 * No collection is on record for this booking — there is no PaymentIntent to cancel (issue #125:
+	 * a {@code pay()} that threw after the reserve commit never registered one). Distinct from
+	 * {@link NotCancellable}: nothing succeeded, so a caller that also knows the booking is stale (past
+	 * its TTL) may safely release it — the abandoned-payment sweep's backstop for an otherwise
+	 * unrecoverable stranded row. Any inert orphan intent at the gateway auto-expires unpaid.
+	 */
+	record NoCollection() implements PaymentCancellation {
 	}
 
 	/**
