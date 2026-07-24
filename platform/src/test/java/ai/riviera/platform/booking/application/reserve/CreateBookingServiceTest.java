@@ -284,6 +284,24 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void compensatesByReleasingWhenPaymentThrows() {
+		// #125: a RAW throw from pay (not the typed Failed) — e.g. the payment-row insert failing after
+		// Stripe created the intent — must still compensate: release the committed claim, then rethrow,
+		// never leaving an orphaned AWAITING_PAYMENT booking holding the set with no payment row.
+		CheckoutPort throwingCheckout = (_, _) -> {
+			throw new org.springframework.dao.DataAccessResourceFailureException("register blew up after intent");
+		};
+		CreateBookingService service = service(set("ONLINE"),
+				claiming(ClaimOutcome.CLAIMED), throwingCheckout, () -> "CODETHROW01");
+
+		assertThrows(org.springframework.dao.DataAccessResourceFailureException.class,
+				() -> service.create(command()));
+		assertEquals(1, bookings.inserted.size(), "the booking was persisted before the throwing payment");
+		assertEquals(1, release.released.size(), "a thrown payment triggers exactly one compensating release");
+		assertTrue(confirmer.confirmed.isEmpty(), "a thrown payment confirms nothing");
+	}
+
+	@Test
 	void rejectsWalkInPool() {
 		CreateBookingService service = service(set("WALK_IN"),
 				claiming(ClaimOutcome.CLAIMED),

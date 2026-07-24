@@ -147,10 +147,11 @@ class StripePaymentGateway implements PaymentGateway {
 	public PaymentCancellation cancel(BookingRef booking) {
 		Optional<String> intentId = payments.findIntentByBookingRef(booking);
 		if (intentId.isEmpty()) {
-			// No PaymentIntent on record (e.g. the stub created the booking) — nothing to cancel at
-			// Stripe; the caller must not release on our say-so.
-			log.warn("no PaymentIntent on record for booking {} — cannot cancel", booking.value());
-			return new PaymentCancellation.NotCancellable("no_collection");
+			// No PaymentIntent on record — nothing to cancel at Stripe (#125: a pay() that threw after
+			// the reserve commit never registered one). A distinct outcome from a succeeded intent: the
+			// sweep may release a stale row on it, but never a fresh one.
+			log.warn("no PaymentIntent on record for booking {} — nothing to cancel", booking.value());
+			return new PaymentCancellation.NoCollection();
 		}
 		String id = intentId.get();
 		try {

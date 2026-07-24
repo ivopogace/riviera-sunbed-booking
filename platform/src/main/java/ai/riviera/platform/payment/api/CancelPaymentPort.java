@@ -16,8 +16,10 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
  *
  * <p><strong>Idempotent.</strong> Cancelling an already-canceled PaymentIntent is a benign success;
  * a PaymentIntent that has already {@code succeeded} returns {@link PaymentCancellation.NotCancellable}
- * so the caller leaves the booking for the signature-verified confirm webhook (invariant #8). The
- * cancel reads the PaymentIntent's state from Stripe, never from the client.
+ * so the caller leaves the booking for the signature-verified confirm webhook (invariant #8); a booking
+ * with no PaymentIntent on record returns {@link PaymentCancellation.NoCollection} (issue #125), which
+ * the abandoned-payment sweep may release once the booking is also past its TTL. The cancel reads the
+ * PaymentIntent's state from Stripe, never from the client.
  */
 public interface CancelPaymentPort {
 

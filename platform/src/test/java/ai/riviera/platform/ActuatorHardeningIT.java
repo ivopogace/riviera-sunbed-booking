@@ -12,22 +12,30 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Issue #75 (P0 launch blocker): operational-exposure hardening of the Spring Boot Actuator.
  *
- * <p>Only {@code /actuator/health} is web-exposed (an explicit allowlist in
- * {@code application.properties}); every other endpoint — {@code env}, {@code beans},
- * {@code mappings}, {@code configprops}, {@code heapdump}, {@code threaddump}, {@code loggers},
- * and the Spring-Modulith {@code modulith} endpoint — must be **unreachable**. Two independent
- * layers back that: the exposure allowlist (a non-exposed endpoint returns {@code 404}) and the
- * security filter chain ({@link SecurityConfig} gates everything but {@code health} behind
- * authentication, so an anonymous call is {@code 401}). Health itself stays public for Render's
- * health check + the CD poll, but its component details are shown only {@code when-authorized}
- * (invariant: a public status probe must not leak internal component state).
+ * <p>Only {@code /actuator/health} is web-exposed <em>publicly</em>; every other operational
+ * endpoint — {@code env}, {@code beans}, {@code mappings}, {@code configprops}, {@code heapdump},
+ * {@code threaddump}, {@code loggers}, {@code metrics}, and the Spring-Modulith {@code modulith}
+ * endpoint — must be **unreachable**. Two independent layers back that: the exposure allowlist (a
+ * non-exposed endpoint returns {@code 404}) and the security filter chain ({@link SecurityConfig}
+ * gates everything but {@code health} behind authentication, so an anonymous call is {@code 401}).
+ * Health itself stays public for Render's health check + the CD poll, but its component details are
+ * shown only {@code when-authorized} (invariant: a public status probe must not leak internal
+ * component state).
+ *
+ * <p>Issue #100 (D4 observability) adds {@code /actuator/prometheus} to the exposure allowlist —
+ * the <em>deliberate</em> extension the issue sanctioned. It is <strong>not</strong> public: it
+ * falls through the same {@code anyRequest().authenticated()} rule, so an anonymous scrape is
+ * {@code 401} and only an authenticated operator can read it. The #75 lockdown therefore holds —
+ * the sole public actuator surface is still {@code /actuator/health}.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -88,5 +96,21 @@ class ActuatorHardeningIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.components.db.status").value("UP"));
+	}
+
+	@Test
+	void prometheusIsNotPubliclyReachable() throws Exception {
+		// #100 AC-3: the metrics scrape endpoint is exposed but NOT public — an anonymous scrape is
+		// rejected by the security filter chain (401), never a 200 body. The #75 lockdown holds:
+		// health remains the only anonymous actuator surface.
+		mvc.perform(get("/actuator/prometheus")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void prometheusIsReadableByOperator() throws Exception {
+		// #100 AC-3: an authenticated operator can scrape metrics in Prometheus text format.
+		mvc.perform(get("/actuator/prometheus").cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("# HELP")));
 	}
 }
