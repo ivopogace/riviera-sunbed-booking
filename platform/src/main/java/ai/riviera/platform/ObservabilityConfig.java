@@ -3,6 +3,7 @@ package ai.riviera.platform;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.MeterBinder;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * and the reader ({@code MoneyPathAlertCheck}) share one source of truth.
  */
 @Configuration
+@EnableConfigurationProperties(MoneyPathAlertProperties.class)
 class ObservabilityConfig {
 
 	@Bean

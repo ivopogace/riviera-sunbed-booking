@@ -105,16 +105,12 @@ covered by AC-3.
 
 ## Open questions / Assumptions
 
-- **Open question:** Does a failed refund persist a queryable state (→ edge gauge, zero payment touch)
-  or must we add a `MeterRegistry` counter in `RefundService`? — *Owner:* Ivo · *Resolves by:* phase 2
-  (read `RefundService` / `RefundResult` / `PaymentStatus`). Drives R-1's path.
-- **Open question:** Exact webhook `uri` tag value + whether `http.server.requests` is enabled once the
-  prometheus registry is present. — *Owner:* Ivo · *Resolves by:* phase 2.
-- **Assumption:** Under `completion-mode=archive`, `event_publication` holds only **incomplete**
-  publications (completed rows move to `event_publication_archive`), so `count(*)` over it is the
-  backlog. — *Owner:* Ivo · *Resolves by:* phase 2 (confirm against `V8__event_publication_registry.sql`).
-- **Assumption:** Spring Boot 4's native `logging.structured.format.console=ecs` emits JSON including
-  MDC fields with no `logstash-logback-encoder` dependency. — *Owner:* Ivo · *Resolves by:* phase 1.
+_All entries resolved — see **### Resolved** below._
+
+- ~~**Open question:** failed-refund persisted state vs counter~~ → **resolved (phase 2):** counter in `RefundService`.
+- ~~**Open question:** webhook `uri` + `http.server.requests` enablement~~ → **resolved (phase 2):** `/api/payments/stripe/webhook`; timer live (pinned by `HttpServerRequestMetricsIT`).
+- ~~**Assumption:** `event_publication` = incomplete-only under archive mode~~ → **confirmed (phase 2)** against `V8`.
+- ~~**Assumption:** Boot 4 `ecs` emits JSON with MDC, no logstash dep~~ → **confirmed (phase 1)** by `StructuredLoggingIT`.
 
 ### Resolved
 
@@ -208,18 +204,18 @@ SPA); the `X-Correlation-Id` response header is additive and not part of any typ
 > Session-recovery anchor. Re-read this + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — phase 3` (phases 0–2 merged to branch, GREEN; structural net + Responsibilities green).
+**Stage pointer:** `CI/PR gate` — all 4 build phases done + GREEN on branch; ready to push, confirm CI, open PR.
 
-**Next action:** Phase 3 — TDD `MoneyPathAlertCheckTest` (backlog > threshold → one ERROR; under → none),
-implement `MoneyPathAlertCheck` (root, `@Profile("stripe")`, `@Scheduled`, long initial-delay) +
-`MoneyPathAlertProperties`, then write `docs/runbooks/observability.md`.
+**Next action:** Push `feature/observability`; confirm the CI run is green (esp. the full backend suite —
+the correlation filter + the stripe-gated scheduler are the shared-state classes CI reveals); merge
+latest `origin/main`; open the PR into `main`; run the Review gate (`riviera-review-overlay`) + Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Prometheus endpoint + dependency, lockdown preserved | ✅ | prometheus dep + export-enable + `ActuatorHardeningIT` (6 green) |
-| 1 — Correlation-id filter + structured JSON logging | ✅ | `CorrelationIdFilter` + `ObservabilityConfig` (top-level filter) + unit + `StructuredLoggingIT` (ecs) |
-| 2 — Money-path metrics (outbox gauge · failed-refund · webhook 5xx) | ✅ | `ObservabilityMetrics` + outbox gauge + `RefundService` counter; `OutboxBacklogGaugeIT`/`RefundFailureMetricTest`/`HttpServerRequestMetricsIT`; fixed phase-1 config-collision |
-| 3 — In-app scheduled self-check → ERROR alert + runbook | | |
+| 0 — Prometheus endpoint + dependency, lockdown preserved | ✅ | `8c0859b` |
+| 1 — Correlation-id filter + structured JSON logging | ✅ | `251caf5` |
+| 2 — Money-path metrics (outbox gauge · failed-refund · webhook 5xx) | ✅ | `7122fd7` |
+| 3 — In-app scheduled self-check → ERROR alert + runbook | ✅ | `MoneyPathAlertCheck` + `MoneyPathAlertProperties` + `MoneyPathAlertCheckTest` (6 green) + `docs/runbooks/observability.md` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
