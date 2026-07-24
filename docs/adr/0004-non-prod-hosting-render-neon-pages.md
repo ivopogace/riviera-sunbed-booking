@@ -1,7 +1,8 @@
 # ADR-0004: Non-prod hosting on Render + Neon + GitHub Pages
 
 - **Status:** Accepted — **Amended 2026-07-09 (issue #110)**: the frontend moves from GitHub
-  Pages to **same-origin** hosting (the backend serves the SPA). See the amendment section.
+  Pages to **same-origin** hosting (the backend serves the SPA); **Amended 2026-07-24**: the
+  deferred DSGVO-conform PROD hosting target is now **Hetzner** (EU). See the amendment sections.
 - **Date:** 2026-06-27
 
 ## Context
@@ -113,3 +114,28 @@ exactly why this stays **dev/demo-only**.
 **must** serve the SPA and `/api/**` from **one origin** (a reverse proxy) or from
 **same-registrable-domain subdomains** (`app.…` / `api.…`) — anything cross-site re-breaks the
 session cookie. This is now a hard requirement on that deferred migration, not a nicety.
+
+## Amendment (2026-07-24): prod-hosting target is Hetzner (EU-sovereign)
+
+The **DSGVO-conform PROD plan** deferred above now has a chosen provider: **Hetzner** (EU
+regions — Nuremberg / Falkenstein / Helsinki). This formalizes the "e.g. Hetzner, Scaleway,
+Clever Cloud" example into the direction, alongside the payments + entity migration to
+**Paysera + an Albanian sh.p.k.** (ADR-0009).
+
+- **Status: planned / not yet implemented.** This records the direction only. The actual cutover
+  is its own **PROD-hardening epic** and is contingent on ADR-0009 flipping to Accepted (Paysera
+  KYC + Albanian counsel sign-off) and the prod entity existing. Render + Neon + same-origin
+  remain the **non-prod / demo** stack until then.
+- **Database is self-managed on Hetzner.** Hetzner has no managed-Postgres PaaS, so — unlike
+  Neon's managed PITR — backups + point-in-time recovery must be **built and operated** (WAL
+  archiving + base backups via pgBackRest/WAL-G to EU object storage, encrypted + retained). This
+  lands in the GDPR/backups issue **#101**, whose backup AC was upgraded from *confirm* to
+  *implement* accordingly.
+- **Carry-forward requirements, now binding on Hetzner:** SPA + `/api/**` from **one origin** or
+  same-registrable-domain subdomains (the session-cookie rule from the #110 amendment above); an
+  **EU region** + a Hetzner DPA (GDPR data residency, #101); and the single-instance → scale-out
+  preconditions (ShedLock on both sweeps + a shared rate-limit store, D3/#99) before running more
+  than one instance.
+- **Consequence:** the "Render and Neon are US-incorporated … not the data-sovereignty posture"
+  caveat above is resolved by this move — for **prod**. The payments side (Stripe → Paysera) is
+  ADR-0009's concern, not this ADR's; they are the two halves of the same prod-readiness step.
