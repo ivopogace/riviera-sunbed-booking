@@ -193,16 +193,16 @@ SPA); the `X-Correlation-Id` response header is additive and not part of any typ
 > Session-recovery anchor. Re-read this + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — phase 1` (phase 0 merged to branch, GREEN).
+**Stage pointer:** `implement — phase 2` (phases 0–1 merged to branch, GREEN; structural net green).
 
-**Next action:** Phase 1 — write `CorrelationIdFilterTest` (RED), implement the edge
-`CorrelationIdFilter` (MDC + `X-Correlation-Id` + CRLF-injection guard), then `StructuredLoggingIT`
-for Boot 4 native JSON console format.
+**Next action:** Phase 2 — resolve OQ-1/OQ-2 (read `V8`, `RefundService`/`RefundResult`/`PaymentStatus`,
+`StripeWebhookController` mapping), then TDD the outbox gauge (`OutboxBacklogGaugeIT`), the
+failed-refund signal (`RefundFailureMetricTest`), and the webhook-5xx metric (`WebhookMetricIT`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Prometheus endpoint + dependency, lockdown preserved | ✅ | prometheus dep + export-enable + `ActuatorHardeningIT` (6 green) |
-| 1 — Correlation-id filter + structured JSON logging | | |
+| 1 — Correlation-id filter + structured JSON logging | ✅ | `CorrelationIdFilter` + `ObservabilityConfig` (top-level filter) + unit + `StructuredLoggingIT` (ecs) |
 | 2 — Money-path metrics (outbox gauge · failed-refund · webhook 5xx) | | |
 | 3 — In-app scheduled self-check → ERROR alert + runbook | | |
 
@@ -333,6 +333,7 @@ lockdown) first. TDD: extend `ActuatorHardeningIT` red → add dependency + expo
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-24 | Phase 1 (R-5 durable key) | money-path loggers carry the booking id? | `grep 'log\.(info\|warn\|error)\(' booking/payment/payout` | ~30 per-booking lines all log `booking {}`/`bookingId`; only aggregate roll-ups are count-only | No change — booking **id** (not the bearer **code**, invariant #7) is already the consistent cross-request/thread key. R-5 satisfied by existing code; filter adds intra-request id on top. |
 
 ---
 
