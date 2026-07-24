@@ -9,10 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.annotation.Import;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,23 +20,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Issue #100 (D4), AC-2: when the native Boot 4 structured console format is enabled
  * ({@code logging.structured.format.console=ecs} — the ONE env var production flips), a log line is
  * emitted as JSON and carries the {@link CorrelationIdFilter#MDC_KEY} MDC field, so a correlation id
- * surfaces on every line. Booted on a MINIMAL {@code @SpringBootConfiguration} with no
- * {@code @EnableAutoConfiguration} — the logging system is initialised by a SpringApplication
- * listener, not an autoconfiguration — so there is no web server and no DataSource (no Docker).
+ * surfaces on every line. Boots the real application under the {@code ecs} property (Testcontainers,
+ * like {@link ActuatorHardeningIT}) so the format is exercised exactly as production configures it.
  */
-@SpringBootTest(classes = StructuredLoggingIT.Boot.class,
-		webEnvironment = SpringBootTest.WebEnvironment.NONE,
-		properties = "logging.structured.format.console=ecs")
+@EnabledIfDockerAvailable
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest(properties = "logging.structured.format.console=ecs")
 @ExtendWith(OutputCaptureExtension.class)
 class StructuredLoggingIT {
 
 	private static final Logger log = LoggerFactory.getLogger(StructuredLoggingIT.class);
 	private static final String PROBE_MESSAGE = "structured-logging-probe-line";
 	private static final String PROBE_ID = "corr-probe-1234";
-
-	@SpringBootConfiguration
-	static class Boot {
-	}
 
 	@AfterEach
 	void clearMdc() {

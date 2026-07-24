@@ -127,6 +127,21 @@ covered by AC-3.
   covers `/actuator/**` and terminates in `anyRequest().authenticated()`, so an exposed
   `/actuator/prometheus` is 401-anon / 200-operator automatically. No new matcher added (avoids a
   redundant rule); pinned by the extended `ActuatorHardeningIT`. — resolved in phase 0.
+- **OQ-1 failed-refund signal (phase 2):** `RefundResult` is sealed `Refunded | Failed`; `RefundService`
+  returns the gateway result with **no persisted failure state**, so the signal is a **counter**
+  (`riviera.refunds.failed`) incremented in `RefundService` on `Failed`. `MeterRegistry` is a framework
+  bean (not a cross-module dep), so ModularityTests + ResponsibilitiesArchitectureTests stay green.
+- **OQ-2 outbox table + webhook uri (phase 2):** `event_publication` holds only incomplete rows
+  (completed → `event_publication_archive`), so `count(*)` over it is the backlog. Webhook uri =
+  `/api/payments/stripe/webhook` (static → stable `http.server.requests` `uri` tag).
+- **R-1 (phase 2):** no payment `@ApplicationModuleTest` exists and web slices mock `RefundPort`, so
+  injecting `MeterRegistry` into `RefundService` broke nothing (only `RefundServiceTest`'s direct
+  construction needed the extra arg). No `SimpleMeterRegistry` test bean needed.
+- **Phase-1 config-collision bug (fixed in phase 2):** `StructuredLoggingIT`'s nested
+  `@SpringBootConfiguration` was a second config-finder candidate → would break auto-detection for
+  every `@SpringBootTest` in the base package (incl. `ActuatorHardeningIT`) in the full suite.
+  `@TestConfiguration` is supplemental (re-adds `PlatformApplication`), so the fix is the full-app
+  Testcontainers pattern with no nested config — caught locally before CI.
 
 ## Availability & concurrency (invariant #2)
 
@@ -193,17 +208,17 @@ SPA); the `X-Correlation-Id` response header is additive and not part of any typ
 > Session-recovery anchor. Re-read this + the current `riviera-sdlc` reference file after any
 > compaction before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — phase 2` (phases 0–1 merged to branch, GREEN; structural net green).
+**Stage pointer:** `implement — phase 3` (phases 0–2 merged to branch, GREEN; structural net + Responsibilities green).
 
-**Next action:** Phase 2 — resolve OQ-1/OQ-2 (read `V8`, `RefundService`/`RefundResult`/`PaymentStatus`,
-`StripeWebhookController` mapping), then TDD the outbox gauge (`OutboxBacklogGaugeIT`), the
-failed-refund signal (`RefundFailureMetricTest`), and the webhook-5xx metric (`WebhookMetricIT`).
+**Next action:** Phase 3 — TDD `MoneyPathAlertCheckTest` (backlog > threshold → one ERROR; under → none),
+implement `MoneyPathAlertCheck` (root, `@Profile("stripe")`, `@Scheduled`, long initial-delay) +
+`MoneyPathAlertProperties`, then write `docs/runbooks/observability.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Prometheus endpoint + dependency, lockdown preserved | ✅ | prometheus dep + export-enable + `ActuatorHardeningIT` (6 green) |
 | 1 — Correlation-id filter + structured JSON logging | ✅ | `CorrelationIdFilter` + `ObservabilityConfig` (top-level filter) + unit + `StructuredLoggingIT` (ecs) |
-| 2 — Money-path metrics (outbox gauge · failed-refund · webhook 5xx) | | |
+| 2 — Money-path metrics (outbox gauge · failed-refund · webhook 5xx) | ✅ | `ObservabilityMetrics` + outbox gauge + `RefundService` counter; `OutboxBacklogGaugeIT`/`RefundFailureMetricTest`/`HttpServerRequestMetricsIT`; fixed phase-1 config-collision |
 | 3 — In-app scheduled self-check → ERROR alert + runbook | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -334,6 +349,7 @@ lockdown) first. TDD: extend `ActuatorHardeningIT` red → add dependency + expo
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-24 | Phase 1 (R-5 durable key) | money-path loggers carry the booking id? | `grep 'log\.(info\|warn\|error)\(' booking/payment/payout` | ~30 per-booking lines all log `booking {}`/`bookingId`; only aggregate roll-ups are count-only | No change — booking **id** (not the bearer **code**, invariant #7) is already the consistent cross-request/thread key. R-5 satisfied by existing code; filter adds intra-request id on top. |
+| 2026-07-24 | Phase 2 (money-path metrics) | other money-path failures worth a counter? | reviewed `booking`/`payment`/`payout` failure paths | webhook 5xx (covered by `http.server.requests`), failed refunds (counter added), payout-reversal-not-found (`log.warn` in `BookingCancelledPayoutListener`) | Scope guard: only the **three** issue signals. Payout-reversal-not-found noted as a future signal; not built (scope). |
 
 ---
 
