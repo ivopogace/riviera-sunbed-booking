@@ -12,7 +12,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
@@ -25,6 +27,8 @@ import ai.riviera.platform.payment.application.Payments;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -79,10 +83,15 @@ class StripeWebhookIT {
 		return "t=" + timestamp + ",v1=" + Webhook.Util.computeHmacSha256(SECRET, signed);
 	}
 
-	private void postSigned(String payload, String signature, int expectedStatus) throws Exception {
-		mvc.perform(post("/api/payments/stripe/webhook")
+	private ResultActions postSigned(String payload, String signature, int expectedStatus) throws Exception {
+		return mvc.perform(post("/api/payments/stripe/webhook")
 						.header("Stripe-Signature", signature)
 						.content(payload))
+				.andExpect(status().is(expectedStatus));
+	}
+
+	private ResultActions postUnsigned(String payload, int expectedStatus) throws Exception {
+		return mvc.perform(post("/api/payments/stripe/webhook").content(payload))
 				.andExpect(status().is(expectedStatus));
 	}
 
@@ -104,13 +113,32 @@ class StripeWebhookIT {
 		payments.register(new NewPayment(new BookingRef(7002L), "pi_hook_badsig", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_badsig_1", "payment_intent.succeeded", "pi_hook_badsig");
 
-		postSigned(payload, "t=1,v1=deadbeef", 400);
+		postSigned(payload, "t=1,v1=deadbeef", 400)
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_SIGNATURE"));
 
 		assertEquals("REQUIRES_PAYMENT", statusOf("pi_hook_badsig"),
 				"an unverified webhook never changes state (invariant #8)");
 		assertEquals(0, events.stream(PaymentConfirmed.class)
 				.filter(e -> e.bookingRef().equals(new BookingRef(7002L))).count(),
 				"no confirmation event from an unverified webhook");
+	}
+
+	@Test
+	void missingSignatureHeaderRejectedNoConfirm() throws Exception {
+		payments.register(new NewPayment(new BookingRef(7006L), "pi_hook_nosig", 4500L, "EUR", "cs_test_secret"));
+		String payload = eventJson("evt_nosig_1", "payment_intent.succeeded", "pi_hook_nosig");
+
+		// No Stripe-Signature header at all — the same trust failure as a bad one: 400 problem body, not 500.
+		postUnsigned(payload, 400)
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_SIGNATURE"));
+
+		assertEquals("REQUIRES_PAYMENT", statusOf("pi_hook_nosig"),
+				"a webhook with no signature never changes state (invariant #8)");
+		assertEquals(0, events.stream(PaymentConfirmed.class)
+				.filter(e -> e.bookingRef().equals(new BookingRef(7006L))).count(),
+				"no confirmation event from an unsigned webhook");
 	}
 
 	@Test

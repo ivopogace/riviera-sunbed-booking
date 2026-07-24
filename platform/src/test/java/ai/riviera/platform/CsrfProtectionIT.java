@@ -123,8 +123,8 @@ class CsrfProtectionIT {
 	@Test
 	void stripeWebhookStaysTokenless() throws Exception {
 		// A badly-signed webhook is rejected by the SIGNATURE check (400, invariant #8), never by
-		// CSRF. (A request with NO Stripe-Signature header currently NPEs to a 500 — pre-existing,
-		// tracked as a follow-up — so the pin here uses an invalid signature, not a missing one.)
+		// CSRF. A missing Stripe-Signature header is the same 400 since #131 (pinned by
+		// StripeWebhookIT.missingSignatureHeaderRejectedNoConfirm); this pin uses an invalid one.
 		mvc.perform(post("/api/payments/stripe/webhook")
 						.header("Stripe-Signature", "t=1,v1=not-a-real-signature")
 						.contentType(MediaType.APPLICATION_JSON).content("{}"))
