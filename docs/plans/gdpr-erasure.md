@@ -243,12 +243,12 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `sonar gate` — PR #316 open; Review gate run (HIGH effort, adversarial) — clean bar one
-Minor RV-STYLE-1, now fixed. Awaiting CI + SonarCloud on the PR.
+**Stage pointer:** `CI gate (re-run)` — PR #316; Review gate clean (F-1 fixed). First CI run was red on
+`PayoutModuleTest` (F-3, missing `@MockitoBean AccountErasure`) — fixed + re-pushed; awaiting the re-run.
 
-**Next action:** Confirm PR #316 CI green; pull the SonarCloud PR issue + duplication list (project
-`ivopogace_riviera-sunbed-booking`, PR 316) and clear every entry; then merge close-out. Merge is
-maintainer-gated (main is push-protected).
+**Next action:** Confirm PR #316 CI green (full suite incl. `PayoutModuleTest`); pull the SonarCloud PR
+issue + duplication list (project `ivopogace_riviera-sunbed-booking`, PR 316) and clear every entry; then
+merge (user authorized "merge if CI green") + close-out.
 
 **Review gate note (2026-07-24):** HIGH-effort adversarial review over `origin/main...HEAD` with
 `riviera-review-overlay` (RV-BE/FE/CT + RV-BE-9 auth, RV-BE-11 ownership, RV-PROC-1, RV-STYLE-1).
@@ -274,6 +274,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | review (RV-STYLE-1) | Two-line inline comment on the `ME_ERASURE_PATH` matcher in `SecurityConfig` | fixed-in-`<this commit>` |
 | F-2 | review (out-of-scope) | Pre-existing: `POST /api/me/password`+`verify-email/request` lack an explicit CUSTOMER filter matcher (safe via `CurrentCustomer.require`) | deferred → issue #317 |
+| F-3 | CI (full suite) | `PayoutModuleTest` `initializationError` — the payout `@ApplicationModuleTest` bootstraps the root edge, so the new `AccountErasure` edge dependency needs a `@MockitoBean` in payout-isolation (the memory-flagged full-suite-only class) | fixed-in-`<this commit>` |
 
 ---
 
