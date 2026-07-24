@@ -182,11 +182,11 @@ the existing `ApiErrorHandler` 5xx to the client, unchanged).
 
 ## Execution status
 
-**Stage pointer:** `review gate — done (SHIP), awaiting CI green + PR decision`. Both phases green
-locally; review gate run (verdict SHIP, one nit fixed — F-3). Sonar gate is PR-time (pending a PR).
+**Stage pointer:** `sonar gate` — PR #313 open (claude/sdlc-125-378z7g → main). CI green on the fix
+code (#1153); review gate SHIP. Awaiting PR-time CI + SonarCloud analysis.
 
-**Next action:** Confirm CI run #1153 green on the finding-fix push; then the PR/Sonar/merge gates
-(awaiting the user's go-ahead to open the PR).
+**Next action:** Pull the SonarCloud new-issue + duplication list for PR #313; fix any entry; then
+merge close-out (held for the user's merge approval).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
