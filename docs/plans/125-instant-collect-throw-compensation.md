@@ -182,10 +182,11 @@ the existing `ApiErrorHandler` 5xx to the client, unchanged).
 
 ## Execution status
 
-**Stage pointer:** `implement — done, ready for CI/PR gate`. Both phases implemented + green locally
-(unit + structural net + the sweep IT under real-DB Testcontainers).
+**Stage pointer:** `review gate — done (SHIP), awaiting CI green + PR decision`. Both phases green
+locally; review gate run (verdict SHIP, one nit fixed — F-3). Sonar gate is PR-time (pending a PR).
 
-**Next action:** Push to `claude/sdlc-125-378z7g`, confirm CI green, then run the Review + Sonar gates.
+**Next action:** Confirm CI run #1153 green on the finding-fix push; then the PR/Sonar/merge gates
+(awaiting the user's go-ahead to open the PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -199,7 +200,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (overlay subagent) | Verdict SHIP. Invariants #2/#8/#11 clean; the confirm-vs-pay double-release trap avoided + regression-pinned. | resolved — no code change needed |
+| F-2 | review (RV-STYLE-1, nit) | Multi-line inline comments in the two changed files | won't-fix — matches the established multi-line-comment style of the surrounding branches in both files |
+| F-3 | review (test fragility, nit) | `AbandonedBookingSweepIT`'s global `verify(intents, never()).retrieve(...)` is the "shared-state across tests" pattern (full-suite-only risk) | fixed — dropped the global assertion; the per-booking CANCELLED/claim-freed/expired==1 assertions already prove the behavior |
 
 ---
 
