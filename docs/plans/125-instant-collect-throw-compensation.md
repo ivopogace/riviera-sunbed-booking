@@ -182,11 +182,14 @@ the existing `ApiErrorHandler` 5xx to the client, unchanged).
 
 ## Execution status
 
-**Stage pointer:** `sonar gate` — PR #313 open (claude/sdlc-125-378z7g → main). CI green on the fix
-code (#1153); review gate SHIP. Awaiting PR-time CI + SonarCloud analysis.
+**Stage pointer:** `merge — ready, holding for user approval`. All gates passed on PR #313:
+CI green, review gate SHIP (findings resolved), SonarCloud quality gate green **and its reported
+new-issue + duplication list is empty** (API-confirmed: 0 issues, 0 bugs/vulns/smells, 0 duplication,
+94.12% new-code coverage). Pre-merge docs-freshness: no substrate patch needed (no stated fact
+contradicted; #125 is a standalone bug, no parent epic to tick).
 
-**Next action:** Pull the SonarCloud new-issue + duplication list for PR #313; fix any entry; then
-merge close-out (held for the user's merge approval).
+**Next action:** Merge PR #313 (squash) **only after the user approves**, then run the merge
+close-out (verify issue closed, tick PR gate boxes, confirm subscription ended).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -203,6 +206,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review (overlay subagent) | Verdict SHIP. Invariants #2/#8/#11 clean; the confirm-vs-pay double-release trap avoided + regression-pinned. | resolved — no code change needed |
 | F-2 | review (RV-STYLE-1, nit) | Multi-line inline comments in the two changed files | won't-fix — matches the established multi-line-comment style of the surrounding branches in both files |
 | F-3 | review (test fragility, nit) | `AbandonedBookingSweepIT`'s global `verify(intents, never()).retrieve(...)` is the "shared-state across tests" pattern (full-suite-only risk) | fixed — dropped the global assertion; the per-booking CANCELLED/claim-freed/expired==1 assertions already prove the behavior |
+| F-4 | sonar (PR #313) | Quality gate + reported list | clean — 0 new issues/bugs/vulns/smells, 0 duplication, 94.12% new-code coverage (API-confirmed empty list, not just a green badge) |
 
 ---
 
@@ -363,26 +367,27 @@ return switch (outcome) {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle -p platform test --tests "*CreateBookingServiceTest*"` → PASS.
-- [ ] **AC-2:** `gradle -p platform test --tests "*StripePaymentGatewayTest*"` → PASS.
-- [ ] **AC-3:** `gradle -p platform test --tests "*AbandonedBookingSweepServiceTest*"` → PASS (unit);
-  `AbandonedBookingSweepIT` PASS in CI (Docker).
-- [ ] **AC-4:** `AbandonedBookingSweepServiceTest` succeeded-branch + existing
-  `AbandonedBookingSweepIT.doesNotCancelABookingWhosePaymentSucceeded` → PASS.
+- [x] **AC-1:** `gradle -p platform test --tests "*CreateBookingServiceTest*"` → PASS (local + CI).
+- [x] **AC-2:** `gradle -p platform test --tests "*StripePaymentGatewayTest*"` → PASS (local + CI).
+- [x] **AC-3:** `gradle -p platform test --tests "*AbandonedBookingSweepServiceTest*"` → PASS (unit, local);
+  `AbandonedBookingSweepIT.expiresAStaleBookingWithNoPaymentRecord` PASS against real-DB Testcontainers (local + CI).
+- [x] **AC-4:** `AbandonedBookingSweepServiceTest` succeeded-branch + existing
+  `AbandonedBookingSweepIT.doesNotCancelABookingWhosePaymentSucceeded` → PASS (local + CI).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases (`NoCollection` no-arg record; `release(BookingId)`).
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; the release is the guarded idempotent transition (invariant #2).
-- [ ] Pool + cutoff rules unaffected (invariants #3, #4).
-- [ ] **Modulith** section filled; the new type lives in `payment.vocabulary` (published); no
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases (`NoCollection` no-arg record; `release(BookingId)`).
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; the release is the guarded idempotent transition (invariant #2).
+- [x] Pool + cutoff rules unaffected (invariants #3, #4).
+- [x] **Modulith** section filled; the new type lives in `payment.vocabulary` (published); no
   cross-module `application.*`/`adapter.*` import; booking switches on the typed outcome (invariant #11).
-- [ ] **Payment/payout** section filled; no confirm-from-client; idempotent; no ledger effect (invariants #5, #8, #9).
-- [ ] Refund policy unaffected (invariant #10).
-- [ ] Timezone/booking-code unaffected (invariants #6, #7); new logs are ids/enums only.
-- [ ] No Flyway migration needed (verified the sweep query selects the row already) — invariant #12 N/A.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows at merge; Open Questions empty (or deferred with an issue #).
+  `ModularityTests`/`PackageShape`/`PublishedSurfacePlacement`/`JdbcOnly` architecture tests green.
+- [x] **Payment/payout** section filled; no confirm-from-client; idempotent; no ledger effect (invariants #5, #8, #9).
+- [x] Refund policy unaffected (invariant #10).
+- [x] Timezone/booking-code unaffected (invariants #6, #7); new logs are ids/enums only.
+- [x] No Flyway migration needed (verified the sweep query selects the row already) — invariant #12 N/A.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register: R-1..R-5 mitigated (review confirmed #2/#8 clean); Open Questions empty (the one assumption resolved in Phase 2).
