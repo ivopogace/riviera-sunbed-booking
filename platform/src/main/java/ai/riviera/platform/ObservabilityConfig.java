@@ -43,6 +43,7 @@ class ObservabilityConfig {
 	MeterBinder outboxBacklogMetric(JdbcClient jdbc) {
 		return registry -> Gauge.builder(ObservabilityMetrics.OUTBOX_PENDING, () -> pendingPublications(jdbc))
 				.description("Incomplete Spring Modulith event publications awaiting delivery (outbox backlog)")
+				.strongReference(true)
 				.register(registry);
 	}
 

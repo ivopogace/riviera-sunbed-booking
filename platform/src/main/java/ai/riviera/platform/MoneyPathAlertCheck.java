@@ -36,8 +36,7 @@ class MoneyPathAlertCheck {
 	private final MeterRegistry meters;
 	private final MoneyPathAlertProperties props;
 
-	// Last-seen cumulative counts, so each run alerts on what happened SINCE it (the counters/timers are
-	// in-memory and reset to 0 on restart, so the first run's deltas are honest — no historic replay).
+	// Last-seen cumulative counts for delta alerting (reset to 0 on restart; scheduler-thread-only, no overlap).
 	private double lastFailedRefunds;
 	private double lastWebhookServerErrors;
 

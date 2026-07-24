@@ -223,7 +223,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | (none yet) | — |
+| F-1 | review (RV-STYLE-1) | 2-line inline comment on the `lastFailedRefunds` field in `MoneyPathAlertCheck` | fixed |
+| F-2 | review (correctness) | outbox gauge's `Supplier` could be weak-ref GC'd (Micrometer footgun) → gauge would report NaN | fixed — `.strongReference(true)` |
+| F-3 | review (walk) | RV-BE-1/7/8/9/11/13 + RV-PROC-1 all clear (see review note) | no change needed |
 
 ---
 
