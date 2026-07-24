@@ -14,6 +14,8 @@ import com.stripe.net.Webhook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.ApiProblem;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.events.PaymentCanceled;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
@@ -61,6 +64,7 @@ class StripeWebhookController {
 	private static final String EVENT_SUCCEEDED = "payment_intent.succeeded";
 	private static final String EVENT_CANCELED = "payment_intent.canceled";
 	private static final String EVENT_PAYMENT_FAILED = "payment_intent.payment_failed";
+	private static final String CODE_INVALID_SIGNATURE = "INVALID_SIGNATURE";
 
 	private final StripeProperties properties;
 	private final StripeWebhookEvents webhookEvents;
@@ -77,16 +81,18 @@ class StripeWebhookController {
 
 	@PostMapping("/webhook")
 	@Transactional
-	ResponseEntity<String> handle(@RequestBody byte[] payload,
+	ResponseEntity<?> handle(@RequestBody byte[] payload,
 			@RequestHeader(name = "Stripe-Signature", required = false) String signature) {
+		if (signature == null || signature.isBlank()) {
+			return unverifiedSignature(); // absent header: reject before parsing (no NPE, no stack trace)
+		}
 		Event event;
 		try {
 			event = Webhook.constructEvent(new String(payload, StandardCharsets.UTF_8), signature,
 					properties.webhookSecret());
 		}
 		catch (SignatureVerificationException e) {
-			// Unverified — never trust it (invariant #8). No state change.
-			return ResponseEntity.badRequest().body("invalid signature");
+			return unverifiedSignature();
 		}
 
 		if (!webhookEvents.firstSeen(event.getId(), event.getType())) {
@@ -101,6 +107,17 @@ class StripeWebhookController {
 			default -> log.debug("ignoring Stripe event type {}", event.getType());
 		}
 		return ResponseEntity.ok("ok");
+	}
+
+	/**
+	 * A {@code 400} RFC-7807 problem for an unverifiable webhook — a <em>missing</em> or an
+	 * <em>invalid</em> signature, deliberately indistinguishable (invariant #8: no state change,
+	 * and no oracle telling an attacker which failure they hit). The standard error shape (#97),
+	 * not an ad-hoc string body.
+	 */
+	private static ResponseEntity<ProblemDetail> unverifiedSignature() {
+		return ApiProblem.response(HttpStatus.BAD_REQUEST, CODE_INVALID_SIGNATURE,
+				"The Stripe webhook signature is missing or could not be verified.");
 	}
 
 	private void onSucceeded(String paymentIntentId) {
