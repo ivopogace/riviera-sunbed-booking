@@ -29,6 +29,8 @@ export type ResetPasswordResult =
 export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
 /** How an authenticated set/change-password ended. */
 export type SetPasswordResult = 'set' | 'invalid-current' | 'invalid-password' | 'error';
+/** How a self-service right-to-erasure ended (#101 [D5]). */
+export type EraseAccountResult = 'erased' | 'error';
 
 /** The stable machine-readable `code` on an RFC-7807 error body (the backend's error contract, #97). */
 function problemCode(error: unknown): string | undefined {
@@ -186,6 +188,22 @@ export class CustomerAuth extends SessionAuth {
       }
       return 'error';
     }
+  }
+
+  /**
+   * Erase the signed-in customer's account + contact PII (#101 [D5], right-to-erasure). The backend
+   * scrubs in place (the booking/payment/payout records are retained under statutory retention) and
+   * revokes every session, so on success we also clear local state via {@link signOut} — the tourist is
+   * signed out on this device too. Idempotent server-side; a transport failure is `'error'`.
+   */
+  async eraseAccount(): Promise<EraseAccountResult> {
+    try {
+      await firstValueFrom(this.http.post<void>(`${ME_API}/erasure`, null));
+    } catch {
+      return 'error';
+    }
+    await this.signOut();
+    return 'erased';
   }
 
   /** Re-request a verification email to the signed-in customer's own address (S8 #113). */

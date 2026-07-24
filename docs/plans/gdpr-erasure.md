@@ -96,9 +96,12 @@ remote stand-in).
   `400` RFC-7807 `application/problem+json` with a stable `code`, built via `ApiProblem` — never an ad-hoc
   body, never leaking a booking code or PII. *Pinned by:* `AdminErasureControllerTest.rejectsBlankEmailWithProblemDetail`.
 - [ ] **AC-9 (FE self-service):** Given a signed-in customer on the account page, when they click
-  "Erase my account & data" and confirm, then the app calls `POST /api/me/erasure` and on `204` signs out and
-  navigates home; the confirm is keyboard-reachable and axe-clean. *Pinned by:* `set-password.spec.ts`
-  (unit) + `set-password.a11y.spec.ts` + `frontend/e2e/erasure.e2e.ts` (mocked, CI-safe, axe).
+  "Erase my account & data" then the explicit confirm, then the app calls `POST /api/me/erasure` and on
+  success signs out and shows an inline erased confirmation (no navigation — simpler + testable without a
+  home-page mock; the cleared session removes the account form); the confirm is keyboard-reachable and
+  axe-clean. *Pinned by:* `set-password.spec.ts` (unit, 4 new) + `frontend/e2e/erasure.e2e.ts` (mocked,
+  CI-safe, axe on both the danger-zone account page and the erased screen). A11y via the e2e axe (the
+  `auth/` pages have no unit a11y spec — the email-verification pattern).
 
 ## Non-goals
 
@@ -215,7 +218,7 @@ No Stripe call, no refund, no commission math in scope.
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
 | FE-1 | `auth/set-password.ts` (signed-in "Your account" page) | modify | standalone component | Signal-driven inline confirm (`confirming = signal(false)`) + a `busy` signal; no JS `confirm()` dialog | none (a button + inline confirm, not a form) |
-| FE-2 | `core/customer-auth.ts` | modify | `@Service` (extends `SessionAuth`) | adds `eraseAccount()` → `POST /api/me/erasure`, then `signOut()` + navigate home on `204` | — |
+| FE-2 | `core/customer-auth.ts` | modify | `@Service` (extends `SessionAuth`) | adds `eraseAccount()` → `POST /api/me/erasure`, then `signOut()` on success; the account page shows an inline erased confirmation (no navigation) | — |
 
 **Standards:** standalone, `inject()`, `@if`/`@for`, `input()`/`output()` signal APIs; the destructive
 button + confirm reachable by keyboard and axe-clean; styled from `--riv-*` tokens (no palette literals),
@@ -240,20 +243,20 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement (Phase 3 — FE)` — Phases 0–2 done (backend erasure end-to-end: unit 7 + IT 5 +
-Me/Admin slice tests 3+4, all green; structural net + shared web slices green).
+**Stage pointer:** `implement (Phase 4 — docs)` — Phases 0–3 done (backend end-to-end + FE self-service;
+FE: lint clean, 846 unit green incl. 4 new erase specs, 2 mocked e2e green).
 
-**Next action:** Phase 3 — re-run the FE routing gate (load `playwright-cli` + `riviera-tailwind` +
-angular-cli MCP), then the self-service "Danger zone" affordance on `auth/set-password.ts` +
-`CustomerAuth.eraseAccount()` + Vitest/a11y/mocked-Playwright.
+**Next action:** Phase 4 — ADR-0010 (pseudonymize-in-place) + `docs/runbooks/data-erasure.md` +
+CONTEXT.md glossary + RESPONSIBILITIES/CLAUDE.md notes; then `riviera-docs-freshness` over the branch +
+`graphify update .`. Then PR → review gate → Sonar gate → merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V30 migration + `customer` scrub service + `AccountErasure` port | ✅ | 648297b |
 | 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ✅ | 75222b5 |
-| 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | ✅ | this commit |
-| 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/a11y/Playwright | ⏳ | |
-| 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | | |
+| 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | ✅ | c0deca1 |
+| 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/Playwright | ✅ | this commit |
+| 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
