@@ -49,6 +49,9 @@ dependencies {
 	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.14.0'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+	// Prometheus scrape registry (#100 D4 observability). Runtime-only: Micrometer auto-detects it and
+	// wires the /actuator/prometheus endpoint; no compile-time API is used. Version is BOM-managed.
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	runtimeOnly 'org.postgresql:postgresql'
 	runtimeOnly 'org.springframework.modulith:spring-modulith-actuator'
 	runtimeOnly 'org.springframework.modulith:spring-modulith-observability-core'

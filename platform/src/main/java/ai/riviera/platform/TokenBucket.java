@@ -47,6 +47,17 @@ final class TokenBucket {
 		return false;
 	}
 
+	/**
+	 * Return one token (capped at capacity), refilling first for the elapsed time. The refund half of the
+	 * per-identity login gate's spend-then-refund (issue #292): the filter spends a token with
+	 * {@link #tryAcquire} before the request runs and, on any non-failed outcome, releases it here — so
+	 * only a failed authentication net-consumes a token and a successful login is refunded.
+	 */
+	synchronized void release(Instant now) {
+		refill(now);
+		tokens = Math.min(capacity, tokens + 1.0);
+	}
+
 	/** Whole seconds until the next token is available; {@code 0} when one is available now. */
 	synchronized long retryAfterSeconds(Instant now) {
 		refill(now);

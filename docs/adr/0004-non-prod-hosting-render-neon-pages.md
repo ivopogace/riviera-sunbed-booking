@@ -49,6 +49,13 @@ in GitHub Actions secrets/variables. Operational details: `docs/deploy/cd-pipeli
   first Docker build is slow; the post-deploy health poll tolerates this.
 - The frontend's backend URL is baked in at build time (static site). It defaults to the
   expected Render host and is overridable via the `BACKEND_API_URL` repo variable.
+- **Single instance only.** This deploy runs the backend as **one** instance, and must until
+  scale-out preconditions are met. Rate-limit buckets are in-process (per this ADR's low-friction,
+  no-extra-infra posture) and two scheduler sweeps are lockless-on-one-runner, so a second instance
+  weakens rate limits and races duplicate Stripe cancels. The concrete failure modes and the
+  precondition list (ShedLock on every sweep + shared-store rate-limit state) live in the deploy
+  runbook: [production-hardening.md → *Single instance only*](../deploy/production-hardening.md#single-instance-only--do-not-scale-out-yet-the-two-lockless-sweeps--rate-limit-buckets)
+  (improvement-plan D3, issue #99).
 
 ## DSGVO-conform PROD plan (deferred)
 

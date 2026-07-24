@@ -297,6 +297,42 @@ class ClientIpResolverTest {
 		assertEquals(1, warningsWhileResolving(request));
 	}
 
+	// ---- A client-IP header from an UNTRUSTED peer names the trust-list gap (#290) ----
+
+	/**
+	 * The fingerprint of a trust list no longer covering the upstream edge's ranges: the configured
+	 * header arrives, but from an untrusted peer, so it is (correctly) ignored — the key stays the
+	 * socket address, #129's bypass closure untouched — and exactly one WARN names the likely cause.
+	 */
+	@Test
+	void warnsWhenAClientIpHeaderArrivesFromAnUntrustedPeer() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("198.51.100.4"); // public peer — not a trusted proxy
+		request.addHeader(CF_HEADER, "6.6.6.6");
+
+		assertEquals("198.51.100.4", edgeAware.resolve(request)); // key is still the socket address
+		assertEquals(1, warningsWhileResolving(request));
+	}
+
+	/** An ordinary direct caller — untrusted peer, no client-IP header — must produce no noise (AC-2). */
+	@Test
+	void doesNotWarnForADirectCallerWithoutTheClientIpHeader() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("198.51.100.4");
+
+		assertEquals(0, warningsWhileResolving(request));
+	}
+
+	/** The untrusted-peer warning fires at most once per process across many such requests (AC-3). */
+	@Test
+	void warnsAtMostOnceForRepeatedUntrustedPeerHeaders() {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setRemoteAddr("198.51.100.4");
+		request.addHeader(CF_HEADER, "6.6.6.6");
+
+		assertEquals(1, warningsWhileResolving(request, request, request));
+	}
+
 	/** WARNs emitted by ONE fresh resolver across the given requests — the once-per-process latch. */
 	private long warningsWhileResolving(MockHttpServletRequest... requests) {
 		Logger logger = (Logger) LoggerFactory.getLogger(ClientIpResolver.class);

@@ -283,7 +283,7 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
-	void cancelWithoutAKnownCollectionIsNotCancellable() {
+	void cancelWithoutAKnownCollectionReportsNoCollection() {
 		StripeClient stripe = mock(StripeClient.class);
 		Payments payments = mock(Payments.class);
 		when(payments.findIntentByBookingRef(new BookingRef(99L))).thenReturn(Optional.empty());
@@ -291,9 +291,10 @@ class StripePaymentGatewayTest {
 		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(99L));
 
-		PaymentCancellation.NotCancellable nc = assertInstanceOf(PaymentCancellation.NotCancellable.class,
-				outcome, "with no recorded PaymentIntent there is nothing to cancel at Stripe");
-		assertEquals("no_collection", nc.reason());
+		// #125: distinct from NotCancellable (which means "succeeded, the webhook wins"). NoCollection
+		// means there is no payment on record at all — the sweep may safely release a stranded row.
+		assertInstanceOf(PaymentCancellation.NoCollection.class, outcome,
+				"with no recorded PaymentIntent there is nothing to cancel at Stripe");
 	}
 
 	@Test

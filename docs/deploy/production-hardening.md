@@ -131,19 +131,35 @@ not the *list* — #286 stays open for that half.
 framework filter would also drop the resolver's preferred header path. Verification procedure (no
 unit or slice test can prove this class of change): `docs/runbooks/rate-limit-client-ip.md`.
 
-## Single instance only (the two lockless sweeps)
+## Single instance only — do not scale out yet (the two lockless sweeps + rate-limit buckets)
 
-Run **exactly one instance** of the backend until ShedLock (or equivalent) is added.
-Two schedulers assume it (improvement-plan D3):
+**Run exactly one instance of the backend.** Three pieces of state are held in-process and
+are correct **only on a single runner**; a second instance breaks them silently — no error, no
+log, just wrong behaviour. The Render service is configured for one instance
+([cd-pipeline.md](./cd-pipeline.md) → *Render service configuration*), and it must **stay**
+that way until the scale-out preconditions below are met. This is item 7 / **D3** of the
+improvement plan, rooted in the in-memory choices of
+[ADR-0004](../adr/0004-non-prod-hosting-render-neon-pages.md) (rate-limit buckets) and
+ADR-0006 (the per-IP rate-limit filter).
 
-- the **abandoned-payment sweep** (`AbandonedBookingScheduler`, `stripe` profile) — two
-  instances would race duplicate Stripe PaymentIntent cancels (the guarded
-  `UPDATE … RETURNING` keeps state correct, but the Stripe cancel call is doubled);
-- the **request-expiry sweep** (`RequestSweepScheduler`, all profiles, issue #98) — safe
-  state-wise for the same guarded-transition reason, but sized and documented for one runner.
+### What breaks at two instances
 
-In-memory rate-limit buckets (issue #56) share the same assumption. Before any horizontal
-scale-out: ShedLock on both sweeps + move rate-limit state to Redis (improvement-plan D3).
+| Load-bearing assumption | Where it lives | Failure mode at N > 1 instances |
+|---|---|---|
+| **Abandoned-payment sweep** | `AbandonedBookingScheduler` (`@Profile("stripe")`) | Every instance runs the scheduler. The guarded `UPDATE … WHERE status='AWAITING_PAYMENT' … RETURNING` keeps **DB state** correct (one instance wins each row), but each winner still fires its own Stripe **PaymentIntent cancel** → duplicate cancel calls racing at Stripe for the same intent. |
+| **Request-expiry sweep** | `RequestSweepScheduler` (all profiles, issue #98) | Same guarded-transition design, so DB state stays correct, but the sweep is **sized and timed for one runner**; N copies do N× the redundant scans and fan out any per-expiry side effect. |
+| **In-memory rate-limit buckets** | `RateLimitFilter` + `TokenBucket` (per-IP #56/ADR-0006; per-identity login throttle #292) — bounded `ConcurrentHashMap`s on the heap | Each instance holds its **own** buckets. A client's requests spread across instances, so the **effective cap is ~N× the configured limit** — the brute-force / abuse / credential-guess protection weakens in proportion to instance count. |
+
+### Scale-out preconditions (all required before a second instance)
+
+1. **ShedLock (or equivalent) on *every* sweep** — both `AbandonedBookingScheduler` and
+   `RequestSweepScheduler` — so exactly one instance runs each tick. Add it to any **new**
+   scheduler at the same time (standing trigger: a third scheduler, improvement-plan B3).
+2. **Rate-limit state in a shared store** (e.g. Redis) — one bucket per client across all
+   instances, so the cap holds regardless of which instance serves a request.
+
+Until **both** land, keep the instance count at one. The deploy-runbook callout that enforces
+this at the point the count is set is in [cd-pipeline.md](./cd-pipeline.md).
 
 ## Not in scope (deferred)
 

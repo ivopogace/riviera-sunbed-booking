@@ -49,9 +49,10 @@ import jakarta.servlet.http.HttpServletRequest;
  * guessed at, because taking the first of several would let a client-supplied copy become the key.
  * Each way of losing the preferred path is logged once per process, so a topology change that
  * silently demotes resolution to the walk leaves a trace (see {@code docs/runbooks/rate-limit-client-ip.md}).
- * One case is deliberately <em>not</em> covered yet: a client-IP header arriving from an
- * <em>untrusted</em> peer — the signature of a trust list missing the CDN's ranges — is currently
- * silent, and is what made the failed #286 retirement need a log-<em>absence</em> deduction.
+ * The opposite fingerprint is covered too (issue #290): a client-IP header arriving from an
+ * <em>untrusted</em> peer — the signature of the trust list missing the upstream edge's ranges — is
+ * still ignored (the #129 bypass closure) but now warns once per process, so the trust-list rot that
+ * made the failed #286 retirement need a log-<em>absence</em> deduction names itself instead.
  *
  * <p>A hop that is not an IP literal ({@code unknown}, a hostname, garbage) can never be proven
  * trusted, so it is treated as a client value; it is validated with {@link InetAddress#ofLiteral}
@@ -82,6 +83,7 @@ final class ClientIpResolver {
 	private final String clientIpHeader;
 	private final AtomicBoolean absenceWarned = new AtomicBoolean();
 	private final AtomicBoolean ambiguityWarned = new AtomicBoolean();
+	private final AtomicBoolean untrustedPeerWarned = new AtomicBoolean();
 
 	ClientIpResolver(List<String> trustedProxyCidrs, String clientIpHeader) {
 		this.trustedProxies = trustedProxyCidrs.stream().map(TrustedProxy::of).toList();
@@ -91,6 +93,7 @@ final class ClientIpResolver {
 	String resolve(HttpServletRequest request) {
 		String peer = request.getRemoteAddr();
 		if (!isTrustedProxy(peer)) {
+			warnOnClientIpHeaderFromUntrustedPeer(request);
 			return sanitise(peer);
 		}
 		String edgeClient = edgeSuppliedClient(request);
@@ -142,6 +145,25 @@ final class ClientIpResolver {
 			log.warn("Client-IP header '{}' {} behind a trusted proxy peer; falling back to the {} walk. "
 					+ "Rate-limit buckets may be keyed per edge node rather than per client — see "
 					+ "docs/runbooks/rate-limit-client-ip.md", clientIpHeader, problem, FORWARDED_FOR);
+		}
+	}
+
+	/**
+	 * A configured client-IP header arriving from an <em>untrusted</em> peer is the fingerprint of the
+	 * trusted-proxy list no longer covering the upstream edge's ranges (issue #290). The header is
+	 * still ignored — that is #129's bypass closure, invariant-critical — but the silence that made the
+	 * failed #286 retirement need a log-<em>absence</em> deduction is what this warning removes: it
+	 * names the likely cause on the first affected request, once per process. Interpolates only the
+	 * configured header <em>name</em>, never its value, which is attacker-influenced whenever this fires.
+	 */
+	private void warnOnClientIpHeaderFromUntrustedPeer(HttpServletRequest request) {
+		if (clientIpHeader.isEmpty() || request.getHeader(clientIpHeader) == null) {
+			return;
+		}
+		if (untrustedPeerWarned.compareAndSet(false, true)) {
+			log.warn("Client-IP header '{}' arrived from an UNTRUSTED socket peer and was ignored "
+					+ "(bypass closure #129). This is the fingerprint of the trusted-proxy list missing the "
+					+ "upstream edge's ranges — see docs/runbooks/rate-limit-client-ip.md", clientIpHeader);
 		}
 	}
 
