@@ -1,5 +1,7 @@
 package ai.riviera.platform.payment.application;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
@@ -36,7 +38,7 @@ class RefundServiceTest {
 				throw new UnsupportedOperationException("not exercised by the refund seam");
 			}
 		};
-		RefundService service = new RefundService(fake);
+		RefundService service = new RefundService(fake, new SimpleMeterRegistry());
 
 		RefundResult result = service.refund(new BookingRef(42L), new Money(2250L, "EUR"));
 
