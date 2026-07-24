@@ -138,21 +138,21 @@ gains a new section, it does not replace an existing one.
 
 ## Open questions / Assumptions
 
-- **Assumption:** Self-service erasure scrubs guest `customer` rows matched by **`account.email`**;
-  divergent-email guest rows (a signed-in user who typed a different contact email) are handled by the
-  admin-by-email path (and Slice 2), not self-service. — *Owner:* Ivo · *Resolves by:* plan approval.
-- **Assumption:** The admin endpoint accepts a data-subject **email** in the POST body and erases *any*
-  account **and** guest row sharing it (one comprehensive by-email scrub). — *Owner:* Ivo · *Resolves by:* plan approval.
-- **Open question:** Is `erased_at` + the #100 structured audit log sufficient for GDPR accountability in v1,
-  or does counsel want a dedicated queryable `erasure_request` register table? *Recommendation:* `erased_at`
-  + logs for v1; add the table only if legal asks. — *Owner:* Ivo / counsel · *Resolves by:* Phase 0.
-- **Open question:** Create **ADR-0010 (Erasure = pseudonymize-in-place under statutory retention)**? It is
-  hard-to-reverse (data-model choice), surprising (we deliberately don't delete), and a real trade-off
-  (delete vs tombstone). *Recommendation:* yes, a short ADR in Phase 4. — *Owner:* Ivo · *Resolves by:* Phase 0.
 - **Open question:** The statutory **retention window value** (how long a guest contact with no live basis is
   kept before auto-scrub) is legal/counsel input and belongs to **Slice 2**; Phase 4's runbook stub will
   reference it as `<counsel-TBD>` explicitly rather than inventing a number. — *Owner:* counsel · *Resolves
   by:* Slice 2.
+
+### Resolved
+
+- **Assumption (accepted 2026-07-24, go-ahead):** Self-service erasure scrubs guest `customer` rows matched by
+  **`account.email`**; divergent-email guest rows are handled by the admin-by-email path (and Slice 2).
+- **Assumption (accepted 2026-07-24, go-ahead):** The admin endpoint accepts a data-subject **email** and
+  erases *any* account **and** guest row sharing it (one comprehensive by-email scrub).
+- **Audit record (decided 2026-07-24):** `erased_at` marker + the #100 **structured audit log** (no PII);
+  **no** dedicated `erasure_request` table in v1. Add one later only if counsel wants an in-DB register.
+- **ADR-0010 (decided 2026-07-24):** **Yes** — write ADR-0010 (Erasure = pseudonymize-in-place under
+  statutory retention) in Phase 4.
 
 ## Availability & concurrency (invariant #2)
 
@@ -238,16 +238,16 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `plan` — plan doc drafted, **awaiting maintainer approval of scope + open questions before
-Phase 0**.
+**Stage pointer:** `implement (Phase 1)` — Phase 0 done (unit 7 + IT 5 green against real Postgres, structural
+net green).
 
-**Next action:** Get the two Assumptions + the two Phase-0 open questions (audit-table vs `erased_at`+logs;
-ADR-0010 yes/no) confirmed, then start **Phase 0** (V30 migration + `AccountErasureService`), test-first per `tdd`.
+**Next action:** Phase 1 — `MeErasureControllerTest` (failing), then `MyErasureController` + the
+`POST /api/me/erasure` CUSTOMER matcher (closes R-1) + `CustomerSessionRevoker.revokeAll`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V30 migration + `customer` scrub service + `AccountErasure` port | | |
-| 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | | |
+| 0 — V30 migration + `customer` scrub service + `AccountErasure` port | ✅ | scrub service + V30 |
+| 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ⏳ | |
 | 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | | |
 | 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/a11y/Playwright | | |
 | 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | | |
