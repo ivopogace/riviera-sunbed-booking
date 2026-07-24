@@ -240,18 +240,19 @@ tokens). angular-cli MCP `get_best_practices` consulted at Phase 3.
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement (Phase 2)` — Phase 1 done (`MeErasureControllerTest` 3 green + shared web slices
-still load with the new controller + `WebSliceStubs` `AccountErasure` bean).
+**Stage pointer:** `implement (Phase 3 — FE)` — Phases 0–2 done (backend erasure end-to-end: unit 7 + IT 5 +
+Me/Admin slice tests 3+4, all green; structural net + shared web slices green).
 
-**Next action:** Phase 2 — `AdminErasureControllerTest` (failing), then `AdminErasureController`
-(`POST /api/admin/erasure`, ADMIN) + the ADMIN `SecurityConfig` matcher + blank-email `400` RFC-7807.
+**Next action:** Phase 3 — re-run the FE routing gate (load `playwright-cli` + `riviera-tailwind` +
+angular-cli MCP), then the self-service "Danger zone" affordance on `auth/set-password.ts` +
+`CustomerAuth.eraseAccount()` + Vitest/a11y/mocked-Playwright.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V30 migration + `customer` scrub service + `AccountErasure` port | ✅ | 648297b |
-| 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ✅ | this commit |
-| 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | ⏳ | |
-| 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/a11y/Playwright | | |
+| 1 — self-service `POST /api/me/erasure` (edge) + CUSTOMER matcher + session revoke | ✅ | 75222b5 |
+| 2 — admin `POST /api/admin/erasure` (edge) + ADMIN matcher | ✅ | this commit |
+| 3 — FE self-service trigger (account page + `CustomerAuth.eraseAccount`) + Vitest/a11y/Playwright | ⏳ | |
 | 4 — docs: ADR-0010, `docs/runbooks/data-erasure.md`, CONTEXT.md glossary, docs-freshness pass | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

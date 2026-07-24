@@ -115,6 +115,11 @@ class SecurityConfig {
 	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
 	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
 	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
+	/**
+	 * Platform-admin data-subject erasure (#101 [D5]) — role-gated to {@code ADMIN}, NOT venue-scoped
+	 * (the same {@code /api/admin/**} exemption from invariant #13 as the operator-approval surface).
+	 */
+	private static final String ADMIN_ERASURE_PATH = "/api/admin/erasure";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -258,6 +263,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
 								ADMIN_OPERATOR_REJECT_PATH).hasRole(ADMIN_ROLE)
+						// Platform-admin data-subject erasure (#101 [D5]) — ADMIN only, not venue-scoped.
+						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
