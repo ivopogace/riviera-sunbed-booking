@@ -40,6 +40,11 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
  *     #51 {@link ReleaseAbandonedBooking} (guarded {@code AWAITING_PAYMENT → CANCELLED} + claim
  *     release) so the booking isn't left orphaned holding the set, then surface the failure. The
  *     #51 TTL sweep is the backstop if this process dies before compensating.</li>
+ * <li><strong>A raw throw from {@code pay} itself</strong> (#125 — e.g. the payment-row insert
+ *     hitting a {@code DataAccessException} <em>after</em> Stripe created the intent, so no typed
+ *     {@code Failed} is ever returned): compensate the same way as {@code Failed} (release the claim,
+ *     then rethrow), then let the #51 sweep — which now also expires no-collection rows — backstop a
+ *     crash before this runs.</li>
  * </ul>
  *
  * <p>Package-private — the public seam is the {@link CreateBooking} port (invariant #11).
@@ -91,8 +96,18 @@ class CreateBookingService implements CreateBooking {
 	 */
 	private BookingOutcome collect(ReserveOutcome.Reserved reserved, CreateBookingCommand command) {
 		SetBookingInfo set = reserved.set();
-		PaymentOutcome payment = checkout.pay(new BookingRef(reserved.bookingId()),
-				new Money(set.price().minorUnits(), set.price().currency()));
+		PaymentOutcome payment;
+		try {
+			payment = checkout.pay(new BookingRef(reserved.bookingId()),
+					new Money(set.price().minorUnits(), set.price().currency()));
+		}
+		catch (RuntimeException paymentBlewUp) {
+			// #125: not just the typed Failed — an unexpected throw (e.g. the payment-row insert failing
+			// after Stripe created the intent) would otherwise strand the booking AWAITING_PAYMENT holding
+			// the set. Release the committed claim (same #51 seam as the Failed branch), then rethrow.
+			releaseAbandoned.release(new BookingId(reserved.bookingId()));
+			throw paymentBlewUp;
+		}
 		return switch (payment) {
 			case PaymentOutcome.Succeeded ignored -> {
 				// In-process stub: collected synchronously, confirm now (own transaction). The confirm
