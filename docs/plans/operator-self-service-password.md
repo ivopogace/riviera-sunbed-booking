@@ -103,14 +103,14 @@ keeps its only current caller (`OperatorCredentialInitializer`) and gains a seco
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Current-password check compares hash-vs-hash.** bcrypt re-salts, so `encode(input).equals(stored)` is *always* false — the check would reject every correct password (or, inverted, accept every wrong one). This exact defect shipped twice: #128 rotate-detection and S8 set-password. | med | high | Copy `MyAccountController:100-103` verbatim in shape: `passwordEncoder.matches(rawCurrent, credential.passwordHash())` — **raw vs stored hash**, never encode-then-compare. AC-2 fails loudly if inverted. | Claude | open |
+| R-1 | **Current-password check compares hash-vs-hash.** bcrypt re-salts, so `encode(input).equals(stored)` is *always* false — the check would reject every correct password (or, inverted, accept every wrong one). This exact defect shipped twice: #128 rotate-detection and S8 set-password. | med | high | Copy `MyAccountController:100-103` verbatim in shape: `passwordEncoder.matches(rawCurrent, credential.passwordHash())` — **raw vs stored hash**, never encode-then-compare. AC-2 fails loudly if inverted. | Claude | **closed** — implemented raw-vs-hash; pinned by `storesAnEncodedHashOfTheNewPassword` (captures the stored hash, asserts it is not the plaintext AND that the real delegating encoder verifies it) + `rejectsWrongCurrentPasswordWithoutRevoking`. Phase-0 audit found no other instance. |
 | R-2 | **Endpoint placed under `/api/me/**`** (as the issue literally proposes) → every operator gets a flat 403 from the filter, and the CUSTOMER-only namespace rule silently becomes wrong. | high (if issue followed verbatim) | high | Resolved at plan time: path is `/api/auth/operator/password` with its own explicit `hasRole(OPERATOR)` matcher. AC-5/AC-6 pin it. | Claude | resolved-at-plan |
-| R-3 | **Bootstrap admin's change silently reverts.** `OperatorCredentialInitializer` re-stamps `RIVIERA_OPERATOR_PASSWORD` on *every* boot and `isGenuineRotation` would see a mismatch → re-stamp + `revokeAll`, so the new password dies at the next Render deploy and the admin is signed out. | high | high | Guard on the configured bootstrap username → `409 BOOTSTRAP_CREDENTIAL_MANAGED` (AC-4). Keyed on `riviera.operator.username`, **not** on `OperatorCredential.admin` — a future second admin approved via `/api/admin/operators` is `admin=true` but is *not* env-managed and must keep self-service. | Claude | open |
-| R-4 | **New endpoint falls through the role gate** — the #316/#317/#328 defect class. | low | high | `EndpointRoleGateCoverageTest` fails the build naming the endpoint unless it is explicitly gated; AC-5. | Claude | open |
+| R-3 | **Bootstrap admin's change silently reverts.** `OperatorCredentialInitializer` re-stamps `RIVIERA_OPERATOR_PASSWORD` on *every* boot and `isGenuineRotation` would see a mismatch → re-stamp + `revokeAll`, so the new password dies at the next Render deploy and the admin is signed out. | high | high | Guard on the configured bootstrap username → `409 BOOTSTRAP_CREDENTIAL_MANAGED` (AC-4). Keyed on `riviera.operator.username`, **not** on `OperatorCredential.admin` — a future second admin approved via `/api/admin/operators` is `admin=true` but is *not* env-managed and must keep self-service. | Claude | **closed** — guard is the first statement in the handler (before policy validation and before the credential read), pinned by `refusesBootstrapAdminSelfService`. |
+| R-4 | **New endpoint falls through the role gate** — the #316/#317/#328 defect class. | low | high | `EndpointRoleGateCoverageTest` fails the build naming the endpoint unless it is explicitly gated; AC-5. | Claude | **closed** — `EndpointRoleGateCoverageTest` green with **no** `DECLARED_REACHABLE` entry, i.e. the explicit matcher is carrying it. `customerIsRejectedBeforeTheController` independently proves the rejection happens at the filter (null handler). |
 | R-5 | **Shared rate-limit bucket starves operator login** — the #111 review finding, verbatim. | med | med | Its own per-IP `credentialChange` bucket in `RateLimitProperties`, mirroring how S8 added `recoveryBuckets`. Never the `login` bucket. AC-8 asserts login still succeeds under flood. | Claude | open |
 | R-6 | **New controller breaks `@WebMvcTest` slices** (missing bean) and/or `@ApplicationModuleTest` (`PayoutModuleTest`) — a recurring full-suite-only failure that scoped local runs cannot see. | med | med | Add the bean to `WebSliceStubs` in the same commit; run the structural net + `PayoutModuleTest` before the PR; treat the first CI run as the real gate. | Claude | open |
 | R-7 | **Error contract drift** — a hand-rolled `{"error": …}` body instead of the centralized `ProblemDetail`. | low | med | `ApiProblem.response(...)` for `INVALID_CURRENT_PASSWORD` + `BOOTSTRAP_CREDENTIAL_MANAGED`; `IllegalArgumentException` from `CustomerPasswords.validate` reaches the single `ApiErrorHandler` → `400 INVALID_REQUEST` (`riviera-java-conventions` §6b). | Claude | open |
-| R-8 | **A suspended operator changes its password.** Suspension revokes sessions (#128), so there should be no live session to use — but a race (suspend mid-request) could slip through. | low | low | `OperatorCredential.active` is already on the published record; reject when `!active` with the same `409`-family response. Cheap defence-in-depth. | Claude | open |
+| R-8 | **A suspended operator changes its password.** Suspension revokes sessions (#128), so there should be no live session to use — but a race (suspend mid-request) could slip through. | low | low | `OperatorCredential.active` is already on the published record; reject when `!active` with the same `409`-family response. Cheap defence-in-depth. | Claude | **closed** — `409 ACCOUNT_NOT_ACTIVE`, pinned by `refusesAnAccountThatIsNotActive`. |
 
 ## Open questions / Assumptions
 
@@ -255,18 +255,45 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `plan — committed, awaiting phase 0`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** Load `riviera-local-debug` and `riviera-java-conventions`, then start Phase 0 step 1 —
-write `OperatorAccountControllerTest.changesPasswordAndRevokesOnlyOtherSessions` and watch it fail.
+**Next action:** Phase 1 — add the `credentialChangeBuckets` map to `RateLimitFilter` (see the
+simplification note below) and the AC-8 test that a change-flood does **not** starve operator login.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend endpoint + role gate | | |
+| 0 — Backend endpoint + role gate | ✅ | see below |
 | 1 — Rate-limit bucket | | |
 | 2 — Frontend surface | | |
 | 3 — e2e + a11y | | |
 | 4 — Docs + javadoc correction | | |
+
+**Phase 0 verification (observed, not assumed).** Red/green captured with a `git stash -u` of the
+controller + matcher:
+
+- **RED** (implementation stashed): 7 of 8 fail, all `404` — no endpoint mapped.
+- **GREEN** (restored): 8/8 pass; wider net 48 tests / 11 suites / 0 failures —
+  `EndpointRoleGateCoverageTest`, `MeSurfaceRoleGateTest`, `VenueWriteRoleGateTest`, `ModularityTests`,
+  `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
+  `OperatorAuthPlacementTests`, `ErrorContractArchitectureTests`, `JdbcOnlyArchitectureTests`,
+  `ResponsibilitiesArchitectureTests`.
+
+> **One honest caveat: `anonymousIsUnauthorizedBeforeTheController` is a vacuous test.** It passed in the
+> RED run too, because `anyRequest().authenticated()` answers `401` for an anonymous caller whether or not
+> the endpoint exists. It is kept because it pins AC-6's *contract* (anonymous gets `401`, never a `404`
+> that leaks endpoint existence), but it must not be read as evidence that the matcher works —
+> `customerIsRejectedBeforeTheController` is the discriminating test for that, and it moved `404 → 403`.
+
+**Still owed from Phase 0's AC list:** AC-7 (`OperatorPasswordChangeIT` — new password authenticates, old
+does not, through the real `AuthenticationManager` against Testcontainers Postgres). Deferred to sit with
+the other IT work rather than blocking the rate-limit phase; the slice is not done without it.
+
+**Phase 1 simplification (found by reading `RateLimitFilter`).** `authBucketsFor` matches paths by
+**exact equality**, so `/api/auth/operator/password` currently draws on *no* bucket — unthrottled, R-5
+confirmed real — and cannot accidentally share the login budget. The established fix is
+`operatorRegisterBuckets` (#115): a **separate map under the existing `login` `Limit`**, not a new
+property. Phase 1 therefore does **not** need a `RateLimitProperties` change — drop that file from its
+step list.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -417,6 +444,7 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 0 (R-1: bcrypt re-salting makes hash-vs-hash comparison always false) | every password comparison against a stored hash | `git grep --untracked -n "passwordEncoder.matches\|encoder.matches" -- platform/src/main/java` | 4: `AuthController:221` (timing equalizer), `MyAccountController:102` (S8 set-password), `OperatorAccountController:119` (this slice), `OperatorCredentialInitializer:86` (#128 rotate-detection) | **No fix needed** — all four pass the *raw* password as arg 1 and the stored hash as arg 2. The defect has no surviving instance. **Method note:** the first run used plain `git grep`, which searches only *tracked* files and therefore silently omitted this slice's own new controller — the "an empty result is not evidence of absence" trap from `CLAUDE.md`'s graphify section, in a different tool. `--untracked` is required whenever auditing mid-slice. |
 
 ---
 

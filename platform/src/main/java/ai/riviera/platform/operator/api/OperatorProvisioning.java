@@ -4,10 +4,17 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 /**
  * Published provisioning port for operator credentials (issue #74) — how a new operator gets an
- * account and how a password is rotated, driven programmatically (the boot provisioner for the
- * bootstrap operator; a future admin console for the rest). There is deliberately <strong>no</strong>
- * self-service HTTP endpoint: provisioning is not an operator-reachable surface (maintainer decision,
- * grill 2026-07-01).
+ * account and how a password is rotated.
+ *
+ * <p><strong>Reachability has changed twice since #74's "no self-service HTTP endpoint" decision</strong>
+ * (grill 2026-07-01), so that line no longer describes the system: <strong>#115</strong> made account
+ * creation self-service via {@code POST /api/auth/operator/register} (into a {@code PENDING} account an
+ * admin must approve), and <strong>#326</strong> made {@link #setPassword} self-service via
+ * {@code POST /api/auth/operator/password} for an operator changing its <em>own</em> password after
+ * proving the current one. What the original decision protected still holds and is worth stating
+ * positively: no operator can provision or re-credential <em>another</em> account through this port, and
+ * the bootstrap admin is excluded from the self-service path because its credential is env-managed
+ * ({@code RIVIERA_OPERATOR_PASSWORD}, re-stamped every boot by the edge's credential initializer).
  *
  * <p>Both methods take an <strong>already-encoded</strong> credential hash: the edge encodes the raw
  * password with Spring Security's {@code PasswordEncoder} and passes the opaque result here, keeping

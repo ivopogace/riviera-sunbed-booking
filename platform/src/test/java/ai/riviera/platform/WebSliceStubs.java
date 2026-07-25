@@ -55,6 +55,7 @@ import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -228,6 +229,26 @@ class WebSliceStubs {
 	@Bean
 	OperatorRegistration operatorRegistration() {
 		return (_, _, _) -> new OperatorRegistrationOutcome.AlreadyRegistered();
+	}
+
+	/**
+	 * #326: the credential-write port {@code OperatorAccountController} registers with. Inert — the shared
+	 * web slices never change a real password, and {@code setPassword} returning {@code false} is the
+	 * "no such operator" answer. {@code OperatorAccountControllerTest} replaces this bean to drive the flow.
+	 */
+	@Bean
+	OperatorProvisioning operatorProvisioning() {
+		return new OperatorProvisioning() {
+			@Override
+			public OperatorId provision(String username, String passwordHash) {
+				return new OperatorId(0);
+			}
+
+			@Override
+			public boolean setPassword(String username, String passwordHash) {
+				return false;
+			}
+		};
 	}
 
 	@Bean

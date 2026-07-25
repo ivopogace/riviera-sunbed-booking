@@ -151,6 +151,15 @@ class SecurityConfig {
 	 * operator login. CSRF-protected like the other auth POSTs (the SPA holds the bootstrapped token).
 	 */
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
+	/**
+	 * The signed-in operator's own password change (#326, {@link OperatorAccountController}) — unlike the
+	 * two paths above it is <strong>authenticated</strong>, gated to {@code OPERATOR}. It lives here rather
+	 * than under {@code /api/me/**} precisely because that namespace is CUSTOMER-only and method-agnostic
+	 * (see {@link #ME_PATHS}); putting it there would 403 every operator and quietly falsify that rule.
+	 * On its own {@code credentialChange} rate-limit budget so a change flood can never starve operator
+	 * login (the #111 shared-bucket lockout). CSRF-protected like every write.
+	 */
+	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
@@ -327,6 +336,8 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
+							// Operator self-service password change (#326) — authenticated, OPERATOR-only.
+							.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET (#317) — anonymous → 401, operator session → 403.
 						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
