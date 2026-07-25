@@ -88,6 +88,20 @@ Missing any one means the slice is still in flight — say so rather than report
      line, message.
    - **Duplications + new-code measures:** `https://sonarcloud.io/api/measures/component?component=ivopogace_riviera-sunbed-booking&pullRequest=<N>&metricKeys=new_duplicated_lines_density,new_duplicated_blocks,new_bugs,new_vulnerabilities,new_code_smells,new_coverage`.
 
+   > **The false-clean read — confirm an analysis actually exists before believing a zero.**
+   > `api/issues/search` returns `"total": 0` with an empty array for a PR that has **not been
+   > analyzed yet**, byte-for-byte identical to a genuinely clean PR. Read it too early and the
+   > gate *looks* passed when it has not run at all. **The tell is the measures call: an empty
+   > `measures` array means nothing has been ingested.** So: confirm `measures` is **non-empty**
+   > (for a code PR, that `new_lines` has a value) **and** that the `SonarCloud Code Analysis`
+   > check-run itself concluded `success`, before accepting a zero issue count. Note the
+   > workflow's own `SonarCloud scan` job can legitimately conclude `skipped` on one of two
+   > duplicate runs — that is not the gate; the `SonarCloud Code Analysis` check is.
+   > Compounding it: `WebFetch` caches responses for **15 minutes**, so one early read can
+   > persist as a stale "clean" answer across the whole gate — cache-bust when re-reading.
+   > (Case history: PR #318, 2026-07-25 — the first read showed 0 issues while no analysis
+   > existed; the real result, 445 new lines at 91.67% coverage, landed minutes later.)
+
    Triage **every** entry the list returns — bug, vulnerability, code smell, security
    hotspot, a **duplicated block**, or a coverage shortfall. A green gate with a
    **non-empty** issue/duplication list is **not** done.

@@ -115,6 +115,15 @@ class SecurityConfig {
 	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
 	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
 	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
+	/** The decided-accounts list + the suspend/reinstate transitions (#128) — same ADMIN gate. */
+	private static final String ADMIN_OPERATOR_ACCOUNTS_PATH = "/api/admin/operators/accounts";
+	private static final String ADMIN_OPERATOR_SUSPEND_PATH = "/api/admin/operators/*/suspend";
+	private static final String ADMIN_OPERATOR_REINSTATE_PATH = "/api/admin/operators/*/reinstate";
+	/**
+	 * Platform-admin data-subject erasure (#101 [D5]) — role-gated to {@code ADMIN}, NOT venue-scoped
+	 * (the same {@code /api/admin/**} exemption from invariant #13 as the operator-approval surface).
+	 */
+	private static final String ADMIN_ERASURE_PATH = "/api/admin/erasure";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -127,6 +136,21 @@ class SecurityConfig {
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	/**
+	 * The signed-in tourist's own surface — my-bookings (S3 #114), set-password + verification-resend
+	 * (S8 #113), self-service erasure (#101 [D5]). {@code CUSTOMER}-only, and deliberately
+	 * <strong>method-agnostic</strong> (#317): {@code /api/me/**} is by definition the session customer's
+	 * own resources, so every verb belongs to the same principal type. Method-scoped rules were the
+	 * defect this replaces — a {@code GET}-only matcher let each new {@code POST} fall through to
+	 * {@code anyRequest().authenticated()}, where only {@code CurrentCustomer.require} stopped an
+	 * operator session, twice (#316 patched erasure alone). A namespace rule fails <em>closed</em> for
+	 * any future verb instead of silently falling through, so this subsumes — and replaces — the former
+	 * {@code GET /api/me/**} and {@code POST /api/me/erasure} matchers. Writes stay CSRF-protected (the
+	 * SPA holds the bootstrapped XSRF-TOKEN); {@code CurrentCustomer.require} remains as
+	 * defence-in-depth. <strong>Adding a non-customer endpoint under this prefix would make the rule
+	 * wrong</strong> — put it elsewhere (as {@code GET /api/venues/mine} does for operators).
+	 */
+	private static final String ME_PATHS = "/api/me/**";
 	/**
 	 * Public customer account-recovery POSTs (S8 #113, design D-6/D-8): request a reset link, redeem a
 	 * reset token, redeem a verification token. Anonymous by definition — the emailed token is the bearer
@@ -247,9 +271,13 @@ class SecurityConfig {
 						// plain OPERATOR reaching these is 403 (authenticated, wrong role). The GET is
 						// listed before the public "GET /api/venues/**" is irrelevant (different prefix),
 						// but stays above anyRequest() like every explicit rule.
-						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH, ADMIN_OPERATOR_ACCOUNTS_PATH)
+								.hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
-								ADMIN_OPERATOR_REJECT_PATH).hasRole(ADMIN_ROLE)
+								ADMIN_OPERATOR_REJECT_PATH, ADMIN_OPERATOR_SUSPEND_PATH,
+								ADMIN_OPERATOR_REINSTATE_PATH).hasRole(ADMIN_ROLE)
+						// Platform-admin data-subject erasure (#101 [D5]) — ADMIN only, not venue-scoped.
+						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
@@ -279,10 +307,8 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
-						// The signed-in tourist's own bookings (S3 #114): CUSTOMER-only, session-principal-
-						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
-						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
-						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
+						// Every verb, not just GET (#317) — anonymous → 401, operator session → 403.
+						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
 				// session and clears the context; 204 (no redirect — this is an SPA's API). The

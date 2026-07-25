@@ -122,6 +122,9 @@ Orchestrate the reserve → pay → confirm flow across `availability` and `paym
   *triggers* accrual; I don't do the math)
 - The venue map, pricing, or pool rules → **`venue`**
 - Storing guest contact details → **`customer`**
+- The **retention window** or the contact scrub → **`customer`** (#101 Slice 2). I answer only the
+  *fact* "does this guest have a booking on/after date D", via `customer.spi.GuestBookingHistory`
+  — I hold no retention policy and never write a `customer` row
 - Authorizing which operator may view staff bookings → **`operator`**
 
 ---
@@ -165,10 +168,20 @@ refund reverses it.
 **account** (email + opaque credential hash) that backs register / sign-in. The account is a
 **separate identity** from the guest-contact row (no foreign key), so registration never
 auto-claims a guest email's past bookings; back-linking guest bookings is a **permanent
-non-goal** (design D-6, amended at S8).
+non-goal** (design D-6, amended at S8). Also own **right-to-erasure** (#101): scrub-in-place
+(tombstone) of the account + guest-contact PII and delete the transient SSO/token children,
+retaining the booking/payment/payout records under the **statutory-retention exception**
+(ADR-0010) — the edge authenticates the request and revokes sessions (RV-BE-11). Own the
+**retention policy** too (#101 Slice 2): the configured **retention window**, the decision of
+which guest contacts have no remaining **retention basis**, and the sweep that tombstones them.
+Retention is the same PII-lifecycle concern over the same rows as erasure, so it lives here —
+I ask `booking` for the recency *fact*, but the window and the scrub are mine.
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
+- Knowing whether a guest still has a recent booking → **`booking`** (it owns the table; I
+  declare `customer.spi.GuestBookingHistory` and it implements the fact — a dependency
+  inversion, because a direct `customer → booking` call would cycle)
 - Operator accounts or staff logins → **`operator`** (I am the *tourist*; `operator`
   is the *venue's* people)
 - Marketing → out of scope
@@ -194,11 +207,13 @@ recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 ---
 
 ## `operator`
-**Job:** Own operator accounts — incl. their **self-registration + admin-approval state**
-(`PENDING`→`ACTIVE`/`REJECTED`, #115) and the `is_admin` platform-admin flag — and the
-**operator↔venue ownership mapping**, now writable (creator-owns-on-create). Answer two
-things for the rest of the system: *does this operator own this venue?* and *which
-operators are awaiting approval?* (invariant #13).
+**Job:** Own operator accounts — incl. their **admin-driven lifecycle state**
+(`PENDING`→`ACTIVE`/`REJECTED` on approval #115; `ACTIVE`⇄`SUSPENDED` on suspend/reinstate
+#128) and the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**,
+now writable (creator-owns-on-create). Answer three things for the rest of the system: *does
+this operator own this venue?*, *which operators are awaiting approval?*, and *which accounts
+exist for an admin to act on?* (invariant #13). A suspension **keeps** the operator's
+`operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway.
 
 **Not My Job:**
 - Tourist identity → **`customer`**
@@ -211,8 +226,12 @@ operators are awaiting approval?* (invariant #13).
 - Encoding/verifying credentials + the register/login/approval endpoints + the
   `ROLE_ADMIN` mapping → the **platform edge** (Spring Security `UserDetailsService`,
   `AuthController`, `AdminOperatorController`); I own the account identity + ownership
-  mapping + the approval **state transitions**, and store an opaque credential hash + an
+  mapping + the lifecycle **state transitions**, and store an opaque credential hash + an
   opaque `is_admin` flag — never the login machinery or the role gate (RV-BE-11)
+- **Invalidating live sessions** when an account loses the right to them (suspension,
+  credential rotation) → the **platform edge** (`PrincipalSessionRevoker`, #128). I report
+  *that the transition happened* and *whose* it was; deleting `SPRING_SESSION` rows is
+  session machinery and I never import `org.springframework.session`
 
 **Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
 application service; #74 per-operator DB-backed credentials — no shared password; **#115

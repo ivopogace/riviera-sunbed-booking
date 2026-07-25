@@ -97,7 +97,8 @@ ai.riviera.platform.<module>/
 ```
 All four published surfaces are **optional** — `payout` (publishes nothing, though it now consumes
 `booking::api` for the console takings read, #171) has none; `booking` publishes `api/`
-(`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; only `venue` has `spi` today. Don't force
+(`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; `venue` and `customer` have `spi` today
+(`customer.spi.GuestBookingHistory`, implemented by `booking` for the #101 Slice 2 retention sweep). Don't force
 an empty surface onto a module. Published surfaces stay **top-level and exposed** — nesting under
 `application` would hide them from Modulith. Notes the trees can't carry:
 
@@ -167,7 +168,7 @@ invariant #2), documented on `AvailabilityClaim`.
 **Shipped** (#73 module + ownership, #74 per-operator credentials, **#115 self-registration → admin
 approval → creator-owns-on-create**). It owns operator accounts + registration/approval state and the
 **operator↔venue ownership mapping** (now writable — `VenueOwnership.assignOwner`), publishing
-`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorApprovals` ports) +
+`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorLifecycle` ports) +
 `operator::vocabulary`. Every venue-scoped **application service** consults `assertOwns` → `403` on
 mismatch (pinned by `CrossVenueDenialIT`) so no driving adapter can bypass the check — invariant #13.
 Since #115 the **owns-all bootstrap is retired** (ownership is strictly the explicit `operator_venue`

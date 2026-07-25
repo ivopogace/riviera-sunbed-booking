@@ -20,7 +20,12 @@ import { CardGlass } from '../shared/card-glass';
       <div class="auth-card" appCardGlass>
         <h1 id="setpw-title" class="auth-title">Your account</h1>
 
-        @if (auth.restoring()) {
+        @if (erased()) {
+          <p class="auth-intro" role="status" data-testid="erase-done">
+            Your account and personal data have been erased, and you have been signed out. Any booking
+            records are kept only as long as the law requires, with your personal details removed.
+          </p>
+        } @else if (auth.restoring()) {
           <p class="auth-intro" role="status">Loading…</p>
         } @else if (!auth.signedIn()) {
           <p class="auth-intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>
@@ -91,6 +96,56 @@ import { CardGlass } from '../shared/card-glass';
               {{ submitting() ? 'Saving…' : 'Save password' }}
             </button>
           </form>
+
+          <section
+            class="mt-7 border-t border-[color:var(--riv-field-border)] pt-5"
+            aria-labelledby="erase-title"
+          >
+            <h2 id="erase-title" class="m-0 mb-1 text-[15px] font-bold text-[color:var(--riv-card-ink)]">
+              Delete your account
+            </h2>
+            <p class="auth-hint">
+              Permanently erase your account and personal details. Booking records are kept only as long
+              as the law requires, with your personal data removed. This cannot be undone.
+            </p>
+
+            @if (confirming()) {
+              <p class="auth-error" role="alert" data-testid="erase-warning">
+                Erase your account and personal data? This cannot be undone.
+              </p>
+              <button
+                type="button"
+                class="auth-submit"
+                data-testid="erase-confirm"
+                [disabled]="erasing()"
+                (click)="erase()"
+              >
+                {{ erasing() ? 'Erasing…' : 'Yes, erase everything' }}
+              </button>
+              <button
+                type="button"
+                class="mt-3 w-full border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[color:var(--riv-card-ink-soft)] disabled:opacity-60"
+                data-testid="erase-cancel"
+                [disabled]="erasing()"
+                (click)="confirming.set(false)"
+              >
+                Cancel
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="mt-2 w-full rounded-[16px] border border-[color:var(--riv-field-border)] bg-transparent px-[13px] py-[13px] text-[15px] font-bold text-[color:var(--riv-card-ink)] [cursor:pointer] [transition:background_0.15s_ease] hover:bg-[color:var(--riv-field-fill)]"
+                data-testid="erase-account"
+                (click)="confirming.set(true)"
+              >
+                Erase my account &amp; data
+              </button>
+            }
+
+            @if (eraseError(); as msg) {
+              <p class="auth-error" role="alert" data-testid="erase-error">{{ msg }}</p>
+            }
+          </section>
         }
       </div>
     </section>
@@ -105,6 +160,12 @@ export class SetPassword {
   protected readonly resending = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
   protected readonly notice = signal<string | undefined>(undefined);
+
+  /** Right-to-erasure UI state (#101 [D5]): the two-step confirm, the in-flight flag, and the done screen. */
+  protected readonly confirming = signal(false);
+  protected readonly erasing = signal(false);
+  protected readonly erased = signal(false);
+  protected readonly eraseError = signal<string | undefined>(undefined);
 
   protected readonly model = signal({ newPassword: '', currentPassword: '' });
   protected readonly setForm = form(this.model);
@@ -144,6 +205,22 @@ export class SetPassword {
       case 'error':
         this.error.set('Something went wrong. Please try again.');
         break;
+    }
+  }
+
+  protected async erase(): Promise<void> {
+    if (this.erasing()) {
+      return;
+    }
+    this.erasing.set(true);
+    this.eraseError.set(undefined);
+    const result = await this.auth.eraseAccount();
+    this.erasing.set(false);
+    if (result === 'erased') {
+      this.confirming.set(false);
+      this.erased.set(true);
+    } else {
+      this.eraseError.set('Something went wrong. Please try again.');
     }
   }
 

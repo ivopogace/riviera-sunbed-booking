@@ -1,4 +1,31 @@
 <div class="riv-app">
+  <!-- Above the chrome conditional so it also shows on /operator/**, the shared-tablet case. -->
+  @if (signOutNotice.visible()) {
+    <div
+      role="alert"
+      class="flex flex-wrap items-center justify-center gap-3 border-b border-[#b3261e] bg-white px-4 py-2 text-[14px] text-[#b3261e]"
+      data-testid="sign-out-warning"
+    >
+      <span>Sign-out didn't reach the server. You may still be signed in on this device.</span>
+      <button
+        type="button"
+        class="font-semibold underline"
+        data-testid="sign-out-retry"
+        (click)="retrySignOut()"
+      >
+        Try again
+      </button>
+      <button
+        type="button"
+        class="font-semibold underline"
+        data-testid="sign-out-dismiss"
+        (click)="dismissSignOutNotice()"
+      >
+        Dismiss
+      </button>
+    </div>
+  }
+
   <!-- The operator console (#170) owns a full-bleed porcelain shell — the tourist themed background,
        header/nav and footer are suppressed on /operator/** so only the console chrome shows. -->
   @if (!hideShellChrome()) {
