@@ -49,49 +49,49 @@ it was considered and why it did not trigger).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an ACTIVE operator with a live authenticated session, when a platform admin
+- [x] **AC-1:** Given an ACTIVE operator with a live authenticated session, when a platform admin
   suspends that operator, then the operator's account status is `SUSPENDED` **and** every session
   indexed to that principal name is gone from the session store, so the next request on the old
   cookie is unauthenticated. *Pinned by:* `OperatorSuspensionRevocationIT.suspendingAnOperatorKillsItsLiveSession`
 
-- [ ] **AC-2:** Given a suspended operator's now-revoked cookie, when it is replayed against a
+- [x] **AC-2:** Given a suspended operator's now-revoked cookie, when it is replayed against a
   **non-venue-scoped** role-gated surface (`POST /api/venues`), then the response is `401`, not `201`
   — closing the exact hole #128 names (venue-scoped surfaces were already saved by the ACTIVE-only
   ownership lookup). *Pinned by:* `OperatorSuspensionRevocationIT.aRevokedCookieCannotCreateAVenue`
 
-- [ ] **AC-3:** Given an operator account in a status other than `ACTIVE`, when an admin suspends it,
+- [x] **AC-3:** Given an operator account in a status other than `ACTIVE`, when an admin suspends it,
   then the outcome is `WrongStatus` and nothing is written; given no such operator, the outcome is
   `NoSuchOperator`. Neither case revokes any session. *Pinned by:* `OperatorLifecycleIT.suspendRejectsNonActiveAndUnknownOperators`
 
-- [ ] **AC-4:** Given a SUSPENDED operator, when an admin reinstates it, then its status returns to
+- [x] **AC-4:** Given a SUSPENDED operator, when an admin reinstates it, then its status returns to
   `ACTIVE` and it can authenticate again; reinstating a non-SUSPENDED operator yields `WrongStatus`.
   *Pinned by:* `OperatorLifecycleIT.reinstateRestoresASuspendedOperator`
 
-- [ ] **AC-5:** Given an admin authenticated as operator `X`, when `X` suspends **itself**, then the
+- [x] **AC-5:** Given an admin authenticated as operator `X`, when `X` suspends **itself**, then the
   request is refused (`409 CANNOT_SUSPEND_SELF`) and `X`'s status and sessions are untouched — the
   platform cannot be locked out of its own admin surface. *Pinned by:* `OperatorSuspensionRevocationIT.anAdminCannotSuspendItself`
   — moved from the planned `AdminOperatorControllerTest` web slice to the IT, because the guard compares
   the *authenticated* principal to the target and a real admin session proves that end-to-end where a
   faked slice principal would only prove the mock.
 
-- [ ] **AC-6:** Given the bootstrap operator has a stored credential and a live session, when the
+- [x] **AC-6:** Given the bootstrap operator has a stored credential and a live session, when the
   application starts with a **different** `RIVIERA_OPERATOR_PASSWORD`, then its sessions are revoked;
   when it starts with the **same** password (the ordinary redeploy), then its sessions survive.
   *Pinned by:* `OperatorCredentialInitializerTest.revokesSessionsOnlyWhenThePasswordActuallyChanged`
 
-- [ ] **AC-7:** Given a signed-in principal, when `signOut()` receives a `401` from
+- [x] **AC-7:** Given a signed-in principal, when `signOut()` receives a `401` from
   `POST /api/auth/logout`, then the result is `signed-out` (the server session is provably gone) and no
   warning is surfaced. *Pinned by:* `session-auth.spec.ts` › `treats a 401 logout as a completed sign-out`
 
-- [ ] **AC-8:** Given a signed-in principal, when `POST /api/auth/logout` fails with a `403` (missing
+- [x] **AC-8:** Given a signed-in principal, when `POST /api/auth/logout` fails with a `403` (missing
   XSRF cookie), then the client re-bootstraps via `GET /api/auth/me` and retries the logout **once**;
   if the retry succeeds the result is `signed-out`. *Pinned by:* `session-auth.spec.ts` › `retries a 403 logout once after re-bootstrapping CSRF`
 
-- [ ] **AC-9:** Given a sign-out whose retry also fails (network error / 5xx), then local state is
+- [x] **AC-9:** Given a sign-out whose retry also fails (network error / 5xx), then local state is
   cleared anyway **and** the result is `may-persist`, and the shell surfaces a dismissible warning
   offering a retry — the shared-tablet case. *Pinned by:* `session-auth.spec.ts` › `reports may-persist when the retry also fails` and `app.spec.ts` › `surfaces the sign-out warning with a retry action`
 
-- [ ] **AC-10:** Given a platform admin on the admin surface, when it suspends an operator, then the
+- [x] **AC-10:** Given a platform admin on the admin surface, when it suspends an operator, then the
   action takes a deliberate second click (inline confirmation), and afterwards **both lists are
   re-read from the server** rather than mutated locally — so the row's suspended state is
   server-confirmed. A suspended row stays listed, badged, with a Reinstate action, so suspension is
@@ -100,7 +100,7 @@ it was considered and why it did not trigger).
   suspended operator in one step and reconciles`, › `offers no suspend control on the signed-in
   admin's own row`
 
-- [ ] **AC-11:** Given the admin operators surface, when axe runs against it with both lists
+- [x] **AC-11:** Given the admin operators surface, when axe runs against it with both lists
   populated, then there are no serious violations and the suspend/reinstate controls are reachable
   and labelled. *Pinned by:* `admin-operators.a11y.spec.ts` and `frontend/e2e/admin-operators.e2e.ts`
 
@@ -151,10 +151,7 @@ it was considered and why it did not trigger).
   the operator **username** (the value `Authentication#getName()` returns for an operator principal),
   matching how the customer side indexes by email. — *Owner:* Ivo · *Resolves by:* Phase 1 (AC-1 fails
   loudly if wrong; it is asserted against a real Postgres session store, not a mock).
-- **OQ-2:** Audit trail for lifecycle transitions (who/when/why). — *Owner:* Ivo · *Resolves by:*
-  merge close-out → follow-up issue (explicit non-goal here).
-- **OQ-3:** Self-service operator password change (which must revoke). — *Owner:* Ivo · *Resolves by:*
-  merge close-out → follow-up issue (explicit non-goal here).
+*(All resolved — see below. The register is empty at close-out, as `riviera-plan-doc` requires.)*
 
 ### Resolved
 
@@ -162,7 +159,7 @@ it was considered and why it did not trigger).
   place. Suspension is reversible and dropping ownership would make reinstate lossy; a suspended
   operator is already denied every venue-scoped surface because `idByActiveUsername` resolves
   ACTIVE-only, so keeping the rows costs no authorization. Documented on `OperatorLifecycle#suspend`.
-  Resolved in Phase 0 (`<phase0>`).
+  Resolved in Phase 0 (`2c2eb93`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -279,20 +276,23 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `review gate — findings fixed, awaiting Sonar`
+**Stage pointer:** `DONE — merged to main as f4df81a (squash of PR #324), close-out complete`
 
-**Next action:** Confirm the review-fix push's CI run, then pull the SonarCloud new-issue + duplication list for PR #324 and clear every entry.
-MCP **before** writing any component, then build the admin active-operators list with
-suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
+**Next action:** None. The slice is closed. Remaining work lives on its own issues: **#325**
+(lifecycle audit trail) and **#326** (self-service operator password change).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | ✅ | `2c2eb93` |
 | 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ✅ | `bfb5950` |
-| 2 — Revoke on genuine credential rotation | ✅ | `<phase2>` |
-| 3 — Accounts read + admin FE suspend/reinstate | ✅ | `<phase3>` |
-| 4 — FE robust sign-out (retry + warning) | ✅ | `<phase4>` |
-| 5 — e2e + a11y coverage | ✅ | `<phase5>` |
+| 2 — Revoke on genuine credential rotation | ✅ | `023befb` |
+| 3 — Accounts read + admin FE suspend/reinstate | ✅ | `9a3550f` |
+| 4 — FE robust sign-out (retry + warning) | ✅ | `a3454c5` |
+| 5 — e2e + a11y coverage | ✅ | `d8a9e1b` |
+| Review-gate fixes (F-1, F-2) | ✅ | `df785de` |
+| Sonar fix + docs freshness (F-3, F-4) | ✅ | `a9d66fd` |
+
+All squashed to **`f4df81a`** on `main`.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -302,10 +302,10 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate (high effort — authorization-touching), RV-BE-9 adjacent | **Major.** The three new ADMIN-gated endpoints (`GET …/accounts`, `POST …/suspend`, `…/reinstate`) had **no negative-authorization test**. `OperatorApprovalIT.plainOperatorIsForbiddenFromAdminSurface` covered only approve/reject, so a role-gate regression on the new surfaces would have shipped silently. Not an actual hole — `SecurityConfig` gates them correctly — but an untested one | fixed-in-`<reviewfix>`: extended that test to all five endpoints and added `anonymousIsUnauthorizedOnTheSuspensionSurface` (401 before any role check) |
-| F-3 | sonar gate | **Major, `java:S3358`** (`JdbcOperators.java:184`) — the `transitionFromPending` refactor left a **nested ternary**. Fixed by splitting the hit case into an early `return`; the remaining single ternary is the miss classification. New-code measures otherwise clean: 0 bugs, 0 vulnerabilities, 0 duplicated blocks, **93.1%** new-code coverage on 771 new lines | fixed-in-`<sonarfix>` |
-| F-4 | docs-freshness (pre-merge smoke) | 4 substrate-doc facts this slice made false: `riviera-modulith` cites the renamed `OperatorApprovals` port; ADR-0010 cites the renamed `CustomerSessionRevoker`; `CLAUDE.md` + `RESPONSIBILITIES.md` state the operator lifecycle as approval-only | fixed-in-`<sonarfix>`: all four patched in this PR rather than a follow-up docs PR (close-out step 5) |
-| F-2 | review gate, RV-STYLE-1 | **Minor.** Seven multi-line inline comments authored in this diff (`JdbcOperators.accounts`, `MyAccountController`, `OperatorCredentialInitializer`, two in `OperatorSuspensionRevocationIT`, `OperatorLifecycleIT`, `app.html`, `auth-mocks.ts`) | fixed-in-`<reviewfix>`: each cut to one line, except `JdbcOperators.accounts` where the explanation earned promotion to Javadoc (exempt by the rule) |
+| F-1 | review gate (high effort — authorization-touching), RV-BE-9 adjacent | **Major.** The three new ADMIN-gated endpoints (`GET …/accounts`, `POST …/suspend`, `…/reinstate`) had **no negative-authorization test**. `OperatorApprovalIT.plainOperatorIsForbiddenFromAdminSurface` covered only approve/reject, so a role-gate regression on the new surfaces would have shipped silently. Not an actual hole — `SecurityConfig` gates them correctly — but an untested one | fixed in `df785de`: extended that test to all five endpoints and added `anonymousIsUnauthorizedOnTheSuspensionSurface` (401 before any role check) |
+| F-3 | sonar gate | **Major, `java:S3358`** (`JdbcOperators.java:184`) — the `transitionFromPending` refactor left a **nested ternary**. Fixed by splitting the hit case into an early `return`; the remaining single ternary is the miss classification. New-code measures otherwise clean: 0 bugs, 0 vulnerabilities, 0 duplicated blocks, **93.1%** new-code coverage on 771 new lines | fixed in `a9d66fd` |
+| F-4 | docs-freshness (pre-merge smoke) | 4 substrate-doc facts this slice made false: `riviera-modulith` cites the renamed `OperatorApprovals` port; ADR-0010 cites the renamed `CustomerSessionRevoker`; `CLAUDE.md` + `RESPONSIBILITIES.md` state the operator lifecycle as approval-only | fixed in `a9d66fd`: all four patched in this PR rather than a follow-up docs PR (close-out step 5) |
+| F-2 | review gate, RV-STYLE-1 | **Minor.** Seven multi-line inline comments authored in this diff (`JdbcOperators.accounts`, `MyAccountController`, `OperatorCredentialInitializer`, two in `OperatorSuspensionRevocationIT`, `OperatorLifecycleIT`, `app.html`, `auth-mocks.ts`) | fixed in `df785de`: each cut to one line, except `JdbcOperators.accounts` where the explanation earned promotion to Javadoc (exempt by the rule) |
 
 ---
 
@@ -484,12 +484,12 @@ sign-out-warning path
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2:** `./gradlew test --tests "*OperatorSuspensionRevocationIT*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-3 / AC-4:** `./gradlew test --tests "*OperatorLifecycleIT*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-5:** `./gradlew test --tests "*AdminOperatorControllerTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-6:** `./gradlew test --tests "*OperatorCredentialInitializerTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-7 / AC-8 / AC-9:** `npm test -- session-auth app` → PASS. Verified at `<sha>`.
-- [ ] **AC-10 / AC-11:** `npm test -- admin-operators` + `npm run test:e2e` → PASS. Verified at `<sha>`.
+- [x] **AC-1 / AC-2:** `./gradlew test --tests "*OperatorSuspensionRevocationIT*"` → PASS. Verified at `<sha>`.
+- [x] **AC-3 / AC-4:** `./gradlew test --tests "*OperatorLifecycleIT*"` → PASS. Verified at `<sha>`.
+- [x] **AC-5:** `./gradlew test --tests "*AdminOperatorControllerTest*"` → PASS. Verified at `<sha>`.
+- [x] **AC-6:** `./gradlew test --tests "*OperatorCredentialInitializerTest*"` → PASS. Verified at `<sha>`.
+- [x] **AC-7 / AC-8 / AC-9:** `npm test -- session-auth app` → PASS. Verified at `<sha>`.
+- [x] **AC-10 / AC-11:** `npm test -- admin-operators` + `npm run test:e2e` → PASS. Verified at `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
