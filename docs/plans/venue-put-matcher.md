@@ -173,15 +173,23 @@ byte-identical `403 ACCESS_DENIED` payloads by design, so even that is invisible
 > or whenever unsure where the work stands: re-read this section (plus the current `riviera-sdlc`
 > stage's reference file) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Load `riviera-local-debug`, then write `VenueWriteRoleGateTest` and confirm it is
-**red** against the unfixed `SecurityConfig` before touching the config.
+**Next action:** Write `EndpointRoleGateCoverageTest`, then run the AC-7 falsification (remove the
+Phase-0 `PUT` matcher, confirm red naming exactly the two PUTs, restore).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Filter-layer role gate for the two PUTs (red → matchers → green) | | |
-| 1 — Endpoint-coverage tripwire (+ deliberate falsification) | | |
+| 0 — Filter-layer role gate for the two PUTs (red → matchers → green) | ✅ | `5ae44ba` |
+| 1 — Endpoint-coverage tripwire (+ deliberate falsification) | ⏳ | |
+
+**Phase 0 evidence.** Red first, for the right reason — `assertNeverDispatched` failed with
+`expected: null but was: VenueAdminController#replaceLayout(...)` (and `#repriceRow(...)`),
+i.e. a `ROLE_CUSTOMER` PUT reached the controller. Green after the matcher. Scoped regression
+batch green: `VenueWriteRoleGateTest`, `MeSurfaceRoleGateTest`, `MeErasureControllerTest`,
+`AdminErasureControllerTest`, `CsrfProtection*`, `RateLimitFilterTest`, `ClientIpResolverTest`,
+`MyVenuesControllerTest`, `ModularityTests`, `JdbcOnlyArchitectureTests`,
+`PackageShapeArchitectureTests`, `OperatorAuthPlacementTests`, `ErrorContractArchitectureTests`.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

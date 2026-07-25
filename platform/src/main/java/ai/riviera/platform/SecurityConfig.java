@@ -70,6 +70,10 @@ class SecurityConfig {
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
+	/** Bulk beach-map layout replace (O3 #172) — an operator-only PUT; session + CSRF token required. */
+	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
+	/** Row reprice (O4 #174) — an operator-only PUT; `*` matches one segment, so it never widens. */
+	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
 	// A single venue photo slot (#142): POST upload / DELETE remove, operator-only. The public GET
 	// serving path /api/venues/*/photos/(hash) falls under "GET /api/venues/**" below.
 	private static final String PHOTO_ITEM_PATH = "/api/venues/*/photos/*";
@@ -293,6 +297,12 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						// Beach-map replace + row reprice (O3 #172, O4 #174) — operator-only writes that had NO
+						// matcher until #328 and fell through to anyRequest().authenticated(), where any
+						// authenticated principal (a signed-in tourist included) passed the filter. Object-level
+						// ownership (invariant #13) is still enforced in the application service; this is the
+						// role layer above it. Method-scoped like every venue rule, so the public GET is untouched.
+						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH).hasRole(OPERATOR_ROLE)
 						// Venue photo upload/remove (#142) — operator-only writes. Object-level ownership
 						// (invariant #13) is enforced in VenuePhotoService; this is the role layer. The
 						// serving GET stays public via "GET /api/venues/**" above. Non-GET, so it never
