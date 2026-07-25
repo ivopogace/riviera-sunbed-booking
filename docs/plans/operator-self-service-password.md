@@ -80,7 +80,7 @@ is `V30__customer_erasure_marker.sql`).
       *Pinned by:* `RateLimitFilterTest.credentialChangeFloodDoesNotStarveOperatorLogin`
 - [ ] **AC-9:** Given a signed-in operator on the change-password screen, when the change succeeds, then the
       UI confirms it and states that other devices have been signed out.
-      *Pinned by:* `set-password.spec.ts` (operator audience) + `e2e/operator-password.e2e.ts`
+      *Pinned by:* `operator-password.spec.ts` + `e2e/operator-password.e2e.ts`
 
 ## Non-goals
 
@@ -114,16 +114,36 @@ keeps its only current caller (`OperatorCredentialInitializer`) and gains a seco
 
 ## Open questions / Assumptions
 
-- **Assumption:** Merging the operator audience into the existing `auth/set-password.ts` (rather than a
-  second near-identical page) is the right call — it follows S9 #277 (five auth surfaces unified into one
-  audience-aware card) and #128 (`PrincipalSessionRevoker` *generalized*, not copied, because "a second
-  near-identical edge class is duplication the merge gate rejects"). *Owner:* Claude · *Resolves by:* Phase 2
-  — revisit if the customer SSO-only branch makes the merged component harder to read than two components.
 - **Assumption:** No FE surface is needed for the bootstrap admin's `409` beyond rendering the message —
   the admin is a maintainer who has the runbook. *Owner:* Claude · *Resolves by:* Phase 2.
 - **Open question:** Should a successful change also send a "your password was changed" notification?
   Blocked on the real mailer (#255) and on operators having a verified address. *Owner:* Ivo ·
   *Resolves by:* deferred — raise as a follow-up issue at merge close-out if wanted.
+
+### Resolved
+
+- **Assumption (raised at plan time, resolved at plan time — not carried into Phase 2):** *"Extend
+  `auth/set-password.ts` to be audience-aware rather than adding a second page."* **Rejected on inspection
+  of the component.** `set-password.ts` is not a change-password card; it is the **customer account page**,
+  and only one of its five blocks concerns passwords. The other four do not apply to an operator:
+  **(a)** email-verification status + resend — operators have no verified email channel (blocked on #255;
+  `contactEmail` from #115 is unverified); **(b)** the "leave blank if you signed in with Google or Apple"
+  affordance — operator SSO is #276, still open and an explicit non-goal of #108, so an operator's current
+  password is *always* required; **(c)** the ~50-line **right-to-erasure** section — an operator is a
+  business counterparty with payout records, not a data subject with an erasure right over them, so
+  rendering it for an operator would be actively wrong; **(d)** `inject(CustomerAuth)` and the "Your
+  account" framing. Merging would wrap ~60% of the component in `@if (audience === 'customer')` and add a
+  `409 BOOTSTRAP_CREDENTIAL_MANAGED` branch with no customer analogue — two components sharing a file, on a
+  security surface where ease of reasoning is the thing being bought.
+  **Outcome: a separate `auth/operator-password.ts` that shares the *primitives*, not the page** —
+  `CardGlass`, `auth.scss` + its `auth-*` classes, and the password-policy constants, all already reusable.
+  This is what the cited precedents actually say rather than a departure from them: S9 #277 unified
+  sign-in/register because those four flows have the same shape (identity + secret + submit, audience
+  changing only the endpoint), and #128 generalized `PrincipalSessionRevoker` because "delete sessions by
+  principal name" has no principal-type content at all. Both encode *share what is actually the same*.
+  **Accepted cost:** the ~40-line password form (two fields, policy message, error mapping) is duplicated
+  across the two pages. At two call sites `codebase-design` calls that a *hypothetical* seam — extract a
+  shared presentational form when a third caller appears, not pre-emptively.
 
 ## Availability & concurrency (invariant #2)
 
@@ -184,18 +204,26 @@ Phase 0, citing #115 and #326, rather than leaving a comment that contradicts th
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
 | FE-1 | `core/operator-auth.ts` | existing → **extended** | `@Service` singleton | signals | — |
-| FE-2 | `auth/set-password.ts` (+ `.html`) | existing → **extended** (audience-aware) | standalone component | signals | Signal Forms |
-| FE-3 | `auth/set-password.spec.ts` | existing → **extended** | Vitest/jsdom spec | — | — |
-| FE-4 | `auth/set-password.a11y.spec.ts` | existing → **extended** | axe spec | — | — |
+| FE-2 | `auth/operator-password.ts` | **new** | standalone component | signals | Signal Forms |
+| FE-3 | `auth/operator-password.spec.ts` | **new** | Vitest/jsdom spec | — | — |
+| FE-4 | `auth/operator-password.a11y.spec.ts` | **new** | axe spec | — | — |
 | FE-5 | `app.routes.ts` | existing → **modified** | route table | — | — |
 | FE-6 | `operator/operator-console.html` | existing → **modified** | template | — | — |
 | FE-7 | `e2e/operator-password.e2e.ts` | **new** | Playwright (CI-safe, mocked) | — | — |
 
 **Placement rationale (`riviera-frontend`):** the HTTP call is stateful + session-aware → `core/operator-auth.ts`
-(mirroring `core/customer-auth.ts`, which holds the customer's set-password call). The page is an *account page*,
-which the skill assigns to the `auth/` feature folder. **No new feature folder.** The existing route
-`/account/password` is reused and made audience-aware, matching `/account/sign-in`'s S9 shape; entry point is a
-link in the operator-console header.
+(mirroring `core/customer-auth.ts`, which holds the customer's set-password call). The page is a credential
+surface, which the skill assigns to the `auth/` feature folder alongside `sign-in`, `reset-password` and
+`set-password`. **No new feature folder.**
+
+**A separate page, not an audience toggle on `set-password.ts`** — see *Open questions → Resolved*. `auth.scss`,
+the `auth-*` classes, `CardGlass` and the password-policy constants are shared as-is; the page is not.
+`auth/set-password.ts` is **not modified by this slice**, so the customer account page carries no regression risk.
+
+**Route:** `/account/operator-password`, guarded by `operatorSessionGuard` (S9 #277) so a restoring session is
+awaited before the redirect decision. `/account/*` is already the app-wide credential namespace for both
+audiences — S9 made `/account/sign-in?audience=operator` serve operators — so this is consistent, not a tourist
+namespace. Entry point: a link in the operator-console header.
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()` signal APIs. The console
 subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no document-level theme write.
@@ -284,9 +312,10 @@ Skill-routing gate for what the fix touches *before* editing).
 **Frontend**
 
 - `frontend/src/app/core/operator-auth.ts` (+ `.spec.ts`) — **modified.** `changePassword(current, next)`.
-- `frontend/src/app/auth/set-password.ts` / `.html` / `.spec.ts` / `.a11y.spec.ts` — **modified.**
-  Audience-aware.
-- `frontend/src/app/app.routes.ts` — **modified.** `/account/password` reachable by an operator session.
+- `frontend/src/app/auth/operator-password.ts` (+ `.spec.ts`, `.a11y.spec.ts`) — **new.** The operator
+  credential page; reuses `CardGlass` + `auth.scss`. **`auth/set-password.ts` is not touched.**
+- `frontend/src/app/app.routes.ts` — **modified.** Lazy `/account/operator-password` behind
+  `operatorSessionGuard`.
 - `frontend/src/app/operator/operator-console.html` — **modified.** Header link.
 - `frontend/e2e/operator-password.e2e.ts` — **new.** CI-safe mocked spec.
 
@@ -341,13 +370,14 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 
 > **Load `angular-developer` + the angular-cli MCP before this phase** (routing gate re-fires on a new area).
 
-**Files:** Modify `core/operator-auth.ts`, `auth/set-password.*`, `app.routes.ts`,
+**Files:** Create `auth/operator-password.ts` (+ specs) · Modify `core/operator-auth.ts`, `app.routes.ts`,
 `operator/operator-console.html`
 
-- [ ] **Step 1: Write the failing specs** — AC-9 in `set-password.spec.ts` (operator audience: success path,
+- [ ] **Step 1: Write the failing specs** — AC-9 in `operator-password.spec.ts` (success path,
       wrong-current-password, bootstrap `409`), plus `operator-auth.spec.ts` for the HTTP call.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- set-password operator-auth`.
-- [ ] **Step 3: Minimal implementation** — audience-aware component + `changePassword` on the service.
+- [ ] **Step 2: Run them, verify they fail** — `npm test -- operator-password operator-auth`.
+- [ ] **Step 3: Minimal implementation** — the new page + `changePassword` on the service. Reuse
+      `CardGlass` + `auth.scss`; **do not** edit `auth/set-password.ts`.
 - [ ] **Step 4: Run them, verify they pass**; then `npm run lint` + `npm run test:a11y`.
 - [ ] **Step 5: Generalization-audit pass** — check no other operator surface hard-codes a customer-only
       auth assumption.
@@ -396,7 +426,7 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 - [ ] **AC-5, AC-6:** `./gradlew test --tests "*SecurityConfigTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS. Verified at `<sha>`.
 - [ ] **AC-7:** `./gradlew test --tests "*OperatorPasswordChangeIT*"` → PASS (Docker present). Verified at `<sha>`.
 - [ ] **AC-8:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-9:** `npm test -- set-password operator-auth` + `npm run test:e2e:a11y` → PASS. Verified at `<sha>`.
+- [ ] **AC-9:** `npm test -- operator-password operator-auth` + `npm run test:e2e:a11y` → PASS. Verified at `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
