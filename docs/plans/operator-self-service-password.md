@@ -67,10 +67,14 @@ is `V30__customer_erasure_marker.sql`).
 - [ ] **AC-5:** Given a signed-in **customer**, when it calls the operator password endpoint, then the
       security filter rejects it with `403` **before** `DispatcherServlet` dispatches (never reaching the
       controller).
-      *Pinned by:* `EndpointRoleGateCoverageTest` (existing tripwire) + `SecurityConfigTest.operatorPasswordIsOperatorOnly`
+      *Pinned by:* `EndpointRoleGateCoverageTest` (existing tripwire) +
+      `OperatorAccountControllerTest.customerIsRejectedBeforeTheController` — **corrected 2026-07-26**:
+      the plan named a `SecurityConfigTest` that does not exist in this repo and was never created; the
+      filter-level tests landed in the controller test, which is where they run.
 - [ ] **AC-6:** Given an anonymous caller, when it posts to the endpoint, then the response is
       `401 UNAUTHENTICATED`.
-      *Pinned by:* `SecurityConfigTest.operatorPasswordRejectsAnonymous`
+      *Pinned by:* `OperatorAccountControllerTest.anonymousIsUnauthorizedBeforeTheController` (same
+      correction as AC-5) — read with the vacuity caveat below.
 - [ ] **AC-7:** Given an operator that has changed its password, when it authenticates through the real
       `AuthenticationManager`, then the **new** password succeeds and the **old** one fails.
       *Pinned by:* `OperatorPasswordChangeIT.newCredentialAuthenticatesAndOldDoesNot`
@@ -261,11 +265,32 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phases 0-3 done; AC-7's IT then phase 4 (docs) next`
+**Stage pointer:** `implement — phases 0-3 + AC-7's IT done; phase 4 (docs) next`
 
-**Next action:** AC-7's `OperatorPasswordChangeIT` (Docker is available on this machine —
-`SetPasswordIT` ran with 0 skipped), then Phase 4's runbook/doc updates + `graphify update .`.
-The slice is not done without both.
+**Next action:** Phase 4 — the runbook + `CLAUDE.md`/`RESPONSIBILITIES.md` operator lines, then
+`graphify update .` (the post-commit hook is code-only). Then the SDLC gates: merge `origin/main`,
+open the PR, review gate, Sonar gate.
+
+**AC-7 verification (`OperatorPasswordChangeIT`, 4 tests).** Docker present — **4 tests, 0 skipped,
+0 failures**, read from `build/test-results/test/TEST-*.xml`, not from "BUILD SUCCESSFUL". It covers
+more than AC-7's letter: the rotation through the real `AuthenticationManager`, the AC-1 revocation
+against the real `SPRING_SESSION` store, an inert rejected attempt, and R-3's bootstrap refusal
+against the **real** `riviera.operator.username` binding.
+
+Green on the first run again (the code was written in Phase 0), so the same mutation discipline was
+applied — and this one is the point of the whole class: **`currentPasswordMatches` was rewritten as
+the R-1 defect** (`encode(input).equals(stored)`, the bcrypt-re-salting bug that shipped in #128 and
+S8). Result: **2 of 4 failed** — exactly the two that require a *successful* change — while the
+wrong-password and bootstrap tests stayed green, since they never exercise the correct-password path.
+The `@WebMvcTest` cannot make that claim: it mocks `OperatorProvisioning`, so it can only see that
+*a* hash was handed over, never that the login path would accept it. Reverted; `git status platform/`
+then showed only the new untracked IT.
+
+**Context note:** the IT deliberately shares `OperatorSuspensionRevocationIT`'s context key
+(`riviera.operator.password=bootstrap-pw`) rather than minting a new Spring context. That makes the
+per-identity login budget (#292, 15/15min) shared for the `operator` username, which is why the
+bootstrap test asserts on the **stored hash** instead of logging in a second time. Both ITs were run
+together to prove they coexist: 15 suites / **87 tests / 0 skipped / 0 failures**.
 
 **Phase 3 verification.** `playwright-cli` loaded first (routing gate). Both tests passed on the
 **first** run — the surface was already built in Phase 2, so there was no natural red. Rather than
@@ -320,9 +345,8 @@ controller + matcher:
 > that leaks endpoint existence), but it must not be read as evidence that the matcher works —
 > `customerIsRejectedBeforeTheController` is the discriminating test for that, and it moved `404 → 403`.
 
-**Still owed from Phase 0's AC list:** AC-7 (`OperatorPasswordChangeIT` — new password authenticates, old
-does not, through the real `AuthenticationManager` against Testcontainers Postgres). Deferred to sit with
-the other IT work rather than blocking the rate-limit phase; the slice is not done without it.
+~~**Still owed from Phase 0's AC list:** AC-7 (`OperatorPasswordChangeIT`).~~ **Delivered 2026-07-26** —
+see the AC-7 verification note above.
 
 **Phase 1 simplification (found by reading `RateLimitFilter`).** `authBucketsFor` matches paths by
 **exact equality**, so `/api/auth/operator/password` currently draws on *no* bucket — unthrottled, R-5
@@ -364,7 +388,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java` — **new.** AC-1..AC-4.
 - `platform/src/test/java/ai/riviera/platform/OperatorPasswordChangeIT.java` — **new.** AC-7 (Testcontainers,
   `@EnabledIfDockerAvailable`).
-- `platform/src/test/java/ai/riviera/platform/SecurityConfigTest.java` — **modified.** AC-5, AC-6.
+- ~~`platform/src/test/java/ai/riviera/platform/SecurityConfigTest.java` — **modified.** AC-5, AC-6.~~
+  **No such class exists** (planning error, found 2026-07-26 when a `--tests "*SecurityConfigTest*"`
+  filter matched nothing). AC-5/AC-6 live in `OperatorAccountControllerTest`, which imports the real
+  `SecurityConfig` — so they test the matcher, just from the other file.
 - `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — **modified.** AC-8.
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — **modified.** Bean for the new controller
   (R-6).
