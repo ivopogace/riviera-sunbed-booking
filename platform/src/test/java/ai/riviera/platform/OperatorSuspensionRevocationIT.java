@@ -87,8 +87,7 @@ class OperatorSuspensionRevocationIT {
 	void aRevokedCookieCannotCreateAVenue() throws Exception {
 		Cookie live = SessionLoginSupport.operatorSession(mvc, TARGET, TARGET_PASSWORD);
 
-		// Baseline: this exact request is accepted while the session is live, so a later 401 can only
-		// be the revocation — not a bad body or a missing role.
+		// Baseline: accepted while live, so the later 401 can only be the revocation.
 		mvc.perform(createVenue("Pre-Suspension Venue").cookie(live).with(csrf()))
 				.andExpect(status().isCreated());
 
@@ -134,8 +133,7 @@ class OperatorSuspensionRevocationIT {
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("CANNOT_SUSPEND_SELF"));
 
-		// Neither the account nor the calling session may be touched — otherwise the platform can
-		// lock itself out of its own admin surface with one click.
+		// Neither the account nor the calling session may be touched.
 		assertEquals("ACTIVE", statusOf(adminId));
 		mvc.perform(get(ME_PATH).cookie(admin)).andExpect(status().isOk());
 	}

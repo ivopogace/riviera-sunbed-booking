@@ -77,8 +77,7 @@ class MyAccountController {
 					"The current password is incorrect.");
 		}
 		recovery.setPassword(accountId, passwordEncoder.encode(request.newPassword()));
-		// A rotated credential must not leave the sessions it authorized alive (#128) — but the caller's
-		// own session survives, so changing your password doesn't sign you out of the device doing it.
+		// Evict every OTHER session the old credential authorized; this one survives (#128).
 		sessionRevoker.revokeAllExcept(authentication.getName(), currentSessionId(httpRequest));
 		return ResponseEntity.noContent().build();
 	}

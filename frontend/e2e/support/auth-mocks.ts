@@ -169,8 +169,7 @@ export async function mockOperatorLifecycleApi(
   let nextVenueId = 100;
   let session: { username: string; admin: boolean } | undefined;
 
-  // The platform admin is itself a decided account, so it appears in the list with its own row —
-  // which is where the "This is you" / no-self-suspend affordance shows (#128).
+  // The admin is itself a decided account — its own row is where "This is you" shows (#128).
   accounts.push({
     id: nextOpId++,
     username: admin.username,

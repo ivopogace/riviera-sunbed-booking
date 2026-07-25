@@ -1,6 +1,5 @@
 <div class="riv-app">
-  <!-- Outside the chrome conditional on purpose: operators sign out from /operator/**, where the
-       tourist header is suppressed, and a shared venue tablet is exactly where this warning matters. -->
+  <!-- Above the chrome conditional so it also shows on /operator/**, the shared-tablet case. -->
   @if (signOutNotice.visible()) {
     <div
       role="alert"

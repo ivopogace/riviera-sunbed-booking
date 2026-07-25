@@ -134,11 +134,14 @@ class JdbcOperators implements Operators {
 				.list();
 	}
 
+	/**
+	 * Both decided states ({@code ACTIVE} + {@code SUSPENDED}), so a suspended operator stays visible
+	 * and reinstatable — listing only ACTIVE would make suspension a one-way door. {@code contact_email}
+	 * is NULL for a directly-provisioned account (the bootstrap admin); {@link OperatorAccount} and the
+	 * console both treat it as optional.
+	 */
 	@Override
 	public List<OperatorAccount> accounts() {
-		// Both decided states, so a suspended operator stays visible and reinstatable — listing only
-		// ACTIVE would make suspension a one-way door. contact_email is NULL for a directly-provisioned
-		// account (the bootstrap admin); the record and the console both treat it as optional.
 		return jdbc.sql("""
 				SELECT id, username, contact_email, is_admin, status FROM operator
 				WHERE status IN (:active, :suspended) ORDER BY username

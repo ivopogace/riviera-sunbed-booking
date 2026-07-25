@@ -58,8 +58,7 @@ class OperatorLifecycleIT {
 
 		OperatorLifecycleOutcome outcome = lifecycle.suspend(id);
 
-		// The username comes back so the edge can revoke that principal's sessions without a second
-		// round-trip — the shipped ResetPasswordOutcome.Reset(accountId, email) shape.
+		// The username comes back, so the edge revokes without a second round-trip.
 		assertEquals(new OperatorLifecycleOutcome.Changed(id, "lifecycle-active"), outcome);
 		assertEquals(OperatorStatus.SUSPENDED.name(), statusOf(id));
 	}

@@ -59,8 +59,7 @@ class OperatorCredentialInitializer implements ApplicationRunner {
 		boolean rotated = isGenuineRotation(username, password);
 		boolean updated = provisioning.setPassword(username, encoder.encode(password));
 		if (updated && rotated) {
-			// A rotated credential must not leave the sessions it authorized alive (#128) — restarting
-			// does not clear SPRING_SESSION, that being the point of a server-side session store.
+			// A restart does not clear SPRING_SESSION, so the rotated-away sessions must go (#128).
 			sessionRevoker.revokeAll(username);
 			log.info("RIVIERA_OPERATOR_PASSWORD changed for '{}' — live sessions revoked.", username);
 		}

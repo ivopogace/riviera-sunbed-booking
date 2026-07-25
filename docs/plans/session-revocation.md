@@ -279,9 +279,9 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `CI gate — pushing the branch`
+**Stage pointer:** `review gate — findings fixed, awaiting Sonar`
 
-**Next action:** Push `feature/session-revocation`, open the PR into `main`, then confirm that push's CI run before the review gate.
+**Next action:** Confirm the review-fix push's CI run, then pull the SonarCloud new-issue + duplication list for PR #324 and clear every entry.
 MCP **before** writing any component, then build the admin active-operators list with
 suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 
@@ -302,7 +302,8 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (high effort — authorization-touching), RV-BE-9 adjacent | **Major.** The three new ADMIN-gated endpoints (`GET …/accounts`, `POST …/suspend`, `…/reinstate`) had **no negative-authorization test**. `OperatorApprovalIT.plainOperatorIsForbiddenFromAdminSurface` covered only approve/reject, so a role-gate regression on the new surfaces would have shipped silently. Not an actual hole — `SecurityConfig` gates them correctly — but an untested one | fixed-in-`<reviewfix>`: extended that test to all five endpoints and added `anonymousIsUnauthorizedOnTheSuspensionSurface` (401 before any role check) |
+| F-2 | review gate, RV-STYLE-1 | **Minor.** Seven multi-line inline comments authored in this diff (`JdbcOperators.accounts`, `MyAccountController`, `OperatorCredentialInitializer`, two in `OperatorSuspensionRevocationIT`, `OperatorLifecycleIT`, `app.html`, `auth-mocks.ts`) | fixed-in-`<reviewfix>`: each cut to one line, except `JdbcOperators.accounts` where the explanation earned promotion to Javadoc (exempt by the rule) |
 
 ---
 
