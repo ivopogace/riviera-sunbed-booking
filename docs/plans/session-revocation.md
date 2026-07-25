@@ -279,9 +279,9 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `implement — phase 5 (e2e; re-run the Skill-routing gate for `playwright-cli`)`
+**Stage pointer:** `CI gate — pushing the branch`
 
-**Next action:** Load `playwright-cli`, then author `frontend/e2e/admin-operators.e2e.ts` (CI-safe mocked suite) covering suspend → reinstate and the sign-out-warning path.
+**Next action:** Push `feature/session-revocation`, open the PR into `main`, then confirm that push's CI run before the review gate.
 MCP **before** writing any component, then build the admin active-operators list with
 suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 
@@ -292,7 +292,7 @@ suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 | 2 — Revoke on genuine credential rotation | ✅ | `<phase2>` |
 | 3 — Accounts read + admin FE suspend/reinstate | ✅ | `<phase3>` |
 | 4 — FE robust sign-out (retry + warning) | ✅ | `<phase4>` |
-| 5 — e2e + a11y coverage | ⏳ | |
+| 5 — e2e + a11y coverage | ✅ | `<phase5>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

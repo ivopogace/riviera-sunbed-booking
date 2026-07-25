@@ -150,11 +150,35 @@ export async function mockOperatorLifecycleApi(
     password: string;
     registeredAt: string;
   }
+  interface AccountOp {
+    id: number;
+    username: string;
+    contactEmail: string | null;
+    password: string;
+    admin: boolean;
+    suspended: boolean;
+  }
   const pending: PendingOp[] = [];
-  const approved = new Map<string, string>(); // username -> password (login enabled once approved)
+  /** Decided accounts (ACTIVE + SUSPENDED) — what `GET /api/admin/operators/accounts` returns (#128). */
+  const accounts: AccountOp[] = [];
+  /** Login works only for a decided, NOT-suspended account whose password matches. */
+  const canSignIn = (username: string, password: string | undefined): boolean =>
+    !!password &&
+    accounts.some((a) => a.username === username && !a.suspended && a.password === password);
   let nextOpId = 1;
   let nextVenueId = 100;
   let session: { username: string; admin: boolean } | undefined;
+
+  // The platform admin is itself a decided account, so it appears in the list with its own row —
+  // which is where the "This is you" / no-self-suspend affordance shows (#128).
+  accounts.push({
+    id: nextOpId++,
+    username: admin.username,
+    contactEmail: null,
+    password: admin.password,
+    admin: true,
+    suspended: false,
+  });
 
   const principal = () =>
     session
@@ -175,7 +199,9 @@ export async function mockOperatorLifecycleApi(
     };
     const username = (body.username ?? '').trim();
     const known =
-      !!username && (approved.has(username) || pending.some((p) => p.username === username));
+      !!username &&
+      (accounts.some((a) => a.username === username) ||
+        pending.some((p) => p.username === username));
     // Non-enumerating (D-8): always 202; only a fresh username adds a PENDING row (no session).
     if (username && !known) {
       pending.push({
@@ -192,14 +218,11 @@ export async function mockOperatorLifecycleApi(
   await page.route(/\/api\/auth\/operator\/login$/, (route) => {
     const body = route.request().postDataJSON() as { username?: string; password?: string };
     const username = (body.username ?? '').trim();
-    if (username === admin.username && body.password === admin.password) {
-      session = { username: admin.username, admin: true };
+    if (canSignIn(username, body.password)) {
+      session = { username, admin: accounts.some((a) => a.username === username && a.admin) };
       return route.fulfill({ json: principal() });
     }
-    if (!!body.password && approved.get(username) === body.password) {
-      session = { username, admin: false };
-      return route.fulfill({ json: principal() });
-    }
+    // Generic 401 for wrong password / unknown / suspended alike (no enumeration, D-8).
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
 
@@ -226,13 +249,63 @@ export async function mockOperatorLifecycleApi(
       return route.fulfill(problem(404, 'Not Found', 'NO_SUCH_OPERATOR'));
     }
     if (approve) {
-      approved.set(pending[idx].username, pending[idx].password); // login now enabled
+      const op = pending[idx];
+      // Approval makes it a decided account — login enabled, and now listed under /accounts (#128).
+      accounts.push({
+        id: op.id,
+        username: op.username,
+        contactEmail: op.contactEmail,
+        password: op.password,
+        admin: false,
+        suspended: false,
+      });
     }
     pending.splice(idx, 1); // approved or rejected → leaves the pending queue
     return route.fulfill({ status: 204 });
   };
   await page.route(/\/api\/admin\/operators\/\d+\/approve$/, (route) => decide(route, true));
   await page.route(/\/api\/admin\/operators\/\d+\/reject$/, (route) => decide(route, false));
+
+  await page.route(/\/api\/admin\/operators\/accounts$/, (route) =>
+    session?.admin
+      ? route.fulfill({
+          json: [...accounts]
+            .sort((a, b) => a.username.localeCompare(b.username))
+            .map((a) => ({
+              id: a.id,
+              username: a.username,
+              contactEmail: a.contactEmail,
+              admin: a.admin,
+              suspended: a.suspended,
+            })),
+        })
+      : route.fulfill(problem(403, 'Forbidden', 'ACCESS_DENIED')),
+  );
+
+  /** Suspend/reinstate (#128); suspending also REVOKES that operator's live session, as the server does. */
+  const transition = (route: import('@playwright/test').Route, suspend: boolean) => {
+    if (!session?.admin) {
+      return route.fulfill(problem(403, 'Forbidden', 'ACCESS_DENIED'));
+    }
+    const id = Number(/\/operators\/(\d+)\/(?:suspend|reinstate)/.exec(route.request().url())?.[1]);
+    const target = accounts.find((a) => a.id === id);
+    if (!target) {
+      return route.fulfill(problem(404, 'Not Found', 'NO_SUCH_OPERATOR'));
+    }
+    if (suspend && target.username === session.username) {
+      return route.fulfill(problem(409, 'Conflict', 'CANNOT_SUSPEND_SELF'));
+    }
+    if (target.suspended === suspend) {
+      return route.fulfill(problem(409, 'Conflict', 'WRONG_STATUS'));
+    }
+    target.suspended = suspend;
+    if (suspend && session.username === target.username) {
+      session = undefined;
+    }
+    return route.fulfill({ status: 204 });
+  };
+  await page.route(/\/api\/admin\/operators\/\d+\/suspend$/, (route) => transition(route, true));
+  await page.route(/\/api\/admin\/operators\/\d+\/reinstate$/, (route) => transition(route, false));
 
   await page.route(/\/api\/venues$/, (route) =>
     route.request().method() === 'POST'
