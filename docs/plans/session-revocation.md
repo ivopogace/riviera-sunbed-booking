@@ -143,14 +143,18 @@ it was considered and why it did not trigger).
   the operator **username** (the value `Authentication#getName()` returns for an operator principal),
   matching how the customer side indexes by email. — *Owner:* Ivo · *Resolves by:* Phase 1 (AC-1 fails
   loudly if wrong; it is asserted against a real Postgres session store, not a mock).
-- **OQ-1:** Should suspending an operator also **release** its venues (so another operator can claim
-  them)? — *Owner:* Ivo · *Resolves by:* Phase 0. *Leaning:* **no** — suspension is reversible, and
-  dropping ownership rows would make reinstate lossy. Ownership already denies a suspended operator
-  via the ACTIVE-only lookup.
 - **OQ-2:** Audit trail for lifecycle transitions (who/when/why). — *Owner:* Ivo · *Resolves by:*
   merge close-out → follow-up issue (explicit non-goal here).
 - **OQ-3:** Self-service operator password change (which must revoke). — *Owner:* Ivo · *Resolves by:*
   merge close-out → follow-up issue (explicit non-goal here).
+
+### Resolved
+
+- **OQ-1 (suspend and venue ownership):** **No** — suspension leaves the `operator_venue` rows in
+  place. Suspension is reversible and dropping ownership would make reinstate lossy; a suspended
+  operator is already denied every venue-scoped surface because `idByActiveUsername` resolves
+  ACTIVE-only, so keeping the rows costs no authorization. Documented on `OperatorLifecycle#suspend`.
+  Resolved in Phase 0 (`<phase0>`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -267,15 +271,16 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `plan — committed; entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Load `riviera-local-debug` (first `./gradlew` of the session), then write the failing
-`OperatorLifecycleIT.suspendRejectsNonActiveAndUnknownOperators` for Phase 0.
+**Next action:** Write the failing `OperatorSuspensionRevocationIT` (AC-1, AC-2) and
+`AdminOperatorControllerTest.anAdminCannotSuspendItself` (AC-5), then rename
+`CustomerSessionRevoker` → `PrincipalSessionRevoker` and wire revocation into the suspend endpoint.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | | |
-| 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | | |
+| 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | ✅ | `<phase0>` |
+| 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ⏳ | |
 | 2 — Revoke on genuine credential rotation | | |
 | 3 — Active-operators read + admin FE suspend/reinstate | | |
 | 4 — FE robust sign-out (retry + warning) | | |
@@ -460,6 +465,7 @@ sign-out-warning path
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 0 — new guarded-transition pattern | Any other writer of `operator.status`, and any consumer of the renamed port | `grep -rn "UPDATE operator SET status" src/main/`, `grep -rln "OperatorLifecycle" src/`, `grep -rn "OperatorStatus\." src/main/ \| grep -v adapter/out` | 2 writers (both the adapter's guarded transitions), 3 main + 3 test consumers, **0** status tokens outside the module | No further change — both writers already carry the `WHERE status = :expected` guard, so no unguarded transition exists to generalize. The rename swept `PayoutModuleTest` (`@MockitoBean`) and `WebSliceStubs` in the same commit, pre-empting the R-6 full-suite-only breakage. |
 
 ---
 

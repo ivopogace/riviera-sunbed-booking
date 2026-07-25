@@ -51,7 +51,9 @@ import java.util.Map;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import ai.riviera.platform.operator.api.OperatorAccounts;
-import ai.riviera.platform.operator.api.OperatorApprovals;
+import ai.riviera.platform.operator.api.OperatorLifecycle;
+import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
@@ -229,10 +231,15 @@ class WebSliceStubs {
 	}
 
 	@Bean
-	OperatorApprovals operatorApprovals() {
-		return new OperatorApprovals() {
+	OperatorLifecycle operatorLifecycle() {
+		return new OperatorLifecycle() {
 			@Override
 			public java.util.List<PendingOperator> pending() {
+				return java.util.List.of();
+			}
+
+			@Override
+			public java.util.List<ActiveOperator> active() {
 				return java.util.List.of();
 			}
 
@@ -244,6 +251,16 @@ class WebSliceStubs {
 			@Override
 			public ApprovalOutcome reject(OperatorId operatorId) {
 				return ApprovalOutcome.NO_SUCH_OPERATOR;
+			}
+
+			@Override
+			public OperatorLifecycleOutcome suspend(OperatorId operatorId) {
+				return new OperatorLifecycleOutcome.NoSuchOperator();
+			}
+
+			@Override
+			public OperatorLifecycleOutcome reinstate(OperatorId operatorId) {
+				return new OperatorLifecycleOutcome.NoSuchOperator();
 			}
 		};
 	}

@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import ai.riviera.platform.operator.vocabulary.ActiveOperator;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
@@ -42,6 +44,9 @@ public interface Operators {
 	/** Every operator awaiting admin approval (status PENDING), oldest first (#115, S6). */
 	List<PendingOperator> pendingOperators();
 
+	/** Every operator that can currently authenticate (status ACTIVE), by username (#128). */
+	List<ActiveOperator> activeOperators();
+
 	/**
 	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the
 	 * pending/exists/absent cases (#115, S6).
@@ -50,6 +55,16 @@ public interface Operators {
 
 	/** Transition the PENDING operator with this id to REJECTED; see {@link ApprovalOutcome} (#115, S6). */
 	ApprovalOutcome rejectPending(OperatorId operatorId);
+
+	/**
+	 * Transition the ACTIVE operator with this id to SUSPENDED, returning
+	 * {@link OperatorLifecycleOutcome.Changed} with its username so the edge can revoke its sessions
+	 * (#128). Writes nothing on a non-ACTIVE or unknown operator.
+	 */
+	OperatorLifecycleOutcome suspend(OperatorId operatorId);
+
+	/** Transition the SUSPENDED operator with this id back to ACTIVE; see {@link #suspend} (#128). */
+	OperatorLifecycleOutcome reinstate(OperatorId operatorId);
 
 	/** Update the stored credential of the operator with this username; returns rows affected. */
 	int updatePassword(String username, String passwordHash);

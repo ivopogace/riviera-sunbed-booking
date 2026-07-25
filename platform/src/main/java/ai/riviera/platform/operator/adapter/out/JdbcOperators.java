@@ -10,9 +10,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.application.Operators;
+import ai.riviera.platform.operator.vocabulary.ActiveOperator;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
@@ -31,8 +33,14 @@ class JdbcOperators implements Operators {
 	private static final String USERNAME = "username";
 	/** SQL named-param key bound to the {@code PENDING} status token (named, not duplicated — #6a / S1192). */
 	private static final String PENDING_PARAM = "pending";
+	/** SQL named-param key bound to the {@code ACTIVE} status token (named, not duplicated — #6a / S1192). */
+	private static final String ACTIVE_PARAM = "active";
 	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
 	private static final String OPERATOR_PARAM = "operator";
+	/** SQL named-param key for an operator's primary key in the lifecycle statements (S1192). */
+	private static final String ID_PARAM = "id";
+	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
+	private static final String TARGET_PARAM = "target";
 
 	private final JdbcClient jdbc;
 
@@ -44,7 +52,7 @@ class JdbcOperators implements Operators {
 	public Optional<OperatorId> idByActiveUsername(String username) {
 		return jdbc.sql("SELECT id FROM operator WHERE username = :username AND status = :active")
 				.param(USERNAME, username)
-				.param("active", OperatorStatus.ACTIVE.name())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
 				.query(Long.class)
 				.optional()
 				.map(OperatorId::new);
@@ -72,7 +80,7 @@ class JdbcOperators implements Operators {
 				VALUES (:username, :active, :hash) RETURNING id
 				""")
 				.param(USERNAME, username)
-				.param("active", OperatorStatus.ACTIVE.name())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
 				.param("hash", passwordHash)
 				.query(Long.class)
 				.single();
@@ -117,10 +125,27 @@ class JdbcOperators implements Operators {
 				""")
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.query((rs, rowNum) -> new PendingOperator(
-						new OperatorId(rs.getLong("id")),
+						new OperatorId(rs.getLong(ID_PARAM)),
 						rs.getString(USERNAME),
 						rs.getString("contact_email"),
 						rs.getObject("created_at", java.time.OffsetDateTime.class).toInstant()))
+				.list();
+	}
+
+	@Override
+	public List<ActiveOperator> activeOperators() {
+		// contact_email is NULL for a directly-provisioned account (the bootstrap admin) — the record
+		// and the console both treat it as optional.
+		return jdbc.sql("""
+				SELECT id, username, contact_email, is_admin FROM operator
+				WHERE status = :active ORDER BY username
+				""")
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.query((rs, rowNum) -> new ActiveOperator(
+						new OperatorId(rs.getLong(ID_PARAM)),
+						rs.getString(USERNAME),
+						rs.getString("contact_email"),
+						rs.getBoolean("is_admin")))
 				.list();
 	}
 
@@ -143,18 +168,52 @@ class JdbcOperators implements Operators {
 	private ApprovalOutcome transitionFromPending(OperatorId operatorId, OperatorStatus target,
 			ApprovalOutcome success) {
 		int rows = jdbc.sql("UPDATE operator SET status = :target WHERE id = :id AND status = :pending")
-				.param("target", target.name())
-				.param("id", operatorId.value())
+				.param(TARGET_PARAM, target.name())
+				.param(ID_PARAM, operatorId.value())
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.update();
-		if (rows == 1) {
-			return success;
-		}
-		boolean exists = jdbc.sql("SELECT EXISTS (SELECT 1 FROM operator WHERE id = :id)")
-				.param("id", operatorId.value())
+		return rows == 1 ? success
+				: (exists(operatorId) ? ApprovalOutcome.NOT_PENDING : ApprovalOutcome.NO_SUCH_OPERATOR);
+	}
+
+	@Override
+	public OperatorLifecycleOutcome suspend(OperatorId operatorId) {
+		return transition(operatorId, OperatorStatus.ACTIVE, OperatorStatus.SUSPENDED);
+	}
+
+	@Override
+	public OperatorLifecycleOutcome reinstate(OperatorId operatorId) {
+		return transition(operatorId, OperatorStatus.SUSPENDED, OperatorStatus.ACTIVE);
+	}
+
+	/**
+	 * Move an operator between two statuses, returning its username on a hit. The {@code WHERE status =
+	 * :expected} guard is the single source of truth — two concurrent suspends cannot both win — and
+	 * {@code RETURNING username} hands the edge the principal name to revoke in the same statement, so
+	 * no window opens between the status write and the read of who was suspended. A miss is classified
+	 * by an existence read to distinguish "wrong status" from "no such operator".
+	 */
+	private OperatorLifecycleOutcome transition(OperatorId operatorId, OperatorStatus from, OperatorStatus to) {
+		return jdbc.sql("""
+				UPDATE operator SET status = :target
+				WHERE id = :id AND status = :expected
+				RETURNING username
+				""")
+				.param(TARGET_PARAM, to.name())
+				.param(ID_PARAM, operatorId.value())
+				.param("expected", from.name())
+				.query(String.class)
+				.optional()
+				.<OperatorLifecycleOutcome>map(username -> new OperatorLifecycleOutcome.Changed(operatorId, username))
+				.orElseGet(() -> exists(operatorId) ? new OperatorLifecycleOutcome.WrongStatus()
+						: new OperatorLifecycleOutcome.NoSuchOperator());
+	}
+
+	private boolean exists(OperatorId operatorId) {
+		return jdbc.sql("SELECT EXISTS (SELECT 1 FROM operator WHERE id = :id)")
+				.param(ID_PARAM, operatorId.value())
 				.query(Boolean.class)
 				.single();
-		return exists ? ApprovalOutcome.NOT_PENDING : ApprovalOutcome.NO_SUCH_OPERATOR;
 	}
 
 	@Override
