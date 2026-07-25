@@ -278,6 +278,48 @@ class RateLimitFilterTest {
 		changePasswordFromIp("10.30.0.3").andExpect(status().isUnauthorized());
 	}
 
+	/** The customer's authenticated set/change-password endpoint — the same oracle, throttled the same way. */
+	private ResultActions customerPasswordChangeFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
+	}
+
+	/**
+	 * Found by the #326 Phase-1 generalization audit: {@code POST /api/me/password} had no budget at all,
+	 * so a hijacked customer session could brute-force the real password unthrottled and then lock the
+	 * owner out. Same oracle as the operator endpoint, so it gets the same treatment.
+	 */
+	@Test
+	void customerPasswordChangeIsThrottled() throws Exception {
+		String ip = "10.31.0.1";
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		// Separate from the customer LOGIN budget, so a change flood cannot lock a tourist out of signing in.
+		customerLoginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	/**
+	 * The two password-change endpoints must not share one per-IP map. Venue WiFi / CGNAT puts tourists and
+	 * operators behind one address, and a tourist flood that blocked an operator from rotating a possibly
+	 * compromised credential is the #111 operator-lockout defect wearing a different hat.
+	 */
+	@Test
+	void customerPasswordChangeDoesNotStarveTheOperatorOne() throws Exception {
+		String ip = "10.31.0.2";
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip).andExpect(status().isTooManyRequests());
+
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
 	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----
 
 	@Test

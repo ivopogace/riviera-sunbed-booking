@@ -90,7 +90,13 @@ is `V30__customer_erasure_marker.sql`).
 - **Operator password *reset* by email** (the "forgot password" flow). Operators have no *verified*
   email channel — `contactEmail` from #115 is unverified and the mailer is still mocked (#255).
   Out of scope; a separate slice once #255 lands.
-- **Any change to the customer flow.** `/api/me/password` and its ACs are untouched.
+- ~~**Any change to the customer flow.** `/api/me/password` and its ACs are untouched.~~
+  **Amended 2026-07-26 (maintainer decision).** The Phase-1 generalization audit found `/api/me/password`
+  had **no rate-limit budget at all** — the same credential oracle this slice throttles for operators — so
+  it is now throttled on its own `customerPasswordBuckets` map. That is the *only* customer-side change:
+  the endpoint's behaviour, DTO, status codes and ACs are otherwise untouched, and `MyAccountController`
+  is not modified. One test-isolation line was added to `SetPasswordIT` (a unique `X-Forwarded-For` on the
+  one call that lacked it) so the new budget cannot recreate the #127 shared-loopback-bucket failure.
 - **Any change to `OperatorProvisioning`'s signature** — only its stale javadoc is corrected.
 - **A new FE feature folder.** The surface reuses `auth/`.
 
@@ -116,12 +122,6 @@ keeps its only current caller (`OperatorCredentialInitializer`) and gains a seco
 
 - **Assumption:** No FE surface is needed for the bootstrap admin's `409` beyond rendering the message —
   the admin is a maintainer who has the runbook. *Owner:* Claude · *Resolves by:* Phase 2.
-- **Open question (raised by the Phase-1 generalization audit):** `POST /api/me/password` — the
-  **customer's** authenticated set/change-password endpoint — has **no rate-limit budget at all**. It is
-  the same credential-verification oracle this slice just throttled for operators. Fix it in this slice
-  (add it to `credentialChangeBuckets`: ~1 line + a test, and the bucket already exists), or file a
-  follow-up? Fixing it crosses this plan's own Non-goal "any change to the customer flow", because a new
-  `429` is an observable behaviour change. *Owner:* Ivo · *Resolves by:* before the PR.
 - **Open question:** Should a successful change also send a "your password was changed" notification?
   Blocked on the real mailer (#255) and on operators having a verified address. *Owner:* Ivo ·
   *Resolves by:* deferred — raise as a follow-up issue at merge close-out if wanted.
@@ -261,15 +261,17 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phases 0+1 done, phase 2 (frontend) next; ONE open question blocks the PR`
+**Stage pointer:** `implement — backend done (phases 0+1), phase 2 (frontend) next`
 
-**Next action:** Answer the Phase-1 generalization open question (throttle `/api/me/password` here, or file a
-follow-up?), then load `angular-developer` + the angular-cli MCP and start Phase 2.
+**Next action:** Load `angular-developer` + the angular-cli MCP (routing gate re-fires — new area), then
+Phase 2 step 1: the failing `operator-password.spec.ts`. AC-7's `OperatorPasswordChangeIT` is still owed
+and can be written any time before the PR (Docker is available on this machine — `SetPasswordIT` ran, 0
+skipped).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend endpoint + role gate | ✅ | `7aa9b26` |
-| 1 — Rate-limit bucket | ✅ | see below |
+| 1 — Rate-limit bucket | ✅ | `8deb1ca` + the customer-side follow-on |
 | 2 — Frontend surface | | |
 | 3 — e2e + a11y | | |
 | 4 — Docs + javadoc correction | | |
@@ -450,7 +452,7 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-25 | Phase 1 (new pattern: a per-IP budget for an *authenticated* credential-verification oracle) | other credential endpoints with a missing or shared rate-limit budget | `git grep -n '"/api/me/password"' -- platform/src/main/java` + read of `RateLimitFilter.authBucketsFor` | **1 gap found:** `POST /api/me/password` — the customer's authenticated set/change-password endpoint — appears **only** in `MyAccountController` and in no bucket at all. `RECOVERY_PATHS` covers `forgot-password` / `reset-password` / `verify-email` / `/api/me/verify-email/request`, but **not** `/api/me/password`. It is the same oracle this slice just throttled: every attempt reveals whether the submitted current password was right, so a hijacked session can brute-force the real password unthrottled and then lock the owner out. | **Not fixed here — raised for a decision.** The plan's Non-goals declare "Any change to the customer flow. `/api/me/password` and its ACs are untouched", and adding a limiter changes its observable behaviour (a new `429`). The fix is ~1 line (add the path to `credentialChangeBuckets`) plus a test, so it is cheap either way; widening a slice past its own declared non-goal is the maintainer's call, not the implementer's. See Open questions. |
+| 2026-07-25 | Phase 1 (new pattern: a per-IP budget for an *authenticated* credential-verification oracle) | other credential endpoints with a missing or shared rate-limit budget | `git grep -n '"/api/me/password"' -- platform/src/main/java` + read of `RateLimitFilter.authBucketsFor` | **1 gap found:** `POST /api/me/password` — the customer's authenticated set/change-password endpoint — appears **only** in `MyAccountController` and in no bucket at all. `RECOVERY_PATHS` covers `forgot-password` / `reset-password` / `verify-email` / `/api/me/verify-email/request`, but **not** `/api/me/password`. It is the same oracle this slice just throttled: every attempt reveals whether the submitted current password was right, so a hijacked session can brute-force the real password unthrottled and then lock the owner out. | **Fixed here, on maintainer decision (2026-07-26).** Raised rather than folded in silently, because the plan's Non-goals declared the customer flow untouched and a new `429` is an observable behaviour change; Ivo chose to fix it in-slice. **Implementation differs from the one-shared-bucket sketch:** the two paths get **separate maps** (`operatorPasswordBuckets`, `customerPasswordBuckets`), because `authBucketsFor` keys by raw client IP *within* the returned map, so one shared map would let a tourist change-flood on venue WiFi / CGNAT block an operator from rotating a compromised credential — the #111 lockout in a new costume. Pinned by `customerPasswordChangeIsThrottled` + `customerPasswordChangeDoesNotStarveTheOperatorOne`. Non-goals amended accordingly. |
 | 2026-07-25 | Phase 0 (R-1: bcrypt re-salting makes hash-vs-hash comparison always false) | every password comparison against a stored hash | `git grep --untracked -n "passwordEncoder.matches\|encoder.matches" -- platform/src/main/java` | 4: `AuthController:221` (timing equalizer), `MyAccountController:102` (S8 set-password), `OperatorAccountController:119` (this slice), `OperatorCredentialInitializer:86` (#128 rotate-detection) | **No fix needed** — all four pass the *raw* password as arg 1 and the stored hash as arg 2. The defect has no surviving instance. **Method note:** the first run used plain `git grep`, which searches only *tracked* files and therefore silently omitted this slice's own new controller — the "an empty result is not evidence of absence" trap from `CLAUDE.md`'s graphify section, in a different tool. `--untracked` is required whenever auditing mid-slice. |
 
 ---
