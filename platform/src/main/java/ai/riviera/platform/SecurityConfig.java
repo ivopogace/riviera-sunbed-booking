@@ -115,6 +115,10 @@ class SecurityConfig {
 	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
 	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
 	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
+	/** The decided-accounts list + the suspend/reinstate transitions (#128) — same ADMIN gate. */
+	private static final String ADMIN_OPERATOR_ACCOUNTS_PATH = "/api/admin/operators/accounts";
+	private static final String ADMIN_OPERATOR_SUSPEND_PATH = "/api/admin/operators/*/suspend";
+	private static final String ADMIN_OPERATOR_REINSTATE_PATH = "/api/admin/operators/*/reinstate";
 	/**
 	 * Platform-admin data-subject erasure (#101 [D5]) — role-gated to {@code ADMIN}, NOT venue-scoped
 	 * (the same {@code /api/admin/**} exemption from invariant #13 as the operator-approval surface).
@@ -260,9 +264,11 @@ class SecurityConfig {
 						// plain OPERATOR reaching these is 403 (authenticated, wrong role). The GET is
 						// listed before the public "GET /api/venues/**" is irrelevant (different prefix),
 						// but stays above anyRequest() like every explicit rule.
-						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH, ADMIN_OPERATOR_ACCOUNTS_PATH)
+								.hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
-								ADMIN_OPERATOR_REJECT_PATH).hasRole(ADMIN_ROLE)
+								ADMIN_OPERATOR_REJECT_PATH, ADMIN_OPERATOR_SUSPEND_PATH,
+								ADMIN_OPERATOR_REINSTATE_PATH).hasRole(ADMIN_ROLE)
 						// Platform-admin data-subject erasure (#101 [D5]) — ADMIN only, not venue-scoped.
 						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()

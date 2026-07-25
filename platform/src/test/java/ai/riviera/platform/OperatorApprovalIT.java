@@ -132,6 +132,27 @@ class OperatorApprovalIT {
 				.andExpect(status().isForbidden());
 		mvc.perform(post("/api/admin/operators/{id}/approve", 1).cookie(plain).with(csrf()))
 				.andExpect(status().isForbidden());
+		mvc.perform(post("/api/admin/operators/{id}/reject", 1).cookie(plain).with(csrf()))
+				.andExpect(status().isForbidden());
+
+		// The #128 surfaces are gated identically — a role-gated endpoint added without this
+		// assertion is exactly how one silently ships open.
+		mvc.perform(get("/api/admin/operators/accounts").cookie(plain))
+				.andExpect(status().isForbidden());
+		mvc.perform(post("/api/admin/operators/{id}/suspend", 1).cookie(plain).with(csrf()))
+				.andExpect(status().isForbidden());
+		mvc.perform(post("/api/admin/operators/{id}/reinstate", 1).cookie(plain).with(csrf()))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void anonymousIsUnauthorizedOnTheSuspensionSurface() throws Exception {
+		// No session at all → 401 from the entry point, before any role check (#128).
+		mvc.perform(get("/api/admin/operators/accounts")).andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/admin/operators/{id}/suspend", 1).with(csrf()))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/admin/operators/{id}/reinstate", 1).with(csrf()))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@Test

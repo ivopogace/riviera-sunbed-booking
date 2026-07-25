@@ -1,0 +1,108 @@
+import { expect, test } from '@playwright/test';
+
+import { mockOperatorLifecycleApi } from './support/auth-mocks';
+import { expectNoSeriousAxeViolations } from './support/axe';
+import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+
+/**
+ * Real-render behaviour + a11y audit of admin-driven operator suspension (#128): a platform admin
+ * suspends an approved operator, that operator can no longer sign in, and reinstating restores it.
+ * The lifecycle API is mocked statefully (`support/auth-mocks.ts`) — including the fact that
+ * suspension revokes the target's session — so the spec is self-contained and runs in CI
+ * (`npm run test:e2e:a11y`). The server-side revocation itself is proven against a real session store
+ * by `OperatorSuspensionRevocationIT`; this spec proves the console drives it correctly.
+ */
+
+const ADMIN = { username: 'operator', password: 'admin-pw' };
+const OP = { username: 'zoe', password: 'zoe-pw-12345', contactEmail: 'zoe@venue.example' };
+
+/** Register + approve an operator, leaving the admin signed in on the admin surface. */
+async function seedApprovedOperator(page: import('@playwright/test').Page): Promise<void> {
+  await page.goto('/operator/register');
+  await page.getByLabel('Username', { exact: true }).fill(OP.username);
+  await page.getByLabel('Contact email', { exact: true }).fill(OP.contactEmail);
+  await page.getByLabel('Password', { exact: true }).fill(OP.password);
+  await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
+  await expect(page.getByTestId('auth-pending')).toBeVisible();
+
+  await page.goto('/venue-admin');
+  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await page.goto('/admin');
+  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByTestId('admin-ops-empty')).toBeVisible();
+}
+
+test('an admin suspends an operator, which blocks its sign-in, then reinstates it', async ({
+  page,
+}) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  const signIn = new OperatorSignInPage(page);
+  await seedApprovedOperator(page);
+
+  // The approved operator is listed as an account, alongside the admin's own row.
+  const row = page.getByTestId('admin-account-row').filter({ hasText: OP.username });
+  await expect(row).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'admin account list');
+
+  // Suspension takes a deliberate second click — the first only arms the inline confirmation.
+  await row.getByRole('button', { name: 'Suspend' }).click();
+  await expect(row.getByText(`Suspend ${OP.username}?`)).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'admin suspend confirmation armed');
+  await row.getByRole('button', { name: 'Suspend' }).click();
+
+  // The row stays listed and badged (never a one-way door), reconciled from the server.
+  await expect(row.getByText('Suspended')).toBeVisible();
+  await expect(row.getByRole('button', { name: 'Reinstate' })).toBeVisible();
+
+  // A suspended operator cannot sign in — generic failure, no enumeration (D-8).
+  await page.goto('/venue-admin');
+  await signIn.signOut();
+  await signIn.signIn(OP.username, OP.password);
+  await expect(signIn.error).toContainText('Sign-in failed');
+  await signIn.expectSignedOut();
+
+  // Reinstating restores access.
+  await signIn.signIn(ADMIN.username, ADMIN.password);
+  await page.goto('/admin');
+  await row.getByRole('button', { name: 'Reinstate' }).click();
+  await expect(row.getByText('Suspended')).toBeHidden();
+
+  await page.goto('/venue-admin');
+  await signIn.signOut();
+  await signIn.signIn(OP.username, OP.password);
+  await signIn.expectSignedInAs(OP.username);
+});
+
+test('the admin is offered no way to suspend its own account', async ({ page }) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await page.goto('/venue-admin');
+  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await page.goto('/admin');
+
+  // The server refuses a self-suspend (409 CANNOT_SUSPEND_SELF); the console doesn't offer the action.
+  const ownRow = page.getByTestId('admin-account-row').filter({ hasText: ADMIN.username });
+  await expect(ownRow.getByText('This is you')).toBeVisible();
+  await expect(ownRow.getByRole('button', { name: 'Suspend' })).toHaveCount(0);
+});
+
+test('a sign-out that never reaches the server warns, and the retry clears it', async ({ page }) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await page.goto('/venue-admin');
+  const signIn = new OperatorSignInPage(page);
+  await signIn.signIn(ADMIN.username, ADMIN.password);
+
+  // Both the logout and the CSRF-rebootstrap retry fail — the server session may still be alive.
+  await page.route(/\/api\/auth\/logout$/, (route) => route.abort('failed'));
+  await signIn.signOut();
+
+  const warning = page.getByTestId('sign-out-warning');
+  await expect(warning).toBeVisible();
+  await expect(warning).toContainText('may still be signed in on this device');
+  await expectNoSeriousAxeViolations(page, 'sign-out warning');
+
+  // With the endpoint working again, the retry confirms the sign-out and the warning goes.
+  await page.unroute(/\/api\/auth\/logout$/);
+  await page.route(/\/api\/auth\/logout$/, (route) => route.fulfill({ status: 204 }));
+  await page.getByTestId('sign-out-retry').click();
+  await expect(warning).toBeHidden();
+});

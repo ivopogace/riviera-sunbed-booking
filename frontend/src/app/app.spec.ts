@@ -7,6 +7,8 @@ import { vi } from 'vitest';
 import { App } from './app';
 import { routes } from './app.routes';
 import { CustomerAuth } from './core/customer-auth';
+import { SessionAuth } from './core/session-auth';
+import { SignOutNotice } from './core/sign-out-notice';
 
 @Component({ template: '' })
 class BlankPage {}
@@ -131,6 +133,45 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     el.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!.click();
     fixture.detectChanges();
     expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * #128 gap 2. A sign-out that never reached the server leaves the HttpOnly SESSION cookie alive, so
+   * the next visitor on a shared device would be silently restored. The shell is where that warning
+   * belongs: it renders above the chrome conditional, so it shows on the operator console too.
+   */
+  it('surfaces the sign-out warning with a retry action, and hides it once retried', async () => {
+    const notice = TestBed.inject(SignOutNotice);
+    const { fixture, el } = shell();
+    expect(el.querySelector('[data-testid="sign-out-warning"]')).toBeNull();
+
+    notice.record({ signOut: () => Promise.resolve('signed-out') } as unknown as SessionAuth, true);
+    fixture.detectChanges();
+
+    const warning = el.querySelector('[data-testid="sign-out-warning"]');
+    expect(warning).not.toBeNull();
+    expect(warning?.getAttribute('role')).toBe('alert');
+    expect(warning?.textContent).toContain('may still be signed in on this device');
+
+    el.querySelector<HTMLButtonElement>('[data-testid="sign-out-retry"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="sign-out-warning"]')).toBeNull();
+  });
+
+  it('dismisses the sign-out warning without retrying', () => {
+    const notice = TestBed.inject(SignOutNotice);
+    const retryable = { signOut: vi.fn(() => Promise.resolve('signed-out')) };
+    const { fixture, el } = shell();
+
+    notice.record(retryable as unknown as SessionAuth, true);
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-testid="sign-out-dismiss"]')!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="sign-out-warning"]')).toBeNull();
+    expect(retryable.signOut).not.toHaveBeenCalled();
   });
 
   it('exposes a Find a booking trigger on desktop that opens the modal and restores focus on dismiss (#148)', () => {

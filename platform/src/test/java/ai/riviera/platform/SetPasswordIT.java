@@ -11,9 +11,11 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
+import jakarta.servlet.http.Cookie;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,6 +37,7 @@ class SetPasswordIT {
 
 	private static final String SET_PASSWORD_PATH = "/api/me/password";
 	private static final String LOGIN_PATH = "/api/auth/customer/login";
+	private static final String ME_PATH = "/api/auth/me";
 
 	@Autowired
 	MockMvc mvc;
@@ -84,6 +87,39 @@ class SetPasswordIT {
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(jsonBody));
+	}
+
+	/**
+	 * #128 generalization: changing your password must not leave your OTHER sessions alive — the same
+	 * bug class the issue names for operator suspend, found by the Phase-1 generalization audit. The
+	 * session doing the change survives (signing you out of the device you are actively using is bad
+	 * UX and is not what the OWASP guidance asks for); every other session of that principal dies.
+	 */
+	@Test
+	void changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne() throws Exception {
+		String email = "setpw-it-revoke@example.com";
+		register(email, "originalpass1");
+
+		Cookie otherDevice = sessionFrom(login(email, "originalpass1").andExpect(status().isOk()));
+		Cookie thisDevice = sessionFrom(login(email, "originalpass1").andExpect(status().isOk()));
+		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isOk());
+
+		mvc.perform(post(SET_PASSWORD_PATH).cookie(thisDevice).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"newPassword": "rotatedpass2", "currentPassword": "originalpass1"}"""))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isUnauthorized());
+		mvc.perform(get(ME_PATH).cookie(thisDevice)).andExpect(status().isOk());
+	}
+
+	private static Cookie sessionFrom(ResultActions result) {
+		Cookie session = result.andReturn().getResponse().getCookie("SESSION");
+		if (session == null) {
+			throw new IllegalStateException("expected a SESSION cookie on a successful login");
+		}
+		return session;
 	}
 
 	private void register(String email, String password) throws Exception {

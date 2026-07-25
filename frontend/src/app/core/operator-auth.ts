@@ -4,7 +4,14 @@ import { firstValueFrom } from 'rxjs';
 
 import { PASSWORD_LENGTH_MESSAGE } from './customer-auth';
 import { OwnedVenues } from './owned-venues';
-import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
+import {
+  AUTH_API,
+  AuthPrincipal,
+  SessionAuth,
+  SignInResult,
+  signInResultFor,
+  SignOutResult,
+} from './session-auth';
 
 // Re-exported for the operator surfaces + specs that import it from here (the type now lives on the
 // shared SessionAuth base, S2 #111).
@@ -74,9 +81,10 @@ export class OperatorAuth extends SessionAuth {
    * Sign out, then drop the cached owned-venues list (S9 #277). Without this the next operator to
    * sign in on this device would be routed by — and shown — the previous operator's venues.
    */
-  override async signOut(): Promise<void> {
-    await super.signOut();
+  override async signOut(): Promise<SignOutResult> {
+    const result = await super.signOut();
     this.ownedVenues.reset();
+    return result;
   }
 
   /**
