@@ -34,10 +34,10 @@ class AccountRecoveryController {
 	private final CustomerRecovery recovery;
 	private final CustomerAccountDirectory directory;
 	private final PasswordEncoder passwordEncoder;
-	private final CustomerSessionRevoker sessionRevoker;
+	private final PrincipalSessionRevoker sessionRevoker;
 
 	AccountRecoveryController(CustomerRecovery recovery, CustomerAccountDirectory directory,
-			PasswordEncoder passwordEncoder, CustomerSessionRevoker sessionRevoker) {
+			PasswordEncoder passwordEncoder, PrincipalSessionRevoker sessionRevoker) {
 		this.recovery = recovery;
 		this.directory = directory;
 		this.passwordEncoder = passwordEncoder;

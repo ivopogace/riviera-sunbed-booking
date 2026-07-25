@@ -405,8 +405,8 @@ class WebSliceStubs {
 	}
 
 	@Bean
-	CustomerSessionRevoker customerSessionRevoker(FindByIndexNameSessionRepository<? extends Session> sessions) {
-		return new CustomerSessionRevoker(sessions);
+	PrincipalSessionRevoker principalSessionRevoker(FindByIndexNameSessionRepository<? extends Session> sessions) {
+		return new PrincipalSessionRevoker(sessions);
 	}
 
 	@Bean

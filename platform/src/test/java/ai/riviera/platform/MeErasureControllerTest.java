@@ -56,7 +56,7 @@ class MeErasureControllerTest {
 	CustomerAccountDirectory directory;
 
 	@MockitoBean
-	CustomerSessionRevoker sessionRevoker;
+	PrincipalSessionRevoker sessionRevoker;
 
 	@Test
 	void signedInCustomerErasesOwnAccountAndAllSessionsAreRevoked() throws Exception {

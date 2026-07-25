@@ -271,17 +271,16 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Write the failing `OperatorSuspensionRevocationIT` (AC-1, AC-2) and
-`AdminOperatorControllerTest.anAdminCannotSuspendItself` (AC-5), then rename
-`CustomerSessionRevoker` → `PrincipalSessionRevoker` and wire revocation into the suspend endpoint.
+**Next action:** Write the failing `OperatorCredentialInitializerTest` case (AC-6) — revoke only when
+`encoder.matches(rawPassword, storedHash)` is false and a prior hash existed — then wire it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | ✅ | `<phase0>` |
-| 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ⏳ | |
-| 2 — Revoke on genuine credential rotation | | |
+| 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | ✅ | `2c2eb93` |
+| 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ✅ | `<phase1>` |
+| 2 — Revoke on genuine credential rotation | ⏳ | |
 | 3 — Active-operators read + admin FE suspend/reinstate | | |
 | 4 — FE robust sign-out (retry + warning) | | |
 | 5 — e2e + a11y coverage | | |
@@ -465,6 +464,7 @@ sign-out-warning path
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 1 — revocation wired to its first caller | Any other surface that changes an account's right to its existing sessions without revoking them | `grep -rn "revokeAll" src/main/`, `grep -rn "setPassword\|resetPassword\|erase(" src/main/java/ai/riviera/platform/*.java` | 4 right-changing surfaces; 3 already revoked (customer reset, customer erasure, operator suspend). **1 gap: `MyAccountController.setPassword`** — the S8 authenticated password change left every other session of that account alive | **Fixed in this phase.** Same bug class as the issue's own "password rotation" clause, so in scope rather than creep. Added `revokeAllExcept(principal, keepSessionId)` and called it after the write: every *other* session dies, the caller's own survives (signing you out of the device doing the change is bad UX and is not what the OWASP guidance asks). Pinned by `SetPasswordIT.changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne` |
 | 2026-07-25 | Phase 0 — new guarded-transition pattern | Any other writer of `operator.status`, and any consumer of the renamed port | `grep -rn "UPDATE operator SET status" src/main/`, `grep -rln "OperatorLifecycle" src/`, `grep -rn "OperatorStatus\." src/main/ \| grep -v adapter/out` | 2 writers (both the adapter's guarded transitions), 3 main + 3 test consumers, **0** status tokens outside the module | No further change — both writers already carry the `WHERE status = :expected` guard, so no unguarded transition exists to generalize. The rename swept `PayoutModuleTest` (`@MockitoBean`) and `WebSliceStubs` in the same commit, pre-empting the R-6 full-suite-only breakage. |
 
 ---
