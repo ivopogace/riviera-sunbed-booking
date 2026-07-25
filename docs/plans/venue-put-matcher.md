@@ -176,12 +176,21 @@ byte-identical `403 ACCESS_DENIED` payloads by design, so even that is invisible
 > or whenever unsure where the work stands: re-read this section (plus the current `riviera-sdlc`
 > stage's reference file) before acting.
 
-**Stage pointer:** `all three gates cleared on `cc6699b` — stopped before merge; the merge call is the maintainer's`
+**Stage pointer:** `merged — close-out complete`
 
-**Next action:** None pending — PR #331 is green, reviewed and Sonar-clean. On merge, run the
-close-out: confirm #328 closed, tick the PR Gates boxes, `riviera-docs-freshness` (already
-pre-checked: no substrate doc states anything this slice contradicts), and `graphify update .`
-for the plan-doc addition.
+**Next action:** None — the slice is done. **Merged as `f059bbf`** (squash of PR #331) on
+2026-07-25; #328 auto-closed as completed.
+
+**Merge close-out.** (1) #328 closed ✅. (2) No parent epic — #328 is standalone, nothing to tick.
+(3) No deferred findings to propagate: F-1..F-3 were fixed in the PR and F-4 was *accepted* with
+its rationale written into `EndpointRoleGateCoverageTest`'s Javadoc, so it names no follow-up home.
+(4) This plan doc is at its final state; the PR's Gates boxes were ticked as each gate passed.
+(5) `riviera-docs-freshness` run over `d752d00..f059bbf` — **zero findings**: nothing renamed or
+removed, no new endpoint/module/skill/value set, and the six substrate hits touching this area all
+concern `/api/admin/**` role-gating and the operator edge-vs-module split — none contradicted.
+`RESPONSIBILITIES.md:230` ("never the login machinery or the role gate — RV-BE-11") is *reinforced*:
+the role gate landed at the edge exactly as stated. (6) `graphify update .` skipped — `graphify-out/`
+is absent in this cloud clone (gitignored), as the skill allows. (7) PR subscription closed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
