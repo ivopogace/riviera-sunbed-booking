@@ -35,8 +35,10 @@ would cycle (`availability` already depends on `venue::api`). The fix — the dr
 `SetAvailabilityLookup` in `venue.spi`, implemented by `availability` — established the `spi/`
 convention. Full worked example: `references/boundaries.md`.
 
-## Open TODO: `customer`'s adapter bucket — settle once
+## Closed: `customer`'s adapter bucket — settled by graduation
 
-`customer` (the one thin module) keeps its adapter in `adapter/out/` to keep the adapter vocabulary
-uniform and the ArchUnit allowed-set clean; `internal/` is the Modulith-idiomatic alternative.
-Settle this once, then update the thin-template note in SKILL.md.
+`customer` kept its adapter in `adapter/out/` (rather than the Modulith-idiomatic `internal/`) to keep
+the adapter vocabulary uniform and the ArchUnit allowed-set clean. The question is now **moot**:
+`customer` was the thin module that raised it, and it graduated to the full template at S2 (#111),
+gaining `adapter/in` at #101 Slice 2. **No module is thin today**, so there is no `adapter/out`-vs-
+`internal/` decision outstanding — revisit only if a future serviceless module appears.

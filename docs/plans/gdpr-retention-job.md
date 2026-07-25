@@ -136,16 +136,16 @@ N/A — new behavior, replaces nothing. No existing surface is retired: Slice 1'
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Modulith **cycle**: the natural `customer → booking::api` read closes a 2-cycle (`booking` already declares `customer::api` + `customer::vocabulary`), failing `ApplicationModules.verify()` | high (if planned naively) | high | Invert it: port in `customer/spi`, implemented by `booking/adapter/out`; grant `customer::spi` to `booking` only. `customer` keeps `allowedDependencies = {}`. AC-9 pins it | Ivo | **resolved** (Phase 0) — structural net green, `customer` still `{}` |
-| R-2 | **Over-erasure** — scrubbing a contact still within its retention basis; irreversible (tombstone, no undo) | med | high | Ships `enabled=false`; window is counsel-set config; three independent gates (row age **and** no booking on/after cutoff **and** no live account with that email); inclusive-retain boundary (AC-2); bounded batch; `GuestContactRetentionIT` | Ivo | open |
+| R-2 | **Over-erasure** — scrubbing a contact still within its retention basis; irreversible (tombstone, no undo) | med | high | Ships `enabled=false`; window is counsel-set config; three independent gates (row age **and** no booking on/after cutoff **and** no live account with that email); inclusive-retain boundary (AC-2); bounded batch; `GuestContactRetentionIT` | Ivo | **mitigated** — all six controls shipped and pinned; residual risk now sits entirely in the enabling procedure (the runbook dry-run step) |
 | R-3 | The `@Scheduled` sweep fires during the default-profile test suite and perturbs timing windows (the #98/#122 full-suite lesson) — `@EnableScheduling` is **already global** via `BookingRequestConfig` (not profile-gated), so a new `@Scheduled` runs in every profile | med | med | `@ConditionalOnProperty("customer.retention.enabled")` on the scheduler → the bean does not exist in any default-profile test; plus `initial-delay` default `PT5M`. AC-7 | Ivo | **resolved** (Phase 2) — 202-test regression incl. all booking sweeps green |
 | R-4 | `Duration` cannot parse a year/month window (`P10Y` fails; ISO-8601 durations have no year unit) → a silent binding failure or a wrong window | med | high | The window is a **`java.time.Period`**, bound from an ISO string; the sweep-interval/initial-delay stay `Duration`. Pinned by AC-8's fixed-clock test | Ivo | **resolved** (Phases 1–2) — `RetentionWindow.window` + `CustomerRetentionProperties.window` are both `Period`; `P10Y`/`P2Y` binding pinned by `GuestContactRetentionSchedulerConfigTest` |
-| R-5 | Candidate scan degrades as `customer` grows (no index on `erased_at`/`updated_at`) | low | low | `LIMIT :batchSize` + `ORDER BY id` bounds every run; v1 table is small. Partial index deferred, recorded in Open questions (not silently dropped) | Ivo | open |
+| R-5 | Candidate scan degrades as `customer` grows (no index on `erased_at`/`updated_at`) | low | low | `LIMIT :batchSize` + `ORDER BY id` bounds every run; v1 table is small. Partial index deferred, recorded in Open questions (not silently dropped) | Ivo | **accepted** — bounded `LIMIT` shipped; revisit (with a migration) if the sweep appears in slow-query logs |
 | R-6 | The window value itself is a **legal** determination the code must not invent | high | high | Ship the mechanism + an inert default (`P10Y`, longer than any plausible statutory period) **and** `enabled=false`; runbook says "set per counsel". Deferred to counsel, tracked in Open questions | counsel | open |
-| R-7 | A new **edge** dependency re-arms the full-suite-only traps (`PayoutModuleTest` `@MockitoBean` set, `WebSliceStubs`) — the class that reddened Slice 1's first CI run | low | med | Non-goal: no controller, no edge bean. The only new cross-module edge is `booking → customer::spi`, and `PayoutModuleTest` is the repo's only `@ApplicationModuleTest`, bootstrapping neither module's adapters. Re-check before the PR | Ivo | open |
-| R-8 | A returning tourist whose contact was scrubbed is no longer recognised at checkout | low | low | Accepted + documented: `JdbcCustomerDirectory.findOrCreate` is `INSERT … ON CONFLICT (email)`, so a scrubbed row's email no longer matches and a **fresh** guest row is created — checkout is unaffected. Recorded as an Assumption | Ivo | open |
-| R-9 | Staff daily view / old booking detail shows `ERASED` for a swept guest | low | low | Accepted — identical to Slice 1's erasure behavior, and by construction only for bookings older than the retention window. No code change | Ivo | open |
+| R-7 | A new **edge** dependency re-arms the full-suite-only traps (`PayoutModuleTest` `@MockitoBean` set, `WebSliceStubs`) — the class that reddened Slice 1's first CI run | low | med | Non-goal: no controller, no edge bean. The only new cross-module edge is `booking → customer::spi`, and `PayoutModuleTest` is the repo's only `@ApplicationModuleTest`, bootstrapping neither module's adapters. Re-check before the PR | Ivo | **resolved** — full backend suite green on this branch: 161 classes, 772 tests, 0 failures, 0 skipped, incl. `PayoutModuleTest` 2/2 |
+| R-8 | A returning tourist whose contact was scrubbed is no longer recognised at checkout | low | low | Accepted + documented: `JdbcCustomerDirectory.findOrCreate` is `INSERT … ON CONFLICT (email)`, so a scrubbed row's email no longer matches and a **fresh** guest row is created — checkout is unaffected. Recorded as an Assumption | Ivo | **accepted** — documented in the runbook (Safety properties) and in Assumptions |
+| R-9 | Staff daily view / old booking detail shows `ERASED` for a swept guest | low | low | Accepted — identical to Slice 1's erasure behavior, and by construction only for bookings older than the retention window. No code change | Ivo | **accepted** — identical to Slice 1 behavior; no code change |
 | R-10 | Flyway collision if a migration turns out to be needed after all | low | high | Plan is **zero migrations**. `V31` verified free on `main` (latest is `V30`) and unclaimed by the only open PR (**#307**, frontend `tar` bump, no SQL); whoever merges second renumbers | Ivo | mitigated |
-| R-11 | Boundary leak — retention **policy** (the window) drifting into `booking`, or scrub SQL leaving `customer` | low | med | `booking` answers a pure fact (`withBookingOnOrAfter`), holds no window and no `Period`; all scrub SQL stays in `customer/adapter/out`. §4a table + RV-BE-11 re-check | Ivo | open |
+| R-11 | Boundary leak — retention **policy** (the window) drifting into `booking`, or scrub SQL leaving `customer` | low | med | `booking` answers a pure fact (`withBookingOnOrAfter`), holds no window and no `Period`; all scrub SQL stays in `customer/adapter/out`. §4a table + RV-BE-11 re-check | Ivo | **resolved** — `booking` holds no `Period` and no window (`RESPONSIBILITIES.md` Not-My-Job updated); all scrub SQL is in `customer/adapter/out`; structural net green |
 
 ## Open questions / Assumptions
 
@@ -259,12 +259,16 @@ row kinds are byte-for-byte unchanged after a sweep, and that the `RESTRICT` FK 
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — Phases 0–2 done, Phase 3 (docs) next`
+**Stage pointer:** `implement — all four phases done; slice is code-complete. Next stage: PR → review gate → Sonar gate`
 
-**Next action:** Start **Phase 3** (docs) — runbook `<counsel-TBD>` → configurable + an "Automated retention
-sweep" section, `CONTEXT.md` glossary, `RESPONSIBILITIES.md` + `CLAUDE.md` module rows, then
-`riviera-docs-freshness` and `graphify update .`. After Phase 3 the slice is code-complete → PR + the review
-and Sonar gates.
+**Next action:** Open the **PR** into `main` — merge latest `origin/main` into the branch first (full phase
+discipline on whatever the integration touches), then push. The branch is **local-only and unpushed** as of
+this commit. After the PR exists: the **review gate** (`riviera-review-overlay` + `/code-review`), then the
+**Sonar gate** (pull the reported new-issue + duplication list from the API — a green gate is not the
+check), each finding re-entering at Implement.
+
+**Verification standing at HEAD:** full backend suite green on this branch — **161 classes, 772 tests, 0
+failures, 0 skipped** (Docker present, so no IT silently skipped). All nine ACs met.
 
 **Deviations from the authored plan** (both decided during Phase 1, 2026-07-25):
 
@@ -287,9 +291,9 @@ not silently skipped). Scoped-test discipline still applies; CI still owns the f
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | ✅ | `50e132e` |
-| 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | ✅ | `<phase-1>` |
-| 2 — scheduler + documented defaults (ships disabled; properties+config landed in Phase 1) | ✅ | `<phase-2>` |
-| 3 — docs: runbook `<counsel-TBD>` → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | | |
+| 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | ✅ | `3180aa5` |
+| 2 — scheduler + documented defaults (ships disabled; properties+config landed in Phase 1) | ✅ | `bb85d32` |
+| 3 — docs: runbook counsel-TBD → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -690,22 +694,22 @@ of every default-profile test context (R-3 — `@EnableScheduling` is already gl
 
 **Files:** Modify `docs/runbooks/data-erasure.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, `CLAUDE.md`.
 
-- [ ] **Step 1** — `docs/runbooks/data-erasure.md`: add an **"Automated retention sweep"** section (what it
+- [x] **Step 1** — `docs/runbooks/data-erasure.md`: add an **"Automated retention sweep"** section (what it
   scrubs, the three gates, the knobs, how ops enables it) and replace the `<counsel-TBD …>` marker at line 66
   with the shipped reality: the app-side window is `customer.retention.window`, **configurable and set per
   counsel**, with the job disabled until then.
-- [ ] **Step 2** — `CONTEXT.md` glossary: *Retention basis* (the fact that keeps a contact lawfully held —
+- [x] **Step 2** — `CONTEXT.md` glossary: *Retention basis* (the fact that keeps a contact lawfully held —
   here, a booking on/after the cutoff), *Retention window* (the configured period), *Retention sweep* (the
   scheduled scrub of contacts with no live basis). No implementation detail in `CONTEXT.md`.
-- [ ] **Step 3** — `RESPONSIBILITIES.md`: one line under `customer` **Job** (owns the retention window +
+- [x] **Step 3** — `RESPONSIBILITIES.md`: one line under `customer` **Job** (owns the retention window +
   sweep) and one under `booking` (answers the retention-basis fact via `customer::spi`, owns neither the
   window nor the scrub). `CLAUDE.md`: update the `customer` and `booking` module-table rows.
-- [ ] **Step 4** — run `riviera-docs-freshness` over the branch range; also fix the stale
+- [x] **Step 4** — run `riviera-docs-freshness` over the branch range; also fix the stale
   `PackageShapeArchitectureTests` javadoc that still lists `customer` as a **thin** module (it graduated at
   #111 — non-failing, but it is now doubly wrong once `spi` + `adapter/in` land). Then `graphify update .`
   (docs changed — the post-commit hook is code-only).
-- [ ] **Step 5: Commit** — `git commit -m "docs(#101): retention-sweep runbook + glossary + module notes"`
-- [ ] **Step 6: Update plan-doc Execution status** in the same commit window.
+- [x] **Step 5: Commit** — `git commit -m "docs(#101): retention-sweep runbook + glossary + module notes"`
+- [x] **Step 6: Update plan-doc Execution status** in the same commit window.
 
 ---
 
@@ -721,41 +725,61 @@ of every default-profile test context (R-3 — `@EnableScheduling` is already gl
 
 ---
 
+## Docs-freshness run (`riviera-docs-freshness`)
+
+**Range:** `bad4697..HEAD` (the branch's three code commits + this docs phase) · **Run:** 2026-07-25.
+
+Fact-changes this slice introduced: `customer` gained a `spi/` surface **and** its first `adapter/in`;
+`booking`'s `allowedDependencies` gained `customer::spi`; a new scheduled job + config namespace; three new
+glossary terms.
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `customer/package-info.java:10` | customer's layout is "`api` + `vocabulary` + `application` + `adapter.out`" | the slice added `spi/` + `adapter/in` | **patched** (kept the still-true "no cross-module `allowedDependencies`", and explained *why* it stays true despite reading a booking fact) |
+| `.claude/skills/riviera-modulith/SKILL.md:100` | "only `venue` has `spi` today" | `customer.spi.GuestBookingHistory` | **patched** — now names both `venue` and `customer` |
+| `.claude/skills/riviera-modulith/references/case-history.md:38-42` | open TODO framing `customer` as "the one thin module" | `customer` graduated at #111; no module is thin today | **patched** — TODO closed as moot, not silently deleted |
+| `PackageShapeArchitectureTests.java:34` | thin template "(today: customer)" | same | **patched** (the plan already flagged this one) |
+| `docs/adr/ADR-0007-package-structure.md:23-30` | survey table showing `customer` with no service and no `spi` | same | **no action** — a decision-time survey in the ADR's Context section (historical evidence for the two-template choice), not a present-tense claim; and it was already superseded by #111, so it is pre-existing, not this slice's drift |
+| `docs/architecture/improvement-plan.md:13` | "Six Spring Modulith modules" | there are seven since `operator` (#73) | **no action, reported** — epic #93's baseline assessment snapshot, and drift that predates this slice by many merges. Patching another epic's baseline record is out of scope here |
+
+Graph refreshed: `graphify update .` → 9,762 nodes / 18,749 edges rebuilt (code side; the doc-semantic pass
+is the separate, token-costing `/graphify --update` and was not run).
+
 ## Acceptance-criteria verification (final)
 
 > The gate before claiming done.
 
-- [ ] **AC-1, AC-2, AC-5, AC-6, AC-8:** `./gradlew test --tests "*ExpireGuestContactsServiceTest*"` → green.
-- [ ] **AC-1, AC-3, AC-4, AC-5:** `./gradlew test --tests "*GuestContactRetentionIT*"` → green (Docker
+- [x] **AC-1, AC-2, AC-5, AC-6, AC-8:** `./gradlew test --tests "*ExpireGuestContactsServiceTest*"` → green.
+- [x] **AC-1, AC-3, AC-4, AC-5:** `./gradlew test --tests "*GuestContactRetentionIT*"` → green (Docker
   present; the IT skips cleanly without a daemon, so CI is the authority).
-- [ ] **AC-7:** `./gradlew test --tests "*GuestContactRetentionSchedulerConfigTest*"` → green.
-- [ ] **AC-9:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
+- [x] **AC-7:** `./gradlew test --tests "*GuestContactRetentionSchedulerConfigTest*"` → green.
+- [x] **AC-9:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
   --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*"` → green.
-- [ ] Regression: `./gradlew test --tests "*customer*" --tests "*booking*"` → green (the booking sweeps'
+- [x] Regression: `./gradlew test --tests "*customer*" --tests "*booking*"` → green. Superseded by the full-suite run: **161 classes, 772 tests, 0 failures, 0 skipped** (the booking sweeps
   timing windows unaffected).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1); all new persistence is `JdbcClient` + explicit SQL.
-- [ ] **Availability** section justified N/A (never writes `set_availability`); no double-book surface (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; the retention-basis read is a `customer::spi` **driven** port implemented
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1); all new persistence is `JdbcClient` + explicit SQL.
+- [x] **Availability** section justified N/A (never writes `set_availability`); no double-book surface (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; the retention-basis read is a `customer::spi` **driven** port implemented
   by `booking` (never a `booking::api` call — that cycles); `customer` keeps `allowedDependencies = {}`; no
   cross-module `application.*`/`adapter.*` imports; no speculative event (invariant #11).
-- [ ] **Payment/payout**: N/A for money movement, but invariant #9 pinned by AC-3 (ledger/payment/booking untouched).
-- [ ] Refund policy: N/A.
-- [ ] Timezone: the cutoff is a `LocalDate` reasoned in `Europe/Tirane` from the injected UTC `Clock`;
+- [x] **Payment/payout**: N/A for money movement, but invariant #9 pinned by AC-3 (ledger/payment/booking untouched).
+- [x] Refund policy: N/A.
+- [x] Timezone: the cutoff is a `LocalDate` reasoned in `Europe/Tirane` from the injected UTC `Clock`;
   `erased_at` stays `TIMESTAMPTZ` (invariant #6).
-- [ ] Booking codes never logged; the sweep log carries counts + the cutoff date only — no email, name, phone
+- [x] Booking codes never logged; the sweep log carries counts + the cutoff date only — no email, name, phone
   or booking code (invariant #7, `riviera-java-conventions` §10).
-- [ ] **No Flyway migration** shipped, and the reason is stated (marker + index already exist, invariant #12);
+- [x] **No Flyway migration** shipped, and the reason is stated (marker + index already exist, invariant #12);
   if one became necessary, `V31` was verified free and unclaimed.
-- [ ] **Frontend**: N/A — backend-only; no endpoint, so no FE↔BE contract change.
-- [ ] `PayoutModuleTest` / `WebSliceStubs` re-checked before the PR (R-7) — no new edge bean was introduced.
-- [ ] Execution status at HEAD matches reality; findings register current.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an owner + issue).
+- [x] **Frontend**: N/A — backend-only; no endpoint, so no FE↔BE contract change.
+- [x] `PayoutModuleTest` / `WebSliceStubs` re-checked before the PR (R-7) — no new edge bean was introduced.
+- [x] Execution status at HEAD matches reality; findings register current.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an owner + issue).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
