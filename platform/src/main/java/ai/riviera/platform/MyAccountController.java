@@ -18,8 +18,10 @@ import jakarta.servlet.http.HttpSession;
 
 /**
  * Authenticated customer account-management endpoints (S8, epic #108): set/change the signed-in
- * customer's password, and re-request a verification email. Under {@code /api/me/**}, so
- * {@link SecurityConfig} already gates them to {@code ROLE_CUSTOMER}, session-principal-scoped (BOLA-safe
+ * customer's password, and re-request a verification email. Under {@code /api/me/**}, which
+ * {@link SecurityConfig}'s method-agnostic matcher gates to {@code ROLE_CUSTOMER} at the filter layer
+ * (#317 — until then these two POSTs fell through to {@code anyRequest().authenticated()} and were held
+ * only by {@link CurrentCustomer#require} below), session-principal-scoped (BOLA-safe
  * — no id in the path; the account is resolved from the session via {@link CurrentCustomer}). Platform-edge
  * machinery (RV-BE-11).
  *

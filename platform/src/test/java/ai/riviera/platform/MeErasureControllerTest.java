@@ -29,8 +29,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <ol>
  * <li><strong>The CUSTOMER role gate holds for a POST</strong> (R-1): an operator session is {@code 403}
- * and an anonymous request {@code 401} — neither reaches the scrub. Without the dedicated
- * {@code POST /api/me/erasure} matcher a POST would fall through to {@code anyRequest().authenticated()}.</li>
+ * and an anonymous request {@code 401} — neither reaches the scrub. The gate is now the method-agnostic
+ * {@code /api/me/**} matcher (#317), which replaced this endpoint's dedicated one; that it still holds
+ * here is the regression proof that collapsing the rules lost no coverage. Which <em>layer</em> emits
+ * the {@code 403} is {@code MeSurfaceRoleGateTest}'s job — the status alone cannot tell.</li>
  * <li><strong>The happy path</strong> (AC-3): a signed-in CUSTOMER gets {@code 204}, the scrub runs for the
  * session's resolved account, and every session for the principal is revoked.</li>
  * </ol>
