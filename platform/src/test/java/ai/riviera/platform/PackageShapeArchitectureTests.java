@@ -29,10 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * (published surfaces optional per kind — ADR-0007 Amendment 1 / issue #95):
  * <ul>
  *   <li><strong>full</strong> — {@code api?} / {@code spi?} / {@code vocabulary?} / {@code events?} /
- *       {@code application} / {@code domain} / {@code adapter/{in,out}} (today: booking, venue,
- *       payment, payout, availability, operator);</li>
+ *       {@code application} / {@code domain} / {@code adapter/{in,out}} (today: <strong>all seven</strong> —
+ *       booking, venue, payment, payout, availability, operator, customer);</li>
  *   <li><strong>thin</strong> — {@code api} / {@code vocabulary?} / {@code adapter/out} only
- *       (today: customer).</li>
+ *       (<strong>none today</strong>: {@code customer} was the last one and graduated at S2 #111, when it
+ *       gained {@code CustomerAccountService}; it has since added {@code spi} + {@code adapter/in} for the
+ *       #101 Slice 2 retention sweep. The template stays documented for a future serviceless module).</li>
  * </ul>
  * The four assertions below are the structural rules ADR-0007's "Enforcement" section calls out.
  * The <em>thin-vs-full judgment</em> (whether a serviceless module should stay thin or graduate)

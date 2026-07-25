@@ -115,6 +115,16 @@ model in `docs/architecture/domain-model.md`.
   retention period (tax/accounting) that **overrides** erasure for those rows; it is why erasure
   pseudonymizes rather than deletes, and why the payout ledger (which holds no PII) stays auditable
   (invariant #9).
+- **Retention basis** — the fact that makes it lawful to still hold a guest's contact details: a
+  booking of theirs dated on or after the retention cutoff. Any status counts (a cancelled or no-show
+  booking still produced a financial record). When no basis remains, the contact must go — the
+  storage-limitation duty (GDPR Art 5(1)(e)), the mirror image of the statutory-retention exception.
+- **Retention window** — how far back a retention basis may reach; configuration, not a constant, and a
+  **legal** determination rather than an engineering one. The cutoff is *today in `Europe/Tirane`* minus
+  the window (invariant #6).
+- **Retention sweep** — the scheduled job that tombstones guest contacts with no remaining retention
+  basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**.
+  It touches guest contacts only, never accounts, and never the retained financial records.
 
 ## Operators (venue management side)
 

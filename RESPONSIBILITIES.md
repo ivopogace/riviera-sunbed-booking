@@ -122,6 +122,9 @@ Orchestrate the reserve → pay → confirm flow across `availability` and `paym
   *triggers* accrual; I don't do the math)
 - The venue map, pricing, or pool rules → **`venue`**
 - Storing guest contact details → **`customer`**
+- The **retention window** or the contact scrub → **`customer`** (#101 Slice 2). I answer only the
+  *fact* "does this guest have a booking on/after date D", via `customer.spi.GuestBookingHistory`
+  — I hold no retention policy and never write a `customer` row
 - Authorizing which operator may view staff bookings → **`operator`**
 
 ---
@@ -168,10 +171,17 @@ auto-claims a guest email's past bookings; back-linking guest bookings is a **pe
 non-goal** (design D-6, amended at S8). Also own **right-to-erasure** (#101): scrub-in-place
 (tombstone) of the account + guest-contact PII and delete the transient SSO/token children,
 retaining the booking/payment/payout records under the **statutory-retention exception**
-(ADR-0010) — the edge authenticates the request and revokes sessions (RV-BE-11).
+(ADR-0010) — the edge authenticates the request and revokes sessions (RV-BE-11). Own the
+**retention policy** too (#101 Slice 2): the configured **retention window**, the decision of
+which guest contacts have no remaining **retention basis**, and the sweep that tombstones them.
+Retention is the same PII-lifecycle concern over the same rows as erasure, so it lives here —
+I ask `booking` for the recency *fact*, but the window and the scrub are mine.
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
+- Knowing whether a guest still has a recent booking → **`booking`** (it owns the table; I
+  declare `customer.spi.GuestBookingHistory` and it implements the fact — a dependency
+  inversion, because a direct `customer → booking` call would cycle)
 - Operator accounts or staff logins → **`operator`** (I am the *tourist*; `operator`
   is the *venue's* people)
 - Marketing → out of scope

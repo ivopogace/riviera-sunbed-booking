@@ -14,6 +14,8 @@
     // operator::api: the staff daily view + weather refund assert per-venue ownership (invariant #13).
     // venue::spi: booking implements venue.spi.BookingPresence (the O3 layout-replace guard, #172) —
     // the inverted, acyclic edge, same shape as availability implementing venue.spi.SetAvailabilityLookup.
-    allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "availability::api", "availability::vocabulary", "payment::api", "payment::vocabulary", "payment::events", "customer::api", "customer::vocabulary", "operator::api", "operator::vocabulary" }
+    // customer::spi: booking implements customer.spi.GuestBookingHistory (the retention-basis fact behind
+    // the #101 Slice 2 sweep) — the same inversion, since customer must not depend on booking.
+    allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "availability::api", "availability::vocabulary", "payment::api", "payment::vocabulary", "payment::events", "customer::api", "customer::spi", "customer::vocabulary", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.booking;

@@ -1,12 +1,15 @@
 package ai.riviera.platform.customer.application;
 
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -135,6 +138,16 @@ class AccountErasureServiceTest {
 			}
 			guestErased.put(normalizedEmail, true);
 			return 1;
+		}
+
+		@Override
+		public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
+			throw new UnsupportedOperationException("retention sweep — see ExpireGuestContactsServiceTest");
+		}
+
+		@Override
+		public boolean eraseGuestById(CustomerId guestId) {
+			throw new UnsupportedOperationException("retention sweep — see ExpireGuestContactsServiceTest");
 		}
 	}
 }

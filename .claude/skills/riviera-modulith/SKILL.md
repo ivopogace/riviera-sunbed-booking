@@ -97,7 +97,8 @@ ai.riviera.platform.<module>/
 ```
 All four published surfaces are **optional** — `payout` (publishes nothing, though it now consumes
 `booking::api` for the console takings read, #171) has none; `booking` publishes `api/`
-(`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; only `venue` has `spi` today. Don't force
+(`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; `venue` and `customer` have `spi` today
+(`customer.spi.GuestBookingHistory`, implemented by `booking` for the #101 Slice 2 retention sweep). Don't force
 an empty surface onto a module. Published surfaces stay **top-level and exposed** — nesting under
 `application` would hide them from Modulith. Notes the trees can't carry:
 
