@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -105,7 +106,7 @@ class VenueWriteRoleGateTest {
 				.andReturn();
 
 		assertNeverDispatched(result);
-		assertThat(result.getResponse().getStatus()).isEqualTo(403);
+		assertThat(result.getResponse().getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
 		verify(editBeachMap, never()).replaceLayout(any(), any(), anyLong(), any());
 	}
 
@@ -116,7 +117,7 @@ class VenueWriteRoleGateTest {
 				.andReturn();
 
 		assertNeverDispatched(result);
-		assertThat(result.getResponse().getStatus()).isEqualTo(403);
+		assertThat(result.getResponse().getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
 		verify(editBeachMap, never()).repriceRow(any(), any(), anyLong(), any());
 	}
 
@@ -129,8 +130,8 @@ class VenueWriteRoleGateTest {
 
 		assertNeverDispatched(layout);
 		assertNeverDispatched(price);
-		assertThat(layout.getResponse().getStatus()).isEqualTo(401);
-		assertThat(price.getResponse().getStatus()).isEqualTo(401);
+		assertThat(layout.getResponse().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+		assertThat(price.getResponse().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
 		verify(editBeachMap, never()).replaceLayout(any(), any(), anyLong(), any());
 		verify(editBeachMap, never()).repriceRow(any(), any(), anyLong(), any());
 	}
@@ -161,9 +162,11 @@ class VenueWriteRoleGateTest {
 		assertThat(result.getHandler())
 				.as("GET /api/venues/{id} is permitAll — an anonymous read must still be dispatched")
 				.isNotNull();
+		// Asserting "not an auth rejection" rather than the exact status: the concrete code is the
+		// stubbed catalogue's business, and coupling to it would break this test for unrelated reasons.
 		assertThat(result.getResponse().getStatus())
-				.as("the stubbed catalogue has no venue 1, so a dispatched read is a 404 — never a 401/403")
-				.isEqualTo(404);
+				.as("a public read must never be rejected by the filter chain")
+				.isNotIn(HttpStatus.UNAUTHORIZED.value(), HttpStatus.FORBIDDEN.value());
 	}
 
 	private static void assertNeverDispatched(MvcResult result) {

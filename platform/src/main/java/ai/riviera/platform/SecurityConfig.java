@@ -70,9 +70,23 @@ class SecurityConfig {
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water, T7 #140); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
-	/** Bulk beach-map layout replace (O3 #172) — an operator-only PUT; session + CSRF token required. */
+	/**
+	 * The two operator-only venue-write {@code PUT}s — bulk beach-map layout replace (O3 #172) and row
+	 * reprice (O4 #174). Both had <strong>no matcher at all</strong> until #328: the block gated
+	 * {@code GET}/{@code POST}/{@code PATCH}/{@code DELETE} and {@code PUT} zero times, so both fell
+	 * through to {@code anyRequest().authenticated()} where any authenticated principal — a signed-in
+	 * tourist included — passed the filter, leaving only {@code CurrentOperator.require} to stop them.
+	 *
+	 * <p>Gated per-verb rather than by namespace, deliberately: unlike {@code /api/me/**} (#317, where a
+	 * method-agnostic rule is right because every verb belongs to one principal type),
+	 * {@code /api/venues/**} mixes the <em>public</em> tourist {@code GET} with operator-only writes, so
+	 * a namespace rule would be wrong here. The per-verb shape's weakness — a newly mapped verb falling
+	 * through unnoticed, three times over (#316, #317, #328) — is covered by
+	 * {@code EndpointRoleGateCoverageTest} instead. {@code *} matches exactly one segment, so neither
+	 * pattern widens. Object-level ownership (invariant #13) stays in {@code VenueAdminService}; this is
+	 * only the role layer above it. Session + CSRF token required like every venue write.
+	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
-	/** Row reprice (O4 #174) — an operator-only PUT; `*` matches one segment, so it never widens. */
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
 	// A single venue photo slot (#142): POST upload / DELETE remove, operator-only. The public GET
 	// serving path /api/venues/*/photos/(hash) falls under "GET /api/venues/**" below.
@@ -297,11 +311,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
-						// Beach-map replace + row reprice (O3 #172, O4 #174) — operator-only writes that had NO
-						// matcher until #328 and fell through to anyRequest().authenticated(), where any
-						// authenticated principal (a signed-in tourist included) passed the filter. Object-level
-						// ownership (invariant #13) is still enforced in the application service; this is the
-						// role layer above it. Method-scoped like every venue rule, so the public GET is untouched.
+						// The venue-write PUTs (#328) — unmatched until then; rationale on the constants above.
 						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH).hasRole(OPERATOR_ROLE)
 						// Venue photo upload/remove (#142) — operator-only writes. Object-level ownership
 						// (invariant #13) is enforced in VenuePhotoService; this is the role layer. The

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -54,6 +55,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * filter blocked it" and the guard would pass while verifying nothing. Every probe therefore also
  * carries a unique {@code X-Forwarded-For} (#127: shared buckets across a cached-context full-suite
  * run are how green scoped batches become a CI-only wall of {@code 429}s).
+ *
+ * <p><strong>Known limitation — this is an escalation guard, not a public-access guard.</strong> The
+ * probe principal is <em>authenticated</em>, so a {@code permitAll} endpoint and one falling through to
+ * {@code anyRequest().authenticated()} look identical to it: both dispatch. A {@code permitAll} rule
+ * silently downgraded to authenticated-only would therefore not fail here — it would break anonymous
+ * guest checkout, which the booking ITs and {@code CsrfProtectionIT} already cover from the other side.
+ * What this guard owns is the opposite direction: a gated endpoint becoming reachable by a principal
+ * that should not reach it.
  *
  * <p>Scope: {@code RequestMappingHandlerMapping} — the annotated controllers. Actuator endpoints are
  * {@code WebMvcEndpointHandlerMapping} entries, are not loaded by {@code @WebMvcTest}, and keep their
@@ -130,8 +139,7 @@ class EndpointRoleGateCoverageTest {
 		List<String> violations = new ArrayList<>();
 		Set<String> endpoints = mappedEndpoints();
 
-		// Two-way contract: without this, an enumeration that silently stopped finding endpoints would
-		// pass vacuously — the 18 declared entries are the anchors that prove the probe still sees them.
+		// The declared entries are the anchors: without them a shrunk enumeration would pass vacuously.
 		assertThat(endpoints)
 				.as("every declared-reachable endpoint must still be mapped — a missing one means the "
 						+ "endpoint was removed (drop the declaration) or the enumeration broke")
@@ -154,7 +162,7 @@ class EndpointRoleGateCoverageTest {
 				violations.add(endpoint + " reached " + result.getHandler() + " — no SecurityConfig rule "
 						+ "gates it, so any authenticated principal passes the filter");
 			}
-			else if (status != 401 && status != 403) {
+			else if (status != HttpStatus.UNAUTHORIZED.value() && status != HttpStatus.FORBIDDEN.value()) {
 				violations.add(endpoint + " was not dispatched but answered " + status + " — the probe "
 						+ "never reached authorization, so this endpoint is UNVERIFIED (bad sample path?)");
 			}

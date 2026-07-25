@@ -173,7 +173,7 @@ byte-identical `403 ACCESS_DENIED` payloads by design, so even that is invisible
 > or whenever unsure where the work stands: re-read this section (plus the current `riviera-sdlc`
 > stage's reference file) before acting.
 
-**Stage pointer:** `implement — both phases done; next is the CI gate, then PR`
+**Stage pointer:** `review gate — findings fixed, re-verifying CI + Sonar on the fix head`
 
 **Next action:** Push the branch and confirm that push's CI run is green — the Docker-gated half of
 AC-5 (`BeachMapReplaceIT`, `VenueRepriceIT`, `CrossVenueDenialIT`) is proven only there — then open
@@ -218,7 +218,11 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-STYLE-1) | The new matcher carried a **5-line inline comment**; the bank caps inline comments at one line (Javadoc is exempt). | fixed-in-`b4b3eb4` — rationale moved to the constants' Javadoc, matcher left with a one-liner, matching the file's own pattern (`ME_PATHS`, `MY_VENUES_PATH`) |
+| F-2 | review (brittleness) | `anonymousVenueReadIsStillPublic` asserted the exact status `404`, coupling the test to `WebSliceStubs.venueCatalog()` returning empty — an unrelated stub change would break it for the wrong reason. | fixed-in-`b4b3eb4` — now asserts "not an auth rejection" (`isNotIn(401, 403)`), which is what the test actually means |
+| F-3 | review (`riviera-java-conventions` §6a) | Raw status literals (`401`/`403`/`404`) in both new tests instead of named constants. | fixed-in-`b4b3eb4` — `HttpStatus.UNAUTHORIZED.value()` / `HttpStatus.FORBIDDEN.value()` |
+| F-4 | review (scope note, not a defect) | The tripwire probes with an **authenticated** principal, so it cannot distinguish `permitAll` from `anyRequest().authenticated()`: a `permitAll` rule silently downgraded to authenticated-only would not fail it. | accepted — out of this guard's stated scope (it is a privilege-**escalation** guard). The anonymous side is already covered by the guest-checkout ITs and `CsrfProtectionIT`; recorded in the class Javadoc as a known limitation |
+| F-5 | sonar (PR #331, run on `edf0d32`) | Quality gate passed: 0 new issues, 0 accepted, 0 security hotspots, 100.0% coverage on new code, 0.0% duplication. | superseded — re-verified against the API on the post-fix head (the bot comment is not the authority; `references/pr-gates.md` §2) |
 
 ---
 
