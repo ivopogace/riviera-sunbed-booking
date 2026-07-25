@@ -128,6 +128,14 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
    reaches. (The graph is local/gitignored, so it's absent in a fresh clone — fall back to
    grep there.) An `area:fullstack` issue almost always trips DB **and** BE **and** FE —
    load all of them; don't stop at the label.
+
+   > **An empty graph result is not evidence of absence.** The graph has a third state
+   > besides present-and-absent: **present but silently incomplete**. A query that returns
+   > nothing reads exactly like "there is nothing there," so confirm a negative with grep
+   > before concluding it. Known live gap: **the entire `adapter/out` layer is unindexed**
+   > (issue #321 — 0 of 23 files), so every JDBC adapter and all its SQL is invisible, and
+   > `graphify path "<SpiPort>" "<JdbcImpl>"` never resolves a driven port's implementor.
+   > Treat graphify as a fast way to find things, never as proof that something is missing.
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
    so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
    `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
