@@ -139,12 +139,12 @@ export const routes: Routes = [
     data: { operatorConsole: true },
   },
   {
-    // Platform-admin operator-approval surface (S6 #115). Self-gates on the ADMIN session; the
-    // backend /api/admin/** role gate is the real authority. Reached from the console header's Admin
-    // link when signed in as an admin.
+    // Platform-admin operator surface: the approval queue (S6 #115) + the account list with
+    // suspend/reinstate (#128). Self-gates on the ADMIN session; the backend /api/admin/** role gate
+    // is the real authority. Reached from the console header's Admin link when signed in as an admin.
     path: 'admin',
     loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
-    title: 'Operator registrations — Riviera',
+    title: 'Operators — Riviera',
   },
   {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
