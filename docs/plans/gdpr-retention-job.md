@@ -91,10 +91,11 @@ hosting cutover remain **out of scope — human-gated / separate epic**.
 - [x] **AC-6 (bounded batch):** Given more expired candidates than the configured batch size, when one sweep
   runs, then at most `batchSize` rows are scrubbed and the run reports that count (the rest are picked up on
   the next run). *Pinned by:* `ExpireGuestContactsServiceTest.scrubsAtMostOneBatchPerRun`.
-- [ ] **AC-7 (disabled by default):** Given the default configuration (`customer.retention.enabled` unset),
+- [x] **AC-7 (disabled by default):** Given the default configuration (`customer.retention.enabled` unset),
   when the application context starts, then **no** retention scheduler bean exists — nothing can sweep until
-  ops opts in. *Pinned by:* `GuestContactRetentionSchedulerConfigTest` (`@SpringBootTest` slice asserting the
-  bean is absent by default and present with `customer.retention.enabled=true`).
+  ops opts in. *Pinned by:* `GuestContactRetentionSchedulerConfigTest` — an `ApplicationContextRunner` slice (not `@SpringBootTest`: the
+  repo's `RateLimitPropertiesBindingTest` pattern, which evaluates the real `application.properties` with no
+  web layer and no Docker) asserting the bean is absent by default and present with `customer.retention.enabled=true`.
 - [x] **AC-8 (window is configuration, reasoned in `Europe/Tirane`):** Given a fixed `Clock` and
   `customer.retention.window=P2Y`, when the sweep computes its cutoff, then the cutoff is *today in
   `Europe/Tirane`* minus 2 years — never the JVM default zone, never a hardcoded period (invariant #6).
@@ -136,8 +137,8 @@ N/A — new behavior, replaces nothing. No existing surface is retired: Slice 1'
 |---|---|---|---|---|---|---|
 | R-1 | Modulith **cycle**: the natural `customer → booking::api` read closes a 2-cycle (`booking` already declares `customer::api` + `customer::vocabulary`), failing `ApplicationModules.verify()` | high (if planned naively) | high | Invert it: port in `customer/spi`, implemented by `booking/adapter/out`; grant `customer::spi` to `booking` only. `customer` keeps `allowedDependencies = {}`. AC-9 pins it | Ivo | **resolved** (Phase 0) — structural net green, `customer` still `{}` |
 | R-2 | **Over-erasure** — scrubbing a contact still within its retention basis; irreversible (tombstone, no undo) | med | high | Ships `enabled=false`; window is counsel-set config; three independent gates (row age **and** no booking on/after cutoff **and** no live account with that email); inclusive-retain boundary (AC-2); bounded batch; `GuestContactRetentionIT` | Ivo | open |
-| R-3 | The `@Scheduled` sweep fires during the default-profile test suite and perturbs timing windows (the #98/#122 full-suite lesson) — `@EnableScheduling` is **already global** via `BookingRequestConfig` (not profile-gated), so a new `@Scheduled` runs in every profile | med | med | `@ConditionalOnProperty("customer.retention.enabled")` on the scheduler → the bean does not exist in any default-profile test; plus `initial-delay` default `PT5M`. AC-7 | Ivo | open |
-| R-4 | `Duration` cannot parse a year/month window (`P10Y` fails; ISO-8601 durations have no year unit) → a silent binding failure or a wrong window | med | high | The window is a **`java.time.Period`**, bound from an ISO string; the sweep-interval/initial-delay stay `Duration`. Pinned by AC-8's fixed-clock test | Ivo | open |
+| R-3 | The `@Scheduled` sweep fires during the default-profile test suite and perturbs timing windows (the #98/#122 full-suite lesson) — `@EnableScheduling` is **already global** via `BookingRequestConfig` (not profile-gated), so a new `@Scheduled` runs in every profile | med | med | `@ConditionalOnProperty("customer.retention.enabled")` on the scheduler → the bean does not exist in any default-profile test; plus `initial-delay` default `PT5M`. AC-7 | Ivo | **resolved** (Phase 2) — 202-test regression incl. all booking sweeps green |
+| R-4 | `Duration` cannot parse a year/month window (`P10Y` fails; ISO-8601 durations have no year unit) → a silent binding failure or a wrong window | med | high | The window is a **`java.time.Period`**, bound from an ISO string; the sweep-interval/initial-delay stay `Duration`. Pinned by AC-8's fixed-clock test | Ivo | **resolved** (Phases 1–2) — `RetentionWindow.window` + `CustomerRetentionProperties.window` are both `Period`; `P10Y`/`P2Y` binding pinned by `GuestContactRetentionSchedulerConfigTest` |
 | R-5 | Candidate scan degrades as `customer` grows (no index on `erased_at`/`updated_at`) | low | low | `LIMIT :batchSize` + `ORDER BY id` bounds every run; v1 table is small. Partial index deferred, recorded in Open questions (not silently dropped) | Ivo | open |
 | R-6 | The window value itself is a **legal** determination the code must not invent | high | high | Ship the mechanism + an inert default (`P10Y`, longer than any plausible statutory period) **and** `enabled=false`; runbook says "set per counsel". Deferred to counsel, tracked in Open questions | counsel | open |
 | R-7 | A new **edge** dependency re-arms the full-suite-only traps (`PayoutModuleTest` `@MockitoBean` set, `WebSliceStubs`) — the class that reddened Slice 1's first CI run | low | med | Non-goal: no controller, no edge bean. The only new cross-module edge is `booking → customer::spi`, and `PayoutModuleTest` is the repo's only `@ApplicationModuleTest`, bootstrapping neither module's adapters. Re-check before the PR | Ivo | open |
@@ -258,11 +259,12 @@ row kinds are byte-for-byte unchanged after a sweep, and that the `RESTRICT` FK 
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — Phases 0–1 done, Phase 2 next`
+**Stage pointer:** `implement — Phases 0–2 done, Phase 3 (docs) next`
 
-**Next action:** Start **Phase 2** — write the failing `GuestContactRetentionSchedulerConfigTest` (AC-7:
-no scheduler bean by default, present with `customer.retention.enabled=true`), then
-`GuestContactRetentionScheduler` + the documented `customer.retention.*` block in `application.properties`.
+**Next action:** Start **Phase 3** (docs) — runbook `<counsel-TBD>` → configurable + an "Automated retention
+sweep" section, `CONTEXT.md` glossary, `RESPONSIBILITIES.md` + `CLAUDE.md` module rows, then
+`riviera-docs-freshness` and `graphify update .`. After Phase 3 the slice is code-complete → PR + the review
+and Sonar gates.
 
 **Deviations from the authored plan** (both decided during Phase 1, 2026-07-25):
 
@@ -286,7 +288,7 @@ not silently skipped). Scoped-test discipline still applies; CI still owns the f
 |-------|--------|---------|
 | 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | ✅ | `50e132e` |
 | 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | ✅ | `<phase-1>` |
-| 2 — scheduler + documented defaults (ships disabled; properties+config landed in Phase 1) | | |
+| 2 — scheduler + documented defaults (ships disabled; properties+config landed in Phase 1) | ✅ | `<phase-2>` |
 | 3 — docs: runbook `<counsel-TBD>` → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -604,14 +606,14 @@ WHERE id = :id AND erased_at IS NULL
 `GuestContactRetentionScheduler.java` · Modify `application.properties` · Test
 `customer/GuestContactRetentionSchedulerConfigTest.java`.
 
-- [ ] **Step 1: Write the failing test** — `GuestContactRetentionSchedulerConfigTest` (AC-7): with default
+- [x] **Step 1: Write the failing test** — `GuestContactRetentionSchedulerConfigTest` (AC-7): with default
   properties the context contains **no** `GuestContactRetentionScheduler` bean; with
   `customer.retention.enabled=true` it does.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*GuestContactRetentionSchedulerConfigTest*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*GuestContactRetentionSchedulerConfigTest*"`
   → FAIL.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // customer/adapter/in/CustomerRetentionProperties.java
@@ -669,18 +671,18 @@ class GuestContactRetentionScheduler {
 The `@ConditionalOnProperty` is doing double duty: it is the ops safety switch **and** it keeps the bean out
 of every default-profile test context (R-3 — `@EnableScheduling` is already global via `BookingRequestConfig`).
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*GuestContactRetention*"` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*GuestContactRetention*"` → PASS — `GuestContactRetentionSchedulerConfigTest` 5/5 (scheduler absent by default, absent when explicitly false, present only at `enabled=true`; plus the inert `P10Y` default and `Period` binding). Placed in `customer/adapter/in/` rather than `customer/` — the component is package-private.
 
 > End-of-phase regression: `./gradlew test --tests "*customer*" --tests "*booking*" --tests "*ModularityTests*"`
-> — the booking sweeps' timing windows must be unaffected.
+> — the booking sweeps' timing windows must be unaffected. **Green: 64 classes, 202 tests, 0 failures, 0 skipped.**
 
-- [ ] **Step 5: Generalization-audit pass** — confirm no other `@Scheduled` component relies on a foreign
+- [x] **Step 5: Generalization-audit pass** — confirm no other `@Scheduled` component relies on a foreign
   module's `@EnableScheduling` (`rg "@Scheduled|@EnableScheduling" platform/src/main/java`); note that
   `RequestSweepScheduler` does exactly that today and log it as an observation (out of scope, no change).
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(customer): retention sweep scheduler, disabled by default (#101)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(customer): retention sweep scheduler, disabled by default (#101)"`
 
-- [ ] **Step 7: Update plan-doc Execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc Execution status** in the same commit window.
 
 ---
 
@@ -713,6 +715,7 @@ of every default-profile test context (R-3 — `@EnableScheduling` is already gl
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 2 — new `@Scheduled` component | a `@Scheduled` component relying on a *foreign* module's `@EnableScheduling` | `rg "@Scheduled\|@EnableScheduling" platform/src/main/java` | 2 configs (`BookingSchedulingConfig` `@Profile("stripe")`, `BookingRequestConfig` global) + 4 `@Scheduled` (`AbandonedBookingScheduler`, `RequestSweepScheduler`, `MoneyPathAlertCheck`, the new one) | **Fixed for the new one**: `CustomerRetentionConfig` declares its own `@EnableScheduling`, so `customer` no longer depends on `booking`'s config being loaded (the annotation is idempotent across configurations). `MoneyPathAlertCheck` (root package) still relies on `booking`'s — **logged as an observation, out of scope**, no change |
 | 2026-07-25 | Phase 1 — 2nd guest-tombstone `UPDATE` | the tombstone placeholder expression duplicated across the erasure and retention scrubs | `rg "erased\+" platform/src/main` | 3 — 1 javadoc, the guest `SET` clause, the account `SET` clause | **Extracted** the guest `SET` clause to `JdbcAccountErasure.GUEST_TOMBSTONE`, shared by `eraseGuestByEmail` (by email) and `eraseGuestById` (by id) so request-erasure and retention-erasure cannot drift on what "erased" means; only the `WHERE` differs. The **account** tombstone stays separate — different table, different columns (`password_hash` vs `full_name`/`phone`); merging it would be false sharing |
 | 2026-07-25 | Phase 0 — new cross-module `spi` inversion | other modules reaching for `booking` internals instead of a published surface | `rg "ai\.riviera\.platform\.booking\.(api\|application\|domain\|adapter)" platform/src/main/java --glob '!**/booking/**'` | 1 — `payout/application/DailyTakingsService.java` → `booking.api.DailyTakings` | **No action.** The single hit is the sanctioned `booking::api` port (#171); no `application.*`/`adapter.*`/`domain` import exists. The spi inversion is now its 3rd instance (`SetAvailabilityLookup`, `BookingPresence`, `GuestBookingHistory`) — the pattern is consistent, nothing to generalize |
 
