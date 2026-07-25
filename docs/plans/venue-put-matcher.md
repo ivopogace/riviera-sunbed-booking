@@ -43,17 +43,17 @@ literal `bugfix/…` branch is deliberately not created.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in principal holding `ROLE_CUSTOMER`, when it issues
+- [x] **AC-1:** Given a signed-in principal holding `ROLE_CUSTOMER`, when it issues
       `PUT /api/venues/1/beach-map` with a valid CSRF token, then the **security filter chain**
       rejects it with `403` **before `DispatcherServlet` dispatches** — `MvcResult#getHandler()` is
       `null` — and `EditBeachMap` is never invoked.
       *Pinned by:* `VenueWriteRoleGateTest.customerPutToBeachMapIsRejectedBeforeTheController`
-- [ ] **AC-2:** Same as AC-1 for `PUT /api/venues/1/rows/A/price`.
+- [x] **AC-2:** Same as AC-1 for `PUT /api/venues/1/rows/A/price`.
       *Pinned by:* `VenueWriteRoleGateTest.customerPutToRowPriceIsRejectedBeforeTheController`
-- [ ] **AC-3:** Given an **anonymous** caller, when it issues either PUT, then the chain answers
+- [x] **AC-3:** Given an **anonymous** caller, when it issues either PUT, then the chain answers
       `401` before dispatch (`getHandler()` is `null`).
       *Pinned by:* `VenueWriteRoleGateTest.anonymousPutsAreUnauthorizedBeforeTheController`
-- [ ] **AC-4 (positive control — proves AC-1/2 are not vacuous):** Given a principal holding
+- [x] **AC-4 (positive control — proves AC-1/2 are not vacuous):** Given a principal holding
       `ROLE_OPERATOR`, when it issues `PUT /api/venues/1/beach-map` with a valid body, then the
       request **is** dispatched (`getHandler()` non-`null`) and reaches `EditBeachMap#replaceLayout`.
       *Pinned by:* `VenueWriteRoleGateTest.operatorPutToBeachMapDoesReachTheController`
@@ -61,14 +61,14 @@ literal `bugfix/…` branch is deliberately not created.
       still dispatched (`permitAll`), and the owning-operator write paths still work end-to-end.
       *Pinned by:* `VenueWriteRoleGateTest.anonymousVenueReadIsStillPublic` **plus** the existing
       `BeachMapReplaceIT` and `VenueRepriceIT` staying green **unchanged**.
-- [ ] **AC-6 (the recurrence guard):** Given the full set of endpoints in
+- [x] **AC-6 (the recurrence guard):** Given the full set of endpoints in
       `RequestMappingHandlerMapping`, when each is probed with an authenticated principal holding
       **no project role** (`ROLE_NOBODY`), then every one is rejected before dispatch **unless** it
       appears in the test's declared reachable-by-any-principal list ({public endpoints} ∪ {the one
       deliberate fall-through, `GET /api/auth/me`}). A newly mapped endpoint with no matcher fails
       this test.
       *Pinned by:* `EndpointRoleGateCoverageTest.everyMappedEndpointIsGatedOrDeclaredReachable`
-- [ ] **AC-7:** AC-6's guard is proven to actually bite: with the PUT matchers temporarily removed,
+- [x] **AC-7:** AC-6's guard is proven to actually bite: with the PUT matchers temporarily removed,
       `EndpointRoleGateCoverageTest` fails and names **exactly** the two PUT endpoints.
       *Verified by:* the deliberate falsification step in Phase 1, recorded in Execution status.
 
@@ -93,12 +93,12 @@ N/A — nothing is retired or replaced. The slice **adds** two authorization rul
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The tripwire **false-negatives**: a probe that is really a `404` (bad synthesized path) or a `429` (rate limiter, which runs *ahead of* authorization) looks like "denied at the filter", masking a genuine fall-through. | med | high — a guard that silently passes is worse than none | When `getHandler()` is `null`, additionally assert the status is `401` **or** `403`. A `404`/`405`/`429` fails the test loudly as "probe did not resolve", never as a pass. Each probe also carries a unique `X-Forwarded-For` (`SessionLoginSupport.uniqueClientIp()`), so no probe can exhaust another's bucket. | Claude | open |
-| R-2 | The **#127 full-suite-only failure class**: shared rate-limit buckets across a cached-context CI run turn green scoped batches into a wall of `429`s. | low | med | Verified at grill time that `PUT /api/venues/**` draws on **no** `RateLimitFilter` bucket (buckets exist only for booking, operator/customer login, operator register, recovery and SSO paths). The tripwire nonetheless probes throttled paths (`POST /api/bookings`, the logins), so every probe gets a unique client IP — the same defence `MeSurfaceRoleGateTest` uses. Confirmed only by the push's CI run. | Claude | open |
-| R-3 | **Matcher ordering** — a new rule placed below a broader one is shadowed and silently dead. | low | high | Both PUT rules go with the sibling venue-write rules, above `.anyRequest()`. The only broader venue rule is `GET /api/venues/**`, which is **method-scoped** and therefore cannot shadow a `PUT`. AC-1/2 (filter-layer discriminator) would fail if a rule were shadowed. | Claude | open |
-| R-4 | The fix is mistaken for a **replacement** of invariant #13's ownership check, and someone later removes `assertOwns` from `VenueAdminService`. | low | high (BOLA) | Javadoc on both new matchers states this is the role layer *above* object-level ownership, mirroring the existing `PATCH`/photo matcher comments; `CrossVenueDenialIT` stays green unchanged. | Claude | open |
-| R-5 | Tripwire **maintenance friction**: every genuinely-new public endpoint requires an allowlist edit. | high (by design) | low | Accepted — that is the tripwire's purpose. The failure message names the offending `VERB /path` and states the two legal resolutions (add a `SecurityConfig` rule, or declare it reachable with a reason). | Claude | open |
-| R-6 | Probe requests **throw** out of a dispatched handler and abort the test run instead of being asserted. | low | med | Verified at plan time: `ApiErrorHandler extends ResponseEntityExceptionHandler`, so framework exceptions (unreadable body, missing param, unsupported method) all become `ProblemDetail` responses — nothing escapes to MockMvc. Probes also send `{}` rather than an empty body, so parsing succeeds and failure lands in validation (`IllegalArgumentException` → `400`, §6b). No `catch (Exception)` in the loop (`riviera-java-conventions` §6). | Claude | open |
+| R-1 | The tripwire **false-negatives**: a probe that is really a `404` (bad synthesized path) or a `429` (rate limiter, which runs *ahead of* authorization) looks like "denied at the filter", masking a genuine fall-through. | med | high — a guard that silently passes is worse than none | When `getHandler()` is `null`, additionally assert the status is `401` **or** `403`. A `404`/`405`/`429` fails the test loudly as "probe did not resolve", never as a pass. Each probe also carries a unique `X-Forwarded-For` (`SessionLoginSupport.uniqueClientIp()`), so no probe can exhaust another's bucket. | Claude | closed-in-`96000db` (both halves shipped; falsified) |
+| R-2 | The **#127 full-suite-only failure class**: shared rate-limit buckets across a cached-context CI run turn green scoped batches into a wall of `429`s. | low | med | Verified at grill time that `PUT /api/venues/**` draws on **no** `RateLimitFilter` bucket (buckets exist only for booking, operator/customer login, operator register, recovery and SSO paths). The tripwire nonetheless probes throttled paths (`POST /api/bookings`, the logins), so every probe gets a unique client IP — the same defence `MeSurfaceRoleGateTest` uses. Confirmed only by the push's CI run. | Claude | open — awaiting CI |
+| R-3 | **Matcher ordering** — a new rule placed below a broader one is shadowed and silently dead. | low | high | Both PUT rules go with the sibling venue-write rules, above `.anyRequest()`. The only broader venue rule is `GET /api/venues/**`, which is **method-scoped** and therefore cannot shadow a `PUT`. AC-1/2 (filter-layer discriminator) would fail if a rule were shadowed. | Claude | closed-in-`bc38dd8` (AC-1/2 green with the rule in place, red without) |
+| R-4 | The fix is mistaken for a **replacement** of invariant #13's ownership check, and someone later removes `assertOwns` from `VenueAdminService`. | low | high (BOLA) | Javadoc on both new matchers states this is the role layer *above* object-level ownership, mirroring the existing `PATCH`/photo matcher comments; `CrossVenueDenialIT` stays green unchanged. | Claude | closed-in-`bc38dd8` (Javadoc shipped on the matcher) |
+| R-5 | Tripwire **maintenance friction**: every genuinely-new public endpoint requires an allowlist edit. | high (by design) | low | Accepted — that is the tripwire's purpose. The failure message names the offending `VERB /path` and states the two legal resolutions (add a `SecurityConfig` rule, or declare it reachable with a reason). | Claude | accepted-by-design |
+| R-6 | Probe requests **throw** out of a dispatched handler and abort the test run instead of being asserted. | low | med | Verified at plan time: `ApiErrorHandler extends ResponseEntityExceptionHandler`, so framework exceptions (unreadable body, missing param, unsupported method) all become `ProblemDetail` responses — nothing escapes to MockMvc. Probes also send `{}` rather than an empty body, so parsing succeeds and failure lands in validation (`IllegalArgumentException` → `400`, §6b). No `catch (Exception)` in the loop (`riviera-java-conventions` §6). | Claude | closed-in-`96000db` (52 probes ran, none threw) |
 
 ## Open questions / Assumptions
 
@@ -346,13 +346,15 @@ rules ~line 292)
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2/AC-3/AC-4/AC-5:** Run `gradle test --tests "*VenueWriteRoleGateTest*"` → PASS.
-      Verified at commit `<sha>`.
+- [x] **AC-1/AC-2/AC-3/AC-4 + AC-5 (slice half):** `gradle test --tests "*VenueWriteRoleGateTest*"`
+      → PASS (5 tests). Red first at `a205c8d`'s tree for AC-1/AC-2 only, with
+      `expected: null but was: VenueAdminController#replaceLayout(...)`. Verified at `bc38dd8`.
 - [ ] **AC-5 (end-to-end half):** `BeachMapReplaceIT`, `VenueRepriceIT`, `CrossVenueDenialIT` green
-      **unchanged** on the PR's CI run (Docker-gated; they skip locally). Verified at `<sha>`.
-- [ ] **AC-6:** Run `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-7:** Falsification run recorded in Execution status — red naming exactly the two PUTs
-      with the matcher removed, green with it restored. Verified at `<sha>`.
+      **unchanged** on the PR's CI run (Docker-gated; they skip locally). Verified at `<ci-run>`.
+- [x] **AC-6:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS, 52 endpoints probed.
+      Verified at `96000db`.
+- [x] **AC-7:** Falsification recorded in Execution status — red naming exactly the two PUTs with
+      the matcher removed, green with it restored. Verified at `96000db`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
