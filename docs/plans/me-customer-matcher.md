@@ -183,16 +183,16 @@ non-customer principal is byte-identical to what it already was.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current stage's `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — complete; entering PR + CI gate`
+**Stage pointer:** `review gate — run at high effort, 2 findings fixed; awaiting CI + Sonar`
 
-**Next action:** Merge latest `origin/main`, push the branch, open the PR into `main`, then run
-the review gate at **high effort** with `riviera-review-overlay` loaded.
+**Next action:** Confirm CI green on the fix-round push, then pull the SonarCloud issue list for PR
+#329 from the API (green gate ≠ empty list) and clear every entry before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — red: the filter-origin test | ✅ | `0f96502` — 2 of 5 red as designed; `expected: null` on the handler assertion |
 | 1 — green: the method-agnostic matcher | ✅ | *(this commit)* |
-| 2 — PR + gates (CI → review → Sonar) | ⏳ | |
+| 2 — PR + gates (CI → review → Sonar) | ⏳ | PR #329; review gate run at high effort → F-1, F-2 fixed |
 
 **Red-first evidence (R-1 / AC-3), recorded because it cannot be re-derived later:** at `0f96502`,
 against unmodified `SecurityConfig`, `operatorPostToSetPasswordIsRejectedBeforeTheController` and
@@ -216,7 +216,31 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review gate (high effort) — **Major** | **`MeSurfaceRoleGateTest` shared the default loopback rate-limit bucket.** `/api/me/verify-email/request` is one of `RateLimitFilter`'s `RECOVERY_PATHS`, that budget is the 10-per-minute `login` limit, and the limiter sits **ahead of authorization** — so even this class's `403`/`401` requests spend tokens. **Every** sibling recovery-path test (`EmailVerificationIT`, `PasswordResetIT`, `RecoveryMailerFailureIT`, `RecoveryRateLimitIT`) presents a unique `X-Forwarded-For`; this new class did not. Exactly the documented #127 full-suite-only class: green in every scoped batch, a wall of `429`s only under CI's cached-context single-JVM run. | fixed — all five requests now go through an `isolated(...)` helper adding `csrf()` + `SessionLoginSupport.uniqueClientIp()` (RFC-2544 `198.18.x.y`, deliberately *untrusted* so #129's proxy-hop skip doesn't collapse it back to loopback) |
+| F-2 | review gate (high effort) — **Minor**, RV-STYLE-1 | The new inline comment on the matcher ran to **two lines**. RV-STYLE-1: an inline comment fits on one line or isn't written; the long rationale belongs in the (exempt) Javadoc, where it already was. | fixed — collapsed to one line |
+
+**Red-first re-verified after the F-1 refactor** (a refactored test must re-earn its red): temporarily
+re-scoping the matcher to `HttpMethod.GET, ME_PATHS` reproduced exactly the two original failures, and
+restoring the method-agnostic rule returned it to green. The discriminator survived the change.
+
+**Bank walk (backend scope, high effort — authorization).** RV-BE-1 availability ➖ no availability
+write · RV-BE-2 JDBC ➖ no persistence · RV-BE-3/3b/3c Modulith ➖ no module code, no port/event
+(root-package edge; `ModularityTests` + `PackageShapeArchitectureTests` +
+`PublishedSurfacePlacementArchitectureTests` green) · RV-BE-4 events ➖ · RV-BE-5 money ➖ · RV-BE-6
+time ➖ · RV-BE-7 Stripe ➖ · RV-BE-8 payout ➖ · **RV-BE-9 BOLA ✅** — not a venue-scoped surface;
+`/api/me/**` is session-principal-scoped with **no id in the path**, so it is BOLA-safe by
+construction and invariant #13's `assertOwns` does not apply; the diff only *strengthens* the
+role-level gate and weakens no venue-scoped rule · RV-BE-10 error contract ✅ no bespoke body, no
+per-controller handler · RV-BE-11 placement ✅ edge, matches the plan's ownership table · RV-BE-12
+package shape ➖ no packages moved · RV-BE-13 injection ➖ no SQL, no new logging · RV-BE-14 codes ➖ ·
+RV-BE-15 pool/cutoff ➖ · RV-BE-16 refund ➖ · RV-BE-17 Flyway ✅ no schema change and correctly no
+migration · RV-STYLE-1 ⛔→✅ (F-2) · RV-PROC-1 ✅ *Skills consulted* covers every touched area.
+
+**Ordering + CORS re-checked by hand** (the two ways a matcher change silently breaks): no earlier
+rule matches `/api/me/**` (all have different prefixes), and it stays immediately above
+`.anyRequest().authenticated()` — so first-match-wins is unchanged. `OPTIONS` preflight is handled by
+`CorsFilter`, which short-circuits *before* the authorization filter, so widening the rule to all
+methods cannot break the dev-server cross-origin flow.
 
 ---
 

@@ -307,8 +307,7 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
-						// The signed-in tourist's own surface (#317): CUSTOMER-only across EVERY method —
-						// anonymous → 401, an operator session → 403 (authenticated, wrong role).
+						// Every verb, not just GET (#317) — anonymous → 401, operator session → 403.
 						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server

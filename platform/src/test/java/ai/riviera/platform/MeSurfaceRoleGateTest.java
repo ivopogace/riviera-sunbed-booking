@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -50,6 +51,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}), like every other web-slice
  * test here. Docker-free. The real-schema behaviour of these endpoints stays {@code SetPasswordIT}'s
  * and {@code EmailVerificationIT}'s job.
+ *
+ * <p>Every request carries a unique {@code X-Forwarded-For} (#127 rate-bucket isolation), as every other
+ * recovery-path test does. {@code /api/me/verify-email/request} is one of {@code RateLimitFilter}'s
+ * {@code RECOVERY_PATHS}, that budget is the 10-per-minute {@code login} limit, and the limiter sits
+ * <em>ahead of</em> authorization — so even the {@code 403}/{@code 401} requests below spend a token.
+ * Sharing the default loopback key with the rest of a cached-context full-suite run is precisely how
+ * #127 turned green scoped batches into a CI-only wall of {@code 429}s.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -78,7 +86,7 @@ class MeSurfaceRoleGateTest {
 
 	@Test
 	void operatorPostToSetPasswordIsRejectedBeforeTheController() throws Exception {
-		MvcResult result = mvc.perform(post(SET_PASSWORD).with(user("op").roles("OPERATOR")).with(csrf())
+		MvcResult result = mvc.perform(isolated(post(SET_PASSWORD)).with(user("op").roles("OPERATOR"))
 						.contentType(MediaType.APPLICATION_JSON).content(NEW_PASSWORD_BODY))
 				.andExpect(status().isForbidden())
 				.andReturn();
@@ -89,7 +97,7 @@ class MeSurfaceRoleGateTest {
 
 	@Test
 	void operatorPostToRequestVerificationIsRejectedBeforeTheController() throws Exception {
-		MvcResult result = mvc.perform(post(REQUEST_VERIFICATION).with(user("op").roles("OPERATOR")).with(csrf()))
+		MvcResult result = mvc.perform(isolated(post(REQUEST_VERIFICATION)).with(user("op").roles("OPERATOR")))
 				.andExpect(status().isForbidden())
 				.andReturn();
 
@@ -99,7 +107,7 @@ class MeSurfaceRoleGateTest {
 
 	@Test
 	void anonymousPostsAreUnauthorizedBeforeTheController() throws Exception {
-		assertNeverDispatched(mvc.perform(post(REQUEST_VERIFICATION).with(csrf()))
+		assertNeverDispatched(mvc.perform(isolated(post(REQUEST_VERIFICATION)))
 				.andExpect(status().isUnauthorized())
 				.andReturn());
 
@@ -115,8 +123,8 @@ class MeSurfaceRoleGateTest {
 	void customerRequestDoesReachTheController() throws Exception {
 		when(directory.accountFor(CUSTOMER_EMAIL)).thenReturn(Optional.of(ACCOUNT));
 
-		MvcResult result = mvc.perform(post(REQUEST_VERIFICATION)
-						.with(user(CUSTOMER_EMAIL).roles("CUSTOMER")).with(csrf()))
+		MvcResult result = mvc.perform(isolated(post(REQUEST_VERIFICATION))
+						.with(user(CUSTOMER_EMAIL).roles("CUSTOMER")))
 				.andExpect(status().isNoContent())
 				.andReturn();
 
@@ -130,11 +138,16 @@ class MeSurfaceRoleGateTest {
 	void customerCanStillSetItsPassword() throws Exception {
 		when(directory.accountFor(CUSTOMER_EMAIL)).thenReturn(Optional.of(ACCOUNT));
 
-		mvc.perform(post(SET_PASSWORD).with(user(CUSTOMER_EMAIL).roles("CUSTOMER")).with(csrf())
+		mvc.perform(isolated(post(SET_PASSWORD)).with(user(CUSTOMER_EMAIL).roles("CUSTOMER"))
 						.contentType(MediaType.APPLICATION_JSON).content(NEW_PASSWORD_BODY))
 				.andExpect(status().isNoContent());
 
 		verify(recovery).setPassword(eq(ACCOUNT), any());
+	}
+
+	/** CSRF token + a unique rate-bucket client IP — the two things every request in this class needs. */
+	private static MockHttpServletRequestBuilder isolated(MockHttpServletRequestBuilder request) {
+		return request.with(csrf()).header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp());
 	}
 
 	private static void assertNeverDispatched(MvcResult result) {
