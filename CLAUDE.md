@@ -178,7 +178,12 @@ invariant #11.
 > `SPRING_SESSION` rows (`PrincipalSessionRevoker`, generalized from the S8 customer-only revoker) —
 > synchronous and edge-orchestrated, deliberately not an event. The same revoker fires on a genuine
 > credential rotation and on a customer's own password change. An admin cannot suspend itself
-> (`409 CANNOT_SUSPEND_SELF`). All login/approval/session machinery
+> (`409 CANNOT_SUSPEND_SELF`). **#326 gave operators the customer-equivalent self-service**
+> (`POST /api/auth/operator/password`, own per-IP budget, page `/account/operator-password`): prove the
+> current password → the hash is replaced and every *other* session of that operator is revoked, the
+> calling one surviving. **Edge-only — the `operator` module is unchanged** (`setPassword` simply gained a
+> second caller); the env-managed bootstrap admin is refused (`409 BOOTSTRAP_CREDENTIAL_MANAGED`) because
+> `OperatorCredentialInitializer` re-stamps it every boot. All login/approval/session machinery
 > stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for

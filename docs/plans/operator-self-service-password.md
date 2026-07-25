@@ -265,11 +265,35 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phases 0-3 + AC-7's IT done; phase 4 (docs) next`
+**Stage pointer:** `implement complete (phases 0-4 + AC-7) — PR stage next`
 
-**Next action:** Phase 4 — the runbook + `CLAUDE.md`/`RESPONSIBILITIES.md` operator lines, then
-`graphify update .` (the post-commit hook is code-only). Then the SDLC gates: merge `origin/main`,
-open the PR, review gate, Sonar gate.
+**Next action:** Merge `origin/main` into the branch, open the PR, then the review gate
+(`riviera-review-overlay` + `/code-review`) and the Sonar gate — reading the **reported new-issue
+list**, not just the gate colour.
+
+**Phase 4 (docs).** `docs/runbooks/operator-credential-provisioning.md` gains a *Self-service
+password change (#326)* section (the endpoint + its four refusals, the revoke-others-keep-yours
+behaviour, the own rate-limit budget, and the two things still unavailable: admin-reset-another and
+forgot-password-by-email). Three existing claims that #326 made stale were corrected rather than
+left to contradict the code: the bootstrap *Rotate it* bullet now says env-var-plus-restart is that
+account's **only** path *because* it is excluded here; the *Additional operators* closing line no
+longer says provisioning "is not an HTTP call" without qualification (`setPassword` now has an HTTP
+caller — for the caller's own account only); and the title carries #326.
+`CLAUDE.md` + `RESPONSIBILITIES.md` record the slice's real shape — **a user-facing feature added
+with zero change to the `operator` module** — and add the operator's own password change to the
+session-revocation trigger list. `OperatorProvisioning`'s javadoc was already corrected in Phase 0.
+Doc-sensitive tests green: `ResponsibilitiesArchitectureTests` 9/9, `DocumentationTests`,
+`OperatorAuthPlacementTests`.
+
+**Graphify — partially done, honestly.** `graphify update .` ran and re-extracted the **code** side
+(10,473 nodes / 20,973 edges) and the #321 `adapter/out` blind-spot check still passes (33 tracked
+files, `JdbcGuestBookingHistory` present). But the CLI does **code only** — it prints "For doc/paper/
+image changes run `/graphify --update` in your AI assistant". That assistant-side pass needs either a
+`GEMINI_API_KEY` (unset here) or a subagent fan-out, and `detect_incremental` reports **22** pending
+documents — a backlog from earlier doc-touching slices, not just this one's four. Left undone
+deliberately: it is a local, gitignored, regenerable artifact that cannot affect CI or the PR, and
+the fan-out is the maintainer's call. **Plan-doc correction:** Phase 4's step 2 assumed one command
+folded docs in; it does not.
 
 **AC-7 verification (`OperatorPasswordChangeIT`, 4 tests).** Docker present — **4 tests, 0 skipped,
 0 failures**, read from `build/test-results/test/TEST-*.xml`, not from "BUILD SUCCESSFUL". It covers
@@ -327,7 +351,7 @@ Two things the gates caught that are worth keeping:
 | 1 — Rate-limit bucket | ✅ | `8deb1ca` + the customer-side follow-on |
 | 2 — Frontend surface | ✅ | see below |
 | 3 — e2e + a11y | ✅ | see the Phase 3 verification note above |
-| 4 — Docs + javadoc correction | | |
+| 4 — Docs + javadoc correction | ✅ | javadoc landed in Phase 0; docs below |
 
 **Phase 0 verification (observed, not assumed).** Red/green captured with a `git stash -u` of the
 controller + matcher:
