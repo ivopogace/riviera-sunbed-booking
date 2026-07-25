@@ -111,6 +111,21 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(text(fixture, 'oppw-error')).toBeDefined();
   });
 
+  // Review finding (#326 gate): a blank current password reached the backend, whose DTO rejects it as
+  // INVALID_REQUEST — the same code a policy violation uses — so the operator was told their NEW
+  // password was the wrong length when the real problem was the field they left empty.
+  it('names the empty current-password field instead of blaming the new password', async () => {
+    const auth = authStub('changed');
+    const fixture = await render(auth);
+
+    setModel(fixture, '', 'rotated-pass2');
+    await submit(fixture);
+
+    expect(auth.changePassword).not.toHaveBeenCalled();
+    expect(text(fixture, 'oppw-error')).toContain('current password');
+    expect(text(fixture, 'oppw-error')).not.toContain('8–72');
+  });
+
   it('clears the fields on success so the entered password is not left on screen', async () => {
     const fixture = await render(authStub('changed'));
 

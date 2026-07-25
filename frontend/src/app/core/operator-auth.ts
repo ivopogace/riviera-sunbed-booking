@@ -48,6 +48,13 @@ export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-
 export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**
+ * Shown when the current-password field is left empty. It needs its own message because the backend
+ * answers a blank one with `INVALID_REQUEST` — the same code a policy violation uses — so without this
+ * the operator is told their NEW password is the wrong length when the real fault is the empty field.
+ */
+export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
+
+/**
  * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
  * same thing (the venue editor, the staff view, and the customer/SSO surfaces epic #108 adds).
  * Returns undefined for `'signed-in'` (no message). Failure wording stays generic (D-8).

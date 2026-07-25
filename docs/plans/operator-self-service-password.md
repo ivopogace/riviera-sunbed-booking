@@ -265,11 +265,48 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement complete (phases 0-4 + AC-7) — PR stage next`
+**Stage pointer:** `review gate run (PR #342) — Sonar gate next`
 
-**Next action:** Merge `origin/main` into the branch, open the PR, then the review gate
-(`riviera-review-overlay` + `/code-review`) and the Sonar gate — reading the **reported new-issue
-list**, not just the gate colour.
+**Next action:** Wait for PR #342's CI + SonarCloud analysis, then run the Sonar gate: pull the
+**reported new-issue + duplication list** from the API (not the gate colour) per
+`riviera-sdlc/references/pr-gates.md` §2, confirming `measures` is non-empty first so a
+not-yet-analyzed PR cannot read as clean.
+
+**PR:** #342 — `origin/main` was **0 commits ahead** at PR time, so the mandated integration merge
+was a genuine no-op, not a skipped step.
+
+**Review gate (2026-07-26).** `riviera-review-overlay` loaded; **high effort**, per the overlay's own
+rule that any slice touching authorization gets it. `/code-review` could **not** be invoked — it is
+user-invocable only in this harness — so the gate was run manually over `origin/main...HEAD` against
+the scope-loaded bank files (backend + frontend + fe-be-contract, this being a fullstack diff). That
+substitution is recorded rather than glossed: a maintainer-run `/code-review` would add an independent
+pass this did not have.
+
+Five findings, four fixed (F-1..F-4), one accepted with rationale (F-5) — see the register below.
+The highest-value one was **F-1**, a real user-visible defect no phase had caught.
+
+Bank items worth recording as *checked*, not just listed:
+- **RV-BE-9 (BOLA, invariant #13):** N/A **by construction** — no `venueId` in the path; the principal
+  comes from the session, never from input.
+- **RV-BE-1 / RV-BE-7 / RV-BE-8** (the three Blocker-class items): no availability, payment or ledger
+  path is reached by this diff.
+- **RV-BE-11:** the plan's Module-ownership table was diffed against where the code landed — every row
+  ("verify", "encode", "revoke", "refuse the bootstrap admin", "rate-limit") landed at the edge as
+  planned, and the `operator` module's only change is javadoc.
+- **RV-CT-1:** no `as any` on the contract; the one cast is the narrow
+  `(error.error as { code?: string } | null)?.code` needed to read the RFC-7807 `code`.
+- **RV-PROC-1:** *Skills consulted* covers every area the diff touches; the F-1 fix re-loaded
+  `angular-developer` before editing, per the re-entry rule.
+- **The #127 regression class was audited explicitly**, since this slice adds two new per-IP budgets:
+  every test that hits either newly-throttled path was enumerated. `SetPasswordIT` (both call sites)
+  and `OperatorPasswordChangeIT` carry unique `X-Forwarded-For`s; `RateLimitFilterTest` pins its own
+  IPs; `MeSurfaceRoleGateTest` and `OperatorAccountControllerTest` are `@WebMvcTest` slices that never
+  register the filter. No unguarded caller remains — the full-suite 429 wall should not recur.
+
+**Post-fix verification:** frontend **876/876** unit (was 875 — F-1's spec), lint clean, the
+`operator-password` e2e still 2/2; backend **6 suites / 48 tests / 0 skipped / 0 failures**
+(`OperatorAccountControllerTest`, `RateLimitFilterTest`, `EndpointRoleGateCoverageTest`,
+`MeSurfaceRoleGateTest`, `OperatorPasswordChangeIT`, `SetPasswordIT`).
 
 **Phase 4 (docs).** `docs/runbooks/operator-credential-provisioning.md` gains a *Self-service
 password change (#326)* section (the endpoint + its four refusals, the revoke-others-keep-yours
@@ -387,7 +424,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *none yet* | — |
+| F-1 | review gate (PR #342) | **Blank current password produced the wrong error message.** `onSubmit` validated only the *new* password's length, so an empty current-password field was POSTed; the backend DTO's compact constructor rejects it as `IllegalArgumentException` → `400 INVALID_REQUEST` → which the client maps to `invalid-password` → *"Choose a password of 8–72 characters."* The operator is told their **new** password is the wrong length when the real fault is the field they left blank. Reachable (input is not `required`, form is `novalidate`) and covered by no spec. | **fixed.** Re-entered at Implement with `angular-developer` re-loaded (routing gate). Test-first: the new spec failed red with `changePassword` called as `["", "rotated-pass2"]` — proving the empty value really reached the client call — then passed. Guard added *before* the length rule + its own `OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE`. |
+| F-2 | review gate (PR #342) | **`SecurityConfig` javadoc named a budget that does not exist.** It claimed the endpoint rides "its own `credentialChange` rate-limit budget", but Phase 1's simplification dropped that `Limit` — `grep -rn "credentialChange" platform/src` matches only this javadoc and two test *method names*, and `RateLimitProperties` has no such field. A reader greps it, finds nothing, and concludes the property was lost. | **fixed** — now names the real `operatorPasswordBuckets` and states it rides the existing `login` limit with no new property. |
+| F-3 | review gate (PR #342) | **Indentation break in the security matcher chain.** The two new lines sat at 7 tabs among siblings at 6 — cosmetic, but in an ordered `requestMatchers` chain where visual alignment is how a reviewer checks precedence. | **fixed.** |
+| F-4 | review gate (PR #342) | **RV-STYLE-1:** the new 7-line `//` block on the `RateLimitFilter` path constants exceeds the one-line inline-comment rule. The rationale itself is worth keeping (it encodes the #111/#127 lockouts). | **fixed** by converting it to a `/** … */` javadoc on the constant — doc comments are explicitly exempt, the knowledge survives, and it matches what `SecurityConfig` already does for the analogous constant in this same PR. |
+| F-5 | review gate (PR #342) | **`provisioning.setPassword(...)`'s boolean return is discarded** — a `false` ("no such operator") would still answer `204`. The sibling caller `OperatorCredentialInitializer` *does* check it. | **accepted, not fixed — rationale recorded.** The two call sites differ in reachability: at boot the row may genuinely be absent (a misconfigured `riviera.operator.username` — a documented runbook scenario), whereas here the principal is authenticated *and* `findByUsername` succeeded three lines earlier, so `false` requires the row to vanish mid-request. Adding a branch would ship an untestable path against the ≥80% new-code-coverage bar. Revisit if the port ever gains a real delete path. |
 
 ---
 

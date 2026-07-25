@@ -156,8 +156,9 @@ class SecurityConfig {
 	 * two paths above it is <strong>authenticated</strong>, gated to {@code OPERATOR}. It lives here rather
 	 * than under {@code /api/me/**} precisely because that namespace is CUSTOMER-only and method-agnostic
 	 * (see {@link #ME_PATHS}); putting it there would 403 every operator and quietly falsify that rule.
-	 * On its own {@code credentialChange} rate-limit budget so a change flood can never starve operator
-	 * login (the #111 shared-bucket lockout). CSRF-protected like every write.
+	 * On its own {@code operatorPasswordBuckets} rate-limit budget (under the existing {@code login}
+	 * limit — no new property) so a change flood can never starve operator login (the #111 shared-bucket
+	 * lockout). CSRF-protected like every write.
 	 */
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	/** Customer session login + registration (S2 #111, D-2); anonymous by definition, like the operator login. */
@@ -336,8 +337,8 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
-							// Operator self-service password change (#326) — authenticated, OPERATOR-only.
-							.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
+						// Operator self-service password change (#326) — authenticated, OPERATOR-only.
+						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET (#317) — anonymous → 401, operator session → 403.
 						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())

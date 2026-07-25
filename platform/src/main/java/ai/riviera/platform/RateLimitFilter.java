@@ -112,13 +112,18 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// Operator self-registration (S6 #115, D-8): its OWN per-IP budget, SEPARATE from operator login, so
 	// a burst of registrations can never starve operator login (the S2 operator-lockout lesson, #127).
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
-	// The two authenticated password-change endpoints (#326, D-8) — operator and customer. Each is a
-	// credential oracle like a login (an attempt says whether the submitted CURRENT password was right), so
-	// both must be throttled; the customer one had no budget at all until the #326 generalization audit.
-	// Three separate maps, not one: a change flood must not exhaust the LOGIN budget (that is the #111
-	// operator-lockout defect), and the two principal types must not share a per-IP budget either, since
-	// venue WiFi / CGNAT puts tourists and operators behind one address and a tourist flood would then
-	// block an operator from rotating a possibly-compromised credential.
+	/**
+	 * The two authenticated password-change endpoints (#326, D-8) — operator and customer. Each is a
+	 * credential oracle like a login (an attempt reveals whether the submitted <em>current</em> password
+	 * was right), so both must be throttled; the customer one had no budget at all until the #326
+	 * generalization audit found it.
+	 *
+	 * <p>They get <strong>separate</strong> maps, and neither is the login map. A change flood must not
+	 * exhaust the LOGIN budget (that is the #111 operator-lockout defect), and the two principal types
+	 * must not share a per-IP budget either: venue WiFi / CGNAT puts tourists and operators behind one
+	 * address, so a tourist flood would otherwise block an operator from rotating a credential it
+	 * believes is compromised.
+	 */
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";

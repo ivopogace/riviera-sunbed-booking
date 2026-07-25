@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import {
   MIN_OPERATOR_PASSWORD_LENGTH,
+  OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE,
   OPERATOR_PASSWORD_LENGTH_MESSAGE,
   OperatorAuth,
   operatorPasswordChangeMessage,
@@ -103,6 +104,12 @@ export class OperatorPassword {
       return;
     }
     const { currentPassword, newPassword } = this.model();
+    // Checked before the length rule: the backend answers a blank current password with the same
+    // INVALID_REQUEST code as a policy violation, which would misreport it as a new-password problem.
+    if (currentPassword.length === 0) {
+      this.error.set(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
+      return;
+    }
     if (newPassword.length < MIN_OPERATOR_PASSWORD_LENGTH) {
       this.error.set(OPERATOR_PASSWORD_LENGTH_MESSAGE);
       return;
