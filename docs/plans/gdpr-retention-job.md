@@ -97,7 +97,7 @@ hosting cutover remain **out of scope — human-gated / separate epic**.
   `customer.retention.window=P2Y`, when the sweep computes its cutoff, then the cutoff is *today in
   `Europe/Tirane`* minus 2 years — never the JVM default zone, never a hardcoded period (invariant #6).
   *Pinned by:* `ExpireGuestContactsServiceTest.derivesCutoffFromConfiguredWindowInTiraneZone`.
-- [ ] **AC-9 (boundaries stay acyclic):** Given the new cross-module read, when the structural net runs, then
+- [x] **AC-9 (boundaries stay acyclic):** Given the new cross-module read, when the structural net runs, then
   `customer`'s `allowedDependencies` is still `{}`, `booking` declares `customer::spi`, and no cycle exists.
   *Pinned by:* `ModularityTests.verifiesModularStructure` + `PackageShapeArchitectureTests` +
   `PublishedSurfacePlacementArchitectureTests`.
@@ -132,7 +132,7 @@ N/A — new behavior, replaces nothing. No existing surface is retired: Slice 1'
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Modulith **cycle**: the natural `customer → booking::api` read closes a 2-cycle (`booking` already declares `customer::api` + `customer::vocabulary`), failing `ApplicationModules.verify()` | high (if planned naively) | high | Invert it: port in `customer/spi`, implemented by `booking/adapter/out`; grant `customer::spi` to `booking` only. `customer` keeps `allowedDependencies = {}`. AC-9 pins it | Ivo | open |
+| R-1 | Modulith **cycle**: the natural `customer → booking::api` read closes a 2-cycle (`booking` already declares `customer::api` + `customer::vocabulary`), failing `ApplicationModules.verify()` | high (if planned naively) | high | Invert it: port in `customer/spi`, implemented by `booking/adapter/out`; grant `customer::spi` to `booking` only. `customer` keeps `allowedDependencies = {}`. AC-9 pins it | Ivo | **resolved** (Phase 0) — structural net green, `customer` still `{}` |
 | R-2 | **Over-erasure** — scrubbing a contact still within its retention basis; irreversible (tombstone, no undo) | med | high | Ships `enabled=false`; window is counsel-set config; three independent gates (row age **and** no booking on/after cutoff **and** no live account with that email); inclusive-retain boundary (AC-2); bounded batch; `GuestContactRetentionIT` | Ivo | open |
 | R-3 | The `@Scheduled` sweep fires during the default-profile test suite and perturbs timing windows (the #98/#122 full-suite lesson) — `@EnableScheduling` is **already global** via `BookingRequestConfig` (not profile-gated), so a new `@Scheduled` runs in every profile | med | med | `@ConditionalOnProperty("customer.retention.enabled")` on the scheduler → the bean does not exist in any default-profile test; plus `initial-delay` default `PT5M`. AC-7 | Ivo | open |
 | R-4 | `Duration` cannot parse a year/month window (`P10Y` fails; ISO-8601 durations have no year unit) → a silent binding failure or a wrong window | med | high | The window is a **`java.time.Period`**, bound from an ISO string; the sweep-interval/initial-delay stay `Duration`. Pinned by AC-8's fixed-clock test | Ivo | open |
@@ -256,14 +256,19 @@ row kinds are byte-for-byte unchanged after a sweep, and that the `RESTRICT` FK 
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `plan — doc authored, awaiting first implement phase`
+**Stage pointer:** `implement — Phase 0 done, Phase 1 next`
 
-**Next action:** Start **Phase 0** — load `riviera-local-debug` before the session's first Gradle
-invocation, then write the failing `ModularityTests` + adapter test for `customer.spi.GuestBookingHistory`.
+**Next action:** Start **Phase 1** — write the failing `ExpireGuestContactsServiceTest` (fake store + fake
+history + fixed `Clock`), then `RetentionWindow` / `ExpireGuestContacts` / `ExpireGuestContactsService` and
+the two new `AccountErasureStore` methods.
+
+*Environment note (2026-07-25):* this is a **local Windows machine**, not a cloud session — `./gradlew` works
+normally and Docker 29.4.3 is running, so the Testcontainers ITs **actually execute** (verified `skipped="0"`,
+not silently skipped). Scoped-test discipline still applies; CI still owns the full suite.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | | |
+| 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | ✅ | `<phase-0>` |
 | 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | | |
 | 2 — scheduler + config properties + documented defaults (ships disabled) | | |
 | 3 — docs: runbook `<counsel-TBD>` → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | | |
@@ -321,7 +326,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `booking/adapter/out/JdbcGuestBookingHistory.java` · Modify `booking/package-info.java` · Test
 `customer/GuestContactRetentionIT.java` (first assertion only).
 
-- [ ] **Step 1: Write the failing test** — in `GuestContactRetentionIT`, a first test that inserts two guests
+- [x] **Step 1: Write the failing test** — in `GuestContactRetentionIT`, a first test that inserts two guests
   (one with a 2029 booking, one with a 2020 booking) and asserts the injected `GuestBookingHistory` returns
   only the recent guest for a 2026 cutoff:
 
@@ -337,11 +342,12 @@ void reportsOnlyGuestsWithABookingOnOrAfterTheCutoff() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*GuestContactRetentionIT*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*GuestContactRetentionIT*"` → FAIL
   (`GuestBookingHistory` does not exist). *(Load `riviera-local-debug` before the session's first Gradle
-  invocation.)*
+  invocation.)* — **red confirmed**: `compileTestJava` failed, "package `ai.riviera.platform.customer.spi`
+  does not exist".
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // customer/spi/package-info.java
@@ -404,20 +410,23 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 Then `booking/package-info.java`: append `"customer::spi"` to `allowedDependencies`, with a one-line comment
 naming the inversion (mirroring the existing `venue::spi` comment).
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*GuestContactRetentionIT*"` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*GuestContactRetentionIT*"` → PASS
+  (`tests="1" skipped="0" failures="0"` — Docker present, so the IT genuinely ran against real Postgres).
+  End-of-phase structural net green: `ModularityTests` 1/1, `PackageShapeArchitectureTests` 4/4,
+  `PublishedSurfacePlacementArchitectureTests` 10/10, `JdbcOnlyArchitectureTests` 2/2 — **AC-9 met**.
 
 > End-of-phase regression: `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
 > --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*"` — the new
 > `spi` surface must satisfy the structural net and the graph must stay acyclic (AC-9).
 
-- [ ] **Step 5: Generalization-audit pass** — `Grep` for other modules reaching for booking facts they can't
+- [x] **Step 5: Generalization-audit pass** — `Grep` for other modules reaching for booking facts they can't
   legally call (`rg "booking\.(api|application)" platform/src/main/java --glob '!**/booking/**'`); confirm the
   only cross-module booking reads are the sanctioned `booking::api` `DailyTakings` and `venue.spi.BookingPresence`.
   Record in the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(customer): GuestBookingHistory spi port implemented by booking (#101)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(customer): GuestBookingHistory spi port implemented by booking (#101)"`
 
-- [ ] **Step 7: Update plan-doc Execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc Execution status** in the same commit window.
 
 ---
 
@@ -687,6 +696,7 @@ of every default-profile test context (R-3 — `@EnableScheduling` is already gl
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 0 — new cross-module `spi` inversion | other modules reaching for `booking` internals instead of a published surface | `rg "ai\.riviera\.platform\.booking\.(api\|application\|domain\|adapter)" platform/src/main/java --glob '!**/booking/**'` | 1 — `payout/application/DailyTakingsService.java` → `booking.api.DailyTakings` | **No action.** The single hit is the sanctioned `booking::api` port (#171); no `application.*`/`adapter.*`/`domain` import exists. The spi inversion is now its 3rd instance (`SetAvailabilityLookup`, `BookingPresence`, `GuestBookingHistory`) — the pattern is consistent, nothing to generalize |
 
 ---
 
