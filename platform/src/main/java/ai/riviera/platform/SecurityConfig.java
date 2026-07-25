@@ -137,13 +137,20 @@ class SecurityConfig {
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	/**
-	 * Self-service right-to-erasure (#101 [D5]) — a CUSTOMER-only POST under {@code /api/me/**}. Needs its
-	 * OWN explicit matcher: the {@code GET /api/me/**} rule below is method-scoped, so without this a
-	 * {@code POST} would fall through to {@code anyRequest().authenticated()} and an operator session could
-	 * reach it (defence-in-depth with {@code CurrentCustomer.require}). CSRF-protected like the other
-	 * {@code /api/me} POSTs (the SPA holds the bootstrapped XSRF-TOKEN).
+	 * The signed-in tourist's own surface — my-bookings (S3 #114), set-password + verification-resend
+	 * (S8 #113), self-service erasure (#101 [D5]). {@code CUSTOMER}-only, and deliberately
+	 * <strong>method-agnostic</strong> (#317): {@code /api/me/**} is by definition the session customer's
+	 * own resources, so every verb belongs to the same principal type. Method-scoped rules were the
+	 * defect this replaces — a {@code GET}-only matcher let each new {@code POST} fall through to
+	 * {@code anyRequest().authenticated()}, where only {@code CurrentCustomer.require} stopped an
+	 * operator session, twice (#316 patched erasure alone). A namespace rule fails <em>closed</em> for
+	 * any future verb instead of silently falling through, so this subsumes — and replaces — the former
+	 * {@code GET /api/me/**} and {@code POST /api/me/erasure} matchers. Writes stay CSRF-protected (the
+	 * SPA holds the bootstrapped XSRF-TOKEN); {@code CurrentCustomer.require} remains as
+	 * defence-in-depth. <strong>Adding a non-customer endpoint under this prefix would make the rule
+	 * wrong</strong> — put it elsewhere (as {@code GET /api/venues/mine} does for operators).
 	 */
-	private static final String ME_ERASURE_PATH = "/api/me/erasure";
+	private static final String ME_PATHS = "/api/me/**";
 	/**
 	 * Public customer account-recovery POSTs (S8 #113, design D-6/D-8): request a reset link, redeem a
 	 * reset token, redeem a verification token. Anonymous by definition — the emailed token is the bearer
@@ -300,12 +307,9 @@ class SecurityConfig {
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
-						// The signed-in tourist's own bookings (S3 #114): CUSTOMER-only, session-principal-
-						// scoped (BOLA-safe — no id in the path). A GET (CSRF-exempt by method); an
-						// anonymous request → 401, an operator session → 403 (authenticated, wrong role).
-						.requestMatchers(HttpMethod.GET, "/api/me/**").hasRole(CUSTOMER_ROLE)
-						// Self-service erasure (#101): CUSTOMER-only POST; the GET /api/me/** rule is method-scoped.
-						.requestMatchers(HttpMethod.POST, ME_ERASURE_PATH).hasRole(CUSTOMER_ROLE)
+						// The signed-in tourist's own surface (#317): CUSTOMER-only across EVERY method —
+						// anonymous → 401, an operator session → 403 (authenticated, wrong role).
+						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())
 				// Session logout (issue #109): the framework LogoutFilter invalidates the server
 				// session and clears the context; 204 (no redirect — this is an SPA's API). The

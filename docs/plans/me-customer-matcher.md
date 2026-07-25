@@ -100,7 +100,7 @@ Flyway on `main` stays **V30** (`V30__customer_erasure_marker.sql`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The test passes without the fix** — `CurrentCustomer.require` already 403s an operator, so a status-only assertion pins nothing and ships a green-but-vacuous test | high | high | AC-3's `MvcResult#getHandler()` discriminator + a positive control; **red-first is a mandatory gate** — run the new tests against unmodified `SecurityConfig` and require FAIL before touching it | Ivo | open |
+| R-1 | **The test passes without the fix** — `CurrentCustomer.require` already 403s an operator, so a status-only assertion pins nothing and ships a green-but-vacuous test | high | high | AC-3's `MvcResult#getHandler()` discriminator + a positive control; **red-first is a mandatory gate** — run the new tests against unmodified `SecurityConfig` and require FAIL before touching it | Ivo | closed — proven red at `0f96502` |
 | R-2 | The blanket rule is only correct while every `/api/me/**` endpoint is customer-facing | low | high | Enumeration re-verified at implementation time from source, not from the issue: `git grep` over every `@*Mapping` in `platform/src/main/java` yields exactly four mappings, all customer-facing (table below). Documented in the `ME_PATHS` Javadoc so the next endpoint author sees the constraint | Ivo | open |
 | R-3 | A method-agnostic rule accidentally captures a sibling path (`/api/auth/me`, or a future `/api/members`) | low | med | `/api/me/**` is prefix-anchored on a literal segment; `/api/auth/me` has a different prefix and is unmatched. Non-goal states it explicitly; `AuthSessionIT` (unchanged) covers `/api/auth/me` for both principal types | Ivo | open |
 | R-4 | New `@WebMvcTest` slice fails to stand up because a controller gained a constructor dep (recurring trap in this repo — #128 added two to `MyAccountController`) | med | low | Verified `WebSliceStubs` already registers `PrincipalSessionRevoker` (`:408`), `CustomerRecovery` (`:373`), `CustomerAccounts` (`:198`), `CurrentCustomer` (`:285`); `HttpServletRequest` is container-provided. `PasswordEncoder` comes from the imported `SecurityConfig`. **No new stub bean expected** — confirmed by running the slice, not assumed | Ivo | open |
@@ -183,16 +183,32 @@ non-customer principal is byte-identical to what it already was.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current stage's `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — complete; entering PR + CI gate`
 
-**Next action:** Write `MeSurfaceRoleGateTest` and run it against **unmodified** `SecurityConfig` —
-it MUST fail (R-1 / AC-3 red-first gate) before the matcher is touched.
+**Next action:** Merge latest `origin/main`, push the branch, open the PR into `main`, then run
+the review gate at **high effort** with `riviera-review-overlay` loaded.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — red: the filter-origin test | | |
-| 1 — green: the method-agnostic matcher | | |
-| 2 — PR + gates (CI → review → Sonar) | | |
+| 0 — red: the filter-origin test | ✅ | `0f96502` — 2 of 5 red as designed; `expected: null` on the handler assertion |
+| 1 — green: the method-agnostic matcher | ✅ | *(this commit)* |
+| 2 — PR + gates (CI → review → Sonar) | ⏳ | |
+
+**Red-first evidence (R-1 / AC-3), recorded because it cannot be re-derived later:** at `0f96502`,
+against unmodified `SecurityConfig`, `operatorPostToSetPasswordIsRejectedBeforeTheController` and
+`operatorPostToRequestVerificationIsRejectedBeforeTheController` **failed** with `expected: null` —
+the operator request reached `MyAccountController`. The other three passed then and now. So the two
+operator tests are proven to discriminate, not merely to be green.
+
+**Local verification (Docker present, so ITs really ran — 0 skipped):**
+`MeSurfaceRoleGateTest` (5) · `MeErasureControllerTest` · `AdminErasureControllerTest` ·
+`MyVenuesControllerTest` · `RateLimitFilterTest`/`Defaults`/`Disabled` · `WebCorsConfigTest`(+empty) ·
+`SpaShellTest` · the structural net (`ModularityTests`, `JdbcOnlyArchitectureTests`,
+`PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
+`ErrorContractArchitectureTests`, `ResponsibilitiesArchitectureTests`) · and the auth/session ITs
+`AuthSessionIT`(5) `CustomerLoginIT`(3) `CustomerRoleSeparationIT`(2) `EmailVerificationIT`(2)
+`LogoutThenLoginCsrfIT`(3) `SessionPersistenceIT`(1) `SetPasswordIT`(3) `booking.MyBookingsIT`(3)
+`customer.AccountErasureIT`(5) — all green. CI owns the full suite.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -277,6 +293,7 @@ stale-Javadoc corrections listed in *File structure*.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | phase 1 (this slice) | *"a method-scoped `requestMatchers` leaves sibling verbs on the same path unmatched, so they fall through to `.anyRequest().authenticated()`"* | `grep -oE 'HttpMethod\.[A-Z]+' SecurityConfig.java \| sort \| uniq -c` cross-referenced against every `@*Mapping` in `platform/src/main/java` | **2 more sites, same class.** `SecurityConfig` gates GET/POST/PATCH/DELETE but **never PUT**, while the app maps two operator-only PUTs: `PUT /api/venues/{venueId}/beach-map` and `PUT /api/venues/{venueId}/rows/{rowLabel}/price` (`VenueAdminController:146,159`). Both fall through to `.anyRequest().authenticated()`. **Verified empirically**, not by inspection: a temporary `@WebMvcTest` probe with a `CUSTOMER` principal resolved a handler on both (`handler=VenueAdminController#replaceLayout` / `#repriceRow`) — the filter chain did not stop it. Not exploitable today: both handlers open with `CurrentOperator.require`, which 403s a non-operator in production (its `OperatorDirectory` returns empty) — the identical defence-in-depth-only posture this slice fixes for `/api/me`. All *permit-all* method-scoped rules (the logins, register, recovery, SSO GETs) audited too and are **correct as-is**: a method-scoped `permitAll` fails closed for other verbs. | **Deferred, not silently folded in** → follow-up issue **#328**. Different surface (venue-scoped operator writes, invariant #13 / RV-BE-9) than this issue's `/api/me/**`; widening an authorization slice mid-flight would put an unreviewed second gate change under a plan whose ACs don't cover it. Recorded here + on #317 and #328 with the probe evidence. |
 
 ---
 

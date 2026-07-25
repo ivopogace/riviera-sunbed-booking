@@ -18,7 +18,8 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
  * <p>Always {@code 204}: the underlying scrub is idempotent, so a second request (already erased) is still
  * a success. After the erasure commits, every server-side session for the principal is revoked
  * ({@link PrincipalSessionRevoker}) so the tourist is signed out on every device. {@link SecurityConfig}
- * gates this POST to {@code ROLE_CUSTOMER} — the GET-only {@code /api/me/**} matcher does not cover it.
+ * gates this POST to {@code ROLE_CUSTOMER} via the method-agnostic {@code /api/me/**} matcher, which
+ * since #317 covers every verb on the surface (it originally needed a dedicated erasure-only rule).
  */
 @RestController
 class MyErasureController {
