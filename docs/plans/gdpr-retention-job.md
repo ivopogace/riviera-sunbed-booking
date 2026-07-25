@@ -266,16 +266,27 @@ row kinds are byte-for-byte unchanged after a sweep, and that the `RESTRICT` FK 
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — all four phases done; slice is code-complete. Next stage: PR → review gate → Sonar gate`
+**Stage pointer:** `DONE — merged to main as c7a74dd (PR #318, squash) on 2026-07-25. All gates passed.`
 
-**Next action:** Open the **PR** into `main` — merge latest `origin/main` into the branch first (full phase
-discipline on whatever the integration touches), then push. The branch is **local-only and unpushed** as of
-this commit. After the PR exists: the **review gate** (`riviera-review-overlay` + `/code-review`), then the
-**Sonar gate** (pull the reported new-issue + duplication list from the API — a green gate is not the
-check), each finding re-entering at Implement.
+**Next action:** None for this slice. Remaining #101 work (the umbrella issue stays **open**): Slice 3
+(checkout privacy/terms links) plus the human-gated legal texts, the Paysera/Hetzner DPAs, and the
+backup/PITR + hosting cutover.
 
-**Verification standing at HEAD:** full backend suite green on this branch — **161 classes, 772 tests, 0
-failures, 0 skipped** (Docker present, so no IT silently skipped). All nine ACs met.
+**Gate results at merge:**
+
+| Gate | Result |
+|---|---|
+| CI (`dd2856e`) | Backend ✅ · Frontend ✅ · CodeQL ✅ · Analyze java-kotlin + javascript-typescript ✅ |
+| Local full suite | **161 classes, 772 tests, 0 failures, 0 skipped** (Docker present — no IT silently skipped) |
+| Review gate | Run with `riviera-review-overlay`; **3 findings, all fixed** in `dd2856e` (see Findings register) |
+| Sonar gate | `SonarCloud Code Analysis` **success** |
+| Sonar reported **list** | **0 issues · 0 security hotspots · 0 duplicated blocks** — pulled from the API, not inferred from the gate |
+| New-code coverage | **91.67%** over 445 new lines (bar: 80%) |
+
+> **A note for the next session on the Sonar gate.** The first API read returned "0 issues" *before any
+> analysis had been ingested* — an unanalyzed PR and a clean PR are byte-identical on that endpoint. The tell
+> is the **measures** endpoint: empty `measures` array = no analysis yet. Always confirm `new_lines` has a
+> value before believing a zero issue count, and cache-bust `WebFetch` (15-minute cache).
 
 **Deviations from the authored plan** (both decided during Phase 1, 2026-07-25):
 
@@ -300,7 +311,9 @@ not silently skipped). Scoped-test discipline still applies; CI still owns the f
 | 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | ✅ | `50e132e` |
 | 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | ✅ | `3180aa5` |
 | 2 — scheduler + documented defaults (ships disabled; properties+config landed in Phase 1) | ✅ | `bb85d32` |
-| 3 — docs: runbook counsel-TBD → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | ✅ | this commit |
+| 3 — docs: runbook counsel-TBD → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | ✅ | `bcb1a1f` |
+| 4 — review-gate fixes (F-1..F-3), unplanned | ✅ | `dd2856e` |
+| **merged** | ✅ | **`c7a74dd`** (PR #318, squash) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
