@@ -261,12 +261,28 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phases 0-2 done, phase 3 (e2e) next`
+**Stage pointer:** `implement — phases 0-3 done; AC-7's IT then phase 4 (docs) next`
 
-**Next action:** Load `playwright-cli`, then Phase 3: `frontend/e2e/operator-password.e2e.ts` in the
-CI-safe mocked suite. **Also still owed:** AC-7's `OperatorPasswordChangeIT` (Docker is available on this
-machine — `SetPasswordIT` ran with 0 skipped) and Phase 4's runbook/doc updates. The slice is not done
-without both.
+**Next action:** AC-7's `OperatorPasswordChangeIT` (Docker is available on this machine —
+`SetPasswordIT` ran with 0 skipped), then Phase 4's runbook/doc updates + `graphify update .`.
+The slice is not done without both.
+
+**Phase 3 verification.** `playwright-cli` loaded first (routing gate). Both tests passed on the
+**first** run — the surface was already built in Phase 2, so there was no natural red. Rather than
+claim a red that never happened, the spec was proved **discriminating** by two mutations:
+
+- **Product mutation** (`operator-auth.ts` endpoint → `/operator/passwordZZZ`): both tests failed,
+  each receiving the generic "Something went wrong" instead of the mapped message — i.e. the spec is
+  wired to the real client call, not to a mock echo. Reverted; `git status` confirms the file clean.
+- **Mock mutation** (drop `password = newPassword`, i.e. a backend that answers `204` without
+  rotating): the deepest assertion — old password no longer signs in, line 69 — failed with
+  *"element(s) not found"* for the sign-in error. The rotation claim is load-bearing, not decorative.
+
+Then green: 2/2 for the new spec, and — because `mockAuthApi` is shared by 15 specs — the **whole**
+CI-safe suite re-run at **76/76**, lint clean.
+
+**Coverage note:** the e2e proves rotation *through the client*, against a stateful mock. It does
+**not** prove the server rotates — that is AC-7's IT, still owed, and the two are not substitutes.
 
 **Phase 2 verification.** Red first (`changePassword` did not exist → 5 TS2339 compile errors), then
 green: `operator-auth.spec.ts` 20/20, `operator-password.spec.ts` 6/6, `operator-password.a11y.spec.ts`
@@ -285,7 +301,7 @@ Two things the gates caught that are worth keeping:
 | 0 — Backend endpoint + role gate | ✅ | `7aa9b26` |
 | 1 — Rate-limit bucket | ✅ | `8deb1ca` + the customer-side follow-on |
 | 2 — Frontend surface | ✅ | see below |
-| 3 — e2e + a11y | | |
+| 3 — e2e + a11y | ✅ | see the Phase 3 verification note above |
 | 4 — Docs + javadoc correction | | |
 
 **Phase 0 verification (observed, not assumed).** Red/green captured with a `git stash -u` of the
@@ -464,6 +480,7 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-26 | Phase 3 (no bug fixed — the decision recorded either way, per the phase's step 5) | e2e coverage that proves a credential *rotation* actually took (old secret stops working), across the surfaces that rotate one | `grep -rn "api/me/password" e2e/ src/app` + `grep -rln "old.*password\|initialPassword" e2e/*.e2e.ts` | 3 rotation-proving specs: `password-reset`, `email-verification`, and this slice's `operator-password`. **1 gap:** the customer's own `POST /api/me/password` (S8 set-password) appears in **no** e2e spec at all — only in the `customer-auth.spec.ts` unit spec. | **Not fixed here — deliberately out of scope.** The amended Non-goals allow exactly one customer-side change (the rate-limit budget); adding e2e coverage to the customer account page is a second, unrelated widening of a slice that already crossed its own line once. Recorded as a follow-up candidate to raise at merge close-out. |
 | 2026-07-25 | Phase 1 (new pattern: a per-IP budget for an *authenticated* credential-verification oracle) | other credential endpoints with a missing or shared rate-limit budget | `git grep -n '"/api/me/password"' -- platform/src/main/java` + read of `RateLimitFilter.authBucketsFor` | **1 gap found:** `POST /api/me/password` — the customer's authenticated set/change-password endpoint — appears **only** in `MyAccountController` and in no bucket at all. `RECOVERY_PATHS` covers `forgot-password` / `reset-password` / `verify-email` / `/api/me/verify-email/request`, but **not** `/api/me/password`. It is the same oracle this slice just throttled: every attempt reveals whether the submitted current password was right, so a hijacked session can brute-force the real password unthrottled and then lock the owner out. | **Fixed here, on maintainer decision (2026-07-26).** Raised rather than folded in silently, because the plan's Non-goals declared the customer flow untouched and a new `429` is an observable behaviour change; Ivo chose to fix it in-slice. **Implementation differs from the one-shared-bucket sketch:** the two paths get **separate maps** (`operatorPasswordBuckets`, `customerPasswordBuckets`), because `authBucketsFor` keys by raw client IP *within* the returned map, so one shared map would let a tourist change-flood on venue WiFi / CGNAT block an operator from rotating a compromised credential — the #111 lockout in a new costume. Pinned by `customerPasswordChangeIsThrottled` + `customerPasswordChangeDoesNotStarveTheOperatorOne`. Non-goals amended accordingly. |
 | 2026-07-25 | Phase 0 (R-1: bcrypt re-salting makes hash-vs-hash comparison always false) | every password comparison against a stored hash | `git grep --untracked -n "passwordEncoder.matches\|encoder.matches" -- platform/src/main/java` | 4: `AuthController:221` (timing equalizer), `MyAccountController:102` (S8 set-password), `OperatorAccountController:119` (this slice), `OperatorCredentialInitializer:86` (#128 rotate-detection) | **No fix needed** — all four pass the *raw* password as arg 1 and the stored hash as arg 2. The defect has no surviving instance. **Method note:** the first run used plain `git grep`, which searches only *tracked* files and therefore silently omitted this slice's own new controller — the "an empty result is not evidence of absence" trap from `CLAUDE.md`'s graphify section, in a different tool. `--untracked` is required whenever auditing mid-slice. |
 
