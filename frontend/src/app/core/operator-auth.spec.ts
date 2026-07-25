@@ -176,6 +176,76 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     });
   });
 
+  describe('changePassword (self-service credential rotation, #326)', () => {
+    it('posts both passwords and resolves changed on 204 — the session survives', async () => {
+      const auth = serviceWithRestore({ username: 'adriatica' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('current-pass1', 'rotated-pass2');
+      const req = httpMock.expectOne(`${AUTH_API}/operator/password`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        currentPassword: 'current-pass1',
+        newPassword: 'rotated-pass2',
+      });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(await result).toBe('changed');
+      // Other devices are signed out server-side; THIS session is deliberately kept (#128).
+      expect(auth.signedIn()).toBe(true);
+    });
+
+    // The two 400s share a status and are told apart only by the problem `code`, so this is the
+    // discriminating pair — collapsing them would show "password too short" for a wrong current one.
+    it('maps 400 INVALID_CURRENT_PASSWORD to invalid-current', async () => {
+      const auth = serviceWithRestore({ username: 'adriatica' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('wrong', 'rotated-pass2');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/password`)
+        .flush({ code: 'INVALID_CURRENT_PASSWORD' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toBe('invalid-current');
+    });
+
+    it('maps 400 INVALID_REQUEST to invalid-password', async () => {
+      const auth = serviceWithRestore({ username: 'adriatica' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('current-pass1', 'short');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/password`)
+        .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toBe('invalid-password');
+    });
+
+    it('maps 409 BOOTSTRAP_CREDENTIAL_MANAGED to bootstrap-managed', async () => {
+      const auth = serviceWithRestore({ username: 'operator' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('current-pass1', 'rotated-pass2');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/password`)
+        .flush({ code: 'BOOTSTRAP_CREDENTIAL_MANAGED' }, { status: 409, statusText: 'Conflict' });
+
+      expect(await result).toBe('bootstrap-managed');
+    });
+
+    it('maps 429 to rate-limited', async () => {
+      const auth = serviceWithRestore({ username: 'adriatica' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('current-pass1', 'rotated-pass2');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/password`)
+        .flush({ code: 'RATE_LIMITED' }, { status: 429, statusText: 'Too Many Requests' });
+
+      expect(await result).toBe('rate-limited');
+    });
+  });
+
   describe('isAdmin (S6 #115)', () => {
     it('is true when /me reports an admin operator principal', async () => {
       const auth = TestBed.inject(OperatorAuth);

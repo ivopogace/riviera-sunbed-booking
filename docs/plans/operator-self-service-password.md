@@ -261,18 +261,30 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — backend done (phases 0+1), phase 2 (frontend) next`
+**Stage pointer:** `implement — phases 0-2 done, phase 3 (e2e) next`
 
-**Next action:** Load `angular-developer` + the angular-cli MCP (routing gate re-fires — new area), then
-Phase 2 step 1: the failing `operator-password.spec.ts`. AC-7's `OperatorPasswordChangeIT` is still owed
-and can be written any time before the PR (Docker is available on this machine — `SetPasswordIT` ran, 0
-skipped).
+**Next action:** Load `playwright-cli`, then Phase 3: `frontend/e2e/operator-password.e2e.ts` in the
+CI-safe mocked suite. **Also still owed:** AC-7's `OperatorPasswordChangeIT` (Docker is available on this
+machine — `SetPasswordIT` ran with 0 skipped) and Phase 4's runbook/doc updates. The slice is not done
+without both.
+
+**Phase 2 verification.** Red first (`changePassword` did not exist → 5 TS2339 compile errors), then
+green: `operator-auth.spec.ts` 20/20, `operator-password.spec.ts` 6/6, `operator-password.a11y.spec.ts`
+3/3. Whole frontend: **lint clean, 875/875 unit tests, production build OK** (429.25 kB initial).
+
+Two things the gates caught that are worth keeping:
+- **ESLint** rejected a call-signature type literal in the new spec (`prefer-function-type`).
+- **`app.spec.ts` route-flag test** failed until `account/operator-password` was added to its
+  `CHROMELESS_PATHS`. That test enforces a three-way route taxonomy (restyled-glass / legacy-compat /
+  chromeless-operator); the new page is the third kind — operator surface reached from the console
+  header, so the tourist header/footer stay suppressed and the page's own "Back to your console" link
+  carries the navigation instead.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend endpoint + role gate | ✅ | `7aa9b26` |
 | 1 — Rate-limit bucket | ✅ | `8deb1ca` + the customer-side follow-on |
-| 2 — Frontend surface | | |
+| 2 — Frontend surface | ✅ | see below |
 | 3 — e2e + a11y | | |
 | 4 — Docs + javadoc correction | | |
 

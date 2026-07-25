@@ -30,6 +30,14 @@
             <!-- Platform-admin operator-approval surface (S6 #115); shown only to an ADMIN principal. -->
             <a class="oc-create-venue" data-testid="oc-admin-link" routerLink="/admin">Admin</a>
           }
+          <!-- Self-service credential rotation (#326). Shown to every operator, including the bootstrap
+               admin, whose refusal is explained on the page rather than hidden by a missing link. -->
+          <a
+            class="oc-create-venue"
+            data-testid="oc-change-password"
+            routerLink="/account/operator-password"
+            >Change password</a
+          >
           <span class="oc-signed-in-as" data-testid="oc-signed-in-as"
             >Signed in as <strong>{{ operator.username() }}</strong></span
           >
