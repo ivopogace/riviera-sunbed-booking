@@ -36,21 +36,21 @@ Flyway on `main` stays **V30** (`V30__customer_erasure_marker.sql`).
 - `angular-developer` / `riviera-frontend` / `playwright-cli` — **not loaded, correctly**:
   backend-only, no observable client behavior change.
 
-**Branch:** `feature/me-customer-matcher` (created before phase 0)
+**Branch:** `feature/me-customer-matcher` (created before phase 0) — merged as `24f0854` via PR #329
 
 ---
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an authenticated **operator** session, when it `POST`s `/api/me/password`,
+- [x] **AC-1:** Given an authenticated **operator** session, when it `POST`s `/api/me/password`,
       then the request is rejected `403` **without the application ever being invoked** — MVC never
       dispatches a handler and no account collaborator is touched.
       *Pinned by:* `MeSurfaceRoleGateTest.operatorPostToSetPasswordIsRejectedBeforeTheController`
-- [ ] **AC-2:** Given an authenticated **operator** session, when it `POST`s
+- [x] **AC-2:** Given an authenticated **operator** session, when it `POST`s
       `/api/me/verify-email/request`, then the request is rejected `403` before MVC dispatch, and no
       verification mail is issued.
       *Pinned by:* `MeSurfaceRoleGateTest.operatorPostToRequestVerificationIsRejectedBeforeTheController`
-- [ ] **AC-3 (the discriminating one):** The rejection in AC-1/AC-2 is attributable to the **filter
+- [x] **AC-3 (the discriminating one):** The rejection in AC-1/AC-2 is attributable to the **filter
       layer**, not to `CurrentCustomer.require`. Both layers emit a byte-identical
       `403 ACCESS_DENIED` RFC-7807 body (verified: `SecurityProblemResponses.ACCESS_DENIED_BODY`
       vs `ApiErrorHandler.onAccessDenied` — same `code`, same `detail`), so **status and body prove
@@ -61,12 +61,12 @@ Flyway on `main` stays **V30** (`V30__customer_erasure_marker.sql`).
       *Pinned by:* the two tests above + `MeSurfaceRoleGateTest.customerRequestDoesReachTheController`
       *Red-first requirement:* both operator tests **must fail against unmodified `main`**. If either
       passes before the `SecurityConfig` change, the test is wrong and must be fixed — not the code.
-- [ ] **AC-4:** Given a genuine **CUSTOMER** session, when it calls any `/api/me/**` endpoint, then
+- [x] **AC-4:** Given a genuine **CUSTOMER** session, when it calls any `/api/me/**` endpoint, then
       behavior is byte-for-byte unchanged (`204` on set-password / verification-request, `200` on
       `GET /api/me/bookings`, `204` on erasure).
       *Pinned by:* `MeSurfaceRoleGateTest.customerRequestDoesReachTheController` + the unchanged
       `MeErasureControllerTest`, `SetPasswordIT`, `MyBookingsIT`, `AccountRecoveryIT`.
-- [ ] **AC-5:** Collapsing the two old rules loses no coverage: erasure (`POST /api/me/erasure`) and
+- [x] **AC-5:** Collapsing the two old rules loses no coverage: erasure (`POST /api/me/erasure`) and
       my-bookings (`GET /api/me/bookings`) remain CUSTOMER-gated at the filter after the rewrite.
       *Pinned by:* the unchanged `MeErasureControllerTest.operatorSessionIsForbiddenAndNothingIsErased`
       + `MyBookingsIT.operatorSessionIsForbidden`.
@@ -101,11 +101,11 @@ Flyway on `main` stays **V30** (`V30__customer_erasure_marker.sql`).
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **The test passes without the fix** — `CurrentCustomer.require` already 403s an operator, so a status-only assertion pins nothing and ships a green-but-vacuous test | high | high | AC-3's `MvcResult#getHandler()` discriminator + a positive control; **red-first is a mandatory gate** — run the new tests against unmodified `SecurityConfig` and require FAIL before touching it | Ivo | closed — proven red at `0f96502` |
-| R-2 | The blanket rule is only correct while every `/api/me/**` endpoint is customer-facing | low | high | Enumeration re-verified at implementation time from source, not from the issue: `git grep` over every `@*Mapping` in `platform/src/main/java` yields exactly four mappings, all customer-facing (table below). Documented in the `ME_PATHS` Javadoc so the next endpoint author sees the constraint | Ivo | open |
-| R-3 | A method-agnostic rule accidentally captures a sibling path (`/api/auth/me`, or a future `/api/members`) | low | med | `/api/me/**` is prefix-anchored on a literal segment; `/api/auth/me` has a different prefix and is unmatched. Non-goal states it explicitly; `AuthSessionIT` (unchanged) covers `/api/auth/me` for both principal types | Ivo | open |
-| R-4 | New `@WebMvcTest` slice fails to stand up because a controller gained a constructor dep (recurring trap in this repo — #128 added two to `MyAccountController`) | med | low | Verified `WebSliceStubs` already registers `PrincipalSessionRevoker` (`:408`), `CustomerRecovery` (`:373`), `CustomerAccounts` (`:198`), `CurrentCustomer` (`:285`); `HttpServletRequest` is container-provided. `PasswordEncoder` comes from the imported `SecurityConfig`. **No new stub bean expected** — confirmed by running the slice, not assumed | Ivo | open |
-| R-5 | Ordering regression: the new rule sits below a broader earlier rule and never matches | low | high | `/api/me/**` shares no prefix with any earlier matcher (`/api/venues/**`, `/api/admin/**`, `/api/auth/**`, `/api/bookings/**`); it stays immediately above `.anyRequest().authenticated()` where the rules it replaces were | Ivo | open |
-| R-6 | Shared-state/full-suite-only failure (the `riviera-local-debug` blind spot) | low | med | The change adds no filter, scheduler, cache, or stateful bean — it edits one matcher list. No new rate-limit surface. Verified by the PR's CI run before merge regardless | Ivo | open |
+| R-2 | The blanket rule is only correct while every `/api/me/**` endpoint is customer-facing | low | high | Enumeration re-verified at implementation time from source, not from the issue: `git grep` over every `@*Mapping` in `platform/src/main/java` yields exactly four mappings, all customer-facing (table below). Documented in the `ME_PATHS` Javadoc so the next endpoint author sees the constraint | Ivo | closed — four mappings, all customer-facing; enumeration published on #317 |
+| R-3 | A method-agnostic rule accidentally captures a sibling path (`/api/auth/me`, or a future `/api/members`) | low | med | `/api/me/**` is prefix-anchored on a literal segment; `/api/auth/me` has a different prefix and is unmatched. Non-goal states it explicitly; `AuthSessionIT` (unchanged) covers `/api/auth/me` for both principal types | Ivo | closed — `AuthSessionIT` (5 tests) green post-change |
+| R-4 | New `@WebMvcTest` slice fails to stand up because a controller gained a constructor dep (recurring trap in this repo — #128 added two to `MyAccountController`) | med | low | Verified `WebSliceStubs` already registers `PrincipalSessionRevoker` (`:408`), `CustomerRecovery` (`:373`), `CustomerAccounts` (`:198`), `CurrentCustomer` (`:285`); `HttpServletRequest` is container-provided. `PasswordEncoder` comes from the imported `SecurityConfig`. **No new stub bean expected** — confirmed by running the slice, not assumed | Ivo | closed — slice stood up first try, no new bean |
+| R-5 | Ordering regression: the new rule sits below a broader earlier rule and never matches | low | high | `/api/me/**` shares no prefix with any earlier matcher (`/api/venues/**`, `/api/admin/**`, `/api/auth/**`, `/api/bookings/**`); it stays immediately above `.anyRequest().authenticated()` where the rules it replaces were | Ivo | closed — ordering (and CORS preflight) re-checked by hand at the review gate |
+| R-6 | Shared-state/full-suite-only failure (the `riviera-local-debug` blind spot) | low | med | The change adds no filter, scheduler, cache, or stateful bean — it edits one matcher list. No new rate-limit surface. Verified by the PR's CI run before merge regardless | Ivo | **materialized — this row's reasoning was wrong.** It asked only whether the *change* touched shared state; the *test* did. `/api/me/verify-email/request` rides `RateLimitFilter`'s recovery bucket, and the limiter runs ahead of authorization, so even the new 403/401 assertions spend tokens from a bucket keyed on the shared loopback IP. Caught at the review gate as F-1, fixed in `c262fad`, proven by the post-fix full-suite CI run. **Lesson for the next plan: score this risk on what the slice's _tests_ touch, not only its production code.** |
 
 ## Open questions / Assumptions
 
@@ -183,16 +183,16 @@ non-customer principal is byte-identical to what it already was.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current stage's `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `review gate — run at high effort, 2 findings fixed; awaiting CI + Sonar`
+**Stage pointer:** `DONE — merged to main as 24f0854 (PR #329), 2026-07-25; close-out complete`
 
-**Next action:** Confirm CI green on the fix-round push, then pull the SonarCloud issue list for PR
-#329 from the API (green gate ≠ empty list) and clear every entry before merge.
+**Next action:** none. Follow-up #328 carries the deferred PUT-matcher gap found by the
+generalization audit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — red: the filter-origin test | ✅ | `0f96502` — 2 of 5 red as designed; `expected: null` on the handler assertion |
-| 1 — green: the method-agnostic matcher | ✅ | *(this commit)* |
-| 2 — PR + gates (CI → review → Sonar) | ⏳ | PR #329; review gate run at high effort → F-1, F-2 fixed |
+| 1 — green: the method-agnostic matcher | ✅ | `6979567` |
+| 2 — PR + gates (CI → review → Sonar) | ✅ | PR **#329**, squash-merged as **`24f0854`**. Review gate at high effort → F-1, F-2 fixed in `c262fad`. CI green (backend, frontend, CodeQL ×2). Sonar green **and its list empty**: `api/issues/search` total **0**, `api/hotspots/search` total **0**, `new_duplicated_blocks` **0**, `new_coverage` **100%** — with `new_lines=21` confirming the analysis actually ran (not the false-clean read). |
 
 **Red-first evidence (R-1 / AC-3), recorded because it cannot be re-derived later:** at `0f96502`,
 against unmodified `SecurityConfig`, `operatorPostToSetPasswordIsRejectedBeforeTheController` and
@@ -216,8 +216,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate (high effort) — **Major** | **`MeSurfaceRoleGateTest` shared the default loopback rate-limit bucket.** `/api/me/verify-email/request` is one of `RateLimitFilter`'s `RECOVERY_PATHS`, that budget is the 10-per-minute `login` limit, and the limiter sits **ahead of authorization** — so even this class's `403`/`401` requests spend tokens. **Every** sibling recovery-path test (`EmailVerificationIT`, `PasswordResetIT`, `RecoveryMailerFailureIT`, `RecoveryRateLimitIT`) presents a unique `X-Forwarded-For`; this new class did not. Exactly the documented #127 full-suite-only class: green in every scoped batch, a wall of `429`s only under CI's cached-context single-JVM run. | fixed — all five requests now go through an `isolated(...)` helper adding `csrf()` + `SessionLoginSupport.uniqueClientIp()` (RFC-2544 `198.18.x.y`, deliberately *untrusted* so #129's proxy-hop skip doesn't collapse it back to loopback) |
-| F-2 | review gate (high effort) — **Minor**, RV-STYLE-1 | The new inline comment on the matcher ran to **two lines**. RV-STYLE-1: an inline comment fits on one line or isn't written; the long rationale belongs in the (exempt) Javadoc, where it already was. | fixed — collapsed to one line |
+| F-1 | review gate (high effort) — **Major** | **`MeSurfaceRoleGateTest` shared the default loopback rate-limit bucket.** `/api/me/verify-email/request` is one of `RateLimitFilter`'s `RECOVERY_PATHS`, that budget is the 10-per-minute `login` limit, and the limiter sits **ahead of authorization** — so even this class's `403`/`401` requests spend tokens. **Every** sibling recovery-path test (`EmailVerificationIT`, `PasswordResetIT`, `RecoveryMailerFailureIT`, `RecoveryRateLimitIT`) presents a unique `X-Forwarded-For`; this new class did not. Exactly the documented #127 full-suite-only class: green in every scoped batch, a wall of `429`s only under CI's cached-context single-JVM run. | fixed in `c262fad` — all five requests now go through an `isolated(...)` helper adding `csrf()` + `SessionLoginSupport.uniqueClientIp()` (RFC-2544 `198.18.x.y`, deliberately *untrusted* so #129's proxy-hop skip doesn't collapse it back to loopback) |
+| F-2 | review gate (high effort) — **Minor**, RV-STYLE-1 | The new inline comment on the matcher ran to **two lines**. RV-STYLE-1: an inline comment fits on one line or isn't written; the long rationale belongs in the (exempt) Javadoc, where it already was. | fixed in `c262fad` — collapsed to one line |
 
 **Red-first re-verified after the F-1 refactor** (a refactored test must re-earn its red): temporarily
 re-scoping the matcher to `HttpMethod.GET, ME_PATHS` reproduced exactly the two original failures, and
@@ -265,49 +265,49 @@ methods cannot break the dev-server cross-origin flow.
 
 **Files:** Create `platform/src/test/java/ai/riviera/platform/MeSurfaceRoleGateTest.java`
 
-- [ ] **Step 1: Write the failing test** — three tests: operator→set-password, operator→verify-email
+- [x] **Step 1: Write the failing test** — three tests: operator→set-password, operator→verify-email
       request, and the CUSTOMER positive control. Discriminator is `MvcResult#getHandler()`.
-- [ ] **Step 2: Run it against unmodified `SecurityConfig`, verify it FAILS** —
+- [x] **Step 2: Run it against unmodified `SecurityConfig`, verify it FAILS** —
       `./gradlew test --tests "*MeSurfaceRoleGateTest*"` → the two operator tests fail (the request
       reaches `MyAccountController`, so a handler IS resolved). **A green run here means the test is
       wrong; fix the test, not the config.**
 
 > Scope: one test class. Not the full suite.
 
-- [ ] **Step 3: Commit the red test** — labelled red-TDD, so the CI-gate rule's red exemption applies.
+- [x] **Step 3: Commit the red test** — labelled red-TDD, so the CI-gate rule's red exemption applies.
 
 ## Phase 1 — Green: the method-agnostic matcher
 
 **Files:** Modify `SecurityConfig.java` (constants block + `authorizeHttpRequests`), plus the three
 stale-Javadoc corrections listed in *File structure*.
 
-- [ ] **Step 1: Replace `ME_ERASURE_PATH` with `ME_PATHS = "/api/me/**"`** and collapse the two
+- [x] **Step 1: Replace `ME_ERASURE_PATH` with `ME_PATHS = "/api/me/**"`** and collapse the two
       matcher lines into `.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)`, kept immediately above
       `.anyRequest().authenticated()`.
-- [ ] **Step 2: Run the new test, verify it PASSES** —
+- [x] **Step 2: Run the new test, verify it PASSES** —
       `./gradlew test --tests "*MeSurfaceRoleGateTest*"` → PASS.
-- [ ] **Step 3: Regression — the whole `/api/me` + security surface** —
+- [x] **Step 3: Regression — the whole `/api/me` + security surface** —
       `./gradlew test --tests "*MeErasureControllerTest*" --tests "*MyBookingsIT*" --tests
       "*SetPasswordIT*" --tests "*AuthSessionIT*" --tests "*SecurityFilterChain*"` → PASS (Docker is
       available locally, so the ITs really run — they are not expected to skip).
-- [ ] **Step 4: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests
+- [x] **Step 4: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests
       "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — the fixed pattern is *"a method-scoped `requestMatchers`
+- [x] **Step 5: Generalization-audit pass** — the fixed pattern is *"a method-scoped `requestMatchers`
       leaves sibling verbs on the same path unmatched."* Search every matcher in `SecurityConfig` for
       the same shape and decide per site. Record in the log below.
-- [ ] **Step 6: Commit** — `git commit -m "fix(#317): role-gate the whole /api/me surface to CUSTOMER"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "fix(#317): role-gate the whole /api/me surface to CUSTOMER"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — PR + gates
 
-- [ ] Merge latest `origin/main`; open the PR into `main`.
-- [ ] CI green.
-- [ ] **Review gate at HIGH effort, no exceptions** (`references/pr-gates.md` §1 — the diff touches
+- [x] Merge latest `origin/main`; open the PR into `main`.
+- [x] CI green.
+- [x] **Review gate at HIGH effort, no exceptions** (`references/pr-gates.md` §1 — the diff touches
       authorization, and that rule keys off what the diff touches, not diff size), with
       `riviera-review-overlay` loaded.
-- [ ] Sonar gate: quality gate green **and** the reported new-issue + duplication list pulled from
+- [x] Sonar gate: quality gate green **and** the reported new-issue + duplication list pulled from
       the API and cleared (green ≠ empty).
-- [ ] Merge close-out checklist (`references/pr-gates.md` §3), incl. `riviera-docs-freshness`.
+- [x] Merge close-out checklist (`references/pr-gates.md` §3), incl. `riviera-docs-freshness`.
 
 ---
 
@@ -323,30 +323,33 @@ stale-Javadoc corrections listed in *File structure*.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*MeSurfaceRoleGateTest*"` → PASS, and the same test FAILED
+- [x] **AC-1:** `./gradlew test --tests "*MeSurfaceRoleGateTest*"` → PASS, and the same test FAILED
       at phase 0 against unmodified `SecurityConfig` (red-first evidence recorded in the phase table).
-- [ ] **AC-2:** same run, second test method.
-- [ ] **AC-3:** the two operator tests failed pre-fix and pass post-fix; the positive control asserts
+- [x] **AC-2:** same run, second test method.
+- [x] **AC-3:** the two operator tests failed pre-fix and pass post-fix; the positive control asserts
       a non-`null` handler for a CUSTOMER request in the same class.
-- [ ] **AC-4:** `MeErasureControllerTest`, `SetPasswordIT`, `MyBookingsIT`, `AuthSessionIT` all green,
+- [x] **AC-4:** `MeErasureControllerTest`, `SetPasswordIT`, `MyBookingsIT`, `AuthSessionIT` all green,
       unmodified except for stale Javadoc.
-- [ ] **AC-5:** `MeErasureControllerTest.operatorSessionIsForbiddenAndNothingIsErased` +
+- [x] **AC-5:** `MeErasureControllerTest.operatorSessionIsForbiddenAndNothingIsErased` +
       `MyBookingsIT.operatorSessionIsForbidden` green after the rules were collapsed.
+
+All five verified at `6979567`, re-verified after the F-1/F-2 fixes at `c262fad`, and confirmed by
+the PR #329 CI run (backend full suite) before the squash-merge as `24f0854`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — no persistence code in the diff at all.
-- [ ] **Availability** section justified N/A (invariant #2 untouched).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; edge-only, no module package touched (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] **No Flyway migration** — and none wanted; wanting one would mean the slice grew (invariant #12).
-- [ ] **Frontend** N/A — no observable client change.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — no persistence code in the diff at all.
+- [x] **Availability** section justified N/A (invariant #2 untouched).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; edge-only, no module package touched (invariant #11).
+- [x] **Payment/payout** N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] **No Flyway migration** — and none wanted; wanting one would mean the slice grew (invariant #12).
+- [x] **Frontend** N/A — no observable client change.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
