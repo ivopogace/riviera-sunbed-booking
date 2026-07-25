@@ -6,12 +6,13 @@ import { vi } from 'vitest';
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminOperators } from './admin-operators';
 import { AdminOperatorsService } from './admin-operators.service';
-import { PendingOperatorView } from './admin.model';
+import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
 interface AuthState {
   restoring?: boolean;
   signedIn?: boolean;
   isAdmin?: boolean;
+  principalName?: string;
 }
 
 function authStub(state: AuthState): OperatorAuth {
@@ -19,18 +20,28 @@ function authStub(state: AuthState): OperatorAuth {
     restoring: signal(state.restoring ?? false),
     signedIn: signal(state.signedIn ?? true),
     isAdmin: signal(state.isAdmin ?? true),
+    principalName: signal(state.principalName ?? 'admin-self'),
   } as unknown as OperatorAuth;
 }
 
-function serviceStub(pending: PendingOperatorView[]): {
+function serviceStub(
+  pending: PendingOperatorView[],
+  accounts: OperatorAccountView[] = [],
+): {
   pending: ReturnType<typeof vi.fn>;
+  accounts: ReturnType<typeof vi.fn>;
   approve: ReturnType<typeof vi.fn>;
   reject: ReturnType<typeof vi.fn>;
+  suspend: ReturnType<typeof vi.fn>;
+  reinstate: ReturnType<typeof vi.fn>;
 } {
   return {
     pending: vi.fn(async () => pending),
+    accounts: vi.fn(async () => accounts),
     approve: vi.fn(async () => undefined),
     reject: vi.fn(async () => undefined),
+    suspend: vi.fn(async () => undefined),
+    reinstate: vi.fn(async () => undefined),
   };
 }
 
@@ -48,6 +59,8 @@ async function render(
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminOperators);
   fixture.detectChanges();
+  // Settled twice: the load awaits BOTH lists (Promise.all), so one microtask turn isn't enough.
+  await fixture.whenStable();
   await fixture.whenStable();
   fixture.detectChanges();
   return fixture;
@@ -93,6 +106,69 @@ describe('AdminOperators', () => {
 
     expect(service.reject).toHaveBeenCalledWith(7);
     expect(service.pending).toHaveBeenCalledTimes(2);
+  });
+
+  const accounts: OperatorAccountView[] = [
+    { id: 7, username: 'alice', contactEmail: 'a@v.example', admin: false, suspended: false },
+    { id: 8, username: 'bob', contactEmail: null, admin: false, suspended: true },
+    { id: 9, username: 'admin-self', contactEmail: null, admin: true, suspended: false },
+  ];
+
+  it('suspends an active operator and reconciles the list', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    // Suspension takes a deliberate second step — the first click only arms the confirmation.
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(service.suspend).not.toHaveBeenCalled();
+
+    (host.querySelector('[data-testid="admin-suspend-confirm-7"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(service.suspend).toHaveBeenCalledWith(7);
+    expect(service.accounts).toHaveBeenCalledTimes(2); // initial load + reconcile, never a local removal
+  });
+
+  it('cancels an armed suspension without calling the server', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(service.suspend).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-testid="admin-suspend-7"]')).not.toBeNull();
+  });
+
+  it('reinstates a suspended operator in one step and reconciles', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="admin-suspended-badge-8"]')).not.toBeNull();
+    (host.querySelector('[data-testid="admin-reinstate-8"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(service.reinstate).toHaveBeenCalledWith(8);
+    expect(service.accounts).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers no suspend control on the signed-in admin’s own row', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true, principalName: 'admin-self' }), service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    // The server refuses a self-suspend (409 CANNOT_SUSPEND_SELF); don't offer an action that can't succeed.
+    expect(host.querySelector('[data-testid="admin-suspend-9"]')).toBeNull();
+    expect(host.querySelector('[data-testid="admin-self-9"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="admin-suspend-7"]')).not.toBeNull();
   });
 
   it('shows the forbidden notice for a signed-in non-admin and never loads', async () => {

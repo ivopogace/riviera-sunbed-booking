@@ -13,7 +13,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.domain.OperatorStatus;
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 
@@ -53,7 +53,7 @@ class OperatorLifecycleIT {
 	}
 
 	@Test
-	void suspendMovesAnActiveOperatorToSuspendedAndNamesThePrincipal() {
+	void suspendMovesAnOperatorAccountToSuspendedAndNamesThePrincipal() {
 		OperatorId id = insertOperator("lifecycle-active", OperatorStatus.ACTIVE);
 
 		OperatorLifecycleOutcome outcome = lifecycle.suspend(id);
@@ -96,19 +96,21 @@ class OperatorLifecycleIT {
 	}
 
 	@Test
-	void activeOperatorsListsOnlyActiveAccounts() {
+	void accountsListsActiveAndSuspendedButNotPendingOrRejected() {
 		OperatorId active = insertOperator("lifecycle-listed", OperatorStatus.ACTIVE);
+		OperatorId suspended = insertOperator("lifecycle-listed-suspended", OperatorStatus.SUSPENDED);
 		insertOperator("lifecycle-unlisted-pending", OperatorStatus.PENDING);
-		insertOperator("lifecycle-unlisted-suspended", OperatorStatus.SUSPENDED);
 		insertOperator("lifecycle-unlisted-rejected", OperatorStatus.REJECTED);
 
-		List<String> usernames = lifecycle.active().stream().map(ActiveOperator::username).toList();
+		List<OperatorAccount> accounts = lifecycle.accounts();
+		List<String> usernames = accounts.stream().map(OperatorAccount::username).toList();
 
-		assertTrue(usernames.contains("lifecycle-listed"), () -> "expected the ACTIVE operator in " + usernames);
-		assertTrue(usernames.contains(BOOTSTRAP), () -> "expected the bootstrap admin in " + usernames);
-		assertEquals(2, usernames.size(), () -> "only ACTIVE accounts belong in the list, got " + usernames);
-		assertTrue(lifecycle.active().stream().anyMatch(o -> o.id().equals(active) && !o.admin()));
-		assertTrue(lifecycle.active().stream().anyMatch(o -> BOOTSTRAP.equals(o.username()) && o.admin()));
+		// A suspended operator stays listed — otherwise it would vanish from the console and suspension
+		// would be a one-way door, undoable only by hand-run SQL.
+		assertEquals(List.of("lifecycle-listed", "lifecycle-listed-suspended", BOOTSTRAP), usernames);
+		assertTrue(accounts.stream().anyMatch(o -> o.id().equals(active) && !o.suspended() && !o.admin()));
+		assertTrue(accounts.stream().anyMatch(o -> o.id().equals(suspended) && o.suspended()));
+		assertTrue(accounts.stream().anyMatch(o -> BOOTSTRAP.equals(o.username()) && o.admin()));
 	}
 
 	private OperatorId insertOperator(String username, OperatorStatus status) {

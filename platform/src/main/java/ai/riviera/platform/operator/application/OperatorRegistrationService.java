@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorRegistration;
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
@@ -59,8 +59,8 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<ActiveOperator> active() {
-		return operators.activeOperators();
+	public List<OperatorAccount> accounts() {
+		return operators.accounts();
 	}
 
 	@Override

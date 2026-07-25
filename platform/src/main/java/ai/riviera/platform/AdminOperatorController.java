@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 
 import ai.riviera.platform.operator.api.OperatorLifecycle;
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
@@ -84,17 +84,18 @@ class AdminOperatorController {
 		return toResponse(lifecycle.reject(new OperatorId(operatorId)));
 	}
 
-	/** The admin's view of an operator that can currently sign in; {@code contactEmail} may be null. */
-	record ActiveOperatorResponse(long id, String username, String contactEmail, boolean admin) {
-		static ActiveOperatorResponse from(ActiveOperator active) {
-			return new ActiveOperatorResponse(active.id().value(), active.username(),
-					active.contactEmail(), active.admin());
+	/** The admin's view of a decided operator account; {@code contactEmail} may be null. */
+	record OperatorAccountResponse(long id, String username, String contactEmail, boolean admin,
+			boolean suspended) {
+		static OperatorAccountResponse from(OperatorAccount account) {
+			return new OperatorAccountResponse(account.id().value(), account.username(),
+					account.contactEmail(), account.admin(), account.suspended());
 		}
 	}
 
-	@GetMapping("/active")
-	List<ActiveOperatorResponse> active() {
-		return lifecycle.active().stream().map(ActiveOperatorResponse::from).toList();
+	@GetMapping("/accounts")
+	List<OperatorAccountResponse> accounts() {
+		return lifecycle.accounts().stream().map(OperatorAccountResponse::from).toList();
 	}
 
 	@PostMapping("/{operatorId}/suspend")

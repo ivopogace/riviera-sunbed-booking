@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -45,7 +45,7 @@ public interface Operators {
 	List<PendingOperator> pendingOperators();
 
 	/** Every operator that can currently authenticate (status ACTIVE), by username (#128). */
-	List<ActiveOperator> activeOperators();
+	List<OperatorAccount> accounts();
 
 	/**
 	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the

@@ -69,7 +69,10 @@ it was considered and why it did not trigger).
 
 - [ ] **AC-5:** Given an admin authenticated as operator `X`, when `X` suspends **itself**, then the
   request is refused (`409 CANNOT_SUSPEND_SELF`) and `X`'s status and sessions are untouched — the
-  platform cannot be locked out of its own admin surface. *Pinned by:* `AdminOperatorControllerTest.anAdminCannotSuspendItself`
+  platform cannot be locked out of its own admin surface. *Pinned by:* `OperatorSuspensionRevocationIT.anAdminCannotSuspendItself`
+  — moved from the planned `AdminOperatorControllerTest` web slice to the IT, because the guard compares
+  the *authenticated* principal to the target and a real admin session proves that end-to-end where a
+  faked slice principal would only prove the mock.
 
 - [ ] **AC-6:** Given the bootstrap operator has a stored credential and a live session, when the
   application starts with a **different** `RIVIERA_OPERATOR_PASSWORD`, then its sessions are revoked;
@@ -88,9 +91,14 @@ it was considered and why it did not trigger).
   cleared anyway **and** the result is `may-persist`, and the shell surfaces a dismissible warning
   offering a retry — the shared-tablet case. *Pinned by:* `session-auth.spec.ts` › `reports may-persist when the retry also fails` and `app.spec.ts` › `surfaces the sign-out warning with a retry action`
 
-- [ ] **AC-10:** Given a platform admin on the admin surface, when it suspends an operator from the
-  active-operators list, then the row moves out of the active list without a full page reload and the
-  action is reflected on a reload (server-confirmed, not local-only). *Pinned by:* `admin-operators.spec.ts` › `suspends an active operator and reconciles the list`
+- [ ] **AC-10:** Given a platform admin on the admin surface, when it suspends an operator, then the
+  action takes a deliberate second click (inline confirmation), and afterwards **both lists are
+  re-read from the server** rather than mutated locally — so the row's suspended state is
+  server-confirmed. A suspended row stays listed, badged, with a Reinstate action, so suspension is
+  never a one-way door. *Pinned by:* `admin-operators.spec.ts` › `suspends an active operator and
+  reconciles the list`, › `cancels an armed suspension without calling the server`, › `reinstates a
+  suspended operator in one step and reconciles`, › `offers no suspend control on the signed-in
+  admin's own row`
 
 - [ ] **AC-11:** Given the admin operators surface, when axe runs against it with both lists
   populated, then there are no serious violations and the suspend/reinstate controls are reachable
@@ -271,9 +279,9 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `implement — phase 3 (frontend begins; re-run the Skill-routing gate)`
+**Stage pointer:** `implement — phase 4`
 
-**Next action:** Load `frontend-design`, `riviera-tailwind` and `angular-developer` + the angular-cli
+**Next action:** Harden `SessionAuth.signOut()` — return `SignOutResult`, treat 401 as definitive success, retry once after re-bootstrapping CSRF, and surface the warning from the shell (AC-7/8/9).
 MCP **before** writing any component, then build the admin active-operators list with
 suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 
@@ -282,7 +290,7 @@ suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 | 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | ✅ | `2c2eb93` |
 | 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ✅ | `bfb5950` |
 | 2 — Revoke on genuine credential rotation | ✅ | `<phase2>` |
-| 3 — Active-operators read + admin FE suspend/reinstate | ⏳ | |
+| 3 — Accounts read + admin FE suspend/reinstate | ✅ | `<phase3>` |
 | 4 — FE robust sign-out (retry + warning) | | |
 | 5 — e2e + a11y coverage | | |
 

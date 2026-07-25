@@ -10,7 +10,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.application.Operators;
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -35,6 +35,8 @@ class JdbcOperators implements Operators {
 	private static final String PENDING_PARAM = "pending";
 	/** SQL named-param key bound to the {@code ACTIVE} status token (named, not duplicated — #6a / S1192). */
 	private static final String ACTIVE_PARAM = "active";
+	/** SQL named-param key bound to the {@code SUSPENDED} status token (invariant #6a). */
+	private static final String SUSPENDED_PARAM = "suspended";
 	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
 	private static final String OPERATOR_PARAM = "operator";
 	/** SQL named-param key for an operator's primary key in the lifecycle statements (S1192). */
@@ -133,19 +135,22 @@ class JdbcOperators implements Operators {
 	}
 
 	@Override
-	public List<ActiveOperator> activeOperators() {
-		// contact_email is NULL for a directly-provisioned account (the bootstrap admin) — the record
-		// and the console both treat it as optional.
+	public List<OperatorAccount> accounts() {
+		// Both decided states, so a suspended operator stays visible and reinstatable — listing only
+		// ACTIVE would make suspension a one-way door. contact_email is NULL for a directly-provisioned
+		// account (the bootstrap admin); the record and the console both treat it as optional.
 		return jdbc.sql("""
-				SELECT id, username, contact_email, is_admin FROM operator
-				WHERE status = :active ORDER BY username
+				SELECT id, username, contact_email, is_admin, status FROM operator
+				WHERE status IN (:active, :suspended) ORDER BY username
 				""")
 				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
-				.query((rs, rowNum) -> new ActiveOperator(
+				.param(SUSPENDED_PARAM, OperatorStatus.SUSPENDED.name())
+				.query((rs, rowNum) -> new OperatorAccount(
 						new OperatorId(rs.getLong(ID_PARAM)),
 						rs.getString(USERNAME),
 						rs.getString("contact_email"),
-						rs.getBoolean("is_admin")))
+						rs.getBoolean("is_admin"),
+						OperatorStatus.SUSPENDED.name().equals(rs.getString("status"))))
 				.list();
 	}
 

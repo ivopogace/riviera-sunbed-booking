@@ -2,7 +2,7 @@ package ai.riviera.platform.operator.api;
 
 import java.util.List;
 
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
@@ -33,7 +33,7 @@ public interface OperatorLifecycle {
 	List<PendingOperator> pending();
 
 	/** Every operator that can currently authenticate (status ACTIVE), by username. */
-	List<ActiveOperator> active();
+	List<OperatorAccount> accounts();
 
 	/**
 	 * Approve the PENDING operator with this id → ACTIVE (it can now sign in). Returns

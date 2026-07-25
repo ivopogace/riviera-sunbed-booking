@@ -52,7 +52,7 @@ import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
-import ai.riviera.platform.operator.vocabulary.ActiveOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorRegistration;
@@ -239,7 +239,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public java.util.List<ActiveOperator> active() {
+			public java.util.List<OperatorAccount> accounts() {
 				return java.util.List.of();
 			}
 

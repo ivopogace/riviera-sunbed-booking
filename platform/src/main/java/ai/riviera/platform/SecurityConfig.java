@@ -115,8 +115,8 @@ class SecurityConfig {
 	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
 	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
 	private static final String ADMIN_OPERATOR_REJECT_PATH = "/api/admin/operators/*/reject";
-	/** The active-operators list + the suspend/reinstate transitions (#128) — same ADMIN gate. */
-	private static final String ADMIN_OPERATORS_ACTIVE_PATH = "/api/admin/operators/active";
+	/** The decided-accounts list + the suspend/reinstate transitions (#128) — same ADMIN gate. */
+	private static final String ADMIN_OPERATOR_ACCOUNTS_PATH = "/api/admin/operators/accounts";
 	private static final String ADMIN_OPERATOR_SUSPEND_PATH = "/api/admin/operators/*/suspend";
 	private static final String ADMIN_OPERATOR_REINSTATE_PATH = "/api/admin/operators/*/reinstate";
 	/**
@@ -264,7 +264,7 @@ class SecurityConfig {
 						// plain OPERATOR reaching these is 403 (authenticated, wrong role). The GET is
 						// listed before the public "GET /api/venues/**" is irrelevant (different prefix),
 						// but stays above anyRequest() like every explicit rule.
-						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH, ADMIN_OPERATORS_ACTIVE_PATH)
+						.requestMatchers(HttpMethod.GET, ADMIN_OPERATORS_PATH, ADMIN_OPERATOR_ACCOUNTS_PATH)
 								.hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
 								ADMIN_OPERATOR_REJECT_PATH, ADMIN_OPERATOR_SUSPEND_PATH,
