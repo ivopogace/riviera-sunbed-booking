@@ -36,9 +36,12 @@ admin rotation, per the "small number of ports" rule; edge-only slice so no `all
 §6b centralized error contract → `ApiProblem`);
 `riviera-frontend` (placement: HTTP on `core/operator-auth.ts`, page in the `auth/` feature folder, route in
 `app.routes.ts`; forbade a new feature folder);
-`angular-developer` + angular-cli MCP (Signal Forms + v22 signal APIs on the reused card) — *to load at Phase 2*;
-`playwright-cli` (CI-safe mocked e2e spec) — *to load at Phase 3*;
-`riviera-local-debug` (scoped test commands) — *to load before the first `./gradlew`*.
+`angular-developer` + angular-cli MCP (Signal Forms + v22 signal APIs) — loaded at Phase 2, **re-loaded at
+the review gate** for the F-1 fix per the re-entry rule;
+`playwright-cli` (CI-safe mocked e2e spec) — loaded at Phase 3, before the spec was written;
+`riviera-local-debug` (scoped test commands, the #127 unique-client-IP rule) — loaded before the AC-7 IT;
+`riviera-review-overlay` (the review gate's bank items — backend + frontend + fe-be-contract, this being a
+fullstack diff).
 `postgres` — **N/A, no schema change** (verified: `operator.password_hash` exists; latest migration on `main`
 is `V30__customer_erasure_marker.sql`).
 
@@ -327,10 +330,11 @@ Doc-sensitive tests green: `ResponsibilitiesArchitectureTests` 9/9, `Documentati
 files, `JdbcGuestBookingHistory` present). But the CLI does **code only** — it prints "For doc/paper/
 image changes run `/graphify --update` in your AI assistant". That assistant-side pass needs either a
 `GEMINI_API_KEY` (unset here) or a subagent fan-out, and `detect_incremental` reports **22** pending
-documents — a backlog from earlier doc-touching slices, not just this one's four. Left undone
-deliberately: it is a local, gitignored, regenerable artifact that cannot affect CI or the PR, and
-the fan-out is the maintainer's call. **Plan-doc correction:** Phase 4's step 2 assumed one command
-folded docs in; it does not.
+documents — a backlog from earlier doc-touching slices, not just this one's four. **Maintainer decision (2026-07-26): skip it for now.** Raised explicitly rather than
+silently dropped or silently run; it is a local, gitignored, regenerable artifact that cannot affect
+CI, the PR, or the merge, and the backlog is mostly not this slice's. Re-runnable at any time with
+`/graphify --update`. **Plan-doc correction:** Phase 4's step 2 assumed one command folded docs in;
+it does not — the CLI is code-only.
 
 **AC-7 verification (`OperatorPasswordChangeIT`, 4 tests).** Docker present — **4 tests, 0 skipped,
 0 failures**, read from `build/test-results/test/TEST-*.xml`, not from "BUILD SUCCESSFUL". It covers
@@ -580,33 +584,50 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** `./gradlew test --tests "*OperatorAccountControllerTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-5, AC-6:** `./gradlew test --tests "*SecurityConfigTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-7:** `./gradlew test --tests "*OperatorPasswordChangeIT*"` → PASS (Docker present). Verified at `<sha>`.
-- [ ] **AC-8:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-9:** `npm test -- operator-password operator-auth` + `npm run test:e2e:a11y` → PASS. Verified at `<sha>`.
+- [x] **AC-1..AC-4:** `.\gradlew.bat test --tests "*OperatorAccountControllerTest*"` → PASS (8/8).
+      Verified at `7aa9b26`, re-verified at `7f20f92`.
+- [x] **AC-5, AC-6:** `.\gradlew.bat test --tests "*EndpointRoleGateCoverageTest*"` → PASS, with the
+      filter-level tests living in `OperatorAccountControllerTest` (see the AC-5 correction — there is
+      no `SecurityConfigTest`). Verified at `7f20f92`. AC-6 carries its documented vacuity caveat.
+- [x] **AC-7:** `.\gradlew.bat test --tests "*OperatorPasswordChangeIT*"` → PASS, **4 tests, 0 skipped**
+      (Docker present). Verified at `764ea20`, re-verified at `7f20f92`.
+- [x] **AC-8:** `.\gradlew.bat test --tests "*RateLimitFilterTest*"` → PASS. Verified at `8deb1ca`,
+      re-verified at `7f20f92`.
+- [x] **AC-9:** `npx ng test --watch=false --include="src/app/auth/operator-password.spec.ts"` (+ the
+      a11y and `operator-auth` specs) → 30/30, and
+      `npx playwright test --config playwright.a11y.config.ts operator-password` → 2/2. Verified at
+      `7f20f92`. (Note: `npm test -- <name>` as originally written in this plan is **not** a valid
+      filter in this repo and errors out — `npx ng test --include=<path>` is.)
+
+> **Command correction:** every `./gradlew` line above is written `.\gradlew.bat` for this Windows
+> maintainer machine, and results are read from `platform/build/test-results/test/TEST-*.xml` —
+> "BUILD SUCCESSFUL" alone does not prove a `--tests` filter matched anything (it silently succeeds
+> when it matches nothing, which is how the phantom `SecurityConfigTest` went unnoticed).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified `N/A`); no availability write path reached (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — not reached by this slice.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new port (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A`) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — not reached.
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — not reached.
-- [ ] Booking codes unguessable (invariant #7) — not reached; **but** the password is never logged.
-- [ ] No Flyway migration needed and none added (invariant #12) — verified `operator.password_hash` exists.
-- [ ] **Per-venue authorization (invariant #13):** not applicable — this is a *self*-scoped principal
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc — the `<sha>` placeholders in the AC
+      verification section were filled at the review gate.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified `N/A`); no availability write path reached (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — not reached by this slice.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new port (invariant #11).
+- [x] **Payment/payout** section filled (`N/A`) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — not reached.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — not reached.
+- [x] Booking codes unguessable (invariant #7) — not reached; **but** the password is never logged,
+      and never reaches a `ProblemDetail` `detail` either.
+- [x] No Flyway migration needed and none added (invariant #12) — verified `operator.password_hash` exists.
+- [x] **Per-venue authorization (invariant #13):** not applicable — this is a *self*-scoped principal
       operation with no `venueId` in the path; the principal is resolved from the session, never from input
       (BOLA-safe by construction, like `/api/me/**`).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows — **R-6 and R-7 closed at the review gate** (see below);
+      Open Questions carries one deferred item with its blocking issue (#255).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

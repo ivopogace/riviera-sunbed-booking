@@ -288,33 +288,45 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		String method = request.getMethod();
 		String path = pathWithinApplication(request);
 		if (HttpMethod.POST.matches(method)) {
-			if (LOGIN_PATH.equals(path)) {
-				return Optional.of(loginBuckets);
-			}
-			// Operator self-registration (S6 #115) on its own budget, separate from operator login.
-			if (OPERATOR_REGISTER_PATH.equals(path)) {
-				return Optional.of(operatorRegisterBuckets);
-			}
-			// The password changes (#326) on their own per-principal-type budgets, never the login ones.
-			if (OPERATOR_PASSWORD_PATH.equals(path)) {
-				return Optional.of(operatorPasswordBuckets);
-			}
-			if (CUSTOMER_PASSWORD_PATH.equals(path)) {
-				return Optional.of(customerPasswordBuckets);
-			}
-			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
-				return Optional.of(customerAuthBuckets);
-			}
-			// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
-			if (RECOVERY_PATHS.contains(path)) {
-				return Optional.of(recoveryBuckets);
-			}
+			return authPostBucketsFor(path);
 		}
 		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too. A
 		// cheap prefix pre-check keeps the two AntPathMatcher matches off every hot public venue/booking GET.
 		if (HttpMethod.GET.matches(method) && path.startsWith(SSO_PATH_PREFIX)
 				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
 			return Optional.of(ssoBuckets);
+		}
+		return Optional.empty();
+	}
+
+	/**
+	 * The budget an auth <em>POST</em> draws on, split out of {@link #authBucketsFor} so each path stays
+	 * within the cognitive-complexity bar as budgets accumulate (#326 was the branch that tipped it).
+	 * Every endpoint here is a credential or mail-sending oracle, and each named budget is deliberately
+	 * separate: the recurring defect this shape prevents is one surface's flood exhausting another's
+	 * budget and locking legitimate users out (#111/#127).
+	 */
+	private Optional<Map<String, TokenBucket>> authPostBucketsFor(String path) {
+		if (LOGIN_PATH.equals(path)) {
+			return Optional.of(loginBuckets);
+		}
+		// Operator self-registration (S6 #115) on its own budget, separate from operator login.
+		if (OPERATOR_REGISTER_PATH.equals(path)) {
+			return Optional.of(operatorRegisterBuckets);
+		}
+		// The password changes (#326) on their own per-principal-type budgets, never the login ones.
+		if (OPERATOR_PASSWORD_PATH.equals(path)) {
+			return Optional.of(operatorPasswordBuckets);
+		}
+		if (CUSTOMER_PASSWORD_PATH.equals(path)) {
+			return Optional.of(customerPasswordBuckets);
+		}
+		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
+			return Optional.of(customerAuthBuckets);
+		}
+		// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
+		if (RECOVERY_PATHS.contains(path)) {
+			return Optional.of(recoveryBuckets);
 		}
 		return Optional.empty();
 	}
