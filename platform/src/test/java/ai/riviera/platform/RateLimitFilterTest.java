@@ -234,6 +234,50 @@ class RateLimitFilterTest {
 		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
+	// ---- Operator self-service password change rides its OWN per-IP budget (#326, D-8) ----
+
+	/**
+	 * An anonymous attempt is enough to exercise the budget: {@code RateLimitFilter} runs <em>ahead of</em>
+	 * authorization, so the request spends a token and then lands as the endpoint's {@code 401} — which
+	 * makes a {@code 429} unambiguously the limiter, the same oracle every other test here uses.
+	 */
+	private ResultActions changePasswordFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
+	}
+
+	/**
+	 * AC-8 / R-5. The #111 review found a real operator lockout caused by a shared bucket, so both halves
+	 * are asserted: the change endpoint <em>does</em> throttle, and operator login from the SAME IP still
+	 * works afterwards. A change flood must never cost an operator the ability to sign in.
+	 */
+	@Test
+	void credentialChangeFloodDoesNotStarveOperatorLogin() throws Exception {
+		String ip = "10.30.0.1";
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		changePasswordFromIp(ip)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		// The whole point of a separate map: the same IP's operator-login budget is untouched.
+		loginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void credentialChangeBudgetIsKeyedByClientIp() throws Exception {
+		changePasswordFromIp("10.30.0.2").andExpect(status().isUnauthorized());
+		changePasswordFromIp("10.30.0.2").andExpect(status().isUnauthorized());
+		changePasswordFromIp("10.30.0.2").andExpect(status().isTooManyRequests());
+
+		// A different IP keeps its own budget.
+		changePasswordFromIp("10.30.0.3").andExpect(status().isUnauthorized());
+	}
+
 	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----
 
 	@Test

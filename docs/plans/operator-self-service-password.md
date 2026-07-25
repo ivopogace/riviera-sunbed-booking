@@ -107,7 +107,7 @@ keeps its only current caller (`OperatorCredentialInitializer`) and gains a seco
 | R-2 | **Endpoint placed under `/api/me/**`** (as the issue literally proposes) → every operator gets a flat 403 from the filter, and the CUSTOMER-only namespace rule silently becomes wrong. | high (if issue followed verbatim) | high | Resolved at plan time: path is `/api/auth/operator/password` with its own explicit `hasRole(OPERATOR)` matcher. AC-5/AC-6 pin it. | Claude | resolved-at-plan |
 | R-3 | **Bootstrap admin's change silently reverts.** `OperatorCredentialInitializer` re-stamps `RIVIERA_OPERATOR_PASSWORD` on *every* boot and `isGenuineRotation` would see a mismatch → re-stamp + `revokeAll`, so the new password dies at the next Render deploy and the admin is signed out. | high | high | Guard on the configured bootstrap username → `409 BOOTSTRAP_CREDENTIAL_MANAGED` (AC-4). Keyed on `riviera.operator.username`, **not** on `OperatorCredential.admin` — a future second admin approved via `/api/admin/operators` is `admin=true` but is *not* env-managed and must keep self-service. | Claude | **closed** — guard is the first statement in the handler (before policy validation and before the credential read), pinned by `refusesBootstrapAdminSelfService`. |
 | R-4 | **New endpoint falls through the role gate** — the #316/#317/#328 defect class. | low | high | `EndpointRoleGateCoverageTest` fails the build naming the endpoint unless it is explicitly gated; AC-5. | Claude | **closed** — `EndpointRoleGateCoverageTest` green with **no** `DECLARED_REACHABLE` entry, i.e. the explicit matcher is carrying it. `customerIsRejectedBeforeTheController` independently proves the rejection happens at the filter (null handler). |
-| R-5 | **Shared rate-limit bucket starves operator login** — the #111 review finding, verbatim. | med | med | Its own per-IP `credentialChange` bucket in `RateLimitProperties`, mirroring how S8 added `recoveryBuckets`. Never the `login` bucket. AC-8 asserts login still succeeds under flood. | Claude | open |
+| R-5 | **Shared rate-limit bucket starves operator login** — the #111 review finding, verbatim. | med | med | Its own per-IP `credentialChangeBuckets` map, mirroring `operatorRegisterBuckets` (#115) under the existing `login` `Limit` — no new property. Never the `login` map. AC-8 asserts login still succeeds under flood. | Claude | **closed** — pinned by `credentialChangeFloodDoesNotStarveOperatorLogin` (3rd change → 429, then operator login from the SAME IP → 401 not 429) + `credentialChangeBudgetIsKeyedByClientIp`. Red first: both failed with `401` where `429` was expected, i.e. unthrottled. |
 | R-6 | **New controller breaks `@WebMvcTest` slices** (missing bean) and/or `@ApplicationModuleTest` (`PayoutModuleTest`) — a recurring full-suite-only failure that scoped local runs cannot see. | med | med | Add the bean to `WebSliceStubs` in the same commit; run the structural net + `PayoutModuleTest` before the PR; treat the first CI run as the real gate. | Claude | open |
 | R-7 | **Error contract drift** — a hand-rolled `{"error": …}` body instead of the centralized `ProblemDetail`. | low | med | `ApiProblem.response(...)` for `INVALID_CURRENT_PASSWORD` + `BOOTSTRAP_CREDENTIAL_MANAGED`; `IllegalArgumentException` from `CustomerPasswords.validate` reaches the single `ApiErrorHandler` → `400 INVALID_REQUEST` (`riviera-java-conventions` §6b). | Claude | open |
 | R-8 | **A suspended operator changes its password.** Suspension revokes sessions (#128), so there should be no live session to use — but a race (suspend mid-request) could slip through. | low | low | `OperatorCredential.active` is already on the published record; reject when `!active` with the same `409`-family response. Cheap defence-in-depth. | Claude | **closed** — `409 ACCOUNT_NOT_ACTIVE`, pinned by `refusesAnAccountThatIsNotActive`. |
@@ -116,6 +116,12 @@ keeps its only current caller (`OperatorCredentialInitializer`) and gains a seco
 
 - **Assumption:** No FE surface is needed for the bootstrap admin's `409` beyond rendering the message —
   the admin is a maintainer who has the runbook. *Owner:* Claude · *Resolves by:* Phase 2.
+- **Open question (raised by the Phase-1 generalization audit):** `POST /api/me/password` — the
+  **customer's** authenticated set/change-password endpoint — has **no rate-limit budget at all**. It is
+  the same credential-verification oracle this slice just throttled for operators. Fix it in this slice
+  (add it to `credentialChangeBuckets`: ~1 line + a test, and the bucket already exists), or file a
+  follow-up? Fixing it crosses this plan's own Non-goal "any change to the customer flow", because a new
+  `429` is an observable behaviour change. *Owner:* Ivo · *Resolves by:* before the PR.
 - **Open question:** Should a successful change also send a "your password was changed" notification?
   Blocked on the real mailer (#255) and on operators having a verified address. *Owner:* Ivo ·
   *Resolves by:* deferred — raise as a follow-up issue at merge close-out if wanted.
@@ -255,15 +261,15 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phases 0+1 done, phase 2 (frontend) next; ONE open question blocks the PR`
 
-**Next action:** Phase 1 — add the `credentialChangeBuckets` map to `RateLimitFilter` (see the
-simplification note below) and the AC-8 test that a change-flood does **not** starve operator login.
+**Next action:** Answer the Phase-1 generalization open question (throttle `/api/me/password` here, or file a
+follow-up?), then load `angular-developer` + the angular-cli MCP and start Phase 2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend endpoint + role gate | ✅ | see below |
-| 1 — Rate-limit bucket | | |
+| 0 — Backend endpoint + role gate | ✅ | `7aa9b26` |
+| 1 — Rate-limit bucket | ✅ | see below |
 | 2 — Frontend surface | | |
 | 3 — e2e + a11y | | |
 | 4 — Docs + javadoc correction | | |
@@ -444,6 +450,7 @@ Modify `SecurityConfig.java`, `SecurityConfigTest.java`, `WebSliceStubs.java`,
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 1 (new pattern: a per-IP budget for an *authenticated* credential-verification oracle) | other credential endpoints with a missing or shared rate-limit budget | `git grep -n '"/api/me/password"' -- platform/src/main/java` + read of `RateLimitFilter.authBucketsFor` | **1 gap found:** `POST /api/me/password` — the customer's authenticated set/change-password endpoint — appears **only** in `MyAccountController` and in no bucket at all. `RECOVERY_PATHS` covers `forgot-password` / `reset-password` / `verify-email` / `/api/me/verify-email/request`, but **not** `/api/me/password`. It is the same oracle this slice just throttled: every attempt reveals whether the submitted current password was right, so a hijacked session can brute-force the real password unthrottled and then lock the owner out. | **Not fixed here — raised for a decision.** The plan's Non-goals declare "Any change to the customer flow. `/api/me/password` and its ACs are untouched", and adding a limiter changes its observable behaviour (a new `429`). The fix is ~1 line (add the path to `credentialChangeBuckets`) plus a test, so it is cheap either way; widening a slice past its own declared non-goal is the maintainer's call, not the implementer's. See Open questions. |
 | 2026-07-25 | Phase 0 (R-1: bcrypt re-salting makes hash-vs-hash comparison always false) | every password comparison against a stored hash | `git grep --untracked -n "passwordEncoder.matches\|encoder.matches" -- platform/src/main/java` | 4: `AuthController:221` (timing equalizer), `MyAccountController:102` (S8 set-password), `OperatorAccountController:119` (this slice), `OperatorCredentialInitializer:86` (#128 rotate-detection) | **No fix needed** — all four pass the *raw* password as arg 1 and the stored hash as arg 2. The defect has no surviving instance. **Method note:** the first run used plain `git grep`, which searches only *tracked* files and therefore silently omitted this slice's own new controller — the "an empty result is not evidence of absence" trap from `CLAUDE.md`'s graphify section, in a different tool. `--untracked` is required whenever auditing mid-slice. |
 
 ---

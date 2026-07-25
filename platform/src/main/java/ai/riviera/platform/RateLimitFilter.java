@@ -112,6 +112,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// Operator self-registration (S6 #115, D-8): its OWN per-IP budget, SEPARATE from operator login, so
 	// a burst of registrations can never starve operator login (the S2 operator-lockout lesson, #127).
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
+	// Operator self-service password change (#326, D-8): its OWN per-IP budget. It is a credential oracle
+	// like a login (each attempt says whether the submitted current password was right), so it must be
+	// throttled — but on a SEPARATE map, because a change flood that exhausted the login budget would lock
+	// the operator out of signing in, which is the #111 operator-lockout defect exactly.
+	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
@@ -175,6 +180,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// Operator self-registration (S6 #115) on its OWN per-IP budget, separate from operator login so a
 	// registration flood can never lock operators out (the #127 lockout lesson).
 	private final Map<String, TokenBucket> operatorRegisterBuckets = new ConcurrentHashMap<>();
+	// Operator self-service password change (#326) on its OWN per-IP budget — see OPERATOR_PASSWORD_PATH.
+	private final Map<String, TokenBucket> credentialChangeBuckets = new ConcurrentHashMap<>();
 	// SSO authorize/callback GETs draw on their OWN per-IP budget (S4 #112), separate from the logins so
 	// tightening one never starves the other — same rationale as customerAuthBuckets.
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
@@ -277,6 +284,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			// Operator self-registration (S6 #115) on its own budget, separate from operator login.
 			if (OPERATOR_REGISTER_PATH.equals(path)) {
 				return Optional.of(operatorRegisterBuckets);
+			}
+			// Operator password change (#326) on its own budget, so a change flood never starves login.
+			if (OPERATOR_PASSWORD_PATH.equals(path)) {
+				return Optional.of(credentialChangeBuckets);
 			}
 			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
 				return Optional.of(customerAuthBuckets);
