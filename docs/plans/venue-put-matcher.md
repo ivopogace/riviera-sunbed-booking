@@ -173,15 +173,16 @@ byte-identical `403 ACCESS_DENIED` payloads by design, so even that is invisible
 > or whenever unsure where the work stands: re-read this section (plus the current `riviera-sdlc`
 > stage's reference file) before acting.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — both phases done; next is the CI gate, then PR`
 
-**Next action:** Write `EndpointRoleGateCoverageTest`, then run the AC-7 falsification (remove the
-Phase-0 `PUT` matcher, confirm red naming exactly the two PUTs, restore).
+**Next action:** Push the branch and confirm that push's CI run is green — the Docker-gated half of
+AC-5 (`BeachMapReplaceIT`, `VenueRepriceIT`, `CrossVenueDenialIT`) is proven only there — then open
+the PR and run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Filter-layer role gate for the two PUTs (red → matchers → green) | ✅ | `5ae44ba` |
-| 1 — Endpoint-coverage tripwire (+ deliberate falsification) | ⏳ | |
+| 0 — Filter-layer role gate for the two PUTs (red → matchers → green) | ✅ | `bc38dd8` |
+| 1 — Endpoint-coverage tripwire (+ deliberate falsification) | ✅ | `61131f2` |
 
 **Phase 0 evidence.** Red first, for the right reason — `assertNeverDispatched` failed with
 `expected: null but was: VenueAdminController#replaceLayout(...)` (and `#repriceRow(...)`),
@@ -190,6 +191,24 @@ batch green: `VenueWriteRoleGateTest`, `MeSurfaceRoleGateTest`, `MeErasureContro
 `AdminErasureControllerTest`, `CsrfProtection*`, `RateLimitFilterTest`, `ClientIpResolverTest`,
 `MyVenuesControllerTest`, `ModularityTests`, `JdbcOnlyArchitectureTests`,
 `PackageShapeArchitectureTests`, `OperatorAuthPlacementTests`, `ErrorContractArchitectureTests`.
+
+**Phase 1 evidence (AC-7 falsification).** With the Phase-0 `PUT` matcher removed, the tripwire
+failed naming **exactly** the two endpoints and nothing else:
+
+```
+PUT /api/venues/{venueId}/beach-map reached VenueAdminController#replaceLayout(...) — no
+  SecurityConfig rule gates it, so any authenticated principal passes the filter
+PUT /api/venues/{venueId}/rows/{rowLabel}/price reached VenueAdminController#repriceRow(...) — …
+```
+
+The same run reported `PROBED(52)`, matching the 52 mappings counted by hand at the issue-intake
+grill — so the enumeration covers the whole surface, not a subset. Matcher restored (`git diff`
+clean against the Phase-0 commit) → green.
+
+Two probe-design corrections found by *running* it, both kept: Boot's `BasicErrorController`
+(`/error`, no explicit verb) is excluded as framework-supplied rather than an endpoint a client
+calls, and the declared list is asserted **two-way** (`containsAll`) so an enumeration that
+silently stopped finding endpoints cannot pass vacuously.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
