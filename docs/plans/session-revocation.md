@@ -271,17 +271,18 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `implement — phase 3 (frontend begins; re-run the Skill-routing gate)`
 
-**Next action:** Write the failing `OperatorCredentialInitializerTest` case (AC-6) — revoke only when
-`encoder.matches(rawPassword, storedHash)` is false and a prior hash existed — then wire it.
+**Next action:** Load `frontend-design`, `riviera-tailwind` and `angular-developer` + the angular-cli
+MCP **before** writing any component, then build the admin active-operators list with
+suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `operator` lifecycle transitions (port rename + suspend/reinstate) | ✅ | `2c2eb93` |
-| 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ✅ | `<phase1>` |
-| 2 — Revoke on genuine credential rotation | ⏳ | |
-| 3 — Active-operators read + admin FE suspend/reinstate | | |
+| 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ✅ | `bfb5950` |
+| 2 — Revoke on genuine credential rotation | ✅ | `<phase2>` |
+| 3 — Active-operators read + admin FE suspend/reinstate | ⏳ | |
 | 4 — FE robust sign-out (retry + warning) | | |
 | 5 — e2e + a11y coverage | | |
 
