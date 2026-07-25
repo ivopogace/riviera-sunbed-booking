@@ -330,3 +330,30 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - Keeping the graph current: **code changes rebuild automatically** — the installed post-commit hook re-runs AST extraction on changed code after every commit (no LLM, no API cost). **Doc/ADR/plan changes are NOT covered by the hook** (it's code-only); after editing docs run `graphify update .` to fold them back in (re-extracts only changed docs, small token cost). This graph is doc-heavy, so refresh after doc-touching slices — see the riviera-sdlc merge close-out.
+
+### The `adapter/out` blind spot (#321) — verify after every graphify upgrade
+
+graphify hard-codes `out` as a build-output directory name (`detect.py` `_SKIP_DIRS`) and prunes
+it from the directory walk **before any `.gitignore` rule is consulted**. In a hexagonal layout
+that silently swallowed **every `adapter/out` package** — all 33 JDBC adapters, i.e. the entire
+persistence layer and every `spi`-port implementor. `graphify path "GuestBookingHistory"
+"JdbcGuestBookingHistory"` answered *"No node matching…"*, which reads as "no such relationship"
+rather than "that layer isn't indexed". The stock Gradle `.gitignore` already spells out the
+exception (`out/` + `!**/src/main/**/out/`), but the skip runs ahead of the ignore machinery, so
+the negation never applied.
+
+**Fixed by a local patch to `_is_noise_dir`** that exempts `out`/`build`/`target`/`dist` when they
+sit under `src/main/` or `src/test/`. **That patch lives in `site-packages`, not in this repo, so
+`pip install -U graphifyy` silently reverts it** — reintroducing the blind spot in exactly the
+silent way that made it expensive the first time. After any graphify upgrade (or on a new machine),
+re-verify:
+
+```bash
+git ls-files '*/adapter/out/*.java' | wc -l                   # 33 — what should be indexed
+grep -c '"JdbcGuestBookingHistory"' graphify-out/graph.json   # >0 — what actually is
+```
+
+If the second returns `0` the patch is gone: reapply it (the diff is on #321) and re-run
+`graphify update .` before trusting any `query`/`path`/`affected` result that touches persistence
+or a port implementation. **General rule this cost us:** an empty graph result is not evidence of
+absence — confirm with `git ls-files`/grep before concluding a thing doesn't exist.
