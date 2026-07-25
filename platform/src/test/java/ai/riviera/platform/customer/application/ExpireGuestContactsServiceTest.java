@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,6 +40,8 @@ class ExpireGuestContactsServiceTest {
 
 	/** 22:30 UTC on the 25th = 00:30 on the 26th in Europe/Tirane — the zone must decide the date. */
 	private static final Clock FIXED = Clock.fixed(Instant.parse("2026-07-25T22:30:00Z"), ZoneOffset.UTC);
+
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	/** Today in Europe/Tirane at {@link #FIXED}, minus the two-year window below. */
 	private static final LocalDate EXPECTED_CUTOFF = LocalDate.of(2024, 7, 26);
@@ -109,7 +112,7 @@ class ExpireGuestContactsServiceTest {
 		assertThat(history.lastCutoff()).isEqualTo(EXPECTED_CUTOFF);
 		assertThat(store.lastOlderThan())
 				.as("the row-age gate uses the same cutoff, as a Tirane start-of-day instant")
-				.isEqualTo(EXPECTED_CUTOFF.atStartOfDay(java.time.ZoneId.of("Europe/Tirane")).toInstant());
+				.isEqualTo(EXPECTED_CUTOFF.atStartOfDay(TIRANE).toInstant());
 	}
 
 	@Test

@@ -27,15 +27,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class GuestContactRetentionSchedulerConfigTest {
 
-	/** The sweep is stubbed out — this spec is about whether the scheduler bean exists, not what it does. */
+	/** The use case is faked — this spec is about whether the scheduler bean exists and what it delegates to. */
+	private final RecordingSweep sweep = new RecordingSweep();
+
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
 			.withInitializer(new ConfigDataApplicationContextInitializer())
-			.withBean(ExpireGuestContacts.class, () -> stubSweep())
+			.withBean(ExpireGuestContacts.class, () -> sweep)
 			.withUserConfiguration(CustomerRetentionConfig.class, GuestContactRetentionScheduler.class);
-
-	private static ExpireGuestContacts stubSweep() {
-		return () -> 0;
-	}
 
 	@Test
 	void theShippedConfigurationRegistersNoSchedulerSoNothingCanSweep() {
@@ -52,6 +50,20 @@ class GuestContactRetentionSchedulerConfigTest {
 	void theSchedulerAppearsOnlyOnceOpsEnablesRetention() {
 		runner.withPropertyValues("customer.retention.enabled=true")
 				.run(context -> assertThat(context).hasSingleBean(GuestContactRetentionScheduler.class));
+	}
+
+	/**
+	 * The scheduler's one job. Invoked directly rather than waited for: the {@code @Scheduled} cadence is
+	 * config (a 5-minute initial delay), so waiting for the trigger would make this a slow, flaky test of
+	 * Spring's scheduler rather than of our delegation.
+	 */
+	@Test
+	void firingTheScheduledMethodDelegatesToTheRetentionUseCase() {
+		runner.withPropertyValues("customer.retention.enabled=true").run(context -> {
+			context.getBean(GuestContactRetentionScheduler.class).sweep();
+
+			assertThat(sweep.invocations()).isEqualTo(1);
+		});
 	}
 
 	@Test
@@ -71,5 +83,20 @@ class GuestContactRetentionSchedulerConfigTest {
 				.run(context -> assertThat(context.getBean(CustomerRetentionProperties.class).window())
 						.as("a retention window is expressed in years, which a Duration could not parse")
 						.isEqualTo(Period.ofYears(2)));
+	}
+
+	/** Counts invocations so the scheduler→use-case wiring is provable without a real sweep. */
+	private static final class RecordingSweep implements ExpireGuestContacts {
+		private int invocations;
+
+		int invocations() {
+			return invocations;
+		}
+
+		@Override
+		public int sweep() {
+			invocations++;
+			return 0;
+		}
 	}
 }

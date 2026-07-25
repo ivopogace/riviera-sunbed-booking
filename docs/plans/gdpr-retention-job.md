@@ -57,6 +57,13 @@ hosting cutover remain **out of scope — human-gated / separate epic**.
   `CONTEXT.md`. **No new ADR**: the tombstone-vs-delete decision is already ADR-0010, and the spi inversion
   is neither surprising nor hard to reverse (it is ADR-0007's documented pattern, third instance) — it fails
   all three of `domain-modeling`'s ADR tests.
+- `riviera-local-debug` (implement stage) — loaded before the session's first Gradle call. Established that
+  this is a **local machine, not a cloud session**: `./gradlew` self-provisions and Docker is running, so the
+  Testcontainers ITs genuinely execute and the full suite is affordable locally (the OOM constraint is
+  cloud-only). Drove the "verify `skipped=0` per class rather than trusting a green build" discipline.
+- `riviera-docs-freshness` (Phase 3 / merge close-out step 5) — the `bad4697..HEAD` staleness sweep; found
+  6 items, patched 4 (see the Docs-freshness run section), reported 2 as pre-existing and out of scope.
+- `riviera-review-overlay` (review gate, PR #318) — the RV-BE/RV-STYLE/RV-PROC bank walk over the diff.
 
 **Branch:** `feature/gdpr-retention-job` (created off `main` at `bad4697`; **local session — a real branch**).
 
@@ -301,7 +308,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (RV-PROC-1), PR #318 | *Skills consulted* omitted `riviera-local-debug`, `riviera-docs-freshness` and `riviera-review-overlay` — all three were actually loaded and all three are in-scope areas, so the line under-reported the routing gate | **fixed** — all three added with what each changed |
+| F-2 | review gate (RV-BE / test-coverage), PR #318 | `GuestContactRetentionScheduler.sweep()` was **uncovered** (JaCoCo `method covered=0 missed=1`). The AC-7 spec proved the bean's *existence* but never fired it, so the scheduler→use-case delegation — the one line that makes the job do anything — was unproven, and it was a new-code coverage gap ahead of Sonar's 80% bar | **fixed** — `RecordingSweep` fake + `firingTheScheduledMethodDelegatesToTheRetentionUseCase`; invoked directly rather than waiting on the 5-minute cadence, so the test proves our delegation instead of Spring's scheduler. JaCoCo now `covered=1 missed=0` |
+| F-3 | review gate (RV-STYLE / consistency), PR #318 | `ExpireGuestContactsServiceTest` used a fully-qualified `java.time.ZoneId.of("Europe/Tirane")` inline while the rest of the repo uses a `private static final ZoneId TIRANE` constant | **fixed** — extracted to the conventional constant |
+
+All three were self-review findings on my own diff, caught by walking the overlay bank rather than by CI —
+which is the point of the gate: CI was **green** on the first push while F-2 was still latent.
 
 ---
 
