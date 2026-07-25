@@ -121,8 +121,9 @@ keeps its only current caller (`OperatorCredentialInitializer`) and gains a seco
 | R-3 | **Bootstrap admin's change silently reverts.** `OperatorCredentialInitializer` re-stamps `RIVIERA_OPERATOR_PASSWORD` on *every* boot and `isGenuineRotation` would see a mismatch → re-stamp + `revokeAll`, so the new password dies at the next Render deploy and the admin is signed out. | high | high | Guard on the configured bootstrap username → `409 BOOTSTRAP_CREDENTIAL_MANAGED` (AC-4). Keyed on `riviera.operator.username`, **not** on `OperatorCredential.admin` — a future second admin approved via `/api/admin/operators` is `admin=true` but is *not* env-managed and must keep self-service. | Claude | **closed** — guard is the first statement in the handler (before policy validation and before the credential read), pinned by `refusesBootstrapAdminSelfService`. |
 | R-4 | **New endpoint falls through the role gate** — the #316/#317/#328 defect class. | low | high | `EndpointRoleGateCoverageTest` fails the build naming the endpoint unless it is explicitly gated; AC-5. | Claude | **closed** — `EndpointRoleGateCoverageTest` green with **no** `DECLARED_REACHABLE` entry, i.e. the explicit matcher is carrying it. `customerIsRejectedBeforeTheController` independently proves the rejection happens at the filter (null handler). |
 | R-5 | **Shared rate-limit bucket starves operator login** — the #111 review finding, verbatim. | med | med | Its own per-IP `credentialChangeBuckets` map, mirroring `operatorRegisterBuckets` (#115) under the existing `login` `Limit` — no new property. Never the `login` map. AC-8 asserts login still succeeds under flood. | Claude | **closed** — pinned by `credentialChangeFloodDoesNotStarveOperatorLogin` (3rd change → 429, then operator login from the SAME IP → 401 not 429) + `credentialChangeBudgetIsKeyedByClientIp`. Red first: both failed with `401` where `429` was expected, i.e. unthrottled. |
-| R-6 | **New controller breaks `@WebMvcTest` slices** (missing bean) and/or `@ApplicationModuleTest` (`PayoutModuleTest`) — a recurring full-suite-only failure that scoped local runs cannot see. | med | med | Add the bean to `WebSliceStubs` in the same commit; run the structural net + `PayoutModuleTest` before the PR; treat the first CI run as the real gate. | Claude | open |
-| R-7 | **Error contract drift** — a hand-rolled `{"error": …}` body instead of the centralized `ProblemDetail`. | low | med | `ApiProblem.response(...)` for `INVALID_CURRENT_PASSWORD` + `BOOTSTRAP_CREDENTIAL_MANAGED`; `IllegalArgumentException` from `CustomerPasswords.validate` reaches the single `ApiErrorHandler` → `400 INVALID_REQUEST` (`riviera-java-conventions` §6b). | Claude | open |
+| R-6 | **New controller breaks `@WebMvcTest` slices** (missing bean) and/or `@ApplicationModuleTest` (`PayoutModuleTest`) — a recurring full-suite-only failure that scoped local runs cannot see. | med | med | Add the bean to `WebSliceStubs` in the same commit; run the structural net + `PayoutModuleTest` before the PR; treat the first CI run as the real gate. | Claude | **closed** — the `WebSliceStubs` bean shipped in the Phase-0 commit, and the real gate has now run: **PR #342's full backend suite passed on CI** (`Backend (build + test)` success on `7f20f92`), which is the only thing that exercises the cached-context slices this risk is about. |
+| R-6b | **The two new per-IP budgets recreate the #127 full-suite 429 wall** — the sibling risk R-6 doesn't name, and the one this slice actually raised by adding *two* budgets, one of them on a path (`/api/me/password`) with pre-existing test callers. | med | high | Enumerate every test hitting either path and confirm each either mints a unique `X-Forwarded-For` or runs in a slice without the filter. | Claude | **closed** at the review gate — audit in the register above; `SetPasswordIT` (both call sites) + `OperatorPasswordChangeIT` use `SessionLoginSupport.uniqueClientIp()`, `RateLimitFilterTest` pins its own IPs, `MeSurfaceRoleGateTest` + `OperatorAccountControllerTest` are `@WebMvcTest` slices with no filter. Confirmed empirically by the green full-suite CI run. |
+| R-7 | **Error contract drift** — a hand-rolled `{"error": …}` body instead of the centralized `ProblemDetail`. | low | med | `ApiProblem.response(...)` for `INVALID_CURRENT_PASSWORD` + `BOOTSTRAP_CREDENTIAL_MANAGED`; `IllegalArgumentException` from `CustomerPasswords.validate` reaches the single `ApiErrorHandler` → `400 INVALID_REQUEST` (`riviera-java-conventions` §6b). | Claude | **closed** — every error path goes through `ApiProblem.response(...)`; no per-controller `@ExceptionHandler` was added (`ErrorContractArchitectureTests` green). **One consequence surfaced late:** because the DTO's own presence check and the policy check share `INVALID_REQUEST`, the FE could not tell them apart — that is exactly review finding **F-1**, fixed client-side rather than by splitting the code, since the wire contract is already published. |
 | R-8 | **A suspended operator changes its password.** Suspension revokes sessions (#128), so there should be no live session to use — but a race (suspend mid-request) could slip through. | low | low | `OperatorCredential.active` is already on the published record; reject when `!active` with the same `409`-family response. Cheap defence-in-depth. | Claude | **closed** — `409 ACCOUNT_NOT_ACTIVE`, pinned by `refusesAnAccountThatIsNotActive`. |
 
 ## Open questions / Assumptions
@@ -268,12 +269,51 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `review gate run (PR #342) — Sonar gate next`
+**Stage pointer:** `all gates green on PR #342 — awaiting the maintainer's merge decision`
 
-**Next action:** Wait for PR #342's CI + SonarCloud analysis, then run the Sonar gate: pull the
-**reported new-issue + duplication list** from the API (not the gate colour) per
-`riviera-sdlc/references/pr-gates.md` §2, confirming `measures` is non-empty first so a
-not-yet-analyzed PR cannot read as clean.
+**Next action:** Maintainer to merge #342, then the merge close-out
+(`riviera-sdlc/references/pr-gates.md` §3). Close-out notes prepared below.
+
+**CI gate.** Green on `7f20f92`, and re-run green on `cc4148b` after the Sonar fix — **10/10 checks**
+(backend build+test, frontend lint+test+build, CodeQL java-kotlin + javascript-typescript, SonarCloud).
+The backend job is the one that matters here: it runs the **full** suite in cached contexts, which is
+the only thing that can disprove the R-6b #127-wall risk. It passed.
+
+**Sonar gate (read as the list, not the colour).** First read on `7f20f92`: gate **green** but
+`new_code_smells: 1` — precisely the "green gate, non-empty list" case the merge bar rejects.
+The finding was **`java:S3776`** (CRITICAL): cognitive complexity **17 vs 15** in
+`RateLimitFilter.authBucketsFor` — this slice's two branches tipped a method that had been
+accumulating one branch per budget since #111. Fixed by extracting `authPostBucketsFor(path)`;
+behaviour is provably identical because the only other branch was already GET-only, so an unmatched
+POST returned empty before and returns empty now. Re-verified across all 7 rate-limit-touching suites
+(68 tests, 0 failures).
+
+Final read on `cc4148b`, with the false-clean guard applied first (`new_lines: 430`, so the analysis
+genuinely ingested — a not-yet-analyzed PR returns an identical-looking `total: 0`):
+
+| Metric | Value | Bar |
+|---|---|---|
+| issue list `total` | **0** | 0 new issues ✅ |
+| `new_code_smells` / `new_bugs` / `new_vulnerabilities` / `new_security_hotspots` | **0 / 0 / 0 / 0** | ✅ |
+| `new_duplicated_blocks` / `new_duplicated_lines_density` | **0 / 0.0%** | 0 duplicated blocks ✅ |
+| `new_coverage` | **86.60%** | ≥80% ✅ |
+
+All three merge-bar conditions met. Read with `curl`, not `WebFetch`, to sidestep the documented
+15-minute response cache that can serve a stale "clean" answer across a whole gate.
+
+### Merge close-out notes (prepared — the merge itself is the maintainer's call)
+
+1. **Issue #326** closes via the PR body's `Closes #326`.
+2. **Parent epic: none** — `has_parent: false` on #326 (it was deferred out of #128, not filed under an
+   epic), so the epic-tick step is genuinely N/A rather than skipped.
+3. **Deferred items to propagate as follow-ups** (they must not live only in this doc):
+   - The customer `POST /api/me/password` has **no e2e coverage at all** — found by the Phase-3 audit,
+     deliberately out of scope here. Worth an issue.
+   - The "your password was changed" notification — blocked on the real mailer (#255).
+   - F-5 (`setPassword`'s discarded boolean) if the port ever gains a real delete path.
+4. **`riviera-docs-freshness`** should run over the merge span; this slice already patched the three
+   substrate docs it invalidated (`CLAUDE.md`, `RESPONSIBILITIES.md`, the runbook) inside the code PR,
+   which is what the skill's "don't spin up a second docs PR" rule asks for.
 
 **PR:** #342 — `origin/main` was **0 commits ahead** at PR time, so the mandated integration merge
 was a genuine no-op, not a skipped step.
