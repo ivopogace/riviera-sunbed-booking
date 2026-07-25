@@ -207,11 +207,13 @@ recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 ---
 
 ## `operator`
-**Job:** Own operator accounts — incl. their **self-registration + admin-approval state**
-(`PENDING`→`ACTIVE`/`REJECTED`, #115) and the `is_admin` platform-admin flag — and the
-**operator↔venue ownership mapping**, now writable (creator-owns-on-create). Answer two
-things for the rest of the system: *does this operator own this venue?* and *which
-operators are awaiting approval?* (invariant #13).
+**Job:** Own operator accounts — incl. their **admin-driven lifecycle state**
+(`PENDING`→`ACTIVE`/`REJECTED` on approval #115; `ACTIVE`⇄`SUSPENDED` on suspend/reinstate
+#128) and the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**,
+now writable (creator-owns-on-create). Answer three things for the rest of the system: *does
+this operator own this venue?*, *which operators are awaiting approval?*, and *which accounts
+exist for an admin to act on?* (invariant #13). A suspension **keeps** the operator's
+`operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway.
 
 **Not My Job:**
 - Tourist identity → **`customer`**
@@ -224,8 +226,12 @@ operators are awaiting approval?* (invariant #13).
 - Encoding/verifying credentials + the register/login/approval endpoints + the
   `ROLE_ADMIN` mapping → the **platform edge** (Spring Security `UserDetailsService`,
   `AuthController`, `AdminOperatorController`); I own the account identity + ownership
-  mapping + the approval **state transitions**, and store an opaque credential hash + an
+  mapping + the lifecycle **state transitions**, and store an opaque credential hash + an
   opaque `is_admin` flag — never the login machinery or the role gate (RV-BE-11)
+- **Invalidating live sessions** when an account loses the right to them (suspension,
+  credential rotation) → the **platform edge** (`PrincipalSessionRevoker`, #128). I report
+  *that the transition happened* and *whose* it was; deleting `SPRING_SESSION` rows is
+  session machinery and I never import `org.springframework.session`
 
 **Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
 application service; #74 per-operator DB-backed credentials — no shared password; **#115

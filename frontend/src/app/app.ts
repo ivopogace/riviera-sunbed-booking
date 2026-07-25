@@ -30,6 +30,12 @@ export class App {
    * The "your sign-out may not have reached the server" warning (#128). Rendered by the shell for
    * BOTH principal types — `SessionAuth` records into it, so an operator signing out of the console
    * raises the same banner without the console knowing about it.
+   *
+   * <p><strong>Deliberate styling deviation</strong> (`riviera-tailwind`: components consume
+   * `--riv-*` tokens, never palette literals): the banner is a fixed solid white/`#b3261e` bar in
+   * both themes rather than token-driven. It is a safety notice about a session that may still be
+   * open on a shared device, so legibility outranks theme harmony; solid also keeps it clear of the
+   * translucent-glass contrast rule. Measured 6.5:1, past AA.
    */
   protected readonly signOutNotice = inject(SignOutNotice);
   private readonly router = inject(Router);

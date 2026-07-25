@@ -180,8 +180,10 @@ class JdbcOperators implements Operators {
 				.param(ID_PARAM, operatorId.value())
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.update();
-		return rows == 1 ? success
-				: (exists(operatorId) ? ApprovalOutcome.NOT_PENDING : ApprovalOutcome.NO_SUCH_OPERATOR);
+		if (rows == 1) {
+			return success;
+		}
+		return exists(operatorId) ? ApprovalOutcome.NOT_PENDING : ApprovalOutcome.NO_SUCH_OPERATOR;
 	}
 
 	@Override

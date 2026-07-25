@@ -49,7 +49,8 @@ Two erasure shapes were possible:
   (by id / by email), because D-6 forbids an FK between them.
 - Two authenticated edge surfaces drive the published `customer.api.AccountErasure` port:
   self-service `POST /api/me/erasure` (CUSTOMER, session-scoped) and admin `POST /api/admin/erasure`
-  (ADMIN, by email). The edge revokes the subject's sessions (`CustomerSessionRevoker`) and records
+  (ADMIN, by email). The edge revokes the subject's sessions (`PrincipalSessionRevoker`, generalized
+  from `CustomerSessionRevoker` in #128 to serve both principal types) and records
   the event via the #100 structured logger with technical ids only — never PII or a booking code.
 - **Backups** hold pre-erasure copies erasure cannot reach; that is handled operationally, not in
   code — a bounded backup-retention window plus re-applying `erased_at`-flagged erasures on any

@@ -168,7 +168,7 @@ invariant #2), documented on `AvailabilityClaim`.
 **Shipped** (#73 module + ownership, #74 per-operator credentials, **#115 self-registration → admin
 approval → creator-owns-on-create**). It owns operator accounts + registration/approval state and the
 **operator↔venue ownership mapping** (now writable — `VenueOwnership.assignOwner`), publishing
-`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorApprovals` ports) +
+`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorLifecycle` ports) +
 `operator::vocabulary`. Every venue-scoped **application service** consults `assertOwns` → `403` on
 mismatch (pinned by `CrossVenueDenialIT`) so no driving adapter can bypass the check — invariant #13.
 Since #115 the **owns-all bootstrap is retired** (ownership is strictly the explicit `operator_venue`

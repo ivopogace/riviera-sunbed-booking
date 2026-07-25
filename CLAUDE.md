@@ -161,7 +161,7 @@ invariant #11.
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | tourist identity: guest-checkout contact + the customer account (email + opaque credential hash) for register/sign-in (#111, thin→full) + SSO identity linkage (`(provider, subject)`→account resolve-or-create, #112) + email verification + password recovery/reset tokens + set-password (#113) + GDPR right-to-erasure scrub (#101 Slice 1, ADR-0010: pseudonymize-in-place, retaining the statutory-retention financial records) + the **retention policy** — configured window, expired-basis selection and the scheduled sweep that tombstones guest contacts with no live basis (#101 Slice 2, ships disabled); account identity is separate from the guest row, no FK (D-6, guest-booking back-linking a permanent non-goal) | `Customer`, `CustomerAccount` |
-| `operator` | operator accounts + the operator↔venue ownership mapping (per-venue authorization, invariant #13); **self-registration + admin-approval state** (`PENDING`→`ACTIVE`/`REJECTED`) + the `is_admin` platform-admin flag (#115) | `Operator` |
+| `operator` | operator accounts + the operator↔venue ownership mapping (per-venue authorization, invariant #13); the **admin-driven lifecycle state** — self-registration + approval (`PENDING`→`ACTIVE`/`REJECTED`, #115) and suspend/reinstate (`ACTIVE`⇄`SUSPENDED`, #128) — + the `is_admin` platform-admin flag | `Operator` |
 
 > **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed
 > credentials, **#115 self-registration → admin approval → creator-owns-on-create**): every
@@ -172,7 +172,13 @@ invariant #11.
 > `POST /api/venues`; a venue-scoped edit on a venue you don't own is `403 NOT_VENUE_OWNER` before any
 > existence check, even for a nonexistent one). The bootstrap `operator` is **demoted to the platform
 > admin** (`is_admin`, unlocked by `RIVIERA_OPERATOR_PASSWORD`, owns the V29-backfilled venues) that
-> approves self-registrations under the role-gated `/api/admin/operators`. All login/approval machinery
+> approves self-registrations under the role-gated `/api/admin/operators`. **#128 added suspend/reinstate**
+> (`ACTIVE`⇄`SUSPENDED`) on the same ADMIN surface, plus the **session revocation** that makes it bite:
+> the module flips the status and returns the username, and the edge deletes that principal's
+> `SPRING_SESSION` rows (`PrincipalSessionRevoker`, generalized from the S8 customer-only revoker) —
+> synchronous and edge-orchestrated, deliberately not an event. The same revoker fires on a genuine
+> credential rotation and on a customer's own password change. An admin cannot suspend itself
+> (`409 CANNOT_SUSPEND_SELF`). All login/approval/session machinery
 > stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
