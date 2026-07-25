@@ -279,9 +279,9 @@ Signal Forms if a confirm dialog needs one. No deviations planned.
 > whenever unsure where the work stands: re-read this section (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it records.
 
-**Stage pointer:** `implement — phase 4`
+**Stage pointer:** `implement — phase 5 (e2e; re-run the Skill-routing gate for `playwright-cli`)`
 
-**Next action:** Harden `SessionAuth.signOut()` — return `SignOutResult`, treat 401 as definitive success, retry once after re-bootstrapping CSRF, and surface the warning from the shell (AC-7/8/9).
+**Next action:** Load `playwright-cli`, then author `frontend/e2e/admin-operators.e2e.ts` (CI-safe mocked suite) covering suspend → reinstate and the sign-out-warning path.
 MCP **before** writing any component, then build the admin active-operators list with
 suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 
@@ -291,8 +291,8 @@ suspend/reinstate (AC-10, AC-11), reconciling from the server after each action.
 | 1 — Edge: `PrincipalSessionRevoker` + admin suspend/reinstate endpoints + revocation | ✅ | `bfb5950` |
 | 2 — Revoke on genuine credential rotation | ✅ | `<phase2>` |
 | 3 — Accounts read + admin FE suspend/reinstate | ✅ | `<phase3>` |
-| 4 — FE robust sign-out (retry + warning) | | |
-| 5 — e2e + a11y coverage | | |
+| 4 — FE robust sign-out (retry + warning) | ✅ | `<phase4>` |
+| 5 — e2e + a11y coverage | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -473,6 +473,7 @@ sign-out-warning path
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 4 — `signOut()` gained a meaningful return value | Every `signOut()` call site — does each route the new result somewhere, or deliberately ignore it? | `grep -rn "signOut()" frontend/src` | 5 call sites: the shell (`app.ts`), `operator-console.ts`, `venue-editor.ts`, `customer-auth.ts` (post-erasure), and `SignOutNotice.retry` | **No call-site changes needed, by design.** `SessionAuth.signOut()` records into `SignOutNotice` itself, so every site — including the two operator surfaces that ignore the return value — raises the shell warning. Deliberate: the bug being fixed is a silently-dropped failure, and a design where each caller must opt in would reintroduce it the next time a surface adds a sign-out button |
 | 2026-07-25 | Phase 1 — revocation wired to its first caller | Any other surface that changes an account's right to its existing sessions without revoking them | `grep -rn "revokeAll" src/main/`, `grep -rn "setPassword\|resetPassword\|erase(" src/main/java/ai/riviera/platform/*.java` | 4 right-changing surfaces; 3 already revoked (customer reset, customer erasure, operator suspend). **1 gap: `MyAccountController.setPassword`** — the S8 authenticated password change left every other session of that account alive | **Fixed in this phase.** Same bug class as the issue's own "password rotation" clause, so in scope rather than creep. Added `revokeAllExcept(principal, keepSessionId)` and called it after the write: every *other* session dies, the caller's own survives (signing you out of the device doing the change is bad UX and is not what the OWASP guidance asks). Pinned by `SetPasswordIT.changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne` |
 | 2026-07-25 | Phase 0 — new guarded-transition pattern | Any other writer of `operator.status`, and any consumer of the renamed port | `grep -rn "UPDATE operator SET status" src/main/`, `grep -rln "OperatorLifecycle" src/`, `grep -rn "OperatorStatus\." src/main/ \| grep -v adapter/out` | 2 writers (both the adapter's guarded transitions), 3 main + 3 test consumers, **0** status tokens outside the module | No further change — both writers already carry the `WHERE status = :expected` guard, so no unguarded transition exists to generalize. The rename swept `PayoutModuleTest` (`@MockitoBean`) and `WebSliceStubs` in the same commit, pre-empting the R-6 full-suite-only breakage. |
 

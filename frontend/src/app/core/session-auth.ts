@@ -3,6 +3,7 @@ import { computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { SignOutNotice } from './sign-out-notice';
 
 /** The signed-in principal as the backend reports it (`POST …/login|register` and `GET /api/auth/me`). */
 export interface AuthPrincipal {
@@ -16,6 +17,12 @@ export interface AuthPrincipal {
 
 /** How a sign-in attempt ended, for the surface to translate into a message. */
 export type SignInResult = 'signed-in' | 'invalid-credentials' | 'rate-limited' | 'error';
+
+/**
+ * How a sign-out ended (#128). `signed-out` means the server confirmed it; `may-persist` means the
+ * request never got a confirmation, so this device's session cookie may still be live.
+ */
+export type SignOutResult = 'signed-out' | 'may-persist';
 
 export const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
 
@@ -46,6 +53,7 @@ export function signInResultFor(error: unknown): SignInResult {
  */
 export abstract class SessionAuth {
   protected readonly http = inject(HttpClient);
+  private readonly signOutNotice = inject(SignOutNotice);
 
   private readonly principal = signal<AuthPrincipal | undefined>(undefined);
 
@@ -88,14 +96,40 @@ export abstract class SessionAuth {
     this.principal.set(principal);
   }
 
-  /** Invalidate the server session; local state clears even if the session was already gone. */
-  async signOut(): Promise<void> {
+  /**
+   * Invalidate the server session. Local state clears either way — a UI stuck in "signed in" is worse
+   * than a stale cookie — but the RESULT says whether the server actually confirmed it (#128 gap 2).
+   *
+   * A `401` counts as success: the server has no such session, which is exactly what sign-out wants.
+   * Anything else (network error, `5xx`, or the common `403` from a missing/stale XSRF cookie) may
+   * have left the `HttpOnly` SESSION cookie alive, so it re-bootstraps CSRF via `GET /api/auth/me`
+   * and retries **once**. Still failing, it returns `may-persist` and records a
+   * {@link SignOutNotice} the shell surfaces — the shared-device case, where the next visitor would
+   * otherwise be silently restored.
+   */
+  async signOut(): Promise<SignOutResult> {
+    const result = await this.logoutWithOneRetry();
+    this.principal.set(undefined);
+    this.signOutNotice.record(this, result === 'may-persist');
+    return result;
+  }
+
+  private async logoutWithOneRetry(): Promise<SignOutResult> {
+    if (await this.logoutConfirmed()) {
+      return 'signed-out';
+    }
+    await this.loadPrincipal(); // re-issues the XSRF-TOKEN cookie a 403 usually means is missing
+    return (await this.logoutConfirmed()) ? 'signed-out' : 'may-persist';
+  }
+
+  /** One logout attempt; true when the server session is provably gone (204 or 401). */
+  private async logoutConfirmed(): Promise<boolean> {
     try {
       await firstValueFrom(this.http.post<void>(`${AUTH_API}/logout`, null));
-    } catch {
-      // A failed logout (expired session, network) still means "signed out" for this tab.
+      return true;
+    } catch (error) {
+      return error instanceof HttpErrorResponse && error.status === 401;
     }
-    this.principal.set(undefined);
   }
 
   /** Drop local state without a logout round-trip (a surface saw a 401 mid-flow). */

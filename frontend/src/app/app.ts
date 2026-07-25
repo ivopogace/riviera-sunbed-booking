@@ -5,6 +5,7 @@ import { filter, map } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
 import { CustomerAuth } from './core/customer-auth';
+import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
 
 /**
@@ -25,6 +26,12 @@ export class App {
   protected readonly themes = inject(ThemeService);
   /** Customer session state for the header (S2 #111): sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
+  /**
+   * The "your sign-out may not have reached the server" warning (#128). Rendered by the shell for
+   * BOTH principal types — `SessionAuth` records into it, so an operator signing out of the console
+   * raises the same banner without the console knowing about it.
+   */
+  protected readonly signOutNotice = inject(SignOutNotice);
   private readonly router = inject(Router);
 
   protected readonly menuOpen = signal(false);
@@ -135,6 +142,15 @@ export class App {
   protected async signOut(): Promise<void> {
     this.menuOpen.set(false);
     await this.customerAuth.signOut();
+  }
+
+  /** Retry a sign-out the server never confirmed (#128); the banner clears only if it confirms now. */
+  protected async retrySignOut(): Promise<void> {
+    await this.signOutNotice.retry();
+  }
+
+  protected dismissSignOutNotice(): void {
+    this.signOutNotice.dismiss();
   }
 
   /** Closes whichever surface is open and hands focus back to its trigger (AC-3). */
