@@ -66,34 +66,36 @@ hosting cutover remain **out of scope — human-gated / separate epic**.
 
 > Written at the inner hexagon (domain terms), each naming a test class.
 
-- [ ] **AC-1 (expired basis → scrubbed):** Given a live guest `customer` row older than the retention window
+- [x] **AC-1 (expired basis → scrubbed):** Given a live guest `customer` row older than the retention window
   whose most recent booking is **before** the retention cutoff, when `ExpireGuestContacts.sweep()` runs, then
   that row's `email` becomes a deterministic non-PII tombstone, `full_name`/`phone` become `'ERASED'`, and
   `erased_at` is set. *Pinned by:* `ExpireGuestContactsServiceTest.scrubsGuestWhoseRetentionBasisExpired` +
-  `GuestContactRetentionIT.scrubsExpiredGuestContact` (real Postgres).
-- [ ] **AC-2 (live basis → retained):** Given a guest whose most recent booking is **on or after** the
+  `GuestContactRetentionIT.scrubsExpiredGuestContactAndLeavesBookingPaymentAndPayoutUntouched` (real Postgres).
+- [x] **AC-2 (live basis → retained):** Given a guest whose most recent booking is **on or after** the
   retention cutoff, when the sweep runs, then the row is untouched (`erased_at` still `NULL`, PII intact) —
   including a booking exactly **on** the cutoff date (boundary is inclusive-retain). *Pinned by:*
-  `ExpireGuestContactsServiceTest.retainsGuestWithBookingOnTheCutoffDate`.
-- [ ] **AC-3 (invariant #9 — financial records untouched):** Given an expired guest with a `CONFIRMED`
+  `ExpireGuestContactsServiceTest.retainsGuestWithBookingOnTheCutoffDate` +
+  `GuestContactRetentionIT.retainsGuestWhoseBookingIsStillInsideTheWindow`.
+- [x] **AC-3 (invariant #9 — financial records untouched):** Given an expired guest with a `CONFIRMED`
   booking, a `payment` row and a `payout_ledger_entry`, when the sweep scrubs the contact, then all three
   rows are byte-for-byte unchanged and the `booking.customer_id` FK still resolves to the tombstoned row.
-  *Pinned by:* `GuestContactRetentionIT.leavesBookingPaymentAndPayoutUntouched`.
-- [ ] **AC-4 (account-linked contacts are never swept):** Given a guest `customer` row whose email matches a
+  *Pinned by:* `GuestContactRetentionIT.scrubsExpiredGuestContactAndLeavesBookingPaymentAndPayoutUntouched` —
+  AC-1 and AC-3 are one test: the scrub and the survival of the financial rows are the same transaction.
+- [x] **AC-4 (account-linked contacts are never swept):** Given a guest `customer` row whose email matches a
   **live** (`erased_at IS NULL`) `customer_account`, when the sweep runs, then that row is not a candidate and
   is untouched — the job never erases a signed-up customer's contact. *Pinned by:*
   `GuestContactRetentionIT.skipsGuestContactClaimedByALiveAccount`.
-- [ ] **AC-5 (idempotent):** Given an already-tombstoned guest row (`erased_at` set), when the sweep runs
+- [x] **AC-5 (idempotent):** Given an already-tombstoned guest row (`erased_at` set), when the sweep runs
   again, then it is not re-scrubbed, `erased_at` is unchanged, and the run reports 0 scrubbed. *Pinned by:*
   `ExpireGuestContactsServiceTest.sweepIsIdempotent` + `GuestContactRetentionIT.doesNotRescrubTombstonedRows`.
-- [ ] **AC-6 (bounded batch):** Given more expired candidates than the configured batch size, when one sweep
+- [x] **AC-6 (bounded batch):** Given more expired candidates than the configured batch size, when one sweep
   runs, then at most `batchSize` rows are scrubbed and the run reports that count (the rest are picked up on
   the next run). *Pinned by:* `ExpireGuestContactsServiceTest.scrubsAtMostOneBatchPerRun`.
 - [ ] **AC-7 (disabled by default):** Given the default configuration (`customer.retention.enabled` unset),
   when the application context starts, then **no** retention scheduler bean exists — nothing can sweep until
   ops opts in. *Pinned by:* `GuestContactRetentionSchedulerConfigTest` (`@SpringBootTest` slice asserting the
   bean is absent by default and present with `customer.retention.enabled=true`).
-- [ ] **AC-8 (window is configuration, reasoned in `Europe/Tirane`):** Given a fixed `Clock` and
+- [x] **AC-8 (window is configuration, reasoned in `Europe/Tirane`):** Given a fixed `Clock` and
   `customer.retention.window=P2Y`, when the sweep computes its cutoff, then the cutoff is *today in
   `Europe/Tirane`* minus 2 years — never the JVM default zone, never a hardcoded period (invariant #6).
   *Pinned by:* `ExpireGuestContactsServiceTest.derivesCutoffFromConfiguredWindowInTiraneZone`.
@@ -256,11 +258,25 @@ row kinds are byte-for-byte unchanged after a sweep, and that the `RESTRICT` FK 
 > Session-recovery anchor. Re-read this (plus the current `riviera-sdlc` reference file) after any compaction
 > or in a fresh session before acting. Update in the same commit window as the change it records.
 
-**Stage pointer:** `implement — Phase 0 done, Phase 1 next`
+**Stage pointer:** `implement — Phases 0–1 done, Phase 2 next`
 
-**Next action:** Start **Phase 1** — write the failing `ExpireGuestContactsServiceTest` (fake store + fake
-history + fixed `Clock`), then `RetentionWindow` / `ExpireGuestContacts` / `ExpireGuestContactsService` and
-the two new `AccountErasureStore` methods.
+**Next action:** Start **Phase 2** — write the failing `GuestContactRetentionSchedulerConfigTest` (AC-7:
+no scheduler bean by default, present with `customer.retention.enabled=true`), then
+`GuestContactRetentionScheduler` + the documented `customer.retention.*` block in `application.properties`.
+
+**Deviations from the authored plan** (both decided during Phase 1, 2026-07-25):
+
+1. **`CustomerRetentionProperties` + `CustomerRetentionConfig` moved Phase 2 → Phase 1.** The plan put them
+   in Phase 2, but `ExpireGuestContactsService` is an unconditional `@Service` that requires a
+   `RetentionWindow` bean — so at the Phase-1 boundary *every* `@SpringBootTest` in the repo failed to start
+   with `NoSuchBeanDefinitionException` (observed, not theorised). Resequencing keeps each phase boundary
+   green. **No design change**: same files, same packages, same ownership table; Phase 2 is now the scheduler
+   + properties block + AC-7 only. The config is deliberately **unconditional** — only the scheduler that
+   *fires* the sweep is gated, which is what makes the job inert rather than uninstantiable.
+2. **AC-8's fixed instant strengthened** from the plan's `09:00Z` to **`2026-07-25T22:30:00Z`**. At 09:00Z the
+   UTC and `Europe/Tirane` dates coincide, so the assertion would have passed even if the sweep reasoned in
+   UTC or the JVM default zone — it would not actually have pinned invariant #6. At 22:30Z Tirane is already
+   the 26th, so the expected cutoff (2024-07-26) is reachable *only* via the Tirane zone.
 
 *Environment note (2026-07-25):* this is a **local Windows machine**, not a cloud session — `./gradlew` works
 normally and Docker 29.4.3 is running, so the Testcontainers ITs **actually execute** (verified `skipped="0"`,
@@ -268,9 +284,9 @@ not silently skipped). Scoped-test discipline still applies; CI still owns the f
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | ✅ | `<phase-0>` |
-| 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | | |
-| 2 — scheduler + config properties + documented defaults (ships disabled) | | |
+| 0 — `customer/spi` port + `booking` adapter + grant (the acyclic seam) | ✅ | `50e132e` |
+| 1 — retention window + candidate read + by-id scrub + `ExpireGuestContacts` service | ✅ | `<phase-1>` |
+| 2 — scheduler + documented defaults (ships disabled; properties+config landed in Phase 1) | | |
 | 3 — docs: runbook `<counsel-TBD>` → configurable, glossary, RESPONSIBILITIES/CLAUDE.md, freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -437,7 +453,7 @@ naming the inversion (mirroring the existing `venue::spi` comment).
 `customer/adapter/out/JdbcAccountErasure.java` · Test
 `customer/application/ExpireGuestContactsServiceTest.java`, `customer/GuestContactRetentionIT.java`.
 
-- [ ] **Step 1: Write the failing test** — `ExpireGuestContactsServiceTest` against a hand fake of
+- [x] **Step 1: Write the failing test** — `ExpireGuestContactsServiceTest` against a hand fake of
   `AccountErasureStore` + `GuestBookingHistory` and a fixed `Clock` (the `AccountErasureServiceTest` pattern),
   covering AC-1, AC-2, AC-5, AC-6, AC-8:
 
@@ -480,10 +496,10 @@ class ExpireGuestContactsServiceTest {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ExpireGuestContactsServiceTest*"` →
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ExpireGuestContactsServiceTest*"` →
   FAIL (types missing).
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // customer/application/RetentionWindow.java — the application-layer value; no configuration type inside.
@@ -565,19 +581,20 @@ SET email = 'erased+' || id || '@erased.invalid', full_name = 'ERASED', phone = 
 WHERE id = :id AND erased_at IS NULL
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*ExpireGuestContacts*"
-  --tests "*GuestContactRetentionIT*"` → PASS (the IT adds AC-3's "financial rows untouched" and AC-4's
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*ExpireGuestContacts*"
+  --tests "*GuestContactRetentionIT*"` → PASS — 12 tests, `skipped="0"`: `ExpireGuestContactsServiceTest` 7/7 and `GuestContactRetentionIT` 5/5 against real Postgres (the IT adds AC-3's "financial rows untouched" and AC-4's
   live-account skip).
 
-> End-of-phase regression: `./gradlew test --tests "*customer*" --tests "*ModularityTests*"`.
+> End-of-phase regression: `./gradlew test --tests "*customer*" --tests "*Customer*" --tests "*ModularityTests*"` —
+> **green: 21 classes, 65 tests, 0 failures, 0 skipped.**
 
-- [ ] **Step 5: Generalization-audit pass** — the tombstone literals now appear in two `UPDATE`s in
+- [x] **Step 5: Generalization-audit pass** — the tombstone literals now appear in two `UPDATE`s in
   `JdbcAccountErasure`. Search `rg "erased\+" platform/src/main` → if both sites drift, extract the
   placeholder expression to a named constant (§6a). Record the decision in the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(customer): retention sweep for expired guest contacts (#101)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(customer): retention sweep for expired guest contacts (#101)"`
 
-- [ ] **Step 7: Update plan-doc Execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc Execution status** in the same commit window.
 
 ---
 
@@ -696,6 +713,7 @@ of every default-profile test context (R-3 — `@EnableScheduling` is already gl
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-25 | Phase 1 — 2nd guest-tombstone `UPDATE` | the tombstone placeholder expression duplicated across the erasure and retention scrubs | `rg "erased\+" platform/src/main` | 3 — 1 javadoc, the guest `SET` clause, the account `SET` clause | **Extracted** the guest `SET` clause to `JdbcAccountErasure.GUEST_TOMBSTONE`, shared by `eraseGuestByEmail` (by email) and `eraseGuestById` (by id) so request-erasure and retention-erasure cannot drift on what "erased" means; only the `WHERE` differs. The **account** tombstone stays separate — different table, different columns (`password_hash` vs `full_name`/`phone`); merging it would be false sharing |
 | 2026-07-25 | Phase 0 — new cross-module `spi` inversion | other modules reaching for `booking` internals instead of a published surface | `rg "ai\.riviera\.platform\.booking\.(api\|application\|domain\|adapter)" platform/src/main/java --glob '!**/booking/**'` | 1 — `payout/application/DailyTakingsService.java` → `booking.api.DailyTakings` | **No action.** The single hit is the sanctioned `booking::api` port (#171); no `application.*`/`adapter.*`/`domain` import exists. The spi inversion is now its 3rd instance (`SetAvailabilityLookup`, `BookingPresence`, `GuestBookingHistory`) — the pattern is consistent, nothing to generalize |
 
 ---

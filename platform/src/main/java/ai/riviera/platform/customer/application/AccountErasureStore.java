@@ -1,8 +1,11 @@
 package ai.riviera.platform.customer.application;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
  * Driven (outbound) persistence port for the right-to-erasure scrub — internal to the module (not a
@@ -37,4 +40,28 @@ public interface AccountErasureStore {
 	 * number of rows scrubbed.
 	 */
 	int eraseGuestByEmail(String normalizedEmail);
+
+	/**
+	 * Guest {@code customer} rows the automated retention sweep (Slice 2 of #101) may consider scrubbing:
+	 * live rows ({@code erased_at IS NULL}) last touched before {@code olderThan} whose email is <em>not</em>
+	 * claimed by a live {@code customer_account} — so a signed-up customer's contact is never a candidate.
+	 *
+	 * <p>These are the two gates this module can apply on its own tables; the third — whether the guest still
+	 * has a booking inside the window — is the {@code booking}-owned fact behind
+	 * {@code customer.spi.GuestBookingHistory}. The result is capped at {@code limit} and ordered by id, so a
+	 * run is bounded and the remainder is picked up by the next one.
+	 *
+	 * @param olderThan the retention cutoff as an instant — rows updated at or after it are still in window
+	 * @param limit     the batch cap
+	 * @return the candidate guest ids, oldest id first, at most {@code limit} of them
+	 */
+	List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit);
+
+	/**
+	 * Tombstone one live guest {@code customer} row by id — the retention sweep's per-row scrub, identical in
+	 * effect to {@link #eraseGuestByEmail} but selecting by the candidate id it was just handed. Returns
+	 * {@code true} iff a live row was scrubbed; an already-tombstoned or absent row yields {@code false},
+	 * which is what makes a repeated or overlapping sweep a no-op.
+	 */
+	boolean eraseGuestById(CustomerId guestId);
 }
