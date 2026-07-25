@@ -32,8 +32,8 @@ Siblings in the same defect class: #316 (erasure matcher), #317 (`/api/me/**`).
 - `riviera-modulith` — confirmed `SecurityConfig` is **root-package app-wide config, not a module**
   ("keep `SecurityConfig`/`WebCorsConfig` in the root package only; the root is not a module"), so
   this slice makes **no module surface change** and both tests belong in the root test package.
-- `riviera-local-debug` — to be loaded before the session's first `gradle` invocation (cloud
-  Gradle/JDK recipe + scoped-test discipline).
+- `riviera-local-debug` — the cloud Gradle/JDK recipe + scoped-test discipline for every test run.
+- `riviera-review-overlay` — the review gate; produced F-1 (RV-STYLE-1), F-2, F-3 and the F-4 note.
 
 **Branch:** `claude/sdlc-cloud-issues-ahqggt` — the cloud session's **designated remote branch
 stands in for** `bugfix/venue-put-matcher` (`riviera-sdlc` §Remote/cloud session addendum). The
@@ -57,7 +57,7 @@ literal `bugfix/…` branch is deliberately not created.
       `ROLE_OPERATOR`, when it issues `PUT /api/venues/1/beach-map` with a valid body, then the
       request **is** dispatched (`getHandler()` non-`null`) and reaches `EditBeachMap#replaceLayout`.
       *Pinned by:* `VenueWriteRoleGateTest.operatorPutToBeachMapDoesReachTheController`
-- [ ] **AC-5:** The public tourist read is unaffected — an **anonymous** `GET /api/venues/1` is
+- [x] **AC-5:** The public tourist read is unaffected — an **anonymous** `GET /api/venues/1` is
       still dispatched (`permitAll`), and the owning-operator write paths still work end-to-end.
       *Pinned by:* `VenueWriteRoleGateTest.anonymousVenueReadIsStillPublic` **plus** the existing
       `BeachMapReplaceIT` and `VenueRepriceIT` staying green **unchanged**.
@@ -94,7 +94,7 @@ N/A — nothing is retired or replaced. The slice **adds** two authorization rul
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The tripwire **false-negatives**: a probe that is really a `404` (bad synthesized path) or a `429` (rate limiter, which runs *ahead of* authorization) looks like "denied at the filter", masking a genuine fall-through. | med | high — a guard that silently passes is worse than none | When `getHandler()` is `null`, additionally assert the status is `401` **or** `403`. A `404`/`405`/`429` fails the test loudly as "probe did not resolve", never as a pass. Each probe also carries a unique `X-Forwarded-For` (`SessionLoginSupport.uniqueClientIp()`), so no probe can exhaust another's bucket. | Claude | closed-in-`96000db` (both halves shipped; falsified) |
-| R-2 | The **#127 full-suite-only failure class**: shared rate-limit buckets across a cached-context CI run turn green scoped batches into a wall of `429`s. | low | med | Verified at grill time that `PUT /api/venues/**` draws on **no** `RateLimitFilter` bucket (buckets exist only for booking, operator/customer login, operator register, recovery and SSO paths). The tripwire nonetheless probes throttled paths (`POST /api/bookings`, the logins), so every probe gets a unique client IP — the same defence `MeSurfaceRoleGateTest` uses. Confirmed only by the push's CI run. | Claude | open — awaiting CI |
+| R-2 | The **#127 full-suite-only failure class**: shared rate-limit buckets across a cached-context CI run turn green scoped batches into a wall of `429`s. | low | med | Verified at grill time that `PUT /api/venues/**` draws on **no** `RateLimitFilter` bucket (buckets exist only for booking, operator/customer login, operator register, recovery and SSO paths). The tripwire nonetheless probes throttled paths (`POST /api/bookings`, the logins), so every probe gets a unique client IP — the same defence `MeSurfaceRoleGateTest` uses. Confirmed only by the push's CI run. | Claude | closed — CI green on `edf0d32` and `cc6699b`; the 52 probes did not disturb any bucket |
 | R-3 | **Matcher ordering** — a new rule placed below a broader one is shadowed and silently dead. | low | high | Both PUT rules go with the sibling venue-write rules, above `.anyRequest()`. The only broader venue rule is `GET /api/venues/**`, which is **method-scoped** and therefore cannot shadow a `PUT`. AC-1/2 (filter-layer discriminator) would fail if a rule were shadowed. | Claude | closed-in-`bc38dd8` (AC-1/2 green with the rule in place, red without) |
 | R-4 | The fix is mistaken for a **replacement** of invariant #13's ownership check, and someone later removes `assertOwns` from `VenueAdminService`. | low | high (BOLA) | Javadoc on both new matchers states this is the role layer *above* object-level ownership, mirroring the existing `PATCH`/photo matcher comments; `CrossVenueDenialIT` stays green unchanged. | Claude | closed-in-`bc38dd8` (Javadoc shipped on the matcher) |
 | R-5 | Tripwire **maintenance friction**: every genuinely-new public endpoint requires an allowlist edit. | high (by design) | low | Accepted — that is the tripwire's purpose. The failure message names the offending `VERB /path` and states the two legal resolutions (add a `SecurityConfig` rule, or declare it reachable with a reason). | Claude | accepted-by-design |
@@ -102,13 +102,16 @@ N/A — nothing is retired or replaced. The slice **adds** two authorization rul
 
 ## Open questions / Assumptions
 
-- **Assumption:** The tripwire's declared reachable list is complete at **18 entries** — 17
-  `permitAll` endpoints plus the single deliberate fall-through `GET /api/auth/me`. Derived by
-  enumerating all 52 `@*Mapping` handlers against every `authorizeHttpRequests` rule at the
-  issue-intake grill. *Owner:* Claude · *Resolves by:* Phase 1 (the test itself falsifies a wrong
-  list — a missing entry fails, a stale entry fails the reachable-must-dispatch branch).
+_None open._
 
 ### Resolved
+
+- **Assumption (now confirmed):** the declared reachable list is complete at **18 entries** — 17
+  `permitAll` plus the single deliberate fall-through `GET /api/auth/me`. The test is its own
+  falsifier and it passes both ways: 52 endpoints enumerated, every non-declared one rejected
+  before dispatch with 401/403, every declared one still mapped (`containsAll`) and still
+  dispatched. A missing entry would have failed the escalation branch; a stale one, the
+  reachable-must-dispatch branch. Confirmed at `96000db`, re-confirmed at `cc6699b`.
 
 - **Open question (AC-4 scope, from the intake grill):** should the slice ship the recurrence guard
   at all, given the issue marks it optional? → **Yes, ship it.** User decision, 2026-07-25: the gap
@@ -173,11 +176,12 @@ byte-identical `403 ACCESS_DENIED` payloads by design, so even that is invisible
 > or whenever unsure where the work stands: re-read this section (plus the current `riviera-sdlc`
 > stage's reference file) before acting.
 
-**Stage pointer:** `review gate — findings fixed, re-verifying CI + Sonar on the fix head`
+**Stage pointer:** `all three gates cleared on `cc6699b` — stopped before merge; the merge call is the maintainer's`
 
-**Next action:** Push the branch and confirm that push's CI run is green — the Docker-gated half of
-AC-5 (`BeachMapReplaceIT`, `VenueRepriceIT`, `CrossVenueDenialIT`) is proven only there — then open
-the PR and run the review + Sonar gates.
+**Next action:** None pending — PR #331 is green, reviewed and Sonar-clean. On merge, run the
+close-out: confirm #328 closed, tick the PR Gates boxes, `riviera-docs-freshness` (already
+pre-checked: no substrate doc states anything this slice contradicts), and `graphify update .`
+for the plan-doc addition.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -222,7 +226,7 @@ touches *before* editing).
 | F-2 | review (brittleness) | `anonymousVenueReadIsStillPublic` asserted the exact status `404`, coupling the test to `WebSliceStubs.venueCatalog()` returning empty — an unrelated stub change would break it for the wrong reason. | fixed-in-`b4b3eb4` — now asserts "not an auth rejection" (`isNotIn(401, 403)`), which is what the test actually means |
 | F-3 | review (`riviera-java-conventions` §6a) | Raw status literals (`401`/`403`/`404`) in both new tests instead of named constants. | fixed-in-`b4b3eb4` — `HttpStatus.UNAUTHORIZED.value()` / `HttpStatus.FORBIDDEN.value()` |
 | F-4 | review (scope note, not a defect) | The tripwire probes with an **authenticated** principal, so it cannot distinguish `permitAll` from `anyRequest().authenticated()`: a `permitAll` rule silently downgraded to authenticated-only would not fail it. | accepted — out of this guard's stated scope (it is a privilege-**escalation** guard). The anonymous side is already covered by the guest-checkout ITs and `CsrfProtectionIT`; recorded in the class Javadoc as a known limitation |
-| F-5 | sonar (PR #331, run on `edf0d32`) | Quality gate passed: 0 new issues, 0 accepted, 0 security hotspots, 100.0% coverage on new code, 0.0% duplication. | superseded — re-verified against the API on the post-fix head (the bot comment is not the authority; `references/pr-gates.md` §2) |
+| F-5 | sonar (PR #331) | Gate green on both heads. **Verified against the API on the post-fix head `cc6699b`**, not the bot badge (`references/pr-gates.md` §2): `api/issues/search` total **0**, `api/hotspots/search` **0**, and — the false-clean guard — `measures` non-empty with `new_lines=20`, `new_coverage=100.0`, `new_duplicated_blocks=0`, `new_bugs/vulnerabilities/code_smells=0`. `SonarCloud Code Analysis` check concluded `success` on `cc6699b`. | closed — nothing to fix |
 
 ---
 
@@ -249,7 +253,7 @@ and an `OperatorDirectory` resolving any principal to `OperatorId(1)`), `Session
 Modify `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` (path constants ~line 72,
 rules ~line 292)
 
-- [ ] **Step 1: Write the failing test** — `VenueWriteRoleGateTest`, modelled on
+- [x] **Step 1: Write the failing test** — `VenueWriteRoleGateTest`, modelled on
   `MeSurfaceRoleGateTest`: `@WebMvcTest` + `@Import({SecurityConfig, WebCorsConfig, WebSliceStubs})`,
   `EditBeachMap` replaced by a `@MockitoBean` so "the controller never ran" is observable, the
   `getHandler()` discriminator in a shared `assertNeverDispatched`, and a positive control
@@ -257,7 +261,7 @@ rules ~line 292)
   `expectedVersion` so the operator path reaches `EditBeachMap#replaceLayout` rather than dying in
   `requiredExpectedVersion()`.
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `gradle test --tests "*VenueWriteRoleGateTest*"` → FAIL on AC-1/AC-2 with the handler assertion:
   "the rejection must come from the security filter chain — a non-null handler means the request
   reached the controller and CurrentOperator produced the 403 instead". AC-3/AC-4/AC-5 pass already
@@ -267,7 +271,7 @@ rules ~line 292)
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite
 > (`riviera-local-debug`: the bare `test` task can OOM the container).
 
-- [ ] **Step 3: Minimal implementation** — in `SecurityConfig`, two named constants beside the
+- [x] **Step 3: Minimal implementation** — in `SecurityConfig`, two named constants beside the
   existing venue-path constants:
 
 ```java
@@ -288,21 +292,21 @@ rules ~line 292)
 						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH).hasRole(OPERATOR_ROLE)
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*VenueWriteRoleGateTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*VenueWriteRoleGateTest*"` → PASS
 
 > Scope (end-of-phase regression): broaden to the edge/security classes —
 > `--tests "*MeSurfaceRoleGateTest*" --tests "*MeErasureControllerTest*" --tests "*CsrfProtection*"`
 > plus the venue web-slice tests. The Docker-gated ITs (`BeachMapReplaceIT`, `VenueRepriceIT`,
 > `CrossVenueDenialIT`) skip cleanly without a daemon — CI owns them.
 
-- [ ] **Step 5: Generalization-audit pass** — the pattern is "a mapped verb with no explicit
+- [x] **Step 5: Generalization-audit pass** — the pattern is "a mapped verb with no explicit
   matcher". Phase 1 **is** the generalization of this fix, made permanent as a test rather than a
   one-off search. Record the enumeration (all 52 mappings, 2 unmatched, 1 deliberate fall-through)
   in the Generalization-audit log.
 
-- [ ] **Step 6: Commit** — `git commit -m "fix(#328): role-gate both venue PUT writes at the security filter (#328)"`
+- [x] **Step 6: Commit** — `git commit -m "fix(#328): role-gate both venue PUT writes at the security filter (#328)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -310,7 +314,7 @@ rules ~line 292)
 
 **Files:** Create `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java`
 
-- [ ] **Step 1: Write the test** — enumerate `RequestMappingHandlerMapping#getHandlerMethods()`;
+- [x] **Step 1: Write the test** — enumerate `RequestMappingHandlerMapping#getHandlerMethods()`;
   for each `(verb, pattern)` synthesize a concrete path (path variables replaced by named sample
   constants: ids → `1`, `{provider}` → `google`, `{code}` → a sample booking code, `{rowLabel}` →
   `A`, `{slot}` → `COVER`, `{hash}` → a sample hash); probe it with
@@ -323,18 +327,18 @@ rules ~line 292)
   Collect all violations and assert once, so the failure message lists every offending endpoint
   rather than only the first.
 
-- [ ] **Step 2: Run it, verify it passes** — `gradle test --tests "*EndpointRoleGateCoverageTest*"`
+- [x] **Step 2: Run it, verify it passes** — `gradle test --tests "*EndpointRoleGateCoverageTest*"`
   → PASS (Phase 0 already closed the only two holes).
 
-- [ ] **Step 3: Deliberate falsification (AC-7)** — temporarily remove the Phase-0 `PUT` matcher,
+- [x] **Step 3: Deliberate falsification (AC-7)** — temporarily remove the Phase-0 `PUT` matcher,
   re-run → the test must FAIL naming **exactly** `PUT /api/venues/*/beach-map` and
   `PUT /api/venues/*/rows/*/price`. Restore the matcher, re-run → PASS. A guard added after the
   hole is patched is unproven until it has been seen to go red; record both runs in Execution
   status.
 
-- [ ] **Step 4: Commit** — `git commit -m "test(#328): tripwire — every mapped endpoint is gated or declared reachable (#328)"`
+- [x] **Step 4: Commit** — `git commit -m "test(#328): tripwire — every mapped endpoint is gated or declared reachable (#328)"`
 
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -353,8 +357,10 @@ rules ~line 292)
 - [x] **AC-1/AC-2/AC-3/AC-4 + AC-5 (slice half):** `gradle test --tests "*VenueWriteRoleGateTest*"`
       → PASS (5 tests). Red first at `a205c8d`'s tree for AC-1/AC-2 only, with
       `expected: null but was: VenueAdminController#replaceLayout(...)`. Verified at `bc38dd8`.
-- [ ] **AC-5 (end-to-end half):** `BeachMapReplaceIT`, `VenueRepriceIT`, `CrossVenueDenialIT` green
-      **unchanged** on the PR's CI run (Docker-gated; they skip locally). Verified at `<ci-run>`.
+- [x] **AC-5 (end-to-end half):** `BeachMapReplaceIT` (12 tests), `VenueRepriceIT` (8),
+      `CrossVenueDenialIT` (24) green **unchanged**, all `skipped=0` — run locally against real
+      Postgres (this session had a dockerd) **and** on CI. That also discharges the PR template's
+      "Testcontainers ITs not skipped" gate with a measured number rather than an inference.
 - [x] **AC-6:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS, 52 endpoints probed.
       Verified at `96000db`.
 - [x] **AC-7:** Falsification recorded in Execution status — red naming exactly the two PUTs with
@@ -364,22 +370,22 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (no availability write path in scope) — invariant #2.
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no module package touched; no cross-module import added
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (no availability write path in scope) — invariant #2.
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no module package touched; no cross-module import added
       (invariant #11); edge placement matches RV-BE-11.
-- [ ] **Payment/payout** N/A justified (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes: the tripwire probes `GET /api/bookings/{code}` with a **sample literal**, and
+- [x] **Payment/payout** N/A justified (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes: the tripwire probes `GET /api/bookings/{code}` with a **sample literal**, and
       no probe value is logged (invariant #7).
-- [ ] **Invariant #13 unaffected:** `VenueAdminService`'s `assertOwns` untouched; `CrossVenueDenialIT`
+- [x] **Invariant #13 unaffected:** `VenueAdminService`'s `assertOwns` untouched; `CrossVenueDenialIT`
       green unchanged.
-- [ ] No Flyway migration needed (no schema change) — invariant #12 not engaged.
-- [ ] **Frontend** N/A — no FE file touched.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] No Flyway migration needed (no schema change) — invariant #12 not engaged.
+- [x] **Frontend** N/A — no FE file touched.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
