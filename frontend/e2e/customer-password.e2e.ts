@@ -15,8 +15,8 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * with no stored credential it sets its first password with the current-password field left blank.
  *
  * <p>The auth API is mocked statefully (`support/auth-mocks.ts`), which is what makes the old/new password
- * assertions mean something. The account page has no in-app entry point — the tourist shell links only to
- * sign-out — so, like `erasure.e2e.ts`, the spec navigates to it directly.
+ * assertions mean something. Since #351 the page has an in-app entry point, so the spec reaches it the way
+ * a tourist does — through the header's account menu — rather than by URL.
  */
 
 const EMAIL = 'ana@example.com';
@@ -31,6 +31,18 @@ async function signIn(page: Page, password: string): Promise<void> {
   await page.getByTestId('auth-submit').click();
 }
 
+/** Reach the account page through the shell's account menu (#351), not by URL. */
+async function gotoAccount(page: Page): Promise<void> {
+  await page.getByTestId('nav-user').click();
+  await page.getByTestId('nav-account-link').click();
+}
+
+/** Sign out — the control lives inside the account menu since #351. */
+async function signOut(page: Page): Promise<void> {
+  await page.getByTestId('nav-user').click();
+  await page.getByTestId('nav-signout').click();
+}
+
 test('a signed-in tourist changes their password, and the new credential replaces the old', async ({
   page,
 }) => {
@@ -42,7 +54,7 @@ test('a signed-in tourist changes their password, and the new credential replace
   await signIn(page, OLD_PASSWORD);
   await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
 
-  await page.goto('/account/password');
+  await gotoAccount(page);
   await expect(page.getByTestId('setpw-email')).toContainText(EMAIL);
   await expectNoSeriousAxeViolations(page, 'customer account page');
 
@@ -68,7 +80,7 @@ test('a signed-in tourist changes their password, and the new credential replace
   await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
 
   // And the rotation was real: after signing out, only the new password gets back in.
-  await page.getByTestId('nav-signout').click();
+  await signOut(page);
   await expect(page.getByTestId('nav-signin')).toBeVisible();
 
   await signIn(page, OLD_PASSWORD);
@@ -93,7 +105,8 @@ test('an SSO-only account sets its first password with no current password', asy
     }
   });
 
-  await page.goto('/account/password');
+  await page.goto('/');
+  await gotoAccount(page);
   await expect(page.getByTestId('setpw-verified')).toBeVisible();
 
   // Under the policy minimum: the client-side guard names the rule and spends no request.
@@ -111,7 +124,7 @@ test('an SSO-only account sets its first password with no current password', asy
   expect(setPasswordRequests).toBe(1);
 
   // The account now has a credential: it signs in where it previously could not.
-  await page.getByTestId('nav-signout').click();
+  await signOut(page);
   await expect(page.getByTestId('nav-signin')).toBeVisible();
 
   await signIn(page, NEW_PASSWORD);
@@ -127,7 +140,8 @@ test('an exhausted change-password budget renders the rate-limit message', async
     passwordChangeBudget: 1,
   });
 
-  await page.goto('/account/password');
+  await page.goto('/');
+  await gotoAccount(page);
   await page.getByTestId('setpw-current').fill('not-my-password');
   await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
   await page.getByTestId('setpw-submit').click();
@@ -142,7 +156,7 @@ test('an exhausted change-password budget renders the rate-limit message', async
   await expectNoSeriousAxeViolations(page, 'rate-limited change attempt');
 
   // And nothing rotated: the original password still signs in.
-  await page.getByTestId('nav-signout').click();
+  await signOut(page);
   await signIn(page, OLD_PASSWORD);
   await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
 });

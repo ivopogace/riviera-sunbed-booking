@@ -61,15 +61,40 @@
              startup /me restore settles so the signed-in state doesn't flash "Sign in" first. -->
         @if (!customerAuth.restoring()) {
           @if (customerAuth.signedIn()) {
-            <span class="riv-nav-user" data-testid="nav-user">Signed in as {{ customerAuth.email() }}</span>
-            <button
-              type="button"
-              class="riv-nav-link riv-nav-btn"
-              data-testid="nav-signout"
-              (click)="signOut()"
-            >
-              Sign out
-            </button>
+            <!-- Account menu (#351) — a disclosure, not role=menu; see App.accountOpen for why. -->
+            <div class="riv-account-menu">
+              <button
+                #accountButton
+                type="button"
+                class="riv-nav-user riv-nav-btn"
+                data-testid="nav-user"
+                [attr.aria-expanded]="accountOpen()"
+                (click)="toggleAccountMenu()"
+              >
+                <span>Signed in as {{ customerAuth.email() }}</span>
+                <span class="riv-caret" aria-hidden="true">&#9662;</span>
+              </button>
+
+              @if (accountOpen()) {
+                <div class="riv-backdrop" data-testid="account-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
+                <div class="riv-pop riv-pop-in riv-account-pop" data-testid="nav-account-menu">
+                  <a
+                    routerLink="/account/password"
+                    class="riv-account-item"
+                    data-testid="nav-account-link"
+                    >Your account</a
+                  >
+                  <button
+                    type="button"
+                    class="riv-account-item riv-account-btn"
+                    data-testid="nav-signout"
+                    (click)="signOut()"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              }
+            </div>
           } @else {
             <a routerLink="/account/sign-in" class="riv-nav-link" data-testid="nav-signin">Sign in</a>
             <a
@@ -153,8 +178,16 @@
           <!-- Customer auth (S2 #111), mobile menu twin of the desktop controls. -->
           @if (!customerAuth.restoring()) {
             @if (customerAuth.signedIn()) {
+              <!-- Account group (#351): flattened into the sheet, per the riv-mobile-theme precedent. -->
               <span class="riv-mobile-user" data-testid="nav-user-mobile"
                 >Signed in as {{ customerAuth.email() }}</span
+              >
+              <a
+                routerLink="/account/password"
+                class="riv-mobile-link"
+                data-testid="nav-account-link-mobile"
+                (click)="closeMenus()"
+                >Your account</a
               >
               <button
                 type="button"

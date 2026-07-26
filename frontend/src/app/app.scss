@@ -171,9 +171,11 @@
   font-size: inherit;
 }
 
-// The "Signed in as …" label in the desktop nav (S2 #111): inline, non-interactive; full contrast
-// (no opacity) so it stays AA next to the interactive links.
+// The "Signed in as …" account-menu trigger (S2 #111, #351): full contrast (no opacity) for AA.
 .riv-nav-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   color: inherit;
   font-size: 13.5px;
   font-weight: 600;
@@ -289,6 +291,47 @@
   color: #0a6e85;
   font-size: 15px;
   font-weight: 700;
+}
+
+/* ---- account menu (#351) ---- */
+
+.riv-account-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.riv-account-pop {
+  top: calc(100% + 10px);
+  right: 0;
+  width: 186px;
+  padding: 7px;
+}
+
+.riv-account-item {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a2a33;
+  text-decoration: none;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: rgba(12, 42, 51, 0.06);
+  }
+}
+
+.riv-account-btn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 /* ---- mobile menu ---- */

@@ -42,11 +42,22 @@ export class App {
 
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
+  /**
+   * The signed-in account menu (#351) — the tourist's entry point to `/account/password`, which
+   * until now was reachable only by typing the URL.
+   *
+   * <p><strong>A disclosure, deliberately not an ARIA `menu`.</strong> `role="menu"`/`menuitem`
+   * would oblige roving `tabindex` + arrow-key navigation to be correct; the theme options were
+   * downgraded off the sibling ARIA radio pattern for exactly that reason. This is a button with
+   * `aria-expanded` revealing plain links — the same shape as `riv-theme-picker`.
+   */
+  protected readonly accountOpen = signal(false);
   /** The "Find a booking" glass modal (issue #148) — a shell-level, nav-triggered overlay. */
   protected readonly findOpen = signal(false);
 
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
+  private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
   private readonly findButton = viewChild<ElementRef<HTMLButtonElement>>('findButton');
   private readonly mainRef = viewChild<ElementRef<HTMLElement>>('mainEl');
   /** The control to hand focus back to when the find modal is dismissed (desktop trigger or, when
@@ -104,6 +115,7 @@ export class App {
         this.findOpen.set(false);
         this.menuOpen.set(false);
         this.themeOpen.set(false);
+        this.accountOpen.set(false);
         // A find that succeeded navigated away, destroying the modal that held focus; move focus to
         // the main content region so a keyboard/AT guest lands on the new page rather than
         // document.body (WCAG 2.4.3 — review finding [4]).
@@ -120,6 +132,7 @@ export class App {
       (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
     this.menuOpen.set(false);
     this.themeOpen.set(false);
+    this.accountOpen.set(false);
     this.findOpen.set(true);
   }
 
@@ -131,12 +144,21 @@ export class App {
 
   protected toggleMenu(): void {
     this.themeOpen.set(false);
+    this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   protected toggleThemePicker(): void {
     this.menuOpen.set(false);
+    this.accountOpen.set(false);
     this.themeOpen.update((open) => !open);
+  }
+
+  /** Toggle the signed-in account menu (#351); only one header popover is open at a time. */
+  protected toggleAccountMenu(): void {
+    this.menuOpen.set(false);
+    this.themeOpen.set(false);
+    this.accountOpen.update((open) => !open);
   }
 
   protected selectTheme(id: ThemeId): void {
@@ -144,9 +166,10 @@ export class App {
     this.closeMenus();
   }
 
-  /** Sign the customer out (S2 #111) — clears the session server-side; closes the mobile menu first. */
+  /** Sign the customer out (S2 #111) — clears the session server-side; closes the menus first. */
   protected async signOut(): Promise<void> {
     this.menuOpen.set(false);
+    this.accountOpen.set(false);
     await this.customerAuth.signOut();
   }
 
@@ -168,6 +191,10 @@ export class App {
     if (this.themeOpen()) {
       this.themeOpen.set(false);
       this.themeButton()?.nativeElement.focus();
+    }
+    if (this.accountOpen()) {
+      this.accountOpen.set(false);
+      this.accountButton()?.nativeElement.focus();
     }
   }
 }
