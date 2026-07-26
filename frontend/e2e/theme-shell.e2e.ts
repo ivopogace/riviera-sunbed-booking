@@ -179,8 +179,7 @@ test.describe('account menu', () => {
     await page.goto('/');
     await openAccountMenu(page);
 
-    // The theme toggle sits under the backdrop while the menu is open: the click closes the
-    // menu instead of reaching it, so the picker stays shut.
+    // The click lands on the backdrop, not the toggle under it — so the picker stays shut.
     await page.getByTestId('theme-toggle').click({ force: true });
     await expect(page.getByTestId('nav-account-menu')).toBeHidden();
     await expect(page.getByTestId('theme-option-porcelain')).toBeHidden();

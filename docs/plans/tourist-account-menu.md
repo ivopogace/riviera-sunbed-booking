@@ -230,7 +230,16 @@ what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-STYLE-1) | five inline comments I wrote ran to two lines — `theme-shell.e2e.ts` (backdrop), `app.html` ×2 (both new markup comments), `app.scss` (the rewritten `riv-nav-user` note), `app.spec.ts` (the disclosure rationale) | fixed — all shortened to one line; re-verified `npm run lint`, `npm test` 885/885, `theme-shell` e2e 9/9 |
+| F-2 | review (RV-FE-7) | new styling is **SCSS, not Tailwind**, against the go-forward | **accepted deviation, flagged for the reviewer** — it extends the existing `riv-pop`/`riv-theme-pop` recipe in an otherwise-SCSS shell stylesheet, and the popover's positioning depends on it. Recorded at plan time as R-4 and in *Skills consulted*. Reviewer's call to overrule |
+
+**Review-gate walk (frontend bank, `references/frontend-conventions.md`):** RV-FE-1 ✅ (greppable
+sweep for `standalone: true` / `OnPush` / `ngClass` / `ngStyle` / `@HostBinding` / `@HostListener` /
+`as any` over the added lines → none) · RV-FE-7 ❓ → F-2 · RV-FE-E2E ✅ (mocked CI suite, test-id
+locators, web-first assertions, no fixed sleeps, per-test `page.route` isolation) · RV-STYLE-1 ⛔ →
+F-1, fixed · RV-PROC-1 ✅ (*Skills consulted* names `riviera-frontend`, `riviera-tailwind`,
+`angular-developer` + the MCP, `playwright-cli` — every area the diff touches) · RV-FE-2/3/4/5/6 ➖
+(no beach map, money, dates, payment or forms in this diff).
 
 ---
 

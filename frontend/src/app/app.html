@@ -61,8 +61,7 @@
              startup /me restore settles so the signed-in state doesn't flash "Sign in" first. -->
         @if (!customerAuth.restoring()) {
           @if (customerAuth.signedIn()) {
-            <!-- Account menu (#351): the in-app entry point to /account/password. A disclosure,
-                 not role=menu — see App.accountOpen for why. -->
+            <!-- Account menu (#351) — a disclosure, not role=menu; see App.accountOpen for why. -->
             <div class="riv-account-menu">
               <button
                 #accountButton
@@ -179,8 +178,7 @@
           <!-- Customer auth (S2 #111), mobile menu twin of the desktop controls. -->
           @if (!customerAuth.restoring()) {
             @if (customerAuth.signedIn()) {
-              <!-- Account group (#351): the mobile twin of the desktop popover, flattened into the
-                   sheet rather than nested — the riv-mobile-theme precedent. -->
+              <!-- Account group (#351): flattened into the sheet, per the riv-mobile-theme precedent. -->
               <span class="riv-mobile-user" data-testid="nav-user-mobile"
                 >Signed in as {{ customerAuth.email() }}</span
               >

@@ -171,8 +171,7 @@
   font-size: inherit;
 }
 
-// The "Signed in as …" control in the desktop nav (S2 #111): since #351 it is the account-menu
-// trigger, not a label. Full contrast (no opacity) so it stays AA next to the interactive links.
+// The "Signed in as …" account-menu trigger (S2 #111, #351): full contrast (no opacity) for AA.
 .riv-nav-user {
   display: inline-flex;
   align-items: center;

@@ -160,8 +160,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(link?.textContent).toContain('Your account');
     expect(el.querySelector('[data-testid="nav-signout"]')).not.toBeNull();
 
-    // A disclosure, NOT an ARIA menu: role=menu/menuitem would oblige roving tabindex and
-    // arrow-key navigation (the theme-options precedent, WCAG 4.1.2).
+    // A disclosure, NOT an ARIA menu — role=menu would oblige roving tabindex (WCAG 4.1.2).
     expect(el.querySelector('[data-testid="nav-account-menu"]')?.getAttribute('role')).toBeNull();
     expect(link?.getAttribute('role')).toBeNull();
   });
