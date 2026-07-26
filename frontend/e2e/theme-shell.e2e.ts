@@ -136,6 +136,9 @@ test.describe('account menu', () => {
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('nav-account-menu')).toBeHidden();
 
+    // The one new interactive control in the nav row must hover like its siblings (#355 review).
+    await expect(trigger).toHaveCSS('cursor', 'pointer');
+
     await openAccountMenu(page);
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByTestId('nav-account-link')).toBeVisible();

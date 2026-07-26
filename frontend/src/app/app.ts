@@ -169,6 +169,9 @@ export class App {
   protected async signOut(): Promise<void> {
     this.menuOpen.set(false);
     this.accountOpen.set(false);
+    // Sign-out unmounts the control that was clicked without navigating, so nothing else would
+    // catch focus — park it on main rather than let it strand on document.body (WCAG 2.4.3).
+    this.mainRef()?.nativeElement.focus();
     await this.customerAuth.signOut();
   }
 

@@ -78,10 +78,12 @@
               @if (accountOpen()) {
                 <div class="riv-backdrop" data-testid="account-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
                 <div class="riv-pop riv-pop-in riv-account-pop" data-testid="nav-account-menu">
+                  <!-- Closes itself: a same-URL activation emits NavigationSkipped, not NavigationEnd. -->
                   <a
                     routerLink="/account/password"
                     class="riv-account-item"
                     data-testid="nav-account-link"
+                    (click)="closeMenus()"
                     >Your account</a
                   >
                   <button

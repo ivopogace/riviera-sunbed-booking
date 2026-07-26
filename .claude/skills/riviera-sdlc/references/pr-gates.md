@@ -30,12 +30,19 @@ lives in SKILL.md ("The loop"); this file cites it rather than restating it.
    > banks unrun, and those are where the non-project-specific defects live. Half the gate is
    > not the gate.
    >
-   > **Blocked on `/code-review`? Try `/review <PR>` first — it is not the same tool.**
-   > `/code-review` runs as a **subagent**, so a session under a standing "don't use the Agent
-   > tool" instruction cannot start it. **`/review <PR>` loads as a plain skill and runs
-   > inline**, needs no subagent, and walks the same generic banks against the PR diff (fetch
-   > the diff with the GitHub MCP tools — `gh` is absent in cloud sessions, and the skill's
-   > instructions assume it). Reach for `/review` before concluding the gate is unrunnable.
+   > **`/code-review` is the default — it is the strongest of the three, by measurement.**
+   > It runs as a forked **subagent** fan-out, and on the #351 slice it found three defects that
+   > both the hand-walked overlay *and* inline `/review` had missed: a same-URL activation that
+   > left the popover stuck open (`NavigationSkipped` ≠ `NavigationEnd`), a second focus-strand
+   > in `signOut()` of the very WCAG class the slice had just fixed elsewhere, and a dropped
+   > `cursor: pointer`. Start it first, every time. A standing "don't use the Agent tool"
+   > session instruction is **not** a reason to skip it — ask the human to authorize the
+   > subagent, since that is a one-line answer and the findings above are what it buys.
+   >
+   > **Fallback, only if the subagent genuinely cannot run: `/review <PR>`** — a plain skill
+   > that runs inline against the same banks (fetch the diff with the GitHub MCP tools; `gh`
+   > is absent in cloud sessions and the skill's instructions assume it). It is weaker than
+   > `/code-review`, so treat it as a degraded mode and say so in the PR.
    >
    > **If neither can start, say so — never substitute silently.** That is a legitimate blocker
    > and an illegitimate secret: **leave the PR's review checkbox unticked, write one line in
