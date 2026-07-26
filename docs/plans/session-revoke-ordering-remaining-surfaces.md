@@ -251,15 +251,16 @@ values, same non-enumerating reset rejection.
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phases 0–1 done, entering phase 2`
 
-**Next action:** Phase 1 — write the failing `AdminOperatorControllerTest` (AC-6…AC-9, AC-12) and the
-`OperatorLifecycleIT` status cases (AC-10), then add `activeUsername` and bracket the suspension.
+**Next action:** Phase 2 — write the failing `AccountRecoveryControllerTest` (AC-1…AC-4) and the
+`CustomerAccountRecoveryIT` non-consuming-read cases (AC-5), then add `emailForResetToken` and bracket
+the reset.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Erasure: bracket the scrub (no port change) | ✅ | `280b97a` |
-| 1 — Suspend: `activeUsername` pre-read + bracket the transition | | |
+| 1 — Suspend: `activeUsername` pre-read + bracket the transition | ✅ | `fdf474e` |
 | 2 — Reset: resolve-without-consume pre-read + bracket the write | | |
 | 3 — Substrate + close-out | | |
 
