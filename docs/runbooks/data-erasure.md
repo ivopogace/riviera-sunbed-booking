@@ -17,7 +17,7 @@ references (`booking.customer_id` / `account_id` are `ON DELETE RESTRICT`).
 | `customer.email` / `full_name` / `phone` | tombstoned (`erased+<id>@erased.invalid` / `ERASED` / `ERASED`), `erased_at` set | guest-contact PII |
 | `customer_sso_identity` rows | **deleted** | transient credential (provider subject + email) |
 | `customer_account_token` rows | **deleted** | transient bearer digests |
-| server-side sessions for the subject | **revoked** (`CustomerSessionRevoker`) | the subject is signed out everywhere |
+| server-side sessions for the subject | **revoked** (`PrincipalSessionRevoker`), before *and* after the scrub | the subject is signed out everywhere; revoking first means a failed revoke leaves the data intact and the retry works, revoking again afterwards stops a sign-in landing in between from outliving the erasure (#357) |
 | `booking`, `payment`, `payout_ledger_entry` | **untouched** | statutory-retention exception (tax/accounting; GDPR Art 17(3)(b)); the ledger holds no PII, so auditability (invariant #9) is preserved |
 
 Erasure is **idempotent** — every scrub is guarded on `erased_at IS NULL`. Re-running it is safe.

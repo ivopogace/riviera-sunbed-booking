@@ -178,7 +178,12 @@ invariant #11.
 > `SPRING_SESSION` rows (`PrincipalSessionRevoker`, generalized from the S8 customer-only revoker) —
 > synchronous and edge-orchestrated, deliberately not an event. The same revoker fires on a genuine
 > credential rotation and on a customer's own password change. An admin cannot suspend itself
-> (`409 CANNOT_SUSPEND_SELF`). **#326 gave operators the customer-equivalent self-service**
+> (`409 CANNOT_SUSPEND_SELF`). **#357 made that revoke bracket the transition**: the edge now also
+> revokes *before* it, keyed by the new `OperatorLifecycle#activeUsername` pre-read, so a transient
+> revoke failure leaves the account ACTIVE (the retry then does both) instead of committing a
+> suspension whose sessions stay alive; the trailing revoke stays, closing the window in which the
+> account is still ACTIVE. The same bracket now wraps the customer password **reset** (via the
+> resolve-without-consume `CustomerAccountRecovery#emailForResetToken`) and self-service **erasure**. **#326 gave operators the customer-equivalent self-service**
 > (`POST /api/auth/operator/password`, own per-IP budget, page `/account/operator-password`): prove the
 > current password → every *other* session of that operator is revoked and the hash is replaced, the
 > calling one surviving. (#326 shipped the reverse order; the arrow above describes the post-#344 code.)

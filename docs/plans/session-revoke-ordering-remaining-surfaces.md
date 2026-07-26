@@ -265,6 +265,20 @@ values, same non-enumerating reset rejection.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**`riviera-docs-freshness` run** (phase 3, range `main..HEAD`) — 4 findings, all patched in this PR:
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `CLAUDE.md:176-180` | "#128 … the module flips the status and returns the username, and the edge deletes that principal's `SPRING_SESSION` rows" — present-tense, revoke-after-only | the edge now also revokes *before* the transition, via `activeUsername` | patched (one sentence, covering all three sites) |
+| `RESPONSIBILITIES.md:213` | `operator` "Answer **three** things for the rest of the system" | it now answers a fourth: *what is the ACTIVE operator with this id called?* | patched |
+| `RESPONSIBILITIES.md:200-203` | the S8 `CustomerAccountRecovery` port's method list | gained the resolve-without-consume reset-token read | patched |
+| `docs/runbooks/data-erasure.md:20` | "sessions … **revoked** (`CustomerSessionRevoker`)" | **stale since #128** — the class is `PrincipalSessionRevoker` — and now revoked on both sides of the scrub | patched (both halves) |
+
+Checked and deliberately **not** patched: `ADR-0010:53` names `CustomerSessionRevoker` only as history
+("generalized from … in #128"), which stays true; `docs/runbooks/operator-credential-provisioning.md`
+describes the #344 password-change ordering, which this slice does not touch, and its "have an admin
+suspend the account (which revokes every session)" line is still accurate.
+
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix re-enters at
 Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for what the fix touches
 *before* editing).
