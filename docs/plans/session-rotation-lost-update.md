@@ -209,7 +209,7 @@ row 2), so no e2e spec changes and `playwright-cli` is not triggered.
 |-------|--------|---------|
 | 0 — Red: pin the lost update | ✅ | `beacc58` |
 | 1 — Green: authoritative rotate | ✅ | `19a10de` |
-| 2 — Generalize: login path, customer twin, principal-index parity | ✅ | `<phase-2>` |
+| 2 — Generalize: login path, customer twin, principal-index parity | ✅ | `dc35a9a` |
 
 **Verified so far:** phase 0 was red with `Status expected:<401> but was:<200>` (the retired cookie
 authenticating again) and is green after phase 1. Regression sweep
