@@ -68,12 +68,12 @@ class MyAccountController {
 	 * matching current password (else {@code 400 INVALID_CURRENT_PASSWORD}). A weak new password is
 	 * {@code 400 INVALID_REQUEST}.
 	 *
-	 * <p>The success-path effects are <strong>ordered, not transactional</strong> (#344) — revoke, write,
-	 * rotate. {@link OperatorAccountController#changePassword} carries the full rationale; this is its
-	 * customer twin and must not drift from it. In short: revoking first means a failure can only ever
-	 * leave the password unchanged, so the customer's natural retry works, and rotating the surviving
-	 * session id last (after the revoke has been handed the pre-rotation id) retires the cookie value that
-	 * proved the old credential.
+	 * <p>The success-path effects are <strong>ordered, not transactional</strong> (#344) — encode, revoke,
+	 * write, rotate. {@link OperatorAccountController#changePassword} carries the full rationale, including
+	 * what the ordering does <em>not</em> buy; this is its customer twin and must not drift from it. In
+	 * short: revoking first means a <em>revoke</em> failure leaves the password unchanged, so the customer's
+	 * natural retry works, and rotating the surviving session id last — after the revoke has been handed the
+	 * pre-rotation id — retires the cookie value that proved the old credential.
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {

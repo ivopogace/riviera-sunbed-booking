@@ -33,6 +33,10 @@ Spring Session repository. No table, column, or constraint changes.
   `ModularityTests` is a regression check here rather than a design constraint.
 - `riviera-plan-doc` — this document's structure.
 - `riviera-local-debug` — scoped-test recipe for the session's Gradle runs.
+- `tdd` + `riviera-review-overlay` — the always-on spine: red-first on every phase, and the RV-BE/RV-STYLE/
+  RV-PROC bank walked at the review gate.
+- `riviera-docs-freshness` — the pre-merge substrate staleness smoke that caught the stale CLAUDE.md #326
+  claim (recorded in the generalization-audit log).
 - `postgres` — **N/A**, no migration and no new SQL in the diff (the session deletes go through
   Spring Session's repository, the credential writes through existing module ports).
 - `riviera-frontend` / `angular-developer` / `playwright-cli` — **N/A**, no frontend change: the
@@ -51,11 +55,13 @@ Spring Session repository. No table, column, or constraint changes.
   A, then every *other* session of that principal is gone, device A is still authenticated, **and
   the session id device A presented before the change no longer authenticates** — the response
   carries a new `SESSION` cookie that does.
-  *Pinned by:* `OperatorPasswordChangeIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies`
+  *Pinned by:* `OperatorPasswordChangeIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies` (rotation) +
+  `.theChangeRevokesEveryOtherSessionButKeepsTheCallingOne` (the other-sessions half)
 - [ ] **AC-2:** Given a customer signed in on two devices, when it changes its password from device
   A, then the same holds — others revoked, A still authenticated under a **new** session id, old
   cookie value dead.
-  *Pinned by:* `SetPasswordIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies`
+  *Pinned by:* `SetPasswordIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies` (rotation) +
+  `.changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne` (the other-sessions half)
 - [ ] **AC-3:** Given a successful change, when the two success-path effects run, then the session
   revoke is invoked **before** the credential write — so a failing write can never leave the hash
   rotated while the caller is told it was not, and the natural retry with the current password works.
@@ -70,8 +76,9 @@ Spring Session repository. No table, column, or constraint changes.
 - [ ] **AC-6:** Given a *rejected* change (wrong current password), when it is submitted, then nothing
   is revoked, nothing is written, **and the caller's session id is unchanged** — the rotation is a
   success-path effect only.
-  *Pinned by:* `OperatorAccountControllerTest.aRejectedChangeLeavesTheSessionIdUntouched`,
-  `MyAccountControllerTest.aRejectedChangeLeavesTheSessionIdUntouched`
+  *Pinned by:* `{Operator,My}AccountControllerTest.aRejectedChangeLeavesTheSessionIdUntouched` (the session-id
+  half) plus `OperatorAccountControllerTest.rejectsWrongCurrentPasswordWithoutRevoking` and the customer
+  method's own `verify(recovery, never())` (the nothing-written/nothing-revoked half)
 - [ ] **AC-7:** Given a request with no server-side session, when the session-identity helper rotates,
   then it is a no-op rather than the `IllegalStateException` `changeSessionId()` is specified to
   throw; and reading the current id never creates a session as a side effect.
@@ -115,14 +122,14 @@ template says must be verified row by row.
 | The calling session keeps its **id** | **changed** | now rotated on success (issue #344 part 2). A **browser** client is unaffected — `SessionRepositoryFilter` writes the replacement `SESSION` cookie on the same response and CSRF is cookie-backed, not session-backed — but **any client that caches the cookie value rather than following `Set-Cookie` must carry the new one forward**. That is exactly what broke two pre-existing ITs (finding F-2); the ledger row originally read "preserved" for "the calling session stays signed in", which was true of the *session* and false of the *cookie value*, and that gap is what let the CI failure through |
 | A revoke failure surfaced as `500` **after** the hash had rotated | **changed** | the revoke now precedes the write, so a `500` means the password genuinely did not change |
 | SSO-only customer sets a first password with no current-password check | preserved | the F-1 branch in `MyAccountController` is untouched |
-| Session-less (`.with(user(…))`) callers succeed | preserved | rotation is null-guarded (AC-7) |
+| A request with no server-side session succeeds | preserved | rotation is null-guarded (AC-7). Note the ledger originally cited `.with(user(…))` as this case; that was wrong — the post-processor creates a session — and R-3 records the correction |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **Rotating before revoking would delete the caller's own session.** During the request the `SPRING_SESSION` row still carries the *old* id (the filter only persists the new one at commit), so `revokeAllExcept(user, newId)` would find the old id, not match the keep-id, and delete the row — signing the caller out and silently discarding the later `UPDATE … WHERE PRIMARY_ID`. | high if written naively | high | Order is fixed and commented: revoke with the **pre-rotation** id, rotate last. AC-1/AC-2 assert the calling session still works *after* the change, which fails loudly if this is ever reordered. | claude | closed — pinned by AC-8 in both `@WebMvcTest`s (the captured keep-id must equal the pre-rotation id) |
-| R-2 | **Revoke-first opens a sub-millisecond race**: someone who already holds the old password could sign in between the revoke and the write, and that new session survives. | very low | med | Accepted, and strictly smaller than the defect it replaces (a transport blip today leaves the other device alive *permanently* while telling the operator nothing happened). Documented on the method. Anyone in that window already has the password; the change is what stops them from repeating it. | claude | closed — accepted by design (D-1), documented on `OperatorAccountController.changePassword` |
+| R-2 | **Revoke-first opens a short race**: someone who already holds the old password could sign in between the revoke and the write, and that new session survives. **Originally rated "sub-millisecond" — wrong by two orders of magnitude** (F-4): the bcrypt encode was an argument to the write, so it sat inside the window at ~80ms. The encode is now hoisted above the revoke, leaving one credential UPDATE. | very low | med | Accepted, and strictly smaller than the defect it replaces (a transport blip today leaves the other device alive *permanently* while telling the operator nothing happened). Documented on the method. Anyone in that window already has the password; the change is what stops them from repeating it. | claude | closed — accepted by design (D-1), documented on `OperatorAccountController.changePassword` |
 | R-3 | **`changeSessionId()` on a request with no session throws `IllegalStateException`** — assumed to bite the `.with(user(…))` harness paths. | **overstated** | med | Rotation is guarded by a `getSession(false) != null` check in `SessionIdentity`. **Corrected during phase 1:** the premise was wrong — `SecurityMockMvcRequestPostProcessors.user(…)` stores the test `SecurityContext` in a session, so *every* `with(user(…))` request already has one and the guard is unreachable from a web slice. The guard is kept as defence (the servlet contract really does throw) but is pinned where it is actually observable, in `SessionIdentityTest`, not through MockMvc. | claude | closed — guard shipped + pinned in `SessionIdentityTest` |
 | R-4 | **The rotation is asserted through a mock and proves nothing** — a `@WebMvcTest` can only see that `changeSessionId()` was called, not that the old `SPRING_SESSION` row value is dead. | med | high | The AC-1/AC-2 pins are **Testcontainers ITs** driving the real `SessionRepositoryFilter` + real `SPRING_SESSION`: assert the pre-change cookie now `401`s and the response's new cookie `200`s (`riviera-java-conventions` §9). | claude | closed — AC-1/AC-2 run against real Testcontainers Postgres and pass (old cookie 401s, re-issued cookie 200s) |
 | R-5 | **Rate-limit bucket collision in the cached full-suite context** (#127 class): new IT methods hitting the change endpoint share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new IT request carries `SessionLoginSupport.uniqueClientIp()`, matching the existing methods in both IT classes. | claude | closed — every new IT request carries `SessionLoginSupport.uniqueClientIp()`; the full CI suite (833 tests) exercised it |
@@ -155,9 +162,11 @@ _None open._
   session deletes go through Spring Session's own repository, whose unit of work the edge does not
   own. An annotation that *looks* atomic without being atomic is worse than no annotation.
   (b) *Ordering is correct regardless of any transaction boundary*, which is the property actually
-  wanted here. Revoke-then-write leaves exactly two reachable failure states — "nothing happened"
-  and "other sessions signed out, password unchanged" — and in **both** the operator's natural
-  retry with their current password succeeds. The reported harm (retry rejected as
+  wanted here. A **revoke** failure — the transient class this issue is about — now leaves either
+  "nothing happened" or "other sessions signed out, password unchanged", and in both the operator's natural
+  retry with their current password succeeds. It does **not** make every `500` mean "nothing changed": a
+  failure *after* the write, including Spring Session's post-filter save of the rotated id, still reports an
+  error with the password already changed. Corrected at the review gate (F-3); the runbook now says so. The reported harm (retry rejected as
   `INVALID_CURRENT_PASSWORD` because the hash silently rotated) becomes unreachable. The cost is
   R-2, accepted above.
 - **D-2 — Rotate the surviving session id via `HttpServletRequest#changeSessionId()`**, after a
@@ -174,8 +183,9 @@ session rows; no `availability(set_id, booking_date)` write path, no booking, no
 
 ## Spring Modulith — modules, interfaces, events
 
-**Modules touched: none.** All three changed classes (`OperatorAccountController`,
-`MyAccountController`, `PrincipalSessionRevoker`) live in the root package `ai.riviera.platform`,
+**Modules touched: none.** Every changed class — `OperatorAccountController`, `MyAccountController`, the
+new `SessionIdentity`, plus Javadoc-only `PrincipalSessionRevoker` and the `SessionAuthentication`
+dedupe — lives in the root package `ai.riviera.platform`,
 which is not a module — session and credential-verification machinery is deliberately platform-edge
 (RV-BE-11, `OperatorAuthPlacementTests`). No `api/`/`spi/`/`events/`/`vocabulary/` type is added,
 moved, or renamed; no `allowedDependencies` grant changes; no Event Publication Registry rewrite.
@@ -219,7 +229,7 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 **Stage pointer:** `merge close-out — awaiting the green CI + Sonar re-run on the F-2 fix`
 
 **Next action:** Confirm CI green and pull the SonarCloud new-issue + duplication list for PR #358;
-then merge. Merged via **PR #358**.
+then merge. This slice merges via **PR #358** (open at the time of writing).
 
 **Review-gate note.** `/code-review` — the subagent fan-out the gate names as its default — is **not
 available in this session's skill set**; only the inline `/review` skill is. Per
@@ -231,7 +241,7 @@ the stronger review had run. One finding (F-1) came out of it and is fixed.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Ordering + rotation, operator side (red → green) | ✅ | `d5fa2e0` |
-| 1 — Same for the customer side + the two rotation ITs | ✅ | this commit |
+| 1 — Same for the customer side + the two rotation ITs | ✅ | `82ca753` |
 | 2 — Runbook correction + follow-up issue for the deferred siblings | ✅ | `066fe01` (issue #357 filed) |
 
 **Local verification note (updated at the CI gate):** Docker was initially unavailable, so the
@@ -248,6 +258,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review (`/review` + overlay, doc accuracy) | `SessionIdentity.currentId`'s Javadoc claimed the null case covers "MockMvc's `with(user(…))` harness". False — that post-processor stores the test `SecurityContext` in a session — and it contradicted `SessionIdentityTest`'s own Javadoc **in the same PR**, i.e. the diff shipped a doc that its own test disproves. | fixed-in review round 1 |
+| F-3 | review (docs agent) | The runbook, plan doc, CLAUDE.md and both controller Javadocs claimed a `500` means the password did not change. Overstated: a failure *after* the write — including Spring Session's post-filter save of the rotated id — reports an error with the password already changed. An operator acting on that line would draw the wrong conclusion. | fixed-in review round 2 |
+| F-4 | review (correctness agent) | The bcrypt encode was an argument to `setPassword`, so it ran *inside* the revoke→write window that the docs called "sub-millisecond". Measured ~80ms — the window was ~80–150ms, and R-2's "very low" likelihood rested on the wrong number. Encode hoisted above the revoke. | fixed-in `945a119` |
+| F-5 | review (correctness agent) | `changeSessionId()` is persisted by the filter after the request, so a concurrent request on the same session writes the OLD id back — resurrecting the cookie the rotation exists to kill. Not introduced here, but #344 is the first slice to depend on the rotation for a security guarantee. | deferred → issue #359, noted on `SessionIdentity.rotate` |
+| F-6 | review (conventions + docs agents) | Plan doc listed `PrincipalSessionRevoker.java` as changed when it was not, and never named `SessionIdentity.java`/`SessionIdentityTest.java` — the slice's only new production type and the sole AC-7 pin. Also: the ordering contract was stated only on `SessionIdentity.rotate`, not on the revoker a caller reads first. | fixed-in review round 2 (both files now genuinely changed) |
+| F-7 | review (conventions agent) | `SessionIdentity`'s Javadoc said the rotation "lives here once" — false: `SessionAuthentication` had carried a byte-identical guarded rotation since S1. It now calls `SessionIdentity.rotate`, so the claim is true. | fixed-in review round 2 |
+| F-8 | review (test-quality + docs agents) | Assorted doc/test precision: `MyAccountControllerTest`'s "customer side had only ITs" (false — `MeSurfaceRoleGateTest`), the customer rejected-change test not asserting `never().setPassword`, AC-1/AC-2/AC-6 pin lists incomplete, two unrelated "R-1"s in one test class, the `.with(user(…))` session-less ledger row, and "merged via PR #358" asserted while the PR was open. | fixed-in review round 2 |
 | F-2 | CI (`Backend (build + test)`, 833 tests / 2 failed, PR #358 head `11e4f4d`) | `OperatorPasswordChangeIT.theChangeRevokesEveryOtherSessionButKeepsTheCallingOne` and `SetPasswordIT.changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne` asserted "my session survives" by **re-presenting the pre-change cookie value** — the exact thing the rotation is designed to kill, so both went `401`. The tests' intent is unchanged and correct; their mechanism was stale. Both now follow the re-issued `SESSION` cookie from the change response, with an `assertNotNull` so a *dropped* session fails loudly instead of silently passing. **Root cause is a plan miss, not a code defect:** the behavior-parity ledger recorded "the calling session stays signed in — preserved" without noticing that a cookie-caching client sees a changed contract. Ledger row corrected above. | fixed-in review round 1 |
 
 ---
@@ -257,12 +273,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/OperatorAccountController.java` — reorder the two
   effects; rotate the surviving session on success.
 - `platform/src/main/java/ai/riviera/platform/MyAccountController.java` — the identical twin change.
+- `platform/src/main/java/ai/riviera/platform/SessionIdentity.java` — **new**; the edge helper holding the
+  session-id read and the rotation, plus the #359 limitation note.
+- `platform/src/main/java/ai/riviera/platform/SessionAuthentication.java` — now calls `SessionIdentity.rotate`
+  instead of its own byte-identical guarded rotation (review finding: the idiom existed twice).
 - `platform/src/main/java/ai/riviera/platform/PrincipalSessionRevoker.java` — Javadoc only: record the
-  revoke-before-write ordering contract next to the `keepSessionId` contract it constrains.
-- `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java` — AC-3, AC-4, AC-6.
-- `platform/src/test/java/ai/riviera/platform/MyAccountControllerTest.java` — **new**; AC-5, AC-7.
-  The customer twin has no `@WebMvcTest` today (only ITs), which is why its half of #344 had no
+  revoke-before-write **and** pre-rotation-keep-id ordering contracts next to the `keepSessionId` contract
+  they constrain, so the constraint is not stated on only one side of the pair.
+- `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java` — AC-3, AC-4, AC-6, AC-8.
+- `platform/src/test/java/ai/riviera/platform/MyAccountControllerTest.java` — **new**; AC-5, AC-6, AC-8.
+  No web slice pinned this endpoint's revoke/write *ordering* before it — `MeSurfaceRoleGateTest` is a
+  `@WebMvcTest` that POSTs here, but only to prove the role gate — so the customer half of #344 had no
   cheap pin.
+- `platform/src/test/java/ai/riviera/platform/SessionIdentityTest.java` — **new**; the sole pin for AC-7.
 - `platform/src/test/java/ai/riviera/platform/OperatorPasswordChangeIT.java` — AC-1.
 - `platform/src/test/java/ai/riviera/platform/SetPasswordIT.java` — AC-2.
 - `docs/runbooks/operator-credential-provisioning.md` — replace the #342 "rotating the surviving

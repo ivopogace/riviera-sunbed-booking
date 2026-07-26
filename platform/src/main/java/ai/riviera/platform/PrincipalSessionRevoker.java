@@ -44,6 +44,12 @@ class PrincipalSessionRevoker {
 	 * Delete every session of {@code principalName} except {@code keepSessionId} — the self-service
 	 * password-change case, where the point is to evict everyone <em>else</em> (a shared device, a
 	 * thief) while leaving the session doing the change signed in. Pass {@code null} to keep nothing.
+	 *
+	 * <p><strong>Two ordering constraints bind the password-change callers</strong> (#344). Call this
+	 * <em>before</em> the credential write, so a failure here cannot leave the hash rotated behind an error
+	 * saying nothing happened. And pass the <em>pre-rotation</em> id: {@link SessionIdentity#rotate} must run
+	 * after this call, because the stored row keeps the old id until the filter commits — a keep-id taken
+	 * after rotating matches no row, so the caller's own session would be deleted by its own revoke.
 	 */
 	void revokeAllExcept(String principalName, String keepSessionId) {
 		sessions.findByPrincipalName(principalName).keySet().stream()

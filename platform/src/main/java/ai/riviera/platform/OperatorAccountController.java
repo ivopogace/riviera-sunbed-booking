@@ -87,14 +87,24 @@ class OperatorAccountController {
 	 * write and the session deletes belong to different owners — a module's own transaction and Spring
 	 * Session's repository — so a {@code @Transactional} here would look atomic without being atomic, and
 	 * would push the edge's transaction boundary into module internals (RV-BE-11). Ordering achieves the
-	 * property that was actually wanted, and achieves it whatever those boundaries turn out to be: revoking
-	 * first leaves only two reachable failure states — nothing happened, or other sessions were signed out
-	 * and the password was not changed — and the operator's natural retry recovers from both. Written the
-	 * other way round (as #326 shipped it) a transient revoke failure raised {@code 500} <em>after</em> the
-	 * hash had rotated, so the retry drew {@code INVALID_CURRENT_PASSWORD} and the other device stayed live.
-	 * The cost is a sub-millisecond window in which someone already holding the old password could sign in
-	 * and survive; that is accepted as strictly smaller than a permanently un-revoked session paired with an
-	 * error message saying nothing happened.
+	 * property that was actually wanted, and achieves it whatever those boundaries turn out to be: a
+	 * <strong>revoke</strong> failure — the transient class this fixes — now leaves either nothing done, or
+	 * other sessions signed out with the password unchanged, and the operator's natural retry recovers from
+	 * both. Written the other way round (as #326 shipped it) that same failure raised {@code 500}
+	 * <em>after</em> the hash had rotated, so the retry drew {@code INVALID_CURRENT_PASSWORD} and the other
+	 * device stayed live.
+	 *
+	 * <p><strong>What the ordering does not buy.</strong> A failure <em>after</em> the write still reports an
+	 * error with the password already changed — including Spring Session's save of the rotated id, which runs
+	 * in the filter after this method returns and so is outside any ordering decided here. Only a shared
+	 * transaction could close that, and there is none to share; the runbook therefore tells an operator to
+	 * try the NEW password before concluding a failed change was lost.
+	 *
+	 * <p><strong>The residual race.</strong> Between the revoke and the write, someone already holding the
+	 * old password could sign in and keep that session. The window is one credential UPDATE — the bcrypt
+	 * encode is hoisted above the revoke deliberately, since at ~80ms it would otherwise dominate it. That
+	 * is accepted as strictly smaller than the defect it replaces: a permanently un-revoked session paired
+	 * with an error message saying nothing happened.
 	 */
 	@PostMapping(CHANGE_PASSWORD_PATH)
 	ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {

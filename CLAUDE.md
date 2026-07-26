@@ -181,9 +181,11 @@ invariant #11.
 > (`409 CANNOT_SUSPEND_SELF`). **#326 gave operators the customer-equivalent self-service**
 > (`POST /api/auth/operator/password`, own per-IP budget, page `/account/operator-password`): prove the
 > current password → every *other* session of that operator is revoked and the hash is replaced, the
-> calling one surviving. **#344 then fixed the ordering and the survivor**: the revoke runs **before** the
-> write (the two belong to different owners, so a `@Transactional` spanning them would look atomic without
-> being atomic — ordering makes the only reachable failure states ones the caller's retry recovers from),
+> calling one surviving. (#326 shipped the reverse order; the arrow above describes the post-#344 code.)
+> **#344 then fixed the ordering and the survivor**: the revoke runs **before** the write (the two belong to
+> different owners, so a `@Transactional` spanning them would look atomic without being atomic — ordering
+> makes a *revoke* failure one the caller's retry recovers from, though a failure after the write still
+> reports an error with the password already changed),
 > and the surviving session is **re-issued under a new id** (`changeSessionId()` via `SessionIdentity`), so
 > an exfiltrated cookie no longer outlives the change made to kill it. The same two apply to the customer
 > twin `POST /api/me/password`. **Edge-only — the `operator` module is unchanged** (`setPassword` simply gained a

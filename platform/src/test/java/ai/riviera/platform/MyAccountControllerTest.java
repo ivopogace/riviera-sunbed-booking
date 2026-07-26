@@ -37,9 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * The customer twin of {@link OperatorAccountControllerTest}, for {@code POST /api/me/password} — new with
- * #344, which is the point: until now the customer side had only Testcontainers ITs ({@code SetPasswordIT}),
- * so the half of the revoke/write ordering that a mock <em>can</em> prove had nowhere cheap to live, and the
- * two twins could drift without anything failing.
+ * #344, which is the point: no web slice pinned this endpoint's revoke/write <em>ordering</em> before it.
+ * {@code MeSurfaceRoleGateTest} is a {@code @WebMvcTest} that POSTs here, but only to prove the role gate;
+ * the ordering had nowhere cheap to live, so the two twins could drift without anything failing.
  *
  * <p>Scope is deliberately narrow — the ordering and session-rotation contract of #344 only. The
  * password-policy, SSO-only-account (S4 F-1) and role-gate behaviours are already pinned by

@@ -1,4 +1,4 @@
-# Operator credential provisioning & rotation (#74, #115, #326)
+# Operator credential provisioning & rotation (#74, #115, #326, #344)
 
 Operator logins are **per-operator and DB-backed**. Each `operator` row carries its own hashed
 credential (`operator.password_hash`, V17); login is verified at the edge by
@@ -79,11 +79,16 @@ compromised had to find a platform admin.
   > change deliberately spared and kept working. What it still cannot do is evict an attacker who
   > controls the device *itself* and simply reads the new cookie: for that, have an admin suspend
   > the account (which revokes every session, including yours) and treat the device as lost.
-- **The two effects are ordered, not transactional.** The revoke runs **before** the credential
-  write. So a `500` from this endpoint means the password did **not** change and your current one
-  still works — retry it. The worst outcome is being signed out of your other devices for nothing.
-  (Ordered the other way, as #326 shipped it, a transient failure rotated the hash and then reported
-  failure, so the retry drew `INVALID_CURRENT_PASSWORD` and looked like a broken account.)
+- **The two effects are ordered, not transactional.** The revoke runs **before** the credential write,
+  so the failure this used to produce is gone: a revoke that fails now leaves the password unchanged and
+  your current one still works. The worst outcome of that case is being signed out of your other devices
+  for nothing. (Ordered the other way, as #326 shipped it, a transient failure rotated the hash and *then*
+  reported failure, so the retry drew `INVALID_CURRENT_PASSWORD` and looked like a broken account.)
+  > **On any failed change, try the NEW password before concluding nothing happened.** Ordering fixes the
+  > revoke case, not every case: a failure *after* the credential write — including Spring Session's save
+  > of the rotated session id, which happens after the request handler returns — still reports an error
+  > with the password already changed. Nothing short of a shared transaction closes that, and there is no
+  > transaction shared between the credential store and the session store.
 - **Own rate-limit budget.** The path has its own per-IP bucket, separate from operator login, so a
   change flood cannot lock operators out of signing in (the #127 lesson). Exhausted → `429`.
 - **The bootstrap admin is refused**: `409 BOOTSTRAP_CREDENTIAL_MANAGED`. Its credential is

@@ -14,9 +14,11 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * session, so every {@code with(user(…))} request already has one. Asserting the guard there would have
  * asserted nothing.
  *
- * <p>The guard still earns its place: {@code changeSessionId()} is specified to throw
- * {@link IllegalStateException} with no session, and a password change that has no session to rotate has
- * nothing to fail about. {@link SessionIdentity#currentId} has carried the same guard since #326.
+ * <p>The guard still earns its place: {@code changeSessionId()} throws with no session — the servlet spec
+ * says {@link IllegalStateException} and {@code MockHttpServletRequest} an {@code IllegalArgumentException},
+ * so this pins "does not throw" rather than a type — and a password change with no session to rotate has
+ * nothing to fail about. {@link SessionIdentity#currentId} has carried the same guard since #128, when
+ * the customer twin first needed it; #326 copied it to the operator side and #344 moved both here.
  */
 class SessionIdentityTest {
 

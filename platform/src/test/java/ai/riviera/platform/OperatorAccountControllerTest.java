@@ -141,7 +141,8 @@ class OperatorAccountControllerTest {
 	 * change dies with the credential it was proving. Without this, an exfiltrated cookie names the very
 	 * session the change deliberately spares and keeps full operator authority afterwards.
 	 *
-	 * <p>The captured keep-id pins the ordering constraint that makes this safe (plan R-1): the revoke must
+	 * <p>The captured keep-id pins the ordering constraint that makes this safe (<strong>#344</strong> plan
+	 * R-1 — not the #326 R-1 this class's header names): the revoke must
 	 * be handed the <strong>pre-rotation</strong> id. Rotating first would hand it an id no
 	 * {@code SPRING_SESSION} row carries yet — the row still holds the old one until the filter commits —
 	 * so the caller's own session would fail the keep-filter and be deleted.
@@ -164,7 +165,10 @@ class OperatorAccountControllerTest {
 		assertThat(thisSession.getId()).isNotEqualTo(idBeforeTheChange);
 	}
 
-	/** A rejected change is inert in every dimension — including the caller's session id. */
+	/**
+	 * A rejected change must not rotate the caller's session id — the dimension #344 added. That it also
+	 * writes and revokes nothing is {@link #rejectsWrongCurrentPasswordWithoutRevoking}'s assertion.
+	 */
 	@Test
 	void aRejectedChangeLeavesTheSessionIdUntouched() throws Exception {
 		givenStoredCredential(OPERATOR_USERNAME, CURRENT_PASSWORD);
