@@ -126,7 +126,7 @@ class OperatorAccountController {
 		}
 		// Encoded before the revoke: bcrypt costs ~80ms, which would otherwise widen the window below.
 		String newPasswordHash = passwordEncoder.encode(request.newPassword());
-		// Keep-id read BEFORE the rotation below: until the filter commits, the session row still carries it.
+		// Keep-id read BEFORE the rotation below: after it, no row carries an id this query can match.
 		sessionRevoker.revokeAllExcept(username, SessionIdentity.currentId(httpRequest));
 		provisioning.setPassword(username, newPasswordHash);
 		SessionIdentity.rotate(httpRequest);

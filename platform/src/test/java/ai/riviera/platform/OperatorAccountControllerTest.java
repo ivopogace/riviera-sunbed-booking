@@ -142,11 +142,11 @@ class OperatorAccountControllerTest {
 	 * session the change deliberately spares and keeps full operator authority afterwards.
 	 *
 	 * <p>The captured keep-id pins the ordering constraint that makes this safe (<strong>#344</strong> plan
-	 * R-1 — not the #326 R-1 this class's header names): the revoke must
-	 * be handed the <strong>pre-rotation</strong> id. Rotating first would hand it an id no
-	 * {@code SPRING_SESSION} row carries — since #359 the rotation deletes the old row and the replacement
-	 * is not persisted until the filter commits — so the caller's own session would fail the keep-filter
-	 * and be deleted.
+	 * R-1 — not the #326 R-1 this class's header names): the revoke must be handed the
+	 * <strong>pre-rotation</strong> id, the only one its own {@code findByPrincipalName} query can see.
+	 * Rotating first would hand it an id no {@code SPRING_SESSION} row carries — since #359 the rotation
+	 * deletes the caller's row and the replacement is not persisted until the filter commits — leaving the
+	 * keep-contract vacuous rather than merely mis-targeted.
 	 *
 	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in, because since #359 the
 	 * rotation retires that handle instead of renaming it in place: the old session is invalidated outright

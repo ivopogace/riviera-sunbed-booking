@@ -78,8 +78,7 @@ class OperatorPasswordChangeIT {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username = :u)").param("u", TARGET).update();
 		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", TARGET).update();
-		// Sessions outlive the operator row (different table, no FK), and the tests below read the
-		// principal index expecting to find only their own — so clear them per test, not per class.
+		// Sessions outlive the operator row, and the tests below expect only their own in the index.
 		jdbc.sql("DELETE FROM spring_session WHERE principal_name = :u").param("u", TARGET).update();
 		provisioning.provision(TARGET, encoder.encode(OLD_PASSWORD));
 	}

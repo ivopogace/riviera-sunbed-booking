@@ -200,10 +200,10 @@ row 2), so no e2e spec changes and `playwright-cli` is not triggered.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — complete; next is the CI gate (push) then PR`
+**Stage pointer:** `review gate — run, findings F-1..F-3 fixed; next is the Sonar gate`
 
-**Next action:** Push the branch, confirm that push's CI run is green, then open the PR into `main`
-(merging latest `origin/main` in first) and run the review + Sonar gates.
+**Next action:** Pull PR #362's reported new-issue **and duplication** list from the SonarCloud API and
+clear it — F-4 (the triplicated `onlySessionIdOf`) is deliberately parked there for an empirical answer.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -242,7 +242,10 @@ the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *none yet* | — |
+| F-1 | review (`/code-review`, agents #1 + #4; confidence 75) | RV-STYLE-1: two inline `//` comments added in the `@BeforeEach` blocks of `AuthSessionIT` and `OperatorPasswordChangeIT` ran to two lines | fixed — both compressed to one line |
+| F-2 | review (`/code-review`, agents #3 + #5; confidence 75) | The rewrite made three *unmodified* comments false — `PrincipalSessionRevoker#revokeAllExcept`'s Javadoc and the identical inline comment in both password controllers still said "the stored row keeps the old id until the filter commits". Documentation drift the diff itself caused, on the security-critical ordering | fixed — all three restated against the delete-immediately mechanism |
+| F-3 | review (`/code-review`, agent #5; confidence 75) | Javadoc **added by this PR** (`OperatorAccountControllerTest`) kept the old causal chain: it claimed a post-rotation keep-id would make the caller's session "fail the keep-filter and be deleted". Under the new mechanism the caller's row is already gone and the replacement is unpersisted, so `findByPrincipalName` never returns it — the mis-ordering is now *vacuous*, not fatal. The same overclaim was in `SessionIdentity.rotate`'s own new Javadoc | fixed — both restated; the still-load-bearing constraint (revoke before the credential **write**, #344/#357) called out as such |
+| F-4 | review (`/code-review`, agent #4; confidence 60 — **below the ≥80 bar**) | `onlySessionIdOf` is duplicated verbatim (7 lines) across the three ITs; repo merge bar is 0 duplicated blocks | open → deferred to the Sonar gate, which measures duplication empirically rather than guessing at the detector's threshold |
 
 ---
 

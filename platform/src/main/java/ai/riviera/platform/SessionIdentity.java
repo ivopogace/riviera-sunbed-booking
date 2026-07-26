@@ -41,9 +41,12 @@ final class SessionIdentity {
 	 * {@code SESSION} cookie on the same response, so a legitimate caller notices nothing; a copy of the
 	 * old cookie is simply dead.
 	 *
-	 * <p><strong>Must run after any {@code revokeAllExcept} that spares this session.</strong> A revoke is
-	 * handed the pre-rotation id; taken after this call it matches no row, so the caller's own session
-	 * would be deleted by its own revoke.
+	 * <p><strong>Must run after any {@code revokeAllExcept} that spares this session.</strong> That revoke's
+	 * keep-id has to be one its own query can see, and after this call none is: the caller's row is gone and
+	 * its replacement is not persisted until the filter commits, so an id read afterwards names nothing and
+	 * the keep-contract would be vacuous. (Before #359 the mis-ordering was worse than vacuous — the row
+	 * survived under the old id, so a post-rotation keep-id failed the filter and the revoke deleted the
+	 * caller's own session.)
 	 *
 	 * <p><strong>Why this is not {@code changeSessionId()}</strong> (issue #359). That keeps the same
 	 * {@code SPRING_SESSION} row and defers the new id to the filter's post-request save, which writes

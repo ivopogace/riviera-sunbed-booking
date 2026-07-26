@@ -57,9 +57,10 @@ class PrincipalSessionRevoker {
 	 *
 	 * <p><strong>Two ordering constraints bind the password-change callers</strong> (#344). Call this
 	 * <em>before</em> the credential write, so a failure here cannot leave the hash rotated behind an error
-	 * saying nothing happened. And pass the <em>pre-rotation</em> id: {@link SessionIdentity#rotate} must run
-	 * after this call, because the stored row keeps the old id until the filter commits — a keep-id taken
-	 * after rotating matches no row, so the caller's own session would be deleted by its own revoke.
+	 * saying nothing happened — that one is load-bearing. And pass the <em>pre-rotation</em> id, which is
+	 * the only id this query can see: since #359 {@link SessionIdentity#rotate} deletes the caller's row
+	 * outright and its replacement is not persisted until the filter commits, so an id read after rotating
+	 * names nothing here and the keep-contract would be silently vacuous.
 	 */
 	void revokeAllExcept(String principalName, String keepSessionId) {
 		sessions.findByPrincipalName(principalName).keySet().stream()

@@ -73,8 +73,7 @@ class AuthSessionIT {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username IN ('op-a', 'op-c'))").update();
 		jdbc.sql("DELETE FROM operator WHERE username IN ('op-a', 'op-c')").update();
-		// Sessions outlive the operator row (different table, no FK), and the #359 test reads the
-		// principal index expecting to find only its own — so clear them per test, not per class.
+		// Sessions outlive the operator row, and the #359 test expects only its own in the index.
 		jdbc.sql("DELETE FROM spring_session WHERE principal_name IN ('op-a', 'op-c')").update();
 
 		venueOwnedByA = jdbc.sql("""
