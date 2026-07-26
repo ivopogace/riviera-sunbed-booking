@@ -97,12 +97,26 @@ keep byte-identical behaviour, which the run in phase 2 confirms.
   leg. *Owner:* this slice · *Resolves by:* review gate (flagged to the maintainer in the PR body).
 - **Open question:** should the tourist shell gain a link to `/account/password`? Today the page is
   reachable only by typed URL (verified: no `routerLink` to it anywhere in `src/`), which is a real
-  discoverability gap but a product change. *Owner:* maintainer · *Resolves by:* a follow-up issue
-  filed at close-out, not this PR.
+  discoverability gap but a product change. *Owner:* maintainer · *Resolved:* filed as its own issue at
+  close-out (see `### Resolved`).
 - **Open question:** `CLAUDE.md` §Commands labels `npm run test:e2e` "CI-safe mocked suite
   (frontend/e2e/)", but that script runs `playwright.config.ts` — the local-only REAL-BACKEND suite;
   the mocked suite is `npm run test:e2e:a11y` (as RV-FE-E2E states). Stale substrate line, pre-existing
-  and unrelated to this slice. *Owner:* maintainer · *Resolves by:* `riviera-docs-freshness` at close-out.
+  and unrelated to this slice. *Owner:* maintainer · *Resolved:* patched at close-out (below).
+
+### Resolved
+
+- **Docs-freshness run** over `20d1714..15f1f12` (merge close-out step 5). The slice renamed and removed
+  nothing and added no module/endpoint/skill, so the substrate's module table, glossary, responsibilities
+  and ADRs are untouched by it. **One finding, pre-existing:** `CLAUDE.md:113` stated `npm run test:e2e`
+  is the "CI-safe mocked suite (frontend/e2e/)" — false since the two-suite split; that script runs
+  `playwright.config.ts`, the local-only real-backend suite, and `riviera-tailwind`'s SKILL.md already
+  said so correctly. **Patched** (both lines now name their real suite) — a factual mechanism phrase, the
+  kind step 4 patches in place rather than flags. No other substrate doc references `auth-mocks.ts` or
+  the mock helpers, so nothing else needed reconciling.
+- **The `/account/password` entry-point gap** — the account page has no in-app link on the tourist side
+  (operators reach theirs from the console header). Filed as **#351** at close-out; out of scope
+  here because adding navigation is a product change, not test coverage.
 
 ## Availability & concurrency (invariant #2)
 
@@ -147,10 +161,10 @@ N/A — no contract change. The mock encodes the EXISTING contract:
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read
 > it (plus the current stage's `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `review gate — run, both findings fixed; pushed. Awaiting the maintainer's call on a PR`
+**Stage pointer:** `merged — PR #350 squash-merged to main as 15f1f12; close-out complete`
 
-**Next action:** Open a PR only if the maintainer asks; then the Sonar gate (Sonar analyses PRs +
-`main` only, so it cannot run on this branch alone).
+**Next action:** None — the slice is done. Issue #346 closed as completed (no parent epic, so no
+epic checklist to tick); the one deferred open question is tracked as **#351**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -159,6 +173,8 @@ N/A — no contract change. The mock encodes the EXISTING contract:
 | 2 — The spec (3 tests) | ✅ | `3a79631` |
 | 3 — Lint + full mocked-suite run | ✅ | `npm run lint` clean; 79/79 mocked specs pass |
 | 4 — Review gate + fixes | ✅ | `04ac8ba` — re-linted and re-ran the full suite after the fixes (79/79) |
+| 5 — PR + CI + Sonar gates | ✅ | PR #350: 7/7 checks green; Sonar gate `OK` with **0** unresolved new issues (API-verified, not just the badge), 0 hotspots, 0 duplication |
+| 6 — Merge + close-out | ✅ | squash-merged as `15f1f12`; #346 auto-closed; docs-freshness run over `20d1714..15f1f12` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
