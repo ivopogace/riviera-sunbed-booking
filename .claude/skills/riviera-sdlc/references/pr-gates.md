@@ -30,18 +30,25 @@ lives in SKILL.md ("The loop"); this file cites it rather than restating it.
    > banks unrun, and those are where the non-project-specific defects live. Half the gate is
    > not the gate.
    >
-   > **If you cannot start the review, say so — never substitute silently.** The recurring
-   > cause is a session that cannot spawn the review subagent (a standing "don't use the Agent
-   > tool" instruction, a restricted toolset). That is a legitimate blocker and an illegitimate
-   > secret: **leave the PR's review checkbox unticked, write one line in the PR saying which
-   > half ran and why**, and ask the human to authorize the missing half. Ticking a box whose
-   > text names `/code-review` when `/code-review` did not run makes the PR record lie about
-   > the process — precisely what close-out step 4 exists to prevent.
+   > **Blocked on `/code-review`? Try `/review <PR>` first — it is not the same tool.**
+   > `/code-review` runs as a **subagent**, so a session under a standing "don't use the Agent
+   > tool" instruction cannot start it. **`/review <PR>` loads as a plain skill and runs
+   > inline**, needs no subagent, and walks the same generic banks against the PR diff (fetch
+   > the diff with the GitHub MCP tools — `gh` is absent in cloud sessions, and the skill's
+   > instructions assume it). Reach for `/review` before concluding the gate is unrunnable.
+   >
+   > **If neither can start, say so — never substitute silently.** That is a legitimate blocker
+   > and an illegitimate secret: **leave the PR's review checkbox unticked, write one line in
+   > the PR saying which half ran and why**, and ask the human to authorize the missing half.
+   > Ticking a box whose text names `/code-review` when no review ran makes the PR record lie
+   > about the process — precisely what close-out step 4 exists to prevent.
    > (Case history: PR #353, 2026-07-26 — the overlay bank ran and found two real issues, the
-   > generic banks never ran, and the box was ticked anyway. The later real review found a
-   > **WCAG 2.4.3 focus-loss regression** the overlay bank had no item for: the account popover
-   > was destroyed by its own navigation with focus inside it, dropping focus to `document.body`
-   > — the #148 find-modal bug, recurring. Fixed in #355.)
+   > generic banks never ran, and the box was ticked anyway on the belief that no review could
+   > run at all. `/review` could, and when finally run it found a **WCAG 2.4.3 focus-loss
+   > regression** the overlay bank has no item for: the account popover was destroyed by its own
+   > navigation with focus inside it, dropping focus to `document.body` — the #148 find-modal
+   > bug, recurring. Fixed in #355, whose own `/review` pass then caught a false-passing
+   > assertion and a repeat RV-STYLE-1 slip in that very fix.)
 
    **Pick the review effort by risk class** (same principle as the grill gate — the size
    flexes; the gate does not):
