@@ -36,27 +36,27 @@ stands in for `feature/customer-password-e2e` (`riviera-sdlc` §Remote/cloud add
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in customer whose account already has a password, when they submit the
+- [x] **AC-1:** Given a signed-in customer whose account already has a password, when they submit the
       account page's form with the WRONG current password, then the page renders "The current password
       is incorrect.", shows no success notice, and the credential is NOT rotated (the original password
       still signs in). *Pinned by:* `customer-password.e2e.ts` → `a signed-in tourist changes their
       password, and the new credential replaces the old`
-- [ ] **AC-2:** Given that same customer, when they submit the CORRECT current password with a valid
+- [x] **AC-2:** Given that same customer, when they submit the CORRECT current password with a valid
       new one, then a saved notice renders, both password fields are cleared from the DOM, the calling
       session survives (the shell still shows "Signed in as …"), and after signing out ONLY the new
       password signs back in. *Pinned by:* the same test.
-- [ ] **AC-3:** Given an SSO-only account (provider-verified session, no local credential — the S4 F-1
+- [x] **AC-3:** Given an SSO-only account (provider-verified session, no local credential — the S4 F-1
       case the page exists for), when they submit a new password with the current-password field left
       blank, then it is accepted and that new password signs in afterwards. *Pinned by:*
       `customer-password.e2e.ts` → `an SSO-only account sets its first password with no current password`
-- [ ] **AC-4:** Given a new password shorter than the 8-character policy minimum, when they submit,
+- [x] **AC-4:** Given a new password shorter than the 8-character policy minimum, when they submit,
       then the length message renders from the client-side guard and NO request is made to
       `/api/me/password`. *Pinned by:* the same SSO test (request counter asserted).
-- [ ] **AC-5:** Given the per-IP change budget (#326) is exhausted, when they submit a valid change,
+- [x] **AC-5:** Given the per-IP change budget (#326) is exhausted, when they submit a valid change,
       then the page renders "Too many attempts. Please wait a minute and try again." — the 429 branch
       #342 mapped but never rendered — and the credential is NOT rotated. *Pinned by:*
       `customer-password.e2e.ts` → `an exhausted change-password budget renders the rate-limit message`
-- [ ] **AC-6:** Every newly rendered state in the flow (error, notice, rate-limited) passes the axe
+- [x] **AC-6:** Every newly rendered state in the flow (error, notice, rate-limited) passes the axe
       serious-violations bar. *Pinned by:* `expectNoSeriousAxeViolations` calls in all three tests.
 
 ## Non-goals
@@ -84,10 +84,10 @@ keep byte-identical behaviour, which the run in phase 2 confirms.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The mock's branch order drifts from `MyAccountController`, so a real reordering (e.g. checking the credential before the policy) leaves this suite green — the exact defect #342's review caught in the operator mock | med | high | Mock mirrors the controller: filter budget → `CustomerPasswords.validate` (400 `INVALID_REQUEST`) → credential-exists-and-mismatch (400 `INVALID_CURRENT_PASSWORD`) → 204; each branch carries a comment naming the server counterpart | this slice | open |
-| R-2 | The 429 is modelled as an attempt counter, not the real per-IP token bucket (10 / PT1M via `props.login()`), so the spec could imply a budget the server doesn't have | med | low | The budget is an explicit option defaulting to the real 10; the spec sets a small value and asserts only the FE's rendering of 429 — the filter's arithmetic stays backend-tested | this slice | open |
-| R-3 | A stale `/api/auth/me` answer after rotation makes the "session survives" assertion pass for the wrong reason | low | med | The mock keeps ONE `me` route reflecting a single `signedIn` flag; the assertion reads the shell's live `nav-user`, and the sign-out → old-password-rejected leg proves the rotation independently | this slice | open |
-| R-4 | Coverage claimed but not actually CI-run (spec parked where CI can't see it) | low | high | Spec lands in `frontend/e2e/` (mocked-a11y suite, `playwright.a11y.config.ts`), verified by running `npm run test:e2e:a11y` locally — RV-FE-E2E's "green-but-blind" bar | this slice | open |
+| R-1 | The mock's branch order drifts from `MyAccountController`, so a real reordering (e.g. checking the credential before the policy) leaves this suite green — the exact defect #342's review caught in the operator mock | med | high | Mock mirrors the controller: filter budget → `CustomerPasswords.validate` (400 `INVALID_REQUEST`) → credential-exists-and-mismatch (400 `INVALID_CURRENT_PASSWORD`) → 204; each branch carries a comment naming the server counterpart | this slice | mitigated in the phase-1 commit |
+| R-2 | The 429 is modelled as an attempt counter, not the real per-IP token bucket (10 / PT1M via `props.login()`), so the spec could imply a budget the server doesn't have | med | low | The budget is an explicit option defaulting to the real 10; the spec sets a small value and asserts only the FE's rendering of 429 — the filter's arithmetic stays backend-tested | this slice | accepted, documented at the option |
+| R-3 | A stale `/api/auth/me` answer after rotation makes the "session survives" assertion pass for the wrong reason | low | med | The mock keeps ONE `me` route reflecting a single `signedIn` flag; the assertion reads the shell's live `nav-user`, and the sign-out → old-password-rejected leg proves the rotation independently | this slice | closed — the mutation run shows the rotation legs fail when the credential does not actually rotate |
+| R-4 | Coverage claimed but not actually CI-run (spec parked where CI can't see it) | low | high | Spec lands in `frontend/e2e/` (mocked-a11y suite, `playwright.a11y.config.ts`), verified by running `npm run test:e2e:a11y` locally — RV-FE-E2E's "green-but-blind" bar | this slice | closed — picked up by the a11y config's `testDir: './e2e'`, ran as 3 of the suite's 79 |
 
 ## Open questions / Assumptions
 
@@ -147,16 +147,17 @@ N/A — no contract change. The mock encodes the EXISTING contract:
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read
 > it (plus the current stage's `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 1)`
+**Stage pointer:** `implement — complete, all phases green; entering the review gate`
 
-**Next action:** Phase 1 — add the `POST /api/me/password` route to `mockCustomerRecoveryApi`.
+**Next action:** Run the review gate (`riviera-review-overlay` + `/code-review`) over the branch diff;
+no PR until the maintainer asks for one.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc | ✅ | |
-| 1 — Mock the endpoint | | |
-| 2 — The spec (3 tests) | | |
-| 3 — Lint + full mocked-suite run | | |
+| 0 — Plan doc | ✅ | `652ae3a` |
+| 1 — Mock the endpoint | ✅ | (with phase 2) |
+| 2 — The spec (3 tests) | ✅ | |
+| 3 — Lint + full mocked-suite run | ✅ | `npm run lint` clean; 79/79 mocked specs pass |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -183,30 +184,30 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/e2e/support/auth-mocks.ts`
 
-- [ ] **Step 1:** Add the route mirroring `MyAccountController.setPassword`'s branch order, with the
+- [x] **Step 1:** Add the route mirroring `MyAccountController.setPassword`'s branch order, with the
       rate-limit budget spent first (the filter runs ahead of the controller).
-- [ ] **Step 2:** Keep existing callers green — `initialPassword` becomes optional, defaulting to the
+- [x] **Step 2:** Keep existing callers green — `initialPassword` becomes optional, defaulting to the
       same behaviour when supplied.
-- [ ] **Step 3:** Commit.
+- [x] **Step 3:** Commit.
 
 ## Phase 2 — The spec
 
 **Files:** Create `frontend/e2e/customer-password.e2e.ts`
 
-- [ ] **Step 1:** Test 1 (AC-1, AC-2, AC-6) — sign in, wrong current → error + no rotation, correct →
+- [x] **Step 1:** Test 1 (AC-1, AC-2, AC-6) — sign in, wrong current → error + no rotation, correct →
       notice + cleared fields + session survives, sign out → only the new password works.
-- [ ] **Step 2:** Test 2 (AC-3, AC-4, AC-6) — SSO-only account: short password rejected client-side
+- [x] **Step 2:** Test 2 (AC-3, AC-4, AC-6) — SSO-only account: short password rejected client-side
       with zero requests, then blank current + valid new → saved, and it signs in.
-- [ ] **Step 3:** Test 3 (AC-5, AC-6) — exhausted budget → rate-limit message, no rotation.
-- [ ] **Step 4:** Run the spec — `npx playwright test --config playwright.a11y.config.ts customer-password` → PASS.
-- [ ] **Step 5:** Commit.
+- [x] **Step 3:** Test 3 (AC-5, AC-6) — exhausted budget → rate-limit message, no rotation.
+- [x] **Step 4:** Run the spec — `npx playwright test --config playwright.a11y.config.ts customer-password` → PASS.
+- [x] **Step 5:** Commit.
 
 ## Phase 3 — Regression + lint
 
-- [ ] **Step 1:** `npm run lint` → clean.
-- [ ] **Step 2:** Run the whole mocked suite (`npm run test:e2e:a11y`) — the shared-mock change makes
+- [x] **Step 1:** `npm run lint` → clean.
+- [x] **Step 2:** Run the whole mocked suite (`npm run test:e2e:a11y`) — the shared-mock change makes
       the neighbouring recovery specs the real regression surface.
-- [ ] **Step 3:** Commit + push, then the review + Sonar gates.
+- [x] **Step 3:** Commit + push, then the review + Sonar gates.
 
 ---
 
@@ -214,27 +215,33 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-26 | Phase 2 — the "prove the rotation is real" pattern this spec adopts | Credential-rotation surfaces with no e2e proving old-stops/new-starts | `rg -l "reset-password\|verify-email\|operator/password\|me/password" frontend/e2e` | `password-reset`, `email-verification`, `operator-password` (all already prove it) + this one | None outstanding — with `customer-password` the family is complete; #346 was the last gap the #326 audit named |
+| 2026-07-26 | Phase 2 — verifying the new spec can fail | Mutation: make the mocked endpoint answer `204` WITHOUT rotating the credential | temporary edit to `mockCustomerRecoveryApi`, reverted | Tests 1 + 2 failed as designed; test 3 (asserts *no* rotation) correctly stayed green | Reverted the mutation; recorded here as the evidence the coverage bites rather than merely renders |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-6:** Run `npm run test:e2e:a11y` → all 3 `customer-password` tests pass, whole suite green.
+- [x] **AC-1…AC-6:** `npx playwright test --config playwright.a11y.config.ts customer-password` → 3 passed;
+      whole mocked suite `79 passed (2.3m)`; `npm run lint` clean. Verified on branch
+      `claude/cloud-environment-candidates-eozsc3` (cloud run needs
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` — revision 1194 is pre-installed, CI installs
+      its own). Mutation-checked: a mocked server that answers 204 without rotating fails AC-2 and AC-3.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend code.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules (invariants #3, #4) — N/A, no booking surface.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A, no date arithmetic.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway migration (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; spec in the CI-run suite (RV-FE-E2E); `npm run lint` clean.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend code.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules (invariants #3, #4) — N/A, no booking surface.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A, no date arithmetic.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway migration (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; spec in the CI-run suite (RV-FE-E2E); `npm run lint` clean.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows (two carried to the review gate as follow-ups, below); Open Questions empty (or deferred with an issue #).
