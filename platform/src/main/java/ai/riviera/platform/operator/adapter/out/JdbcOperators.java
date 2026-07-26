@@ -157,6 +157,16 @@ class JdbcOperators implements Operators {
 				.list();
 	}
 
+	/** Primary-key point lookup with {@link #idByActiveUsername}'s status filter — no new index needed. */
+	@Override
+	public Optional<String> activeUsernameById(OperatorId operatorId) {
+		return jdbc.sql("SELECT username FROM operator WHERE id = :id AND status = :active")
+				.param(ID_PARAM, operatorId.value())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.query(String.class)
+				.optional();
+	}
+
 	@Override
 	public ApprovalOutcome activate(OperatorId operatorId) {
 		return transitionFromPending(operatorId, OperatorStatus.ACTIVE, ApprovalOutcome.APPROVED);

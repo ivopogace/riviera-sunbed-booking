@@ -48,6 +48,13 @@ public interface Operators {
 	List<OperatorAccount> accounts();
 
 	/**
+	 * The username of the ACTIVE operator with this id, or empty (unknown / not ACTIVE) — the mirror of
+	 * {@link #idByActiveUsername}, read before a suspension so the edge can revoke that principal's
+	 * sessions first (#357).
+	 */
+	Optional<String> activeUsernameById(OperatorId operatorId);
+
+	/**
 	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the
 	 * pending/exists/absent cases (#115, S6).
 	 */

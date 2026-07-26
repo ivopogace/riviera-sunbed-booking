@@ -1,6 +1,7 @@
 package ai.riviera.platform.operator;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,6 +111,35 @@ class OperatorLifecycleIT {
 		assertTrue(accounts.stream().anyMatch(o -> o.id().equals(active) && !o.suspended() && !o.admin()));
 		assertTrue(accounts.stream().anyMatch(o -> o.id().equals(suspended) && o.suspended()));
 		assertTrue(accounts.stream().anyMatch(o -> BOOTSTRAP.equals(o.username()) && o.admin()));
+	}
+
+	/**
+	 * #357: the pre-read that lets the edge revoke an operator's sessions <em>before</em> the suspension
+	 * commits. It must apply exactly the ACTIVE-only rule the rest of the module resolves by — a username
+	 * for a PENDING/REJECTED/SUSPENDED account would revoke sessions for a transition that is then refused.
+	 */
+	@Test
+	void activeUsernameResolvesOnlyAnActiveOperator() {
+		OperatorId active = insertOperator("lifecycle-named", OperatorStatus.ACTIVE);
+		OperatorId pending = insertOperator("lifecycle-named-pending", OperatorStatus.PENDING);
+		OperatorId rejected = insertOperator("lifecycle-named-rejected", OperatorStatus.REJECTED);
+		OperatorId suspended = insertOperator("lifecycle-named-suspended", OperatorStatus.SUSPENDED);
+
+		assertEquals(Optional.of("lifecycle-named"), lifecycle.activeUsername(active));
+		assertEquals(Optional.empty(), lifecycle.activeUsername(pending));
+		assertEquals(Optional.empty(), lifecycle.activeUsername(rejected));
+		assertEquals(Optional.empty(), lifecycle.activeUsername(suspended));
+		assertEquals(Optional.empty(), lifecycle.activeUsername(new OperatorId(-1L)));
+	}
+
+	/** The read is pure: naming an operator must not move it, so the suspension after it still applies. */
+	@Test
+	void activeUsernameChangesNothing() {
+		OperatorId id = insertOperator("lifecycle-named-untouched", OperatorStatus.ACTIVE);
+
+		assertEquals(Optional.of("lifecycle-named-untouched"), lifecycle.activeUsername(id));
+		assertEquals(OperatorStatus.ACTIVE.name(), statusOf(id));
+		assertInstanceOf(OperatorLifecycleOutcome.Changed.class, lifecycle.suspend(id));
 	}
 
 	private OperatorId insertOperator(String username, OperatorStatus status) {

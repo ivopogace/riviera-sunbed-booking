@@ -33,13 +33,21 @@ import ai.riviera.platform.operator.vocabulary.PendingOperator;
  * {@link ApiProblem} (issue #97): a not-pending id → {@code 409 NOT_PENDING}, a wrong-status transition →
  * {@code 409 WRONG_STATUS}, an unknown id → {@code 404 NO_SUCH_OPERATOR}; success is {@code 204}.
  *
- * <p><strong>Suspension revokes sessions here, at the edge (#128).</strong> The module flips the status
- * and hands back the username; this controller then deletes that principal's live sessions through
- * {@link PrincipalSessionRevoker}. Without it a suspended operator's existing cookie would keep
- * authenticating every non-venue-scoped role-gated surface until it expired — venue-scoped ones were
- * already safe, since ownership resolves ACTIVE-only. Revocation runs <em>after</em> the transactional
- * transition has returned its outcome, so a rolled-back status change can never leave sessions deleted
- * for a still-ACTIVE account; the residual failure direction is over-revocation, never under.
+ * <p><strong>Suspension revokes sessions here, at the edge (#128).</strong> Without it a suspended
+ * operator's existing cookie would keep authenticating every non-venue-scoped role-gated surface until
+ * it expired — venue-scoped ones were already safe, since ownership resolves ACTIVE-only.
+ *
+ * <p><strong>The revoke brackets the transition</strong> (#357): once <em>before</em> it, keyed by
+ * {@link OperatorLifecycle#activeUsername}, and once <em>after</em> it, keyed by the username the
+ * outcome carries. Before, because the two effects are not atomic and cannot be — the status write is
+ * the module's transaction, the session deletes are Spring Session's, so a {@code @Transactional} here
+ * would look atomic without being atomic (#344 D-1). Revoking only afterwards, as #128 shipped, meant a
+ * transient revoke failure committed the suspension, raised {@code 500}, and left the suspended
+ * operator working: the admin's retry is refused {@code 409 WRONG_STATUS} and revokes nothing, so
+ * nothing ever closes those sessions. After, because revoking only first would leave a window in which
+ * the account is still ACTIVE — a sign-in landing there would survive the suspension with no admin
+ * recovery path. The residual failure direction is over-revocation (a rolled-back transition after a
+ * successful revoke signs out a still-ACTIVE operator), never under.
  *
  * <p><strong>An admin may not suspend itself.</strong> That guard needs to know who is calling —
  * authentication context, i.e. edge knowledge the module deliberately does not have — so it lives here,
@@ -98,6 +106,11 @@ class AdminOperatorController {
 		return lifecycle.accounts().stream().map(OperatorAccountResponse::from).toList();
 	}
 
+	/**
+	 * Suspend an operator, revoking its live sessions on <strong>both sides</strong> of the transition
+	 * (#357). The pre-read is what makes the first revoke possible at all: {@code suspend} only names the
+	 * principal in its outcome, i.e. after it has committed.
+	 */
 	@PostMapping("/{operatorId}/suspend")
 	ResponseEntity<?> suspend(@PathVariable long operatorId, Authentication authentication) {
 		OperatorId target = new OperatorId(operatorId);
@@ -105,6 +118,7 @@ class AdminOperatorController {
 			return ApiProblem.response(HttpStatus.CONFLICT, "CANNOT_SUSPEND_SELF",
 					"You cannot suspend the account you are signed in with.");
 		}
+		lifecycle.activeUsername(target).ifPresent(sessionRevoker::revokeAll);
 		return toResponse(lifecycle.suspend(target), true);
 	}
 

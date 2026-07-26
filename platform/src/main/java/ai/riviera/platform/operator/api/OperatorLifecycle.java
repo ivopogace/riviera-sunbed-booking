@@ -1,6 +1,7 @@
 package ai.riviera.platform.operator.api;
 
 import java.util.List;
+import java.util.Optional;
 
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
@@ -34,6 +35,18 @@ public interface OperatorLifecycle {
 
 	/** Every operator that can currently authenticate (status ACTIVE), by username. */
 	List<OperatorAccount> accounts();
+
+	/**
+	 * The username of the ACTIVE operator with this id, or empty if there is none (unknown, PENDING,
+	 * REJECTED, or already SUSPENDED) — the same ACTIVE-only rule the ownership resolution applies.
+	 *
+	 * <p>A pure query that exists for one reason (#357): {@link #suspend} can only name the principal
+	 * <em>after</em> it has committed, so the edge could revoke that operator's sessions only afterwards
+	 * — and a transient revoke failure then left a suspended operator's sessions alive while the admin's
+	 * retry drew {@link OperatorLifecycleOutcome.WrongStatus}. Knowing the username up front lets the
+	 * edge revoke first, so a failure there leaves the account ACTIVE and the retry does both.
+	 */
+	Optional<String> activeUsername(OperatorId operatorId);
 
 	/**
 	 * Approve the PENDING operator with this id → ACTIVE (it can now sign in). Returns

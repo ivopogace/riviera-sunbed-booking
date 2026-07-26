@@ -265,6 +265,11 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public Optional<String> activeUsername(OperatorId operatorId) {
+				return Optional.empty();
+			}
+
+			@Override
 			public ApprovalOutcome approve(OperatorId operatorId) {
 				return ApprovalOutcome.NO_SUCH_OPERATOR;
 			}
