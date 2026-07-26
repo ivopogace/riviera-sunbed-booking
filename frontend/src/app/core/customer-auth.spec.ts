@@ -257,6 +257,16 @@ describe('CustomerAuth', () => {
     expect(await weak).toBe('invalid-password');
   });
 
+  // #326 gave this endpoint its first rate-limit budget, so 429 is newly reachable here.
+  it('set-password maps a 429 → rate-limited rather than a generic error', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' });
+
+    const throttled = auth.setPassword('brandnewpass1', 'currentpass1');
+    http.expectOne(`${ME_API}/password`).flush({}, { status: 429, statusText: 'Too Many Requests' });
+
+    expect(await throttled).toBe('rate-limited');
+  });
+
   it('request-verification maps 204 → sent and a failure → error', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 

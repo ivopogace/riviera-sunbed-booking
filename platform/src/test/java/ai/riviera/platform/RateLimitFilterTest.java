@@ -19,6 +19,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -308,10 +309,9 @@ class RateLimitFilterTest {
 
 	/**
 	 * Matrix parameters are the same class of bypass, but the rate limiter is not what stops them:
-	 * {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs. Pinned as a
-	 * tripwire — if the firewall is ever relaxed, this flips to a real hole and the strip in
-	 * {@code pathWithinApplication} becomes the only thing standing between a matrix suffix and a free
-	 * brute-force attempt.
+	 * {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs — which is
+	 * why {@code pathWithinApplication} deliberately does not strip them. Pinned as a tripwire: relax the
+	 * firewall and this test fails, rather than the hole opening silently.
 	 */
 	@Test
 	void aMatrixParameterSuffixIsRejectedByTheFirewallBeforeItReachesTheLimiter() throws Exception {
@@ -320,6 +320,17 @@ class RateLimitFilterTest {
 				.content("""
 						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
 				.andExpect(status().isBadRequest());
+	}
+
+	/**
+	 * A malformed escape must not blow up the filter: a {@code %} that is not a valid escape reaches
+	 * {@code UriUtils.decode} and throws, and the budget lookup has to survive that. The raw form is kept —
+	 * it matches no budget, and the request still meets the rest of the chain (which rejects it).
+	 */
+	@Test
+	void aMalformedEscapeKeepsTheRawPathInsteadOfThrowing() {
+		assertEquals("/api/auth/operator/password", RateLimitFilter.decodePath("/api/auth/operator/passwor%64"));
+		assertEquals("/api/auth/operator/passwor%zz", RateLimitFilter.decodePath("/api/auth/operator/passwor%zz"));
 	}
 
 	@Test

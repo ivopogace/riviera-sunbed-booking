@@ -367,8 +367,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * this filter exists to protect. Found at the #342 review gate; the defect predated #326 and applied to
 	 * <em>every</em> budget here, operator login included.
 	 *
-	 * <p>Matrix content is removed <em>before</em> decoding, which is the order Spring itself uses: decoding
-	 * first would let an encoded {@code %3B} smuggle in a separator that the strip then acts on.
+	 * <p>Matrix parameters ({@code …/password;a=b}) are the sibling bypass and are deliberately <em>not</em>
+	 * handled here: {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs,
+	 * so a strip would be unreachable code that no test can exercise. {@code RateLimitFilterTest} pins that
+	 * dependency as a tripwire, so relaxing the firewall fails a test rather than silently opening the hole.
 	 */
 	private static String pathWithinApplication(HttpServletRequest request) {
 		String uri = request.getRequestURI();
@@ -376,33 +378,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		String withinApp = (context != null && !context.isEmpty() && uri.startsWith(context))
 				? uri.substring(context.length())
 				: uri;
-		return decodePath(stripMatrixVariables(withinApp));
-	}
-
-	private static String stripMatrixVariables(String path) {
-		if (path.indexOf(';') < 0) {
-			return path;
-		}
-		StringBuilder stripped = new StringBuilder(path.length());
-		int cursor = 0;
-		while (cursor < path.length()) {
-			int semicolon = path.indexOf(';', cursor);
-			if (semicolon < 0) {
-				stripped.append(path, cursor, path.length());
-				break;
-			}
-			stripped.append(path, cursor, semicolon);
-			int slash = path.indexOf('/', semicolon);
-			if (slash < 0) {
-				break;
-			}
-			cursor = slash;
-		}
-		return stripped.toString();
+		return decodePath(withinApp);
 	}
 
 	/** A malformed escape keeps the raw form: it matches no budget, and the filter chain still rejects it. */
-	private static String decodePath(String path) {
+	static String decodePath(String path) {
 		try {
 			return UriUtils.decode(path, StandardCharsets.UTF_8);
 		}

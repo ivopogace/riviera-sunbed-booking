@@ -111,6 +111,19 @@ describe('SetPassword', () => {
     expect(text(fixture, 'setpw-error')).toContain('current password is incorrect');
   });
 
+  // Newly reachable since #326 throttled this endpoint; "try again" would invite the rejected retry.
+  it('tells a throttled customer to wait rather than to retry immediately', async () => {
+    const auth = authStub({ setPassword: 'rate-limited' });
+    const fixture = await render(auth);
+
+    setModel(fixture, 'brandnewpass2', 'currentpass1');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'setpw-error')).toContain('wait a minute');
+  });
+
   it('shows the generic error on a transport failure', async () => {
     const auth = authStub({ setPassword: 'error' });
     const fixture = await render(auth);
