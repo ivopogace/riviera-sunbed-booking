@@ -380,6 +380,11 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public Optional<String> emailForResetToken(String tokenHash) {
+				return Optional.empty();
+			}
+
+			@Override
 			public void setPassword(CustomerAccountId accountId, String newPasswordHash) {
 			}
 

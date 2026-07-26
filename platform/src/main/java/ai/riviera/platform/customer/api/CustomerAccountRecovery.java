@@ -1,6 +1,7 @@
 package ai.riviera.platform.customer.api;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
@@ -32,6 +33,20 @@ public interface CustomerAccountRecovery {
 
 	/** Redeem a reset token (single-use): on success set the account's password to {@code newPasswordHash}. */
 	ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash);
+
+	/**
+	 * The email of the account a reset token belongs to <em>while that token is still redeemable</em> —
+	 * the same {@code (purpose, hash, unconsumed, unexpired)} predicate {@link #resetPassword} claims by,
+	 * as a pure read that consumes nothing. Empty for an unknown, expired, consumed, or wrong-purpose
+	 * token, so it can never name a principal for a token the write would reject.
+	 *
+	 * <p>It exists for one reason (#357): {@link #resetPassword} can only name the account <em>after</em>
+	 * redeeming the token and writing the password, so the edge could revoke that account's sessions only
+	 * afterwards — and a transient revoke failure then returned {@code 500} with the password already
+	 * changed, the retry drawing the generic invalid-token rejection while an attacker's session stayed
+	 * live. Reading first lets the edge revoke first, so a failure there leaves the link usable.
+	 */
+	Optional<String> emailForResetToken(String tokenHash);
 
 	/**
 	 * Set the account's password directly (authenticated set-password, closes S4 F-1). The edge authorizes

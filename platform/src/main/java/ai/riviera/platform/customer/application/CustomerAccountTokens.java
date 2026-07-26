@@ -28,4 +28,10 @@ public interface CustomerAccountTokens {
 	 * cannot both succeed (single-use).
 	 */
 	Optional<CustomerAccountId> consume(TokenPurpose purpose, String tokenHash);
+
+	/**
+	 * The account a token belongs to while it is still claimable — {@link #consume}'s predicate as a pure
+	 * read, consuming nothing (#357). Kept next to {@code consume} so the two predicates cannot drift.
+	 */
+	Optional<CustomerAccountId> accountFor(TokenPurpose purpose, String tokenHash);
 }

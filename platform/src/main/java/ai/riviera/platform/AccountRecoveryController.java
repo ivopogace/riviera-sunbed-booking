@@ -83,14 +83,32 @@ class AccountRecoveryController {
 	}
 
 	/**
-	 * Redeem a reset token and set the new password. On success every session for that account is
-	 * invalidated (AC-3), so an attacker's live session cannot outlive the old password. A weak password
-	 * is {@code 400 INVALID_REQUEST}; a bad/expired/used token is {@code 400 INVALID_OR_EXPIRED_TOKEN}.
+	 * Redeem a reset token and set the new password. Every session for that account is invalidated (AC-3),
+	 * so an attacker's live session cannot outlive the old password. A weak password is
+	 * {@code 400 INVALID_REQUEST}; a bad/expired/used token is {@code 400 INVALID_OR_EXPIRED_TOKEN}.
+	 *
+	 * <p><strong>The revoke brackets the write</strong> (#357). <em>Before</em>, because the two effects are
+	 * not atomic and cannot be — the password write is the {@code customer} module's transaction, the
+	 * session deletes are Spring Session's, so a {@code @Transactional} here would look atomic without
+	 * being atomic (#344 D-1). Revoking only afterwards, as S8 shipped, meant a transient revoke failure
+	 * returned {@code 500} with the token already spent: the customer retries the emailed link, is told it
+	 * is invalid or expired, and the session the reset existed to kill is still alive. Revoke-first is only
+	 * possible because {@link CustomerRecovery#emailForResetToken} names the account without consuming the
+	 * token; if it names nobody, the redemption below rejects the token anyway and nothing was revoked.
+	 *
+	 * <p><em>And after</em>, because revoking only first would leave a window in which the OLD password
+	 * still works — the credential an attacker holds in exactly the scenario this endpoint recovers from —
+	 * so a sign-in landing there would survive the reset. The bcrypt encode is hoisted above the revoke to
+	 * keep that window to a single write (#344 F-4: at ~80ms the encode would otherwise dominate it). What
+	 * no ordering removes is a failure in the trailing revoke, which still reports an error with the
+	 * password already changed — by then every session that existed when the request started is gone.
 	 */
 	@PostMapping(RESET_PASSWORD_PATH)
 	ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
 		CustomerPasswords.validate(request.newPassword());
-		return switch (recovery.resetPassword(request.token(), passwordEncoder.encode(request.newPassword()))) {
+		String newPasswordHash = passwordEncoder.encode(request.newPassword());
+		recovery.emailForResetToken(request.token()).ifPresent(sessionRevoker::revokeAll);
+		return switch (recovery.resetPassword(request.token(), newPasswordHash)) {
 			case ResetPasswordOutcome.Reset(var accountId, var email) -> {
 				sessionRevoker.revokeAll(email);
 				yield ResponseEntity.noContent().build();
