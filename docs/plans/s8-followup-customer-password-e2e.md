@@ -115,7 +115,7 @@ keep byte-identical behaviour, which the run in phase 2 confirms.
   kind step 4 patches in place rather than flags. No other substrate doc references `auth-mocks.ts` or
   the mock helpers, so nothing else needed reconciling.
 - **The `/account/password` entry-point gap** — the account page has no in-app link on the tourist side
-  (operators reach theirs from the console header). Filed as a follow-up issue at close-out; out of scope
+  (operators reach theirs from the console header). Filed as **#351** at close-out; out of scope
   here because adding navigation is a product change, not test coverage.
 
 ## Availability & concurrency (invariant #2)
@@ -164,7 +164,7 @@ N/A — no contract change. The mock encodes the EXISTING contract:
 **Stage pointer:** `merged — PR #350 squash-merged to main as 15f1f12; close-out complete`
 
 **Next action:** None — the slice is done. Issue #346 closed as completed (no parent epic, so no
-epic checklist to tick); the one deferred open question is tracked as its own issue (below).
+epic checklist to tick); the one deferred open question is tracked as **#351**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
