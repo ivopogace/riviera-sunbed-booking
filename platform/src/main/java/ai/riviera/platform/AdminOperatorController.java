@@ -46,8 +46,17 @@ import ai.riviera.platform.operator.vocabulary.PendingOperator;
  * operator working: the admin's retry is refused {@code 409 WRONG_STATUS} and revokes nothing, so
  * nothing ever closes those sessions. After, because revoking only first would leave a window in which
  * the account is still ACTIVE — a sign-in landing there would survive the suspension with no admin
- * recovery path. The residual failure direction is over-revocation (a rolled-back transition after a
- * successful revoke signs out a still-ACTIVE operator), never under.
+ * recovery path.
+ *
+ * <p><strong>What the bracket costs.</strong> #128 could promise that a rolled-back transition never
+ * signs out a still-ACTIVE operator, because nothing was revoked until the status had committed; the
+ * pre-revoke gives that up — a {@code suspend} refused after it (raced by a second admin, or reinstated
+ * in between) leaves that operator signed out while still ACTIVE. That is over-revocation, a
+ * convenience cost the operator recovers from by signing in again, and it is the price of removing
+ * the under-revocation this fixes: a failed revoke that left a SUSPENDED account's sessions alive with
+ * no admin action able to close them. Under-revocation is not eliminated outright — a failed
+ * <em>trailing</em> revoke still leaves whatever the window produced — but it is bounded to sessions
+ * created inside a single request rather than every session the account had.
  *
  * <p><strong>An admin may not suspend itself.</strong> That guard needs to know who is calling —
  * authentication context, i.e. edge knowledge the module deliberately does not have — so it lives here,

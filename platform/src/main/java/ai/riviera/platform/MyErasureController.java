@@ -47,8 +47,9 @@ class MyErasureController {
 	 * {@code @Transactional} here would look atomic without being atomic (#344 D-1). Ordered the other way, a
 	 * transient revoke failure raised {@code 500} <em>after</em> the PII was gone: the tourist is told the
 	 * erasure failed, their sessions are still alive on an erased account, and no retry restores either.
-	 * Revoking first leaves only "nothing happened" or "signed out, nothing erased" — both recoverable by
-	 * signing in again and re-submitting.
+	 * Revoking first leaves the PII intact however the revoke fails — including <em>partway</em>, since
+	 * {@link PrincipalSessionRevoker} deletes session by session rather than in one transaction — and every
+	 * one of those states is recoverable: re-submitting revokes whatever is left, then scrubs.
 	 *
 	 * <p><strong>And after</strong>, because revoking only first would open a window in which the credential
 	 * still works: a sign-in landing between the revoke and the scrub would produce a session that outlives
