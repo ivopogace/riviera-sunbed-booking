@@ -35,7 +35,17 @@ class PrincipalSessionRevoker {
 		this.sessions = sessions;
 	}
 
-	/** Delete every session whose principal name matches {@code principalName}. */
+	/**
+	 * Delete every session whose principal name matches {@code principalName}.
+	 *
+	 * <p><strong>Callers pairing this with a state change must bracket it</strong> (#357): call it
+	 * <em>before</em> the change, so a failure here cannot leave the state changed behind an error saying
+	 * nothing happened — and <em>again after</em>, because revoking only first leaves a window in which the
+	 * old credential/status is still valid, so a sign-in landing there would produce a session that outlives
+	 * the change. Both calls are idempotent deletes; the second is normally a no-op, and is not dead code.
+	 * A principal that cannot be named until the change has run is the reason two of the three callers
+	 * ({@link AdminOperatorController}, {@link AccountRecoveryController}) first make a pure read.
+	 */
 	void revokeAll(String principalName) {
 		revokeAllExcept(principalName, null);
 	}
