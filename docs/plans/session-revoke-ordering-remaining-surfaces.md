@@ -251,14 +251,14 @@ values, same non-enumerating reset rejection.
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 — write the three failing `MeErasureControllerTest` methods (AC-11), then
-bracket the scrub in `MyErasureController`.
+**Next action:** Phase 1 — write the failing `AdminOperatorControllerTest` (AC-6…AC-9, AC-12) and the
+`OperatorLifecycleIT` status cases (AC-10), then add `activeUsername` and bracket the suspension.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Erasure: bracket the scrub (no port change) | | |
+| 0 — Erasure: bracket the scrub (no port change) | ✅ | `280b97a` |
 | 1 — Suspend: `activeUsername` pre-read + bracket the transition | | |
 | 2 — Reset: resolve-without-consume pre-read + bracket the write | | |
 | 3 — Substrate + close-out | | |
@@ -542,6 +542,7 @@ return switch (recovery.resetPassword(request.token(), newPasswordHash)) { … }
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-26 | Plan — inherited from #344's audit | every call site pairing a state change with a session revoke | `grep -rn "revokeAll\|revokeAllExcept" platform/src --include=*.java` | 6 | 3 fixed here (reset, suspend, erasure), 2 already fixed by #344 and deliberately **not** given a trailing revoke (their keep-id/rotation pairing makes it unsafe — see Non-goals), 1 skipped (`OperatorCredentialInitializer`, boot-time) |
+| 2026-07-26 | Phase 0 — the erasure bracket (`280b97a`) | the same six sites, re-run against the new pattern (revoke **both** sides, not just earlier) | `grep -rn "revokeAll\|revokeAllExcept" platform/src/main --include=*.java` | 6 (erasure now 2 calls) | Unchanged from the plan row: phases 1–2 apply the same bracket to suspend + reset. The two `revokeAllExcept` sites keep a single call by design — a second one would have to re-derive the keep-id across `SessionIdentity.rotate` (#344 R-1), risking deletion of the caller's own session for a window #344 already accepted. `OperatorCredentialInitializer` still skipped: boot-time, no caller, no window (nobody holds a session for a credential the deploy is still stamping) |
 
 ---
 
