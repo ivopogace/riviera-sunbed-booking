@@ -326,8 +326,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
 
-    // The popover holding focus is destroyed by the navigation it triggered; without a restore
-    // focus falls to document.body (the #148 find-modal bug, WCAG 2.4.3).
+    // Without the restore, focus falls to body (the #148 find-modal bug, WCAG 2.4.3).
     expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
     expect(document.activeElement).toBe(el.querySelector('main'));
   });

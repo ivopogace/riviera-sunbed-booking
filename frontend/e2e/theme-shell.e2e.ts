@@ -198,10 +198,9 @@ test.describe('account menu', () => {
     // The popover must not survive its own navigation.
     await expect(page.getByTestId('nav-account-menu')).toBeHidden();
     await expect(page.getByTestId('nav-user')).toHaveAttribute('aria-expanded', 'false');
-    // Its link held focus, so the destroyed popover must not drop focus to document.body. The
-    // shell parks it on <main>; a destination that autofocuses (this one) then takes it from there.
+    // Focus must stay in the page, not fall to body; this destination then autofocuses its input.
     await expect
-      .poll(() => page.evaluate(() => document.activeElement?.closest('main') !== null))
+      .poll(() => page.evaluate(() => !!document.activeElement?.closest('main')))
       .toBe(true);
   });
 

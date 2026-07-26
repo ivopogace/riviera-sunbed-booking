@@ -249,6 +249,15 @@ what the fix touches *before* editing).
 > and F-2; the generic banks, which would have covered focus management, never ran. PR #355
 > hardens `pr-gates.md` §1, the SDLC skill and the PR template so the substitution cannot be
 > silent again.
+>
+> **Correction, same day:** the blocker was narrower than first reported. `/code-review` runs as a
+> subagent (blocked by this session's standing instruction), but **`/review <PR>` loads as a plain
+> skill and runs inline** — it is what found F-4, and it was available all along. So #353's gate was
+> skippable, not blocked. The hardened rule keeps its escape hatch for genuinely restricted
+> sessions, but the honest reading of #353 is that the review was skipped, not prevented.
+
+| F-5 | review (`/review` on #355, this PR's own gate) | **False-pass in F-4's new e2e assertion** — `document.activeElement?.closest('main') !== null` yields `undefined !== null` = **true** when `activeElement` is null, so the assertion would pass with focus nowhere | fixed — `!!document.activeElement?.closest('main')` |
+| F-6 | review (`/review` on #355) | **RV-STYLE-1 recurrence** — four of the fix's own inline comments ran to two lines, the same finding as F-1, in the PR that hardens the process | fixed — all four shortened to one line |
 
 **Review-gate walk (frontend bank, `references/frontend-conventions.md`):** RV-FE-1 ✅ (greppable
 sweep for `standalone: true` / `OnPush` / `ngClass` / `ngStyle` / `@HostBinding` / `@HostListener` /

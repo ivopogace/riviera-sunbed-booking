@@ -111,16 +111,14 @@ export class App {
         takeUntilDestroyed(),
       )
       .subscribe(() => {
-        // Both overlays hold focus inside markup this navigation is about to destroy — the find
-        // modal (#148) and the account popover (#351, whose own link is the trigger).
-        const heldFocus = this.findOpen() || this.accountOpen();
+        // Both overlays hold focus in markup this navigation destroys (#148 find modal, #351 menu).
+        const overlayHeldFocus = this.findOpen() || this.accountOpen();
         this.findOpen.set(false);
         this.menuOpen.set(false);
         this.themeOpen.set(false);
         this.accountOpen.set(false);
-        // Move focus to the main content region so a keyboard/AT guest lands on the new page
-        // rather than document.body (WCAG 2.4.3 — review finding [4]).
-        if (heldFocus) {
+        // Land the keyboard/AT guest on the new page, not document.body (WCAG 2.4.3, finding [4]).
+        if (overlayHeldFocus) {
           this.mainRef()?.nativeElement.focus();
         }
       });
