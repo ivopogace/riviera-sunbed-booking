@@ -109,6 +109,43 @@ class CustomerAccountRecoveryIT {
 				.isEqualTo(new ResetPasswordOutcome.Reset(id, "reissue@example.com"));
 	}
 
+	/**
+	 * #357: the resolve-<em>without</em>-consume read that lets the edge revoke the account's sessions
+	 * before the reset writes anything. Reading it must not spend the single use — otherwise the reset it
+	 * precedes would fail as already-redeemed.
+	 */
+	@Test
+	void emailForResetTokenResolvesTheAccountWithoutConsumingTheToken() {
+		CustomerAccountId id = register("named@example.com");
+		recovery.issuePasswordResetToken(id, "rh-named", FUTURE);
+
+		assertThat(recovery.emailForResetToken("rh-named")).contains("named@example.com");
+		assertThat(recovery.emailForResetToken("rh-named")).as("still readable — the read consumes nothing")
+				.contains("named@example.com");
+		assertThat(recovery.resetPassword("rh-named", "{bcrypt}rotated"))
+				.as("and the token is still redeemable afterwards")
+				.isEqualTo(new ResetPasswordOutcome.Reset(id, "named@example.com"));
+	}
+
+	/**
+	 * The read applies exactly the redemption predicate — unknown, expired, consumed, or issued for the
+	 * other purpose all read empty. A disagreement either way would be a bug: revoking sessions for a
+	 * token the write then rejects, or writing without having revoked.
+	 */
+	@Test
+	void emailForResetTokenIsEmptyForAnExpiredConsumedOrWrongPurposeToken() {
+		CustomerAccountId id = register("named-negative@example.com");
+		recovery.issuePasswordResetToken(id, "rh-consumed", FUTURE);
+		recovery.resetPassword("rh-consumed", "{bcrypt}rotated");
+		recovery.issuePasswordResetToken(id, "rh-gone", PAST);
+		recovery.issueEmailVerificationToken(id, "vh-other-purpose", FUTURE);
+
+		assertThat(recovery.emailForResetToken("rh-consumed")).as("consumed").isEmpty();
+		assertThat(recovery.emailForResetToken("rh-gone")).as("expired").isEmpty();
+		assertThat(recovery.emailForResetToken("vh-other-purpose")).as("wrong purpose").isEmpty();
+		assertThat(recovery.emailForResetToken("rh-unknown")).as("unknown").isEmpty();
+	}
+
 	private CustomerAccountId register(String email) {
 		RegistrationOutcome outcome = provisioning.register(email, "{bcrypt}orig");
 		return ((RegistrationOutcome.Registered) outcome).accountId();

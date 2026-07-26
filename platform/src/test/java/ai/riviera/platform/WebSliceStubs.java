@@ -265,6 +265,11 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public Optional<String> activeUsername(OperatorId operatorId) {
+				return Optional.empty();
+			}
+
+			@Override
 			public ApprovalOutcome approve(OperatorId operatorId) {
 				return ApprovalOutcome.NO_SUCH_OPERATOR;
 			}
@@ -372,6 +377,11 @@ class WebSliceStubs {
 			@Override
 			public ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash) {
 				return new ResetPasswordOutcome.InvalidOrExpired();
+			}
+
+			@Override
+			public Optional<String> emailForResetToken(String tokenHash) {
+				return Optional.empty();
 			}
 
 			@Override

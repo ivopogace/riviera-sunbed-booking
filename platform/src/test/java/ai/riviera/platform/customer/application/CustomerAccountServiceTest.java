@@ -234,11 +234,17 @@ class CustomerAccountServiceTest {
 
 		@Override
 		public Optional<CustomerAccountId> consume(TokenPurpose purpose, String tokenHash) {
+			Optional<CustomerAccountId> claimed = accountFor(purpose, tokenHash);
+			claimed.ifPresent(id -> byHash.put(tokenHash, new Row(id.value(), purpose, true)));
+			return claimed;
+		}
+
+		@Override
+		public Optional<CustomerAccountId> accountFor(TokenPurpose purpose, String tokenHash) {
 			Row r = byHash.get(tokenHash);
 			if (r == null || r.consumed() || r.purpose() != purpose) {
 				return Optional.empty();
 			}
-			byHash.put(tokenHash, new Row(r.accountId(), r.purpose(), true));
 			return Optional.of(new CustomerAccountId(r.accountId()));
 		}
 	}

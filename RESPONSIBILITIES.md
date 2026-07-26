@@ -200,7 +200,9 @@ redirect/token-exchange machinery stays at the platform edge. **S8 (#113)** adde
 `CustomerAccountRecovery` `api/` port — issue/redeem single-use hashed **email-verification** and
 **password-reset** tokens (`customer_account_token`, V28), **set-password** (closing the S4 SSO-only
 gap), and a verified read — plus `email_verified` on the account (V28; SSO sign-in marks it
-provider-verified). Email verification is **soft/non-blocking** (v1). Still no Spring Security type
+provider-verified). **#357** added one more read to that port: *whose account does this still-redeemable
+reset token unlock?*, resolved **without consuming** it, so the edge can revoke that principal's
+sessions before the reset writes anything. Email verification is **soft/non-blocking** (v1). Still no Spring Security type
 inside the module (`CustomerAuthPlacementTests` green); the mailer, token digest, and
 recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 
@@ -210,9 +212,11 @@ recovery/set-password endpoints stay at the platform edge (RV-BE-11).
 **Job:** Own operator accounts — incl. their **admin-driven lifecycle state**
 (`PENDING`→`ACTIVE`/`REJECTED` on approval #115; `ACTIVE`⇄`SUSPENDED` on suspend/reinstate
 #128) and the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**,
-now writable (creator-owns-on-create). Answer three things for the rest of the system: *does
-this operator own this venue?*, *which operators are awaiting approval?*, and *which accounts
-exist for an admin to act on?* (invariant #13). A suspension **keeps** the operator's
+now writable (creator-owns-on-create). Answer four things for the rest of the system: *does
+this operator own this venue?*, *which operators are awaiting approval?*, *which accounts
+exist for an admin to act on?* (invariant #13), and — since #357 — *what is the ACTIVE
+operator with this id called?*, so the edge can revoke its sessions **before** a suspension
+commits rather than only after. A suspension **keeps** the operator's
 `operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway.
 
 **Not My Job:**

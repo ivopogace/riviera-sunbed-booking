@@ -104,6 +104,11 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	}
 
 	@Override
+	public Optional<String> emailForResetToken(String tokenHash) {
+		return tokens.accountFor(TokenPurpose.RESET_PASSWORD, tokenHash).map(store::emailOf);
+	}
+
+	@Override
 	@Transactional
 	public void setPassword(CustomerAccountId accountId, String newPasswordHash) {
 		store.updatePasswordHash(accountId, newPasswordHash);

@@ -57,6 +57,21 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 				.update();
 	}
 
+	/** {@link #consume}'s predicate as a read — a point lookup on the {@code token_hash} UNIQUE index. */
+	@Override
+	public Optional<CustomerAccountId> accountFor(TokenPurpose purpose, String tokenHash) {
+		return jdbc.sql("""
+				SELECT account_id FROM customer_account_token
+				WHERE token_hash = :tokenHash AND purpose = :purpose
+				  AND consumed_at IS NULL AND expires_at > NOW()
+				""")
+				.param(TOKEN_HASH, tokenHash)
+				.param(PURPOSE, purpose.name())
+				.query(Long.class)
+				.optional()
+				.map(CustomerAccountId::new);
+	}
+
 	@Override
 	public Optional<CustomerAccountId> consume(TokenPurpose purpose, String tokenHash) {
 		return jdbc.sql("""

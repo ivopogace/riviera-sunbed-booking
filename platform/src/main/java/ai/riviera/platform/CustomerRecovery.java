@@ -2,6 +2,7 @@ package ai.riviera.platform;
 
 import java.net.URI;
 import java.time.Clock;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +96,15 @@ class CustomerRecovery {
 	/** Redeem a presented raw reset token, setting the already-encoded new password on success. */
 	ResetPasswordOutcome resetPassword(String rawToken, String encodedNewPassword) {
 		return recovery.resetPassword(tokens.hash(rawToken), encodedNewPassword);
+	}
+
+	/**
+	 * Whose account a presented raw reset token unlocks, while it is still redeemable — the read that lets
+	 * the caller revoke that principal's sessions before {@link #resetPassword} changes anything (#357).
+	 * Consumes nothing; empty for any token the redemption would reject.
+	 */
+	Optional<String> emailForResetToken(String rawToken) {
+		return recovery.emailForResetToken(tokens.hash(rawToken));
 	}
 
 	/** Set the account's already-encoded password directly (authenticated set-password, closes S4 F-1). */
