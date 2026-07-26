@@ -269,9 +269,22 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `merging — all gates green on PR #342 after the workflow review round`
+**Stage pointer:** `DONE — merged 2026-07-26 as 4561a0b (PR #342 squashed); close-out complete`
 
-**Next action:** Merge close-out (`riviera-sdlc/references/pr-gates.md` §3); notes below.
+**Next action:** None. Follow-ups live on #343, #344, #345, #346.
+
+**Close-out (`riviera-sdlc/references/pr-gates.md` §3).**
+1. **#326 closed** by the PR's `Closes #326`.
+2. **Parent epic: none** (`has_parent: false`) — the epic-tick step is genuinely N/A, not skipped.
+3. **Deferred findings propagated** to #343 / #344 / #345 / #346 before the merge, so none of them
+   lives only in a review transcript.
+4. **Plan doc final state:** this section, at `4561a0b`.
+5. **`riviera-docs-freshness` run over the merge** — **zero findings.** The three substrate docs #326
+   invalidated (`CLAUDE.md`, `RESPONSIBILITIES.md`, the runbook) were patched *inside* the code PR,
+   which is what the skill asks for rather than a second docs PR; `CONTEXT.md`'s Operator and
+   Bootstrap-operator entries state nothing this slice makes false, and no substrate doc describes the
+   rate limiter's path keying, so the decode fix falsified no stated claim. Graph: code rebuilt by the
+   post-commit hook; the doc-semantic pass stays deliberately skipped (maintainer decision above).
 
 ### Second review round — the maintainer-run `/code-review` workflow (xhigh)
 
