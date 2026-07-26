@@ -331,6 +331,45 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
+  it('closes the account menu when Your account is activated on the page it points at (#351)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    const trigger = el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!;
+    trigger.click();
+    fixture.detectChanges();
+
+    // A same-URL activation emits NavigationSkipped, not NavigationEnd, so the router-event
+    // close never fires — the link must close the popover itself, like every sibling control.
+    el.querySelector<HTMLAnchorElement>('[data-testid="nav-account-link"]')!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(el.querySelector('[data-testid="account-backdrop"]')).toBeNull();
+  });
+
+  it('keeps focus in the page after signing out from the account menu (a11y, #351)', async () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    fixture.detectChanges();
+    const signOutButton = el.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!;
+    signOutButton.focus();
+
+    signOutButton.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Sign-out does not navigate, so no NavigationEnd restore runs; without an explicit hand-off
+    // focus is stranded on document.body while the popover unmounts around it (WCAG 2.4.3).
+    expect(document.activeElement).not.toBe(document.body);
+    expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
+  });
+
   it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
     const { fixture, el } = shell();
     const button = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;

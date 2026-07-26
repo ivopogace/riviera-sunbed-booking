@@ -259,6 +259,17 @@ what the fix touches *before* editing).
 | F-5 | review (`/review` on #355, this PR's own gate) | **False-pass in F-4's new e2e assertion** — `document.activeElement?.closest('main') !== null` yields `undefined !== null` = **true** when `activeElement` is null, so the assertion would pass with focus nowhere | fixed — `!!document.activeElement?.closest('main')` |
 | F-6 | review (`/review` on #355) | **RV-STYLE-1 recurrence** — four of the fix's own inline comments ran to two lines, the same finding as F-1, in the PR that hardens the process | fixed — all four shortened to one line |
 
+| F-7 | review (**`/code-review`** on the slice — the subagent fan-out, run once the maintainer authorized it) | **Same-URL activation leaves the menu stuck open.** Angular's default `onSameUrlNavigation: 'ignore'` emits `NavigationSkipped`, not `NavigationEnd`, so a tourist already on `/account/password` who reopens the menu and clicks "Your account" keeps an open popover, `aria-expanded="true"`, and a full-viewport backdrop swallowing their next click | fixed — `(click)="closeMenus()"` on the desktop anchor, matching every sibling control; pinned by `app.spec.ts` → `'closes the account menu when Your account is activated on the page it points at (#351)'` |
+| F-8 | review (`/code-review`) | **`signOut()` strands focus on `document.body`** — it unmounts the popover and the focused button without navigating, so neither `closeMenus()` nor the `NavigationEnd` restore runs. The same WCAG 2.4.3 class as F-4, in the twin path F-4 did not cover | fixed — `signOut()` parks focus on `<main>` before awaiting the logout; pinned by `app.spec.ts` → `'keeps focus in the page after signing out from the account menu (a11y, #351)'` |
+| F-9 | review (`/code-review`) | **Dropped `cursor: pointer`** — the trigger carries `.riv-nav-user .riv-nav-btn`; only `.riv-nav-link` set the cursor, and the pre-#351 `nav-signout` button had it. The one new interactive header control hovered with the default arrow | fixed — `cursor: pointer` on `.riv-nav-user`; pinned by a `toHaveCSS` computed-style assertion in `theme-shell.e2e.ts` (the `riviera-tailwind` no-drift rule) |
+
+> **What F-7–F-9 settle.** Three review modes were run over this one slice: the hand-walked
+> overlay bank (found F-1, F-2), inline `/review` (found F-4, then F-5/F-6 on its own fix), and
+> the `/code-review` subagent fan-out (found F-7, F-8, F-9 — which the first two both missed,
+> including a second instance of the very focus bug F-4 had just fixed). The ordering is not
+> ambiguous: `/code-review` is the default, and `pr-gates.md` §1 now says so with this as the
+> evidence.
+
 **Review-gate walk (frontend bank, `references/frontend-conventions.md`):** RV-FE-1 ✅ (greppable
 sweep for `standalone: true` / `OnPush` / `ngClass` / `ngStyle` / `@HostBinding` / `@HostListener` /
 `as any` over the added lines → none) · RV-FE-7 ❓ → F-2 · RV-FE-E2E ✅ (mocked CI suite, test-id
