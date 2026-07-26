@@ -89,11 +89,11 @@ Spring Session repository. No table, column, or constraint changes.
   same non-atomic shape, but the revoke-first fix is *not available* to it: the principal's email is
   only known from the `ResetPasswordOutcome.Reset` payload, i.e. after the token has already been
   redeemed and the password written. Fixing it needs a different mechanism (a resolve-without-consume
-  read, or an honest partial-success response), which is a separate design call. → follow-up issue.
+  read, or an honest partial-success response), which is a separate design call. → **follow-up issue #357**.
 - **`AdminOperatorController.suspend` and `MyErasureController` are out of scope.** Both call
   `revokeAll` after a state change, so they share the ordering question, but neither has the
   misleading-retry harm this issue is about: suspension's retry is idempotent, and erasure's is
-  terminal. Noted in the generalization audit rather than changed.
+  terminal. Noted in the generalization audit and carried into **#357** rather than changed here — the audit found `suspend` is in fact the worse of the two (a failed revoke leaves a *suspended* operator's sessions live, and the admin's retry draws `409 WRONG_STATUS`), so it is written up there as such.
 - **No `@Transactional` spanning the credential write and the session delete.** See D-1 below.
 - **No FE change.** The success copy ("Any other devices signed in as you have been signed out")
   stays accurate and becomes *more* true; no new state crosses the wire.
@@ -131,17 +131,21 @@ template says must be verified row by row.
 
 ## Open questions / Assumptions
 
-- **Assumption:** rotating the session id is transparent to the SPA, because `SessionRepositoryFilter`
-  emits the new `SESSION` cookie on the same response and the CSRF token lives in a separate
-  `XSRF-TOKEN` cookie (`CookieCsrfTokenRepository.withHttpOnlyFalse()` in `SecurityConfig`), not in
-  the session. — *Owner:* claude · *Resolves by:* phase 1 (the AC-1/AC-2 ITs assert the new cookie
-  authenticates; a subsequent CSRF-protected call in the same IT would fail if the token were
-  session-bound).
-- **Open question:** should `AccountRecoveryController.resetPassword` get an equivalent guarantee?
-  — *Owner:* claude · *Resolves by:* phase 2 (file the follow-up issue and link it here; explicitly
-  a Non-goal for this slice).
+_None open._
+
 
 ### Resolved
+
+- **Assumption (confirmed, phase 1):** rotating the session id is transparent to the SPA —
+  `SessionRepositoryFilter` emits the replacement `SESSION` cookie on the same response, and CSRF is
+  `CookieCsrfTokenRepository.withHttpOnlyFalse()`-backed (`SecurityConfig`), so the `XSRF-TOKEN` is
+  not session-bound. The AC-1/AC-2 ITs assert the re-issued cookie authenticates a subsequent
+  request; no frontend change was needed.
+- **Open question (answered, phase 2):** should the other revoke sites get the same guarantee?
+  Yes, but not here — `AccountRecoveryController.resetPassword` cannot use revoke-first at all
+  (the principal is only known once the token is consumed), and `AdminOperatorController.suspend`
+  turned out to be the more serious of the deferred set. All three deferrals are written up in
+  **#357**.
 
 - **D-1 — Fix the atomicity by ordering, not by `@Transactional`.** Resolved at plan time.
   A transaction spanning both effects is the obvious-looking fix and is rejected for two reasons.

@@ -69,15 +69,21 @@ compromised had to find a platform admin.
   `matches(rawInput, storedHash)` — never encode-then-compare, which bcrypt's re-salting makes
   always-false (the defect behind #128 and S8; `OperatorPasswordChangeIT` pins it).
 - **New password policy** is the shared one (8–72 bytes) → `400 INVALID_REQUEST` otherwise.
-- **Other sessions die, yours survives.** On success the edge deletes every *other*
-  `SPRING_SESSION` row for that principal (`PrincipalSessionRevoker`, #128); the session that made
-  the change stays signed in.
-  > **What this does and does not recover.** It evicts anyone holding the *password* — they can no
-  > longer sign in, and any session they had is gone. It does **not** evict someone holding a copy of
-  > **your own session cookie**: an exfiltrated cookie names the very session id the change
-  > deliberately spares, so it keeps working. For a suspected *cookie* theft, sign out (which
-  > destroys that id) or have an admin suspend the account, which revokes every session including
-  > yours. Rotating the surviving session id on change would close this — tracked as a follow-up.
+- **Other sessions die, and yours is re-issued under a new id.** On success the edge deletes every
+  *other* `SPRING_SESSION` row for that principal (`PrincipalSessionRevoker`, #128), then rotates
+  the calling session's id (#344). You stay signed in — Spring Session writes the replacement
+  `SESSION` cookie on the same response — but the cookie value you arrived with is dead.
+  > **What this does and does not recover.** It evicts anyone holding the *password* and anyone
+  > holding a copy of **any** cookie that existed before the change, including your own — which is
+  > what #344 added; before it, an exfiltrated copy of the caller's cookie named the one session the
+  > change deliberately spared and kept working. What it still cannot do is evict an attacker who
+  > controls the device *itself* and simply reads the new cookie: for that, have an admin suspend
+  > the account (which revokes every session, including yours) and treat the device as lost.
+- **The two effects are ordered, not transactional.** The revoke runs **before** the credential
+  write. So a `500` from this endpoint means the password did **not** change and your current one
+  still works — retry it. The worst outcome is being signed out of your other devices for nothing.
+  (Ordered the other way, as #326 shipped it, a transient failure rotated the hash and then reported
+  failure, so the retry drew `INVALID_CURRENT_PASSWORD` and looked like a broken account.)
 - **Own rate-limit budget.** The path has its own per-IP bucket, separate from operator login, so a
   change flood cannot lock operators out of signing in (the #127 lesson). Exhausted → `429`.
 - **The bootstrap admin is refused**: `409 BOOTSTRAP_CREDENTIAL_MANAGED`. Its credential is
