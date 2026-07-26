@@ -1,5 +1,8 @@
 package ai.riviera.platform;
 
+import java.time.Instant;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +12,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -16,6 +21,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import jakarta.servlet.http.Cookie;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,12 +70,17 @@ class OperatorPasswordChangeIT {
 	OperatorProvisioning provisioning;
 	@Autowired
 	PasswordEncoder encoder;
+	@Autowired
+	FindByIndexNameSessionRepository<? extends Session> sessions;
 
 	@BeforeEach
 	void provisionTarget() {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username = :u)").param("u", TARGET).update();
 		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", TARGET).update();
+		// Sessions outlive the operator row (different table, no FK), and the tests below read the
+		// principal index expecting to find only their own — so clear them per test, not per class.
+		jdbc.sql("DELETE FROM spring_session WHERE principal_name = :u").param("u", TARGET).update();
 		provisioning.provision(TARGET, encoder.encode(OLD_PASSWORD));
 	}
 
@@ -133,6 +144,75 @@ class OperatorPasswordChangeIT {
 		assertNotEquals(beforeTheChange.getValue(), afterTheChange.getValue());
 		mvc.perform(get(ME_PATH).cookie(beforeTheChange)).andExpect(status().isUnauthorized());
 		mvc.perform(get(ME_PATH).cookie(afterTheChange)).andExpect(status().isOk());
+	}
+
+	/**
+	 * AC-1 for #359: the rotation must survive a request that overlaps it. A second request on the same
+	 * session — the operator console's pending-request poll is the realistic one — loads the session before
+	 * the change commits and saves it after, and Spring Session's save writes <em>that</em> request's
+	 * in-memory id ({@code UPDATE … SET SESSION_ID = ? WHERE PRIMARY_ID = ?}). Before this slice that wrote
+	 * the OLD id back: the exfiltrated cookie the rotation exists to kill started working again, and the
+	 * caller's freshly issued cookie was orphaned, so a legitimate operator was silently 401'd after a 204.
+	 *
+	 * <p>Driven through the repository rather than two threads deliberately. The defect needs one specific
+	 * interleaving — B loads, A commits, B saves — and load / touch / save is exactly and only what
+	 * {@code SessionRepositoryRequestWrapper.getSession} and {@code commitSession} do to a session they did
+	 * not create. Two real threads would model those same three calls with a race added on top, and could
+	 * not pin the ordering without a latch inside library code.
+	 */
+	@Test
+	void aConcurrentSaveOnTheOldSessionCannotResurrectItsId() throws Exception {
+		assertConcurrentSaveCannotResurrect(sessions);
+	}
+
+	/**
+	 * The half of the rotation that fails <strong>silently</strong> if it regresses: the replacement session
+	 * must still be reachable by principal name, or every later {@link PrincipalSessionRevoker} call
+	 * quietly no-ops. The index is derived from the {@code SPRING_SECURITY_CONTEXT} attribute
+	 * ({@code PrincipalNameIndexResolver}), so this is really an assertion that the rotation carried the
+	 * session's attributes over rather than starting empty.
+	 */
+	@Test
+	void theRotatedSessionStaysReachableByPrincipalName() throws Exception {
+		Cookie thisDevice = SessionLoginSupport.operatorSession(mvc, TARGET, OLD_PASSWORD);
+
+		mvc.perform(changePassword(thisDevice, OLD_PASSWORD, NEW_PASSWORD))
+				.andExpect(status().isNoContent());
+
+		assertEquals(1, sessions.findByPrincipalName(TARGET).size(),
+				"the rotated session must stay indexed by principal, or revocation stops finding it");
+	}
+
+	/**
+	 * Generic so the package-private {@code JdbcSession} type is only ever inferred, never named: the
+	 * repository's element type is not visible outside {@code org.springframework.session.jdbc}, but a
+	 * capture flows through {@code findById} → {@code save} without it being spelled out.
+	 */
+	private <S extends Session> void assertConcurrentSaveCannotResurrect(
+			FindByIndexNameSessionRepository<S> repository) throws Exception {
+		Cookie beforeTheChange = SessionLoginSupport.operatorSession(mvc, TARGET, OLD_PASSWORD);
+		S concurrentRequest = repository.findById(onlySessionIdOf(repository, TARGET));
+		assertNotNull(concurrentRequest, "the concurrent request must have loaded the pre-change session");
+
+		Cookie afterTheChange = mvc.perform(changePassword(beforeTheChange, OLD_PASSWORD, NEW_PASSWORD))
+				.andExpect(status().isNoContent())
+				.andReturn().getResponse().getCookie("SESSION");
+
+		// The overlapping request now completes, and its deferred save lands with the id it loaded.
+		concurrentRequest.setLastAccessedTime(Instant.now());
+		repository.save(concurrentRequest);
+
+		assertNotNull(afterTheChange, "the change must hand back the rotated SESSION cookie");
+		mvc.perform(get(ME_PATH).cookie(beforeTheChange)).andExpect(status().isUnauthorized());
+		mvc.perform(get(ME_PATH).cookie(afterTheChange)).andExpect(status().isOk());
+	}
+
+	/** Read from the principal index, not the cookie — {@code DefaultCookieSerializer} base64-encodes it. */
+	private static <S extends Session> String onlySessionIdOf(
+			FindByIndexNameSessionRepository<S> repository, String principal) {
+		Set<String> ids = repository.findByPrincipalName(principal).keySet();
+		assertEquals(1, ids.size(), "the test expects exactly one live session for " + principal);
+		return ids.iterator().next();
 	}
 
 	/** A rejected attempt must be inert: nothing rotated, nothing revoked (AC-2, against real storage). */
