@@ -84,9 +84,11 @@ class MyAccountController {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
 					"The current password is incorrect.");
 		}
+		// Encoded before the revoke: bcrypt costs ~80ms, which would otherwise widen the window below.
+		String newPasswordHash = passwordEncoder.encode(request.newPassword());
 		// Keep-id read BEFORE the rotation below: until the filter commits, the session row still carries it.
 		sessionRevoker.revokeAllExcept(authentication.getName(), SessionIdentity.currentId(httpRequest));
-		recovery.setPassword(accountId, passwordEncoder.encode(request.newPassword()));
+		recovery.setPassword(accountId, newPasswordHash);
 		SessionIdentity.rotate(httpRequest);
 		return ResponseEntity.noContent().build();
 	}

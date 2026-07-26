@@ -114,9 +114,11 @@ class OperatorAccountController {
 			return ApiProblem.response(HttpStatus.CONFLICT, "ACCOUNT_NOT_ACTIVE",
 					"This account is not active.");
 		}
+		// Encoded before the revoke: bcrypt costs ~80ms, which would otherwise widen the window below.
+		String newPasswordHash = passwordEncoder.encode(request.newPassword());
 		// Keep-id read BEFORE the rotation below: until the filter commits, the session row still carries it.
 		sessionRevoker.revokeAllExcept(username, SessionIdentity.currentId(httpRequest));
-		provisioning.setPassword(username, passwordEncoder.encode(request.newPassword()));
+		provisioning.setPassword(username, newPasswordHash);
 		SessionIdentity.rotate(httpRequest);
 		return ResponseEntity.noContent().build();
 	}
