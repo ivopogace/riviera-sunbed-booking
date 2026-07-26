@@ -20,6 +20,15 @@ visual spec:
   for both sides; registration picks Tourist vs Venue operator; operator
   registration ends in a pending-approval notice). Visual spec for epic #108
   (#111/#112/#115), implementing the maintainer's unified-auth decision.
+- `riviera-admin-console.dc.html` — the **platform-admin console** (approvals,
+  operator accounts, daily payouts, privacy/erasure, plus the signed-out and
+  no-access gates). **Not part of the Claude Design import** — drawn in-repo on
+  2026-07-26, after the admin surface had accumulated endpoint-by-endpoint
+  (#115/#128/#101) with UI for only some of them. Visual spec for epic #348.
+  Same conventions as the files above (porcelain glass, demo logic only), with
+  one addition: it carries a **responsive layer** (media queries in the helmet
+  block, since the canvas format is inline-styled) so the console works on a
+  phone down to 360px — the payout table becomes one labelled card per venue.
 
 Both are self-contained design-canvas files; open them in a browser
 (`support.js` / `image-slot.js` alongside are the canvas runtime). The `.dc.html`
@@ -115,3 +124,4 @@ restyle must respect:
 | Auth **surface split** (tourist modal vs operator sign-in card) | **Overridden** (maintainer, 2026-07-02): one unified sign-in/register page for both sides; registration chooses the account type. Styling per the designs; split per the #108 comment |
 | Venue photos (upload + display) | Follow-up issue |
 | Remaining 12 theme palettes | Follow-up issue |
+| Platform-admin console (approvals, operators, daily payouts, privacy) | Epic #348 — added 2026-07-26, outside the original import |
