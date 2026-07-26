@@ -114,9 +114,11 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(
       nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-register"]')?.getAttribute('href'),
     ).toBe('/account/sign-in?mode=register');
-    // No signed-in affordances when signed out.
+    // No signed-in affordances when signed out — including the #351 account menu.
     expect(nav?.querySelector('[data-testid="nav-user"]')).toBeNull();
     expect(nav?.querySelector('[data-testid="nav-signout"]')).toBeNull();
+    expect(nav?.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(nav?.querySelector('[data-testid="nav-account-link"]')).toBeNull();
   });
 
   it('shows the signed-in email + Sign out when signed in, and signs out on click (S2 #111)', () => {
@@ -130,9 +132,78 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // The signed-out links are gone.
     expect(el.querySelector('[data-testid="nav-signin"]')).toBeNull();
 
+    // Sign out now lives inside the account menu (#351), so it opens first.
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    fixture.detectChanges();
     el.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!.click();
     fixture.detectChanges();
     expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens an account menu with a Your account link when signed in (#351)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    // Closed by default: the menu's contents are absent until the trigger is activated.
+    const trigger = el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!;
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(el.querySelector('[data-testid="nav-signout"]')).toBeNull();
+
+    trigger.click();
+    fixture.detectChanges();
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const link = el.querySelector<HTMLAnchorElement>('[data-testid="nav-account-link"]');
+    expect(link?.getAttribute('href')).toBe('/account/password');
+    expect(link?.textContent).toContain('Your account');
+    expect(el.querySelector('[data-testid="nav-signout"]')).not.toBeNull();
+
+    // A disclosure, NOT an ARIA menu: role=menu/menuitem would oblige roving tabindex and
+    // arrow-key navigation (the theme-options precedent, WCAG 4.1.2).
+    expect(el.querySelector('[data-testid="nav-account-menu"]')?.getAttribute('role')).toBeNull();
+    expect(link?.getAttribute('role')).toBeNull();
+  });
+
+  it('closes the account menu when the theme picker opens, and vice versa (#351)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(el.querySelector('[data-testid="theme-option-porcelain"]')).not.toBeNull();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="theme-option-porcelain"]')).toBeNull();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
+  });
+
+  it('offers the account group in the mobile menu when signed in (#351)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+
+    const menu = el.querySelector('[data-testid="mobile-menu"]')!;
+    expect(menu.querySelector('[data-testid="nav-user-mobile"]')?.textContent).toContain(
+      'ana@example.com',
+    );
+    const link = menu.querySelector<HTMLAnchorElement>('[data-testid="nav-account-link-mobile"]');
+    expect(link?.getAttribute('href')).toBe('/account/password');
+    expect(link?.textContent).toContain('Your account');
+    expect(menu.querySelector('[data-testid="nav-signout-mobile"]')).not.toBeNull();
+    // Flat group, not a nested popover (the riv-mobile-theme precedent).
+    expect(menu.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
   });
 
   /**

@@ -178,15 +178,23 @@ N/A — no contract change. No endpoint, DTO, or status code is added or altered
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — authored, awaiting implement`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Start Phase 0 — write the failing `app.spec.ts` cases for AC-1/AC-2 first.
+**Next action:** Phase 2 — write the failing `theme-shell.e2e.ts` cases (AC-3/4/5/7), then rewire
+the page object and the two account-page specs to enter through the link (AC-8).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Desktop account menu | | |
-| 1 — Mobile account group | | |
-| 2 — E2E rewiring + shell coverage | | |
+| 0 — Desktop account menu | ✅ | `<sha>` |
+| 1 — Mobile account group | ✅ | `<sha>` (**merged into phase 0's commit** — both are markup in the same two files, so splitting them would have meant a mechanical `git add -p` with no reviewable benefit) |
+| 2 — E2E rewiring + shell coverage | ⏳ | |
+
+**Phase 0–1 verification:** `npm test` → 885/885 pass; `npm run lint` → clean.
+**R-6 closed:** `app.contrast.spec.ts` passed **unchanged**, confirming the popover reuses the
+already-proven `riv-pop` surface and adds no new glass to composite.
+**R-2 closed:** `grep -n 'themeOpen\|menuOpen\|accountOpen' src/app/app.ts` → all 7 enumerating
+sites (`NavigationEnd`, `toggleMenu`, `toggleThemePicker`, `toggleAccountMenu`, `openFind`,
+`signOut`, `closeMenus`) include `accountOpen`.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -306,6 +314,7 @@ what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-26 | Phase 0–1 (new `accountOpen` popover signal) | sites that enumerate the shell's popover signals by hand — a new signal silently misses each one (R-2) | `grep -n 'themeOpen\|menuOpen\|accountOpen' src/app/app.ts` | 7 (`NavigationEnd`, `toggleMenu`, `toggleThemePicker`, `toggleAccountMenu`, `openFind`, `signOut`, `closeMenus`) | fix all 7 — done in the same edit. `signOut` deliberately clears only `menuOpen`+`accountOpen` (sign-out is unreachable from the theme picker), matching its pre-existing shape |
 
 ---
 
