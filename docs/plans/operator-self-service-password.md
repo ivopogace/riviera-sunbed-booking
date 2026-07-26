@@ -269,10 +269,56 @@ subtree keeps its pinned porcelain theme (`data-riv-theme` host binding) — no 
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `all gates green on PR #342 — awaiting the maintainer's merge decision`
+**Stage pointer:** `merging — all gates green on PR #342 after the workflow review round`
 
-**Next action:** Maintainer to merge #342, then the merge close-out
-(`riviera-sdlc/references/pr-gates.md` §3). Close-out notes prepared below.
+**Next action:** Merge close-out (`riviera-sdlc/references/pr-gates.md` §3); notes below.
+
+### Second review round — the maintainer-run `/code-review` workflow (xhigh)
+
+The inline gate could not run `/code-review` (user-invocable only). The maintainer then ran it:
+**44 agents, 43 candidates, 33 verified, 10 refuted, 19 distinct defects, 15 reported.** It found
+things the inline pass did not, and one thing the inline pass got *half* right.
+
+**The headline finding was inherited, not introduced.** `RateLimitFilter` keyed **every** budget on the
+raw `getRequestURI()` — which the servlet spec leaves percent-encoded — and compared it to plain
+constants, while Spring routes on the **decoded** path. So `…/passwor%64` spent no token, issued no
+`429`, and still reached the controller: an unthrottled brute-force oracle against the exact credential
+this slice exists to protect. It predated #326 and covered operator login too, so **AC-8's guarantee was
+weaker than this plan claimed** — the bucket worked, but it was addressable around.
+
+Proving it took two attempts, and the first one was wrong in an instructive way: `post(String)`
+re-encodes `%64` to `%2564`, which `StrictHttpFirewall` rejects — so the test passed on the **firewall**,
+not on the limiter. Rebuilt with `URI.create`, the pre-fix behaviour is a plain `401` (reaching the
+controller having spent nothing) and the post-fix behaviour is `429`. Mutation-checked by reverting the
+fix alone. **Matrix parameters turned out to be stopped by the firewall rather than by us**, so the strip
+was deleted as unreachable-and-untestable and the test now asserts what actually holds, as a tripwire.
+
+**The inline pass's F-1 fix was half a fix.** It corrected the blank-current-password message in the
+Angular component; the wire contract still conflates the two `INVALID_REQUEST` causes, so any non-SPA
+caller still gets the misleading answer (→ #345).
+
+**Outcome: 12 fixed, 3 deferred with issues filed.** Also fixed: the 401→`sessionLost()` gap, the
+zero-venue operator having no route to the page at all, the UTF-16-vs-UTF-8 length mismatch, the stale
+notice beside a fresh error, live regions created with their text, the suppressed page background, the
+customer twin's unmapped `429`, the mock's reversed branch order, and the frontend half of RV-STYLE-1.
+
+Two of the failures during that round were **mine, in the test harness**: a `queueMicrotask` escaped its
+test and stole focus in later specs (21 spurious failures in three untouched files — now
+`afterNextRender`, bound to the injector), and the `venue-editor` a11y spec had never provided a router,
+so the new `routerLink` broke it.
+
+**Sonar went red once here**, which is the gate working: new-code coverage fell to **75.86%** and a
+`java:S135` appeared, both on the unreachable matrix-strip. Deleting it fixed both, and the missing
+branches got direct tests.
+
+### Deferred findings — filed, not lost
+
+| Issue | What |
+|---|---|
+| **#343** | The per-IP budget on an authenticated endpoint is spent by unauthenticated requests, so an anonymous flood from a shared egress IP can deny operators the emergency rotation. |
+| **#344** | The credential write and session revocation are non-atomic; and a stolen cookie survives the change, because the revoke spares the calling session id. |
+| **#345** | `INVALID_REQUEST` conflates "current password missing" with "new password too weak" on the wire. |
+| **#346** | The customer `/api/me/password` flow has no e2e coverage at all (found by the Phase-3 audit). |
 
 **CI gate.** Green on `7f20f92`, and re-run green on `cc4148b` after the Sonar fix — **10/10 checks**
 (backend build+test, frontend lint+test+build, CodeQL java-kotlin + javascript-typescript, SonarCloud).
