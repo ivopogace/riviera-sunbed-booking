@@ -40,7 +40,7 @@ test('operator changes its own password from the console, and the new credential
   await page.getByTestId('oppw-new').fill(NEW_PASSWORD);
   await page.getByTestId('oppw-submit').click();
   await expect(page.getByTestId('oppw-error')).toContainText('current password is incorrect');
-  await expect(page.getByTestId('oppw-notice')).toHaveCount(0);
+  await expect(page.getByTestId('oppw-notice')).toHaveText('');
   await expectNoSeriousAxeViolations(page, 'wrong current password');
 
   // Right current password: the confirmation must name the other-devices sign-out (AC-9).
@@ -50,7 +50,7 @@ test('operator changes its own password from the console, and the new credential
   await expect(page.getByTestId('oppw-notice')).toContainText(
     'Any other devices signed in as you have been signed out',
   );
-  await expect(page.getByTestId('oppw-error')).toHaveCount(0);
+  await expect(page.getByTestId('oppw-error')).toHaveText('');
   await expectNoSeriousAxeViolations(page, 'password changed');
 
   // Both secrets are cleared from the DOM once the change lands.
@@ -88,6 +88,6 @@ test('the env-managed bootstrap admin is told why it cannot self-serve', async (
   await expect(page.getByTestId('oppw-error')).toContainText(
     'managed by the deployment environment',
   );
-  await expect(page.getByTestId('oppw-notice')).toHaveCount(0);
+  await expect(page.getByTestId('oppw-notice')).toHaveText('');
   await expectNoSeriousAxeViolations(page, 'bootstrap admin refusal');
 });

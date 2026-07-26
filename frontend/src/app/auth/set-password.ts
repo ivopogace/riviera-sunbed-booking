@@ -202,6 +202,9 @@ export class SetPassword {
       case 'invalid-password':
         this.error.set(PASSWORD_LENGTH_MESSAGE);
         break;
+      case 'rate-limited':
+        this.error.set('Too many attempts. Please wait a minute and try again.');
+        break;
       case 'error':
         this.error.set('Something went wrong. Please try again.');
         break;

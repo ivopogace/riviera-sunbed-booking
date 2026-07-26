@@ -316,10 +316,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither
   // a restyled tourist glass route nor a legacy compat surface — exempt from the binary below.
   // S9 (#277) adds the '/operator' venue picker — operator surface, so chromeless like the console.
-  // #326 adds the operator password change: it sits under /account/ with the other credential pages,
-  // but it is OPERATOR surface reached from the console header, so it is chromeless too — showing the
-  // tourist header/footer to a signed-in operator would be the wrong chrome. Its own "Back to your
-  // console" link carries the navigation the suppressed header would have.
+  // #326's password change sits under /account/ but is operator surface, so it is chromeless too.
   const CHROMELESS_PATHS = ['operator/:venueId', 'operator', 'account/operator-password'];
 
   it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {

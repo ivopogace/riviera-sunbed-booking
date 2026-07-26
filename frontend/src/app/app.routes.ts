@@ -107,9 +107,7 @@ export const routes: Routes = [
     title: 'Your account — Riviera',
   },
   {
-    // Signed-in OPERATOR credential rotation (#326). A separate page from account/password above,
-    // which is the customer ACCOUNT page (verification, SSO, erasure) — only its password block would
-    // have applied. Guarded, so the signed-out case redirects instead of rendering a session card.
+    // Operator credential rotation (#326) — a separate page from the customer account page above.
     path: 'account/operator-password',
     loadComponent: () => import('./auth/operator-password').then((m) => m.OperatorPassword),
     title: 'Change your password — Riviera',

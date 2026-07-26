@@ -6,7 +6,10 @@ import { vi } from 'vitest';
 import { OperatorAuth, OperatorPasswordChangeResult } from '../core/operator-auth';
 import { OperatorPassword } from './operator-password';
 
-type AuthStub = Partial<OperatorAuth> & { changePassword: ReturnType<typeof vi.fn> };
+type AuthStub = Partial<OperatorAuth> & {
+  changePassword: ReturnType<typeof vi.fn>;
+  sessionLost: ReturnType<typeof vi.fn>;
+};
 
 function authStub(result: OperatorPasswordChangeResult = 'changed'): AuthStub {
   return {
@@ -14,6 +17,7 @@ function authStub(result: OperatorPasswordChangeResult = 'changed'): AuthStub {
     restoring: signal(false),
     username: signal('adriatica'),
     changePassword: vi.fn(async () => result),
+    sessionLost: vi.fn(),
   } as unknown as AuthStub;
 }
 
@@ -66,7 +70,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
 
     expect(auth.changePassword).toHaveBeenCalledWith('current-pass1', 'rotated-pass2');
     expect(text(fixture, 'oppw-notice')).toContain('signed out');
-    expect(text(fixture, 'oppw-error')).toBeUndefined();
+    expect(text(fixture, 'oppw-error')).toBe('');
   });
 
   // A password may legitimately carry leading/trailing spaces; trimming would lock such an account
@@ -88,7 +92,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     await submit(fixture);
 
     expect(text(fixture, 'oppw-error')).toContain('current password is incorrect');
-    expect(text(fixture, 'oppw-notice')).toBeUndefined();
+    expect(text(fixture, 'oppw-notice')).toBe('');
   });
 
   it('explains the bootstrap admin refusal instead of showing a generic error', async () => {
@@ -111,9 +115,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(text(fixture, 'oppw-error')).toBeDefined();
   });
 
-  // Review finding (#326 gate): a blank current password reached the backend, whose DTO rejects it as
-  // INVALID_REQUEST — the same code a policy violation uses — so the operator was told their NEW
-  // password was the wrong length when the real problem was the field they left empty.
+  // Review finding: a blank current password read as a new-password policy failure (both INVALID_REQUEST).
   it('names the empty current-password field instead of blaming the new password', async () => {
     const auth = authStub('changed');
     const fixture = await render(auth);
@@ -124,6 +126,58 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(auth.changePassword).not.toHaveBeenCalled();
     expect(text(fixture, 'oppw-error')).toContain('current password');
     expect(text(fixture, 'oppw-error')).not.toContain('8–72');
+  });
+
+  // Review finding: an early return skipped the clear, so a stale success notice sat beside a fresh error.
+  it('clears a previous success notice when the next attempt fails validation', async () => {
+    const fixture = await render(authStub('changed'));
+    setModel(fixture, 'current-pass1', 'rotated-pass2');
+    await submit(fixture);
+    expect(text(fixture, 'oppw-notice')).toContain('signed out');
+
+    setModel(fixture, '', 'another-pass3');
+    await submit(fixture);
+
+    expect(text(fixture, 'oppw-error')).toContain('current password');
+    expect(text(fixture, 'oppw-notice')).toBe('');
+  });
+
+  // The server caps bcrypt's 72-BYTE input; counting characters let an accented passphrase through to a
+  // rejection whose message ("8–72 characters") contradicted what the operator could see on screen.
+  it('rejects a new password over 72 UTF-8 bytes even when it is under 72 characters', async () => {
+    const auth = authStub('changed');
+    const fixture = await render(auth);
+
+    setModel(fixture, 'current-pass1', 'ë'.repeat(40));
+    await submit(fixture);
+
+    expect(auth.changePassword).not.toHaveBeenCalled();
+    expect(text(fixture, 'oppw-error')).toContain('too long');
+    expect(text(fixture, 'oppw-error')).not.toContain('8–72 characters');
+  });
+
+  // A dead session must flow back into SessionAuth; every other operator surface calls sessionLost().
+  it('reports an expired session as such and drops the principal', async () => {
+    const auth = authStub('session-lost');
+    const fixture = await render(auth);
+
+    setModel(fixture, 'current-pass1', 'rotated-pass2');
+    await submit(fixture);
+
+    expect(auth.sessionLost).toHaveBeenCalled();
+    expect(text(fixture, 'oppw-error')).toContain('session');
+  });
+
+  // Live regions must pre-exist their content, or the announcement is commonly dropped entirely.
+  it('keeps both live regions in the DOM before there is anything to announce', async () => {
+    const fixture = await render(authStub('changed'));
+
+    const notice = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="oppw-notice"]');
+    const error = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="oppw-error"]');
+    expect(notice?.getAttribute('role')).toBe('status');
+    expect(error?.getAttribute('role')).toBe('alert');
+    expect(notice?.textContent?.trim()).toBe('');
+    expect(error?.textContent?.trim()).toBe('');
   });
 
   it('clears the fields on success so the entered password is not left on screen', async () => {

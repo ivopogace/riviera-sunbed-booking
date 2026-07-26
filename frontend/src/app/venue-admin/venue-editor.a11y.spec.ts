@@ -1,6 +1,7 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -30,6 +31,9 @@ describe('VenueEditor accessibility (axe)', () => {
       providers: [
         provideHttpClient(withInterceptors([apiSessionInterceptor])),
         provideHttpClientTesting(),
+        // The signed-in card carries a routerLink (#326 change-password entry point), so RouterLink
+        // needs an ActivatedRoute to instantiate.
+        provideRouter([]),
       ],
     }).compileComponents();
 

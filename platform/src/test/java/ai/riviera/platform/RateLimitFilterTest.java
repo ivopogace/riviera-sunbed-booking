@@ -10,6 +10,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.net.URI;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ch.qos.logback.classic.Level;
@@ -266,6 +267,59 @@ class RateLimitFilterTest {
 
 		// The whole point of a separate map: the same IP's operator-login budget is untouched.
 		loginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	/**
+	 * The budget must key on the path Spring <em>routes</em> on, not the bytes the client sent. The filter
+	 * compared the raw {@code getRequestURI()} — which the servlet spec leaves percent-encoded — against
+	 * plain string constants, while {@code PathPatternRequestMatcher} and {@code @PostMapping} both match
+	 * the DECODED path. So {@code …/passwor%64} spent no token yet still reached the controller: an
+	 * unlimited brute-force oracle against the very credential this endpoint exists to protect. Found by
+	 * the #342 review gate; it predated #326 and applied to every budget in this filter, login included.
+	 */
+	@Test
+	void aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget() throws Exception {
+		String ip = "10.30.0.9";
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+
+		// URI.create, NOT post(String): the string overload re-encodes, turning %64 into %2564 — which the
+		// firewall then rejects as an encoded percent, so the test would pass on the wrong mechanism.
+		mvc.perform(post(URI.create("/api/auth/operator/passwor%64")).with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	/** The same bypass on the pre-existing operator-login budget — the one the #127 lockout was about. */
+	@Test
+	void aPercentEncodedLoginPathDrawsOnTheLoginBudget() throws Exception {
+		String ip = "10.30.0.10";
+		for (int i = 0; i < 10; i++) {
+			loginFromIp(ip);
+		}
+		mvc.perform(post(URI.create("/api/auth/operator/logi%6E")).with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "someone", "password": "irrelevant"}"""))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	/**
+	 * Matrix parameters are the same class of bypass, but the rate limiter is not what stops them:
+	 * {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs. Pinned as a
+	 * tripwire — if the firewall is ever relaxed, this flips to a real hole and the strip in
+	 * {@code pathWithinApplication} becomes the only thing standing between a matrix suffix and a free
+	 * brute-force attempt.
+	 */
+	@Test
+	void aMatrixParameterSuffixIsRejectedByTheFirewallBeforeItReachesTheLimiter() throws Exception {
+		mvc.perform(post(URI.create("/api/auth/operator/password;a=b")).with(fromIp("10.30.0.11")).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test

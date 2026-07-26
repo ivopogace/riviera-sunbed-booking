@@ -71,8 +71,13 @@ compromised had to find a platform admin.
 - **New password policy** is the shared one (8–72 bytes) → `400 INVALID_REQUEST` otherwise.
 - **Other sessions die, yours survives.** On success the edge deletes every *other*
   `SPRING_SESSION` row for that principal (`PrincipalSessionRevoker`, #128); the session that made
-  the change stays signed in. So the recovery gesture after a suspected compromise is: change your
-  password → every other device is signed out immediately.
+  the change stays signed in.
+  > **What this does and does not recover.** It evicts anyone holding the *password* — they can no
+  > longer sign in, and any session they had is gone. It does **not** evict someone holding a copy of
+  > **your own session cookie**: an exfiltrated cookie names the very session id the change
+  > deliberately spares, so it keeps working. For a suspected *cookie* theft, sign out (which
+  > destroys that id) or have an admin suspend the account, which revokes every session including
+  > yours. Rotating the surviving session id on change would close this — tracked as a follow-up.
 - **Own rate-limit budget.** The path has its own per-IP bucket, separate from operator login, so a
   change flood cannot lock operators out of signing in (the #127 lesson). Exhausted → `429`.
 - **The bootstrap admin is refused**: `409 BOOTSTRAP_CREDENTIAL_MANAGED`. Its credential is

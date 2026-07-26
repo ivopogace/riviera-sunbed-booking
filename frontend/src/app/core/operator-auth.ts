@@ -38,6 +38,7 @@ export type OperatorPasswordChangeResult =
   | 'bootstrap-managed'
   | 'not-active'
   | 'rate-limited'
+  | 'session-lost'
   | 'error';
 
 // The FE password policy is ONE rule for both principal types — the backend enforces both via the same
@@ -53,6 +54,21 @@ export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
  * the operator is told their NEW password is the wrong length when the real fault is the empty field.
  */
 export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
+
+/**
+ * The server caps the password at bcrypt's 72-**byte** input limit, not 72 characters. The two agree
+ * only for ASCII: a 40-character Albanian passphrase using ç/ë, or anything with emoji, can exceed 72
+ * bytes while looking well short of the limit — so a character-counting client sends it, the server
+ * rejects it, and the operator reads "8–72 characters" about a password they can see is 40 long.
+ */
+export const MAX_OPERATOR_PASSWORD_BYTES = 72;
+export const OPERATOR_PASSWORD_TOO_LONG_MESSAGE =
+  'That password is too long. Accented letters and emoji each take several of the 72 available characters, so try a shorter one.';
+
+/** Byte length under UTF-8, which is what the server's 72-byte bcrypt cap actually measures. */
+export function operatorPasswordByteLength(password: string): number {
+  return new TextEncoder().encode(password).length;
+}
 
 /**
  * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
@@ -180,6 +196,11 @@ function passwordChangeFailure(error: unknown): OperatorPasswordChangeResult {
   if (error.status === 429) {
     return 'rate-limited';
   }
+  // A dead session must flow back into SessionAuth, not read as a retryable blip — every other operator
+  // surface calls sessionLost() on 401, and without it the guard keeps believing we are signed in.
+  if (error.status === 401) {
+    return 'session-lost';
+  }
   switch ((error.error as { code?: string } | null)?.code) {
     case 'INVALID_CURRENT_PASSWORD':
       return 'invalid-current';
@@ -212,6 +233,8 @@ export function operatorPasswordChangeMessage(result: OperatorPasswordChangeResu
       return 'This account is not active. Contact a platform admin.';
     case 'rate-limited':
       return 'Too many attempts. Please wait a minute and try again.';
+    case 'session-lost':
+      return SESSION_EXPIRED_MESSAGE;
     case 'error':
       return 'Something went wrong changing your password. Please try again.';
   }

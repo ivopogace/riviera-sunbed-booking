@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UriUtils;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -356,12 +357,58 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		return null;
 	}
 
+	/**
+	 * The request path every budget here is keyed on — decoded and stripped of matrix parameters, so it is
+	 * the <strong>same</strong> path Spring Security's matchers and {@code @PostMapping} route on.
+	 *
+	 * <p>It deliberately does not use the raw {@code getRequestURI()}. The servlet spec leaves that
+	 * percent-encoded, so {@code …/passwor%64} compared against a plain constant matched nothing, spent no
+	 * token, and still reached the controller — an unthrottled brute-force oracle against the credential
+	 * this filter exists to protect. Found at the #342 review gate; the defect predated #326 and applied to
+	 * <em>every</em> budget here, operator login included.
+	 *
+	 * <p>Matrix content is removed <em>before</em> decoding, which is the order Spring itself uses: decoding
+	 * first would let an encoded {@code %3B} smuggle in a separator that the strip then acts on.
+	 */
 	private static String pathWithinApplication(HttpServletRequest request) {
 		String uri = request.getRequestURI();
 		String context = request.getContextPath();
-		return (context != null && !context.isEmpty() && uri.startsWith(context))
+		String withinApp = (context != null && !context.isEmpty() && uri.startsWith(context))
 				? uri.substring(context.length())
 				: uri;
+		return decodePath(stripMatrixVariables(withinApp));
+	}
+
+	private static String stripMatrixVariables(String path) {
+		if (path.indexOf(';') < 0) {
+			return path;
+		}
+		StringBuilder stripped = new StringBuilder(path.length());
+		int cursor = 0;
+		while (cursor < path.length()) {
+			int semicolon = path.indexOf(';', cursor);
+			if (semicolon < 0) {
+				stripped.append(path, cursor, path.length());
+				break;
+			}
+			stripped.append(path, cursor, semicolon);
+			int slash = path.indexOf('/', semicolon);
+			if (slash < 0) {
+				break;
+			}
+			cursor = slash;
+		}
+		return stripped.toString();
+	}
+
+	/** A malformed escape keeps the raw form: it matches no budget, and the filter chain still rejects it. */
+	private static String decodePath(String path) {
+		try {
+			return UriUtils.decode(path, StandardCharsets.UTF_8);
+		}
+		catch (IllegalArgumentException malformedEscape) {
+			return path;
+		}
 	}
 
 	/**

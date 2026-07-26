@@ -1,12 +1,15 @@
-import { afterNextRender, Component, ElementRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, ElementRef, inject, Injector, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import {
+  MAX_OPERATOR_PASSWORD_BYTES,
   MIN_OPERATOR_PASSWORD_LENGTH,
   OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE,
   OPERATOR_PASSWORD_LENGTH_MESSAGE,
+  OPERATOR_PASSWORD_TOO_LONG_MESSAGE,
   OperatorAuth,
+  operatorPasswordByteLength,
   operatorPasswordChangeMessage,
 } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
@@ -33,9 +36,15 @@ import { CardGlass } from '../shared/card-glass';
         <h1 id="oppw-title" class="auth-title">Change your password</h1>
         <p class="auth-intro" data-testid="oppw-username">Signed in as {{ auth.username() }}.</p>
 
-        @if (notice(); as msg) {
-          <p class="auth-intro" role="status" data-testid="oppw-notice">{{ msg }}</p>
-        }
+        <!-- Present but empty: a live region inserted together with its text is often not announced. -->
+        <p
+          class="auth-intro auth-live"
+          role="status"
+          tabindex="-1"
+          data-testid="oppw-notice"
+        >
+          {{ notice() }}
+        </p>
 
         <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
           <label class="auth-field">
@@ -62,9 +71,14 @@ import { CardGlass } from '../shared/card-glass';
             8–72 characters. Changing it signs you out on every other device.
           </p>
 
-          @if (error(); as msg) {
-            <p class="auth-error" role="alert" data-testid="oppw-error">{{ msg }}</p>
-          }
+          <p
+            class="auth-error auth-live"
+            role="alert"
+            tabindex="-1"
+            data-testid="oppw-error"
+          >
+            {{ error() }}
+          </p>
 
           <button
             type="submit"
@@ -83,10 +97,22 @@ import { CardGlass } from '../shared/card-glass';
     </section>
   `,
   styleUrl: './auth.scss',
+  // Chromeless routes suppress the shell's .riv-bg, so this page must paint the token itself.
+  styles: `
+    :host {
+      display: block;
+      min-height: 100%;
+      background: var(--riv-bg);
+    }
+    .auth-live:empty {
+      margin: 0;
+    }
+  `,
 })
 export class OperatorPassword {
   protected readonly auth = inject(OperatorAuth);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
@@ -103,30 +129,68 @@ export class OperatorPassword {
     if (this.submitting()) {
       return;
     }
+    // Cleared up front, not per-branch: an early return used to leave the previous success notice on
+    // screen beside a fresh error, so the operator saw "your password has been changed" next to a failure.
+    this.error.set(undefined);
+    this.notice.set(undefined);
     const { currentPassword, newPassword } = this.model();
     // Checked before the length rule: the backend answers a blank current password with the same
     // INVALID_REQUEST code as a policy violation, which would misreport it as a new-password problem.
     if (currentPassword.length === 0) {
-      this.error.set(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
+      this.fail(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
       return;
     }
     if (newPassword.length < MIN_OPERATOR_PASSWORD_LENGTH) {
-      this.error.set(OPERATOR_PASSWORD_LENGTH_MESSAGE);
+      this.fail(OPERATOR_PASSWORD_LENGTH_MESSAGE);
+      return;
+    }
+    // Bytes, not characters — the server's cap is bcrypt's 72-byte input limit, so an accented or
+    // emoji-bearing passphrase can be well under 72 characters and still be rejected.
+    if (operatorPasswordByteLength(newPassword) > MAX_OPERATOR_PASSWORD_BYTES) {
+      this.fail(OPERATOR_PASSWORD_TOO_LONG_MESSAGE);
       return;
     }
     this.submitting.set(true);
-    this.error.set(undefined);
-    this.notice.set(undefined);
     // Sent exactly as typed — a password may carry leading/trailing spaces, so trimming would make an
     // account with such a password unable to prove its current one (the S8 set-password review fix).
     const result = await this.auth.changePassword(currentPassword, newPassword);
     this.submitting.set(false);
     const message = operatorPasswordChangeMessage(result);
+    if (result === 'session-lost') {
+      this.auth.sessionLost();
+    }
     if (result === 'changed') {
       this.notice.set(message);
       this.model.set({ currentPassword: '', newPassword: '' });
+      this.revealOutcome();
     } else {
-      this.error.set(message);
+      this.fail(message);
     }
+  }
+
+  private fail(message: string): void {
+    this.error.set(message);
+    this.revealOutcome();
+  }
+
+  /**
+   * Bring the outcome into view and focus it. The notice renders above the form while the error renders
+   * below it, so on a phone a success message lands off-screen and is indistinguishable from the form
+   * merely emptying itself — the one thing this page exists to communicate, silently missed.
+   */
+  private revealOutcome(): void {
+    // afterNextRender, not queueMicrotask: it is bound to this component's injector, so a pending
+    // callback cannot outlive the component and move focus somewhere else later.
+    afterNextRender(
+      () => {
+        const outcome = this.hostRef.nativeElement.querySelector<HTMLElement>(
+          '[data-testid="oppw-notice"]:not(:empty), [data-testid="oppw-error"]:not(:empty)',
+        );
+        // Optional-called: jsdom implements neither, and neither is worth failing a submit over.
+        outcome?.scrollIntoView?.({ block: 'nearest' });
+        outcome?.focus?.({ preventScroll: true });
+      },
+      { injector: this.injector },
+    );
   }
 }

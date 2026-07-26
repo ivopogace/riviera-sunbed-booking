@@ -70,12 +70,16 @@ export async function mockAuthApi(
       currentPassword?: string;
       newPassword?: string;
     };
+    // Policy BEFORE the credential check, and bytes not characters — both mirror the controller, which
+    // calls CustomerPasswords.validate ahead of findByUsername and caps at bcrypt's 72-byte input limit.
+    // Reversing either lets the mocked suite stay green through a real reordering (#342 review finding).
+    const newPassword = body.newPassword ?? '';
+    if (!body.currentPassword || newPassword.length < 8
+      || new TextEncoder().encode(newPassword).length > 72) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
+    }
     if (body.currentPassword !== password) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
-    }
-    const newPassword = body.newPassword ?? '';
-    if (newPassword.length < 8 || newPassword.length > 72) {
-      return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
     }
     // The server revokes the operator's OTHER sessions only — the calling one deliberately survives.
     password = newPassword;

@@ -28,7 +28,12 @@ export type ResetPasswordResult =
 /** How an email-verification token redemption ended. */
 export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
 /** How an authenticated set/change-password ended. */
-export type SetPasswordResult = 'set' | 'invalid-current' | 'invalid-password' | 'error';
+export type SetPasswordResult =
+  | 'set'
+  | 'invalid-current'
+  | 'invalid-password'
+  | 'rate-limited'
+  | 'error';
 /** How a self-service right-to-erasure ended (#101 [D5]). */
 export type EraseAccountResult = 'erased' | 'error';
 
@@ -185,6 +190,11 @@ export class CustomerAuth extends SessionAuth {
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 400) {
         return problemCode(error) === 'INVALID_CURRENT_PASSWORD' ? 'invalid-current' : 'invalid-password';
+      }
+      // #326 gave this endpoint its first rate-limit budget, so 429 is newly reachable; without its own
+      // branch it read as a generic error and the retry advice invited the exact retry being rejected.
+      if (error instanceof HttpErrorResponse && error.status === 429) {
+        return 'rate-limited';
       }
       return 'error';
     }
