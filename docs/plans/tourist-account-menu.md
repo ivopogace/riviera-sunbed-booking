@@ -53,9 +53,13 @@ web-first assertions, no fixed sleeps) · `riviera-plan-doc` (this template).
 - [ ] **AC-3:** Given the account popover is open, when the user presses Escape or clicks the
       backdrop, then it closes and focus returns to the trigger button. *Pinned by:*
       `theme-shell.e2e.ts` → `'the account menu closes on Escape and restores focus (#351)'`
-- [ ] **AC-4:** Given the account popover is open, when the user opens the theme picker (or vice
-      versa), then only one popover is open at a time. *Pinned by:* `theme-shell.e2e.ts` →
-      `'opening the account menu closes the theme picker (#351)'`
+- [ ] **AC-4:** Given the account popover is open, when the user activates the theme picker (or
+      vice versa), then only one popover is open at a time. *Pinned by:* `theme-shell.e2e.ts` →
+      `'activating the theme picker from the open account menu closes it (#351)'` **and**
+      `'the backdrop swallows the click that closes the account menu (#351)'`; unit-level by
+      `app.spec.ts` → `'closes the account menu when the theme picker opens, and vice versa (#351)'`.
+      **Amended during phase 2** — see the Execution-status note: the e2e half must go through the
+      keyboard, because the pointer path is physically unreachable by design.
 - [ ] **AC-5:** Given the account popover is open, when the user activates "Your account", then
       the app navigates to `/account/password` **and the popover is closed** on arrival.
       *Pinned by:* `theme-shell.e2e.ts` → `'the account menu closes on navigation (#351)'`
@@ -178,16 +182,38 @@ N/A — no contract change. No endpoint, DTO, or status code is added or altered
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement — phases 0–2 complete, awaiting PR`
 
-**Next action:** Phase 2 — write the failing `theme-shell.e2e.ts` cases (AC-3/4/5/7), then rewire
-the page object and the two account-page specs to enter through the link (AC-8).
+**Next action:** Merge `origin/main`, push the branch, open the PR into `main`, then run the
+Review gate (`riviera-review-overlay` + `/code-review`) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Desktop account menu | ✅ | `<sha>` |
 | 1 — Mobile account group | ✅ | `<sha>` (**merged into phase 0's commit** — both are markup in the same two files, so splitting them would have meant a mechanical `git add -p` with no reviewable benefit) |
-| 2 — E2E rewiring + shell coverage | ⏳ | |
+| 2 — E2E rewiring + shell coverage | ✅ | `<sha>` |
+
+**Phase 2 verification:** `npm run test:e2e:a11y` → **84/84 pass** (full mocked suite, not just the
+touched specs — the page object is shared, so its blast radius is every customer-auth spec);
+`npm test` → 885/885; `npm run lint` → clean; `npm run build` → succeeds (the two SCSS
+budget warnings are pre-existing, in `booking-dialog.scss`/`booking-pay.scss`, untouched here).
+
+**Cloud-session note:** the mocked suite needs `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`
+in this environment — the sandbox ships Chromium rev 1194 while the pinned `@playwright/test`
+wants 1228's headless shell, and every spec fails identically without it (including untouched
+ones). The config already exposes that env var for exactly this case; CI installs the matching
+browser itself, so nothing in the repo needs changing.
+
+**AC-4 amended in phase 2 (discovered, not assumed).** The first draft asserted the pointer path
+— open the account menu, *click* the theme toggle — and it failed: an open popover lays a
+full-viewport `riv-backdrop` (`position: fixed; inset: 0; z-index: 30`) whose entire job is to
+swallow the next click and close the menu. So a mouse user can **never** activate the sibling
+trigger while a popover is open; they close first, then click. This is pre-existing, deliberate
+behavior shared with the theme picker — not a regression this slice introduced — but it means the
+signal-level mutual exclusion is only reachable by **keyboard**, where Tab lands on the trigger
+directly. The e2e now drives it with `.press('Enter')`, and a second case pins the pointer
+behavior (the backdrop swallows the click; the picker stays shut) so the real interaction is
+documented rather than silently untested.
 
 **Phase 0–1 verification:** `npm test` → 885/885 pass; `npm run lint` → clean.
 **R-6 closed:** `app.contrast.spec.ts` passed **unchanged**, confirming the popover reuses the
@@ -314,6 +340,7 @@ what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-26 | Phase 2 (sign-out moved behind a disclosure) | e2e specs that click `nav-signout` directly instead of going through `CustomerAuthPage`, which would break silently | `grep -rn "getByTestId('nav-signout')" e2e/` | 2 (the page object itself; `customer-password.e2e.ts`'s local helper) | both intentional — the page object is the indirection, and `customer-password.e2e.ts` keeps local helpers by its existing convention. No other spec bypasses it |
 | 2026-07-26 | Phase 0–1 (new `accountOpen` popover signal) | sites that enumerate the shell's popover signals by hand — a new signal silently misses each one (R-2) | `grep -n 'themeOpen\|menuOpen\|accountOpen' src/app/app.ts` | 7 (`NavigationEnd`, `toggleMenu`, `toggleThemePicker`, `toggleAccountMenu`, `openFind`, `signOut`, `closeMenus`) | fix all 7 — done in the same edit. `signOut` deliberately clears only `menuOpen`+`accountOpen` (sign-out is unreachable from the theme picker), matching its pre-existing shape |
 
 ---

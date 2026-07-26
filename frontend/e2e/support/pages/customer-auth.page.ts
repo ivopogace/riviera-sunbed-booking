@@ -7,6 +7,9 @@ import { expect, Locator, Page } from '@playwright/test';
  * (`/account/register`, `/account/sign-in`). Header controls are keyed by their `data-testid`
  * (the desktop nav is the only one in the DOM at the Desktop-Chrome viewport); the form fields use
  * accessible-name locators (one Email/Password per page), so a11y regressions surface here too.
+ *
+ * <p>Since #351 the signed-in controls sit behind an account disclosure, so `signOut()` and
+ * `gotoAccount()` open it first — callers are unaffected.
  */
 export class CustomerAuthPage {
   /** Header (shell) controls. */
@@ -14,6 +17,8 @@ export class CustomerAuthPage {
   readonly registerLink: Locator;
   readonly signedInAs: Locator;
   readonly signOutButton: Locator;
+  /** "Your account" inside the account menu (#351). */
+  readonly accountLink: Locator;
 
   /** Form fields (shared by both pages — one Email/Password input is present per page). */
   readonly email: Locator;
@@ -31,6 +36,7 @@ export class CustomerAuthPage {
     this.registerLink = page.getByTestId('nav-register');
     this.signedInAs = page.getByTestId('nav-user');
     this.signOutButton = page.getByTestId('nav-signout');
+    this.accountLink = page.getByTestId('nav-account-link');
 
     this.email = page.getByLabel('Email', { exact: true });
     this.password = page.getByLabel('Password', { exact: true });
@@ -62,8 +68,20 @@ export class CustomerAuthPage {
     await this.signInSubmit.click();
   }
 
+  /** Reveal the signed-in controls — since #351 they live behind the account disclosure. */
+  async openAccountMenu(): Promise<void> {
+    await this.signedInAs.click();
+  }
+
   async signOut(): Promise<void> {
+    await this.openAccountMenu();
     await this.signOutButton.click();
+  }
+
+  /** Reach the account page (#351) the way a tourist does — through the header, not a URL. */
+  async gotoAccount(): Promise<void> {
+    await this.openAccountMenu();
+    await this.accountLink.click();
   }
 
   /** Start "Continue with Google/Apple" — a full-page navigation (the caller awaits the signed-in state). */
