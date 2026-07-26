@@ -57,50 +57,50 @@ prior art + rationale in `docs/plans/password-change-atomicity-session-rotation.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a redeemable reset token for `alice@example.com`, when the reset is submitted, then
+- [x] **AC-1:** Given a redeemable reset token for `alice@example.com`, when the reset is submitted, then
   that principal's sessions are revoked **before** the token is consumed and the password written.
   *Pinned by:* `AccountRecoveryControllerTest.revokesTheAccountsSessionsBeforeConsumingTheToken`
-- [ ] **AC-2:** Given the pre-write revoke fails, when the reset is submitted, then the token is **never
+- [x] **AC-2:** Given the pre-write revoke fails, when the reset is submitted, then the token is **never
   consumed** and no password is written — the customer's retry with the same link still works.
   *Pinned by:* `AccountRecoveryControllerTest.aFailedRevokeNeverConsumesTheToken`
-- [ ] **AC-3:** Given a successful reset, when its effects have run, then the sessions are revoked
+- [x] **AC-3:** Given a successful reset, when its effects have run, then the sessions are revoked
   **again after** the write, so a session created between the two effects does not survive the reset.
   *Pinned by:* `AccountRecoveryControllerTest.revokesAgainAfterTheResetSoAWindowSessionCannotSurvive`
-- [ ] **AC-4:** Given an unknown, expired, or already-consumed token, when the reset is submitted, then
+- [x] **AC-4:** Given an unknown, expired, or already-consumed token, when the reset is submitted, then
   nothing is revoked and the response is the unchanged generic `400 INVALID_OR_EXPIRED_TOKEN`
   (non-enumeration, D-8).
   *Pinned by:* `AccountRecoveryControllerTest.anInvalidTokenRevokesNothingAndKeepsTheGenericRejection`
-- [ ] **AC-5:** Given a live reset token, when the new `emailForResetToken` read runs, then it returns the
+- [x] **AC-5:** Given a live reset token, when the new `emailForResetToken` read runs, then it returns the
   account's email and the token is **still redeemable afterwards** (the read consumes nothing); an
   expired, consumed, or wrong-purpose token reads empty — the same predicate `resetPassword` enforces.
   *Pinned by:* `CustomerAccountRecoveryIT.emailForResetTokenResolvesTheAccountWithoutConsumingTheToken`,
   `CustomerAccountRecoveryIT.emailForResetTokenIsEmptyForAnExpiredConsumedOrWrongPurposeToken`
-- [ ] **AC-6:** Given an ACTIVE operator, when an admin suspends it, then that principal's sessions are
+- [x] **AC-6:** Given an ACTIVE operator, when an admin suspends it, then that principal's sessions are
   revoked **before** the status transition commits.
   *Pinned by:* `AdminOperatorControllerTest.revokesTheOperatorsSessionsBeforeTheSuspensionCommits`
-- [ ] **AC-7:** Given the pre-transition revoke fails, when an admin suspends, then the operator is
+- [x] **AC-7:** Given the pre-transition revoke fails, when an admin suspends, then the operator is
   **not suspended** — so the admin's retry both suspends and revokes, instead of drawing
   `409 WRONG_STATUS` over an account whose sessions are still live.
   *Pinned by:* `AdminOperatorControllerTest.aFailedRevokeNeverSuspends`
-- [ ] **AC-8:** Given a successful suspension, when its effects have run, then the sessions are revoked
+- [x] **AC-8:** Given a successful suspension, when its effects have run, then the sessions are revoked
   **again after** the transition (the existing revoke is kept, not moved).
   *Pinned by:* `AdminOperatorControllerTest.revokesAgainAfterTheSuspensionCommits`
-- [ ] **AC-9:** Given a target that is unknown or not ACTIVE, or the reinstate/approve/reject
+- [x] **AC-9:** Given a target that is unknown or not ACTIVE, or the reinstate/approve/reject
   transitions, when they run, then **nothing is revoked** and every existing status/`code` response is
   unchanged.
   *Pinned by:* `AdminOperatorControllerTest.anUnknownOrNotActiveTargetRevokesNothing`,
   `AdminOperatorControllerTest.reinstateRevokesNothing`
-- [ ] **AC-10:** Given operators in each status, when `OperatorLifecycle#activeUsername` is called, then
+- [x] **AC-10:** Given operators in each status, when `OperatorLifecycle#activeUsername` is called, then
   it answers the username for an ACTIVE one and empty for PENDING / REJECTED / SUSPENDED / unknown —
   the same ACTIVE-only rule the rest of the module resolves by.
   *Pinned by:* `OperatorLifecycleIT.activeUsernameResolvesOnlyAnActiveOperator`
-- [ ] **AC-11:** Given a signed-in customer erasing their own account, when the request runs, then the
+- [x] **AC-11:** Given a signed-in customer erasing their own account, when the request runs, then the
   sessions are revoked before the scrub, again after it, and a failed first revoke leaves the account
   **unscrubbed**.
   *Pinned by:* `MeErasureControllerTest.revokesSessionsBeforeScrubbingTheAccount`,
   `MeErasureControllerTest.revokesAgainAfterTheScrub`,
   `MeErasureControllerTest.aFailedRevokeNeverScrubsTheAccount`
-- [ ] **AC-12:** Given an admin suspending **itself**, when the request runs, then it is refused
+- [x] **AC-12:** Given an admin suspending **itself**, when the request runs, then it is refused
   `409 CANNOT_SUSPEND_SELF` before any read, revoke, or transition — the guard still short-circuits first.
   *Pinned by:* `AdminOperatorControllerTest.selfSuspendIsRefusedBeforeAnyRevoke`
 
@@ -147,15 +147,15 @@ preserved" row hid a real contract change and cost a red CI).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The pre-read is a TOCTOU**: between reading the principal and making the change, the token can be consumed by a concurrent redeemer, or the operator suspended by a second admin — so we revoke sessions for a change that then fails. | low | low | Accepted **by design**: the failure direction is *over*-revocation (someone is signed out who needn't have been), never under — the same direction `PrincipalSessionRevoker`'s Javadoc already accepts for its non-type-scoped index. In both racing cases the other actor's change wanted those sessions gone anyway. | claude | open |
-| R-2 | **The trailing revoke can still fail after the state change** — `500` with the password reset / operator suspended / account scrubbed. No ordering removes this (it is #344 F-3's residual class); only a shared transaction could, and there is none to share. | low | med | Bounded and documented on each method: by then the *pre-existing* sessions are already revoked, so what survives is at most a session created inside the sub-millisecond window. Strictly smaller than today's harm (all sessions survive, permanently). | claude | open |
+| R-1 | **The pre-read is a TOCTOU**: between reading the principal and making the change, the token can be consumed by a concurrent redeemer, or the operator suspended by a second admin — so we revoke sessions for a change that then fails. | low | low | Accepted **by design**: the failure direction is *over*-revocation (someone is signed out who needn't have been), never under — the same direction `PrincipalSessionRevoker`'s Javadoc already accepts for its non-type-scoped index. In both racing cases the other actor's change wanted those sessions gone anyway. | claude | closed — accepted, and the review sharpened what it costs: for suspend this specifically retires #128's guarantee that a rolled-back transition never signs out a still-ACTIVE operator (F-2). The maintainer saw that case at the D-1 decision point; it is now stated on the method rather than only here |
+| R-2 | **The trailing revoke can still fail after the state change** — `500` with the password reset / operator suspended / account scrubbed. No ordering removes this (it is #344 F-3's residual class); only a shared transaction could, and there is none to share. | low | med | Bounded and documented on each method: by then the *pre-existing* sessions are already revoked, so what survives is at most a session created inside the sub-millisecond window. Strictly smaller than today's harm (all sessions survive, permanently). | claude | closed — documented on all three methods; F-1/F-2 tightened the wording where it had drifted into over-claiming |
 | R-3 | **Adding a method to a published `api/` port breaks every stub that implements it** — `WebSliceStubs`' anonymous `CustomerAccountRecovery` / `OperatorLifecycle` beans, and any test lambda. A missed one is a compile error at best, a full-suite-only context failure at worst (#122/#127 class). | high | med | Both ports are stubbed as anonymous classes (not lambdas) in exactly one place, `WebSliceStubs`; grep every `implements OperatorLifecycle` / `CustomerAccountRecovery` before compiling, and run the shared web slices (`WebCorsConfigTest`, `RateLimitFilterTest`, `MeSurfaceRoleGateTest`) plus `PayoutModuleTest` at the end of each phase. | claude | closed — it fired as predicted, and the compiler caught all of it: `WebSliceStubs` (both ports) plus the module's own `CustomerAccountServiceTest.FakeTokens` (the *internal* `CustomerAccountTokens` port, which the plan's file list had missed). The fake's `consume` now delegates to its new `accountFor`, so the two predicates cannot drift there either |
-| R-4 | **Published-surface regression** — a new method on an `api/` port is a module-contract change that `ModularityTests` / `PublishedSurfacePlacementArchitectureTests` / `ResponsibilitiesArchitectureTests` police. | low | med | Both additions are plain query methods on existing ports returning existing types (`String`, `Optional`), no new class, no new package, no grant change. The structural net runs at the end of every phase. | claude | open |
-| R-5 | **Rate-limit bucket collision in a cached full-suite context** (#127 class): new MockMvc requests share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new request in every new/extended web slice carries `SessionLoginSupport.uniqueClientIp()` via the `isolated(...)` helper, matching `OperatorAccountControllerTest`. | claude | open |
+| R-4 | **Published-surface regression** — a new method on an `api/` port is a module-contract change that `ModularityTests` / `PublishedSurfacePlacementArchitectureTests` / `ResponsibilitiesArchitectureTests` police. | low | med | Both additions are plain query methods on existing ports returning existing types (`String`, `Optional`), no new class, no new package, no grant change. The structural net runs at the end of every phase. | claude | closed — the whole structural net is green (incl. `ModularityTests`, `PublishedSurfacePlacementArchitectureTests`, `ResponsibilitiesArchitectureTests`, both auth-placement tests) |
+| R-5 | **Rate-limit bucket collision in a cached full-suite context** (#127 class): new MockMvc requests share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new request in every new/extended web slice carries `SessionLoginSupport.uniqueClientIp()` via the `isolated(...)` helper, matching `OperatorAccountControllerTest`. | claude | closed — the reset path genuinely rides the recovery budget, so this was load-bearing; the full local suite **and** the PR's CI run both pass, which is the only place this class shows up |
 | R-6 | Flyway version collision. | none | — | **No migration in this slice**; latest on `main` is `V30` and the only open PRs are Dependabot frontend bumps (checked at intake). | claude | closed — N/A |
-| R-7 | **Erasure's revoke-first deletes the caller's own session mid-request**, and something later in the request needs it — or Spring Session re-creates the row on save, resurrecting a session the erasure was meant to kill. | low | med | Nothing after the revoke reads the session: `CurrentCustomer` resolves from the already-loaded `Authentication`, and the response is a bare `204`. `JdbcIndexedSessionRepository` *updates* an existing session on save (0 rows for a deleted one) and only inserts when the session is new, so no resurrection. Pinned end-to-end by the existing `AccountErasureIT` still passing. | claude | open |
-| R-8 | **The two new reads drift from the predicates they mirror** — e.g. a future change to token expiry or to the ACTIVE-only ownership rule updates `consume`/`idByActiveUsername` but not the new read, so the edge revokes the wrong principal or none. | low | med | Each read is written next to the method it mirrors, in the same adapter, with the same named-param constants and the same `NOW()`/status-token source; the module ITs (AC-5, AC-10) assert the predicates agree case by case rather than asserting the SQL. | claude | open |
-| R-9 | **Error-contract drift** — a new failure path returning a bare body instead of `ProblemDetail`. | low | med | No new error path is added; every new call is a query whose failure propagates to the single `ApiErrorHandler` (`riviera-java-conventions` §6b), and no `switch` arm changes. | claude | open |
+| R-7 | **Erasure's revoke-first deletes the caller's own session mid-request**, and something later in the request needs it — or Spring Session re-creates the row on save, resurrecting a session the erasure was meant to kill. | low | med | Nothing after the revoke reads the session: `CurrentCustomer` resolves from the already-loaded `Authentication`, and the response is a bare `204`. `JdbcIndexedSessionRepository` *updates* an existing session on save (0 rows for a deleted one) and only inserts when the session is new, so no resurrection. Pinned end-to-end by the existing `AccountErasureIT` still passing. | claude | closed — `AccountErasureIT` + `MeErasureControllerTest` pass unchanged, and the review's CLAUDE.md lens re-derived the no-resurrection argument independently |
+| R-8 | **The two new reads drift from the predicates they mirror** — e.g. a future change to token expiry or to the ACTIVE-only ownership rule updates `consume`/`idByActiveUsername` but not the new read, so the edge revokes the wrong principal or none. | low | med | Each read is written next to the method it mirrors, in the same adapter, with the same named-param constants and the same `NOW()`/status-token source; the module ITs (AC-5, AC-10) assert the predicates agree case by case rather than asserting the SQL. | claude | closed — the reset read is a byte-for-byte copy of `consume`'s predicate in the same adapter and the operator read mirrors `idByActiveUsername`; the module's `FakeTokens` was additionally made to *delegate* to its new read instead of duplicating the predicate, so the fake cannot drift either |
+| R-9 | **Error-contract drift** — a new failure path returning a bare body instead of `ProblemDetail`. | low | med | No new error path is added; every new call is a query whose failure propagates to the single `ApiErrorHandler` (`riviera-java-conventions` §6b), and no `switch` arm changes. | claude | closed — `ErrorContractArchitectureTests` green; the review's CLAUDE.md lens confirmed no bespoke error shape was introduced |
 
 ## Open questions / Assumptions
 
@@ -251,17 +251,35 @@ values, same non-enumerating reset rejection.
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phases 0–2 done, entering phase 3 (substrate + PR)`
+**Stage pointer:** `DONE — all gates cleared, merged via PR #361`
 
-**Next action:** Phase 3 — run the structural net, then the `riviera-docs-freshness` pass over the diff
-(the CLAUDE.md #128 paragraph describes the revoke as following the transition), then open the PR.
+**Next action:** None. Post-merge there is nothing left in the repo: #357 closes via the PR, it belongs
+to no tracking epic, and no finding was deferred to a follow-up issue.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Erasure: bracket the scrub (no port change) | ✅ | `280b97a` |
 | 1 — Suspend: `activeUsername` pre-read + bracket the transition | ✅ | `fdf474e` |
 | 2 — Reset: resolve-without-consume pre-read + bracket the write | ✅ | `aa8e3ec` |
-| 3 — Substrate + close-out | ⏳ | |
+| 3 — Substrate + close-out | ✅ | `0b2274c` (docs-freshness patches), `2692d56` (review fixes) |
+
+**Gate results.** CI green on the PR head (Backend build+test, Frontend lint+test+build, both CodeQL
+analyses). The **full** backend suite was also run locally against a live Docker daemon, so no
+`@EnabledIfDockerAvailable` IT skipped — the #344 lesson that "skips cleanly without Docker" can make a
+local run *look* green while the assertions that exercise the change never execute.
+
+**Review gate: ran in full** — `/code-review` (the subagent fan-out) over PR #361, five parallel
+reviewers (CLAUDE.md/RV-BE bank · shallow bug scan · git-history context · prior-PR comments · code-comment
+compliance) with `riviera-review-overlay` layered on, at **high** effort per `pr-gates.md` §1 (the slice
+touches authorization). Three findings, all fixed below; the bug scan, the CLAUDE.md audit and the
+prior-PR pass returned clean. Note for future slices: the two findings that mattered both came from the
+*doc-accuracy* lens, which is now the third slice running (#344 F-1, F-3) where the defect was a Javadoc
+claim the code contradicts rather than the code itself.
+
+**Sonar gate: green, and the reported list is genuinely empty** — verified against the API, not the
+check conclusion: `new_lines` 166 (so an analysis exists — the #318 false-clean read), `new_bugs` 0,
+`new_vulnerabilities` 0, `new_code_smells` 0, `new_duplicated_blocks` 0, `new_duplicated_lines_density`
+0.0%, `new_coverage` **100.0%** (bar: ≥80%).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -285,7 +303,10 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (code-comment lens) | `MyErasureController`'s new Javadoc claimed revoking first "leaves **only** 'nothing happened' or 'signed out, nothing erased'". False as an enumeration: `PrincipalSessionRevoker` deletes session by session with no transaction, so a **partial** revoke is a third outcome. The consequence the sentence was reaching for (every state is retry-recoverable) does hold — it now says that instead. | fixed-in `2692d56` |
+| F-2 | review (git-history lens) | `AdminOperatorController` carried #128's sentence "the residual failure direction is over-revocation, **never under**" into a paragraph that makes it false in *both* directions: a `suspend` refused after the pre-revoke signs out a still-ACTIVE operator (#128 guaranteed that could not happen), and a failed *trailing* revoke still leaves the window's sessions. The maintainer was shown the refused-suspend case at the D-1 decision point, so the trade stands; the Javadoc now states both costs and what they buy. | fixed-in `2692d56` |
+| F-3 | review (git-history lens) | Plan-doc discipline: every checkbox in this doc was still `- [ ]` while the phase table read ✅ with real commits — the exact "doc doesn't match git reality" pattern #344's own findings register flagged twice (F-6, F-8), and this doc's copy of the self-review line that forbids it was itself unticked. | fixed-in this commit (ACs, phase steps, AC-verification, and self-review all ticked against reality) |
+| F-4 | review (git-history lens, observation) | `emailForResetToken` runs on **every** reset POST, so a valid token now costs an extra indexed read plus a revoke round-trip that an invalid one skips — a wider valid-vs-invalid timing differential than before (the #111 review found a real timing oracle on a related surface). **Accepted, not changed:** the oracle there was *email enumeration*, where the attacker supplies a guessable identifier; here the input is a 128-bit random bearer token (invariant #7), so distinguishing "valid" from "invalid" requires already holding a valid one. Constant-timing it would mean issuing a dummy revoke, which is a real side effect for a fake principal. | closed — accepted with rationale |
 
 ---
 
@@ -332,7 +353,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 **Files:** Modify `MyErasureController.java:41-47`, `PrincipalSessionRevoker.java` (Javadoc) ·
 Test `MeErasureControllerTest.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-11)
+- [x] **Step 1: Write the failing tests** (AC-11)
 
 ```java
 /** #357: the revoke must run BEFORE the scrub, so a failed revoke cannot leave data erased. */
@@ -377,8 +398,8 @@ void aFailedRevokeNeverScrubsTheAccount() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*MeErasureControllerTest*"`
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*MeErasureControllerTest*"`
+- [x] **Step 3: Minimal implementation**
 
 ```java
 @PostMapping(ERASURE_PATH)
@@ -393,12 +414,12 @@ ResponseEntity<Void> eraseMyAccount(Authentication authentication) {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command, then
+- [x] **Step 4: Run it, verify it passes** — same command, then
   `gradle test --tests "*MeSurfaceRoleGateTest*" --tests "*AdminErasureControllerTest*"`
-- [ ] **Step 5: Generalization-audit pass** — `grep -rn "revokeAll\|revokeAllExcept" platform/src --include=*.java`;
+- [x] **Step 5: Generalization-audit pass** — `grep -rn "revokeAll\|revokeAllExcept" platform/src --include=*.java`;
   record the six sites and the per-site decision in the log below.
-- [ ] **Step 6: Commit** — `fix(#357): bracket the erasure scrub with the session revoke`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `fix(#357): bracket the erasure scrub with the session revoke`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Suspend: the `activeUsername` pre-read
 
@@ -406,7 +427,7 @@ ResponseEntity<Void> eraseMyAccount(Authentication authentication) {
 `JdbcOperators.java`, `AdminOperatorController.java`, `WebSliceStubs.java` ·
 Create `AdminOperatorControllerTest.java` · Modify `OperatorLifecycleIT.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-6…AC-10, AC-12) — the web slice mocks `OperatorLifecycle`
+- [x] **Step 1: Write the failing tests** (AC-6…AC-10, AC-12) — the web slice mocks `OperatorLifecycle`
   + `PrincipalSessionRevoker` and drives `POST /api/admin/operators/{id}/suspend` as an ADMIN; the IT
   asserts `activeUsername` against real Postgres in each status.
 
@@ -438,9 +459,9 @@ void aFailedRevokeNeverSuspends() {
 }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** — `gradle test --tests "*AdminOperatorControllerTest*"`
+- [x] **Step 2: Run them, verify they fail** — `gradle test --tests "*AdminOperatorControllerTest*"`
   (the IT needs Docker; without a daemon it skips cleanly and CI is the gate for AC-10)
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // OperatorLifecycle (api) — the pre-read
@@ -461,11 +482,11 @@ lifecycle.activeUsername(target).ifPresent(sessionRevoker::revokeAll);
 return toResponse(lifecycle.suspend(target), true);
 ```
 
-- [ ] **Step 4: Run, verify pass** — the two classes above, then the shared slices
+- [x] **Step 4: Run, verify pass** — the two classes above, then the shared slices
   (`*WebCorsConfigTest*`, `*RateLimitFilterTest*`, `*PayoutModuleTest*`) for the R-3 stub break.
-- [ ] **Step 5: Generalization-audit pass** — no new pattern beyond phase 0's; note it.
-- [ ] **Step 6: Commit** — `fix(#357): revoke an operator's sessions before the suspension commits`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — no new pattern beyond phase 0's; note it.
+- [x] **Step 6: Commit** — `fix(#357): revoke an operator's sessions before the suspension commits`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Reset: the resolve-without-consume pre-read
 
@@ -474,7 +495,7 @@ return toResponse(lifecycle.suspend(target), true);
 `AccountRecoveryController.java`, `WebSliceStubs.java` · Create `AccountRecoveryControllerTest.java` ·
 Modify `CustomerAccountRecoveryIT.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-1…AC-5)
+- [x] **Step 1: Write the failing tests** (AC-1…AC-5)
 
 ```java
 // AccountRecoveryControllerTest — the edge ordering
@@ -504,9 +525,9 @@ void emailForResetTokenResolvesTheAccountWithoutConsumingTheToken() {
 }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** — `gradle test --tests "*AccountRecoveryControllerTest*"`
+- [x] **Step 2: Run them, verify they fail** — `gradle test --tests "*AccountRecoveryControllerTest*"`
   and `--tests "*CustomerAccountRecoveryIT*"`
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // JdbcCustomerAccountTokens — consume's predicate, as a pure read (unique index on token_hash)
@@ -531,22 +552,22 @@ recovery.emailForResetToken(request.token()).ifPresent(sessionRevoker::revokeAll
 return switch (recovery.resetPassword(request.token(), newPasswordHash)) { … };
 ```
 
-- [ ] **Step 4: Run, verify pass** — the two classes, then `*PasswordResetIT*`, `*RecoveryRateLimitIT*`,
+- [x] **Step 4: Run, verify pass** — the two classes, then `*PasswordResetIT*`, `*RecoveryRateLimitIT*`,
   `*EmailVerificationIT*` and the shared web slices.
-- [ ] **Step 5: Generalization-audit pass** — confirm the log's six-site table is still complete.
-- [ ] **Step 6: Commit** — `fix(#357): revoke a customer's sessions before the reset token is consumed`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — confirm the log's six-site table is still complete.
+- [x] **Step 6: Commit** — `fix(#357): revoke a customer's sessions before the reset token is consumed`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 3 — Substrate + close-out
 
-- [ ] **Step 1:** Structural net + the full backend regression CI needs
+- [x] **Step 1:** Structural net + the full backend regression CI needs
       (`*ModularityTests*`, `*PackageShapeArchitectureTests*`, `*PublishedSurfacePlacementArchitectureTests*`,
       `*JdbcOnlyArchitectureTests*`, `*ErrorContractArchitectureTests*`, `*ResponsibilitiesArchitectureTests*`,
       `*OperatorAuthPlacementTests*`, `*CustomerAuthPlacementTests*`, `*DocumentationTests*`).
-- [ ] **Step 2:** `riviera-docs-freshness` over the diff — at minimum re-check the CLAUDE.md #128/#344
+- [x] **Step 2:** `riviera-docs-freshness` over the diff — at minimum re-check the CLAUDE.md #128/#344
       paragraph (it describes the revoke as following the transition) and `RESPONSIBILITIES.md`'s
       `operator`/`customer` entries; patch what the diff contradicts, in this PR.
-- [ ] **Step 3:** Open the PR, run the Review gate, then the Sonar gate; finalize the Execution status
+- [x] **Step 3:** Open the PR, run the Review gate, then the Sonar gate; finalize the Execution status
       citing `merged via PR #NN` before the merge.
 
 ---
@@ -558,36 +579,50 @@ return switch (recovery.resetPassword(request.token(), newPasswordHash)) { … }
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-26 | Plan — inherited from #344's audit | every call site pairing a state change with a session revoke | `grep -rn "revokeAll\|revokeAllExcept" platform/src --include=*.java` | 6 | 3 fixed here (reset, suspend, erasure), 2 already fixed by #344 and deliberately **not** given a trailing revoke (their keep-id/rotation pairing makes it unsafe — see Non-goals), 1 skipped (`OperatorCredentialInitializer`, boot-time) |
+| 2026-07-26 | Review round 1 — the F-1/F-2 Javadoc precision fixes (`2692d56`) | statements in the diff that enumerate what a failed revoke can leave behind, or claim a direction it cannot go | `grep -n "leaves only\|both recoverable\|retry recovers from\|never under\|every session that existed" platform/src/main/java/ai/riviera/platform/*.java` | 4 (2 mine, 2 shipped) | Fixed both of mine. The two "every session that existed when the request started is gone" lines are **correct** — each is scoped to a *trailing*-revoke failure, i.e. after a leading revoke that returned successfully (so its delete loop completed in full). `OperatorAccountController:92` (#344, untouched here) carries the same either-or simplification about a partial revoke; left alone deliberately — this PR's Non-goals bar re-opening the #344 sites, and the practical claim there ("the retry recovers") survives partial revocation |
 | 2026-07-26 | Phase 0 — the erasure bracket (`280b97a`) | the same six sites, re-run against the new pattern (revoke **both** sides, not just earlier) | `grep -rn "revokeAll\|revokeAllExcept" platform/src/main --include=*.java` | 6 (erasure now 2 calls) | Unchanged from the plan row: phases 1–2 apply the same bracket to suspend + reset. The two `revokeAllExcept` sites keep a single call by design — a second one would have to re-derive the keep-id across `SessionIdentity.rotate` (#344 R-1), risking deletion of the caller's own session for a window #344 already accepted. `OperatorCredentialInitializer` still skipped: boot-time, no caller, no window (nobody holds a session for a credential the deploy is still stamping) |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-4:** `gradle test --tests "*AccountRecoveryControllerTest*"` → PASS.
-- [ ] **AC-5:** `gradle test --tests "*CustomerAccountRecoveryIT*"` → PASS (0 skipped — needs Docker).
-- [ ] **AC-6…AC-9, AC-12:** `gradle test --tests "*AdminOperatorControllerTest*"` → PASS.
-- [ ] **AC-10:** `gradle test --tests "*OperatorLifecycleIT*"` → PASS (0 skipped — needs Docker).
-- [ ] **AC-11:** `gradle test --tests "*MeErasureControllerTest*"` → PASS.
-- [ ] Regression: `*OperatorSuspensionRevocationIT*`, `*PasswordResetIT*`, `*AccountErasureIT*` → PASS.
-- [ ] Structural net (phase 3 step 1) → PASS.
+Every command below is `./gradlew --console=plain test …` from `platform/`, run with a live Docker
+daemon so **no `@EnabledIfDockerAvailable` IT skipped**.
+
+- [x] **AC-1…AC-4:** `--tests "*AccountRecoveryControllerTest*"` → PASS (red first: the class did not
+      compile until `emailForResetToken` existed).
+- [x] **AC-5:** `--tests "*CustomerAccountRecoveryIT*"` → PASS against Testcontainers Postgres.
+- [x] **AC-6…AC-9, AC-12:** `--tests "*AdminOperatorControllerTest*"` → PASS (red first: 10 compile
+      errors for the missing `activeUsername`).
+- [x] **AC-10:** `--tests "*OperatorLifecycleIT*"` → PASS against Testcontainers Postgres.
+- [x] **AC-11:** `--tests "*MeErasureControllerTest*"` → PASS (red first: 4 failures — 3 new + the
+      existing happy-path test, which now expects two revokes).
+- [x] Regression: `*OperatorSuspensionRevocationIT*`, `*PasswordResetIT*`, `*RecoveryRateLimitIT*`,
+      `*EmailVerificationIT*`, `*RecoveryMailerFailureIT*`, `*MeSurfaceRoleGateTest*`,
+      `*AdminErasureControllerTest*`, `*CustomerAccountServiceTest*` → PASS.
+- [x] Structural net (phase 3 step 1) → PASS.
+- [x] **The whole backend suite** (`./gradlew test`, ~3.5 min, nothing skipped) → PASS, then the same
+      on the PR's CI run.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (no availability write path in scope) — invariant #2.
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; two `api/` port methods added, no package/grant change;
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (no availability write path in scope) — invariant #2.
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; two `api/` port methods added, no package/grant change;
       `ModularityTests` green (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9); refund policy untouched (#10).
-- [ ] Timezone untouched (invariant #6) — the token predicate stays on the DB clock.
-- [ ] Booking codes untouched (invariant #7); the raw reset token never leaves the edge and is never logged.
-- [ ] No schema change, so no Flyway migration required (invariant #12).
-- [ ] **Frontend** N/A — no observable contract change; justified above.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` (or `/review <PR>`) *plus* `riviera-review-overlay`.
+- [x] **Payment/payout** N/A (invariants #5, #8, #9); refund policy untouched (#10).
+- [x] Timezone untouched (invariant #6) — the token predicate stays on the DB clock.
+- [x] Booking codes untouched (invariant #7); the raw reset token never leaves the edge and is never logged.
+- [x] No schema change, so no Flyway migration required (invariant #12).
+- [x] **Frontend** N/A — no observable contract change; justified above.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — `/code-review`, the subagent fan-out (five parallel reviewers at
+      high effort, the risk class `pr-gates.md` §1 mandates for an authorization slice), *plus*
+      `riviera-review-overlay` layered on. Not the degraded mode the last three slices had to use: the
+      `code-review` plugin is enabled as of `662eb28`, and the maintainer authorized the subagents.
