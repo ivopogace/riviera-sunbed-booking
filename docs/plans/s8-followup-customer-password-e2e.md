@@ -158,7 +158,7 @@ N/A — no contract change. The mock encodes the EXISTING contract:
 | 1 — Mock the endpoint | ✅ | `3a79631` (with phase 2) |
 | 2 — The spec (3 tests) | ✅ | `3a79631` |
 | 3 — Lint + full mocked-suite run | ✅ | `npm run lint` clean; 79/79 mocked specs pass |
-| 4 — Review gate + fixes | ✅ | `df58d7a` — re-linted and re-ran the full suite after the fixes (79/79) |
+| 4 — Review gate + fixes | ✅ | `04ac8ba` — re-linted and re-ran the full suite after the fixes (79/79) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -166,8 +166,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate — RV-STYLE-1 | The new `/api/me/password` mock route carried a 5-line inline comment; inline comments are one line or they are not written (doc comments exempt) | fixed-in-`df58d7a` — the branch-order rationale moved into the function's TSDoc, one inline pointer left |
-| F-2 | review gate — quality (own diff) | `mockCustomerRecoveryApi` required `validToken`, forcing three dummy `'unused-here'` arguments in a spec that redeems no token | fixed-in-`df58d7a` — `validToken` is optional, and both token routes now guard on `!== undefined` so an omitted token can never be redeemed as `undefined` |
+| F-1 | review gate — RV-STYLE-1 | The new `/api/me/password` mock route carried a 5-line inline comment; inline comments are one line or they are not written (doc comments exempt) | fixed-in-`04ac8ba` — the branch-order rationale moved into the function's TSDoc, one inline pointer left |
+| F-2 | review gate — quality (own diff) | `mockCustomerRecoveryApi` required `validToken`, forcing three dummy `'unused-here'` arguments in a spec that redeems no token | fixed-in-`04ac8ba` — `validToken` is optional, and both token routes now guard on `!== undefined` so an omitted token can never be redeemed as `undefined` |
 
 ---
 
