@@ -200,21 +200,31 @@ row 2), so no e2e spec changes and `playwright-cli` is not triggered.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement — complete; next is the CI gate (push) then PR`
 
-**Next action:** Add AC-2 to `AuthSessionIT` (the login/fixation instance) and AC-3 to
-`SetPasswordIT` (the customer twin), then run the phase-2 scoped batch.
+**Next action:** Push the branch, confirm that push's CI run is green, then open the PR into `main`
+(merging latest `origin/main` in first) and run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Red: pin the lost update | ✅ | `beacc58` |
-| 1 — Green: authoritative rotate | ✅ | `<phase-1>` |
-| 2 — Generalize: login path, customer twin, principal-index parity | ⏳ | |
+| 1 — Green: authoritative rotate | ✅ | `19a10de` |
+| 2 — Generalize: login path, customer twin, principal-index parity | ✅ | `<phase-2>` |
 
 **Verified so far:** phase 0 was red with `Status expected:<401> but was:<200>` (the retired cookie
 authenticating again) and is green after phase 1. Regression sweep
 `--tests "*Session*" --tests "*Auth*" --tests "*Password*" --tests "*Erasure*"` → **106 tests, 0
 failures, 0 skipped** — the ITs really ran against Testcontainers Postgres (R-7), not a Docker skip.
+
+**Anti-vacuity check (phase 2).** A new test that passes with *and* without the fix pins nothing, so
+`rotate` was temporarily reverted to `request.changeSessionId()` and the three ACs re-run: all three
+failed (`AuthSessionIT.aConcurrentSaveOnThePreLoginSessionCannotResurrectItsId`,
+`OperatorPasswordChangeIT.aConcurrentSaveOnTheOldSessionCannotResurrectItsId`,
+`SetPasswordIT.aConcurrentSaveOnTheOldSessionCannotResurrectItsId` — 18 tests, 3 failed), and all
+three pass with it restored. Structural net + placement tests
+(`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
+`PublishedSurfacePlacementArchitectureTests`, `*PlacementTests`, `ErrorContractArchitectureTests`) →
+green, confirming RV-BE-11 still holds (no module gained a servlet/session import).
 
 **Phase-1 note (parity ledger, row 8 in practice):** two `@WebMvcTest` slice tests —
 `OperatorAccountControllerTest` / `MyAccountControllerTest`
