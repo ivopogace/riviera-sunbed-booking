@@ -1,7 +1,6 @@
 ---
 name: to-spec
-description: Turn the current conversation into a spec and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed.
-disable-model-invocation: true
+description: Turn the current conversation into a spec and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed. Epic/feature altitude (user stories + testing seams + out-of-scope), the optional step ahead of to-issues; slice-level detail stays in riviera-plan-doc.
 ---
 
 > **In riviera-sunbed-booking (localization):**

@@ -1,7 +1,6 @@
 ---
 name: wayfinder
-description: Plan a huge chunk of work — more than one agent session can hold — as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear.
-disable-model-invocation: true
+description: Plan a huge chunk of work — more than one agent session can hold — as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear. Load ONLY for a genuinely foggy epic (destination clear, route not, decisions spanning sessions); when clean vertical slices can already be cut, skip straight to to-spec / to-issues.
 ---
 
 > **In riviera-sunbed-booking (localization):**
