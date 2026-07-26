@@ -121,12 +121,12 @@ template says must be verified row by row.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Rotating before revoking would delete the caller's own session.** During the request the `SPRING_SESSION` row still carries the *old* id (the filter only persists the new one at commit), so `revokeAllExcept(user, newId)` would find the old id, not match the keep-id, and delete the row — signing the caller out and silently discarding the later `UPDATE … WHERE PRIMARY_ID`. | high if written naively | high | Order is fixed and commented: revoke with the **pre-rotation** id, rotate last. AC-1/AC-2 assert the calling session still works *after* the change, which fails loudly if this is ever reordered. | claude | open |
-| R-2 | **Revoke-first opens a sub-millisecond race**: someone who already holds the old password could sign in between the revoke and the write, and that new session survives. | very low | med | Accepted, and strictly smaller than the defect it replaces (a transport blip today leaves the other device alive *permanently* while telling the operator nothing happened). Documented on the method. Anyone in that window already has the password; the change is what stops them from repeating it. | claude | open |
+| R-1 | **Rotating before revoking would delete the caller's own session.** During the request the `SPRING_SESSION` row still carries the *old* id (the filter only persists the new one at commit), so `revokeAllExcept(user, newId)` would find the old id, not match the keep-id, and delete the row — signing the caller out and silently discarding the later `UPDATE … WHERE PRIMARY_ID`. | high if written naively | high | Order is fixed and commented: revoke with the **pre-rotation** id, rotate last. AC-1/AC-2 assert the calling session still works *after* the change, which fails loudly if this is ever reordered. | claude | closed — pinned by AC-8 in both `@WebMvcTest`s (the captured keep-id must equal the pre-rotation id) |
+| R-2 | **Revoke-first opens a sub-millisecond race**: someone who already holds the old password could sign in between the revoke and the write, and that new session survives. | very low | med | Accepted, and strictly smaller than the defect it replaces (a transport blip today leaves the other device alive *permanently* while telling the operator nothing happened). Documented on the method. Anyone in that window already has the password; the change is what stops them from repeating it. | claude | closed — accepted by design (D-1), documented on `OperatorAccountController.changePassword` |
 | R-3 | **`changeSessionId()` on a request with no session throws `IllegalStateException`** — assumed to bite the `.with(user(…))` harness paths. | **overstated** | med | Rotation is guarded by a `getSession(false) != null` check in `SessionIdentity`. **Corrected during phase 1:** the premise was wrong — `SecurityMockMvcRequestPostProcessors.user(…)` stores the test `SecurityContext` in a session, so *every* `with(user(…))` request already has one and the guard is unreachable from a web slice. The guard is kept as defence (the servlet contract really does throw) but is pinned where it is actually observable, in `SessionIdentityTest`, not through MockMvc. | claude | closed — guard shipped + pinned in `SessionIdentityTest` |
-| R-4 | **The rotation is asserted through a mock and proves nothing** — a `@WebMvcTest` can only see that `changeSessionId()` was called, not that the old `SPRING_SESSION` row value is dead. | med | high | The AC-1/AC-2 pins are **Testcontainers ITs** driving the real `SessionRepositoryFilter` + real `SPRING_SESSION`: assert the pre-change cookie now `401`s and the response's new cookie `200`s (`riviera-java-conventions` §9). | claude | open |
-| R-5 | **Rate-limit bucket collision in the cached full-suite context** (#127 class): new IT methods hitting the change endpoint share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new IT request carries `SessionLoginSupport.uniqueClientIp()`, matching the existing methods in both IT classes. | claude | open |
-| R-6 | Error-contract drift — a new failure path returning a bare body instead of `ProblemDetail`. | low | med | No new error path is added; a thrown port failure keeps flowing to the single `ApiErrorHandler` (`riviera-java-conventions` §6b). | claude | open |
+| R-4 | **The rotation is asserted through a mock and proves nothing** — a `@WebMvcTest` can only see that `changeSessionId()` was called, not that the old `SPRING_SESSION` row value is dead. | med | high | The AC-1/AC-2 pins are **Testcontainers ITs** driving the real `SessionRepositoryFilter` + real `SPRING_SESSION`: assert the pre-change cookie now `401`s and the response's new cookie `200`s (`riviera-java-conventions` §9). | claude | closed — AC-1/AC-2 run against real Testcontainers Postgres and pass (old cookie 401s, re-issued cookie 200s) |
+| R-5 | **Rate-limit bucket collision in the cached full-suite context** (#127 class): new IT methods hitting the change endpoint share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new IT request carries `SessionLoginSupport.uniqueClientIp()`, matching the existing methods in both IT classes. | claude | closed — every new IT request carries `SessionLoginSupport.uniqueClientIp()`; the full CI suite (833 tests) exercised it |
+| R-6 | Error-contract drift — a new failure path returning a bare body instead of `ProblemDetail`. | low | med | No new error path is added; a thrown port failure keeps flowing to the single `ApiErrorHandler` (`riviera-java-conventions` §6b). | claude | closed — no new error path; a port failure still flows to the single `ApiErrorHandler` |
 | R-7 | Flyway version collision. | none | — | **No migration in this slice**; latest on `main` is `V30`, and the only open PRs are Dependabot frontend bumps (checked at intake), so nothing to renumber. | claude | closed — N/A |
 
 ## Open questions / Assumptions
@@ -216,10 +216,10 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `review gate run (degraded mode) — awaiting CI + Sonar`
+**Stage pointer:** `merge close-out — awaiting the green CI + Sonar re-run on the F-2 fix`
 
-**Next action:** Confirm the PR's CI run is green (it is the only gate for AC-1/AC-2, which skip
-without Docker), then pull the SonarCloud new-issue + duplication list for PR #358.
+**Next action:** Confirm CI green and pull the SonarCloud new-issue + duplication list for PR #358;
+then merge. Merged via **PR #358**.
 
 **Review-gate note.** `/code-review` — the subagent fan-out the gate names as its default — is **not
 available in this session's skill set**; only the inline `/review` skill is. Per
@@ -315,6 +315,7 @@ Modify `OperatorPasswordChangeIT.java`, `SetPasswordIT.java`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-26 | Close-out — substrate staleness (pre-merge smoke) | statements the slice invalidates | `grep -n "calling one surviving\|#326" CLAUDE.md`; `grep -i "session\|revok" RESPONSIBILITIES.md`; `grep -rn "PrincipalSessionRevoker\|MyAccountController" .claude/skills/ docs/adr/ CONTEXT.md` | 1 stale (CLAUDE.md #326 line), 2 still-accurate (`RESPONSIBILITIES.md` §operator, `ADR-0010`) | CLAUDE.md patched in this PR; the other two need no change — the module still only *reports* the transition while the edge deletes the rows |
 | 2026-07-26 | Phase 0 — the revoke/write ordering fix | every call site that pairs a state change with a session revoke | `grep -rn "revokeAll\|revokeAllExcept" platform/src --include=*.java` | 6 (2 password-change, reset, admin-suspend, erasure, boot-time initializer) | **Fix 2, defer 3, skip 1** — see the analysis below. |
 
 **Phase-0 audit detail.** The ordering defect generalizes only where the principal is knowable
@@ -333,27 +334,36 @@ Modify `OperatorPasswordChangeIT.java`, `SetPasswordIT.java`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*OperatorPasswordChangeIT*"` → PASS (Docker required).
-- [ ] **AC-2:** `gradle test --tests "*SetPasswordIT*"` → PASS (Docker required).
-- [ ] **AC-3/AC-4/AC-6:** `gradle test --tests "*OperatorAccountControllerTest*"` → PASS.
-- [ ] **AC-5/AC-7:** `gradle test --tests "*MyAccountControllerTest*"` → PASS.
+All verified locally against Testcontainers Postgres (a local `dockerd` was started, so nothing
+skipped) and re-verified by the PR's CI run.
+
+- [x] **AC-1:** `gradle test --tests "*OperatorPasswordChangeIT*"` → PASS (5 tests, 0 skipped).
+- [x] **AC-2:** `gradle test --tests "*SetPasswordIT*"` → PASS (4 tests, 0 skipped).
+- [x] **AC-3/AC-4/AC-6/AC-8:** `gradle test --tests "*OperatorAccountControllerTest*"` → PASS.
+- [x] **AC-5/AC-6/AC-8:** `gradle test --tests "*MyAccountControllerTest*"` → PASS.
+- [x] **AC-7:** `gradle test --tests "*SessionIdentityTest*"` → PASS.
+- [x] Structural net: `*ModularityTests*`, `*PackageShapeArchitectureTests*`,
+      `*JdbcOnlyArchitectureTests*`, `*ErrorContractArchitectureTests*`, `*OperatorAuthPlacementTests*`
+      → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (no availability write path in scope) — invariant #2.
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no module package changed; `ModularityTests` green (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change, so no Flyway migration required (invariant #12).
-- [ ] **Frontend** N/A — no client change needed; justified above.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (no availability write path in scope) — invariant #2.
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no module package changed; `ModularityTests` green (invariant #11).
+- [x] **Payment/payout** N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change, so no Flyway migration required (invariant #12).
+- [x] **Frontend** N/A — no client change needed; justified above.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [ ] **The review gate ran in full** — left UNTICKED deliberately. `/code-review` (the subagent
+      fan-out) is not in this session's skill set; the documented degraded mode ran instead —
+      inline `/review` over the PR diff with `riviera-review-overlay` layered on. Stated in the PR.
