@@ -200,17 +200,29 @@ row 2), so no e2e spec changes and `playwright-cli` is not triggered.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change
 > it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `plan — complete, awaiting phase 0`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Load `riviera-local-debug`, then write the phase-0 red test
-(`OperatorPasswordChangeIT.aConcurrentSaveOnTheOldSessionCannotResurrectItsId`) and run it to
-confirm it fails **both ways** (old cookie 200, new cookie 401) before touching `SessionIdentity`.
+**Next action:** Add AC-2 to `AuthSessionIT` (the login/fixation instance) and AC-3 to
+`SetPasswordIT` (the customer twin), then run the phase-2 scoped batch.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Red: pin the lost update | | |
-| 1 — Green: authoritative rotate | | |
-| 2 — Generalize: login path, customer twin, principal-index parity | | |
+| 0 — Red: pin the lost update | ✅ | `beacc58` |
+| 1 — Green: authoritative rotate | ✅ | `<phase-1>` |
+| 2 — Generalize: login path, customer twin, principal-index parity | ⏳ | |
+
+**Verified so far:** phase 0 was red with `Status expected:<401> but was:<200>` (the retired cookie
+authenticating again) and is green after phase 1. Regression sweep
+`--tests "*Session*" --tests "*Auth*" --tests "*Password*" --tests "*Erasure*"` → **106 tests, 0
+failures, 0 skipped** — the ITs really ran against Testcontainers Postgres (R-7), not a Docker skip.
+
+**Phase-1 note (parity ledger, row 8 in practice):** two `@WebMvcTest` slice tests —
+`OperatorAccountControllerTest` / `MyAccountControllerTest`
+`.rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke` — asserted on the `MockHttpSession`
+*handle* they passed in, which `changeSessionId()` renamed in place. The new mechanism retires that
+handle, so both now assert on the request's resulting session and additionally pin
+`thisSession.isInvalid()`. AC-4 (`theRotatedSessionStaysReachableByPrincipalName`) passed both
+before and after the fix, which is exactly what a parity guard should do.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

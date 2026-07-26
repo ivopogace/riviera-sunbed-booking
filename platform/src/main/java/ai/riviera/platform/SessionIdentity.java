@@ -1,5 +1,9 @@
 package ai.riviera.platform;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
@@ -31,28 +35,50 @@ final class SessionIdentity {
 	}
 
 	/**
-	 * Give the calling session a fresh id, so the cookie value that reached this request stops
-	 * authenticating anyone — the {@code changeSessionId()} half of a password change (#344). Spring
-	 * Session's filter persists the new id and writes the replacement {@code SESSION} cookie on the same
-	 * response, so a legitimate caller notices nothing; a copy of the old cookie is simply dead.
+	 * Give the calling request a fresh session identity, so the cookie value that reached it stops
+	 * authenticating anyone — the rotation half of a password change (#344) and the session-fixation
+	 * defence on every login path (design D-1). Spring Session's filter writes the replacement
+	 * {@code SESSION} cookie on the same response, so a legitimate caller notices nothing; a copy of the
+	 * old cookie is simply dead.
 	 *
-	 * <p><strong>Must run after any {@code revokeAllExcept} that spares this session.</strong> The stored
-	 * row keeps the old id until the filter commits, so a revoke handed the post-rotation id would fail to
-	 * match its own keep-entry and delete the caller's session.
+	 * <p><strong>Must run after any {@code revokeAllExcept} that spares this session.</strong> A revoke is
+	 * handed the pre-rotation id; taken after this call it matches no row, so the caller's own session
+	 * would be deleted by its own revoke.
 	 *
-	 * <p>A request with no session is a no-op rather than an error: {@code changeSessionId()} is specified
-	 * to throw {@link IllegalStateException} there, and a password change that legitimately has no session
-	 * to rotate has nothing to fail about.
+	 * <p><strong>Why this is not {@code changeSessionId()}</strong> (issue #359). That keeps the same
+	 * {@code SPRING_SESSION} row and defers the new id to the filter's post-request save, which writes
+	 * <em>that</em> request's in-memory id. Any second request touching the session performs the same write
+	 * on completion, so one that loaded before the rotation committed and finished after wrote the OLD id
+	 * back — resurrecting the exfiltrated cookie and orphaning the caller's new one. On the login path the
+	 * overlap is attacker-controllable, which makes it a session-fixation bypass rather than a race.
+	 * Invalidating issues the {@code DELETE} immediately, so the stale write has no row left to target.
 	 *
-	 * <p><strong>Known limitation (issue #359).</strong> The new id is persisted by the filter after the
-	 * request completes, writing this request's in-memory id. A second request on the same session that
-	 * loaded it before the rotation committed writes the OLD id back, resurrecting the cookie the rotation
-	 * was meant to kill. Single-request flows — which both password endpoints are — are unaffected, and the
-	 * ITs cover those; closing it needs a re-read-and-merge in the session repository.
+	 * <p>Attributes and the inactive interval are carried over, keeping this a drop-in for the old
+	 * semantics — in particular {@code SPRING_SECURITY_CONTEXT}, which both keeps the caller signed in and
+	 * is what {@code PrincipalNameIndexResolver} derives the {@code PRINCIPAL_NAME} index from, so
+	 * {@link PrincipalSessionRevoker} still finds the replacement. Row identity, creation time and
+	 * last-access time deliberately do not survive: a new row is the mechanism, not a side effect.
+	 *
+	 * <p>A concurrent request that <em>adds</em> an attribute now fails on the deleted parent row instead
+	 * of silently clobbering — the intended direction, and not a new failure class: the revoker's deletes
+	 * have done the same to other sessions since #113.
+	 *
+	 * <p>A request with no session is a no-op rather than an error: a rotation with nothing to rotate has
+	 * nothing to fail about.
 	 */
 	static void rotate(HttpServletRequest request) {
-		if (request.getSession(false) != null) {
-			request.changeSessionId();
+		HttpSession retiring = request.getSession(false);
+		if (retiring == null) {
+			return;
 		}
+		Map<String, Object> carried = new LinkedHashMap<>();
+		for (String name : Collections.list(retiring.getAttributeNames())) {
+			carried.put(name, retiring.getAttribute(name));
+		}
+		int maxInactiveInterval = retiring.getMaxInactiveInterval();
+		retiring.invalidate();
+		HttpSession replacement = request.getSession(true);
+		replacement.setMaxInactiveInterval(maxInactiveInterval);
+		carried.forEach(replacement::setAttribute);
 	}
 }
