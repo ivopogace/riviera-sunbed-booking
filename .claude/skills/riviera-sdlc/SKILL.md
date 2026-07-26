@@ -53,7 +53,7 @@ at Implement", it means this paragraph.
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. Re-run the Skill-routing gate for each area you touch. | `implement` + `tdd` + the Skill-routing gate (below) |
 | **CI gate** | Every push/PR builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's CI run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
 | **PR** | Merge the latest `origin/main` into the branch first — integrate anything that landed since the cut with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit) — then open the PR into `main`. Opening the PR does not complete the next stage. | `triage` (issue/PR lifecycle) |
-| **Review** | **Mandatory gate.** Review the PR diff against the invariants; record findings; each fix re-enters at Implement (re-entry rule). Green CI is not a substitute — procedure: `references/pr-gates.md` §1. | `riviera-review-overlay` + `/code-review` |
+| **Review** | **Mandatory gate.** **Always start `/code-review` (or `/review <PR>`) — the overlay alone is NOT the review** and leaves the generic banks unrun; if tooling blocks it, say so in the PR and leave the box unticked rather than substituting silently. Review the PR diff against the invariants; record findings; each fix re-enters at Implement (re-entry rule). Green CI is not a substitute — procedure: `references/pr-gates.md` §1. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | **Mandatory gate (PR-time; Sonar analyzes PRs + `main` only).** A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge; logic-changing findings re-enter at Implement (re-entry rule) — procedure: `references/pr-gates.md` §2. | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green **and** its issue list cleared + findings resolved through the loop → merge, then run the close-out checklist — procedure: `references/pr-gates.md` §3. | the Merge close-out (`references/pr-gates.md`) |
 
@@ -163,8 +163,13 @@ sentence (re-load it; see Context hygiene) — and re-loading is cheap: when in 
 2. **Branch per issue:** `feature/<slug>` or `bugfix/<slug>` off `main`; reference `#NN` in commits.
 3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Don't merge red; after each
    push that claims green, confirm its CI run before the next phase (red-TDD / labeled-partial exempt); red → `diagnosing-bugs`.
-4. **The review gate is non-negotiable too.** Green CI is not a review — don't merge, or call a slice
-   done, until the Review gate has run and its findings are resolved or deferred (`references/pr-gates.md` §1).
+4. **The review gate is non-negotiable too — and "ran" means `/code-review` actually ran.**
+   Green CI is not a review, and neither is walking `riviera-review-overlay`'s bank by hand:
+   the overlay layers onto an active review, so on its own it leaves the generic FE/BE/contract
+   banks unrun. Don't merge, or call a slice done, until the Review gate has run **in full** and
+   its findings are resolved or deferred. A session that *cannot* start the review (no Agent
+   tool, restricted toolset) reports that in the PR and leaves the checkbox unticked — it never
+   ticks a box for a command it didn't run (`references/pr-gates.md` §1).
 5. **The plan owns the invariants.** If the slice touches booking, availability, or money, the plan doc states how the invariant holds, and review checks it.
 6. **Right-size it.** A one-line/copy fix skips the plan doc; a spine-touching feature does not. (A code change still gets the review gate — proportional to size.)
 7. **An existing issue gets grilled before it gets planned** — entering at a written ticket skips

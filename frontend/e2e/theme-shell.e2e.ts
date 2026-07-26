@@ -198,6 +198,10 @@ test.describe('account menu', () => {
     // The popover must not survive its own navigation.
     await expect(page.getByTestId('nav-account-menu')).toBeHidden();
     await expect(page.getByTestId('nav-user')).toHaveAttribute('aria-expanded', 'false');
+    // Focus must stay in the page, not fall to body; this destination then autofocuses its input.
+    await expect
+      .poll(() => page.evaluate(() => !!document.activeElement?.closest('main')))
+      .toBe(true);
   });
 
   test.describe('mobile viewport', () => {

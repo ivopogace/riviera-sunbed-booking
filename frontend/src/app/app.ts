@@ -111,15 +111,14 @@ export class App {
         takeUntilDestroyed(),
       )
       .subscribe(() => {
-        const wasFindOpen = this.findOpen();
+        // Both overlays hold focus in markup this navigation destroys (#148 find modal, #351 menu).
+        const overlayHeldFocus = this.findOpen() || this.accountOpen();
         this.findOpen.set(false);
         this.menuOpen.set(false);
         this.themeOpen.set(false);
         this.accountOpen.set(false);
-        // A find that succeeded navigated away, destroying the modal that held focus; move focus to
-        // the main content region so a keyboard/AT guest lands on the new page rather than
-        // document.body (WCAG 2.4.3 — review finding [4]).
-        if (wasFindOpen) {
+        // Land the keyboard/AT guest on the new page, not document.body (WCAG 2.4.3, finding [4]).
+        if (overlayHeldFocus) {
           this.mainRef()?.nativeElement.focus();
         }
       });

@@ -241,6 +241,24 @@ what the fix touches *before* editing).
 
 | F-3 | sonar | gate green with 0 issues / 0 hotspots / 0 duplication, but new-code coverage sat at exactly **80.0%** — on the merge bar, not above it. The 2 uncovered lines were `closeMenus()`'s account branch (`accountOpen.set(false)` + the focus restore), exercised only by e2e, which Sonar coverage does not count | fixed — added `app.spec.ts` → `'closes the account menu on Escape and hands focus back to the trigger (#351)'`, the unit half of AC-3 |
 
+| F-4 | review (`/code-review` on #353, run **after** the merge at the maintainer's request) | **WCAG 2.4.3 focus loss.** Activating "Your account" destroys the popover while its own link holds focus, so focus fell to `document.body` — the #148 find-modal bug recurring. The overlay bank has no item for it, and the gate's generic half had not run, so #353 shipped with it | fixed in PR #355 — `NavigationEnd` now parks focus on `<main>` when *either* overlay held it; pinned by `app.spec.ts` → `'moves focus to main when a navigation closes the account menu (a11y, #351)'` + a `theme-shell.e2e.ts` assertion |
+
+> **Process note (the reason F-4 escaped).** The #353 review gate was run as the overlay bank
+> only — `/code-review` itself never ran, because this session carries a standing "don't use the
+> Agent tool" instruction — and the PR's review checkbox was ticked anyway. The overlay found F-1
+> and F-2; the generic banks, which would have covered focus management, never ran. PR #355
+> hardens `pr-gates.md` §1, the SDLC skill and the PR template so the substitution cannot be
+> silent again.
+>
+> **Correction, same day:** the blocker was narrower than first reported. `/code-review` runs as a
+> subagent (blocked by this session's standing instruction), but **`/review <PR>` loads as a plain
+> skill and runs inline** — it is what found F-4, and it was available all along. So #353's gate was
+> skippable, not blocked. The hardened rule keeps its escape hatch for genuinely restricted
+> sessions, but the honest reading of #353 is that the review was skipped, not prevented.
+
+| F-5 | review (`/review` on #355, this PR's own gate) | **False-pass in F-4's new e2e assertion** — `document.activeElement?.closest('main') !== null` yields `undefined !== null` = **true** when `activeElement` is null, so the assertion would pass with focus nowhere | fixed — `!!document.activeElement?.closest('main')` |
+| F-6 | review (`/review` on #355) | **RV-STYLE-1 recurrence** — four of the fix's own inline comments ran to two lines, the same finding as F-1, in the PR that hardens the process | fixed — all four shortened to one line |
+
 **Review-gate walk (frontend bank, `references/frontend-conventions.md`):** RV-FE-1 ✅ (greppable
 sweep for `standalone: true` / `OnPush` / `ngClass` / `ngStyle` / `@HostBinding` / `@HostListener` /
 `as any` over the added lines → none) · RV-FE-7 ❓ → F-2 · RV-FE-E2E ✅ (mocked CI suite, test-id

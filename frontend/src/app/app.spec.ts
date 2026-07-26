@@ -313,6 +313,24 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
+  it('moves focus to main when a navigation closes the account menu (a11y, #351)', async () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLAnchorElement>('[data-testid="nav-account-link"]')!.focus();
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+
+    // Without the restore, focus falls to body (the #148 find-modal bug, WCAG 2.4.3).
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
   it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
     const { fixture, el } = shell();
     const button = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
