@@ -51,40 +51,40 @@ Spring Session repository. No table, column, or constraint changes.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an operator signed in on two devices, when it changes its password from device
+- [x] **AC-1:** Given an operator signed in on two devices, when it changes its password from device
   A, then every *other* session of that principal is gone, device A is still authenticated, **and
   the session id device A presented before the change no longer authenticates** — the response
   carries a new `SESSION` cookie that does.
   *Pinned by:* `OperatorPasswordChangeIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies` (rotation) +
   `.theChangeRevokesEveryOtherSessionButKeepsTheCallingOne` (the other-sessions half)
-- [ ] **AC-2:** Given a customer signed in on two devices, when it changes its password from device
+- [x] **AC-2:** Given a customer signed in on two devices, when it changes its password from device
   A, then the same holds — others revoked, A still authenticated under a **new** session id, old
   cookie value dead.
   *Pinned by:* `SetPasswordIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies` (rotation) +
   `.changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne` (the other-sessions half)
-- [ ] **AC-3:** Given a successful change, when the two success-path effects run, then the session
+- [x] **AC-3:** Given a successful change, when the two success-path effects run, then the session
   revoke is invoked **before** the credential write — so a failing write can never leave the hash
   rotated while the caller is told it was not, and the natural retry with the current password works.
   *Pinned by:* `OperatorAccountControllerTest.revokesOtherSessionsBeforeWritingTheNewCredential`
-- [ ] **AC-4:** Given the session revoke fails, when an operator changes its password, then the
+- [x] **AC-4:** Given the session revoke fails, when an operator changes its password, then the
   credential write is **never attempted** (the same retry-succeeds property, from the other side).
   *Pinned by:* `OperatorAccountControllerTest.aFailedRevokeNeverRotatesTheCredential`
-- [ ] **AC-5:** Given the same two conditions on the customer twin, then the same two guarantees hold
+- [x] **AC-5:** Given the same two conditions on the customer twin, then the same two guarantees hold
   — the twins must not drift.
   *Pinned by:* `MyAccountControllerTest.revokesOtherSessionsBeforeWritingTheNewCredential`,
   `MyAccountControllerTest.aFailedRevokeNeverRotatesTheCredential`
-- [ ] **AC-6:** Given a *rejected* change (wrong current password), when it is submitted, then nothing
+- [x] **AC-6:** Given a *rejected* change (wrong current password), when it is submitted, then nothing
   is revoked, nothing is written, **and the caller's session id is unchanged** — the rotation is a
   success-path effect only.
   *Pinned by:* `{Operator,My}AccountControllerTest.aRejectedChangeLeavesTheSessionIdUntouched` (the session-id
   half) plus `OperatorAccountControllerTest.rejectsWrongCurrentPasswordWithoutRevoking` and the customer
   method's own `verify(recovery, never())` (the nothing-written/nothing-revoked half)
-- [ ] **AC-7:** Given a request with no server-side session, when the session-identity helper rotates,
+- [x] **AC-7:** Given a request with no server-side session, when the session-identity helper rotates,
   then it is a no-op rather than the `IllegalStateException` `changeSessionId()` is specified to
   throw; and reading the current id never creates a session as a side effect.
   *Pinned by:* `SessionIdentityTest.rotateIsANoOpWithNoSession`,
   `SessionIdentityTest.currentIdIsNullWithNoSessionAndDoesNotCreateOne`
-- [ ] **AC-8:** Given a successful change, when the revoke is handed its keep-id, then that id is the
+- [x] **AC-8:** Given a successful change, when the revoke is handed its keep-id, then that id is the
   **pre-rotation** one — the ordering constraint (R-1) that stops the caller's own session from being
   deleted by its own revoke.
   *Pinned by:* `OperatorAccountControllerTest.rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke`,
@@ -226,10 +226,11 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `merge close-out — awaiting the green CI + Sonar re-run on the F-2 fix`
+**Stage pointer:** `DONE — merged to main as 2b1c8ef (squash of PR #358), close-out complete`
 
-**Next action:** Confirm CI green and pull the SonarCloud new-issue + duplication list for PR #358;
-then merge. This slice merges via **PR #358** (open at the time of writing).
+**Next action:** None. Issue #344 is closed as completed. The two deferrals this slice named are
+tracked: **#357** (the three sibling revoke sites that still write-then-revoke) and **#359** (F-5 —
+a concurrent request on the same session can write the pre-rotation id back).
 
 **Review-gate note.** `/code-review` — the subagent fan-out the gate names as its default — is **not
 available in this session's skill set**; only the inline `/review` skill is. Per
@@ -298,37 +299,37 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `OperatorAccountController.java:105-125` · Test `OperatorAccountControllerTest.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-3, AC-4, AC-6) — a `provisioning.setPassword` stub that
+- [x] **Step 1: Write the failing tests** (AC-3, AC-4, AC-6) — a `provisioning.setPassword` stub that
   throws proves the revoke already ran; a `sessionRevoker` stub that throws proves the write never
   did; a rejected change proves the session id is untouched.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*OperatorAccountControllerTest*"`
-- [ ] **Step 3: Minimal implementation** — swap the two statements, add the guarded
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*OperatorAccountControllerTest*"`
+- [x] **Step 3: Minimal implementation** — swap the two statements, add the guarded
   `httpRequest.changeSessionId()` after the write.
-- [ ] **Step 4: Run it, verify it passes** — same command.
-- [ ] **Step 5: Generalization-audit pass** — search every `revokeAll`/`revokeAllExcept` call site.
-- [ ] **Step 6: Commit** — `fix(#344): revoke before the credential write and rotate the surviving session`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command.
+- [x] **Step 5: Generalization-audit pass** — search every `revokeAll`/`revokeAllExcept` call site.
+- [x] **Step 6: Commit** — `fix(#344): revoke before the credential write and rotate the surviving session`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Customer twin + the real-session rotation proof
 
 **Files:** Modify `MyAccountController.java:81-90` · Create `MyAccountControllerTest.java` ·
 Modify `OperatorPasswordChangeIT.java`, `SetPasswordIT.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-1, AC-2, AC-5, AC-7).
-- [ ] **Step 2: Run them, verify they fail** — the ITs need Docker; if absent they skip cleanly
+- [x] **Step 1: Write the failing tests** (AC-1, AC-2, AC-5, AC-7).
+- [x] **Step 2: Run them, verify they fail** — the ITs need Docker; if absent they skip cleanly
   (`@EnabledIfDockerAvailable`) and CI is the real gate for AC-1/AC-2.
-- [ ] **Step 3: Apply the same two changes to `MyAccountController`.**
-- [ ] **Step 4: Run, verify pass.**
-- [ ] **Step 5: Commit + execution status.**
+- [x] **Step 3: Apply the same two changes to `MyAccountController`.**
+- [x] **Step 4: Run, verify pass.**
+- [x] **Step 5: Commit + execution status.**
 
 ## Phase 2 — Substrate: runbook correction + the deferred sibling
 
-- [ ] **Step 1:** Rewrite `operator-credential-provisioning.md` lines 75–80 — the caveat now
+- [x] **Step 1:** Rewrite `operator-credential-provisioning.md` lines 75–80 — the caveat now
   describes rotation as shipped, and keeps the honest remainder (a change still cannot evict a
   *device* you no longer control beyond the cookie value; admin suspension remains the blunt tool).
-- [ ] **Step 2:** File the follow-up issue for `AccountRecoveryController.resetPassword` and link it
+- [x] **Step 2:** File the follow-up issue for `AccountRecoveryController.resetPassword` and link it
   from the Open-questions entry and the Non-goals list.
-- [ ] **Step 3:** Commit + execution status.
+- [x] **Step 3:** Commit + execution status.
 
 ---
 
@@ -386,7 +387,8 @@ skipped) and re-verified by the PR's CI run.
 - [x] **Frontend** N/A — no client change needed; justified above.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **Close-out written**, citing the merge — landed in the follow-up micro-PR rather than in
+      PR #358 itself (main is push-protected, so the merge sha only exists afterwards).
 - [ ] **The review gate ran in full** — left UNTICKED deliberately. `/code-review` (the subagent
       fan-out) is not in this session's skill set; the documented degraded mode ran instead —
       inline `/review` over the PR diff with `riviera-review-overlay` layered on. Stated in the PR.
