@@ -112,8 +112,8 @@ npm start                # dev server on :4200
 npm run lint             # ESLint (angular-eslint)
 npm test                 # Vitest unit tests, runs once in jsdom
 npm run test:a11y        # axe + contrast unit specs only
-npm run test:e2e         # Playwright — CI-safe mocked suite (frontend/e2e/)
-npm run test:e2e:a11y    # Playwright a11y config
+npm run test:e2e         # Playwright — local-only REAL-backend suite (frontend/e2e/real-backend/)
+npm run test:e2e:a11y    # Playwright — the CI-safe mocked suite (frontend/e2e/); what CI runs
 npm run build
 ```
 
