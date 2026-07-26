@@ -147,17 +147,18 @@ N/A — no contract change. The mock encodes the EXISTING contract:
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read
 > it (plus the current stage's `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — complete, all phases green; entering the review gate`
+**Stage pointer:** `review gate — run, both findings fixed; pushed. Awaiting the maintainer's call on a PR`
 
-**Next action:** Run the review gate (`riviera-review-overlay` + `/code-review`) over the branch diff;
-no PR until the maintainer asks for one.
+**Next action:** Open a PR only if the maintainer asks; then the Sonar gate (Sonar analyses PRs +
+`main` only, so it cannot run on this branch alone).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc | ✅ | `652ae3a` |
-| 1 — Mock the endpoint | ✅ | (with phase 2) |
-| 2 — The spec (3 tests) | ✅ | |
+| 1 — Mock the endpoint | ✅ | `3a79631` (with phase 2) |
+| 2 — The spec (3 tests) | ✅ | `3a79631` |
 | 3 — Lint + full mocked-suite run | ✅ | `npm run lint` clean; 79/79 mocked specs pass |
+| 4 — Review gate + fixes | ✅ | `df58d7a` — re-linted and re-ran the full suite after the fixes (79/79) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -165,7 +166,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate — RV-STYLE-1 | The new `/api/me/password` mock route carried a 5-line inline comment; inline comments are one line or they are not written (doc comments exempt) | fixed-in-`df58d7a` — the branch-order rationale moved into the function's TSDoc, one inline pointer left |
+| F-2 | review gate — quality (own diff) | `mockCustomerRecoveryApi` required `validToken`, forcing three dummy `'unused-here'` arguments in a spec that redeems no token | fixed-in-`df58d7a` — `validToken` is optional, and both token routes now guard on `!== undefined` so an omitted token can never be redeemed as `undefined` |
 
 ---
 

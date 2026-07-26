@@ -37,7 +37,6 @@ test('a signed-in tourist changes their password, and the new credential replace
   await mockCustomerRecoveryApi(page, {
     email: EMAIL,
     initialPassword: OLD_PASSWORD,
-    validToken: 'unused-here',
   });
 
   await signIn(page, OLD_PASSWORD);
@@ -83,7 +82,6 @@ test('an SSO-only account sets its first password with no current password', asy
   // No initialPassword: the S4 F-1 case — signed in via a provider, no local credential to prove.
   await mockCustomerRecoveryApi(page, {
     email: EMAIL,
-    validToken: 'unused-here',
     signedIn: true,
     emailVerified: true,
   });
@@ -125,7 +123,6 @@ test('an exhausted change-password budget renders the rate-limit message', async
   await mockCustomerRecoveryApi(page, {
     email: EMAIL,
     initialPassword: OLD_PASSWORD,
-    validToken: 'unused-here',
     signedIn: true,
     passwordChangeBudget: 1,
   });

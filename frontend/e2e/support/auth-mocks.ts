@@ -402,7 +402,10 @@ export async function mockCustomerSsoApi(
  *
  * <p>The same rotating credential backs the authenticated set/change-password endpoint (#346), so one
  * mock covers every way a customer's password can change. An account with NO `initialPassword` is the
- * SSO-only case (S4 F-1): nothing signs in until a first password is set.
+ * SSO-only case (S4 F-1): nothing signs in until a first password is set, and that first set needs no
+ * current password. That endpoint's branch order mirrors the server — `RateLimitFilter` spends the
+ * per-IP budget before the controller runs, and the controller validates the password policy before it
+ * reads the stored credential — so a real reordering cannot leave this suite green (#342 finding).
  */
 export async function mockCustomerRecoveryApi(
   page: Page,
@@ -410,7 +413,8 @@ export async function mockCustomerRecoveryApi(
     readonly email: string;
     /** The stored credential; omit for an SSO-only account that has none yet (#346). */
     readonly initialPassword?: string;
-    readonly validToken: string;
+    /** The one token the reset/verify routes accept; omit in a spec that redeems no token. */
+    readonly validToken?: string;
     /** Start with a live session — stands in for a completed SSO dance, which S4's own mock drives. */
     readonly signedIn?: boolean;
     /** Provider-verified email (SSO), before any verify-email token is redeemed. */
@@ -448,11 +452,7 @@ export async function mockCustomerRecoveryApi(
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
 
-  // The signed-in set/change-password endpoint (S8 #113, rate-limited since #326). Branch order mirrors
-  // the server: RateLimitFilter spends the per-IP budget BEFORE the controller, which then validates the
-  // policy (CustomerPasswords.validate) BEFORE reading the stored credential — so a real reordering
-  // cannot leave this suite green (#342 review finding). An account with no stored credential sets its
-  // first password with no current-password check (S4 F-1).
+  // The signed-in set/change-password endpoint (S8 #113, rate-limited since #326) — see the TSDoc above.
   await page.route(/\/api\/me\/password$/, (route) => {
     if (!signedIn) {
       return route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED'));
@@ -482,7 +482,7 @@ export async function mockCustomerRecoveryApi(
 
   await page.route(/\/api\/auth\/customer\/reset-password$/, (route) => {
     const body = route.request().postDataJSON() as { token?: string; newPassword?: string };
-    if (body.token === validToken && body.newPassword) {
+    if (validToken !== undefined && body.token === validToken && body.newPassword) {
       password = body.newPassword;
       signedIn = false; // a reset invalidates existing sessions (AC-3)
       return route.fulfill({ status: 204 });
@@ -492,7 +492,7 @@ export async function mockCustomerRecoveryApi(
 
   await page.route(/\/api\/auth\/customer\/verify-email$/, (route) => {
     const body = route.request().postDataJSON() as { token?: string };
-    if (body.token === validToken) {
+    if (validToken !== undefined && body.token === validToken) {
       emailVerified = true;
       return route.fulfill({ status: 204 });
     }
