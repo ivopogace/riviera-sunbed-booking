@@ -149,7 +149,7 @@ preserved" row hid a real contract change and cost a red CI).
 |---|---|---|---|---|---|---|
 | R-1 | **The pre-read is a TOCTOU**: between reading the principal and making the change, the token can be consumed by a concurrent redeemer, or the operator suspended by a second admin — so we revoke sessions for a change that then fails. | low | low | Accepted **by design**: the failure direction is *over*-revocation (someone is signed out who needn't have been), never under — the same direction `PrincipalSessionRevoker`'s Javadoc already accepts for its non-type-scoped index. In both racing cases the other actor's change wanted those sessions gone anyway. | claude | open |
 | R-2 | **The trailing revoke can still fail after the state change** — `500` with the password reset / operator suspended / account scrubbed. No ordering removes this (it is #344 F-3's residual class); only a shared transaction could, and there is none to share. | low | med | Bounded and documented on each method: by then the *pre-existing* sessions are already revoked, so what survives is at most a session created inside the sub-millisecond window. Strictly smaller than today's harm (all sessions survive, permanently). | claude | open |
-| R-3 | **Adding a method to a published `api/` port breaks every stub that implements it** — `WebSliceStubs`' anonymous `CustomerAccountRecovery` / `OperatorLifecycle` beans, and any test lambda. A missed one is a compile error at best, a full-suite-only context failure at worst (#122/#127 class). | high | med | Both ports are stubbed as anonymous classes (not lambdas) in exactly one place, `WebSliceStubs`; grep every `implements OperatorLifecycle` / `CustomerAccountRecovery` before compiling, and run the shared web slices (`WebCorsConfigTest`, `RateLimitFilterTest`, `MeSurfaceRoleGateTest`) plus `PayoutModuleTest` at the end of each phase. | claude | open |
+| R-3 | **Adding a method to a published `api/` port breaks every stub that implements it** — `WebSliceStubs`' anonymous `CustomerAccountRecovery` / `OperatorLifecycle` beans, and any test lambda. A missed one is a compile error at best, a full-suite-only context failure at worst (#122/#127 class). | high | med | Both ports are stubbed as anonymous classes (not lambdas) in exactly one place, `WebSliceStubs`; grep every `implements OperatorLifecycle` / `CustomerAccountRecovery` before compiling, and run the shared web slices (`WebCorsConfigTest`, `RateLimitFilterTest`, `MeSurfaceRoleGateTest`) plus `PayoutModuleTest` at the end of each phase. | claude | closed — it fired as predicted, and the compiler caught all of it: `WebSliceStubs` (both ports) plus the module's own `CustomerAccountServiceTest.FakeTokens` (the *internal* `CustomerAccountTokens` port, which the plan's file list had missed). The fake's `consume` now delegates to its new `accountFor`, so the two predicates cannot drift there either |
 | R-4 | **Published-surface regression** — a new method on an `api/` port is a module-contract change that `ModularityTests` / `PublishedSurfacePlacementArchitectureTests` / `ResponsibilitiesArchitectureTests` police. | low | med | Both additions are plain query methods on existing ports returning existing types (`String`, `Optional`), no new class, no new package, no grant change. The structural net runs at the end of every phase. | claude | open |
 | R-5 | **Rate-limit bucket collision in a cached full-suite context** (#127 class): new MockMvc requests share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new request in every new/extended web slice carries `SessionLoginSupport.uniqueClientIp()` via the `isolated(...)` helper, matching `OperatorAccountControllerTest`. | claude | open |
 | R-6 | Flyway version collision. | none | — | **No migration in this slice**; latest on `main` is `V30` and the only open PRs are Dependabot frontend bumps (checked at intake). | claude | closed — N/A |
@@ -251,18 +251,17 @@ values, same non-enumerating reset rejection.
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phases 0–1 done, entering phase 2`
+**Stage pointer:** `implement — phases 0–2 done, entering phase 3 (substrate + PR)`
 
-**Next action:** Phase 2 — write the failing `AccountRecoveryControllerTest` (AC-1…AC-4) and the
-`CustomerAccountRecoveryIT` non-consuming-read cases (AC-5), then add `emailForResetToken` and bracket
-the reset.
+**Next action:** Phase 3 — run the structural net, then the `riviera-docs-freshness` pass over the diff
+(the CLAUDE.md #128 paragraph describes the revoke as following the transition), then open the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Erasure: bracket the scrub (no port change) | ✅ | `280b97a` |
 | 1 — Suspend: `activeUsername` pre-read + bracket the transition | ✅ | `fdf474e` |
-| 2 — Reset: resolve-without-consume pre-read + bracket the write | | |
-| 3 — Substrate + close-out | | |
+| 2 — Reset: resolve-without-consume pre-read + bracket the write | ✅ | `aa8e3ec` |
+| 3 — Substrate + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -306,6 +305,8 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 - `platform/src/test/java/ai/riviera/platform/AdminOperatorControllerTest.java` — **new**; AC-6…AC-9, AC-12.
 - `platform/src/test/java/ai/riviera/platform/AccountRecoveryControllerTest.java` — **new**; AC-1…AC-4.
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the two stub ports gain the new methods.
+- `platform/src/test/java/ai/riviera/platform/customer/application/CustomerAccountServiceTest.java` —
+  `FakeTokens` gains `accountFor`, and its `consume` now delegates to it (found by the compiler, R-3).
 - `platform/src/test/java/ai/riviera/platform/operator/OperatorLifecycleIT.java` — AC-10.
 - `platform/src/test/java/ai/riviera/platform/customer/CustomerAccountRecoveryIT.java` — AC-5.
 - `docs/plans/session-revoke-ordering-remaining-surfaces.md` — this doc.
