@@ -43,33 +43,34 @@ web-first assertions, no fixed sleeps) · `riviera-plan-doc` (this template).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in tourist on the desktop header, when they activate the account
+- [x] **AC-1:** Given a signed-in tourist on the desktop header, when they activate the account
       trigger, then a popover exposes a link to `/account/password` whose accessible name is
       "Your account" (not the email address). *Pinned by:* `app.spec.ts` →
       `'opens an account menu with a Your account link when signed in (#351)'`
-- [ ] **AC-2:** Given a signed-out tourist, when the header renders, then no account trigger,
+- [x] **AC-2:** Given a signed-out tourist, when the header renders, then no account trigger,
       popover, or sign-out control is in the DOM (the Sign in / Register links show instead).
       *Pinned by:* `app.spec.ts` → `'shows Sign in and Register links in the header when signed out (S2 #111)'` (extended)
-- [ ] **AC-3:** Given the account popover is open, when the user presses Escape or clicks the
+- [x] **AC-3:** Given the account popover is open, when the user presses Escape or clicks the
       backdrop, then it closes and focus returns to the trigger button. *Pinned by:*
-      `theme-shell.e2e.ts` → `'the account menu closes on Escape and restores focus (#351)'`
-- [ ] **AC-4:** Given the account popover is open, when the user activates the theme picker (or
+      `theme-shell.e2e.ts` → `'the account menu closes on Escape and on the backdrop, restoring focus (#351)'`, and at
+      unit level by `app.spec.ts` → `'closes the account menu on Escape and hands focus back to the trigger (#351)'`
+- [x] **AC-4:** Given the account popover is open, when the user activates the theme picker (or
       vice versa), then only one popover is open at a time. *Pinned by:* `theme-shell.e2e.ts` →
       `'activating the theme picker from the open account menu closes it (#351)'` **and**
       `'the backdrop swallows the click that closes the account menu (#351)'`; unit-level by
       `app.spec.ts` → `'closes the account menu when the theme picker opens, and vice versa (#351)'`.
       **Amended during phase 2** — see the Execution-status note: the e2e half must go through the
       keyboard, because the pointer path is physically unreachable by design.
-- [ ] **AC-5:** Given the account popover is open, when the user activates "Your account", then
+- [x] **AC-5:** Given the account popover is open, when the user activates "Your account", then
       the app navigates to `/account/password` **and the popover is closed** on arrival.
-      *Pinned by:* `theme-shell.e2e.ts` → `'the account menu closes on navigation (#351)'`
-- [ ] **AC-6:** Given a signed-in tourist at the mobile viewport, when they open the hamburger
+      *Pinned by:* `theme-shell.e2e.ts` → `'the account menu reaches the account page and closes on navigation (#351)'`
+- [x] **AC-6:** Given a signed-in tourist at the mobile viewport, when they open the hamburger
       menu, then an account group offers the same "Your account" destination and Sign out, with
       no nested popover. *Pinned by:* `app.spec.ts` → `'offers the account group in the mobile menu when signed in (#351)'`
-- [ ] **AC-7:** Given the account popover (desktop) and the mobile account group are rendered,
+- [x] **AC-7:** Given the account popover (desktop) and the mobile account group are rendered,
       when axe runs, then there are no serious violations. *Pinned by:* `theme-shell.e2e.ts`
       via `expectNoSeriousAxeViolations`, at both viewports.
-- [ ] **AC-8:** Given `customer-password.e2e.ts` and `erasure.e2e.ts`, when they reach the
+- [x] **AC-8:** Given `customer-password.e2e.ts` and `erasure.e2e.ts`, when they reach the
       account page, then they do so **through the new entry point**, not `page.goto('/account/password')`.
       *Pinned by:* the specs themselves (the `goto` calls are deleted, not supplemented).
 
@@ -110,28 +111,26 @@ web-first assertions, no fixed sleeps) · `riviera-plan-doc` (this template).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Reaching for `role="menu"`/`menuitem` — plausible for a "dropdown", but it obligates roving tabindex + arrow keys, and a half-implemented menu fails axe **and** keyboard users | high | med | Locked to the disclosure pattern in Architecture; the `app.html:102` theme-option comment is the in-repo precedent. AC-3/AC-7 pin it | Claude | open |
-| R-2 | **Popover survives its own navigation** — the three existing close paths (`NavigationEnd`, `openFind`, `signOut`) each enumerate the open signals by hand, so a new signal silently misses all three | high | med | Phase 0 adds `accountOpen` to all four sites (`NavigationEnd`, `openFind`, `signOut`, `closeMenus`) in one edit; AC-5 pins the navigation case, which is the one a human would actually see | Claude | open |
-| R-3 | Existing coverage breaks broadly: `nav-signout` is queried by `app.spec.ts:133`, `customer-auth.page.ts:33`, `customer-password.e2e.ts:73` and is now one activation deeper | high | med | Keep both test-ids; put `nav-user` on the trigger so signed-in assertions are untouched; funnel sign-out through `CustomerAuthPage.signOut()` (already the indirection) so most call sites need **no** change | Claude | open |
-| R-4 | Styling-convention conflict: `riviera-tailwind` makes Tailwind the go-forward, but `app.scss` is SCSS and the popover recipe (`riv-pop`, `riv-pop-in`, `riv-backdrop`) lives there | med | low | Reuse the existing SCSS recipe + add one positioning class beside `riv-theme-pop`. Recorded as a deliberate deviation in *Skills consulted* so review reads it as a decision, not drift. Reviewer's call to overrule | Claude | open |
-| R-5 | Header crowding — the desktop right rail already holds email, theme chip and Sign out at narrow-desktop widths | med | low | The menu **reduces** top-level items (2 → 1); verify at 1024px during Phase 0 | Claude | open |
-| R-6 | Glass contrast regression on a new popover surface | low | med | None expected: `app.contrast.spec.ts:69` already proves `riv-pop` ink over the darkest riviera stop, and this reuses that surface with no new tokens. Confirm the spec passes unchanged rather than adding math | Claude | open |
-| R-7 | Merge conflict in `app.html`/`app.scss`/`app.spec.ts` from a parallel slice | low | low | Only Dependabot PRs are open (#332–#341, all `frontend/package.json`); no overlap. Merge `origin/main` before the PR regardless | Claude | open |
+| R-1 | Reaching for `role="menu"`/`menuitem` — plausible for a "dropdown", but it obligates roving tabindex + arrow keys, and a half-implemented menu fails axe **and** keyboard users | high | med | Locked to the disclosure pattern in Architecture; the `app.html:102` theme-option comment is the in-repo precedent. AC-3/AC-7 pin it | Claude | closed — disclosure shipped; `app.spec.ts` asserts `role` is absent on both the popover and the link |
+| R-2 | **Popover survives its own navigation** — the three existing close paths (`NavigationEnd`, `openFind`, `signOut`) each enumerate the open signals by hand, so a new signal silently misses all three | high | med | Phase 0 adds `accountOpen` to all four sites (`NavigationEnd`, `openFind`, `signOut`, `closeMenus`) in one edit; AC-5 pins the navigation case, which is the one a human would actually see | Claude | closed in `8904307` — all 7 enumerating sites carry `accountOpen` (generalization-audit row) |
+| R-3 | Existing coverage breaks broadly: `nav-signout` is queried by `app.spec.ts:133`, `customer-auth.page.ts:33`, `customer-password.e2e.ts:73` and is now one activation deeper | high | med | Keep both test-ids; put `nav-user` on the trigger so signed-in assertions are untouched; funnel sign-out through `CustomerAuthPage.signOut()` (already the indirection) so most call sites need **no** change | Claude | closed in `cb07f97` — `nav-user` moved to the trigger, so signed-in assertions were untouched; only the page object + one local helper needed the extra activation |
+| R-4 | Styling-convention conflict: `riviera-tailwind` makes Tailwind the go-forward, but `app.scss` is SCSS and the popover recipe (`riv-pop`, `riv-pop-in`, `riv-backdrop`) lives there | med | low | Reuse the existing SCSS recipe + add one positioning class beside `riv-theme-pop`. Recorded as a deliberate deviation in *Skills consulted* so review reads it as a decision, not drift. Reviewer's call to overrule | Claude | accepted deviation (review F-2), flagged in PR #353 and merged as such |
+| R-5 | Header crowding — the desktop right rail already holds email, theme chip and Sign out at narrow-desktop widths | med | low | The menu **reduces** top-level items (2 → 1); verify at 1024px during Phase 0 | Claude | closed — the menu reduced the right rail from 2 top-level items to 1; no crowding |
+| R-6 | Glass contrast regression on a new popover surface | low | med | None expected: `app.contrast.spec.ts:69` already proves `riv-pop` ink over the darkest riviera stop, and this reuses that surface with no new tokens. Confirm the spec passes unchanged rather than adding math | Claude | closed — `app.contrast.spec.ts` passed **unchanged**, confirming no new glass surface |
+| R-7 | Merge conflict in `app.html`/`app.scss`/`app.spec.ts` from a parallel slice | low | low | Only Dependabot PRs are open (#332–#341, all `frontend/package.json`); no overlap. Merge `origin/main` before the PR regardless | Claude | closed — `origin/main` was already up to date at PR time; no conflict |
 
 No Flyway migration in this slice, so no `V<n>` claim to defend.
 
 ## Open questions / Assumptions
 
-- **Assumption:** the link label is **"Your account"**, matching the route's existing
-  `title: 'Your account — Riviera'` (`app.routes.ts:108`) — no new vocabulary invented.
-  *Owner:* Claude · *Resolves by:* Phase 0 (reviewer may rename in one line)
-- **Assumption:** the account menu is the right home for **Sign out**, i.e. sign-out leaves the
-  top level. The alternative (Sign out stays a sibling, menu holds only "Your account") keeps
-  sign-out one click away but re-splits the signed-in affordances the menu exists to group.
-  *Owner:* Claude · *Resolves by:* Phase 0 review
+*(empty — both plan-time assumptions resolved below.)*
 
 ### Resolved
 
+- **Link label "Your account"** — kept, matching the route's existing `title: 'Your account —
+  Riviera'` (`app.routes.ts:108`). Shipped and merged unchanged in `100094b`.
+- **Sign out belongs inside the menu** — kept; the menu exists to group the signed-in
+  affordances, and splitting them would have defeated it. Shipped and merged in `100094b`.
 - **Entry-point shape** — dropdown (issue's richer option) over "separate link" / "make the
   label a link". Decided by the maintainer, 2026-07-26, on future-growth grounds.
 - **Does `My bookings` move into the menu?** No — see Non-goals; it must stay reachable while
@@ -182,10 +181,10 @@ N/A — no contract change. No endpoint, DTO, or status code is added or altered
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `sonar gate — re-verifying after the F-3 coverage fix`
+**Stage pointer:** `DONE — merged and closed out`
 
-**Next action:** Confirm CI + Sonar green on the F-3 push, then merge PR #353 and run the
-merge close-out (`references/pr-gates.md` §3).
+**Next action:** None. Slice complete; PR #353 squash-merged to `main` as **`100094b`**,
+issue #351 closed as completed.
 
 **PR:** #353. **CI (sha `356ddc0`):** all checks green — Backend, Frontend, CodeQL
 (javascript-typescript + java-kotlin), SonarCloud Code Analysis. **Sonar gate (PR 353):**
@@ -195,9 +194,10 @@ false-clean zero), with **0 issues, 0 hotspots, 0 bugs, 0 vulnerabilities, 0 cod
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Desktop account menu | ✅ | `<sha>` |
-| 1 — Mobile account group | ✅ | `<sha>` (**merged into phase 0's commit** — both are markup in the same two files, so splitting them would have meant a mechanical `git add -p` with no reviewable benefit) |
-| 2 — E2E rewiring + shell coverage | ✅ | `<sha>` |
+| 0 — Desktop account menu | ✅ | `8904307` |
+| 1 — Mobile account group | ✅ | `8904307` (**merged into phase 0's commit** — both are markup in the same two files, so splitting them would have meant a mechanical `git add -p` with no reviewable benefit) |
+| 2 — E2E rewiring + shell coverage | ✅ | `cb07f97` |
+| Review-gate fixes (F-1, F-3) | ✅ | `356ddc0`, `51c23fc` |
 
 **Phase 2 verification:** `npm run test:e2e:a11y` → **84/84 pass** (full mocked suite, not just the
 touched specs — the page object is shared, so its blast radius is every customer-auth spec);
@@ -269,33 +269,33 @@ F-1, fixed · RV-PROC-1 ✅ (*Skills consulted* names `riviera-frontend`, `rivie
 
 **Files:** Modify `frontend/src/app/app.ts`, `app.html`, `app.scss` · Test `frontend/src/app/app.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** (AC-1, AC-2) in `app.spec.ts` — assert the trigger
+- [x] **Step 1: Write the failing tests** (AC-1, AC-2) in `app.spec.ts` — assert the trigger
       carries `data-testid="nav-user"` and the email text; that `nav-signout` is absent until
       the trigger is clicked; that the revealed link's `href` is `/account/password` and its
       text is "Your account"; and extend the signed-out case to assert the trigger is absent.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- app.spec` → FAIL (no account trigger).
+- [x] **Step 2: Run it, verify it fails** — `npm test -- app.spec` → FAIL (no account trigger).
 
 > Scope: target the one spec file. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — `accountOpen` signal + `accountButton` viewChild +
+- [x] **Step 3: Minimal implementation** — `accountOpen` signal + `accountButton` viewChild +
       `toggleAccountMenu()` (which clears `menuOpen`/`themeOpen`); add `accountOpen` to
       `closeMenus()` (with focus return), `openFind()`, `signOut()`, and the `NavigationEnd`
       reset **in the same edit** (R-2). Template: `<button data-testid="nav-user"
       [attr.aria-expanded]="accountOpen()">` + `riv-backdrop` + `riv-pop riv-pop-in
       riv-account-pop` holding the `/account/password` link and the existing sign-out button.
       **No `role="menu"`** (R-1).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- app.spec` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- app.spec` → PASS.
 
 > Scope (end-of-phase regression): `npm test` for the app-shell specs incl. `app.contrast.spec.ts`
 > (R-6 — it must pass **unchanged**; if it needs edits, the popover grew a new surface, so stop
 > and reconsider), then `npm run lint`.
 
-- [ ] **Step 5: Generalization-audit pass** — search the shell for every site that enumerates
+- [x] **Step 5: Generalization-audit pass** — search the shell for every site that enumerates
       the popover signals by hand (`grep -n 'themeOpen\|menuOpen' src/app/app.ts`) and confirm
       all four now include `accountOpen`. Append to the log.
-- [ ] **Step 6: Verify header layout at 1024px** (R-5).
-- [ ] **Step 7: Commit** — `git commit -m "feat(#351): tourist account menu in the desktop header"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Verify header layout at 1024px** (R-5).
+- [x] **Step 7: Commit** — `git commit -m "feat(#351): tourist account menu in the desktop header"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -303,18 +303,18 @@ F-1, fixed · RV-PROC-1 ✅ (*Skills consulted* names `riviera-frontend`, `rivie
 
 **Files:** Modify `frontend/src/app/app.html`, `app.scss` · Test `frontend/src/app/app.spec.ts`
 
-- [ ] **Step 1: Write the failing test** (AC-6) — within `[data-testid="mobile-menu"]`, assert
+- [x] **Step 1: Write the failing test** (AC-6) — within `[data-testid="mobile-menu"]`, assert
       an `a[href="/account/password"]` labelled "Your account" alongside `nav-user-mobile` and
       `nav-signout-mobile`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- app.spec` → FAIL.
-- [ ] **Step 3: Minimal implementation** — a labelled account group in the mobile menu (the
+- [x] **Step 2: Run it, verify it fails** — `npm test -- app.spec` → FAIL.
+- [x] **Step 3: Minimal implementation** — a labelled account group in the mobile menu (the
       `riv-mobile-theme` precedent: **no nested popover**), with `(click)="closeMenus()"` on the
       link so the sheet collapses on navigation.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- app.spec` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — confirm desktop and mobile expose the same
+- [x] **Step 4: Run it, verify it passes** — `npm test -- app.spec` → PASS.
+- [x] **Step 5: Generalization-audit pass** — confirm desktop and mobile expose the same
       destination set; append to the log.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#351): tourist account group in the mobile menu"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "feat(#351): tourist account group in the mobile menu"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -323,30 +323,30 @@ F-1, fixed · RV-PROC-1 ✅ (*Skills consulted* names `riviera-frontend`, `rivie
 **Files:** Modify `frontend/e2e/theme-shell.e2e.ts`, `support/pages/customer-auth.page.ts`,
 `customer-password.e2e.ts`, `erasure.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** (AC-3, AC-4, AC-5, AC-7) in `theme-shell.e2e.ts` —
+- [x] **Step 1: Write the failing e2e** (AC-3, AC-4, AC-5, AC-7) in `theme-shell.e2e.ts` —
       Escape closes + restores focus; opening one popover closes the other; activating "Your
       account" lands on `/account/password` with the popover closed; `expectNoSeriousAxeViolations`
       with the menu open, at both viewports. Use `getByTestId` locators and web-first
       assertions — no fixed sleeps.
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- theme-shell` → FAIL.
-- [ ] **Step 3: Implementation** — add `openAccountMenu()` to `CustomerAuthPage` and make
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- theme-shell` → FAIL.
+- [x] **Step 3: Implementation** — add `openAccountMenu()` to `CustomerAuthPage` and make
       `signOut()` open the menu first (R-3, so most call sites stay untouched); rewire
       `customer-password.e2e.ts` and `erasure.e2e.ts` to enter through the link (AC-8) —
       `erasure.e2e.ts` needs a `page.goto('/')` first, since it fakes its session via
       `/api/auth/me` and never visits a page. **Rewrite the stale TSDoc paragraph in both
       specs** — each currently states the account page has no in-app entry point, which this
       slice makes false.
-- [ ] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y` (mocked CI suite; **not**
+- [x] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y` (mocked CI suite; **not**
       `test:e2e`, which is the local-only real-backend suite) → PASS.
 
 > Scope: the three rewired specs plus `theme-shell`; then the full mocked suite once, since the
 > page object is shared and its blast radius is every customer-auth spec.
 
-- [ ] **Step 5: Generalization-audit pass** — `grep -rn "getByTestId('nav-signout')" e2e` to
+- [x] **Step 5: Generalization-audit pass** — `grep -rn "getByTestId('nav-signout')" e2e` to
       catch any spec bypassing the page object; append to the log.
-- [ ] **Step 6: Full local verification** — `npm run lint`, `npm test`, `npm run build`.
-- [ ] **Step 7: Commit** — `git commit -m "test(#351): drive the account page through the shell entry point"`
-- [ ] **Step 8: Update plan-doc execution status**, then push and open the PR into `main`
+- [x] **Step 6: Full local verification** — `npm run lint`, `npm test`, `npm run build`.
+- [x] **Step 7: Commit** — `git commit -m "test(#351): drive the account page through the shell entry point"`
+- [x] **Step 8: Update plan-doc execution status**, then push and open the PR into `main`
       (merge `origin/main` first, R-7).
 
 ---
@@ -364,38 +364,38 @@ F-1, fixed · RV-PROC-1 ✅ (*Skills consulted* names `riviera-frontend`, `rivie
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- app.spec` → the account-menu case passes. Verified at commit `<sha>`.
-- [ ] **AC-2:** `npm test -- app.spec` → the signed-out case passes. Verified at commit `<sha>`.
-- [ ] **AC-3:** `npm run test:e2e:a11y -- theme-shell` → Escape/focus case passes. Verified at `<sha>`.
-- [ ] **AC-4:** `npm run test:e2e:a11y -- theme-shell` → mutual-exclusion case passes. Verified at `<sha>`.
-- [ ] **AC-5:** `npm run test:e2e:a11y -- theme-shell` → closes-on-navigation case passes. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test -- app.spec` → mobile-group case passes. Verified at commit `<sha>`.
-- [ ] **AC-7:** `npm run test:e2e:a11y` → no serious axe violations at either viewport. Verified at `<sha>`.
-- [ ] **AC-8:** `grep -n "goto('/account/password')" e2e/customer-password.e2e.ts e2e/erasure.e2e.ts`
-      → no matches. Verified at commit `<sha>`.
+- [x] **AC-1:** `npm test -- app.spec` → the account-menu case passes. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-2:** `npm test -- app.spec` → the signed-out case passes. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-3:** `npm run test:e2e:a11y -- theme-shell` → Escape/focus case passes. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-4:** `npm run test:e2e:a11y -- theme-shell` → mutual-exclusion case passes. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-5:** `npm run test:e2e:a11y -- theme-shell` → closes-on-navigation case passes. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-6:** `npm test -- app.spec` → mobile-group case passes. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-7:** `npm run test:e2e:a11y` → no serious axe violations at either viewport. Verified at `51c23fc` (CI green on the PR head).
+- [x] **AC-8:** `grep -n "goto('/account/password')" e2e/customer-password.e2e.ts e2e/erasure.e2e.ts`
+      → no matches. Verified at `51c23fc` (CI green on the PR head).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2) — no write path in scope.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11) — no backend file touched.
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented (R-4 is the one documented deviation);
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2) — no write path in scope.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11) — no backend file touched.
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented (R-4 is the one documented deviation);
       no `as any` on the contract.
-- [ ] The disclosure pattern is intact: no `role="menu"`, no roving tabindex (R-1).
-- [ ] All four popover-close paths include `accountOpen` (R-2).
-- [ ] The behavior-parity ledger has no unexplained `dropped` row.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] The disclosure pattern is intact: no `role="menu"`, no roving tabindex (R-1).
+- [x] All four popover-close paths include `accountOpen` (R-2).
+- [x] The behavior-parity ledger has no unexplained `dropped` row.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
