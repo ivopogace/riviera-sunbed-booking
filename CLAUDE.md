@@ -191,9 +191,13 @@ invariant #11.
 > different owners, so a `@Transactional` spanning them would look atomic without being atomic — ordering
 > makes a *revoke* failure one the caller's retry recovers from, though a failure after the write still
 > reports an error with the password already changed),
-> and the surviving session is **re-issued under a new id** (`changeSessionId()` via `SessionIdentity`), so
+> and the surviving session is **re-issued under a new id** (`SessionIdentity#rotate`), so
 > an exfiltrated cookie no longer outlives the change made to kill it. The same two apply to the customer
-> twin `POST /api/me/password`. **Edge-only — the `operator` module is unchanged** (`setPassword` simply gained a
+> twin `POST /api/me/password`. **#359 made that rotation authoritative** — `changeSessionId()` kept the
+> `SPRING_SESSION` row and deferred the new id to the filter's post-request save, so a request overlapping
+> the rotation wrote the OLD id back (on the login path, where the same helper is the session-fixation
+> defence, that is a fixation bypass); `rotate` now carries the session's attributes over, invalidates the
+> old session — an immediate `DELETE` — and creates a fresh one, so the stale write has no row to target. **Edge-only — the `operator` module is unchanged** (`setPassword` simply gained a
 > second caller); the env-managed bootstrap admin is refused (`409 BOOTSTRAP_CREDENTIAL_MANAGED`) because
 > `OperatorCredentialInitializer` re-stamps it every boot. All login/approval/session machinery
 > stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.

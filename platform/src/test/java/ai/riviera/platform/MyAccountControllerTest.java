@@ -13,6 +13,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
@@ -104,18 +105,27 @@ class MyAccountControllerTest {
 		verify(recovery, never()).setPassword(any(), anyString());
 	}
 
-	/** AC-2's mock-level half: the surviving session is rotated, and the revoke kept the PRE-rotation id. */
+	/**
+	 * AC-2's mock-level half: the surviving session is rotated, and the revoke kept the PRE-rotation id.
+	 *
+	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in: since #359 the rotation
+	 * retires the old session outright and puts a fresh one in its place, instead of renaming it where a
+	 * concurrent request could write the old id back. Twin of
+	 * {@code OperatorAccountControllerTest.rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke}.
+	 */
 	@Test
 	void rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke() throws Exception {
 		givenAccountWithPassword();
 		MockHttpSession thisSession = new MockHttpSession();
 		String idBeforeTheChange = thisSession.getId();
 
-		mvc.perform(changePassword(CURRENT_PASSWORD, NEW_PASSWORD).session(thisSession))
-				.andExpect(status().isNoContent());
+		MvcResult result = mvc.perform(changePassword(CURRENT_PASSWORD, NEW_PASSWORD).session(thisSession))
+				.andExpect(status().isNoContent())
+				.andReturn();
 
 		verify(sessionRevoker).revokeAllExcept(EMAIL, idBeforeTheChange);
-		assertThat(thisSession.getId()).isNotEqualTo(idBeforeTheChange);
+		assertThat(thisSession.isInvalid()).isTrue();
+		assertThat(result.getRequest().getSession(false).getId()).isNotEqualTo(idBeforeTheChange);
 	}
 
 	@Test

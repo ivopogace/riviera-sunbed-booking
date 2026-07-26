@@ -142,10 +142,15 @@ class OperatorAccountControllerTest {
 	 * session the change deliberately spares and keeps full operator authority afterwards.
 	 *
 	 * <p>The captured keep-id pins the ordering constraint that makes this safe (<strong>#344</strong> plan
-	 * R-1 — not the #326 R-1 this class's header names): the revoke must
-	 * be handed the <strong>pre-rotation</strong> id. Rotating first would hand it an id no
-	 * {@code SPRING_SESSION} row carries yet — the row still holds the old one until the filter commits —
-	 * so the caller's own session would fail the keep-filter and be deleted.
+	 * R-1 — not the #326 R-1 this class's header names): the revoke must be handed the
+	 * <strong>pre-rotation</strong> id, the only one its own {@code findByPrincipalName} query can see.
+	 * Rotating first would hand it an id no {@code SPRING_SESSION} row carries — since #359 the rotation
+	 * deletes the caller's row and the replacement is not persisted until the filter commits — leaving the
+	 * keep-contract vacuous rather than merely mis-targeted.
+	 *
+	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in, because since #359 the
+	 * rotation retires that handle instead of renaming it in place: the old session is invalidated outright
+	 * and a fresh one takes its place, which is what stops a concurrent save from resurrecting the old id.
 	 */
 	@Test
 	void rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke() throws Exception {
@@ -153,16 +158,18 @@ class OperatorAccountControllerTest {
 		MockHttpSession thisSession = new MockHttpSession();
 		String idBeforeTheChange = thisSession.getId();
 
-		mvc.perform(isolated(post(CHANGE_PASSWORD)).session(thisSession)
+		MvcResult result = mvc.perform(isolated(post(CHANGE_PASSWORD)).session(thisSession)
 						.with(user(OPERATOR_USERNAME).roles("OPERATOR"))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(CURRENT_PASSWORD, NEW_PASSWORD)))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isNoContent())
+				.andReturn();
 
 		ArgumentCaptor<String> keptSessionId = ArgumentCaptor.forClass(String.class);
 		verify(sessionRevoker).revokeAllExcept(eq(OPERATOR_USERNAME), keptSessionId.capture());
 		assertThat(keptSessionId.getValue()).isEqualTo(idBeforeTheChange);
-		assertThat(thisSession.getId()).isNotEqualTo(idBeforeTheChange);
+		assertThat(thisSession.isInvalid()).isTrue();
+		assertThat(result.getRequest().getSession(false).getId()).isNotEqualTo(idBeforeTheChange);
 	}
 
 	/**

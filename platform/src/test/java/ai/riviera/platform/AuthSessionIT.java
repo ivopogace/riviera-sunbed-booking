@@ -1,5 +1,8 @@
 package ai.riviera.platform;
 
+import java.time.Instant;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +12,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -58,6 +63,8 @@ class AuthSessionIT {
 	OperatorProvisioning provisioning;
 	@Autowired
 	PasswordEncoder encoder;
+	@Autowired
+	FindByIndexNameSessionRepository<? extends Session> sessions;
 
 	private long venueOwnedByA;
 
@@ -66,6 +73,8 @@ class AuthSessionIT {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username IN ('op-a', 'op-c'))").update();
 		jdbc.sql("DELETE FROM operator WHERE username IN ('op-a', 'op-c')").update();
+		// Sessions outlive the operator row, and the #359 test expects only its own in the index.
+		jdbc.sql("DELETE FROM spring_session WHERE principal_name IN ('op-a', 'op-c')").update();
 
 		venueOwnedByA = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
@@ -167,6 +176,61 @@ class AuthSessionIT {
 		// The rotated session works; the pre-login id no longer authenticates anything.
 		mvc.perform(get("/api/auth/me").cookie(postLogin)).andExpect(status().isOk());
 		mvc.perform(get("/api/auth/me").cookie(preLogin)).andExpect(status().isUnauthorized());
+	}
+
+	/**
+	 * AC-2 for #359: the fixation rotation must survive a request that overlaps it. This is the same lost
+	 * update {@code OperatorPasswordChangeIT} pins on the password path — both go through
+	 * {@code SessionIdentity.rotate} — but here it is the more serious instance, because the overlap is
+	 * <strong>attacker-controllable</strong> rather than incidental: whoever planted the pre-login cookie can
+	 * deliberately hold a request open across the victim's login. Since {@code SPRING_SECURITY_CONTEXT} hangs
+	 * off {@code SESSION_PRIMARY_ID}, which the old mechanism never changed, writing the planted id back left
+	 * it resolving to the victim's freshly authenticated session — a session-fixation bypass.
+	 *
+	 * <p>The pre-login session is obtained the way {@link #sessionIdRotatesOnLogin} obtains one (a prior
+	 * login), which is what makes it findable by principal name; the rotation under test is the same call
+	 * either way, since {@code establish} rotates whatever session the request arrived on.
+	 */
+	@Test
+	void aConcurrentSaveOnThePreLoginSessionCannotResurrectItsId() throws Exception {
+		assertConcurrentSaveCannotResurrect(sessions);
+	}
+
+	/**
+	 * Generic so the package-private {@code JdbcSession} type is only ever inferred, never named: the
+	 * repository's element type is not visible outside {@code org.springframework.session.jdbc}.
+	 */
+	private <S extends Session> void assertConcurrentSaveCannotResurrect(
+			FindByIndexNameSessionRepository<S> repository) throws Exception {
+		Cookie preLogin = login();
+		S concurrentRequest = repository.findById(onlySessionIdOf(repository, "op-a"));
+		assertNotNull(concurrentRequest, "the concurrent request must have loaded the pre-login session");
+
+		MvcResult result = mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.cookie(preLogin)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "op-a", "password": "pw-a"}"""))
+				.andExpect(status().isOk())
+				.andReturn();
+		Cookie postLogin = result.getResponse().getCookie(SESSION_COOKIE);
+		assertNotNull(postLogin);
+
+		// The overlapping request now completes, and its deferred save lands with the id it loaded.
+		concurrentRequest.setLastAccessedTime(Instant.now());
+		repository.save(concurrentRequest);
+
+		mvc.perform(get("/api/auth/me").cookie(preLogin)).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/auth/me").cookie(postLogin)).andExpect(status().isOk());
+	}
+
+	/** Read from the principal index, not the cookie — {@code DefaultCookieSerializer} base64-encodes it. */
+	private static <S extends Session> String onlySessionIdOf(
+			FindByIndexNameSessionRepository<S> repository, String principal) {
+		Set<String> ids = repository.findByPrincipalName(principal).keySet();
+		assertEquals(1, ids.size(), "the test expects exactly one live session for " + principal);
+		return ids.iterator().next();
 	}
 
 	// ---- The current-principal read: the FE's reload-restore endpoint (AC-8's server half) ----

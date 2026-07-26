@@ -1,11 +1,16 @@
 package ai.riviera.platform;
 
+import java.time.Instant;
+import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -13,6 +18,7 @@ import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import jakarta.servlet.http.Cookie;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -45,6 +51,8 @@ class SetPasswordIT {
 	MockMvc mvc;
 	@Autowired
 	SsoAccountProvisioning sso;
+	@Autowired
+	FindByIndexNameSessionRepository<? extends Session> sessions;
 
 	// No DB cleanup: unique emails against a fresh Testcontainers DB (deleting accounts would trip the
 	// customer_sso_identity FK), the SsoAccountProvisioningIT pattern.
@@ -152,6 +160,56 @@ class SetPasswordIT {
 		mvc.perform(get(ME_PATH).cookie(afterTheChange)).andExpect(status().isOk());
 	}
 
+	/**
+	 * AC-3 for #359 — the customer twin of {@code OperatorPasswordChangeIT}'s concurrent-save proof, kept
+	 * so the two password endpoints do not drift. A second request on the same session (a background poll,
+	 * a second tab) loads it before the change commits and saves it after; Spring Session's save writes
+	 * that request's in-memory id, which before this slice put the retired id back on the row.
+	 *
+	 * <p>Rides the <strong>register</strong> auto-sign-in session rather than a separate login, so this
+	 * unique email has exactly one live session for the principal-index read to return.
+	 */
+	@Test
+	void aConcurrentSaveOnTheOldSessionCannotResurrectItsId() throws Exception {
+		assertConcurrentSaveCannotResurrect(sessions);
+	}
+
+	/**
+	 * Generic so the package-private {@code JdbcSession} type is only ever inferred, never named: the
+	 * repository's element type is not visible outside {@code org.springframework.session.jdbc}.
+	 */
+	private <S extends Session> void assertConcurrentSaveCannotResurrect(
+			FindByIndexNameSessionRepository<S> repository) throws Exception {
+		String email = "setpw-it-concurrent@example.com";
+		Cookie beforeTheChange = sessionFrom(register(email, "originalpass1"));
+		S concurrentRequest = repository.findById(onlySessionIdOf(repository, email));
+		assertNotNull(concurrentRequest, "the concurrent request must have loaded the pre-change session");
+
+		Cookie afterTheChange = mvc.perform(post(SET_PASSWORD_PATH).cookie(beforeTheChange).with(csrf())
+						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"newPassword": "rotatedpass4", "currentPassword": "originalpass1"}"""))
+				.andExpect(status().isNoContent())
+				.andReturn().getResponse().getCookie("SESSION");
+
+		// The overlapping request now completes, and its deferred save lands with the id it loaded.
+		concurrentRequest.setLastAccessedTime(Instant.now());
+		repository.save(concurrentRequest);
+
+		assertNotNull(afterTheChange, "the change must hand back the rotated SESSION cookie");
+		mvc.perform(get(ME_PATH).cookie(beforeTheChange)).andExpect(status().isUnauthorized());
+		mvc.perform(get(ME_PATH).cookie(afterTheChange)).andExpect(status().isOk());
+	}
+
+	/** Read from the principal index, not the cookie — {@code DefaultCookieSerializer} base64-encodes it. */
+	private static <S extends Session> String onlySessionIdOf(
+			FindByIndexNameSessionRepository<S> repository, String principal) {
+		Set<String> ids = repository.findByPrincipalName(principal).keySet();
+		assertEquals(1, ids.size(), "the test expects exactly one live session for " + principal);
+		return ids.iterator().next();
+	}
+
 	private static Cookie sessionFrom(ResultActions result) {
 		Cookie session = result.andReturn().getResponse().getCookie("SESSION");
 		if (session == null) {
@@ -160,8 +218,9 @@ class SetPasswordIT {
 		return session;
 	}
 
-	private void register(String email, String password) throws Exception {
-		mvc.perform(post("/api/auth/customer/register").with(csrf())
+	/** Returns the result so a caller can take the auto-sign-in session (S2) instead of logging in again. */
+	private ResultActions register(String email, String password) throws Exception {
+		return mvc.perform(post("/api/auth/customer/register").with(csrf())
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
