@@ -399,19 +399,39 @@ export async function mockCustomerSsoApi(
  * accepted password AND signs the session out (the real reset invalidates sessions, AC-3); a successful
  * verify flips `emailVerified`, which `/me` + login then reflect. Login succeeds for the CURRENT password
  * only — so the reset e2e can prove the old password stops working and the new one starts.
+ *
+ * <p>The same rotating credential backs the authenticated set/change-password endpoint (#346), so one
+ * mock covers every way a customer's password can change. An account with NO `initialPassword` is the
+ * SSO-only case (S4 F-1): nothing signs in until a first password is set, and that first set needs no
+ * current password. That endpoint's branch order mirrors the server — `RateLimitFilter` spends the
+ * per-IP budget before the controller runs, and the controller validates the password policy before it
+ * reads the stored credential — so a real reordering cannot leave this suite green (#342 finding).
  */
 export async function mockCustomerRecoveryApi(
   page: Page,
   options: {
     readonly email: string;
-    readonly initialPassword: string;
-    readonly validToken: string;
+    /** The stored credential; omit for an SSO-only account that has none yet (#346). */
+    readonly initialPassword?: string;
+    /** The one token the reset/verify routes accept; omit in a spec that redeems no token. */
+    readonly validToken?: string;
+    /** Start with a live session — stands in for a completed SSO dance, which S4's own mock drives. */
+    readonly signedIn?: boolean;
+    /** Provider-verified email (SSO), before any verify-email token is redeemed. */
+    readonly emailVerified?: boolean;
+    /**
+     * Attempts allowed on `POST /api/me/password` before the per-IP budget answers 429 (#326).
+     * Defaults to the deployed capacity (`riviera.ratelimit.login.capacity`, 10 per minute); a spec
+     * proving the FE's rate-limit rendering sets something small rather than clicking ten times.
+     */
+    readonly passwordChangeBudget?: number;
   },
 ): Promise<void> {
   const { email, validToken } = options;
   let password = options.initialPassword;
-  let signedIn = false;
-  let emailVerified = false;
+  let signedIn = options.signedIn ?? false;
+  let emailVerified = options.emailVerified ?? false;
+  let passwordChangeAttempts = 0;
 
   const principal = () => ({ username: email, principalType: 'CUSTOMER', emailVerified });
 
@@ -423,11 +443,37 @@ export async function mockCustomerRecoveryApi(
 
   await page.route(/\/api\/auth\/customer\/login$/, (route) => {
     const body = route.request().postDataJSON() as { email?: string; password?: string };
-    if ((body.email ?? '').trim().toLowerCase() === email.toLowerCase() && body.password === password) {
+    // `password === undefined` is the SSO-only account: no stored credential, so nothing signs in.
+    if (password !== undefined
+      && (body.email ?? '').trim().toLowerCase() === email.toLowerCase() && body.password === password) {
       signedIn = true;
       return route.fulfill({ json: principal() });
     }
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
+  });
+
+  // The signed-in set/change-password endpoint (S8 #113, rate-limited since #326) — see the TSDoc above.
+  await page.route(/\/api\/me\/password$/, (route) => {
+    if (!signedIn) {
+      return route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED'));
+    }
+    if (++passwordChangeAttempts > (options.passwordChangeBudget ?? 10)) {
+      return route.fulfill(problem(429, 'Too Many Requests', 'RATE_LIMITED'));
+    }
+    const body = route.request().postDataJSON() as {
+      newPassword?: string;
+      currentPassword?: string | null;
+    };
+    const newPassword = body.newPassword ?? '';
+    if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
+    }
+    if (password !== undefined && body.currentPassword !== password) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
+    }
+    // The server revokes the customer's OTHER sessions only — the calling one deliberately survives.
+    password = newPassword;
+    return route.fulfill({ status: 204 });
   });
 
   await page.route(/\/api\/auth\/customer\/forgot-password$/, (route) =>
@@ -436,7 +482,7 @@ export async function mockCustomerRecoveryApi(
 
   await page.route(/\/api\/auth\/customer\/reset-password$/, (route) => {
     const body = route.request().postDataJSON() as { token?: string; newPassword?: string };
-    if (body.token === validToken && body.newPassword) {
+    if (validToken !== undefined && body.token === validToken && body.newPassword) {
       password = body.newPassword;
       signedIn = false; // a reset invalidates existing sessions (AC-3)
       return route.fulfill({ status: 204 });
@@ -446,7 +492,7 @@ export async function mockCustomerRecoveryApi(
 
   await page.route(/\/api\/auth\/customer\/verify-email$/, (route) => {
     const body = route.request().postDataJSON() as { token?: string };
-    if (body.token === validToken) {
+    if (validToken !== undefined && body.token === validToken) {
       emailVerified = true;
       return route.fulfill({ status: 204 });
     }
