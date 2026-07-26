@@ -27,9 +27,7 @@ final class SessionAuthentication {
 
 	static void establish(SecurityContextRepository repository, Authentication authentication,
 			HttpServletRequest request, HttpServletResponse response) {
-		if (request.getSession(false) != null) {
-			request.changeSessionId();
-		}
+		SessionIdentity.rotate(request);
 		SecurityContext context = CONTEXT_STRATEGY.createEmptyContext();
 		context.setAuthentication(authentication);
 		CONTEXT_STRATEGY.setContext(context);

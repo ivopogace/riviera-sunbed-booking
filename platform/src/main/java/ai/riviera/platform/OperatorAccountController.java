@@ -14,7 +14,6 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 
 /**
  * The signed-in operator's own credential surface (#326): change your own password, proving the current
@@ -79,10 +78,33 @@ class OperatorAccountController {
 	}
 
 	/**
-	 * Change the signed-in operator's own password, then evict every <em>other</em> session the old
-	 * credential authorized. A weak new password is {@code 400 INVALID_REQUEST}; a wrong current password
-	 * is {@code 400 INVALID_CURRENT_PASSWORD}; the env-managed bootstrap admin is
+	 * Change the signed-in operator's own password, evicting every <em>other</em> session the old credential
+	 * authorized and retiring the calling session's id. A weak new password is {@code 400 INVALID_REQUEST};
+	 * a wrong current password is {@code 400 INVALID_CURRENT_PASSWORD}; the env-managed bootstrap admin is
 	 * {@code 409 BOOTSTRAP_CREDENTIAL_MANAGED}; a non-{@code ACTIVE} account is {@code 409 ACCOUNT_NOT_ACTIVE}.
+	 *
+	 * <p><strong>The three success-path effects are ordered, not transactional</strong> (#344). The credential
+	 * write and the session deletes belong to different owners — a module's own transaction and Spring
+	 * Session's repository — so a {@code @Transactional} here would look atomic without being atomic, and
+	 * would push the edge's transaction boundary into module internals (RV-BE-11). Ordering achieves the
+	 * property that was actually wanted, and achieves it whatever those boundaries turn out to be: a
+	 * <strong>revoke</strong> failure — the transient class this fixes — now leaves either nothing done, or
+	 * other sessions signed out with the password unchanged, and the operator's natural retry recovers from
+	 * both. Written the other way round (as #326 shipped it) that same failure raised {@code 500}
+	 * <em>after</em> the hash had rotated, so the retry drew {@code INVALID_CURRENT_PASSWORD} and the other
+	 * device stayed live.
+	 *
+	 * <p><strong>What the ordering does not buy.</strong> A failure <em>after</em> the write still reports an
+	 * error with the password already changed — including Spring Session's save of the rotated id, which runs
+	 * in the filter after this method returns and so is outside any ordering decided here. Only a shared
+	 * transaction could close that, and there is none to share; the runbook therefore tells an operator to
+	 * try the NEW password before concluding a failed change was lost.
+	 *
+	 * <p><strong>The residual race.</strong> Between the revoke and the write, someone already holding the
+	 * old password could sign in and keep that session. The window is one credential UPDATE — the bcrypt
+	 * encode is hoisted above the revoke deliberately, since at ~80ms it would otherwise dominate it. That
+	 * is accepted as strictly smaller than the defect it replaces: a permanently un-revoked session paired
+	 * with an error message saying nothing happened.
 	 */
 	@PostMapping(CHANGE_PASSWORD_PATH)
 	ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
@@ -102,9 +124,12 @@ class OperatorAccountController {
 			return ApiProblem.response(HttpStatus.CONFLICT, "ACCOUNT_NOT_ACTIVE",
 					"This account is not active.");
 		}
-		provisioning.setPassword(username, passwordEncoder.encode(request.newPassword()));
-		// Evict every OTHER session the old credential authorized; this one survives (#128).
-		sessionRevoker.revokeAllExcept(username, currentSessionId(httpRequest));
+		// Encoded before the revoke: bcrypt costs ~80ms, which would otherwise widen the window below.
+		String newPasswordHash = passwordEncoder.encode(request.newPassword());
+		// Keep-id read BEFORE the rotation below: until the filter commits, the session row still carries it.
+		sessionRevoker.revokeAllExcept(username, SessionIdentity.currentId(httpRequest));
+		provisioning.setPassword(username, newPasswordHash);
+		SessionIdentity.rotate(httpRequest);
 		return ResponseEntity.noContent().build();
 	}
 
@@ -117,10 +142,5 @@ class OperatorAccountController {
 	private boolean currentPasswordMatches(ChangePasswordRequest request, OperatorCredential credential) {
 		return credential.passwordHash() != null
 				&& passwordEncoder.matches(request.currentPassword(), credential.passwordHash());
-	}
-
-	private static String currentSessionId(HttpServletRequest request) {
-		HttpSession session = request.getSession(false);
-		return session != null ? session.getId() : null;
 	}
 }

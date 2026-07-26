@@ -16,6 +16,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import jakarta.servlet.http.Cookie;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -86,6 +88,12 @@ class OperatorPasswordChangeIT {
 	 * The AC-1 half a controller test can only assert through a mock: the operator's OTHER sessions are
 	 * really gone from {@code SPRING_SESSION}, and the session that did the change really survives —
 	 * signing you out of the device you are actively using is bad UX and is not what the guidance asks.
+	 *
+	 * <p>"Survives" is asserted through the <strong>re-issued</strong> cookie since #344, because the
+	 * calling session is now rotated: the session lives on, but under a new id. A browser applies the
+	 * replacement {@code Set-Cookie} automatically and notices nothing; MockMvc does not, so the test has
+	 * to carry it forward by hand. That the pre-change value is dead is
+	 * {@link #theSurvivingSessionIsRotatedSoTheOldCookieValueDies}'s assertion, not this one's.
 	 */
 	@Test
 	void theChangeRevokesEveryOtherSessionButKeepsTheCallingOne() throws Exception {
@@ -93,11 +101,38 @@ class OperatorPasswordChangeIT {
 		Cookie thisDevice = SessionLoginSupport.operatorSession(mvc, TARGET, OLD_PASSWORD);
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isOk());
 
-		mvc.perform(changePassword(thisDevice, OLD_PASSWORD, NEW_PASSWORD))
-				.andExpect(status().isNoContent());
+		Cookie thisDeviceReissued = mvc.perform(changePassword(thisDevice, OLD_PASSWORD, NEW_PASSWORD))
+				.andExpect(status().isNoContent())
+				.andReturn().getResponse().getCookie("SESSION");
 
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isUnauthorized());
-		mvc.perform(get(ME_PATH).cookie(thisDevice)).andExpect(status().isOk());
+		assertNotNull(thisDeviceReissued, "the calling session must be re-issued, not dropped");
+		mvc.perform(get(ME_PATH).cookie(thisDeviceReissued)).andExpect(status().isOk());
+	}
+
+	/**
+	 * AC-1 for #344, and the half no mock can reach: the calling session survives the change but does so
+	 * under a <strong>new id</strong>, so the cookie value that made the change stops authenticating.
+	 * That is what closes the gap the #342 runbook had to document — an exfiltrated cookie names the very
+	 * session {@code revokeAllExcept} deliberately spares, and before this it kept full operator authority.
+	 *
+	 * <p>Driven end-to-end because the guarantee lives in machinery a web slice stubs out: the real
+	 * {@code SessionRepositoryFilter} must persist the new id to {@code SPRING_SESSION} and hand back a
+	 * replacement {@code SESSION} cookie on the same response. Both halves are asserted — the old cookie is
+	 * dead, the new one works — since a rotation that dropped the caller would pass a one-sided check.
+	 */
+	@Test
+	void theSurvivingSessionIsRotatedSoTheOldCookieValueDies() throws Exception {
+		Cookie beforeTheChange = SessionLoginSupport.operatorSession(mvc, TARGET, OLD_PASSWORD);
+
+		Cookie afterTheChange = mvc.perform(changePassword(beforeTheChange, OLD_PASSWORD, NEW_PASSWORD))
+				.andExpect(status().isNoContent())
+				.andReturn().getResponse().getCookie("SESSION");
+
+		assertNotNull(afterTheChange, "the change must hand back the rotated SESSION cookie");
+		assertNotEquals(beforeTheChange.getValue(), afterTheChange.getValue());
+		mvc.perform(get(ME_PATH).cookie(beforeTheChange)).andExpect(status().isUnauthorized());
+		mvc.perform(get(ME_PATH).cookie(afterTheChange)).andExpect(status().isOk());
 	}
 
 	/** A rejected attempt must be inert: nothing rotated, nothing revoked (AC-2, against real storage). */
