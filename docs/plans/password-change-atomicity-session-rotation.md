@@ -204,15 +204,20 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing `OperatorAccountControllerTest` ordering/rotation tests.
+**Next action:** Phase 1 — apply the same ordering + rotation to `MyAccountController`, add
+`MyAccountControllerTest`, and add the real-session rotation ITs to both IT classes.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Ordering + rotation, operator side (red → green) | | |
-| 1 — Same for the customer side + the two rotation ITs | | |
-| 2 — Runbook correction + follow-up issue for the reset sibling | | |
+| 0 — Ordering + rotation, operator side (red → green) | ✅ | see phase-0 commit |
+| 1 — Same for the customer side + the two rotation ITs | ⏳ | |
+| 2 — Runbook correction + follow-up issue for the deferred siblings | | |
+
+**Local verification note:** Docker is absent in this cloud session, so every
+`@EnabledIfDockerAvailable` IT (AC-1, AC-2) **skips locally** — the PR's CI run is the gate for
+those two. The `@WebMvcTest` classes (AC-3…AC-7) run locally and are green.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -287,6 +292,19 @@ Modify `OperatorPasswordChangeIT.java`, `SetPasswordIT.java`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-26 | Phase 0 — the revoke/write ordering fix | every call site that pairs a state change with a session revoke | `grep -rn "revokeAll\|revokeAllExcept" platform/src --include=*.java` | 6 (2 password-change, reset, admin-suspend, erasure, boot-time initializer) | **Fix 2, defer 3, skip 1** — see the analysis below. |
+
+**Phase-0 audit detail.** The ordering defect generalizes only where the principal is knowable
+*before* the state change; that split decided the actions:
+
+| Site | Principal known upfront? | Harm on a failed revoke | Action |
+|---|---|---|---|
+| `OperatorAccountController.changePassword` | yes (`authentication.getName()`) | retry rejected as `INVALID_CURRENT_PASSWORD`; other device stays live | **fixed, phase 0** |
+| `MyAccountController.setPassword` | yes | identical | **fixed, phase 1** |
+| `AccountRecoveryController.resetPassword` | **no** — the email arrives in `ResetPasswordOutcome.Reset`, i.e. only after the token is consumed and the password written | retry rejected as `INVALID_OR_EXPIRED_TOKEN` while the password *did* change | deferred → follow-up issue; revoke-first is structurally unavailable, so it needs a different mechanism |
+| `AdminOperatorController.suspend` | **no** — the username arrives in `OperatorLifecycleOutcome.Changed` | worse than a bad message: the admin's retry gets `409 WRONG_STATUS` and the suspended operator's sessions stay alive | deferred → same follow-up issue (a `OperatorDirectory` pre-read would make revoke-first possible) |
+| `MyErasureController.erase` | yes | data scrubbed, sessions alive, caller told it failed | deferred → same follow-up issue; a one-line reorder, but erasure is outside this issue's stated scope and widening the diff silently is worse than naming it |
+| `OperatorCredentialInitializer` | yes | none — boot-time runner, no caller to mislead, no retry | skip |
 
 ---
 
