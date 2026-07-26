@@ -20,6 +20,31 @@
                 POST /api/admin/operators/{id}/reinstate  -> restores access, NOT the old sessions
     Privacy     POST /api/admin/erasure                   (#101 D5)   ROLE_ADMIN, always 204
 
+  The Commissions tab has NO backend at all today — it is the sharpest gap this console exposes:
+
+    - Commission is settable ONLY AT CREATION. NewVenueCommand/CreateVenueRequest take commissionBps;
+      the owner-asserted profile PATCH treats it as DISPLAY-ONLY (VenueProfileResponse: "commissionBps
+      and payoutCurrency are display-only"; O8 #177 decided read-only for the operator on purpose).
+      So today there is no way to change a venue's rate after creation — not by the operator, not by
+      the admin, not by anyone. Getting a rate wrong at onboarding is currently permanent.
+    - There is also no platform-wide venue read. GET /api/venues is the anonymous discovery read (no
+      commission), GET /api/venues/{id}/profile is owner-asserted and OPERATOR-gated, and
+      GET /api/venues/mine is operator-scoped (S9 #277). The admin cannot list venues with their rates.
+    - So this tab needs two new ADMIN endpoints: a venues-with-commission list, and a rate write.
+      Basis points are the stored unit (exact integer, invariant #5) — the editor takes a percent for
+      human sanity but the wire value is bps, 0..10000, mirroring venue_commission_bps_check.
+
+  The rate change is FORWARD-ONLY, and the reason is invariant #9: a payout-ledger entry persists its
+  own commissionMinor at accrual, so past entries keep the rate they were accrued at and no repricing
+  of history is possible. One inconsistency the implementing slice MUST resolve, found while drawing
+  this: DailyTakingsService reads rates.commissionBps(venueId) LIVE at query time, so the operator
+  console's takings strip would re-split PAST days at the NEW rate while the ledger for those same days
+  keeps the old one. The ledger is right; the view needs the rate that applied on that date.
+
+  Venue CREATION is deliberately NOT here. An operator creates its own venue (creator-owns-on-create,
+  #115) and #278 folds that into the operator console; POST /api/venues owns-to-the-caller, so an admin
+  creating one would own it. This tab manages the rate on venues that already exist.
+
   The Payouts tab is the ONE screen here that is ahead of the code — deliberately. It designs
   ADR-0009 decision 4 *phase 2*: a scheduled job pays each venue's accrued net the day after the
   booking's SERVICE DATE over the Paysera Transfer API (the Airbnb/Booking.com shape), behind a new
@@ -118,7 +143,9 @@
     }
     .riv-c-venue { grid-column: 1 / -1 !important; }
     .riv-c-sets, .riv-c-gross, .riv-c-comm, .riv-c-net,
-    .riv-c-chip, .riv-c-ref { text-align: left !important; }
+    .riv-c-chip, .riv-c-ref,
+    .riv-k-owner, .riv-k-rate, .riv-k-changed, .riv-k-action { text-align: left !important; }
+    .riv-k-owner::before, .riv-k-rate::before, .riv-k-changed::before,
     .riv-c-sets::before, .riv-c-gross::before, .riv-c-comm::before, .riv-c-net::before {
       display: block;
       font-size: 10px;
@@ -132,7 +159,10 @@
     .riv-c-gross::before { content: "Gross"; }
     .riv-c-comm::before { content: "Commission"; }
     .riv-c-net::before { content: "Net"; }
-    .riv-c-ref button { width: 100% !important; padding-top: 11px !important; padding-bottom: 11px !important; }
+    .riv-k-owner::before { content: "Owner"; }
+    .riv-k-rate::before { content: "Commission"; }
+    .riv-k-changed::before { content: "Last changed"; }
+    .riv-c-ref button, .riv-k-action button { width: 100% !important; padding-top: 11px !important; padding-bottom: 11px !important; }
   }
 </style>
 </helmet>
@@ -191,7 +221,7 @@
   <sc-if value="{{ showConsole }}" hint-placeholder-val="{{ true }}">
   <main class="riv-main" style="width:100%;max-width:1180px;margin:0 auto;padding:22px 24px 80px;">
 
-    <div class="riv-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;">
+    <div class="riv-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px;">
       <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Awaiting approval</span>
         <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#a86a12;margin-top:3px;">{{ statPending }}</div>
@@ -203,6 +233,11 @@
       <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Suspended</span>
         <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statSuspended }}</div>
+      </div>
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Venues</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statVenues }}</div>
+        <span style="font-size:11.5px;color:rgba(12,42,51,0.5);">avg commission {{ statAvgCommission }}</span>
       </div>
       <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Releasing tomorrow</span>
@@ -331,6 +366,81 @@
         </div>
       </aside>
 
+    </div>
+    </sc-if>
+
+    <!-- ============================== COMMISSIONS ============================== -->
+    <sc-if value="{{ tabCommissions }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Venue commissions" style="max-width:1000px;">
+
+      <section class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 20px 18px;">
+
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px;">
+          <h2 style="font-size:16px;font-weight:700;margin:0;">Venue commissions</h2>
+          <span style="font-size:12.5px;color:rgba(12,42,51,0.55);">{{ venuesCountLabel }}</span>
+        </div>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 16px;">The platform sets each venue&rsquo;s rate &mdash; the operator sees it, but cannot change it. A new rate applies to bookings made from now on; money already accrued keeps the rate it was accrued at.</p>
+
+        <div class="riv-table" style="border-radius:16px;border:1px solid rgba(12,42,51,0.12);overflow:hidden;background:rgba(255,255,255,0.5);">
+          <div class="riv-table-head" style="display:grid;grid-template-columns:1fr 150px 130px 130px 110px;gap:8px;padding:11px 16px;background:rgba(12,42,51,0.04);font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(12,42,51,0.55);">
+            <span>Venue</span><span>Owner</span><span style="text-align:right;">Commission</span><span style="text-align:right;">Last changed</span><span style="text-align:right;">Action</span>
+          </div>
+          <sc-for list="{{ venues }}" as="v" hint-placeholder-count="5">
+            <div class="riv-tr" style="display:grid;grid-template-columns:1fr 150px 130px 130px 110px;gap:8px;align-items:center;padding:13px 16px;border-top:1px solid rgba(12,42,51,0.08);font-size:13.5px;background:{{ v.rowBg }};">
+              <span class="riv-c-venue" style="font-weight:600;color:#0a2a33;min-width:0;">{{ v.name }}<span style="display:block;font-size:11.5px;font-weight:400;color:rgba(12,42,51,0.45);margin-top:2px;">{{ v.place }}</span></span>
+              <span class="riv-k-owner" style="color:rgba(12,42,51,0.7);min-width:0;">{{ v.owner }}<sc-if value="{{ v.adminHeld }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a4f5e;margin-top:2px;">admin-held</span></sc-if></span>
+              <span class="riv-k-rate" style="text-align:right;font-weight:700;color:#0a2a33;">{{ v.rate }}<span style="display:block;font-size:11px;font-weight:400;color:rgba(12,42,51,0.45);margin-top:2px;">{{ v.bps }} bps</span></span>
+              <span class="riv-k-changed" style="text-align:right;color:rgba(12,42,51,0.55);font-size:12.5px;">{{ v.changed }}</span>
+              <span class="riv-k-action" style="text-align:right;">
+                <sc-if value="{{ v.idle }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ v.onEdit }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:11px;background:rgba(255,255,255,0.7);color:#0a2a33;font:inherit;font-weight:600;font-size:13px;padding:8px 16px;cursor:pointer;">Edit</button>
+                </sc-if>
+                <sc-if value="{{ v.editing }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12.5px;font-weight:600;color:#0a6e85;">Editing</span>
+                </sc-if>
+              </span>
+            </div>
+
+            <sc-if value="{{ v.editing }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:0 16px 16px;background:rgba(43,184,212,0.06);border-bottom:1px solid rgba(12,42,51,0.08);">
+                <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding-top:14px;">
+                  <label style="display:flex;flex-direction:column;gap:6px;">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">New rate (%)</span>
+                    <input type="number" min="0" max="100" step="0.5" value="{{ draftPct }}" onChange="{{ onDraftPct }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.85);border-radius:12px;padding:10px 12px;width:130px;"/>
+                  </label>
+                  <span style="font-size:12.5px;color:rgba(12,42,51,0.55);padding-bottom:12px;">stored as <strong style="color:#0a2a33;">{{ draftBps }} bps</strong> &middot; was {{ v.rate }}</span>
+                  <span style="flex:1;"></span>
+                  <div class="riv-row-actions" style="display:flex;gap:8px;padding-bottom:1px;">
+                    <button onClick="{{ onSaveRate }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:12px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:11px 20px;cursor:pointer;box-shadow:0 8px 20px rgba(11,120,150,0.4),inset 0 1px 0 rgba(255,255,255,0.5);">Save rate</button>
+                    <button onClick="{{ onCancelRate }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.7);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:11px 20px;cursor:pointer;">Cancel</button>
+                  </div>
+                </div>
+                <sc-if value="{{ rateError }}" hint-placeholder-val="{{ false }}">
+                  <p role="alert" style="margin:10px 0 0;font-size:13px;font-weight:600;color:#b3362b;">{{ rateError }}</p>
+                </sc-if>
+                <p style="margin:10px 0 0;font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.6);">Applies to bookings made from the moment you save. The {{ venueAccruedLabel }} already accrued for this venue keeps the old rate &mdash; nothing is repriced.</p>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+      </section>
+
+      <section class="riv-panel" style="margin-top:16px;border-radius:24px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 20px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">What a rate change does</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">It changes the split on bookings taken from now on. Every payout-ledger entry already written keeps the commission it was accrued at, so history cannot be repriced &mdash; a venue&rsquo;s past statements stay exactly as they were sent.</p>
+          </div>
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">Why the operator can&rsquo;t set it</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">Commission is the commercial agreement between the platform and the venue, not a venue setting. The operator console shows the rate so there is no mystery about the split &mdash; it just doesn&rsquo;t offer a way to move it.</p>
+          </div>
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">Percent in, basis points out</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">The rate is stored as whole basis points so the split stays exact-integer arithmetic. The field takes a percent because that is how the deal is described; the value actually saved is shown next to it.</p>
+          </div>
+        </div>
+      </section>
     </div>
     </sc-if>
 
@@ -527,6 +637,19 @@ class Component extends DCLogic {
     ],
     confirmSuspendId: null,
 
+    // Commission is stored in whole basis points so the split stays exact-integer (invariant #5).
+    venues: [
+      { id: 1, name: 'Sereno Beach Club', place: 'Dhërmi · Himarë', owner: 'sereno.beach', bps: 1500, changed: 'at onboarding', accrued: '€1,284.50' },
+      { id: 2, name: 'Livadhi Sun', place: 'Livadh · Himarë', owner: 'livadhi.sun', bps: 1500, changed: 'at onboarding', accrued: '€640.00' },
+      { id: 3, name: 'Jalë Riviera', place: 'Jalë · Vlorë', owner: 'jale.riviera', bps: 1200, changed: '12 Jul 2026', accrued: '€312.75' },
+      // V29 backfilled every previously-unowned venue to the demoted bootstrap operator (now the admin).
+      { id: 4, name: 'Miramar', place: 'Borsh · Sarandë', owner: 'operator', adminHeld: true, bps: 1500, changed: 'at onboarding', accrued: '€96.00' },
+      { id: 5, name: 'Borsh Beach', place: 'Borsh · Sarandë', owner: 'operator', adminHeld: true, bps: 1800, changed: '3 Jul 2026', accrued: '€51.00' },
+    ],
+    editingVenueId: null,
+    draftPct: '',
+    rateError: '',
+
     // Service days, oldest first. The stepper walks this list; 07-22 has no run (empty state).
     days: ['2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'],
     dayIndex: 2,
@@ -648,6 +771,34 @@ class Component extends DCLogic {
     this.flash(row.username + ' reinstated — it can sign in again; the old sessions stay dead.');
   };
 
+  /* ---------------- commissions ---------------- */
+
+  pctOf(bps) { return (bps / 100).toFixed(1) + '%'; }
+
+  editRate = (id) => {
+    const v = this.state.venues.find((x) => x.id === id);
+    this.setState({ editingVenueId: id, draftPct: (v.bps / 100).toString(), rateError: '', notice: '' });
+  };
+  cancelRate = () => this.setState({ editingVenueId: null, rateError: '' });
+
+  saveRate = () => {
+    const pct = Number(this.state.draftPct);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      this.setState({ rateError: 'Commission must be between 0% and 100%.' });
+      return;
+    }
+    const bps = Math.round(pct * 100);
+    const v = this.state.venues.find((x) => x.id === this.state.editingVenueId);
+    if (bps === v.bps) {
+      this.setState({ rateError: 'That is already this venue’s rate.' });
+      return;
+    }
+    const was = this.pctOf(v.bps);
+    const venues = this.state.venues.map((x) => (x.id === v.id ? { ...x, bps, changed: 'just now' } : x));
+    this.setState({ venues, editingVenueId: null, rateError: '' });
+    this.flash(v.name + ': commission ' + was + ' → ' + this.pctOf(bps) + '. Bookings from now on split at the new rate; the ledger keeps history at the old one.');
+  };
+
   /* ---------------- payouts ---------------- */
 
   retryTransfer = (id) => {
@@ -762,6 +913,8 @@ class Component extends DCLogic {
       statPending: s.pending.length,
       statActive: s.accounts.filter((a) => !a.suspended).length,
       statSuspended: s.accounts.filter((a) => a.suspended).length,
+      statVenues: s.venues.length,
+      statAvgCommission: this.pctOf(Math.round(s.venues.reduce((sum, v) => sum + v.bps, 0) / s.venues.length)),
       statReleasing: this.fmtEur(releasingMinor),
       statReleasingCaption: '09:00 · ' + scheduledRows.length + ' venues',
       statToFix: failedCount + heldCount,
@@ -771,6 +924,7 @@ class Component extends DCLogic {
       tabs: [
         { key: 'approvals', label: 'Approvals', hasBadge: s.pending.length > 0, badge: s.pending.length },
         { key: 'operators', label: 'Operators', hasBadge: false, badge: 0 },
+        { key: 'commissions', label: 'Commissions', hasBadge: false, badge: 0 },
         { key: 'payouts', label: 'Payouts', hasBadge: false, badge: 0 },
         { key: 'privacy', label: 'Privacy', hasBadge: false, badge: 0 },
       ].map((t) => ({
@@ -782,6 +936,7 @@ class Component extends DCLogic {
 
       tabApprovals: s.tab === 'approvals',
       tabOperators: s.tab === 'operators',
+      tabCommissions: s.tab === 'commissions',
       tabPayouts: s.tab === 'payouts',
       tabPrivacy: s.tab === 'privacy',
       notice: s.notice,
@@ -815,6 +970,31 @@ class Component extends DCLogic {
         };
       }),
       accountsCountLabel: s.accounts.length + ' accounts',
+
+      venues: s.venues.map((v) => ({
+        name: v.name,
+        place: v.place,
+        owner: v.owner,
+        adminHeld: !!v.adminHeld,
+        rate: this.pctOf(v.bps),
+        bps: v.bps,
+        changed: v.changed,
+        editing: s.editingVenueId === v.id,
+        idle: s.editingVenueId !== v.id,
+        rowBg: s.editingVenueId === v.id ? 'rgba(43,184,212,0.06)' : 'transparent',
+        onEdit: () => this.editRate(v.id),
+      })),
+      venuesCountLabel: s.venues.length + ' venues',
+      draftPct: s.draftPct,
+      draftBps: Number.isFinite(Number(s.draftPct)) ? Math.round(Number(s.draftPct) * 100) : '—',
+      rateError: s.rateError,
+      venueAccruedLabel: (() => {
+        const v = s.venues.find((x) => x.id === s.editingVenueId);
+        return v ? v.accrued : '';
+      })(),
+      onDraftPct: (e) => this.setState({ draftPct: e.target.value, rateError: '' }),
+      onSaveRate: this.saveRate,
+      onCancelRate: this.cancelRate,
 
       runDayLabel: s.dayLabels[day],
       onPrevDay: () => this.shiftDay(-1),
