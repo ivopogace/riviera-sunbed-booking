@@ -216,16 +216,16 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — awaiting CI, then the review + Sonar gates`
 
-**Next action:** Phase 2 — rewrite the runbook caveat that #342 added, and file the follow-up issue
-for the three deferred revoke-ordering siblings.
+**Next action:** Confirm the PR's CI run is green, then run `/code-review` + `riviera-review-overlay`
+and pull the SonarCloud new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Ordering + rotation, operator side (red → green) | ✅ | `d5fa2e0` |
 | 1 — Same for the customer side + the two rotation ITs | ✅ | this commit |
-| 2 — Runbook correction + follow-up issue for the deferred siblings | ⏳ | |
+| 2 — Runbook correction + follow-up issue for the deferred siblings | ✅ | `066fe01` (issue #357 filed) |
 
 **Local verification note:** Docker is absent in this cloud session, so every
 `@EnabledIfDockerAvailable` IT (AC-1, AC-2) **skips locally** — the PR's CI run is the gate for
