@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Riviera Platform Admin console — design canvas page.
+
+  Porcelain glass, matching riviera-operator-console-v2.dc.html (the admin surface is operator-side
+  chrome, not tourist chrome). Demo logic only: fake data, fake decisions. Look/layout/copy is the
+  spec; behaviour stays server-side.
+
+  Every screen here is backed by a shipped endpoint — nothing invented:
+
+    Approvals   GET  /api/admin/operators                 (#115 S6)   ROLE_ADMIN
+                POST /api/admin/operators/{id}/approve
+                POST /api/admin/operators/{id}/reject
+    Operators   GET  /api/admin/operators/accounts        (#128)      ROLE_ADMIN
+                POST /api/admin/operators/{id}/suspend    -> edge revokes that principal's sessions
+                POST /api/admin/operators/{id}/reinstate  -> restores access, NOT the old sessions
+    Privacy     POST /api/admin/erasure                   (#101 D5)   ROLE_ADMIN, always 204
+
+  The Commissions tab has NO backend at all today — it is the sharpest gap this console exposes:
+
+    - Commission is settable ONLY AT CREATION. NewVenueCommand/CreateVenueRequest take commissionBps;
+      the owner-asserted profile PATCH treats it as DISPLAY-ONLY (VenueProfileResponse: "commissionBps
+      and payoutCurrency are display-only"; O8 #177 decided read-only for the operator on purpose).
+      So today there is no way to change a venue's rate after creation — not by the operator, not by
+      the admin, not by anyone. Getting a rate wrong at onboarding is currently permanent.
+    - There is also no platform-wide venue read. GET /api/venues is the anonymous discovery read (no
+      commission), GET /api/venues/{id}/profile is owner-asserted and OPERATOR-gated, and
+      GET /api/venues/mine is operator-scoped (S9 #277). The admin cannot list venues with their rates.
+    - So this tab needs two new ADMIN endpoints: a venues-with-commission list, and a rate write.
+      Basis points are the stored unit (exact integer, invariant #5) — the editor takes a percent for
+      human sanity but the wire value is bps, 0..10000, mirroring venue_commission_bps_check.
+
+  The rate change is FORWARD-ONLY, and the reason is invariant #9: a payout-ledger entry persists its
+  own commissionMinor at accrual, so past entries keep the rate they were accrued at and no repricing
+  of history is possible. One inconsistency the implementing slice MUST resolve, found while drawing
+  this: DailyTakingsService reads rates.commissionBps(venueId) LIVE at query time, so the operator
+  console's takings strip would re-split PAST days at the NEW rate while the ledger for those same days
+  keeps the old one. The ledger is right; the view needs the rate that applied on that date.
+
+  Venue CREATION is deliberately NOT here. An operator creates its own venue (creator-owns-on-create,
+  #115) and #278 folds that into the operator console; POST /api/venues owns-to-the-caller, so an admin
+  creating one would own it. This tab manages the rate on venues that already exist.
+
+  The Payouts tab is the ONE screen here that is ahead of the code — deliberately. It designs
+  ADR-0009 decision 4 *phase 2*: a scheduled job pays each venue's accrued net the day after the
+  booking's SERVICE DATE over the Paysera Transfer API (the Airbnb/Booking.com shape), behind a new
+  driven settlement port in the payout module. What ships today is phase 1 — weekly ISO-week batches
+  (PeriodKey "IYYY-Www") generated and marked by hand:
+
+                POST  /api/admin/payout-batches?period=  (#12 U9)  ROLE_OPERATOR
+                GET   /api/admin/payout-batches?period=
+                PATCH /api/admin/payout-batches/{id}     DRAFT -> REPORTED -> SETTLED
+
+  So this tab implies, and the implementing slice must decide:
+    1. PeriodKey becomes a SERVICE DAY, not an ISO week (Europe/Tirane, invariant #6). Weekly batches
+       either go away or become a reporting rollup over daily runs. New migration either way.
+    2. The batch lifecycle changes shape. DRAFT/REPORTED/SETTLED describes a human sending a bank file;
+       an automated run needs a per-venue TRANSFER state (scheduled / sent / paid / failed / held),
+       because the admin's job stops being "send the money" and becomes "fix the ones that bounced".
+    3. /api/admin/payout-batches is gated to ROLE_OPERATOR today, not ROLE_ADMIN. Putting settlement on
+       an admin-only page implies tightening that matcher.
+    4. A venue with no EUR IBAN on file cannot be paid. Nothing models that today. Held-and-rolled-into-
+       the-next-run is this design's answer; the alternative (block the venue from selling) is worse.
+
+  What must NOT change (ADR-0009): payout is never released before the service date has passed — that
+  is what makes clawback impossible, since refunds can only ever happen while the money is still in the
+  platform account. EUR only, no FX anywhere. Integer minor units (invariant #5).
+
+  Suspend/reinstate + approve/reject are the shipped /admin page (frontend/src/app/admin); this design
+  keeps its inline-confirm-in-place decision and adds the surrounding shell.
+-->
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  @keyframes rivFade{from{opacity:0}to{opacity:1}}
+  @keyframes rivPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+
+  /* ------------------------------------------------------------------ *
+   * Responsive layer.
+   *
+   * The rest of this file is inline-styled (design-canvas convention), so
+   * every override below needs !important to out-rank it. Two breakpoints:
+   * 900px drops the side column, 720px is the phone layout.
+   * ------------------------------------------------------------------ */
+
+  @media (max-width: 900px) {
+    .riv-two-col { grid-template-columns: 1fr !important; }
+  }
+
+  @media (max-width: 720px) {
+    .riv-main { padding: 16px 14px 64px !important; }
+    .riv-gate { padding: 40px 16px !important; }
+    .riv-header-bar { padding: 11px 14px !important; gap: 10px !important; }
+    .riv-header-id { font-size: 12px !important; }
+    .riv-panel { padding: 16px 14px 14px !important; border-radius: 20px !important; }
+
+    .riv-stats { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+    .riv-stat { padding: 12px 14px !important; }
+
+    /* Tabs become an edge-to-edge scroll strip rather than wrapping to 2 rows. */
+    .riv-tabs {
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin: 16px -14px 14px !important;
+      padding: 0 14px !important;
+    }
+    .riv-tabs::-webkit-scrollbar { display: none; }
+    .riv-tabs button { flex: 0 0 auto; }
+
+    /* List rows stack: text block over full-width actions. */
+    .riv-row { flex-direction: column !important; align-items: stretch !important; }
+    .riv-row > button { width: 100% !important; padding-top: 12px !important; padding-bottom: 12px !important; }
+    .riv-row-actions { display: flex !important; width: 100% !important; flex-wrap: wrap !important; }
+    .riv-row-actions button { flex: 1 1 auto !important; padding-top: 12px !important; padding-bottom: 12px !important; }
+    /* The suspend question takes its own line so the two buttons aren't squeezed beside it. */
+    .riv-row-actions > span { flex: 1 0 100% !important; }
+
+    .riv-payout-head { flex-direction: column !important; }
+    .riv-daypick { width: 100% !important; justify-content: center !important; }
+    .riv-run-strip { align-items: flex-start !important; }
+    .riv-run-total { margin-left: 0 !important; }
+
+    /* The timeline reads as a 2x2 grid; the arrows only make sense in a line. */
+    .riv-tl-arrow { display: none !important; }
+    .riv-tl-step { flex: 1 1 44% !important; }
+
+    /* The payout table becomes one card per venue, each figure labelled. */
+    .riv-table-head { display: none !important; }
+    .riv-tr, .riv-tr-total {
+      grid-template-columns: 1fr 1fr !important;
+      row-gap: 12px !important;
+      padding: 14px !important;
+    }
+    .riv-c-venue { grid-column: 1 / -1 !important; }
+    .riv-c-sets, .riv-c-gross, .riv-c-comm, .riv-c-net,
+    .riv-c-chip, .riv-c-ref,
+    .riv-k-owner, .riv-k-rate, .riv-k-changed, .riv-k-action { text-align: left !important; }
+    .riv-k-owner::before, .riv-k-rate::before, .riv-k-changed::before,
+    .riv-c-sets::before, .riv-c-gross::before, .riv-c-comm::before, .riv-c-net::before {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(12,42,51,0.45);
+      margin-bottom: 3px;
+    }
+    .riv-c-sets::before { content: "Sets"; }
+    .riv-c-gross::before { content: "Gross"; }
+    .riv-c-comm::before { content: "Commission"; }
+    .riv-c-net::before { content: "Net"; }
+    .riv-k-owner::before { content: "Owner"; }
+    .riv-k-rate::before { content: "Commission"; }
+    .riv-k-changed::before { content: "Last changed"; }
+    .riv-c-ref button, .riv-k-action button { width: 100% !important; padding-top: 11px !important; padding-bottom: 11px !important; }
+  }
+</style>
+</helmet>
+
+<div data-screen-label="Admin console" style="min-height:100vh;position:relative;font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif;color:#0a2a33;-webkit-font-smoothing:antialiased;">
+
+  <div style="position:fixed;inset:0;z-index:0;overflow:hidden;background:radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255,255,255,0) 54%), radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238,246,248,0) 46%), radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207,234,242,0) 60%), linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);"></div>
+
+  <div style="position:relative;z-index:1;">
+
+  <header style="position:sticky;top:0;z-index:20;background:rgba(255,255,255,0.13);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid rgba(255,255,255,0.22);box-shadow:0 8px 30px rgba(6,38,52,0.14);">
+    <div class="riv-header-bar" style="width:100%;max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 34% 30%, #ffe6a3, #f0aa2e 70%);box-shadow:0 0 0 4px rgba(255,255,255,0.18),0 4px 14px rgba(240,170,46,0.5);display:block;"></span>
+        <span style="display:flex;flex-direction:column;line-height:1;">
+          <span style="font-size:19px;font-weight:700;letter-spacing:-0.01em;color:#0a2a33;">Riviera <span style="font-weight:500;opacity:.7;">Admin</span></span>
+          <span style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(12,42,51,0.5);margin-top:4px;">Platform operations</span>
+        </span>
+      </div>
+      <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span class="riv-header-id" style="font-size:13px;color:rgba(12,42,51,0.6);">Signed in as <strong style="color:#0a2a33;">{{ adminName }}</strong><sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}"><span style="margin-left:7px;display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a4f5e;background:rgba(43,184,212,0.16);border:1px solid rgba(14,138,168,0.35);border-radius:999px;padding:2px 8px;">Admin</span></sc-if></span>
+          <a href="riviera-operator-console-v2.dc.html" style="font-size:13px;font-weight:600;color:#0a4f5e;text-decoration:none;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.75);border-radius:999px;padding:7px 15px;">Operator console &rarr;</a>
+          <button onClick="{{ onSignOut }}" style="font:inherit;font-size:13px;font-weight:600;color:#0a2a33;cursor:pointer;background:rgba(12,42,51,0.05);border:1px solid rgba(12,42,51,0.14);border-radius:999px;padding:7px 15px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);">Sign out</button>
+        </div>
+      </sc-if>
+    </div>
+  </header>
+
+  <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Admin — signed out" class="riv-gate" style="width:100%;max-width:440px;margin:0 auto;padding:72px 24px;">
+    <section style="border-radius:28px;background:rgba(255,255,255,0.6);-webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);border:1px solid rgba(255,255,255,0.65);box-shadow:0 18px 50px rgba(7,42,58,0.3),inset 0 1px 0 rgba(255,255,255,0.85);padding:34px 30px 30px;text-align:center;animation:rivPop .3s ease;">
+      <div style="width:60px;height:60px;border-radius:50%;background:rgba(43,184,212,0.16);border:1px solid rgba(255,255,255,0.6);color:#0a6e85;display:flex;align-items:center;justify-content:center;font-size:27px;margin:0 auto 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">&#128274;</div>
+      <h1 style="font-weight:700;font-size:25px;letter-spacing:-0.02em;margin:0 0 8px;">Admin sign-in required</h1>
+      <p style="font-size:14px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0 0 22px;">Sign in with a platform-admin account on the shared Riviera page. The console self-gates for UX only &mdash; the <code style="font-size:12.5px;background:rgba(12,42,51,0.06);border-radius:5px;padding:1px 5px;">/api/admin/**</code> role gate is what actually enforces access.</p>
+      <a href="riviera-sign-in.dc.html" style="display:block;text-decoration:none;border:1px solid rgba(255,255,255,0.4);border-radius:16px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font-weight:700;font-size:15px;padding:14px;box-shadow:0 10px 26px rgba(11,120,150,0.5),inset 0 1px 0 rgba(255,255,255,0.5);">Go to Riviera sign-in &rarr;</a>
+      <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(12,42,51,0.12);display:flex;flex-direction:column;gap:9px;">
+        <button onClick="{{ onDemoAdmin }}" style="font:inherit;font-size:13.5px;font-weight:600;color:#0a4f5e;background:rgba(255,255,255,0.55);border:1.5px solid rgba(255,255,255,0.7);border-radius:14px;padding:11px 22px;cursor:pointer;">Preview as platform admin</button>
+        <button onClick="{{ onDemoOperator }}" style="font:inherit;font-size:13px;font-weight:600;color:rgba(12,42,51,0.6);background:transparent;border:0;padding:2px;cursor:pointer;text-decoration:underline;">Preview the no-access state (plain operator)</button>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ forbidden }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Admin — no access" class="riv-gate" style="width:100%;max-width:460px;margin:0 auto;padding:72px 24px;">
+    <section style="border-radius:28px;background:rgba(255,255,255,0.6);-webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);border:1px solid rgba(255,255,255,0.65);box-shadow:0 18px 50px rgba(7,42,58,0.3),inset 0 1px 0 rgba(255,255,255,0.85);padding:34px 30px 30px;text-align:center;animation:rivPop .3s ease;">
+      <div style="width:60px;height:60px;border-radius:50%;background:rgba(240,170,46,0.2);border:1px solid rgba(255,255,255,0.6);color:#a86a12;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">&#9888;</div>
+      <h1 style="font-weight:700;font-size:24px;letter-spacing:-0.02em;margin:0 0 8px;">You don&rsquo;t have access to this page</h1>
+      <p style="font-size:14px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0 0 22px;">Your account is signed in, but platform administration needs the admin role. Owning a venue does not grant it.</p>
+      <a href="riviera-operator-console-v2.dc.html" style="display:block;text-decoration:none;border:1.5px solid rgba(255,255,255,0.7);border-radius:16px;background:rgba(255,255,255,0.5);color:#0a4f5e;font-weight:600;font-size:14.5px;padding:13px;">Back to your operator console</a>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ showConsole }}" hint-placeholder-val="{{ true }}">
+  <main class="riv-main" style="width:100%;max-width:1180px;margin:0 auto;padding:22px 24px 80px;">
+
+    <div class="riv-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px;">
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Awaiting approval</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#a86a12;margin-top:3px;">{{ statPending }}</div>
+      </div>
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Active operators</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statActive }}</div>
+      </div>
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Suspended</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statSuspended }}</div>
+      </div>
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Venues</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a2a33;margin-top:3px;">{{ statVenues }}</div>
+        <span style="font-size:11.5px;color:rgba(12,42,51,0.5);">avg commission {{ statAvgCommission }}</span>
+      </div>
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Releasing tomorrow</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:#0a6e85;margin-top:3px;">{{ statReleasing }}</div>
+        <span style="font-size:11.5px;color:rgba(12,42,51,0.5);">{{ statReleasingCaption }}</span>
+      </div>
+      <div class="riv-stat" style="border-radius:20px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.55);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);padding:14px 18px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.5);">Transfers to fix</span>
+        <div style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:{{ statFixColor }};margin-top:3px;">{{ statToFix }}</div>
+        <span style="font-size:11.5px;color:rgba(12,42,51,0.5);">{{ statToFixCaption }}</span>
+      </div>
+    </div>
+
+    <nav class="riv-tabs" style="display:flex;gap:8px;margin:20px 0 18px;flex-wrap:wrap;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}"><button onClick="{{ t.onClick }}" style="display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border-radius:999px;padding:9px 18px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#0a4f5e;background:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.95);box-shadow:0 6px 18px rgba(7,42,58,0.25),inset 0 1px 0 #fff;">{{ t.label }}<sc-if value="{{ t.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:linear-gradient(180deg,#f0aa2e,#d9861a);color:#fff;font-size:11px;font-weight:700;">{{ t.badge }}</span></sc-if></button></sc-if>
+        <sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ false }}"><button onClick="{{ t.onClick }}" style="display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border-radius:999px;padding:9px 18px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:rgba(12,42,51,0.65);background:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.7);">{{ t.label }}<sc-if value="{{ t.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:linear-gradient(180deg,#f0aa2e,#d9861a);color:#fff;font-size:11px;font-weight:700;">{{ t.badge }}</span></sc-if></button></sc-if>
+      </sc-for>
+    </nav>
+
+    <sc-if value="{{ notice }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="margin:0 0 16px;border-radius:16px;background:rgba(43,184,212,0.14);border:1px solid rgba(14,138,168,0.35);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);padding:12px 16px;font-size:13.5px;color:#0a4f5e;animation:rivFade .2s ease;">{{ notice }}</div>
+    </sc-if>
+
+    <!-- ============================== APPROVALS ============================== -->
+    <sc-if value="{{ tabApprovals }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Approvals" class="riv-two-col" style="display:grid;grid-template-columns:minmax(420px,1fr) minmax(260px,320px);gap:18px;align-items:start;">
+
+      <section class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 20px 18px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px;">
+          <h2 style="font-size:16px;font-weight:700;margin:0;">Awaiting approval</h2>
+          <span style="font-size:12.5px;color:rgba(12,42,51,0.55);">{{ pendingCountLabel }}</span>
+        </div>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 14px;">A self-registered operator cannot sign in until it is approved. Approving activates the account; the operator then creates its venue and owns it from creation.</p>
+
+        <sc-if value="{{ pendingEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:18px;border:1px dashed rgba(12,42,51,0.22);background:rgba(255,255,255,0.4);padding:28px 20px;text-align:center;">
+            <div style="font-size:26px;margin-bottom:8px;">&#9989;</div>
+            <p style="margin:0;font-size:14px;font-weight:600;color:#0a2a33;">No operators are awaiting approval.</p>
+            <p style="margin:6px 0 0;font-size:12.5px;color:rgba(12,42,51,0.55);">New registrations land here as soon as they are submitted.</p>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ pendingAny }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ pending }}" as="p" hint-placeholder-count="3">
+            <div class="riv-row" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-radius:16px;background:rgba(255,255,255,0.62);border:1px solid rgba(255,255,255,0.8);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);padding:14px 16px;">
+              <div style="min-width:0;">
+                <div style="font-size:15.5px;font-weight:700;color:#0a2a33;">{{ p.username }}</div>
+                <div style="font-size:13px;color:rgba(12,42,51,0.6);margin-top:2px;">{{ p.contactEmail }}</div>
+                <div style="font-size:11.5px;color:rgba(12,42,51,0.45);margin-top:4px;">Registered {{ p.registeredAgo }}</div>
+              </div>
+              <div class="riv-row-actions" style="display:flex;gap:8px;">
+                <button onClick="{{ p.onApprove }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:12px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:10px 18px;cursor:pointer;box-shadow:0 8px 20px rgba(11,120,150,0.4),inset 0 1px 0 rgba(255,255,255,0.5);">Approve</button>
+                <button onClick="{{ p.onReject }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.6);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:10px 18px;cursor:pointer;">Reject</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+      </section>
+
+      <aside class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px;">
+        <h2 style="font-size:14.5px;font-weight:700;margin:0 0 10px;">What a decision does</h2>
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.62);">
+          <div><strong style="color:#0a2a33;">Approve</strong> &mdash; the account becomes active and can sign in. Its first venue is owned by it from the moment it is created.</div>
+          <div><strong style="color:#0a2a33;">Reject</strong> &mdash; the account stays unable to sign in. Rejection is recorded, not deleted.</div>
+          <div style="padding-top:12px;border-top:1px solid rgba(12,42,51,0.1);">Every decision re-reads the queue from the server. If someone else decided the same registration first, the row simply settles to the truth &mdash; you get a notice, never a wrong result.</div>
+        </div>
+      </aside>
+
+    </div>
+    </sc-if>
+
+    <!-- ============================== OPERATORS ============================== -->
+    <sc-if value="{{ tabOperators }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Operator accounts" class="riv-two-col" style="display:grid;grid-template-columns:minmax(420px,1fr) minmax(260px,320px);gap:18px;align-items:start;">
+
+      <section class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 20px 18px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px;">
+          <h2 style="font-size:16px;font-weight:700;margin:0;">Operator accounts</h2>
+          <span style="font-size:12.5px;color:rgba(12,42,51,0.55);">{{ accountsCountLabel }}</span>
+        </div>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 14px;">Suspending an operator signs it out on every device and blocks it from signing in again. Reinstating restores access, but not the old sessions.</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="4">
+            <div class="riv-row" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-radius:16px;background:rgba(255,255,255,0.62);border:1px solid rgba(255,255,255,0.8);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);padding:14px 16px;">
+              <div style="min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:15.5px;font-weight:700;color:#0a2a33;">{{ a.username }}</span>
+                  <sc-if value="{{ a.isPlatformAdmin }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a4f5e;background:rgba(43,184,212,0.16);border:1px solid rgba(14,138,168,0.35);border-radius:999px;padding:2px 8px;">Admin</span></sc-if>
+                  <sc-if value="{{ a.suspended }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#b3362b;background:rgba(179,54,43,0.1);border:1px solid rgba(179,54,43,0.4);border-radius:999px;padding:2px 8px;">Suspended</span></sc-if>
+                </div>
+                <div style="font-size:13px;color:rgba(12,42,51,0.6);margin-top:3px;">{{ a.contactEmail }}</div>
+              </div>
+
+              <sc-if value="{{ a.isSelf }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:13px;color:rgba(12,42,51,0.5);">This is you</span>
+              </sc-if>
+              <sc-if value="{{ a.canReinstate }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ a.onReinstate }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.6);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:10px 18px;cursor:pointer;">Reinstate</button>
+              </sc-if>
+              <sc-if value="{{ a.confirming }}" hint-placeholder-val="{{ false }}">
+                <div class="riv-row-actions" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">
+                  <span style="font-size:13.5px;color:#0a2a33;">Suspend {{ a.username }}?</span>
+                  <button onClick="{{ a.onSuspend }}" style="border:1px solid rgba(179,54,43,0.6);border-radius:12px;background:rgba(179,54,43,0.08);color:#b3362b;font:inherit;font-weight:700;font-size:13.5px;padding:10px 18px;cursor:pointer;">Suspend</button>
+                  <button onClick="{{ a.onCancelConfirm }}" style="border:0;background:transparent;color:rgba(12,42,51,0.6);font:inherit;font-weight:600;font-size:13.5px;padding:10px 6px;cursor:pointer;">Cancel</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ a.canSuspend }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ a.onAskSuspend }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.6);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:10px 18px;cursor:pointer;">Suspend</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <aside class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px;">
+        <h2 style="font-size:14.5px;font-weight:700;margin:0 0 10px;">Suspension rules</h2>
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.62);">
+          <div>Confirmation happens <strong style="color:#0a2a33;">in the row</strong>, not in a modal &mdash; the action stays next to the account it affects.</div>
+          <div>A suspended account keeps its venues and its ledger history. Nothing is deleted; the door is closed, not burned.</div>
+          <div>You cannot suspend the account you are signed in with. The server refuses it outright, so the button is never offered.</div>
+          <div style="padding-top:12px;border-top:1px solid rgba(12,42,51,0.1);">Venue-scoped access was already safe &mdash; ownership resolves for active accounts only. Suspension additionally cuts the live sessions.</div>
+        </div>
+      </aside>
+
+    </div>
+    </sc-if>
+
+    <!-- ============================== COMMISSIONS ============================== -->
+    <sc-if value="{{ tabCommissions }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Venue commissions" style="max-width:1000px;">
+
+      <section class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 20px 18px;">
+
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px;">
+          <h2 style="font-size:16px;font-weight:700;margin:0;">Venue commissions</h2>
+          <span style="font-size:12.5px;color:rgba(12,42,51,0.55);">{{ venuesCountLabel }}</span>
+        </div>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 16px;">The platform sets each venue&rsquo;s rate &mdash; the operator sees it, but cannot change it. A new rate applies to bookings made from now on; money already accrued keeps the rate it was accrued at.</p>
+
+        <div class="riv-table" style="border-radius:16px;border:1px solid rgba(12,42,51,0.12);overflow:hidden;background:rgba(255,255,255,0.5);">
+          <div class="riv-table-head" style="display:grid;grid-template-columns:1fr 150px 130px 130px 110px;gap:8px;padding:11px 16px;background:rgba(12,42,51,0.04);font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(12,42,51,0.55);">
+            <span>Venue</span><span>Owner</span><span style="text-align:right;">Commission</span><span style="text-align:right;">Last changed</span><span style="text-align:right;">Action</span>
+          </div>
+          <sc-for list="{{ venues }}" as="v" hint-placeholder-count="5">
+            <div class="riv-tr" style="display:grid;grid-template-columns:1fr 150px 130px 130px 110px;gap:8px;align-items:center;padding:13px 16px;border-top:1px solid rgba(12,42,51,0.08);font-size:13.5px;background:{{ v.rowBg }};">
+              <span class="riv-c-venue" style="font-weight:600;color:#0a2a33;min-width:0;">{{ v.name }}<span style="display:block;font-size:11.5px;font-weight:400;color:rgba(12,42,51,0.45);margin-top:2px;">{{ v.place }}</span></span>
+              <span class="riv-k-owner" style="color:rgba(12,42,51,0.7);min-width:0;">{{ v.owner }}<sc-if value="{{ v.adminHeld }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a4f5e;margin-top:2px;">admin-held</span></sc-if></span>
+              <span class="riv-k-rate" style="text-align:right;font-weight:700;color:#0a2a33;">{{ v.rate }}<span style="display:block;font-size:11px;font-weight:400;color:rgba(12,42,51,0.45);margin-top:2px;">{{ v.bps }} bps</span></span>
+              <span class="riv-k-changed" style="text-align:right;color:rgba(12,42,51,0.55);font-size:12.5px;">{{ v.changed }}</span>
+              <span class="riv-k-action" style="text-align:right;">
+                <sc-if value="{{ v.idle }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ v.onEdit }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:11px;background:rgba(255,255,255,0.7);color:#0a2a33;font:inherit;font-weight:600;font-size:13px;padding:8px 16px;cursor:pointer;">Edit</button>
+                </sc-if>
+                <sc-if value="{{ v.editing }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12.5px;font-weight:600;color:#0a6e85;">Editing</span>
+                </sc-if>
+              </span>
+            </div>
+
+            <sc-if value="{{ v.editing }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:0 16px 16px;background:rgba(43,184,212,0.06);border-bottom:1px solid rgba(12,42,51,0.08);">
+                <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding-top:14px;">
+                  <label style="display:flex;flex-direction:column;gap:6px;">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">New rate (%)</span>
+                    <input type="number" min="0" max="100" step="0.5" value="{{ draftPct }}" onChange="{{ onDraftPct }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.85);border-radius:12px;padding:10px 12px;width:130px;"/>
+                  </label>
+                  <span style="font-size:12.5px;color:rgba(12,42,51,0.55);padding-bottom:12px;">stored as <strong style="color:#0a2a33;">{{ draftBps }} bps</strong> &middot; was {{ v.rate }}</span>
+                  <span style="flex:1;"></span>
+                  <div class="riv-row-actions" style="display:flex;gap:8px;padding-bottom:1px;">
+                    <button onClick="{{ onSaveRate }}" style="border:1px solid rgba(255,255,255,0.4);border-radius:12px;background:linear-gradient(180deg,#2bb8d4,#0e8aa8);color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:11px 20px;cursor:pointer;box-shadow:0 8px 20px rgba(11,120,150,0.4),inset 0 1px 0 rgba(255,255,255,0.5);">Save rate</button>
+                    <button onClick="{{ onCancelRate }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.7);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:11px 20px;cursor:pointer;">Cancel</button>
+                  </div>
+                </div>
+                <sc-if value="{{ rateError }}" hint-placeholder-val="{{ false }}">
+                  <p role="alert" style="margin:10px 0 0;font-size:13px;font-weight:600;color:#b3362b;">{{ rateError }}</p>
+                </sc-if>
+                <p style="margin:10px 0 0;font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.6);">Applies to bookings made from the moment you save. The {{ venueAccruedLabel }} already accrued for this venue keeps the old rate &mdash; nothing is repriced.</p>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+      </section>
+
+      <section class="riv-panel" style="margin-top:16px;border-radius:24px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 20px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">What a rate change does</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">It changes the split on bookings taken from now on. Every payout-ledger entry already written keeps the commission it was accrued at, so history cannot be repriced &mdash; a venue&rsquo;s past statements stay exactly as they were sent.</p>
+          </div>
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">Why the operator can&rsquo;t set it</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">Commission is the commercial agreement between the platform and the venue, not a venue setting. The operator console shows the rate so there is no mystery about the split &mdash; it just doesn&rsquo;t offer a way to move it.</p>
+          </div>
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">Percent in, basis points out</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">The rate is stored as whole basis points so the split stays exact-integer arithmetic. The field takes a percent because that is how the deal is described; the value actually saved is shown next to it.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+    </sc-if>
+
+    <!-- ============================== PAYOUTS ============================== -->
+    <sc-if value="{{ tabPayouts }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Daily payouts" style="max-width:1080px;">
+
+      <section class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 20px 18px;">
+
+        <div class="riv-payout-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px;">
+          <div style="max-width:620px;">
+            <h2 style="font-size:16px;font-weight:700;margin:0 0 3px;">Daily payouts</h2>
+            <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0;">Each venue&rsquo;s takings for a service day are transferred the next morning, commission already deducted. The run goes out on its own &mdash; what&rsquo;s left for you is the transfers that didn&rsquo;t land.</p>
+          </div>
+          <div class="riv-daypick" style="display:flex;align-items:center;gap:8px;">
+            <button onClick="{{ onPrevDay }}" aria-label="Previous service day" style="width:34px;height:34px;border-radius:11px;border:1px solid rgba(12,42,51,0.16);background:rgba(255,255,255,0.65);color:#0a2a33;font:inherit;font-size:15px;cursor:pointer;">&#8249;</button>
+            <span style="min-width:150px;text-align:center;">
+              <span style="display:block;font-size:14px;font-weight:700;color:#0a2a33;">{{ runDayLabel }}</span>
+              <span style="display:block;font-size:11px;color:rgba(12,42,51,0.5);margin-top:1px;">service day</span>
+            </span>
+            <button onClick="{{ onNextDay }}" aria-label="Next service day" style="width:34px;height:34px;border-radius:11px;border:1px solid rgba(12,42,51,0.16);background:rgba(255,255,255,0.65);color:#0a2a33;font:inherit;font-size:15px;cursor:pointer;">&#8250;</button>
+          </div>
+        </div>
+
+        <sc-if value="{{ runExists }}" hint-placeholder-val="{{ true }}">
+        <div class="riv-run-strip" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-radius:18px;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.8);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);padding:14px 16px;margin-bottom:16px;">
+          <span style="display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border-radius:999px;padding:4px 12px;color:{{ runChipInk }};background:{{ runChipBg }};border:1px solid {{ runChipBorder }};">{{ runStatusLabel }}</span>
+          <span style="font-size:13.5px;color:rgba(12,42,51,0.7);">{{ runHeadline }}</span>
+          <span class="riv-run-total" style="margin-left:auto;font-size:13.5px;color:rgba(12,42,51,0.55);">Run total <strong style="color:#0a2a33;font-size:15px;">{{ runTotal }}</strong> to {{ runVenueCount }}</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          <sc-for list="{{ timeline }}" as="tl" hint-placeholder-count="4">
+            <sc-if value="{{ tl.done }}" hint-placeholder-val="{{ true }}">
+              <span class="riv-tl-step" style="display:inline-flex;flex-direction:column;gap:2px;border-radius:13px;background:rgba(43,184,212,0.14);border:1px solid rgba(14,138,168,0.3);padding:8px 13px;">
+                <span style="font-size:12.5px;font-weight:700;color:#0a4f5e;">{{ tl.label }}</span>
+                <span style="font-size:11px;color:rgba(12,42,51,0.55);">{{ tl.when }}</span>
+              </span>
+            </sc-if>
+            <sc-if value="{{ tl.pending }}" hint-placeholder-val="{{ false }}">
+              <span class="riv-tl-step" style="display:inline-flex;flex-direction:column;gap:2px;border-radius:13px;background:rgba(255,255,255,0.45);border:1px dashed rgba(12,42,51,0.22);padding:8px 13px;">
+                <span style="font-size:12.5px;font-weight:600;color:rgba(12,42,51,0.6);">{{ tl.label }}</span>
+                <span style="font-size:11px;color:rgba(12,42,51,0.45);">{{ tl.when }}</span>
+              </span>
+            </sc-if>
+            <sc-if value="{{ tl.hasNext }}" hint-placeholder-val="{{ true }}"><span class="riv-tl-arrow" style="color:rgba(12,42,51,0.3);font-size:14px;">&rarr;</span></sc-if>
+          </sc-for>
+        </div>
+
+        <div style="border-radius:16px;border:1px solid rgba(12,42,51,0.12);overflow:hidden;background:rgba(255,255,255,0.5);">
+          <div class="riv-table-head" style="display:grid;grid-template-columns:1fr 74px 96px 104px 104px 108px 156px;gap:8px;padding:11px 16px;background:rgba(12,42,51,0.04);font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(12,42,51,0.55);">
+            <span>Venue</span><span style="text-align:right;">Sets</span><span style="text-align:right;">Gross</span><span style="text-align:right;">Commission</span><span style="text-align:right;">Net</span><span style="text-align:center;">Transfer</span><span style="text-align:right;">Reference</span>
+          </div>
+          <sc-for list="{{ runRows }}" as="r" hint-placeholder-count="5">
+            <div class="riv-tr" style="display:grid;grid-template-columns:1fr 74px 96px 104px 104px 108px 156px;gap:8px;align-items:center;padding:13px 16px;border-top:1px solid rgba(12,42,51,0.08);font-size:13.5px;background:{{ r.rowBg }};">
+              <span class="riv-c-venue" style="font-weight:600;color:#0a2a33;min-width:0;">{{ r.venueName }}<span style="display:block;font-size:11.5px;font-weight:400;color:rgba(12,42,51,0.45);margin-top:2px;">{{ r.iban }}</span></span>
+              <span class="riv-c-sets" style="text-align:right;color:rgba(12,42,51,0.6);">{{ r.sets }}</span>
+              <span class="riv-c-gross" style="text-align:right;color:rgba(12,42,51,0.7);">{{ r.gross }}</span>
+              <span class="riv-c-comm" style="text-align:right;color:rgba(12,42,51,0.5);">&minus;{{ r.commission }}</span>
+              <span class="riv-c-net" style="text-align:right;font-weight:700;color:#0a2a33;">{{ r.net }}</span>
+              <span class="riv-c-chip" style="text-align:center;"><span style="display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border-radius:999px;padding:3px 10px;color:{{ r.chipInk }};background:{{ r.chipBg }};border:1px solid {{ r.chipBorder }};">{{ r.statusLabel }}</span></span>
+              <span class="riv-c-ref" style="text-align:right;">
+                <sc-if value="{{ r.hasRef }}" hint-placeholder-val="{{ true }}"><span style="font-size:11.5px;color:rgba(12,42,51,0.45);font-variant-numeric:tabular-nums;">{{ r.reference }}</span></sc-if>
+                <sc-if value="{{ r.needsAction }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.onAction }}" style="border:1px solid {{ r.actionBorder }};border-radius:11px;background:rgba(255,255,255,0.75);color:{{ r.actionInk }};font:inherit;font-weight:600;font-size:12.5px;padding:7px 12px;cursor:pointer;">{{ r.actionLabel }}</button></sc-if>
+              </span>
+            </div>
+            <sc-if value="{{ r.hasProblem }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:0 16px 12px;font-size:12.5px;line-height:1.45;color:{{ r.problemInk }};background:{{ r.rowBg }};">{{ r.problem }}</div>
+            </sc-if>
+          </sc-for>
+          <div class="riv-tr-total" style="display:grid;grid-template-columns:1fr 74px 96px 104px 104px 108px 156px;gap:8px;align-items:center;padding:13px 16px;border-top:1px solid rgba(12,42,51,0.14);background:rgba(12,42,51,0.03);font-size:13.5px;">
+            <span class="riv-c-venue" style="font-weight:700;color:#0a2a33;">{{ runDayLabel }} total</span>
+            <span class="riv-c-sets" style="text-align:right;color:rgba(12,42,51,0.6);">{{ totalSets }}</span>
+            <span class="riv-c-gross" style="text-align:right;color:rgba(12,42,51,0.7);">{{ totalGross }}</span>
+            <span class="riv-c-comm" style="text-align:right;color:rgba(12,42,51,0.5);">&minus;{{ totalCommission }}</span>
+            <span class="riv-c-net" style="text-align:right;font-weight:700;color:#0a6e85;">{{ runTotal }}</span>
+            <span></span><span></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:rgba(12,42,51,0.55);">
+          <span><strong style="color:#0a2a33;">Scheduled</strong> &mdash; the day isn&rsquo;t over; the amount can still move.</span>
+          <span><strong style="color:#0a2a33;">Sent</strong> &mdash; handed to Paysera.</span>
+          <span><strong style="color:#0a2a33;">Paid</strong> &mdash; confirmed in the venue&rsquo;s account.</span>
+          <span><strong style="color:#b3362b;">Failed</strong> / <strong style="color:#a86a12;">Held</strong> &mdash; yours to fix.</span>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ runMissing }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:18px;border:1px dashed rgba(12,42,51,0.22);background:rgba(255,255,255,0.4);padding:34px 20px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#0a2a33;">No payout run for {{ runDayLabel }}.</p>
+            <p style="margin:0;font-size:12.5px;color:rgba(12,42,51,0.55);">Nothing was served that day, so nothing accrued. Runs are only created for days with bookings.</p>
+          </div>
+        </sc-if>
+
+      </section>
+
+      <section class="riv-panel" style="margin-top:16px;border-radius:24px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 20px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">Why the day after, never before</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">Cancellations close the evening before, and a weather refund can only happen on the day itself. Waiting until the service day is over means every refund is still paid out of our own account &mdash; we never have to ask a venue for money back. That is the whole reason the timing looks like this.</p>
+          </div>
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">What you still do by hand</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">Nothing, on a good day. A transfer that bounces &mdash; a wrong IBAN, a closed account &mdash; comes back here to be retried once the venue fixes its details. A venue with no EUR account on file is held and rolls into its next run rather than blocking anyone else&rsquo;s money.</p>
+          </div>
+          <div>
+            <h2 style="font-size:14.5px;font-weight:700;margin:0 0 8px;">Everything is euros</h2>
+            <p style="font-size:12.5px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0;">Guests pay in euros, the ledger is in euros, venues are paid in euros. No conversion happens anywhere in the platform &mdash; a venue that wants lek converts at its own bank, on its own terms.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+    </sc-if>
+
+    <!-- ============================== PRIVACY ============================== -->
+    <sc-if value="{{ tabPrivacy }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Privacy" class="riv-two-col" style="display:grid;grid-template-columns:minmax(360px,520px) minmax(260px,340px);gap:18px;align-items:start;">
+
+      <section class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:20px 20px 18px;">
+        <h2 style="font-size:16px;font-weight:700;margin:0 0 4px;">Erase a data subject</h2>
+        <p style="font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.55);margin:0 0 16px;">For a guest with no account, or an account holder who cannot do it themselves. Contact details are scrubbed in place; the financial records that must be retained stay, without the person attached to them.</p>
+
+        <sc-if value="{{ erasureForm }}" hint-placeholder-val="{{ true }}">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(12,42,51,0.55);">Email address</span>
+            <input type="email" value="{{ erasureEmail }}" onChange="{{ onErasureEmail }}" placeholder="guest@example.com" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.65);border:1px solid rgba(255,255,255,0.8);border-radius:14px;padding:11px 13px;"/>
+          </label>
+          <sc-if value="{{ erasureError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:10px 0 0;font-size:13px;font-weight:600;color:#b3362b;">{{ erasureError }}</p></sc-if>
+          <button onClick="{{ onErasureReview }}" style="margin-top:14px;width:100%;border:1px solid rgba(12,42,51,0.18);border-radius:14px;background:rgba(255,255,255,0.65);color:#0a2a33;font:inherit;font-weight:700;font-size:14.5px;padding:12px;cursor:pointer;">Review erasure request</button>
+        </sc-if>
+
+        <sc-if value="{{ erasureConfirm }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:18px;border:1px solid rgba(179,54,43,0.35);background:rgba(179,54,43,0.06);padding:16px 18px;animation:rivPop .22s ease;">
+            <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#8f2c22;">Erase everything linked to this email?</p>
+            <p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:rgba(12,42,51,0.68);">Name, email and phone become unrecoverable for <strong style="color:#0a2a33;">{{ erasureEmail }}</strong>. Bookings and ledger entries remain as anonymous records. This cannot be undone.</p>
+            <div style="display:flex;gap:9px;flex-wrap:wrap;">
+              <button onClick="{{ onErasureConfirm }}" style="border:1px solid rgba(179,54,43,0.6);border-radius:12px;background:rgba(179,54,43,0.1);color:#8f2c22;font:inherit;font-weight:700;font-size:13.5px;padding:11px 20px;cursor:pointer;">Erase permanently</button>
+              <button onClick="{{ onErasureCancel }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.7);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:11px 20px;cursor:pointer;">Cancel</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ erasureDone }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:18px;border:1px solid rgba(14,138,168,0.35);background:rgba(43,184,212,0.12);padding:18px;animation:rivPop .22s ease;">
+            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#0a4f5e;">Request actioned</p>
+            <p style="margin:0 0 14px;font-size:13px;line-height:1.5;color:rgba(12,42,51,0.68);">Anything held for <strong style="color:#0a2a33;">{{ erasureEmail }}</strong> has been erased. The result is deliberately the same whether or not that email was known to us &mdash; this screen will never tell you which.</p>
+            <button onClick="{{ onErasureReset }}" style="border:1px solid rgba(12,42,51,0.18);border-radius:12px;background:rgba(255,255,255,0.7);color:#0a2a33;font:inherit;font-weight:600;font-size:13.5px;padding:10px 18px;cursor:pointer;">Erase another</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <aside class="riv-panel" style="border-radius:24px;background:rgba(255,255,255,0.5);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px;">
+        <h2 style="font-size:14.5px;font-weight:700;margin:0 0 10px;">What survives an erasure</h2>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;line-height:1.5;color:rgba(12,42,51,0.62);">
+          <div style="display:flex;gap:9px;"><span style="color:#b3362b;font-weight:700;">Erased</span><span>Name, email, phone &mdash; overwritten in place, not deleted rows.</span></div>
+          <div style="display:flex;gap:9px;"><span style="color:#0a6e85;font-weight:700;">Kept</span><span>Bookings, payments, payout ledger entries &mdash; the records we are legally required to retain, now anonymous.</span></div>
+          <div style="padding-top:12px;border-top:1px solid rgba(12,42,51,0.1);">Account holders can erase themselves from their own account page. This screen exists for the people who can&rsquo;t.</div>
+        </div>
+      </aside>
+
+    </div>
+    </sc-if>
+
+  </main>
+  </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900},&quot;startSignedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+class Component extends DCLogic {
+  ADMIN_NAME = 'operator';
+
+  state = {
+    signedIn: true,
+    isAdmin: true,
+    adminName: 'operator',
+    tab: 'approvals',
+
+    pending: [
+      { id: 11, username: 'sereno.beach', contactEmail: 'hello@serenobeach.al', registeredAgo: '2 hours ago' },
+      { id: 12, username: 'kanali.bay', contactEmail: 'info@kanalibay.al', registeredAgo: 'yesterday' },
+      // Decided elsewhere in the meantime — demonstrates the reconcile-from-server path (409 NOT_PENDING).
+      { id: 13, username: 'dhermi.blue', contactEmail: 'ops@dhermiblue.al', registeredAgo: '3 days ago', stale: true },
+    ],
+
+    accounts: [
+      { id: 1, username: 'operator', contactEmail: null, admin: true, suspended: false },
+      { id: 4, username: 'sereno.beach', contactEmail: 'hello@serenobeach.al', admin: false, suspended: false },
+      { id: 5, username: 'livadhi.sun', contactEmail: 'book@livadhisun.al', admin: false, suspended: true },
+      { id: 6, username: 'jale.riviera', contactEmail: 'team@jaleriviera.al', admin: false, suspended: false },
+    ],
+    confirmSuspendId: null,
+
+    // Commission is stored in whole basis points so the split stays exact-integer (invariant #5).
+    venues: [
+      { id: 1, name: 'Sereno Beach Club', place: 'Dhërmi · Himarë', owner: 'sereno.beach', bps: 1500, changed: 'at onboarding', accrued: '€1,284.50' },
+      { id: 2, name: 'Livadhi Sun', place: 'Livadh · Himarë', owner: 'livadhi.sun', bps: 1500, changed: 'at onboarding', accrued: '€640.00' },
+      { id: 3, name: 'Jalë Riviera', place: 'Jalë · Vlorë', owner: 'jale.riviera', bps: 1200, changed: '12 Jul 2026', accrued: '€312.75' },
+      // V29 backfilled every previously-unowned venue to the demoted bootstrap operator (now the admin).
+      { id: 4, name: 'Miramar', place: 'Borsh · Sarandë', owner: 'operator', adminHeld: true, bps: 1500, changed: 'at onboarding', accrued: '€96.00' },
+      { id: 5, name: 'Borsh Beach', place: 'Borsh · Sarandë', owner: 'operator', adminHeld: true, bps: 1800, changed: '3 Jul 2026', accrued: '€51.00' },
+    ],
+    editingVenueId: null,
+    draftPct: '',
+    rateError: '',
+
+    // Service days, oldest first. The stepper walks this list; 07-22 has no run (empty state).
+    days: ['2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'],
+    dayIndex: 2,
+    dayLabels: {
+      '2026-07-22': 'Wed 22 Jul',
+      '2026-07-23': 'Thu 23 Jul',
+      '2026-07-24': 'Fri 24 Jul',
+      '2026-07-25': 'Sat 25 Jul',
+    },
+    runs: {
+      '2026-07-23': {
+        status: 'PAID',
+        releasedAt: 'Fri 24 Jul, 09:00',
+        rows: [
+          { id: 301, venueName: 'Sereno Beach Club', iban: 'AL47 •••• 8741', sets: 14, grossMinor: 56000, status: 'PAID', reference: 'PS-240719-01' },
+          { id: 302, venueName: 'Livadhi Sun', iban: 'AL92 •••• 3306', sets: 8, grossMinor: 28000, status: 'PAID', reference: 'PS-240719-02' },
+          { id: 303, venueName: 'Jalë Riviera', iban: 'AL15 •••• 1188', sets: 5, grossMinor: 17500, status: 'PAID', reference: 'PS-240719-03' },
+        ],
+      },
+      '2026-07-24': {
+        status: 'RELEASED',
+        releasedAt: 'today, 09:00',
+        rows: [
+          { id: 311, venueName: 'Sereno Beach Club', iban: 'AL47 •••• 8741', sets: 12, grossMinor: 48000, status: 'PAID', reference: 'PS-250725-01' },
+          { id: 312, venueName: 'Livadhi Sun', iban: 'AL92 •••• 3306', sets: 7, grossMinor: 25500, status: 'SENT', reference: 'PS-250725-02' },
+          { id: 313, venueName: 'Jalë Riviera', iban: 'AL15 •••• 1188', sets: 4, grossMinor: 14000, status: 'SENT', reference: 'PS-250725-03' },
+          { id: 314, venueName: 'Miramar', iban: 'AL08 •••• 2290', sets: 3, grossMinor: 9000, status: 'FAILED', reference: '',
+            problem: 'Paysera rejected the transfer: the account number is not valid for SEPA. The venue has been emailed; retry once it updates its IBAN.' },
+          { id: 315, venueName: 'Borsh Beach', iban: 'No EUR account on file', sets: 2, grossMinor: 6000, status: 'HELD', reference: '',
+            problem: 'Nowhere to send this yet. It stays accrued and joins the next run once an IBAN is on file — no other venue is delayed by it.' },
+        ],
+      },
+      '2026-07-25': {
+        status: 'SCHEDULED',
+        releasedAt: 'tomorrow, 09:00',
+        rows: [
+          { id: 321, venueName: 'Sereno Beach Club', iban: 'AL47 •••• 8741', sets: 11, grossMinor: 44000, status: 'SCHEDULED', reference: '' },
+          { id: 322, venueName: 'Livadhi Sun', iban: 'AL92 •••• 3306', sets: 6, grossMinor: 22000, status: 'SCHEDULED', reference: '' },
+          { id: 323, venueName: 'Jalë Riviera', iban: 'AL15 •••• 1188', sets: 3, grossMinor: 12000, status: 'SCHEDULED', reference: '' },
+        ],
+      },
+    },
+    COMMISSION_BPS: 1500,
+
+    erasureEmail: '',
+    erasureStage: 'form',
+    erasureError: '',
+
+    notice: '',
+  };
+
+  /* ---------------- helpers ---------------- */
+
+  fmtEur(minor) {
+    const neg = minor < 0;
+    const v = Math.abs(minor) / 100;
+    const s = v.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (neg ? '−' : '') + '€' + s;
+  }
+
+  // Commission is exact-integer on the gross, then net is the remainder — never the other way round.
+  commissionOf(grossMinor) { return Math.round((grossMinor * this.state.COMMISSION_BPS) / 10000); }
+  netOf(grossMinor) { return grossMinor - this.commissionOf(grossMinor); }
+
+  shiftDay(delta) {
+    const next = Math.min(this.state.days.length - 1, Math.max(0, this.state.dayIndex + delta));
+    this.setState({ dayIndex: next, notice: '' });
+  }
+
+  currentDay() { return this.state.days[this.state.dayIndex]; }
+  currentRun() { return this.state.runs[this.currentDay()] || null; }
+
+  flash(message) {
+    if (this._noticeTimer) clearTimeout(this._noticeTimer);
+    this.setState({ notice: message });
+    this._noticeTimer = setTimeout(() => this.setState({ notice: '' }), 4200);
+  }
+
+
+  /* ---------------- approvals ---------------- */
+
+  decide = (id, approved) => {
+    const row = this.state.pending.find((p) => p.id === id);
+    if (!row) return;
+    // The server is the authority: a row someone else already decided comes back 409 and the queue reconciles.
+    if (row.stale) {
+      this.setState({ pending: this.state.pending.filter((p) => p.id !== id) });
+      this.flash(row.username + ' was already decided by someone else — the queue has been refreshed.');
+      return;
+    }
+    this.setState({ pending: this.state.pending.filter((p) => p.id !== id) });
+    if (approved) {
+      const accounts = [...this.state.accounts, {
+        id: row.id, username: row.username, contactEmail: row.contactEmail, admin: false, suspended: false,
+      }];
+      this.setState({ accounts });
+      this.flash(row.username + ' approved — it can sign in now and will own the venue it creates.');
+    } else {
+      this.flash(row.username + ' rejected — the account stays unable to sign in.');
+    }
+  };
+
+  /* ---------------- accounts ---------------- */
+
+  askSuspend = (id) => this.setState({ confirmSuspendId: id, notice: '' });
+  cancelSuspend = () => this.setState({ confirmSuspendId: null });
+
+  suspend = (id) => {
+    const accounts = this.state.accounts.map((a) => (a.id === id ? { ...a, suspended: true } : a));
+    const row = this.state.accounts.find((a) => a.id === id);
+    this.setState({ accounts, confirmSuspendId: null });
+    this.flash(row.username + ' suspended — signed out everywhere and blocked from signing in.');
+  };
+
+  reinstate = (id) => {
+    const accounts = this.state.accounts.map((a) => (a.id === id ? { ...a, suspended: false } : a));
+    const row = this.state.accounts.find((a) => a.id === id);
+    this.setState({ accounts });
+    this.flash(row.username + ' reinstated — it can sign in again; the old sessions stay dead.');
+  };
+
+  /* ---------------- commissions ---------------- */
+
+  pctOf(bps) { return (bps / 100).toFixed(1) + '%'; }
+
+  editRate = (id) => {
+    const v = this.state.venues.find((x) => x.id === id);
+    this.setState({ editingVenueId: id, draftPct: (v.bps / 100).toString(), rateError: '', notice: '' });
+  };
+  cancelRate = () => this.setState({ editingVenueId: null, rateError: '' });
+
+  saveRate = () => {
+    const pct = Number(this.state.draftPct);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      this.setState({ rateError: 'Commission must be between 0% and 100%.' });
+      return;
+    }
+    const bps = Math.round(pct * 100);
+    const v = this.state.venues.find((x) => x.id === this.state.editingVenueId);
+    if (bps === v.bps) {
+      this.setState({ rateError: 'That is already this venue’s rate.' });
+      return;
+    }
+    const was = this.pctOf(v.bps);
+    const venues = this.state.venues.map((x) => (x.id === v.id ? { ...x, bps, changed: 'just now' } : x));
+    this.setState({ venues, editingVenueId: null, rateError: '' });
+    this.flash(v.name + ': commission ' + was + ' → ' + this.pctOf(bps) + '. Bookings from now on split at the new rate; the ledger keeps history at the old one.');
+  };
+
+  /* ---------------- payouts ---------------- */
+
+  retryTransfer = (id) => {
+    const day = this.currentDay();
+    const run = this.state.runs[day];
+    const rows = run.rows.map((r) => (r.id === id
+      ? { ...r, status: 'SENT', reference: 'PS-250725-R1', problem: undefined }
+      : r));
+    const row = rows.find((r) => r.id === id);
+    this.setState({ runs: { ...this.state.runs, [day]: { ...run, rows } } });
+    this.flash(row.venueName + ' — transfer resubmitted to Paysera against the updated account.');
+  };
+
+  chaseIban = (id) => {
+    const row = this.currentRun().rows.find((r) => r.id === id);
+    this.flash(row.venueName + ' has been asked for a EUR account. The amount stays accrued and joins its next run.');
+  };
+
+  /* ---------------- privacy ---------------- */
+
+  reviewErasure = () => {
+    const email = this.state.erasureEmail.trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      this.setState({ erasureError: 'Enter a valid email address.' });
+      return;
+    }
+    this.setState({ erasureStage: 'confirm', erasureError: '' });
+  };
+  confirmErasure = () => this.setState({ erasureStage: 'done' });
+  cancelErasure = () => this.setState({ erasureStage: 'form' });
+  resetErasure = () => this.setState({ erasureStage: 'form', erasureEmail: '', erasureError: '' });
+
+  /* ---------------- session ---------------- */
+
+  signOut = () => this.setState({ signedIn: false, isAdmin: true, confirmSuspendId: null, notice: '' });
+  demoAdmin = () => this.setState({ signedIn: true, isAdmin: true, adminName: 'operator' });
+  demoOperator = () => this.setState({ signedIn: true, isAdmin: false, adminName: 'sereno.beach' });
+
+  componentDidMount() {
+    if ((this.props.startSignedIn ?? true) === false) {
+      this.setState({ signedIn: false });
+    }
+  }
+  componentWillUnmount() {
+    if (this._noticeTimer) clearTimeout(this._noticeTimer);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const day = this.currentDay();
+    const run = this.currentRun();
+    const rows = run ? run.rows : [];
+
+    const NEUTRAL = { ink: '#0a2a33', bg: 'rgba(12,42,51,0.07)', border: 'rgba(12,42,51,0.18)' };
+    const TEAL = { ink: '#0a6e85', bg: 'rgba(43,184,212,0.16)', border: 'rgba(14,138,168,0.35)' };
+    const AMBER = { ink: '#a86a12', bg: 'rgba(240,170,46,0.18)', border: 'rgba(240,170,46,0.45)' };
+    const RED = { ink: '#b3362b', bg: 'rgba(179,54,43,0.1)', border: 'rgba(179,54,43,0.4)' };
+    const chip = { SCHEDULED: NEUTRAL, SENT: AMBER, PAID: TEAL, FAILED: RED, HELD: AMBER, RELEASED: AMBER };
+
+    const grossTotal = rows.reduce((sum, r) => sum + r.grossMinor, 0);
+    const netTotal = rows.reduce((sum, r) => sum + this.netOf(r.grossMinor), 0);
+    const setsTotal = rows.reduce((sum, r) => sum + r.sets, 0);
+
+    // "Releasing tomorrow" is the scheduled run — a fixed platform number, not the row the admin is browsing.
+    const scheduled = Object.values(s.runs).find((r) => r.status === 'SCHEDULED');
+    const scheduledRows = scheduled ? scheduled.rows : [];
+    const releasingMinor = scheduledRows.reduce((sum, r) => sum + this.netOf(r.grossMinor), 0);
+
+    const failedCount = Object.values(s.runs)
+      .flatMap((r) => r.rows).filter((r) => r.status === 'FAILED').length;
+    const heldCount = Object.values(s.runs)
+      .flatMap((r) => r.rows).filter((r) => r.status === 'HELD').length;
+
+    const runStatus = run
+      ? ((failedCount + heldCount > 0 && run.status === 'RELEASED') ? 'NEEDS ATTENTION' : run.status)
+      : '';
+    const runChip = run
+      ? (runStatus === 'NEEDS ATTENTION' ? RED : chip[run.status] || NEUTRAL)
+      : NEUTRAL;
+
+    let runHeadline = '';
+    if (run && run.status === 'SCHEDULED') {
+      runHeadline = 'Still accruing. Releases ' + run.releasedAt + ' Europe/Tirane, once the day is closed.';
+    } else if (run && run.status === 'RELEASED') {
+      runHeadline = 'Released ' + run.releasedAt + '. ' + (failedCount + heldCount) + ' of ' + rows.length + ' need you.';
+    } else if (run) {
+      runHeadline = 'Released ' + run.releasedAt + '. Every transfer confirmed.';
+    }
+
+    const timeline = run ? [
+      { label: 'Service day', when: s.dayLabels[day], done: true },
+      { label: 'Day closes', when: '00:00 Tirane', done: run.status !== 'SCHEDULED' },
+      { label: 'Transfers released', when: run.releasedAt, done: run.status !== 'SCHEDULED' },
+      { label: 'Funds arrive', when: 'SEPA, same or next business day', done: run.status === 'PAID' },
+    ].map((step, i, all) => ({
+      ...step,
+      pending: !step.done,
+      hasNext: i < all.length - 1,
+    })) : [];
+
+    return {
+      signedIn: s.signedIn,
+      signedOut: !s.signedIn,
+      isAdmin: s.isAdmin,
+      forbidden: s.signedIn && !s.isAdmin,
+      showConsole: s.signedIn && s.isAdmin,
+      adminName: s.adminName,
+      onSignOut: this.signOut,
+      onDemoAdmin: this.demoAdmin,
+      onDemoOperator: this.demoOperator,
+
+      statPending: s.pending.length,
+      statActive: s.accounts.filter((a) => !a.suspended).length,
+      statSuspended: s.accounts.filter((a) => a.suspended).length,
+      statVenues: s.venues.length,
+      statAvgCommission: this.pctOf(Math.round(s.venues.reduce((sum, v) => sum + v.bps, 0) / s.venues.length)),
+      statReleasing: this.fmtEur(releasingMinor),
+      statReleasingCaption: '09:00 · ' + scheduledRows.length + ' venues',
+      statToFix: failedCount + heldCount,
+      statFixColor: (failedCount + heldCount) > 0 ? '#b3362b' : '#0a2a33',
+      statToFixCaption: failedCount + ' failed · ' + heldCount + ' held',
+
+      tabs: [
+        { key: 'approvals', label: 'Approvals', hasBadge: s.pending.length > 0, badge: s.pending.length },
+        { key: 'operators', label: 'Operators', hasBadge: false, badge: 0 },
+        { key: 'commissions', label: 'Commissions', hasBadge: false, badge: 0 },
+        { key: 'payouts', label: 'Payouts', hasBadge: false, badge: 0 },
+        { key: 'privacy', label: 'Privacy', hasBadge: false, badge: 0 },
+      ].map((t) => ({
+        ...t,
+        active: s.tab === t.key,
+        inactive: s.tab !== t.key,
+        onClick: () => this.setState({ tab: t.key, notice: '' }),
+      })),
+
+      tabApprovals: s.tab === 'approvals',
+      tabOperators: s.tab === 'operators',
+      tabCommissions: s.tab === 'commissions',
+      tabPayouts: s.tab === 'payouts',
+      tabPrivacy: s.tab === 'privacy',
+      notice: s.notice,
+
+      pending: s.pending.map((p) => ({
+        ...p,
+        onApprove: () => this.decide(p.id, true),
+        onReject: () => this.decide(p.id, false),
+      })),
+      pendingAny: s.pending.length > 0,
+      pendingEmpty: s.pending.length === 0,
+      pendingCountLabel: s.pending.length === 1 ? '1 registration' : s.pending.length + ' registrations',
+
+      accounts: s.accounts.map((a) => {
+        const isSelf = a.username === this.ADMIN_NAME;
+        const confirming = s.confirmSuspendId === a.id;
+        return {
+          id: a.id,
+          username: a.username,
+          contactEmail: a.contactEmail || '—',
+          isPlatformAdmin: a.admin,
+          suspended: a.suspended,
+          isSelf,
+          canReinstate: !isSelf && a.suspended,
+          confirming: !isSelf && !a.suspended && confirming,
+          canSuspend: !isSelf && !a.suspended && !confirming,
+          onAskSuspend: () => this.askSuspend(a.id),
+          onCancelConfirm: this.cancelSuspend,
+          onSuspend: () => this.suspend(a.id),
+          onReinstate: () => this.reinstate(a.id),
+        };
+      }),
+      accountsCountLabel: s.accounts.length + ' accounts',
+
+      venues: s.venues.map((v) => ({
+        name: v.name,
+        place: v.place,
+        owner: v.owner,
+        adminHeld: !!v.adminHeld,
+        rate: this.pctOf(v.bps),
+        bps: v.bps,
+        changed: v.changed,
+        editing: s.editingVenueId === v.id,
+        idle: s.editingVenueId !== v.id,
+        rowBg: s.editingVenueId === v.id ? 'rgba(43,184,212,0.06)' : 'transparent',
+        onEdit: () => this.editRate(v.id),
+      })),
+      venuesCountLabel: s.venues.length + ' venues',
+      draftPct: s.draftPct,
+      draftBps: Number.isFinite(Number(s.draftPct)) ? Math.round(Number(s.draftPct) * 100) : '—',
+      rateError: s.rateError,
+      venueAccruedLabel: (() => {
+        const v = s.venues.find((x) => x.id === s.editingVenueId);
+        return v ? v.accrued : '';
+      })(),
+      onDraftPct: (e) => this.setState({ draftPct: e.target.value, rateError: '' }),
+      onSaveRate: this.saveRate,
+      onCancelRate: this.cancelRate,
+
+      runDayLabel: s.dayLabels[day],
+      onPrevDay: () => this.shiftDay(-1),
+      onNextDay: () => this.shiftDay(1),
+      runExists: !!run,
+      runMissing: !run,
+      runStatusLabel: runStatus.charAt(0) + runStatus.slice(1).toLowerCase(),
+      runChipInk: runChip.ink,
+      runChipBg: runChip.bg,
+      runChipBorder: runChip.border,
+      runHeadline,
+      runTotal: this.fmtEur(netTotal),
+      runVenueCount: rows.length === 1 ? '1 venue' : rows.length + ' venues',
+      timeline,
+      totalSets: setsTotal,
+      totalGross: this.fmtEur(grossTotal),
+      totalCommission: this.fmtEur(grossTotal - netTotal),
+      runRows: rows.map((r) => {
+        const failed = r.status === 'FAILED';
+        const held = r.status === 'HELD';
+        return {
+          venueName: r.venueName,
+          iban: r.iban,
+          sets: r.sets,
+          gross: this.fmtEur(r.grossMinor),
+          commission: this.fmtEur(this.commissionOf(r.grossMinor)),
+          net: this.fmtEur(this.netOf(r.grossMinor)),
+          statusLabel: r.status.charAt(0) + r.status.slice(1).toLowerCase(),
+          chipInk: chip[r.status].ink,
+          chipBg: chip[r.status].bg,
+          chipBorder: chip[r.status].border,
+          rowBg: failed ? 'rgba(179,54,43,0.05)' : (held ? 'rgba(240,170,46,0.07)' : 'transparent'),
+          hasRef: !!r.reference,
+          reference: r.reference,
+          needsAction: failed || held,
+          actionLabel: failed ? 'Retry transfer' : 'Request IBAN',
+          actionInk: failed ? '#b3362b' : '#a86a12',
+          actionBorder: failed ? 'rgba(179,54,43,0.5)' : 'rgba(240,170,46,0.55)',
+          onAction: failed ? () => this.retryTransfer(r.id) : () => this.chaseIban(r.id),
+          hasProblem: !!r.problem,
+          problem: r.problem,
+          problemInk: failed ? '#8f2c22' : '#8a5710',
+        };
+      }),
+
+      erasureEmail: s.erasureEmail,
+      erasureError: s.erasureError,
+      erasureForm: s.erasureStage === 'form',
+      erasureConfirm: s.erasureStage === 'confirm',
+      erasureDone: s.erasureStage === 'done',
+      onErasureEmail: (e) => this.setState({ erasureEmail: e.target.value, erasureError: '' }),
+      onErasureReview: this.reviewErasure,
+      onErasureConfirm: this.confirmErasure,
+      onErasureCancel: this.cancelErasure,
+      onErasureReset: this.resetErasure,
+    };
+  }
+}
+</script>
+</body>
+</html>
