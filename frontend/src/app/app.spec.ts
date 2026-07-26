@@ -185,6 +185,23 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
   });
 
+  it('closes the account menu on Escape and hands focus back to the trigger (#351)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+
+    const trigger = el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!;
+    trigger.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('offers the account group in the mobile menu when signed in (#351)', () => {
     customerAuth.signedIn.set(true);
     customerAuth.email.set('ana@example.com');

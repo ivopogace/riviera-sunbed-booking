@@ -182,10 +182,16 @@ N/A — no contract change. No endpoint, DTO, or status code is added or altered
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phases 0–2 complete, awaiting PR`
+**Stage pointer:** `sonar gate — re-verifying after the F-3 coverage fix`
 
-**Next action:** Merge `origin/main`, push the branch, open the PR into `main`, then run the
-Review gate (`riviera-review-overlay` + `/code-review`) and the Sonar gate.
+**Next action:** Confirm CI + Sonar green on the F-3 push, then merge PR #353 and run the
+merge close-out (`references/pr-gates.md` §3).
+
+**PR:** #353. **CI (sha `356ddc0`):** all checks green — Backend, Frontend, CodeQL
+(javascript-typescript + java-kotlin), SonarCloud Code Analysis. **Sonar gate (PR 353):**
+pulled from the API, not the bot comment — `new_lines=108` confirms a real analysis (guarding the
+false-clean zero), with **0 issues, 0 hotspots, 0 bugs, 0 vulnerabilities, 0 code smells,
+0.0% duplication**; new-code coverage 80.0% → F-3.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -232,6 +238,8 @@ what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review (RV-STYLE-1) | five inline comments I wrote ran to two lines — `theme-shell.e2e.ts` (backdrop), `app.html` ×2 (both new markup comments), `app.scss` (the rewritten `riv-nav-user` note), `app.spec.ts` (the disclosure rationale) | fixed — all shortened to one line; re-verified `npm run lint`, `npm test` 885/885, `theme-shell` e2e 9/9 |
 | F-2 | review (RV-FE-7) | new styling is **SCSS, not Tailwind**, against the go-forward | **accepted deviation, flagged for the reviewer** — it extends the existing `riv-pop`/`riv-theme-pop` recipe in an otherwise-SCSS shell stylesheet, and the popover's positioning depends on it. Recorded at plan time as R-4 and in *Skills consulted*. Reviewer's call to overrule |
+
+| F-3 | sonar | gate green with 0 issues / 0 hotspots / 0 duplication, but new-code coverage sat at exactly **80.0%** — on the merge bar, not above it. The 2 uncovered lines were `closeMenus()`'s account branch (`accountOpen.set(false)` + the focus restore), exercised only by e2e, which Sonar coverage does not count | fixed — added `app.spec.ts` → `'closes the account menu on Escape and hands focus back to the trigger (#351)'`, the unit half of AC-3 |
 
 **Review-gate walk (frontend bank, `references/frontend-conventions.md`):** RV-FE-1 ✅ (greppable
 sweep for `standalone: true` / `OnPush` / `ngClass` / `ngStyle` / `@HostBinding` / `@HostListener` /
