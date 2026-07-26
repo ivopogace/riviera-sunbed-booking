@@ -56,24 +56,32 @@ Spring Session repository. No table, column, or constraint changes.
   A, then the same holds — others revoked, A still authenticated under a **new** session id, old
   cookie value dead.
   *Pinned by:* `SetPasswordIT.theSurvivingSessionIsRotatedSoTheOldCookieValueDies`
-- [ ] **AC-3:** Given the credential write fails (the module port throws), when an operator changes
-  its password, then **no credential was rotated** — the current password still authenticates, so
-  the operator's natural retry succeeds rather than returning `INVALID_CURRENT_PASSWORD`.
-  *Pinned by:* `OperatorAccountControllerTest.aFailedCredentialWriteLeavesTheCurrentPasswordUsable`
+- [ ] **AC-3:** Given a successful change, when the two success-path effects run, then the session
+  revoke is invoked **before** the credential write — so a failing write can never leave the hash
+  rotated while the caller is told it was not, and the natural retry with the current password works.
+  *Pinned by:* `OperatorAccountControllerTest.revokesOtherSessionsBeforeWritingTheNewCredential`
 - [ ] **AC-4:** Given the session revoke fails, when an operator changes its password, then the
-  credential write is **never attempted** (same retry-succeeds property, from the other side).
+  credential write is **never attempted** (the same retry-succeeds property, from the other side).
   *Pinned by:* `OperatorAccountControllerTest.aFailedRevokeNeverRotatesTheCredential`
-- [ ] **AC-5:** Given a customer whose credential write fails, when it changes its password, then
-  the revoke has already run and the credential is unchanged.
-  *Pinned by:* `MyAccountControllerTest.aFailedCredentialWriteLeavesTheCurrentPasswordUsable`
-- [ ] **AC-6:** Given a *rejected* change (wrong current password, bootstrap admin, inactive
-  account), when it is submitted, then nothing is revoked, nothing is written, **and the caller's
-  session id is unchanged** — the rotation is a success-path effect only.
-  *Pinned by:* `OperatorAccountControllerTest.aRejectedChangeRotatesNothingIncludingTheSessionId`
-- [ ] **AC-7:** Given a request authenticated without a server-side session (the `.with(user(…))`
-  harness path, and any future non-session principal), when the password change succeeds, then it
-  still returns `204` — rotation is skipped, not an error.
-  *Pinned by:* `MyAccountControllerTest.aSessionlessRequestStillSucceedsWithoutRotating`
+- [ ] **AC-5:** Given the same two conditions on the customer twin, then the same two guarantees hold
+  — the twins must not drift.
+  *Pinned by:* `MyAccountControllerTest.revokesOtherSessionsBeforeWritingTheNewCredential`,
+  `MyAccountControllerTest.aFailedRevokeNeverRotatesTheCredential`
+- [ ] **AC-6:** Given a *rejected* change (wrong current password), when it is submitted, then nothing
+  is revoked, nothing is written, **and the caller's session id is unchanged** — the rotation is a
+  success-path effect only.
+  *Pinned by:* `OperatorAccountControllerTest.aRejectedChangeLeavesTheSessionIdUntouched`,
+  `MyAccountControllerTest.aRejectedChangeLeavesTheSessionIdUntouched`
+- [ ] **AC-7:** Given a request with no server-side session, when the session-identity helper rotates,
+  then it is a no-op rather than the `IllegalStateException` `changeSessionId()` is specified to
+  throw; and reading the current id never creates a session as a side effect.
+  *Pinned by:* `SessionIdentityTest.rotateIsANoOpWithNoSession`,
+  `SessionIdentityTest.currentIdIsNullWithNoSessionAndDoesNotCreateOne`
+- [ ] **AC-8:** Given a successful change, when the revoke is handed its keep-id, then that id is the
+  **pre-rotation** one — the ordering constraint (R-1) that stops the caller's own session from being
+  deleted by its own revoke.
+  *Pinned by:* `OperatorAccountControllerTest.rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke`,
+  `MyAccountControllerTest.rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke`
 
 ## Non-goals
 
@@ -115,7 +123,7 @@ template says must be verified row by row.
 |---|---|---|---|---|---|---|
 | R-1 | **Rotating before revoking would delete the caller's own session.** During the request the `SPRING_SESSION` row still carries the *old* id (the filter only persists the new one at commit), so `revokeAllExcept(user, newId)` would find the old id, not match the keep-id, and delete the row — signing the caller out and silently discarding the later `UPDATE … WHERE PRIMARY_ID`. | high if written naively | high | Order is fixed and commented: revoke with the **pre-rotation** id, rotate last. AC-1/AC-2 assert the calling session still works *after* the change, which fails loudly if this is ever reordered. | claude | open |
 | R-2 | **Revoke-first opens a sub-millisecond race**: someone who already holds the old password could sign in between the revoke and the write, and that new session survives. | very low | med | Accepted, and strictly smaller than the defect it replaces (a transport blip today leaves the other device alive *permanently* while telling the operator nothing happened). Documented on the method. Anyone in that window already has the password; the change is what stops them from repeating it. | claude | open |
-| R-3 | **`changeSessionId()` on a request with no session throws `IllegalStateException`** — `SetPasswordIT` drives the SSO-only case with `.with(user(email))` and no `SESSION` cookie. | high | med | Rotation is guarded by the existing `getSession(false) != null` check, reusing the same helper that computes the keep-id. AC-7 pins it. | claude | open |
+| R-3 | **`changeSessionId()` on a request with no session throws `IllegalStateException`** — assumed to bite the `.with(user(…))` harness paths. | **overstated** | med | Rotation is guarded by a `getSession(false) != null` check in `SessionIdentity`. **Corrected during phase 1:** the premise was wrong — `SecurityMockMvcRequestPostProcessors.user(…)` stores the test `SecurityContext` in a session, so *every* `with(user(…))` request already has one and the guard is unreachable from a web slice. The guard is kept as defence (the servlet contract really does throw) but is pinned where it is actually observable, in `SessionIdentityTest`, not through MockMvc. | claude | closed — guard shipped + pinned in `SessionIdentityTest` |
 | R-4 | **The rotation is asserted through a mock and proves nothing** — a `@WebMvcTest` can only see that `changeSessionId()` was called, not that the old `SPRING_SESSION` row value is dead. | med | high | The AC-1/AC-2 pins are **Testcontainers ITs** driving the real `SessionRepositoryFilter` + real `SPRING_SESSION`: assert the pre-change cookie now `401`s and the response's new cookie `200`s (`riviera-java-conventions` §9). | claude | open |
 | R-5 | **Rate-limit bucket collision in the cached full-suite context** (#127 class): new IT methods hitting the change endpoint share the loopback per-IP budget and `429` only in a full-suite run. | med | high | Every new IT request carries `SessionLoginSupport.uniqueClientIp()`, matching the existing methods in both IT classes. | claude | open |
 | R-6 | Error-contract drift — a new failure path returning a bare body instead of `ProblemDetail`. | low | med | No new error path is added; a thrown port failure keeps flowing to the single `ApiErrorHandler` (`riviera-java-conventions` §6b). | claude | open |
@@ -204,16 +212,16 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — apply the same ordering + rotation to `MyAccountController`, add
-`MyAccountControllerTest`, and add the real-session rotation ITs to both IT classes.
+**Next action:** Phase 2 — rewrite the runbook caveat that #342 added, and file the follow-up issue
+for the three deferred revoke-ordering siblings.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Ordering + rotation, operator side (red → green) | ✅ | see phase-0 commit |
-| 1 — Same for the customer side + the two rotation ITs | ⏳ | |
-| 2 — Runbook correction + follow-up issue for the deferred siblings | | |
+| 0 — Ordering + rotation, operator side (red → green) | ✅ | `d5fa2e0` |
+| 1 — Same for the customer side + the two rotation ITs | ✅ | this commit |
+| 2 — Runbook correction + follow-up issue for the deferred siblings | ⏳ | |
 
 **Local verification note:** Docker is absent in this cloud session, so every
 `@EnabledIfDockerAvailable` IT (AC-1, AC-2) **skips locally** — the PR's CI run is the gate for

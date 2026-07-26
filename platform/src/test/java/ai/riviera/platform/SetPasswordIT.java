@@ -13,6 +13,8 @@ import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import jakarta.servlet.http.Cookie;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -115,6 +117,32 @@ class SetPasswordIT {
 
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isUnauthorized());
 		mvc.perform(get(ME_PATH).cookie(thisDevice)).andExpect(status().isOk());
+	}
+
+	/**
+	 * AC-2 for #344 — the customer twin of {@code OperatorPasswordChangeIT}'s rotation proof: the calling
+	 * session stays signed in but under a new id, so a stolen copy of the cookie that made the change dies
+	 * with the credential it was proving. Only reachable end-to-end: the rotation is persisted to
+	 * {@code SPRING_SESSION} and re-issued as a cookie by the real {@code SessionRepositoryFilter}.
+	 */
+	@Test
+	void theSurvivingSessionIsRotatedSoTheOldCookieValueDies() throws Exception {
+		String email = "setpw-it-rotate@example.com";
+		register(email, "originalpass1");
+		Cookie beforeTheChange = sessionFrom(login(email, "originalpass1").andExpect(status().isOk()));
+
+		Cookie afterTheChange = mvc.perform(post(SET_PASSWORD_PATH).cookie(beforeTheChange).with(csrf())
+						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"newPassword": "rotatedpass3", "currentPassword": "originalpass1"}"""))
+				.andExpect(status().isNoContent())
+				.andReturn().getResponse().getCookie("SESSION");
+
+		assertNotNull(afterTheChange, "the change must hand back the rotated SESSION cookie");
+		assertNotEquals(beforeTheChange.getValue(), afterTheChange.getValue());
+		mvc.perform(get(ME_PATH).cookie(beforeTheChange)).andExpect(status().isUnauthorized());
+		mvc.perform(get(ME_PATH).cookie(afterTheChange)).andExpect(status().isOk());
 	}
 
 	private static Cookie sessionFrom(ResultActions result) {

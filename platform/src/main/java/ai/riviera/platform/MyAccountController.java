@@ -14,7 +14,6 @@ import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 
 /**
  * Authenticated customer account-management endpoints (S8, epic #108): set/change the signed-in
@@ -68,6 +67,13 @@ class MyAccountController {
 	 * first password with no current-password check (F-1); accounts that already have one must supply the
 	 * matching current password (else {@code 400 INVALID_CURRENT_PASSWORD}). A weak new password is
 	 * {@code 400 INVALID_REQUEST}.
+	 *
+	 * <p>The success-path effects are <strong>ordered, not transactional</strong> (#344) — revoke, write,
+	 * rotate. {@link OperatorAccountController#changePassword} carries the full rationale; this is its
+	 * customer twin and must not drift from it. In short: revoking first means a failure can only ever
+	 * leave the password unchanged, so the customer's natural retry works, and rotating the surviving
+	 * session id last (after the revoke has been handed the pre-rotation id) retires the cookie value that
+	 * proved the old credential.
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
@@ -78,15 +84,11 @@ class MyAccountController {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
 					"The current password is incorrect.");
 		}
+		// Keep-id read BEFORE the rotation below: until the filter commits, the session row still carries it.
+		sessionRevoker.revokeAllExcept(authentication.getName(), SessionIdentity.currentId(httpRequest));
 		recovery.setPassword(accountId, passwordEncoder.encode(request.newPassword()));
-		// Evict every OTHER session the old credential authorized; this one survives (#128).
-		sessionRevoker.revokeAllExcept(authentication.getName(), currentSessionId(httpRequest));
+		SessionIdentity.rotate(httpRequest);
 		return ResponseEntity.noContent().build();
-	}
-
-	private static String currentSessionId(HttpServletRequest request) {
-		HttpSession session = request.getSession(false);
-		return session != null ? session.getId() : null;
 	}
 
 	/** Re-issue a verification email to the signed-in customer's own address. Always {@code 204}. */
