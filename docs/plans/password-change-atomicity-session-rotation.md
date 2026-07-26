@@ -112,7 +112,7 @@ template says must be verified row by row.
 | A rejected change writes nothing and revokes nothing | preserved | guards still precede both effects; AC-6 additionally pins that the session id is untouched |
 | Other sessions of the principal are deleted | preserved | same `revokeAllExcept`, only **earlier** in the method |
 | The calling session stays signed in | preserved | still spared by `keepSessionId`; AC-1/AC-2 keep asserting it |
-| The calling session keeps its **id** | **changed** | now rotated on success (issue #344 part 2). The client is unaffected: `SessionRepositoryFilter` writes the new `SESSION` cookie on the same response, and CSRF is cookie-backed, not session-backed |
+| The calling session keeps its **id** | **changed** | now rotated on success (issue #344 part 2). A **browser** client is unaffected — `SessionRepositoryFilter` writes the replacement `SESSION` cookie on the same response and CSRF is cookie-backed, not session-backed — but **any client that caches the cookie value rather than following `Set-Cookie` must carry the new one forward**. That is exactly what broke two pre-existing ITs (finding F-2); the ledger row originally read "preserved" for "the calling session stays signed in", which was true of the *session* and false of the *cookie value*, and that gap is what let the CI failure through |
 | A revoke failure surfaced as `500` **after** the hash had rotated | **changed** | the revoke now precedes the write, so a `500` means the password genuinely did not change |
 | SSO-only customer sets a first password with no current-password check | preserved | the F-1 branch in `MyAccountController` is untouched |
 | Session-less (`.with(user(…))`) callers succeed | preserved | rotation is null-guarded (AC-7) |
@@ -216,10 +216,17 @@ the browser applies automatically and which the SPA never reads (HttpOnly).
 > **This section is the session-recovery anchor.** After a context compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `PR — awaiting CI, then the review + Sonar gates`
+**Stage pointer:** `review gate run (degraded mode) — awaiting CI + Sonar`
 
-**Next action:** Confirm the PR's CI run is green, then run `/code-review` + `riviera-review-overlay`
-and pull the SonarCloud new-issue list.
+**Next action:** Confirm the PR's CI run is green (it is the only gate for AC-1/AC-2, which skip
+without Docker), then pull the SonarCloud new-issue + duplication list for PR #358.
+
+**Review-gate note.** `/code-review` — the subagent fan-out the gate names as its default — is **not
+available in this session's skill set**; only the inline `/review` skill is. Per
+`references/pr-gates.md` §1 that is the documented *degraded* mode, so it was run as such: `/review`
+inline over the PR diff with `riviera-review-overlay` layered on, walking the backend bank
+(RV-BE-1…17), RV-STYLE-1 and RV-PROC-1. It is recorded honestly in the PR rather than ticked as if
+the stronger review had run. One finding (F-1) came out of it and is fixed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -227,9 +234,12 @@ and pull the SonarCloud new-issue list.
 | 1 — Same for the customer side + the two rotation ITs | ✅ | this commit |
 | 2 — Runbook correction + follow-up issue for the deferred siblings | ✅ | `066fe01` (issue #357 filed) |
 
-**Local verification note:** Docker is absent in this cloud session, so every
-`@EnabledIfDockerAvailable` IT (AC-1, AC-2) **skips locally** — the PR's CI run is the gate for
-those two. The `@WebMvcTest` classes (AC-3…AC-7) run locally and are green.
+**Local verification note (updated at the CI gate):** Docker was initially unavailable, so the
+`@EnabledIfDockerAvailable` ITs skipped and AC-1/AC-2 were left to CI — which is how F-2 reached CI
+rather than being caught locally. A local `dockerd` was then started, and **every session IT now runs
+for real against Testcontainers Postgres and passes**, including both new rotation ITs. Lesson worth
+keeping: "skips cleanly without Docker" made the local run *look* green while the two assertions that
+actually exercised the changed behavior never executed.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -237,7 +247,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/review` + overlay, doc accuracy) | `SessionIdentity.currentId`'s Javadoc claimed the null case covers "MockMvc's `with(user(…))` harness". False — that post-processor stores the test `SecurityContext` in a session — and it contradicted `SessionIdentityTest`'s own Javadoc **in the same PR**, i.e. the diff shipped a doc that its own test disproves. | fixed-in review round 1 |
+| F-2 | CI (`Backend (build + test)`, 833 tests / 2 failed, PR #358 head `11e4f4d`) | `OperatorPasswordChangeIT.theChangeRevokesEveryOtherSessionButKeepsTheCallingOne` and `SetPasswordIT.changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne` asserted "my session survives" by **re-presenting the pre-change cookie value** — the exact thing the rotation is designed to kill, so both went `401`. The tests' intent is unchanged and correct; their mechanism was stale. Both now follow the re-issued `SESSION` cookie from the change response, with an `assertNotNull` so a *dropped* session fails loudly instead of silently passing. **Root cause is a plan miss, not a code defect:** the behavior-parity ledger recorded "the calling session stays signed in — preserved" without noticing that a cookie-caching client sees a changed contract. Ledger row corrected above. | fixed-in review round 1 |
 
 ---
 

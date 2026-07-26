@@ -19,9 +19,9 @@ final class SessionIdentity {
 	}
 
 	/**
-	 * The current session's id, or {@code null} when the request carries no server-side session — the
-	 * case for a principal authenticated by something other than the session cookie, and for MockMvc's
-	 * {@code with(user(…))} harness. Never creates a session.
+	 * The current session's id, or {@code null} when the request carries no server-side session — a
+	 * principal authenticated by something other than the session cookie. Never creates a session: a read
+	 * that started one would be a side effect, and would hand the revoke a keep-id nothing else knows.
 	 */
 	static String currentId(HttpServletRequest request) {
 		HttpSession session = request.getSession(false);

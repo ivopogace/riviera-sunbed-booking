@@ -96,6 +96,11 @@ class SetPasswordIT {
 	 * bug class the issue names for operator suspend, found by the Phase-1 generalization audit. The
 	 * session doing the change survives (signing you out of the device you are actively using is bad
 	 * UX and is not what the OWASP guidance asks for); every other session of that principal dies.
+	 *
+	 * <p>Since #344 "survives" is asserted through the <strong>re-issued</strong> cookie: the calling
+	 * session is rotated, so it lives on under a new id. A browser applies the replacement
+	 * {@code Set-Cookie} silently; MockMvc must carry it forward by hand. That the pre-change value is
+	 * dead is {@link #theSurvivingSessionIsRotatedSoTheOldCookieValueDies}'s assertion, not this one's.
 	 */
 	@Test
 	void changingThePasswordRevokesEveryOtherSessionButKeepsTheCurrentOne() throws Exception {
@@ -106,17 +111,19 @@ class SetPasswordIT {
 		Cookie thisDevice = sessionFrom(login(email, "originalpass1").andExpect(status().isOk()));
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isOk());
 
-		mvc.perform(post(SET_PASSWORD_PATH).cookie(thisDevice).with(csrf())
+		Cookie thisDeviceReissued = mvc.perform(post(SET_PASSWORD_PATH).cookie(thisDevice).with(csrf())
 				// #326 put this path on its own per-IP budget; without a unique key this call would share
 				// the loopback bucket with the rest of a cached-context full-suite run (the #127 class).
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"newPassword": "rotatedpass2", "currentPassword": "originalpass1"}"""))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isNoContent())
+				.andReturn().getResponse().getCookie("SESSION");
 
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isUnauthorized());
-		mvc.perform(get(ME_PATH).cookie(thisDevice)).andExpect(status().isOk());
+		assertNotNull(thisDeviceReissued, "the calling session must be re-issued, not dropped");
+		mvc.perform(get(ME_PATH).cookie(thisDeviceReissued)).andExpect(status().isOk());
 	}
 
 	/**
