@@ -10,6 +10,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.net.URI;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ch.qos.logback.classic.Level;
@@ -18,6 +19,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -232,6 +234,155 @@ class RateLimitFilterTest {
 		// …and the SAME IP's operator-login budget is untouched — tourist traffic must never lock an
 		// operator out of the console from a shared WiFi / CGNAT IP.
 		loginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	// ---- Operator self-service password change rides its OWN per-IP budget (#326, D-8) ----
+
+	/**
+	 * An anonymous attempt is enough to exercise the budget: {@code RateLimitFilter} runs <em>ahead of</em>
+	 * authorization, so the request spends a token and then lands as the endpoint's {@code 401} — which
+	 * makes a {@code 429} unambiguously the limiter, the same oracle every other test here uses.
+	 */
+	private ResultActions changePasswordFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
+	}
+
+	/**
+	 * AC-8 / R-5. The #111 review found a real operator lockout caused by a shared bucket, so both halves
+	 * are asserted: the change endpoint <em>does</em> throttle, and operator login from the SAME IP still
+	 * works afterwards. A change flood must never cost an operator the ability to sign in.
+	 */
+	@Test
+	void credentialChangeFloodDoesNotStarveOperatorLogin() throws Exception {
+		String ip = "10.30.0.1";
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		changePasswordFromIp(ip)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		// The whole point of a separate map: the same IP's operator-login budget is untouched.
+		loginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	/**
+	 * The budget must key on the path Spring <em>routes</em> on, not the bytes the client sent. The filter
+	 * compared the raw {@code getRequestURI()} — which the servlet spec leaves percent-encoded — against
+	 * plain string constants, while {@code PathPatternRequestMatcher} and {@code @PostMapping} both match
+	 * the DECODED path. So {@code …/passwor%64} spent no token yet still reached the controller: an
+	 * unlimited brute-force oracle against the very credential this endpoint exists to protect. Found by
+	 * the #342 review gate; it predated #326 and applied to every budget in this filter, login included.
+	 */
+	@Test
+	void aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget() throws Exception {
+		String ip = "10.30.0.9";
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+
+		// URI.create, NOT post(String): the string overload re-encodes, turning %64 into %2564 — which the
+		// firewall then rejects as an encoded percent, so the test would pass on the wrong mechanism.
+		mvc.perform(post(URI.create("/api/auth/operator/passwor%64")).with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	/** The same bypass on the pre-existing operator-login budget — the one the #127 lockout was about. */
+	@Test
+	void aPercentEncodedLoginPathDrawsOnTheLoginBudget() throws Exception {
+		String ip = "10.30.0.10";
+		for (int i = 0; i < 10; i++) {
+			loginFromIp(ip);
+		}
+		mvc.perform(post(URI.create("/api/auth/operator/logi%6E")).with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "someone", "password": "irrelevant"}"""))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	/**
+	 * Matrix parameters are the same class of bypass, but the rate limiter is not what stops them:
+	 * {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs — which is
+	 * why {@code pathWithinApplication} deliberately does not strip them. Pinned as a tripwire: relax the
+	 * firewall and this test fails, rather than the hole opening silently.
+	 */
+	@Test
+	void aMatrixParameterSuffixIsRejectedByTheFirewallBeforeItReachesTheLimiter() throws Exception {
+		mvc.perform(post(URI.create("/api/auth/operator/password;a=b")).with(fromIp("10.30.0.11")).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
+				.andExpect(status().isBadRequest());
+	}
+
+	/**
+	 * A malformed escape must not blow up the filter: a {@code %} that is not a valid escape reaches
+	 * {@code UriUtils.decode} and throws, and the budget lookup has to survive that. The raw form is kept —
+	 * it matches no budget, and the request still meets the rest of the chain (which rejects it).
+	 */
+	@Test
+	void aMalformedEscapeKeepsTheRawPathInsteadOfThrowing() {
+		assertEquals("/api/auth/operator/password", RateLimitFilter.decodePath("/api/auth/operator/passwor%64"));
+		assertEquals("/api/auth/operator/passwor%zz", RateLimitFilter.decodePath("/api/auth/operator/passwor%zz"));
+	}
+
+	@Test
+	void credentialChangeBudgetIsKeyedByClientIp() throws Exception {
+		changePasswordFromIp("10.30.0.2").andExpect(status().isUnauthorized());
+		changePasswordFromIp("10.30.0.2").andExpect(status().isUnauthorized());
+		changePasswordFromIp("10.30.0.2").andExpect(status().isTooManyRequests());
+
+		// A different IP keeps its own budget.
+		changePasswordFromIp("10.30.0.3").andExpect(status().isUnauthorized());
+	}
+
+	/** The customer's authenticated set/change-password endpoint — the same oracle, throttled the same way. */
+	private ResultActions customerPasswordChangeFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
+	}
+
+	/**
+	 * Found by the #326 Phase-1 generalization audit: {@code POST /api/me/password} had no budget at all,
+	 * so a hijacked customer session could brute-force the real password unthrottled and then lock the
+	 * owner out. Same oracle as the operator endpoint, so it gets the same treatment.
+	 */
+	@Test
+	void customerPasswordChangeIsThrottled() throws Exception {
+		String ip = "10.31.0.1";
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		// Separate from the customer LOGIN budget, so a change flood cannot lock a tourist out of signing in.
+		customerLoginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	/**
+	 * The two password-change endpoints must not share one per-IP map. Venue WiFi / CGNAT puts tourists and
+	 * operators behind one address, and a tourist flood that blocked an operator from rotating a possibly
+	 * compromised credential is the #111 operator-lockout defect wearing a different hat.
+	 */
+	@Test
+	void customerPasswordChangeDoesNotStarveTheOperatorOne() throws Exception {
+		String ip = "10.31.0.2";
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		customerPasswordChangeFromIp(ip).andExpect(status().isTooManyRequests());
+
+		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
 	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----

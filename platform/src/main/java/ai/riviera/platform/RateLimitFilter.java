@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UriUtils;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -112,6 +113,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// Operator self-registration (S6 #115, D-8): its OWN per-IP budget, SEPARATE from operator login, so
 	// a burst of registrations can never starve operator login (the S2 operator-lockout lesson, #127).
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
+	/**
+	 * The two authenticated password-change endpoints (#326, D-8) — operator and customer. Each is a
+	 * credential oracle like a login (an attempt reveals whether the submitted <em>current</em> password
+	 * was right), so both must be throttled; the customer one had no budget at all until the #326
+	 * generalization audit found it.
+	 *
+	 * <p>They get <strong>separate</strong> maps, and neither is the login map. A change flood must not
+	 * exhaust the LOGIN budget (that is the #111 operator-lockout defect), and the two principal types
+	 * must not share a per-IP budget either: venue WiFi / CGNAT puts tourists and operators behind one
+	 * address, so a tourist flood would otherwise block an operator from rotating a credential it
+	 * believes is compromised.
+	 */
+	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
+	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
@@ -175,6 +190,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// Operator self-registration (S6 #115) on its OWN per-IP budget, separate from operator login so a
 	// registration flood can never lock operators out (the #127 lockout lesson).
 	private final Map<String, TokenBucket> operatorRegisterBuckets = new ConcurrentHashMap<>();
+	// The two password-change budgets (#326), one per principal type — see OPERATOR_PASSWORD_PATH.
+	private final Map<String, TokenBucket> operatorPasswordBuckets = new ConcurrentHashMap<>();
+	private final Map<String, TokenBucket> customerPasswordBuckets = new ConcurrentHashMap<>();
 	// SSO authorize/callback GETs draw on their OWN per-IP budget (S4 #112), separate from the logins so
 	// tightening one never starves the other — same rationale as customerAuthBuckets.
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
@@ -271,26 +289,45 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		String method = request.getMethod();
 		String path = pathWithinApplication(request);
 		if (HttpMethod.POST.matches(method)) {
-			if (LOGIN_PATH.equals(path)) {
-				return Optional.of(loginBuckets);
-			}
-			// Operator self-registration (S6 #115) on its own budget, separate from operator login.
-			if (OPERATOR_REGISTER_PATH.equals(path)) {
-				return Optional.of(operatorRegisterBuckets);
-			}
-			if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
-				return Optional.of(customerAuthBuckets);
-			}
-			// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
-			if (RECOVERY_PATHS.contains(path)) {
-				return Optional.of(recoveryBuckets);
-			}
+			return authPostBucketsFor(path);
 		}
 		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too. A
 		// cheap prefix pre-check keeps the two AntPathMatcher matches off every hot public venue/booking GET.
 		if (HttpMethod.GET.matches(method) && path.startsWith(SSO_PATH_PREFIX)
 				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
 			return Optional.of(ssoBuckets);
+		}
+		return Optional.empty();
+	}
+
+	/**
+	 * The budget an auth <em>POST</em> draws on, split out of {@link #authBucketsFor} so each path stays
+	 * within the cognitive-complexity bar as budgets accumulate (#326 was the branch that tipped it).
+	 * Every endpoint here is a credential or mail-sending oracle, and each named budget is deliberately
+	 * separate: the recurring defect this shape prevents is one surface's flood exhausting another's
+	 * budget and locking legitimate users out (#111/#127).
+	 */
+	private Optional<Map<String, TokenBucket>> authPostBucketsFor(String path) {
+		if (LOGIN_PATH.equals(path)) {
+			return Optional.of(loginBuckets);
+		}
+		// Operator self-registration (S6 #115) on its own budget, separate from operator login.
+		if (OPERATOR_REGISTER_PATH.equals(path)) {
+			return Optional.of(operatorRegisterBuckets);
+		}
+		// The password changes (#326) on their own per-principal-type budgets, never the login ones.
+		if (OPERATOR_PASSWORD_PATH.equals(path)) {
+			return Optional.of(operatorPasswordBuckets);
+		}
+		if (CUSTOMER_PASSWORD_PATH.equals(path)) {
+			return Optional.of(customerPasswordBuckets);
+		}
+		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
+			return Optional.of(customerAuthBuckets);
+		}
+		// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
+		if (RECOVERY_PATHS.contains(path)) {
+			return Optional.of(recoveryBuckets);
 		}
 		return Optional.empty();
 	}
@@ -320,12 +357,38 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		return null;
 	}
 
+	/**
+	 * The request path every budget here is keyed on — decoded and stripped of matrix parameters, so it is
+	 * the <strong>same</strong> path Spring Security's matchers and {@code @PostMapping} route on.
+	 *
+	 * <p>It deliberately does not use the raw {@code getRequestURI()}. The servlet spec leaves that
+	 * percent-encoded, so {@code …/passwor%64} compared against a plain constant matched nothing, spent no
+	 * token, and still reached the controller — an unthrottled brute-force oracle against the credential
+	 * this filter exists to protect. Found at the #342 review gate; the defect predated #326 and applied to
+	 * <em>every</em> budget here, operator login included.
+	 *
+	 * <p>Matrix parameters ({@code …/password;a=b}) are the sibling bypass and are deliberately <em>not</em>
+	 * handled here: {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs,
+	 * so a strip would be unreachable code that no test can exercise. {@code RateLimitFilterTest} pins that
+	 * dependency as a tripwire, so relaxing the firewall fails a test rather than silently opening the hole.
+	 */
 	private static String pathWithinApplication(HttpServletRequest request) {
 		String uri = request.getRequestURI();
 		String context = request.getContextPath();
-		return (context != null && !context.isEmpty() && uri.startsWith(context))
+		String withinApp = (context != null && !context.isEmpty() && uri.startsWith(context))
 				? uri.substring(context.length())
 				: uri;
+		return decodePath(withinApp);
+	}
+
+	/** A malformed escape keeps the raw form: it matches no budget, and the filter chain still rejects it. */
+	static String decodePath(String path) {
+		try {
+			return UriUtils.decode(path, StandardCharsets.UTF_8);
+		}
+		catch (IllegalArgumentException malformedEscape) {
+			return path;
+		}
 	}
 
 	/**

@@ -316,7 +316,8 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither
   // a restyled tourist glass route nor a legacy compat surface — exempt from the binary below.
   // S9 (#277) adds the '/operator' venue picker — operator surface, so chromeless like the console.
-  const CHROMELESS_PATHS = ['operator/:venueId', 'operator'];
+  // #326's password change sits under /account/ but is operator surface, so it is chromeless too.
+  const CHROMELESS_PATHS = ['operator/:venueId', 'operator', 'account/operator-password'];
 
   it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {
     for (const route of routes) {

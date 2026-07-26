@@ -223,15 +223,20 @@ exist for an admin to act on?* (invariant #13). A suspension **keeps** the opera
   **application service** performs it by asking me; I own the mapping and answer, I
   don't sit in everyone's request path
 - Bookings, payment, payout → their own modules
-- Encoding/verifying credentials + the register/login/approval endpoints + the
-  `ROLE_ADMIN` mapping → the **platform edge** (Spring Security `UserDetailsService`,
-  `AuthController`, `AdminOperatorController`); I own the account identity + ownership
-  mapping + the lifecycle **state transitions**, and store an opaque credential hash + an
-  opaque `is_admin` flag — never the login machinery or the role gate (RV-BE-11)
+- Encoding/verifying credentials + the register/login/approval **and self-service
+  password-change** endpoints + the `ROLE_ADMIN` mapping → the **platform edge** (Spring
+  Security `UserDetailsService`, `AuthController`, `AdminOperatorController`,
+  `OperatorAccountController`); I own the account identity + ownership mapping + the
+  lifecycle **state transitions**, and store an opaque credential hash + an opaque
+  `is_admin` flag — never the login machinery or the role gate (RV-BE-11). Note the shape
+  of #326: it added a whole user-facing feature **without touching this module** — the edge
+  verifies the old password, encodes the new one, and calls the `setPassword` I already
+  published. That is the boundary working, not a gap in it.
 - **Invalidating live sessions** when an account loses the right to them (suspension,
-  credential rotation) → the **platform edge** (`PrincipalSessionRevoker`, #128). I report
-  *that the transition happened* and *whose* it was; deleting `SPRING_SESSION` rows is
-  session machinery and I never import `org.springframework.session`
+  credential rotation, an operator changing its own password #326) → the **platform edge**
+  (`PrincipalSessionRevoker`, #128). I report *that the transition happened* and *whose* it
+  was; deleting `SPRING_SESSION` rows is session machinery and I never import
+  `org.springframework.session`
 
 **Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
 application service; #74 per-operator DB-backed credentials — no shared password; **#115
@@ -239,8 +244,10 @@ self-registration → admin approval → creator-owns-on-create**). Since #115 t
 **bootstrap operator is retired** — ownership is strictly the explicit `operator_venue`
 mapping (`POST /api/venues` writes the creator's row atomically with the insert); the
 bootstrap `operator` is **demoted to the platform admin** (`is_admin`, unlocked by
-`RIVIERA_OPERATOR_PASSWORD`) that approves self-registrations. Still no Spring Security
-type inside the module (`OperatorAuthPlacementTests` green). See
+`RIVIERA_OPERATOR_PASSWORD`) that approves self-registrations. **#326** added operator
+self-service password change **entirely at the edge — zero change to this module**, and
+deliberately excluded the bootstrap admin, whose credential is env-managed. Still no Spring
+Security type inside the module (`OperatorAuthPlacementTests` green). See
 `docs/runbooks/operator-credential-provisioning.md`.
 
 ---

@@ -105,6 +105,9 @@ class SetPasswordIT {
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isOk());
 
 		mvc.perform(post(SET_PASSWORD_PATH).cookie(thisDevice).with(csrf())
+				// #326 put this path on its own per-IP budget; without a unique key this call would share
+				// the loopback bucket with the rest of a cached-context full-suite run (the #127 class).
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"newPassword": "rotatedpass2", "currentPassword": "originalpass1"}"""))

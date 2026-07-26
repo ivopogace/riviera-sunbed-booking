@@ -1,4 +1,4 @@
-# Operator credential provisioning & rotation (#74, #115)
+# Operator credential provisioning & rotation (#74, #115, #326)
 
 Operator logins are **per-operator and DB-backed**. Each `operator` row carries its own hashed
 credential (`operator.password_hash`, V17); login is verified at the edge by
@@ -23,6 +23,9 @@ variable as before #115; no new secret**:
   The value is **never committed** and never logged (invariant #7).
 - **Rotate it** → set a new value and restart. Each boot re-stamps the hash (bcrypt salts differ;
   the current password verifies), so changing the variable and restarting rotates the password.
+  **This stays the admin's only rotation path** — it is deliberately excluded from the #326
+  self-service page (see below), because a self-service change would be silently reverted at the
+  next boot.
 - **Leave it blank** → the admin has no login and cannot approve registrations (logged at WARN,
   without the value) until a credential is configured.
 
@@ -53,6 +56,42 @@ The approval surface is role-gated to `ADMIN` and **not** venue-scoped (invarian
 exemption). All login/approval machinery is at the edge (RV-BE-11); the `operator` module owns only the
 account state + the `operator_venue` mapping.
 
+## Self-service password change (#326)
+
+A signed-in **non-bootstrap** operator changes its own password at
+`POST /api/auth/operator/password` (`{currentPassword, newPassword}` → `204`), from the SPA page
+`/account/operator-password`, reached via the operator console header's **Change password** link.
+Before #326 there was no self-service path at all: an operator that suspected its credential was
+compromised had to find a platform admin.
+
+- **The current password must be proved.** Wrong (or an account with no stored hash) →
+  `400 INVALID_CURRENT_PASSWORD`, nothing written, nothing revoked. The check is
+  `matches(rawInput, storedHash)` — never encode-then-compare, which bcrypt's re-salting makes
+  always-false (the defect behind #128 and S8; `OperatorPasswordChangeIT` pins it).
+- **New password policy** is the shared one (8–72 bytes) → `400 INVALID_REQUEST` otherwise.
+- **Other sessions die, yours survives.** On success the edge deletes every *other*
+  `SPRING_SESSION` row for that principal (`PrincipalSessionRevoker`, #128); the session that made
+  the change stays signed in.
+  > **What this does and does not recover.** It evicts anyone holding the *password* — they can no
+  > longer sign in, and any session they had is gone. It does **not** evict someone holding a copy of
+  > **your own session cookie**: an exfiltrated cookie names the very session id the change
+  > deliberately spares, so it keeps working. For a suspected *cookie* theft, sign out (which
+  > destroys that id) or have an admin suspend the account, which revokes every session including
+  > yours. Rotating the surviving session id on change would close this — tracked as a follow-up.
+- **Own rate-limit budget.** The path has its own per-IP bucket, separate from operator login, so a
+  change flood cannot lock operators out of signing in (the #127 lesson). Exhausted → `429`.
+- **The bootstrap admin is refused**: `409 BOOTSTRAP_CREDENTIAL_MANAGED`. Its credential is
+  env-managed and re-stamped every boot, so a self-service change would die at the next deploy and
+  take the admin's session with it. The guard keys on `riviera.operator.username`, **not** on the
+  `is_admin` flag — a *second* admin approved through `/api/admin/operators` is an admin but is not
+  env-managed, and keeps self-service.
+- **A non-`ACTIVE` account is refused**: `409 ACCOUNT_NOT_ACTIVE` (defence-in-depth; suspension
+  already revokes the sessions such a caller would need).
+
+**Still not available:** an admin resetting *another* operator's password, and operator "forgot
+password" by email — operators have no verified email channel until the real mailer lands (#255).
+A compromised operator is **suspended**, not silently re-credentialed.
+
 ## Additional operators (programmatic)
 
 Provision operators directly (bypassing self-registration) through the `operator` module's
@@ -66,9 +105,11 @@ Both take an **already-encoded** hash: encode the raw password with the edge `Pa
 stores an opaque blob — RV-BE-11). Grant a per-venue operator its venues with `operator_venue` rows;
 a per-venue operator owns **only** the venues explicitly mapped to it (invariant #13).
 
-A future admin console will drive `OperatorProvisioning` behind an authenticated admin surface;
-until then, provisioning additional operators is a programmatic/operational step (e.g. a one-off
-runner), not an HTTP call.
+Since #326, `setPassword` also backs the operator's **own** password change over HTTP (above) — but
+only for the caller's own account, after proving the current password. Provisioning or
+re-credentialing *another* operator remains a programmatic/operational step (e.g. a one-off runner),
+not an HTTP call: the admin surface deliberately offers approve/reject/suspend/reinstate and no
+credential write.
 
 ## Suspending an operator
 

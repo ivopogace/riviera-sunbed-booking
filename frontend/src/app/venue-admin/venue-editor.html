@@ -5,6 +5,11 @@
        session restore, so the page only renders for a signed-in operator. -->
   <div class="card signed-in">
     <p>Signed in as <strong>{{ operator.username() }}</strong>.</p>
+    <!-- The only credential-rotation entry point an operator with no venue can reach: the console header
+         link (#326) lives behind a resolved venueId, which is exactly the operator this page serves. -->
+    <a class="btn-secondary" routerLink="/account/operator-password" data-testid="ve-change-password"
+      >Change password</a
+    >
     <button type="button" class="btn-secondary" (click)="onSignOut()">Sign out</button>
   </div>
 

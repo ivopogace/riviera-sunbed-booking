@@ -20,8 +20,10 @@ function problem(status: number, title: string, code: string) {
  * Stateful mock of the session-auth API (issue #109) for the CI-safe suite: a tiny in-memory
  * "session" that `/api/auth/me` reflects — so a reload realistically RESTORES a signed-in state
  * (AC-8) because routes persist across navigations within one Playwright page. Login succeeds
- * only for `validPassword` and answers the generic 401 otherwise (D-8); logout flips the state
- * back and answers 204 like the real LogoutFilter.
+ * only for the CURRENT password — which starts as `validPassword` and is ROTATED by the #326
+ * self-service change endpoint, so a spec can prove the old credential stops working and the new
+ * one starts. Everything else answers the generic 401 (D-8); logout flips the state back and
+ * answers 204 like the real LogoutFilter.
  */
 export async function mockAuthApi(
   page: Page,
@@ -30,9 +32,15 @@ export async function mockAuthApi(
     readonly username?: string;
     /** The operator's venues for the S9 landing read; defaults to one (straight into its console). */
     readonly venues?: readonly { id: number; name: string; beach: string }[];
+    /**
+     * Marks this account as the env-managed bootstrap admin (#326), whose password lives in
+     * `RIVIERA_OPERATOR_PASSWORD` — its change attempts answer `409 BOOTSTRAP_CREDENTIAL_MANAGED`.
+     */
+    readonly envManaged?: boolean;
   },
 ): Promise<void> {
   const username = options.username ?? 'operator';
+  let password = options.validPassword;
   let signedIn = false;
 
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -42,12 +50,42 @@ export async function mockAuthApi(
   );
   await page.route(/\/api\/auth\/operator\/login$/, (route) => {
     const body = route.request().postDataJSON() as { username?: string; password?: string };
-    if (body.username === username && body.password === options.validPassword) {
+    if (body.username === username && body.password === password) {
       signedIn = true;
       return route.fulfill({ json: { username, principalType: 'OPERATOR' } });
     }
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
+
+  // Self-service credential rotation (#326). Branch order mirrors the controller: the env-managed
+  // bootstrap admin is refused BEFORE the policy check and before the stored credential is read.
+  await page.route(/\/api\/auth\/operator\/password$/, (route) => {
+    if (!signedIn) {
+      return route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED'));
+    }
+    if (options.envManaged) {
+      return route.fulfill(problem(409, 'Conflict', 'BOOTSTRAP_CREDENTIAL_MANAGED'));
+    }
+    const body = route.request().postDataJSON() as {
+      currentPassword?: string;
+      newPassword?: string;
+    };
+    // Policy BEFORE the credential check, and bytes not characters — both mirror the controller, which
+    // calls CustomerPasswords.validate ahead of findByUsername and caps at bcrypt's 72-byte input limit.
+    // Reversing either lets the mocked suite stay green through a real reordering (#342 review finding).
+    const newPassword = body.newPassword ?? '';
+    if (!body.currentPassword || newPassword.length < 8
+      || new TextEncoder().encode(newPassword).length > 72) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
+    }
+    if (body.currentPassword !== password) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
+    }
+    // The server revokes the operator's OTHER sessions only — the calling one deliberately survives.
+    password = newPassword;
+    return route.fulfill({ status: 204 });
+  });
+
   await mockOwnedVenues(page, options.venues ?? [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
 
   await page.route(/\/api\/auth\/logout$/, (route) => {
