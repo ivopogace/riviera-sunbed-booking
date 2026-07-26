@@ -23,6 +23,26 @@ lives in SKILL.md ("The loop"); this file cites it rather than restating it.
    banks. Announce it: *"Running the SDLC review gate (riviera-review-overlay +
    code-review) on PR #NN."*
 
+   > **The overlay is not the review — running it alone does NOT satisfy this gate.**
+   > `riviera-review-overlay` says so itself ("this overlay **never runs alone**"): it
+   > contributes *additional* bank items to an active review. Walking those items by hand
+   > without starting `/code-review` (or `/review <PR>`) leaves the **generic** FE/BE/contract
+   > banks unrun, and those are where the non-project-specific defects live. Half the gate is
+   > not the gate.
+   >
+   > **If you cannot start the review, say so — never substitute silently.** The recurring
+   > cause is a session that cannot spawn the review subagent (a standing "don't use the Agent
+   > tool" instruction, a restricted toolset). That is a legitimate blocker and an illegitimate
+   > secret: **leave the PR's review checkbox unticked, write one line in the PR saying which
+   > half ran and why**, and ask the human to authorize the missing half. Ticking a box whose
+   > text names `/code-review` when `/code-review` did not run makes the PR record lie about
+   > the process — precisely what close-out step 4 exists to prevent.
+   > (Case history: PR #353, 2026-07-26 — the overlay bank ran and found two real issues, the
+   > generic banks never ran, and the box was ticked anyway. The later real review found a
+   > **WCAG 2.4.3 focus-loss regression** the overlay bank had no item for: the account popover
+   > was destroyed by its own navigation with focus inside it, dropping focus to `document.body`
+   > — the #148 find-modal bug, recurring. Fixed in #355.)
+
    **Pick the review effort by risk class** (same principle as the grill gate — the size
    flexes; the gate does not):
    - **Medium effort** for a pure move/retype/no-behavior-change slice whose structural
@@ -152,11 +172,31 @@ Merging is not the last step; the close-out is. Every item, every merge:
    rejected-with-rationale that names a follow-up home (an existing issue or a new one)
    gets **written onto that issue now** — a deferred finding that lives only in the review
    transcript is lost by the next session.
-4. **Plan doc final state:** execution-status table ✅ at HEAD, Open Questions empty or
-   deferred with issue numbers (already required by `riviera-plan-doc` — verify, don't
-   assume). **Tick the PR body's Gates checkboxes** as each gate actually passes — both
-   2026-07-02 PRs merged with all three left `[ ]` despite all three passing, which makes
-   the PR record lie about the process that ran.
+4. **Plan doc final state — written BEFORE the merge, in the PR's own last commit.**
+   Execution-status table ✅, Open Questions empty or deferred with issue numbers, every
+   risk-register row closed with its outcome, AC pin-names matching the tests that actually
+   shipped (already required by `riviera-plan-doc` — verify, don't assume). **Tick the PR
+   body's Gates checkboxes** as each gate actually passes — both 2026-07-02 PRs merged with
+   all three left `[ ]` despite all three passing, which makes the PR record lie about the
+   process that ran.
+
+   > **Reference the PR number, never the merge SHA — this is what makes the step
+   > pre-merge-able.** A squash SHA cannot exist before the merge, so a plan doc that records
+   > "merged as `<sha>`" *guarantees* a second commit; `merged via PR #NN` is knowable the
+   > moment the PR opens, and the SHA is one `git log --grep "(#NN)"` away if anyone needs it.
+   > Everything else in this step was always knowable pre-merge — it was only ever done late.
+   >
+   > **Why this hardened:** the guidance used to call the leftovers "a one-line follow-up (a
+   > commit on `main`) — not a full PR." That assumes a permission agents don't have: a cloud
+   > session cannot push to `main`, so "one-line follow-up" degrades into a whole PR + CI cycle
+   > every single time. Three consecutive slices paid it — #326→PR #347, #346→PR #352,
+   > #351→PR #354 — each a docs-only PR whose diff was ~96% content that predated the merge
+   > (#354: **3 of 80 changed lines** actually needed the SHA). Removing the dependency beats
+   > optimizing the follow-up.
+   >
+   > **After this step there is no post-merge repo commit.** The only genuinely post-merge
+   > items are GitHub edits, not commits: the parent-epic checkbox tick (step 2) and any
+   > follow-up issue (step 3).
 5. **Substrate-doc staleness check — run `riviera-docs-freshness`.** If the slice changed
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`
    skill **states** — a module's shipped/planned status, the package shape, a canonical
@@ -168,10 +208,12 @@ Merging is not the last step; the close-out is. Every item, every merge:
      those patches into the *code PR itself***. Don't spin up a whole second docs PR + CI
      cycle for edits the code PR could have carried (case history: O6 shipped a near-empty
      docs PR #219 for two one-line patches).
-   - **Only the merge-SHA-dependent notes are inherently post-merge** — the epic tick
-     (step 2, needs the merge commit), the "merged as `<sha>`" plan-doc line. These are a
-     **one-line follow-up** (a commit on `main` behind the same close-out authorization, or
-     even a comment) — not a full PR.
+   - **Nothing here is inherently post-merge any more.** Step 4 removed the last repo-commit
+     dependency by recording `merged via PR #NN` instead of the merge SHA, so the staleness
+     patches and the plan-doc final state both belong in the **code PR itself**. What remains
+     post-merge is GitHub-only and needs no commit: the epic checkbox tick (step 2) and any
+     follow-up issue (step 3). **If you find yourself opening a docs-only PR to finish a
+     close-out, step 4 was skipped** — that is the signal, not a normal cost.
    - It also runs over every epic's full merge span at epic close-out (case history: #72).
    **Then refresh the knowledge graph for the same doc changes:** the post-commit hook
    rebuilds *code* only, so after a doc/ADR/plan-touching slice run `graphify update .` to

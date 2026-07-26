@@ -46,8 +46,14 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 
 - [ ] CI is green (build + tests + scans).
 - [ ] Tests run for real (Testcontainers ITs **not** skipped — `skipped=0`).
-- [ ] **SDLC review gate run** (`riviera-review-overlay` + `/code-review` on the diff);
-  findings resolved or deferred with a follow-up issue.
+- [ ] **SDLC review gate run** — `/code-review` (or `/review <PR>`) **actually invoked**, with
+  `riviera-review-overlay` layered on top; findings resolved or deferred with a follow-up issue.
+  <!-- The overlay alone is NOT the review — it adds bank items to an active one, so running it
+       by itself leaves the generic FE/BE/contract banks unrun. If tooling blocked the review
+       (e.g. the session cannot spawn the review subagent), LEAVE THIS UNTICKED and say so in
+       Scope notes. Never tick a box for a command that did not run. -->
+- [ ] **Plan doc closed out in this PR** — execution status ✅, Open Questions empty, risk rows
+  closed, citing `merged via PR #NN` (never a merge SHA), so no docs-only follow-up PR is needed.
 - [ ] **Skills consulted** line in the plan doc covers every area the diff touches
   (`postgres` for migrations, `codebase-design` for module seams, `angular-developer` +
   angular-cli MCP for FE, `riviera-stripe-payments` for money).

@@ -217,6 +217,14 @@ detail in the in-repo `angular-developer` skill's `references/`.)
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
+>
+> **Finalize this section BEFORE the merge, in the PR's own last commit** — stage pointer
+> DONE, every phase row ✅ with its commit, Open Questions empty, every risk row closed with
+> its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
+> never a merge SHA**: the squash SHA cannot exist before the merge, so citing it guarantees
+> a second docs-only PR, while the PR number is knowable the moment you open it (the SHA is
+> one `git log --grep "(#NN)"` away). Three consecutive slices paid that tax — #326→#347,
+> #346→#352, #351→#354. Details: `riviera-sdlc` `references/pr-gates.md` §3 step 4.
 
 **Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
 `review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>
@@ -318,5 +326,10 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
+- [ ] **The review gate ran in full** — `/code-review` (or `/review <PR>`) *plus*
+      `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is
+      stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
