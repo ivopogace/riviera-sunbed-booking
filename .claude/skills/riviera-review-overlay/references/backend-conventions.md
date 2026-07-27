@@ -1,11 +1,12 @@
 # Riviera backend overlay items
 
-Repo-specific backend bank items. Loaded by `riviera-review-overlay` and walked
-**after** the generic backend bank in `~/.claude/skills/review-question-banks/backend.md`.
+Repo-specific backend bank items. Loaded by `riviera-review-overlay` and layered
+onto whatever generic backend bank the active review engine runs (today: the
+`code-review` plugin) — walked after it.
 
 Item format mirrors the generic banks: gate → follow-up → default severity → skill
-framing; items moved in from the overlay SKILL.md body (RV-BE-3c, RV-BE-9..12) keep
-their compact prose form (statement → default severity → authority). Item IDs are
+framing; items moved in from the overlay SKILL.md body (RV-BE-3c, RV-BE-9..12) and
+RV-BE-18 keep the compact prose form (statement → default severity → authority). Item IDs are
 historical, not sequential — see the note at RV-BE-9. Invariant numbers reference
 `CLAUDE.md`.
 
@@ -46,18 +47,19 @@ missing concurrency test on a guarded path.
 **Gate:** Does the change stay on Spring Data JDBC / `JdbcTemplate` with zero JPA?
 - [ ] JDBC only  [ ] `spring-boot-starter-data-jpa` added to the build (violation)  [ ] `@Entity`/`@OneToMany`/`@ManyToOne`/`mappedBy`/`EntityManager` used (violation)  [ ] `JpaRepository` extended (violation)
 
-**Follow-up:**
-- Persistence is `JdbcTemplate` and/or Spring Data JDBC aggregates only.
-- A JPA dependency entering the build is itself a finding even if unused — it
-  invites the next person to reach for it.
-- Mapping is explicit (`RowMapper` / aggregate mapping), not ORM-managed.
+**Split by what's checkable.** The structural half is machine-enforced —
+`JdbcOnlyArchitectureTests` probes the classpath for JPA/Hibernate types; verify it
+is green rather than hand-grepping the diff. Spend eyes on what it can't see: a JPA
+dependency in the **build-file diff** (a finding even if unused — it invites the
+next person to reach for it) and mapping staying explicit (`RowMapper` / aggregate
+mapping), not ORM-managed.
 
 **Default severity:** **Blocker** for a JPA starter on the classpath or any
 `@Entity`; Major for `JpaRepository`.
 **Skill framing:**
 - Pre-impl: "Confirm the persistence approach is JDBC. No JPA starter, no entities."
-- Peer-review: "Grep the build files for `data-jpa`; grep the diff for `@Entity`,
-  `mappedBy`, `EntityManager`. Any hit is a finding."
+- Peer-review: "Is `JdbcOnlyArchitectureTests` green? Then read the build-file diff —
+  any `data-jpa`/Hibernate dependency is a finding on its own."
 
 ---
 
@@ -66,23 +68,21 @@ missing concurrency test on a guarded path.
 or `domain.*` instead of going through its published surfaces or an event?
 - [ ] no cross-module import outside the published surfaces (`api`/`spi`/`vocabulary`/`events`)  [ ] cross-module import of `application.*` (violation)  [ ] cross-module import of `adapter.*` (violation)  [ ] cross-module import of another module's `domain.*` (violation)  [ ] new module without `package-info.java` `@ApplicationModule`
 
-**Follow-up:**
-- Need a synchronous answer from another module → call its `api/` query port.
-- Need to react to a state change in another module → subscribe to its domain event.
-- Module layout: the ADR-0007 two-template shape (invariant #11) —
-  `{api?, spi?, vocabulary?, events?, application, domain, adapter/in, adapter/out}`;
-  thin module `{api, vocabulary?, adapter/out}`.
-- New module → top-level `package-info.java` with `@ApplicationModule`; published
-  types split by kind (#95): ports in `api/`, ids/values in `vocabulary/`, events in
-  `events/`.
+**Split by what's checkable.** Illegal cross-module imports and the
+`allowedDependencies` grants are machine-enforced by `ModularityTests`
+(`ApplicationModules.verify()`) — verify it is green rather than hand-grepping
+imports. Spend eyes on the semantic calls it can't make: query vs event (sync
+answer → `api/` port; state-change reaction → domain event) and the api-vs-spi
+direction judgment, which is RV-BE-3b. Layout mechanics: invariant #11 +
+`riviera-modulith`.
 
 **Default severity:** **Blocker** for a cross-module non-`api/` import; Major for a
 missing `@ApplicationModule`.
 **Skill framing:**
 - Pre-impl: "Map cross-module dependencies — each is which `api/` port or which
   event?"
-- Peer-review: "Grep the diff for `import ai.riviera.platform.<other>.application` /
-  `.adapter` / `.domain`. Flag each."
+- Peer-review: "Is `ModularityTests` green? Then judge the seams it can't: right
+  collaboration kind (port vs event), right surface (RV-BE-3b)."
 
 ---
 
@@ -138,11 +138,8 @@ rewrite (Event Publication Registry) — see V18.
 - [ ] no events  [ ] payload is ids (`BookingId`, `SetId`, `VenueId`, `bookingDate`)  [ ] payload embeds a full aggregate / foreign module type (violation)  [ ] payload carries mutable business fields (email, name) as identity (smell)
 
 **Follow-up:**
-- State-changing collaboration → event; query → direct `api/` call.
-- Subscribers re-load what they need via the publishing module's `api/` port using
-  the id; they don't get a serialized aggregate.
 - `@TransactionalEventListener(phase = AFTER_COMMIT)` for async side effects so a
-  rolled-back transaction publishes nothing.
+  rolled-back transaction publishes nothing. (Payload rules: invariant #11.)
 
 **Default severity:** Major for a non-id payload; Minor for an over-broad payload.
 **Skill framing:**
@@ -156,10 +153,8 @@ rewrite (Event Publication Registry) — see V18.
 - [ ] money as `long`/`int` minor units + currency  [ ] `double`/`float` amount (violation)  [ ] `BigDecimal` of euros flowing through domain (smell — convert at the edge)  [ ] commission/payout division without a written rounding rule
 
 **Follow-up:**
-- Store and compute in minor units (cents). Convert only at the Stripe boundary and
-  the display boundary.
 - Where commission introduces a division, the rounding rule is explicit and tested
-  (who absorbs the half-cent).
+  (who absorbs the half-cent). (Mechanics: invariant #5.)
 
 **Default severity:** Major for floating-point money; Minor for unstated rounding.
 **Skill framing:**
@@ -174,9 +169,7 @@ the JVM default zone?
 - [ ] no time logic  [ ] booking date is `LocalDate` in `Europe/Tirane`  [ ] cutoff computed in `Europe/Tirane`  [ ] `LocalDateTime.now()` / `new Date()` / JVM-default-zone arithmetic (violation)  [ ] timestamp persisted as local time instead of UTC `Instant` (violation)
 
 **Follow-up:**
-- The evening-before cutoff (invariant #4) is a wall-clock time in `Europe/Tirane`;
-  compute it there, then compare against `Instant.now()`.
-- Persist instants as UTC; render in the user's zone at the edge.
+- Mechanics of the cutoff computation and UTC persistence: invariants #4 and #6.
 
 **Default severity:** Major for JVM-default-zone logic on cutoff/booking-date; Minor
 for cosmetic local-time persistence.
@@ -212,9 +205,7 @@ reversing it?
 
 **Follow-up:**
 - Accrual is keyed by `BookingId` so a re-delivered confirmation event can't accrue
-  twice.
-- Refund/cancellation posts a reversing entry.
-- Net owed = Σ(amount − commission) over the period; commission rate is per-venue.
+  twice. (Ledger arithmetic and reversal rules: invariant #9.)
 
 **Default severity:** **Blocker** for double-accrual or missing reversal; Major for
 hardcoded commission.
@@ -240,7 +231,9 @@ from the application service (shipped #73/#74, pinned by `CrossVenueDenialIT`) �
 verify any **new** venue-scoped surface calls it too, and that no driving adapter
 bypasses it. A shared role is necessary but not sufficient (OWASP API #1, BOLA) —
 default **Blocker** whenever a venue-scoped surface is touched. Platform-wide
-`/api/admin/**` is role-gated and exempt. (Authority: invariant #13.)
+`/api/admin/**` is role-gated and exempt. (Authority: invariant #13.) Since #115 the
+denial is uniform: `403 NOT_VENUE_OWNER` **before any existence check**, even for a
+nonexistent venue — a 404 that leaks the existence of an unowned venue is a finding.
 
 ---
 
@@ -329,8 +322,8 @@ judgment** and the "is this the right use-case slice" call → review. Default *
 - [ ] random ≥8-char (e.g. base32) code  [ ] sequential / predictable id used as the code (violation)  [ ] code logged in plaintext at info level (smell)
 
 **Follow-up:**
-- Generate from a CSPRNG; avoid ambiguous chars if staff read it aloud.
-- Staff verify by code on arrival, so a guessable code = someone else's sunbed.
+- Generate from a CSPRNG; avoid ambiguous chars if staff read it aloud. (Why it
+  matters: invariant #7.)
 
 **Default severity:** Major for a predictable code; Minor for logging it.
 **Skill framing:**
@@ -359,10 +352,8 @@ server, not just hidden in the UI?
 - [ ] refund decision server-side from booking state + policy  [ ] client supplies the refund amount (violation)  [ ] weather refund modeled as an explicit admin action  [ ] policy thresholds hardcoded in two places (drift risk)
 
 **Follow-up:**
-- Free until cutoff → full; after → non-refundable/partial; weather → admin-triggered
-  full refund (v1).
 - One source for the cutoff/threshold values; reuse it for both the booking-close
-  and the refund decision.
+  and the refund decision. (The policy itself: invariant #10.)
 
 **Default severity:** Major for client-supplied refund amounts; Minor for duplicated
 thresholds.
@@ -376,6 +367,43 @@ thresholds.
 
 ---
 
+### RV-BE-13. No injection: SQL, log, deserialization
+**Gate:** Is untrusted input kept out of SQL string-building, log lines, and
+unsafe deserialization?
+- [ ] SQL uses bound params (`:name`), never string concatenation of input  [ ] user-controlled text logged without neutralizing `\r\n` (log forging — violation)  [ ] booking code / secret / PII logged in clear (violation — invariant #7)  [ ] untrusted bytes deserialized without an allowlist (violation)
+
+**Default severity:** **Blocker** for SQL injection or a secret in logs; Major for
+unsanitized untrusted text in logs or unguarded deserialization.
+**Skill framing:**
+- Peer-review: "Trace any user-controlled string into SQL, into a log line, and into
+  any deserializer. Bound param? Newlines neutralized? Type allowlist?"
+- Mechanics (canonical, not restated here): `riviera-java-conventions` (rule 10
+  logging) and the `postgres` skill (parameterized SQL). Sonar rules flag all three.
+
+---
+
+### RV-BE-18. Session lifecycle bracketing
+
+*Check when the diff touches a credential change, an account-lifecycle transition,
+or session machinery.* The shipped ordering guarantees must hold: (a) the
+principal's sessions are revoked **at the edge, synchronously**
+(`PrincipalSessionRevoker`) — deliberately not an event (#128); (b) the revoke
+**brackets** the state change — before it (keyed by a pre-read:
+`OperatorLifecycle#activeUsername`, `CustomerAccountRecovery#emailForResetToken`)
+AND after — so a transient revoke failure is retry-recoverable (#357); (c) a
+self-service password change revokes the *other* sessions before the hash write and
+re-issues the surviving session under a new id via `SessionIdentity#rotate` (#344;
+post-#359 rotate carries the attributes over, hard-DELETEs the old row, and creates
+a fresh one — pinned by `SessionIdentityTest`); (d) a rate-limit budget guarding
+**authenticated** work refunds a request denied 401/403 before the work, while
+login budgets still charge (#343). Default **Blocker**. (Authority: the CLAUDE.md
+`operator` module note; plan docs `session-revocation.md`,
+`session-revoke-ordering-remaining-surfaces.md`,
+`password-change-atomicity-session-rotation.md`, `session-rotation-lost-update.md`,
+`credential-change-rate-limit-keying.md`.)
+
+---
+
 ## Deep (opt-in)
 
 ### RV-BE-17. Flyway migrations enforce the invariants (invariant #12)
@@ -384,36 +412,11 @@ constraints that enforce invariants exist in SQL (not just app code)?
 - [ ] no schema change  [ ] versioned forward migration under `db/migration`  [ ] schema changed via app code / hand-run DDL (violation)  [ ] availability uniqueness exists only in app logic, not as a DB constraint (violation)  [ ] migration not tested
 
 **Follow-up:**
-- The `(set_id, booking_date)` uniqueness (invariant #2) is a real DB constraint
-  created by a migration and covered by a test — app-level checks alone race.
-- Forward-only versioned scripts; naming follows existing migrations.
+- Forward-only versioned scripts; naming follows existing migrations. (Why the
+  constraint must be in SQL: invariants #2 and #12.)
 
 **Default severity:** Blocker for the availability uniqueness missing at the DB
 level; Major for unversioned schema change.
 **Skill framing:**
 - Peer-review: "Is there a migration? Does the DB enforce the availability
   uniqueness, or only the service layer?"
-
----
-
-### RV-BE-13. No injection: SQL, log, deserialization
-**Gate:** Is untrusted input kept out of SQL string-building, log lines, and
-unsafe deserialization?
-- [ ] SQL uses bound params (`:name`), never string concatenation of input  [ ] user-controlled text logged without neutralizing `\r\n` (log forging — violation)  [ ] booking code / secret / PII logged in clear (violation — invariant #7)  [ ] untrusted bytes deserialized without an allowlist (violation)
-
-**Follow-up:**
-- SQL: `JdbcClient`/`JdbcTemplate` named parameters only; a concatenated user value
-  in SQL is a Blocker (invariant #1's explicit-SQL still binds params).
-- Logs: parameterized logging does **not** sanitize the value — strip/escape `\r\n`
-  in untrusted strings (email, free-text, headers) or use a structured (JSON)
-  appender. Logging an id/enum is fine; raw free-text is the risk.
-- Deserialization: don't deserialize untrusted input; if unavoidable, allowlist the
-  permitted types. (Sonar rules flag all three.)
-
-**Default severity:** **Blocker** for SQL injection or a secret in logs; Major for
-unsanitized untrusted text in logs or unguarded deserialization.
-**Skill framing:**
-- Peer-review: "Trace any user-controlled string into SQL, into a log line, and into
-  any deserializer. Bound param? Newlines neutralized? Type allowlist?"
-- Deeper conventions: `riviera-java-conventions` (rule 10 logging) and the
-  `postgres` skill (parameterized SQL).

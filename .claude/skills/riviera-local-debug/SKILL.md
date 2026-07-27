@@ -107,7 +107,8 @@ npm run build     # only when production-build risk is in play
 
 E2e: the CI-safe mocked suite lives in `frontend/e2e/`; the local-only real-backend suite
 in `frontend/e2e/real-backend/` (placement rules: `riviera-review-overlay` RV-FE-E2E;
-authoring: `playwright-cli`).
+authoring: `playwright-cli`). On Windows (the primary dev machine) run the mocked suite
+via `npm run test:e2e:a11y`; plain `npm run test:e2e` is the local real-backend suite.
 
 ## Running the stack
 

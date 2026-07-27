@@ -1,8 +1,8 @@
 # Riviera FE↔BE contract overlay items
 
 Repo-specific full-stack contract bank items. Loaded by `riviera-review-overlay`
-and walked **after** the generic contract bank in
-`~/.claude/skills/review-question-banks/fe-be-contract.md`.
+and layered onto whatever generic contract bank the active review engine runs
+(today: the `code-review` plugin) — walked after it.
 
 Activates when the parent skill's contract bank activates (Full-stack scope OR a
 contract change). Invariant numbers reference `CLAUDE.md`.
@@ -36,10 +36,8 @@ hand-stubbed type.
 - [ ] amounts as integer minor units + ISO currency code  [ ] amount sent/received as a float or euro-decimal string (violation)  [ ] booking date as ISO `LocalDate` (`YYYY-MM-DD`), not a timestamp  [ ] a date sent as a full `Instant` that can shift the calendar day across zones (violation)
 
 **Follow-up:**
-- Agree once: money = `{ amountMinor: integer, currency: "EUR" }`; booking date =
-  `YYYY-MM-DD`. Both sides honor it.
-- A booking day is a calendar date — don't serialize it as a timestamp that a
-  timezone offset can roll to the previous/next day.
+- Agree once, both sides honor it; the money and calendar-date rules are canonical
+  in invariants #5 and #6 — check against them, don't re-derive.
 
 **Default severity:** Major for float money on the wire or a day-shifting date
 encoding.
@@ -89,18 +87,19 @@ money/trust correctness bug.
 ---
 
 ### RV-CT-5. Error contract is consistent and surfaced
-**Gate:** Are domain conflicts returned as stable, typed errors the FE handles
-specifically?
-- [ ] `409 SET_TAKEN` (and similar) returned with a stable code the FE branches on  [ ] domain conflicts surface as generic 500s (violation)  [ ] FE shows a raw error string instead of a user-meaningful message  [ ] cutoff/pool rejections have their own codes the FE can explain
+**Gate:** Do business errors follow the shipped RFC-7807 contract, with a stable
+machine-readable `code` the FE branches on?
+- [ ] business errors are `ProblemDetail` (`application/problem+json`) with the `code` extension (e.g. `409 SET_TAKEN`, `BOOKING_CLOSED`, `NOT_ONLINE_POOL`)  [ ] domain conflicts surface as generic 500s or a bespoke `{"error": …}` body (violation)  [ ] FE shows a raw error string instead of a user-meaningful message  [ ] a new business rejection ships without its own `code` the FE can explain
 
 **Follow-up:**
-- Define the small set of business errors (`SET_TAKEN`, `BOOKING_CLOSED`,
-  `NOT_ONLINE_POOL`, `REFUND_NOT_ELIGIBLE`) and return them with a stable machine code.
-- The FE maps each to a helpful message and, for `SET_TAKEN`, refreshes the map
-  (RV-FE-2).
+- The contract is shipped and centralized (RV-BE-10): `ApiProblem` +
+  `ApiErrorHandler` build every error body — mechanics in
+  `riviera-java-conventions/references/error-contract.md`.
+- The FE maps each `code` to a helpful message and, for `SET_TAKEN`, refreshes the
+  map (RV-FE-2).
 
-**Default severity:** Major for conflicts surfacing as 500s; Minor for a missing
-friendly message.
+**Default severity:** Major for conflicts surfacing as 500s or a body outside the
+ProblemDetail contract; Minor for a missing friendly message.
 **Skill framing:**
-- Peer-review: "List the business error responses. Stable codes? Does the FE handle
-  `SET_TAKEN` by refreshing rather than erroring?"
+- Peer-review: "List the business error responses. ProblemDetail with a stable
+  `code`? Does the FE handle `SET_TAKEN` by refreshing rather than erroring?"

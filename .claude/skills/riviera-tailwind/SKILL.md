@@ -43,9 +43,10 @@ This skill states only the few decisions and traps the *code can't show you*.
 
 ## Styling across the two themes
 
-The app has two themes — `riviera` (dark, white ink) and `porcelain` (light, dark ink) —
-scoped by `data-riv-theme` on `<html>` (written only by `core/theme.ts`). Vary by theme in
-this order of preference:
+The app has two themes — `riviera` (dark, white ink) and `porcelain` (light, dark ink).
+Theme *ownership* (who writes `data-riv-theme`, the token registry, subtree pinning) is
+`riviera-frontend`'s call; this section owns only how a component styles across themes.
+Vary by theme in this order of preference:
 
 1. **Tokens do the switching (the norm).** Theme differences live as `--riv-*` custom
    properties defined per theme in `styles.scss` under `[data-riv-theme='riviera'|'porcelain']`.
@@ -82,6 +83,10 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 
 ## SCSS→Tailwind migration checklist
 
+The bulk of what remains is `booking/` — 7 of the ~13 remaining `.scss` files under
+`frontend/src/app` sit there (plus `app.scss`, `auth.scss`, `home.scss` — the scrim
+stays SCSS on purpose — `operator-console.scss`, `venue-editor.scss`, `shared/_glass.scss`).
+
 1. Inventory the shared SCSS recipes the file uses **and their blast radius** (grep every
    `@include`/`@extend`). This decides scope.
 2. Pick scope: **narrow** (leave shared recipes as SCSS, Tailwind only the file's own
@@ -91,9 +96,9 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
    or tinted surface** (glass, scrim) gets a `*.contrast.spec.ts` that **computes** AA over the
    *actual* surface — worst-case gradient stops, then the alpha inks over that composite — with
    the `testing/glass-tokens.ts` helpers. Don't eyeball it; the specs are pure maths.
-4. Verify: `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e:a11y` (the mocked
-   suite CI runs — **not** `test:e2e`, which is the real-backend one), plus the computed-style
-   diff above. Fix regressions; never retune a test to match one.
+4. Verify: `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e:a11y` (the CI-run
+   mocked suite; the two-suite split is `riviera-frontend`'s e2e section), plus the
+   computed-style diff above. Fix regressions; never retune a test to match one.
 
 ## Red flags
 
@@ -118,5 +123,5 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 ## Integration
 
 - **`riviera-frontend`** — structure authority (its Angular-side mirror is `riviera-modulith`); this skill is the styling *how*, that one is the *where*.
-- **`angular-developer`** — `references/tailwind-css.md` (v4 setup) points here for repo conventions.
+- **`angular-developer`** — see its `references/tailwind-css.md` for generic Tailwind v4 setup; the repo conventions stay here.
 - **`riviera-review-overlay`** — RV-FE-* checks the result at the review gate.
