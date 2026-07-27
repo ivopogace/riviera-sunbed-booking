@@ -236,6 +236,53 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
+	 * #345: an omitted current password is its own fault, not a new-password policy violation. Until this
+	 * slice the record's compact constructor threw {@link IllegalArgumentException} for it and the global
+	 * advice funnelled that into the same {@code INVALID_REQUEST} {@link #rejectsWeakNewPassword} produces —
+	 * so a caller whose new password was perfectly good was told to choose one of 8–72 characters. Both
+	 * shapes are covered: the field absent from the body, and present but empty.
+	 */
+	@Test
+	void reportsAnOmittedCurrentPasswordDistinctly() throws Exception {
+		givenStoredCredential(OPERATOR_USERNAME, CURRENT_PASSWORD);
+
+		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"newPassword": "%s"}""".formatted(NEW_PASSWORD)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+
+		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body("", NEW_PASSWORD)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+
+		verify(provisioning, never()).setPassword(anyString(), anyString());
+		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
+	}
+
+	/**
+	 * #345: with both fields wrong the missing one wins — the order {@code operator-password.ts} validates in,
+	 * and the order the compact constructor enforced before this slice. Pinned so a later reordering cannot
+	 * silently revive the wrong-length answer for a caller who never filled the current-password field.
+	 */
+	@Test
+	void anOmittedCurrentPasswordOutranksTheNewPasswordPolicy() throws Exception {
+		givenStoredCredential(OPERATOR_USERNAME, CURRENT_PASSWORD);
+
+		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body("", "short")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+
+		verify(provisioning, never()).setPassword(anyString(), anyString());
+		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
+	}
+
+	/**
 	 * AC-4 / R-3: the bootstrap admin's credential is env-managed. {@code OperatorCredentialInitializer}
 	 * re-stamps {@code RIVIERA_OPERATOR_PASSWORD} on every boot and treats the difference as a genuine
 	 * rotation, so a self-service change here would be silently reverted at the next deploy — and would

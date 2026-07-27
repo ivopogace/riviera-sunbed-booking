@@ -21,6 +21,17 @@ final class CustomerPasswords {
 	private CustomerPasswords() {
 	}
 
+	/**
+	 * Whether a current-password field was supplied at all — the one definition shared by both self-service
+	 * change endpoints (#345), so the operator and customer twins cannot drift on what "supplied" means.
+	 * The test is <em>empty</em>, never blank: the policy above forbids a stored password under
+	 * {@value #MIN_PASSWORD_LENGTH} characters so {@code ""} can never be a real one, while leading and
+	 * trailing spaces are significant and must survive (the S8 set-password review fix).
+	 */
+	static boolean isSupplied(String password) {
+		return password != null && !password.isEmpty();
+	}
+
 	/** Enforce the password policy before any encode/write; throws {@link IllegalArgumentException} if violated. */
 	static void validate(String password) {
 		int bytes = password.getBytes(StandardCharsets.UTF_8).length;

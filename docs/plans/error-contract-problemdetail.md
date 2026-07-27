@@ -219,6 +219,19 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
   `ALREADY_TAKEN`, `DATE_IN_PAST`, `NOT_MARKED`, `NO_SUCH_BATCH`, `ILLEGAL_TRANSITION`,
   `CONFLICT` (was `LAYOUT_CONFLICT`), `NOT_VENUE_OWNER` (new), `ACCESS_DENIED` (new),
   `RATE_LIMITED`.
+
+  > **This list is a snapshot of #97, not a live registry** — noted at #345, which found it three
+  > epics stale. Codes added since, by the slice that added them: `INVALID_CREDENTIALS` +
+  > `UNAUTHENTICATED` (#109), `INVALID_OR_EXPIRED_TOKEN` (S8 #113), `NOT_PENDING` +
+  > `NO_SUCH_OPERATOR` (#115), `CANNOT_SUSPEND_SELF` (#128), `PAYLOAD_TOO_LARGE` + `NO_SUCH_PHOTO`
+  > (#142), `STALE_WRITE` (#224/#226), `INVALID_SIGNATURE` + `PAYMENT_INIT_FAILED` (U4),
+  > `NO_SUCH_REQUEST` / `REQUEST_EXPIRED` / `REQUEST_NOT_PENDING` / `WRONG_STATUS` (#98),
+  > `INVALID_CURRENT_PASSWORD` + `ACCOUNT_NOT_ACTIVE` + `BOOTSTRAP_CREDENTIAL_MANAGED` (#326),
+  > **`MISSING_CURRENT_PASSWORD` (#345)**. Gone since: `CELL_TAKEN`, `DUPLICATE_POSITION`.
+  > Regenerate rather than trust this paragraph:
+  > `grep -rhoE '"[A-Z][A-Z_]{3,}"' platform/src/main/java --include="*Controller.java" --include="ApiErrorHandler.java" --include="RateLimitFilter.java" | sort -u`
+  > (filter out the role/enum tokens it also catches: `ADMIN`, `CUSTOMER`, `OPERATOR`, `PENDING`,
+  > `SESSION`, `STAFF_MARKED`, `ROLE_*`).
 - **Client typing:** hand-written — FE mapping fns read `code` via a typed
   `{ code?: string }` cast (never `as any`); success DTOs unchanged.
 - **Status mapping (unchanged, now centrally defined):** conflict → 409;
