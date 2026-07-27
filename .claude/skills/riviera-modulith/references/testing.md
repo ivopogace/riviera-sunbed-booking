@@ -96,15 +96,15 @@ PaymentConfirmed(...))` → booking row `CONFIRMED`; `PaymentCanceled` → `CANC
 ## Scenario DSL (async flows — the event spine)
 
 `Scenario` is a fluent stimulus → async-outcome DSL; inject it as a test-method parameter. Ideal for
-asserting the U5 spine (confirm → availability marked / payout accrued).
+asserting the U5 spine (confirm → payout accrued; cancel → ledger reversed + refund kicked off).
 
 ```java
 @Test
-void confirmingBookingMarksAvailability(Scenario scenario) {
-    scenario.stimulate(() -> createBooking.create(command()))
+void confirmingBookingAccruesPayout(Scenario scenario) {
+    scenario.stimulate(() -> confirmBooking.confirm(command()))
         .andWaitForEventOfType(BookingConfirmed.class)
-        .matchingMappedValue(BookingConfirmed::setId, expectedSetId)
-        .toArriveAndVerify(ev -> assertThat(ev.bookingDate()).isEqualTo(date));
+        .matchingMappedValue(BookingConfirmed::venueId, expectedVenueId)
+        .toArriveAndVerify(ev -> assertThat(ledger.entriesFor(ev.venueId())).hasSize(1));
 }
 ```
 
@@ -126,13 +126,8 @@ void writeDocumentation() {
 }
 ```
 
-## Optional: enforce hexagonal layering
+## Hexagonal layering is already enforced
 
-Modulith integrates with jMolecules ArchUnit rules to enforce inbound/outbound/domain layering (not
-just module boundaries). Adopt once package layering is stable:
-
-```java
-var hexagonal = JMoleculesArchitectureRules.ensureHexagonal(VerificationDepth.STRICT);
-ApplicationModules.of(PlatformApplication.class)
-    .verify(VerificationOptions.defaults().withAdditionalVerifications(hexagonal));
-```
+No jMolecules adoption needed: `PackageShapeArchitectureTests` (Assertion 4) already enforces the
+hexagon's dependency direction on top of `ModularityTests`' module boundaries — the layering is
+machine-locked today, not a future tightening.

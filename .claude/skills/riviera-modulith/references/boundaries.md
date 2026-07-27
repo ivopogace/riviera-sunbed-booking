@@ -12,11 +12,14 @@ Each module declares a display name **and an explicit `allowedDependencies` deny
 ```java
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payout",
-    allowedDependencies = { "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary",
-        "operator::api", "operator::vocabulary" }
+    allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary",
+        "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.payout;
 ```
+
+(`booking::api` joined the list at #171 — the console daily-takings read — so `payout` is no longer
+a listener-only consumer of `booking`; the grant grew with the code, per the matrix below.)
 
 and each module exposes its published surfaces (`api/`, and `spi/` where present):
 
@@ -31,7 +34,8 @@ Grants name the **narrowest named interfaces** the consumer's bytecode actually 
 
 - A **port caller** lists `<provider>::api` + `::vocabulary` (the types the port speaks).
 - A **listener-only consumer** lists `<provider>::events` + `::vocabulary` — never a command
-  surface (`payout` above is the canonical example).
+  surface. (No module is purely listener-only today — `payout` was until #171 added a query-port
+  grant — but the rule still bounds any *new* listener-only consumer.)
 - The **implementing** module of a driven port lists `<provider>::spi` (plus `<provider>::api` if
   it also calls it); a module that only *calls* the provider lists `<provider>::api` only —
   never `::spi`.

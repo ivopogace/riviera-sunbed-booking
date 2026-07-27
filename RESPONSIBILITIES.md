@@ -32,15 +32,18 @@ review-only.
    the payment settled.
 6. **`booking`** confirms: it transitions to `CONFIRMED`, issues the unguessable
    booking code, and publishes `BookingConfirmed`.
-7. On `BookingConfirmed`, independent listeners fire: **`payout`** accrues a ledger
-   entry for the venue (idempotently), and **`availability`** finalises the set as
-   taken. Neither reaches back into `booking`.
+7. On `BookingConfirmed`, **`payout`** accrues a ledger entry for the venue
+   (idempotently). `availability` needs no listener — the set was already claimed
+   atomically at step 3; confirmation changes nothing in its table. No listener
+   reaches back into `booking`.
 8. On arrival, venue staff verify the booking code at the lane/set. Staff can also
    tap-to-mark a walk-in, which **`availability`** records against the **walk-in**
    pool — a separate pool from online bookings.
-9. If the tourist cancels, **`booking`** applies the cancellation policy and, on
-   `BookingCancelled`, **`availability`** frees the set and **`payment`** refunds
-   the amount `booking` decided.
+9. If the tourist cancels, **`booking`** applies the cancellation policy, frees the
+   set **synchronously** via `availability`'s `release` port (the existing
+   booking → availability direction), and publishes `BookingCancelled` — on which
+   **`payout`** reverses its ledger entry and `booking`'s own refund listener drives
+   **`payment`**'s `RefundPort` with the amount `booking` decided.
 
 > **Variant — Request-to-Book** (per venue's booking mode; *shipped — issue #98*): between
 > steps 2 and 3 the host accepts or declines (`booking` owns the request lifecycle and its

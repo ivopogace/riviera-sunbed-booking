@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 
 /**
- * Verifies the Spring Modulith structure (invariant #11): the six bounded-context
+ * Verifies the Spring Modulith structure (invariant #11): the seven bounded-context
  * modules and their boundaries. Pure structural analysis — no Spring context, no
  * database — so it runs anywhere, including without Docker.
  */
