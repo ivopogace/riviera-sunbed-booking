@@ -131,25 +131,30 @@ one-line comments §6c, and §8's "don't hand-roll thread pools" → Spring's li
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An integration test asserting on `MockMailer` after an HTTP call becomes **nondeterministic** (flaky in CI, green locally) because the send now races the response | high | high | the synchronous test dispatcher is wired **centrally**, in `TestcontainersConfiguration` (imported by every DB-backed IT) and `WebSliceStubs` (every `@WebMvcTest` slice) — not per test class; phase 1 greps every test reference to `MockMailer`/`lastTo`/`sent()` and confirms each one's context pulls in a synchronous dispatcher | Claude | open |
-| R-2 | Reusing Boot's shared `applicationTaskExecutor` would put SMTP latency in the same pool as the Modulith `@ApplicationModuleListener` money path (payment→booking confirmation, booking→payout accrual) | med | high | dedicated bounded pool with its own `recovery-mail-` thread prefix, injected by nothing shared; AC-2 asserts the thread name | Claude | open |
+| R-1 | An integration test asserting on `MockMailer` after an HTTP call becomes **nondeterministic** (flaky in CI, green locally) because the send now races the response | high | high | the synchronous test dispatcher is wired **centrally**, in `TestcontainersConfiguration` (imported by every DB-backed IT) and `WebSliceStubs` (every `@WebMvcTest` slice) — not per test class; phase 1 greps every test reference to `MockMailer`/`lastTo`/`sent()` and confirms each one's context pulls in a synchronous dispatcher | Claude | **closed** in `aa4a076` — audit found all 9 racing classes already covered by the two central overrides; 0 needed a per-class annotation |
+| R-2 | Reusing Boot's shared `applicationTaskExecutor` would put SMTP latency in the same pool as the Modulith `@ApplicationModuleListener` money path (payment→booking confirmation, booking→payout accrual) | med | high | dedicated bounded pool with its own `recovery-mail-` thread prefix, injected by nothing shared; AC-2 asserts the thread name | Claude | **closed** in `9f5a34d` — `AsyncMailDispatcherTest.runsTheSendOffTheCallersThread` pins the `recovery-mail-` prefix |
 | R-3 | **Residual timing delta:** the known-email branch still does one synchronous token-row insert the unknown branch does not (~sub-ms) | high | low | accepted and documented (grill decision). The ~100ms SMTP delta this slice closes is the measurable oracle; `register`'s branch asymmetry is structural and pre-existing (the fresh branch inserts an account + a session row) and is answered by D-8's bcrypt-cost equalization, not by write-count equalization | Ivo | accepted — documented in ADR-0011 amendment |
-| R-4 | A send is lost on crash, shutdown, or queue saturation, leaving a user with a token they never received | med | low | the flow is user-retryable by design (re-request the email); the pool drains in-flight tasks for up to 5s on shutdown; the trade-off is recorded in the ADR amendment | Claude | open |
-| R-5 | The copied MDC leaks from one task into the next on a pooled (reused) thread | med | med | `MDC.clear()` in a `finally` inside the task wrapper; AC-7's second assertion pins it | Claude | open |
-| R-6 | An exception escaping the dispatched task changes nothing about the response but surfaces as an uncaught-handler log, masking a real failure | low | med | the `RuntimeException` catch lives inside the task; the dispatcher additionally catches the narrow `TaskRejectedException` at dispatch time; both log at WARN | Claude | open |
-| R-7 | `WebSliceStubs` constructs `CustomerRecovery` by hand — a new constructor parameter breaks **every** `@WebMvcTest` slice at once | high | low | updated in the same phase as the constructor change; the web-slice suite is part of that phase's scoped test run | Claude | open |
-| R-8 | The dispatcher reads as a one-implementation "hypothetical seam" at review | low | low | it has two real implementations from day one (async production, synchronous test) and is the named vehicle for #375; purpose-named, not technology-named (`riviera-modulith`) | Claude | open |
+| R-4 | A send is lost on crash, shutdown, or queue saturation, leaving a user with a token they never received | med | low | the flow is user-retryable by design (re-request the email); the pool drains in-flight tasks for up to 5s on shutdown; the trade-off is recorded in the ADR amendment | Claude | **accepted** — `9f5a34d` sets the 5s drain; ADR-0011 decision 5 now states the best-effort (not at-least-once) posture explicitly, and the runbook warns activators |
+| R-5 | The copied MDC leaks from one task into the next on a pooled (reused) thread | med | med | `MDC.clear()` in a `finally` inside the task wrapper; AC-7's second assertion pins it | Claude | **closed** in `9f5a34d` — `AsyncMailDispatcherTest.clearsTheLoggingContextAfterTheTask` |
+| R-6 | An exception escaping the dispatched task changes nothing about the response but surfaces as an uncaught-handler log, masking a real failure | low | med | the `RuntimeException` catch lives inside the task; the dispatcher additionally catches the narrow `TaskRejectedException` at dispatch time; both log at WARN | Claude | **closed** in `aa4a076` — `CustomerRecoveryDispatchTest.aSendFailureIsSwallowedInsideTheDispatchedTask` + `AsyncMailDispatcherTest.aRejectedDispatchIsDroppedWithoutThrowing` |
+| R-7 | `WebSliceStubs` constructs `CustomerRecovery` by hand — a new constructor parameter breaks **every** `@WebMvcTest` slice at once | high | low | updated in the same phase as the constructor change; the web-slice suite is part of that phase's scoped test run | Claude | **closed** in `aa4a076` — `MeSurfaceRoleGateTest`, `MyAccountControllerTest`, `AccountRecoveryControllerTest` all green |
+| R-8 | The dispatcher reads as a one-implementation "hypothetical seam" at review | low | low | it has two real implementations from day one (async production, synchronous test) and is the named vehicle for #375; purpose-named, not technology-named (`riviera-modulith`) | Claude | **closed** — shipped with two implementations (`AsyncMailDispatcher`, `SynchronousMailDispatch`); re-check at the review gate |
 
 ## Open questions / Assumptions
 
-- **Assumption:** every `@SpringBootTest` that asserts on `MockMailer` imports
-  `TestcontainersConfiguration`, so importing the synchronous dispatcher from there covers them all.
-  — *Owner:* Claude · *Resolves by:* phase 1 (grep, R-1)
-- **Assumption:** the recovery-token table stores only the digest, so AC-3's "raw token in no
-  persistent store" scan is satisfiable as written against V28's schema. — *Owner:* Claude ·
-  *Resolves by:* phase 2 (read `V28__customer_email_verification_and_recovery_tokens.sql`)
+*(none open — both assumptions resolved below.)*
 
 ### Resolved
+
+- **Assumption:** every `@SpringBootTest` that asserts on `MockMailer` imports
+  `TestcontainersConfiguration`. → **Confirmed** by the phase-1 audit: all 6 such ITs import it, the
+  3 remaining web slices go through `WebSliceStubs`, and the other 3 mail-referencing classes are
+  `ApplicationContextRunner`/plain-unit tests that never dispatch. Resolved in `aa4a076`.
+- **Assumption:** the recovery-token table stores only the digest, so AC-3's scan is satisfiable. →
+  **Confirmed** against `V28`: the table is `customer_account_token` with a `token_hash` column
+  (SHA-256 hex, `UNIQUE`), and `V8`'s `serialized_event` is `TEXT` (so the scan needs no `encode()`).
+  The test's positive control asserts the *digest* of the same token is present exactly once, which
+  is what keeps the three zero-assertions from passing vacuously. Resolved in `<phase-2-sha>`.
 
 - **Open question:** how far should the timing closure go — the mail send only, or the whole
   known-branch body (token mint + insert + send)? → **Issue scope: the send only**, residual
@@ -215,16 +220,16 @@ explicitly.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — opened, awaiting CI + review gate`
 
-**Next action:** write `RecoveryTokenNeverPersistedIT` (AC-3) against the real V28/V8 column names,
-then land the ADR-0011 decision-5 amendment + the runbook's interim-limits edit.
+**Next action:** confirm the push's CI run is green, then run the review gate (`/code-review`) and
+the Sonar gate; findings re-enter at Implement.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | ✅ | `9f5a34d` |
-| 1 — Route `CustomerRecovery` through it + synchronous test wiring | ✅ | `<phase-1-sha>` |
-| 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | ⏳ | |
+| 1 — Route `CustomerRecovery` through it + synchronous test wiring | ✅ | `aa4a076` |
+| 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | ✅ | `<phase-2-sha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -853,6 +858,7 @@ class RecoveryTokenNeverPersistedIT {
 |---|---|---|---|---|---|
 | 2026-07-27 | phase 0 — new `MailDispatcher` seam | other synchronous edge side-channels on a request thread that could reuse the seam | `grep -rl "Mailer\|sendQuietly" platform/src/main/java` | 8 files, but only `CustomerRecovery` *calls* the `Mailer`; the rest are the port, its two implementations, the prod guard, and the two records | Skip — no second call site exists today. #375's operator-approval mail is the named future reuse and is out of scope per Non-goals |
 | 2026-07-27 | phase 1 — async dispatch could flake any mail-observing test (R-1) | every test context that observes a send | `grep -rl "Mailer" platform/src/test/java` then classify each by harness | 12 files: 6 `@SpringBootTest`+`@Import(TestcontainersConfiguration)` (`PasswordResetIT`, `EmailVerificationIT`, `CustomerRegisterIT`, `SetPasswordIT`, `RecoveryRateLimitIT`, `RecoveryMailerFailureIT`); 3 `@WebMvcTest`+`WebSliceStubs` (`MeSurfaceRoleGateTest`, `MyAccountControllerTest`, `AccountRecoveryControllerTest`); 4 `ApplicationContextRunner` bean-wiring tests that never trigger a send; 2 plain unit/GreenMail tests | Fix all — the two central overrides (`TestcontainersConfiguration` import + `WebSliceStubs` argument) cover all 9 that could race; the other 5 need nothing. **No per-class annotation**, deliberately: a missed class would flake, not fail. R-1 closed |
+| 2026-07-27 | phase 2 — "a bearer credential must not reach a serialized payload" | every published domain-event record's payload | `grep -n "public record" platform/src/main/java/**/events/*.java` | 4 events: `BookingConfirmed`/`BookingCancelled` (typed ids + minor units + date + reason enum), `PaymentConfirmed`/`PaymentCanceled` (`BookingRef` + Stripe `paymentIntentId`) | Skip — none carries a token or booking code; all are ids-only per invariant #11, so no sibling of this bug exists. **Forward-looking:** #371's booking-confirmation mail needs the booking *code* (invariant #7) — `BookingConfirmed` deliberately carries only `bookingId`, so that listener must read the code through a `booking` `api/` port at send time and must **not** be "fixed" by widening the event payload |
 
 ---
 
