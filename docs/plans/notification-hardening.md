@@ -88,7 +88,7 @@ branch name applies — no cloud-branch substitution)*
 - [ ] **AC-5:** Given a suppression lookup that blocks longer than the configured timeout, when a
   recovery mail is dispatched, then the read aborts inside the timeout **and the mail is still sent**
   (fail-open, recovery vehicle only) rather than being silently dropped.
-  *Pinned by:* `SuppressionQueryTimeoutIT.aWedgedSuppressionReadAbortsAndTheMailStillGoes`.
+  *Pinned by:* `SuppressionQueryTimeoutIT.aWedgedSuppressionReadAbortsInsteadOfStallingTheDrainerThread` (the abort, against a real `ACCESS EXCLUSIVE` lock — 1.05s against a 1s timeout) + `TransactionalMailServiceTest.aSuppressionReadFailureStillSendsTheRecoveryMail` (the mail still goes).
 
 - [ ] **AC-6:** Given a suppression read that throws, when the **booking-confirmation** (registry)
   vehicle sends, then the exception still propagates so the Event Publication Registry retries —
@@ -244,10 +244,10 @@ No event is added, moved, or renamed — so **no Flyway `event_type` rewrite is 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 5 (cleanup sweep + docs)`
+**Stage pointer:** `PR — merge origin/main into the branch, then open the PR`
 
-**Next action:** The item-6 sweep: `PackageShapeArchitectureTests` Javadoc, the stale `RecordedMailbox`
-references, import grouping in the five named files, `seedConfirmedBooking`, `ListenerMoveMigrationIT`.
+**Next action:** Merge latest `origin/main` with full phase discipline, push, open the PR into `main`,
+then run the **review gate** (`/code-review`, not the overlay alone) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -255,8 +255,8 @@ references, import grouping in the five named files, `seedConfirmedBooking`, `Li
 | 1 — One canonical `Emails.normalize` (item 4) | ✅ | `f671840` |
 | 2 — V34 `domain` CHECK + empty-domain guard (item 2) | ✅ | `310bff9` |
 | 3 — Bounded suppression read + fail-open (item 3) | ✅ | `9fc24f6` |
-| 4 — Fire-and-forget wiring IT (item 5) | ✅ | `<phase-4>` |
-| 5 — Cleanup sweep + docs (item 6) | | |
+| 4 — Fire-and-forget wiring IT (item 5) | ✅ | `b65ac19` |
+| 5 — Cleanup sweep + docs (item 6) | ✅ | `ac4f35a` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
