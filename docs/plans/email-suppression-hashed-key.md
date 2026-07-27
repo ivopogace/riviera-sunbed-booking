@@ -164,16 +164,17 @@ N/A — no contract change (no HTTP surface touches suppression).
 > **Session-recovery anchor.** Re-read this section (plus the current riviera-sdlc stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** implement (phase 3 — docs)
+**Stage pointer:** PR stage — merge latest `origin/main`, push, open PR
 
-**Next action:** phase 3 — RESPONSIBILITIES.md + CLAUDE.md touch-ups, ops runbook, cd-pipeline env entry.
+**Next action:** merge `origin/main` into the branch, push, open the PR into `main`, then run
+the Review gate (`/code-review` + `riviera-review-overlay`) per `references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 5743576 |
 | 1 — V33 migration + HMAC adapter + IT (TDD) | ✅ | 106fd48 |
-| 2 — pepper prod guard + guard test | ✅ | (this commit) |
-| 3 — docs (RESPONSIBILITIES, CLAUDE.md row, runbook, cd-pipeline) + close-out | | |
+| 2 — pepper prod guard + guard test | ✅ | 1cd4b0f |
+| 3 — docs (RESPONSIBILITIES, CLAUDE.md row, runbook, cd-pipeline) + close-out | ✅ | (this commit; close-out finalization lands with the PR's last commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

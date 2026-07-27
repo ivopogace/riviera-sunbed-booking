@@ -266,8 +266,10 @@ vs real SMTP, profile-swapped, mock prod-guarded), the two delivery vehicles —
 Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for
 bearer-credential payloads (ADR-0011 decision 5) — the `BookingConfirmed` confirmation mail
 (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
-first owned state: the **email-suppression list** (V32), with the defining invariant **no
-send to a suppressed address**, enforced at the one send chokepoint
+first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
+a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
+deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
+with the defining invariant **no send to a suppressed address**, enforced at the one send chokepoint
 (`TransactionalMailService`) on both vehicles. Publishes exactly one surface:
 `notification::api`'s fire-and-forget `MailSender` (never throws, runs off the caller's
 thread, suppression-enforced) — consumed by the composition root alone; **no module depends
