@@ -100,7 +100,7 @@ The replaced surface is the `mailer`-profile `SmtpMailer` itself (deliberately t
 | R-1 | Synchronous SMTP round-trip on the request thread under `mailer` re-opens the timing account-enumeration oracle (#255 item 2) and can pin request threads | high (once activated) | med | Known interim state, explicitly scoped to #369 (next slice); prod activation is separately blocked on #370's human setup, so no production exposure inside this slice. `sendQuietly` already prevents transport failures from failing the request | Claude | open |
 | R-2 | `spring.mail.host=${…:}` with an **empty default** in the main `application.properties` would satisfy `@ConditionalOnProperty` and activate `MailSenderAutoConfiguration` in the default profile (and defeat fail-at-boot) | med | high | All `spring.mail.*` lives ONLY in `application-mailer.properties`, placeholders **without defaults** → unresolved placeholder aborts boot under `mailer`, and the default profile never sees a `spring.mail.host` | Claude | open |
 | R-3 | SMTP credentials or the tokenized link leak into repo, image, or logs (invariant #7) | low | high | Credentials only via env placeholders (Stripe-key posture); `SmtpMailer` logs nothing but exception class names on failure — asserted by `SmtpMailerIT.neverLogsTheTokenizedLink`; STARTTLS `required=true` so credentials never cross plaintext | Claude | open |
-| R-4 | GreenMail / Jakarta Mail version mismatch with Spring Boot 4 (jakarta namespace) | med | med | Use the GreenMail 2.x line (`com.icegreen:greenmail-junit5`), which targets jakarta.mail; verify the exact current version at implement time before pinning | Claude | open |
+| R-4 | GreenMail / Jakarta Mail version mismatch with Spring Boot 4 (jakarta namespace) | med | med | Use the GreenMail 2.x line (`com.icegreen:greenmail-junit5`), which targets jakarta.mail; verify the exact current version at implement time before pinning | Claude | resolved — 2.1.3 pinned, `SmtpMailerIT` green (phase 0) |
 | R-5 | Full-suite-only failure from context/profile tests polluting shared state (case history #122/#127) | low | med | `MailerProfileWiringTest` uses `ApplicationContextRunner` (no shared context caching); scoped local runs + the CI gate per push | Claude | open |
 | R-6 | A future provider switch breaks silently | low | low | No Scaleway-specific code anywhere — host/port/creds are pure config; the runbook names Scaleway values only in its env-example section | Claude | open |
 
@@ -110,9 +110,13 @@ The replaced surface is the `mailer`-profile `SmtpMailer` itself (deliberately t
   one; the epic says `From: noreply@` and the domain is undecided until #370/#291) — modeled
   as `riviera.mail.from=${RIVIERA_MAIL_FROM}` (no default) in `application-mailer.properties`,
   validated non-blank in the `SmtpMailer` constructor. — *Owner:* Claude · *Resolves by:* phase 1
-- **Assumption:** subjects stay exactly as the mock-era flows imply ("Verify your email",
-  "Reset your password") — plain-text English v1, no product copy decision pending. —
-  *Owner:* Claude · *Resolves by:* phase 0
+### Resolved
+
+- **Assumption (resolved, phase 0):** subjects are "Verify your email" / "Reset your
+  password" — plain-text English v1, shipped as constants in `SmtpMailer`, pinned by
+  `SmtpMailerIT`.
+- **Risk R-4 (resolved, phase 0):** GreenMail pinned at `greenmail-junit5:2.1.3` (current
+  Maven Central latest, jakarta line) — `SmtpMailerIT` green against Boot 4's mail starter.
 
 ## Availability & concurrency (invariant #2)
 
@@ -155,13 +159,13 @@ N/A — no contract change (no endpoint or DTO touched).
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 > Update in the same commit window as the change it records.
 
-**Stage pointer:** plan — committed, ready for implement (phase 0)
+**Stage pointer:** implement (phase 1)
 
-**Next action:** load `riviera-local-debug`, then phase 0 step 1 (write `SmtpMailerIT` red).
+**Next action:** phase 1 step 1 — write `MailerProfileWiringTest` red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Real `SmtpMailer` + GreenMail IT | | |
+| 0 — Real `SmtpMailer` + GreenMail IT | ✅ | `feat(#368): implement SmtpMailer…` (sha at close-out) |
 | 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | | |
 | 2 — `link-base-url` env placeholder + deploy docs | | |
 | 3 — Activation runbook | | |
