@@ -159,9 +159,9 @@ N/A — no contract change (no endpoint or DTO touched).
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 > Update in the same commit window as the change it records.
 
-**Stage pointer:** CI gate — push the branch, verify the run, then open the PR.
+**Stage pointer:** PR #377 open — CI gate running; review gate (`/code-review` + overlay) next.
 
-**Next action:** push `feature/email-s1-smtp-mailer`, check that push's CI run.
+**Next action:** verify PR #377's CI run is green, then run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
