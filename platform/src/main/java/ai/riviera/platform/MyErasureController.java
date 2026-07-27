@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentCustomer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;

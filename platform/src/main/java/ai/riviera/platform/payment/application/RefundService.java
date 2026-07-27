@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 import org.springframework.stereotype.Service;
 
-import ai.riviera.platform.ObservabilityMetrics;
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;

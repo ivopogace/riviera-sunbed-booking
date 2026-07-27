@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import java.util.Collection;
 
 import io.micrometer.core.instrument.MeterRegistry;

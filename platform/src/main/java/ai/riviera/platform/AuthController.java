@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;

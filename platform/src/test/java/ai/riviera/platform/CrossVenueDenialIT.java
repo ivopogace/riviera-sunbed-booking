@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentOperator;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;

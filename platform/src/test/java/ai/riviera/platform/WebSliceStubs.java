@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.CurrentOperator;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;

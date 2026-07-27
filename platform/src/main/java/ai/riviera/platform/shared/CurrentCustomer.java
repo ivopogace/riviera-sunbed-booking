@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.shared;
 
 import java.util.Optional;
 
@@ -36,7 +36,7 @@ public class CurrentCustomer {
 
 	private final CustomerAccountDirectory directory;
 
-	CurrentCustomer(CustomerAccountDirectory directory) {
+	public CurrentCustomer(CustomerAccountDirectory directory) {
 		this.directory = directory;
 	}
 

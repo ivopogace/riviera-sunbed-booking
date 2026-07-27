@@ -12,7 +12,8 @@ import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.Scenario;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
@@ -78,6 +79,12 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	CurrentOperator currentOperator;
+
+	// Both principal accessors need mocking since #371 moved them out of the root package into the
+	// `shared` kernel module: Modulith's STANDALONE bootstrap always supplies root-package beans, but
+	// a module's beans only when that module is bootstrapped — which `shared` is not, here.
+	@MockitoBean
+	CurrentCustomer currentCustomer;
 
 	@MockitoBean
 	OperatorAccounts accounts;

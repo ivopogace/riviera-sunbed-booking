@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.shared;
 
 import java.net.URI;
 

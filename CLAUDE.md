@@ -131,6 +131,20 @@ Render + Neon (ADR-0004; see `docs/deploy/`).
 Each module lives at `ai.riviera.platform.<module>` with the hexagonal layout in
 invariant #11.
 
+> **Plus one non-context module: `shared`** (#371) — the **Shared Kernel**, an
+> `@ApplicationModule(type = OPEN)` holding `ApiProblem`, `CurrentOperator`,
+> `CurrentCustomer` and `ObservabilityMetrics`. It is *not* a bounded context and owns no
+> aggregate; it exists because the root package was doing two jobs with opposite dependency
+> directions — composition root (depends on modules) **and** the home of types five modules
+> depended on — which closes cycles by construction, and did the moment an edge listener
+> needed `root → booking`. The rule it restores: **modules depend on `shared`, the root
+> depends on modules, and nothing depends on the root.** Keep it tiny (Evans' warning):
+> admission requires no business logic, no module-owned state, and no dependency on a module
+> that depends back — it may only reach `customer::api` and `operator::api`. It is not a home
+> for "code used in more than one place". Consequence for tests: `@ApplicationModuleTest`
+> auto-supplies root-package beans but not another module's, so a module test now mocks the
+> kernel beans it transitively needs (see `PayoutModuleTest`).
+
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
 | `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water, venue photos (#142, ADR-0008), the signed-in operator's own-venues read (`GET /api/venues/mine`, S9 #277) | `Venue`, `BeachMap` |

@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.ApiProblem;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;

@@ -259,6 +259,29 @@ Security type inside the module (`OperatorAuthPlacementTests` green). See
 
 ---
 
+## `shared` (not a bounded context)
+
+The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
+`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`. An
+`@ApplicationModule(type = OPEN)`: technical shared code, so it publishes no
+`api`/`vocabulary` surface and consumers use its types directly.
+
+**Job:** hold the handful of edge types that bounded contexts legitimately share — the
+RFC-7807 error-contract factory (#97) and the accessors that resolve an authenticated
+principal to a typed id. Nothing else.
+
+**Not my job:**
+- **Any business logic or module-owned state** → the owning bounded context. This package
+  is not a home for "code used in more than one place"; a shared kernel earns its keep only
+  while it stays tiny and stable, because a change here ripples through every context.
+- **Depending on a module that depends back** → it may reach only `customer::api` and
+  `operator::api`, the two modules that do not depend on it. Anything wider re-creates the
+  cycle it exists to remove.
+- **Being the composition root** → that stays the root package (`PlatformApplication`,
+  `SecurityConfig`, the controllers, the mailers). The whole point of the split is that the
+  root *depends on* modules while `shared` is *depended on by* them; putting both in one
+  package is what closed `booking → root → booking`.
+
 ## Machine-checked vs review-checked
 
 The boundaries above split into a **structural** half the build enforces as fitness

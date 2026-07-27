@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.ApiProblem;
 import java.io.IOException;
 
 import org.springframework.http.HttpStatus;

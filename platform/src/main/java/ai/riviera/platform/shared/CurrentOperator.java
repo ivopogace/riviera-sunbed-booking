@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.shared;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -25,7 +25,7 @@ public class CurrentOperator {
 
 	private final OperatorDirectory directory;
 
-	CurrentOperator(OperatorDirectory directory) {
+	public CurrentOperator(OperatorDirectory directory) {
 		this.directory = directory;
 	}
 

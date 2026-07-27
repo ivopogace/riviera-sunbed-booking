@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.shared;
 
 /**
  * The names of the money-path metrics (issue #100, D4) — the single source of truth shared by the

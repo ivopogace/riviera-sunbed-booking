@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.shared.ApiProblem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
