@@ -357,7 +357,8 @@ every `adapter/out` package — the whole persistence layer. A local `site-packa
 (or on a new machine), re-verify:
 
 ```bash
-git ls-files '*/adapter/out/*.java' | wc -l                   # 33 — what should be indexed
+git ls-files '*/adapter/out/*.java' | wc -l                   # what SHOULD be indexed (48 as of #386;
+                                                              # it grows — read it, don't trust this number)
 grep -c '"JdbcGuestBookingHistory"' graphify-out/graph.json   # >0 — what actually is
 ```
 
