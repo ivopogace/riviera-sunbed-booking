@@ -242,7 +242,9 @@ The skills reference them by number.
     automation). Refund decisions and amounts are computed on the server, then
     actioned via Stripe.
 11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout is the
-    **ADR-0007 graduated two-template shape** (as amended by issue #95): a full module is
+    **ADR-0007 graduated two-template shape** (as amended by issues #95 and #371 — the latter adding
+    a third, *non-context* template: the `shared` OPEN Shared Kernel, which matches neither template
+    on purpose and is reserved for technical shared code; see the module table's `shared` note): a full module is
     `ai.riviera.platform.<module>.{api?, spi?, vocabulary?, events?, application, domain,
     adapter/in, adapter/out}` — the published surfaces are top-level named interfaces,
     present only for the kinds the module actually publishes; a thin (serviceless) module
