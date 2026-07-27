@@ -171,7 +171,7 @@ no release, no staff mark, no new write path. The `(set, date)` uniqueness guara
 
 | # | Module.api | Port | Public types | Consumers |
 |---|---|---|---|---|
-| NI-1 | `booking.api` | **new** `ConfirmedBookingLookup#byId(BookingId)` | `booking.vocabulary.ConfirmedBookingFacts(String code, CustomerId customerId)` | the platform edge |
+| NI-1 | `booking.api` | **new** `BookingNotificationFacts#notificationInfo(BookingId)` | `booking.vocabulary.BookingNotificationInfo(String code, CustomerId customerId)` | the platform edge |
 | NI-2 | `venue.api` | existing `SetBookingFacts#setBookingInfo(SetId)` | `venue.vocabulary.SetBookingInfo` | the platform edge (new consumer) |
 | NI-3 | `customer.api` | existing `CustomerLookup#findById(CustomerId)` | `customer.vocabulary.GuestContact` | the platform edge (new consumer) |
 
@@ -238,15 +238,15 @@ its own Playwright coverage.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Load `riviera-java-conventions` + `riviera-local-debug`, then start phase 0 with the
-failing test for `ConfirmedBookingLookup`.
+**Next action:** Write the failing `MockMailerTest.recordsBookingConfirmation` /
+`neverLogsTheBookingCode` tests, then grow the `Mailer` port with the booking-confirmation kind.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `booking::api` confirmed-booking read port | | |
-| 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | | |
+| 0 — `booking::api` notification-facts read port | ✅ | see `feat(#371): publish booking's notification-facts read port` |
+| 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | ⏳ | |
 | 2 — the edge listener on `BookingConfirmed` | | |
 | 3 — registry-config pinning + structural net + close-out | | |
 
@@ -266,11 +266,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Backend — `booking` module**
 
-- `platform/src/main/java/ai/riviera/platform/booking/api/ConfirmedBookingLookup.java` — **new**;
+- `platform/src/main/java/ai/riviera/platform/booking/api/BookingNotificationFacts.java` — **new**;
   the published read port (NI-1)
-- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/ConfirmedBookingFacts.java` —
+- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/BookingNotificationInfo.java` —
   **new**; its record `(String code, CustomerId customerId)`
-- `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcConfirmedBookingLookup.java` —
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingNotificationFacts.java` —
   **new**; package-private `JdbcClient` adapter
 - `platform/src/main/java/ai/riviera/platform/booking/api/package-info.java` — modify; the surface
   javadoc names one port today
@@ -302,13 +302,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 0 — `booking::api` confirmed-booking read port
 
-**Files:** Create `booking/api/ConfirmedBookingLookup.java`, `booking/vocabulary/ConfirmedBookingFacts.java`,
-`booking/adapter/out/JdbcConfirmedBookingLookup.java` · Modify `booking/api/package-info.java` · Test a new IT
+**Files:** Create `booking/api/BookingNotificationFacts.java`, `booking/vocabulary/BookingNotificationInfo.java`,
+`booking/adapter/out/JdbcBookingNotificationFacts.java` · Modify `booking/api/package-info.java` · Test a new IT
 
 - [ ] **Step 1: Write the failing test** — an IT that creates a booking through the existing fixture
-  and asserts `ConfirmedBookingLookup.byId(bookingId)` returns its code and the `CustomerId` the
+  and asserts `BookingNotificationFacts.notificationInfo(bookingId)` returns its code and the `CustomerId` the
   booking was created against, and `Optional.empty()` for an unknown id.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ConfirmedBookingLookup*"` → FAIL (no such type)
+- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcBookingNotificationFactsIT*"` → FAIL (no such type)
 - [ ] **Step 3: Minimal implementation** — the port, the record, and a `JdbcClient` text-block
   `SELECT code, customer_id FROM booking WHERE id = :id`, package-private adapter.
 - [ ] **Step 4: Run it, verify it passes** → PASS
