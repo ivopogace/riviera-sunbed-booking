@@ -63,25 +63,34 @@ class OperatorAccountController {
 	}
 
 	/**
-	 * Wire DTO for an operator password change. Both fields are required — unlike the customer DTO, whose
-	 * {@code currentPassword} is optional for an SSO-only account, because operators have no SSO (that is
-	 * #276) and therefore always have a password to prove. Presence checks live in the compact constructor
-	 * (§6b centralized-explicit style) → a malformed body is {@code 400 INVALID_REQUEST}.
+	 * Wire DTO for an operator password change. Both fields are required in practice — unlike the customer
+	 * DTO, whose {@code currentPassword} is optional for an SSO-only account, because operators have no SSO
+	 * (that is #276) and therefore always have a password to prove. Only {@code newPassword} is enforced
+	 * <em>here</em> (§6b centralized-explicit style) → an absent or blank one is a malformed body,
+	 * {@code 400 INVALID_REQUEST}, whose length message reads correctly for an empty value. A missing
+	 * {@code currentPassword} is a <strong>different</strong> fault and {@link #changePassword} answers it
+	 * with its own code (#345): throwing here funnelled both into one code, so a caller with a perfectly good
+	 * new password was told to choose a different length.
 	 */
 	record ChangePasswordRequest(String currentPassword, String newPassword) {
 		ChangePasswordRequest {
-			if (currentPassword == null || currentPassword.isEmpty()
-					|| newPassword == null || newPassword.isEmpty()) {
-				throw new IllegalArgumentException("currentPassword and newPassword are required");
+			if (newPassword == null || newPassword.isEmpty()) {
+				throw new IllegalArgumentException("newPassword is required");
 			}
 		}
 	}
 
 	/**
 	 * Change the signed-in operator's own password, evicting every <em>other</em> session the old credential
-	 * authorized and retiring the calling session's id. A weak new password is {@code 400 INVALID_REQUEST};
-	 * a wrong current password is {@code 400 INVALID_CURRENT_PASSWORD}; the env-managed bootstrap admin is
+	 * authorized and retiring the calling session's id. An omitted current password is
+	 * {@code 400 MISSING_CURRENT_PASSWORD} and a supplied-but-wrong one {@code 400 INVALID_CURRENT_PASSWORD}
+	 * (#345 — one code for both told a caller its fine new password was the wrong length); a weak new
+	 * password is {@code 400 INVALID_REQUEST}; the env-managed bootstrap admin is
 	 * {@code 409 BOOTSTRAP_CREDENTIAL_MANAGED}; a non-{@code ACTIVE} account is {@code 409 ACCOUNT_NOT_ACTIVE}.
+	 *
+	 * <p><strong>The missing-current check outranks the policy check</strong>, matching the order the page
+	 * validates its own fields in; it reads no stored credential, so the "policy before the credential
+	 * lookup" ordering the #342 review pinned is untouched.
 	 *
 	 * <p><strong>The three success-path effects are ordered, not transactional</strong> (#344). The credential
 	 * write and the session deletes belong to different owners — a module's own transaction and Spring
@@ -113,6 +122,10 @@ class OperatorAccountController {
 			return ApiProblem.response(HttpStatus.CONFLICT, "BOOTSTRAP_CREDENTIAL_MANAGED",
 					"This account's password is managed by the deployment environment and cannot be "
 							+ "changed here.");
+		}
+		if (!CustomerPasswords.isSupplied(request.currentPassword())) {
+			return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
+					"Enter your current password.");
 		}
 		CustomerPasswords.validate(request.newPassword());
 		Optional<OperatorCredential> existing = accounts.findByUsername(username);

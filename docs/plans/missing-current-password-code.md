@@ -220,14 +220,14 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read it
 > (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Phase 0 step 1 — add the two failing tests to `OperatorAccountControllerTest`.
+**Next action:** Phase 1 step 1 — add the failing `existingPasswordAccountReportsAnOmittedCurrentPasswordDistinctly` to `SetPasswordIT`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: operator endpoint answers `MISSING_CURRENT_PASSWORD` | | |
-| 1 — Backend: the customer twin | | |
+| 0 — Backend: operator endpoint answers `MISSING_CURRENT_PASSWORD` | ✅ | (this commit) |
+| 1 — Backend: the customer twin | ⏳ | |
 | 2 — Frontend: both auth services + both pages map the new code | | |
 | 3 — e2e: mocks mirror the controllers + a real render of the new branch | | |
 | 4 — Docs sweep + close-out | | |
@@ -705,7 +705,7 @@ customer route (nested under "the account has a credential", exactly as the cont
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-07-27 | Phase 0 | every backend edge surface reading a `currentPassword` | `grep -rn "currentPassword" platform/src/main/java` | `OperatorAccountController` (fixed here), `MyAccountController` | Fix both — the second is Phase 1, already the declared twin; the shared `CustomerPasswords.isSupplied` is what keeps them one rule |
 
 ---
 
