@@ -63,10 +63,10 @@ fields wide); `riviera-local-debug` (scoped test-run recipe). **Not loaded, deli
   path as guest checkout — `account_id` is never consulted). *Pinned by:*
   `BookingConfirmationMailIT.sendsToTheBookingContactForASignedInBooking`
 
-- [ ] **AC-3:** Given a **Request-mode** booking accepted and then paid, when the Stripe-webhook path
-  confirms it, then the same single confirmation email is produced — both confirm paths publish from
+- [ ] **AC-3:** Given a booking confirmed through the asynchronous **payment** route — the tail shared by Request-mode pay-on-accept and the Stripe webhook —, when that path
+  it confirms, then the same single confirmation email is produced, since both confirm paths publish from
   the one `ConfirmBooking` seam. *Pinned by:*
-  `BookingConfirmationMailIT.sendsForARequestModeBookingConfirmedViaPayment`
+  `BookingConfirmationMailIT.sendsForABookingConfirmedViaThePaymentPath`
 
 - [ ] **AC-4:** Given a `BookingConfirmed` publication that the registry has already **completed**,
   when outstanding publications are resubmitted, then no second email is produced. *Pinned by:*
@@ -75,7 +75,7 @@ fields wide); `riviera-local-debug` (scoped test-run recipe). **Not loaded, deli
 - [ ] **AC-5:** Given the running application, when its event-registry configuration is read, then
   `republish-outstanding-events-on-restart` is `true` and `completion-mode` is a bounded mode
   (`archive`), so the live publication table cannot grow without bound. *Pinned by:*
-  `EventRegistryConfigTest.registryRepublishesOutstandingAndBoundsTheLiveTable`
+  `EventRegistryDurabilityIT.republishesOutstandingPublicationsOnRestart` + `.boundsTheLivePublicationTableByArchivingCompletions`
 
 - [ ] **AC-6:** Given the confirmation listener, when the structural net runs, then module boundaries
   hold — the listener consumes an ids-only event from `booking::events` and reads through `api/`
@@ -90,7 +90,7 @@ fields wide); `riviera-local-debug` (scoped test-run recipe). **Not loaded, deli
 - [ ] **AC-8:** Given the real SMTP transport, when a booking confirmation is sent to a local sink,
   then the delivered message is plain text carrying the code/venue/date/spot/amount, with **no
   tracking markup** and no HTML part. *Pinned by:*
-  `SmtpMailerIT.bookingConfirmationIsPlainTextWithoutTrackingMarkup`
+  `SmtpMailerIT.deliversBookingConfirmationOverSmtp` + `.neverLogsTheBookingCode`
 
 ## Non-goals
 
@@ -118,7 +118,8 @@ component and `Mailer` gains a method, both additive (see R-5).
 |---|---|---|---|---|---|---|
 | R-1 | **Duplicate email in the crash window** — the send succeeds, the process dies before the registry writes `completion_date`, and restart republication sends again | low | low | Accepted and documented as at-least-once, not defended against: no DB write around a non-transactional SMTP call can be exactly-once (Architecture). The operational lever for the *other* direction — "completed but the inbox is empty" — is #380, not a restart | Ivo | accepted — documented in Architecture + on #367 |
 | R-2 | **Mail to an erasure tombstone** — a right-to-erasure scrub between confirmation and the async send leaves `CustomerLookup` returning `erased+<id>@erased.invalid` (ADR-0010), and we mail it | very low | low | Not guarded in this slice: `.invalid` is an RFC 2606 reserved TLD, so the message can never be delivered, and the race is seconds wide. The correct home for "never send to an address that cannot receive" is the epic's bounce/suppression slice, which needs the same check for hard-bounced addresses | Ivo | accepted — deferred to the epic's suppression slice |
-| R-3 | **A new edge bean breaks `@ApplicationModuleTest` contexts** (`PayoutModuleTest`, module tests that bootstrap the root config) — a known repeat in this repo, and **full-suite-only**, so a scoped green run can hide it | med | med | Add the module tests to the scoped run for the listener phase, not just the new ITs; if a context fails, add the `@MockitoBean` the module test needs rather than weakening the listener | Ivo | open |
+| R-3 | **A new edge bean breaks `@ApplicationModuleTest` contexts** (`PayoutModuleTest`, module tests that bootstrap the root config) — a known repeat in this repo, and **full-suite-only**, so a scoped green run can hide it | med | med | Add the module tests to the scoped run for the listener phase, not just the new ITs; if a context fails, add the `@MockitoBean` the module test needs rather than weakening the listener | Ivo | **fired, fixed** — `PayoutModuleTest` needed `@MockitoBean` for the listener's three ports *and* for `CurrentCustomer` (a second-order effect of R-9's extraction: Modulith auto-supplies root-package beans, not another module's). It is the only `@ApplicationModuleTest` in the repo |
+| R-9 | **The edge cannot host a listener on a module event** — five of seven modules import root-package types (`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`), so `root → booking` closed `booking → root → booking` and `ModularityTests` went red. Pre-existing latent ADP violation, not a defect in this slice; it had held only because every earlier edge class happened to touch just `customer`/`operator`, the two modules that don't depend back. Blocks #373/#374 identically | — (materialised) | **high** | Extracted the four types into a `shared` **Shared Kernel** module (`type = OPEN`), restoring the composition-root rule: modules → `shared`, root → modules, **nothing → root**. Folded into this PR at the maintainer's explicit direction after the split-PR option was put and declined. Also removes the constraint for a future `notification` module, so listener placement can be decided on merits | Ivo | closed — `ModularityTests` + full structural net green |
 | R-4 | **Existing booking ITs start firing an extra async listener**, adding nondeterminism to unrelated assertions | med | low | `MockMailer` only appends to an in-memory list, so the added work is inert; `Awaitility` is used only where the mail itself is asserted, following `PayoutAccrualIT`'s established pattern | Ivo | open |
 | R-5 | **`SentEmail` gains a component**, so any construction site or exhaustive destructuring breaks | low | low | Tests use accessors only (`toEmail()`/`kind()`/`link()`), verified by grep across `src/test`; the record gains static factories so no caller writes the 4-arg canonical constructor | Ivo | open |
 | R-6 | **Invariant #7 leak** — the booking code now travels through the edge, into `MockMailer`'s memory and an SMTP body | med | **high** | The code is never in the event payload (ids-only, so it never reaches `event_publication` — the reason this mail can ride the registry at all); never logged by `MockMailer` (AC-7) or `SmtpMailer`; and #380 carries a standing "never render the code in the admin UI" AC | Ivo | open |
@@ -166,6 +167,7 @@ no release, no staff mark, no new write path. The `(set, date)` uniqueness guara
 | M-2 | `venue` | existing | `Venue`, `BeachMap` | Already publishes venue name + set label via `SetBookingFacts` → `SetBookingInfo`. **Unchanged — consumed, not modified** |
 | M-3 | `customer` | existing | `Customer` | Already publishes guest-contact resolution via `CustomerLookup`. **Unchanged — consumed, not modified** |
 | M-4 | — (platform edge, root package) | existing | n/a | Mail composition and dispatch live at the edge and never inside a module (RV-BE-11, epic #367). The listener, the `Mailer` kind and the body text all land here |
+| M-5 | `shared` | **new** — not a bounded context | none | The Shared Kernel forced by R-9: `ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics` move out of the root so the root can go back to being purely a composition root. `type = OPEN` (technical shared code, no published surface); may depend only on `customer::api` + `operator::api`, the two modules that don't depend back |
 
 **Cross-module named interfaces (`api/` ports)**
 
@@ -198,6 +200,7 @@ no release, no staff mark, no new write path. The `(set, date)` uniqueness guara
 
 | Capability (what the slice adds/changes) | Owner module | Justification |
 |---|---|---|
+| Hold the edge types bounded contexts share (error contract, principal accessors, metric names) | `shared` | Not a bounded context and owns no aggregate — a Shared Kernel (Evans ch. 14). It cannot stay at the root: the root is the composition root and **depends on** modules, so hosting types modules depend on closes cycles by construction (R-9). Admission rule written into `RESPONSIBILITIES.md`: no business logic, no module-owned state, no dependency on a module that depends back |
 | Resolve a booking's arrival code + contact id from a `BookingId` | `booking` | `booking` Job: owns "bookings, booking codes"; the customer link is `booking.customer_id`. Not `customer` — its Not-My-Job list rejects owning booking facts |
 | Provide venue name + set label for a set | `venue` | `venue` Job: owns the beach map and set positions. Already published on `SetBookingFacts`; **no new surface** |
 | Resolve a `CustomerId` to a contact email | `customer` | `customer` Job: "tourist identity: guest-checkout contact". Not `booking` — booking holds the id, never the PII |
@@ -238,17 +241,17 @@ its own Playwright coverage.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3) — phases 0–2 done, plus the unplanned phase 2b (shared-kernel extraction, R-9)`
 
-**Next action:** Write the failing `BookingConfirmationMailIT` (AC-1..AC-4), then add the edge
-listener on `BookingConfirmed`.
+**Next action:** Finish phase 3 close-out (AC verification table + self-review checklist), then open the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `booking::api` notification-facts read port | ✅ | see `feat(#371): publish booking's notification-facts read port` |
 | 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | ✅ | see `feat(#371): add the booking-confirmation message kind to the Mailer port` |
-| 2 — the edge listener on `BookingConfirmed` | ⏳ | |
-| 3 — registry-config pinning + structural net + close-out | | |
+| 2 — the edge listener on `BookingConfirmed` | ✅ | see `feat(#371): mail the booking code on BookingConfirmed from the platform edge` |
+| 2b — **shared-kernel extraction** (unplanned; R-9) | ✅ | see `refactor(#371): extract the shared kernel out of the composition root` |
+| 3 — registry-config pinning + structural net + close-out | ⏳ | `EventRegistryDurabilityIT` written and green; close-out pending |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -293,7 +296,7 @@ Skill-routing gate for what the fix touches *before* editing).
 **Tests**
 
 - `platform/src/test/java/ai/riviera/platform/BookingConfirmationMailIT.java` — **new**; AC-1..AC-4
-- `platform/src/test/java/ai/riviera/platform/EventRegistryConfigTest.java` — **new**; AC-5
+- `platform/src/test/java/ai/riviera/platform/EventRegistryDurabilityIT.java` — **new**; AC-5
 - `platform/src/test/java/ai/riviera/platform/MockMailerTest.java` — modify; AC-7
 - `platform/src/test/java/ai/riviera/platform/SmtpMailerIT.java` — modify; AC-8
 - `platform/src/test/java/ai/riviera/platform/booking/...` — **new** port test for phase 0
@@ -325,7 +328,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **Step 1: Write the failing tests** — `MockMailerTest.recordsBookingConfirmation`,
   `MockMailerTest.neverLogsTheBookingCode` (assert via a captured log appender), and
-  `SmtpMailerIT.bookingConfirmationIsPlainTextWithoutTrackingMarkup` against the existing local sink.
+  `SmtpMailerIT.deliversBookingConfirmationOverSmtp` + `.neverLogsTheBookingCode` against the existing local sink.
 - [ ] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*MockMailerTest*"` → FAIL
 - [ ] **Step 3: Minimal implementation** — the port method, the payload record, the new `Kind`, the
   `SentEmail` factories, kind-aware logging in `MockMailer`, the `SmtpMailer` text block.
@@ -361,7 +364,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 3 — registry-config pinning, structural net, close-out
 
-**Files:** Create `EventRegistryConfigTest.java` · Modify the plan doc
+**Files:** Create `EventRegistryDurabilityIT.java` · Modify the plan doc
 
 - [ ] **Step 1: Write the failing test** — AC-5, asserting both registry properties from the running
   context so a future edit cannot silently unbound the publication table.
@@ -388,9 +391,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **AC-1:** Run `./gradlew test --tests "*BookingConfirmationMailIT*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-2:** Same run, `sendsToTheBookingContactForASignedInBooking` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run, `sendsForARequestModeBookingConfirmedViaPayment` → PASS. Verified at commit `<sha>`.
+- [ ] **AC-3:** Same run, `sendsForABookingConfirmedViaThePaymentPath` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-4:** Same run, `doesNotResendWhenACompletedPublicationIsResubmitted` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `./gradlew test --tests "*EventRegistryConfigTest*"` → PASS. Verified at commit `<sha>`.
+- [ ] **AC-5:** Run `./gradlew test --tests "*EventRegistryDurabilityIT*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-6:** Run the phase-3 step-3 structural command → all PASS. Verified at commit `<sha>`.
 - [ ] **AC-7:** Run `./gradlew test --tests "*MockMailerTest*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-8:** Run `./gradlew test --tests "*SmtpMailerIT*"` → PASS (skips cleanly without Docker). Verified at commit `<sha>`.
