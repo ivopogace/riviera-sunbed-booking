@@ -220,17 +220,17 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read it
 > (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 3`
+**Stage pointer:** `implement — phase 4 (docs sweep)`
 
-**Next action:** Phase 3 step 1 — add the failing "blank current password is reported as missing" test to `customer-password.e2e.ts`.
+**Next action:** Phase 4 step 1 — append the codes added since #97 to `docs/plans/error-contract-problemdetail.md`'s vocabulary list (R-7).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: operator endpoint answers `MISSING_CURRENT_PASSWORD` | ✅ | `c435493` |
 | 1 — Backend: the customer twin | ✅ | `6aea431` |
-| 2 — Frontend: both auth services + both pages map the new code | ✅ | (this commit) |
-| 3 — e2e: mocks mirror the controllers + a real render of the new branch | ⏳ | |
-| 4 — Docs sweep + close-out | | |
+| 2 — Frontend: both auth services + both pages map the new code | ✅ | `5c92b88` |
+| 3 — e2e: mocks mirror the controllers + a real render of the new branch | ✅ | (this commit) |
+| 4 — Docs sweep + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -708,6 +708,7 @@ customer route (nested under "the account has a credential", exactly as the cont
 | 2026-07-27 | Phase 0 | every backend edge surface reading a `currentPassword` | `grep -rn "currentPassword" platform/src/main/java` | `OperatorAccountController` (fixed here), `MyAccountController` | Fix both — the second is Phase 1, already the declared twin; the shared `CustomerPasswords.isSupplied` is what keeps them one rule |
 | 2026-07-27 | Phase 1 | backend readers of the old code | `grep -rn "INVALID_CURRENT_PASSWORD" platform/src` | the 2 controllers (both fixed) + 4 test classes | Closed — both call sites now route the omission to the new code; `SetPasswordIT`'s missing-current block moved into its own test rather than being deleted |
 | 2026-07-27 | Phase 2 | FE readers of the old code | `grep -rn "INVALID_CURRENT_PASSWORD" frontend/src` | `customer-auth.ts`, `operator-auth.ts` (+ their specs) | Both mapped; the shared `CURRENT_PASSWORD_REQUIRED_MESSAGE` follows the existing `PASSWORD_LENGTH_MESSAGE` precedent so the two pages cannot word one server answer two ways |
+| 2026-07-27 | Phase 3 | e2e mocks answering the old code | `grep -rn "INVALID_CURRENT_PASSWORD" frontend/e2e` | `support/auth-mocks.ts` — both password routes | Both updated in controller branch order. The operator route's new branch is **unreachable from its own page** (the client-side guard fires first) and is corrected anyway: #342's review found the mocked suite staying green through a real controller reordering, so mock fidelity is the contract here, not just coverage |
 
 ---
 

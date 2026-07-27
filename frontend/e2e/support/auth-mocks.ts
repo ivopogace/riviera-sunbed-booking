@@ -70,12 +70,16 @@ export async function mockAuthApi(
       currentPassword?: string;
       newPassword?: string;
     };
+    // The omitted current password outranks the policy check, as in the controller (#345) — and it is its
+    // own code, not the INVALID_REQUEST a weak new password gets.
+    if (!body.currentPassword) {
+      return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
+    }
     // Policy BEFORE the credential check, and bytes not characters — both mirror the controller, which
     // calls CustomerPasswords.validate ahead of findByUsername and caps at bcrypt's 72-byte input limit.
     // Reversing either lets the mocked suite stay green through a real reordering (#342 review finding).
     const newPassword = body.newPassword ?? '';
-    if (!body.currentPassword || newPassword.length < 8
-      || new TextEncoder().encode(newPassword).length > 72) {
+    if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
     }
     if (body.currentPassword !== password) {
@@ -468,8 +472,15 @@ export async function mockCustomerRecoveryApi(
     if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
     }
-    if (password !== undefined && body.currentPassword !== password) {
-      return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
+    // Nested exactly as the controller nests it: `password !== undefined` is "this account HAS a local
+    // password", the one condition under which either current-password answer is reachable (#345).
+    if (password !== undefined) {
+      if (!body.currentPassword) {
+        return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
+      }
+      if (body.currentPassword !== password) {
+        return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
+      }
     }
     // The server revokes the customer's OTHER sessions only — the calling one deliberately survives.
     password = newPassword;

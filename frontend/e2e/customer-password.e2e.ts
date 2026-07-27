@@ -131,6 +131,30 @@ test('an SSO-only account sets its first password with no current password', asy
   await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
 });
 
+test('a blank current password is reported as missing, not incorrect', async ({ page }) => {
+  await mockCustomerRecoveryApi(page, {
+    email: EMAIL,
+    initialPassword: OLD_PASSWORD,
+    signedIn: true,
+  });
+
+  await page.goto('/');
+  await gotoAccount(page);
+
+  // This account HAS a password, so the blank field is an omission, not a wrong guess — and the page cannot
+  // know which it is, because the same blank field is how an SSO-only account sets its first password.
+  await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
+  await page.getByTestId('setpw-submit').click();
+  await expect(page.getByTestId('setpw-error')).toContainText('Enter your current password.');
+  await expect(page.getByTestId('setpw-notice')).toBeHidden();
+  await expectNoSeriousAxeViolations(page, 'omitted current password');
+
+  // And nothing rotated: the original password still signs in.
+  await signOut(page);
+  await signIn(page, OLD_PASSWORD);
+  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+});
+
 test('an exhausted change-password budget renders the rate-limit message', async ({ page }) => {
   // One attempt allowed, so the second meets the per-IP budget (#326) the way a flood would.
   await mockCustomerRecoveryApi(page, {
