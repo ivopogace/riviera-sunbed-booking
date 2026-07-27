@@ -4,8 +4,6 @@ import java.net.URI;
 import java.time.Clock;
 import java.util.Optional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -13,13 +11,16 @@ import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import ai.riviera.platform.notification.api.MailSender;
 
 /**
  * Edge orchestrator for the S8 (#113) account-recovery flows — the credential-material machinery that
  * must stay at the platform edge (RV-BE-11), keeping the controllers thin and the {@code customer}
  * module free of tokens/mail/crypto. It mints + hashes the raw token, drives the module's
  * {@link CustomerAccountRecovery} port with only the opaque digest, and hands the raw token to the
- * {@link Mailer} inside the emailed link.
+ * {@code notification} module's {@link MailSender} inside the emailed link (#382) — a fire-and-forget
+ * port that runs the send off this thread, swallows transport failures and enforces suppression, so
+ * the D-8 non-enumeration and #369 timing-oracle guarantees hold behind that seam rather than here.
  *
  * <p>The email links point at the SPA routes {@code /account/verify} and {@code /account/reset} on the
  * configured {@link RecoveryProperties#linkBaseUrl()} — the SPA renders the page and issues the actual
@@ -29,27 +30,23 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 @Component
 class CustomerRecovery {
 
-	private static final Logger log = LoggerFactory.getLogger(CustomerRecovery.class);
-
 	static final String VERIFY_PATH = "/account/verify";
 	static final String RESET_PATH = "/account/reset";
 	private static final String TOKEN_PARAM = "token";
 
 	private final CustomerAccountRecovery recovery;
-	private final Mailer mailer;
+	private final MailSender mails;
 	private final RecoveryTokens tokens;
 	private final RecoveryProperties properties;
 	private final Clock clock;
-	private final MailDispatcher dispatcher;
 
-	CustomerRecovery(CustomerAccountRecovery recovery, Mailer mailer, RecoveryTokens tokens,
-			RecoveryProperties properties, Clock clock, MailDispatcher dispatcher) {
+	CustomerRecovery(CustomerAccountRecovery recovery, MailSender mails, RecoveryTokens tokens,
+			RecoveryProperties properties, Clock clock) {
 		this.recovery = recovery;
-		this.mailer = mailer;
+		this.mails = mails;
 		this.tokens = tokens;
 		this.properties = properties;
 		this.clock = clock;
-		this.dispatcher = dispatcher;
 	}
 
 	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link. */
@@ -57,7 +54,8 @@ class CustomerRecovery {
 		String rawToken = tokens.generate();
 		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()));
-		dispatchQuietly(() -> mailer.sendEmailVerification(email, link(VERIFY_PATH, rawToken)));
+		// The token store above is NOT best-effort and stays on this thread; only the send is (#369, R-3).
+		mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
 	}
 
 	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link. */
@@ -65,35 +63,7 @@ class CustomerRecovery {
 		String rawToken = tokens.generate();
 		recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.resetTokenTtl()));
-		dispatchQuietly(() -> mailer.sendPasswordReset(email, link(RESET_PATH, rawToken)));
-	}
-
-	/**
-	 * Hand a mail send to the {@link MailDispatcher}, best-effort: the token is already stored, so a
-	 * transport failure must never fail the triggering request (registration would 500 after the
-	 * account+session already exist) nor become a status-code enumeration oracle (forgot-password must
-	 * return its uniform 204 whether or not the email has an account — D-8). The user can simply
-	 * re-request. Only the mailer send is guarded — a token-store failure is a real error and still
-	 * propagates.
-	 *
-	 * <p>The send runs <em>off this request thread</em> (#369): with the real {@code SmtpMailer} (#368) an
-	 * inline SMTP round-trip taken only on the known-email branch was a measurable <em>timing</em>
-	 * enumeration oracle. The catch sits <em>inside</em> the dispatched task so the failure dies wherever
-	 * the task runs; the dispatcher itself never throws, so a rejected dispatch is equally invisible to
-	 * the caller. What remains on this thread is the token issue above — a single insert on the
-	 * known-email branch only, a residual accepted deliberately (plan R-3).
-	 */
-	private void dispatchQuietly(Runnable send) {
-		dispatcher.dispatch(() -> {
-			try {
-				send.run();
-			}
-			catch (RuntimeException e) {
-				// The mailer is a best-effort side channel; never log the raw link/token (invariant #7).
-				log.warn("Recovery email send failed ({}); the token was issued, delivery can be retried",
-						e.getClass().getSimpleName());
-			}
-		});
+		mails.sendPasswordReset(email, link(RESET_PATH, rawToken));
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */

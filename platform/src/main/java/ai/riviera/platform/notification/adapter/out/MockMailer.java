@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.out;
 
 import java.net.URI;
 import java.util.List;
@@ -10,8 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.Mailer;
+
 /**
- * Default-profile ({@code @Profile("!mailer")}) recording {@link Mailer} that plays a cooperative mail
+ * Default-profile ({@code @Profile("!mailer & !smtp4dev")}) recording {@link Mailer} that plays a cooperative mail
  * transport (S8, epic #108, design D-6; booking confirmations added in #371) — the same stub pattern as
  * {@code MockSsoGateway}. Instead of sending, it keeps each {@link SentEmail} in memory, so every message
  * kind is demoable end-to-end with zero external credentials and backend ITs can assert on what was sent
@@ -24,11 +27,18 @@ import org.springframework.stereotype.Component;
  * {@link SmtpMailer}. {@link MockMailerProdGuard} additionally
  * forbids this mock from ever running under {@code prod}. The link carries a single-use bearer token
  * (invariant #7); logging it is a deliberate <em>dev-only</em> affordance — mock-only and prod-guarded, it
- * never runs in production. Package-private (invariant #11).
+ * never runs in production.
+ *
+ * <p><strong>Public, unlike the other adapters (#382):</strong> the recording surface
+ * ({@link #sent()} / {@link #lastTo} / {@link #clear()}) is the platform test suite's established
+ * observation seam — ITs outside this package (the recovery flows, the confirmation IT) pull the
+ * tokenized link or the recorded fields out of the "sent" outbox. No production caller exists:
+ * Modulith walls the class off from every module, and the composition root talks only to
+ * {@code notification.api}.
  */
 @Component
 @Profile("!mailer & !smtp4dev")
-class MockMailer implements Mailer {
+public class MockMailer implements Mailer {
 
 	private static final Logger log = LoggerFactory.getLogger(MockMailer.class);
 
@@ -64,17 +74,17 @@ class MockMailer implements Mailer {
 	}
 
 	/** Every email recorded so far, oldest first (test/demo inspection). */
-	List<SentEmail> sent() {
+	public List<SentEmail> sent() {
 		return List.copyOf(sent);
 	}
 
 	/** The most recent email recorded for this address, or empty if none (IT helper). */
-	Optional<SentEmail> lastTo(String toEmail) {
+	public Optional<SentEmail> lastTo(String toEmail) {
 		return sent.stream().filter(e -> e.toEmail().equals(toEmail)).reduce((first, second) -> second);
 	}
 
 	/** Reset the recorded outbox — lets an IT isolate the email its own step produced. */
-	void clear() {
+	public void clear() {
 		sent.clear();
 	}
 

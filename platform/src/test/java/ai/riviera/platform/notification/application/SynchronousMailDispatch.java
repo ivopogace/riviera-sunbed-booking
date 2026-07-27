@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.application;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Primary;
  * send off the request thread, which would race every {@code MockMailer.lastTo(...)} assertion and make the
  * recovery integration tests flaky. This override keeps them deterministic without weakening what they
  * assert: the off-thread dispatch itself is pinned structurally by {@code AsyncMailDispatcherTest} (it runs
- * on the dedicated pool) and {@code CustomerRecoveryDispatchTest} (no mail work on the caller's thread).
+ * on the dedicated pool) and {@code TransactionalMailServiceTest} (no mail work on the caller's thread).
  *
- * <p>Imported by {@link TestcontainersConfiguration}, so every DB-backed integration test picks it up with
+ * <p>Imported by {@code TestcontainersConfiguration}, so every DB-backed integration test picks it up with
  * no per-class annotation — the coverage has to be automatic, because a missed test class would not fail,
  * it would flake. {@code @WebMvcTest} slices get the same treatment from {@code WebSliceStubs}.
  */

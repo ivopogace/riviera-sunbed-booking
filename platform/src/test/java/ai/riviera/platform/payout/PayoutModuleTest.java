@@ -16,7 +16,6 @@ import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -25,15 +24,14 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
-import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
+import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.venue.vocabulary.SetId;
-import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -134,18 +132,9 @@ class PayoutModuleTest {
 	@MockitoBean
 	AccountErasure accountErasure;
 
-	// #371: the root edge's BookingConfirmationMailListener composes the confirmation email from three
-	// modules' ports — booking's code + contact id, venue's set label, customer's address. Same isolation
-	// story, so all three are mocked here; the accrual listener under test uses none of them. Both
-	// listeners observe the same BookingConfirmed, which is exactly why this context must still load.
+	// #382: root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
 	@MockitoBean
-	BookingNotificationFacts bookingNotificationFacts;
-
-	@MockitoBean
-	SetBookingFacts setBookingFacts;
-
-	@MockitoBean
-	CustomerLookup customerLookup;
+	MailSender mailSender;
 
 	@Autowired
 	JdbcClient jdbc;

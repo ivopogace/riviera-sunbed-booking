@@ -6,9 +6,9 @@ holds the invariants and the module table; this file says, for each module, what
 it owns and — more usefully — what it must **refuse to own**. When a boundary is
 ambiguous in a plan or review, this is the tie-breaker.
 
-Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`, and
-`operator`. Cross-module collaboration is **events for state changes,
-`api/` ports for queries** (invariant #11).
+Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`,
+`operator`, and `notification` (#382). Cross-module collaboration is **events for
+state changes, `api/` ports for queries** (invariant #11).
 
 The **structural** subset of these boundaries is machine-enforced — see
 [Machine-checked vs review-checked](#machine-checked-vs-review-checked) at the end
@@ -206,8 +206,9 @@ gap), and a verified read — plus `email_verified` on the account (V28; SSO sig
 provider-verified). **#357** added one more read to that port: *whose account does this still-redeemable
 reset token unlock?*, resolved **without consuming** it, so the edge can revoke that principal's
 sessions before the reset writes anything. Email verification is **soft/non-blocking** (v1). Still no Spring Security type
-inside the module (`CustomerAuthPlacementTests` green); the mailer, token digest, and
-recovery/set-password endpoints stay at the platform edge (RV-BE-11).
+inside the module (`CustomerAuthPlacementTests` green); the token digest and
+recovery/set-password endpoints stay at the platform edge (RV-BE-11); mail transport moved
+into **`notification`** (#382), which the edge drives through `notification::api`.
 
 ---
 
@@ -259,6 +260,38 @@ Security type inside the module (`OperatorAuthPlacementTests` green). See
 
 ---
 
+## `notification`
+**Job:** Own transactional-mail **delivery** (#382): the `Mailer` transports (recording mock
+vs real SMTP, profile-swapped, mock prod-guarded), the two delivery vehicles — the Event
+Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for
+bearer-credential payloads (ADR-0011 decision 5) — the `BookingConfirmed` confirmation mail
+(assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
+first owned state: the **email-suppression list** (V32), with the defining invariant **no
+send to a suppressed address**, enforced at the one send chokepoint
+(`TransactionalMailService`) on both vehicles. Publishes exactly one surface:
+`notification::api`'s fire-and-forget `MailSender` (never throws, runs off the caller's
+thread, suppression-enforced) — consumed by the composition root alone; **no module depends
+on `notification`**.
+
+**Not My Job:**
+- Deciding **when** to send, minting/hashing recovery tokens, building the tokenized links →
+  the **platform edge** (`CustomerRecovery`, RV-BE-11); I am handed fully-formed messages
+  and own only delivery
+- The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
+- The booking/venue/customer **facts** a confirmation renders → their owners, read via
+  `api/` ports at send time
+- Persisting a bearer-credential payload → nobody's job, ever: recovery mails ride the
+  in-memory dispatcher precisely so the raw token never lands in `event_publication`
+  (ADR-0011 decision 5)
+- The provider bounce/complaint **feed** into the suppression list → the follow-up
+  `adapter/in` slice (needs #370 provider setup); this slice ships the table + internal
+  write path, provider-agnostic
+
+**Shipped** (#382): the module itself — the mail machinery moved off the platform root
+(restoring "nothing depends on the root, the root is a pure composition root + auth edge",
+pinned by `CompositionRootDisciplineTests`), V31 rewriting the registry `listener_id` for the
+moved listener, and the V32 suppression list enforced on both vehicles.
+
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
@@ -278,9 +311,10 @@ principal to a typed id. Nothing else.
   `operator::api`, the two modules that do not depend on it. Anything wider re-creates the
   cycle it exists to remove.
 - **Being the composition root** → that stays the root package (`PlatformApplication`,
-  `SecurityConfig`, the controllers, the mailers). The whole point of the split is that the
+  `SecurityConfig`, the controllers). The whole point of the split is that the
   root *depends on* modules while `shared` is *depended on by* them; putting both in one
-  package is what closed `booking → root → booking`.
+  package is what closed `booking → root → booking`. (The mailers, once the root's
+  biggest tenant, moved on to the `notification` module in #382.)
 
 ## Machine-checked vs review-checked
 

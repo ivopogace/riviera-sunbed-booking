@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.out;
 
 import java.net.URI;
 import java.time.LocalDate;
@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

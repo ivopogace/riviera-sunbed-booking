@@ -18,14 +18,16 @@ description: >-
 api/-named-interface boundaries, and the ApplicationModules.verify() contract."*
 
 riviera-sunbed-booking is a Spring Modulith modular monolith: base package **`ai.riviera.platform`**,
-seven bounded-context modules — **venue, availability, booking, payment, payout, customer,
-operator** (table in `CLAUDE.md`) — plus one non-context module, **`shared`** (the OPEN Shared
-Kernel, #371; see below) — on **Spring Boot 4, Spring Modulith 2.1, Java 25, Gradle,
+eight bounded-context modules — **venue, availability, booking, payment, payout, customer,
+operator, notification** (#382; table in `CLAUDE.md`) — plus one non-context module, **`shared`**
+(the OPEN Shared Kernel, #371; see below) — on **Spring Boot 4, Spring Modulith 2.1, Java 25, Gradle,
 Spring Data JDBC / `JdbcClient` (one legacy `JdbcTemplate` adapter) only — no JPA**.
 
 > **The root package is the composition root, and nothing may depend on it.** `ai.riviera.platform`
 > holds `PlatformApplication`, app-wide config, and the platform's own adapters (controllers, the
-> mailers, edge listeners) — so it *depends on* modules. Types that modules need go in **`shared`**,
+> SSO/auth edge — the mailers and their listener moved to `notification` in #382, leaving the root
+> with no module listeners at all, pinned by `CompositionRootDisciplineTests`) — so it *depends on*
+> modules. Types that modules need go in **`shared`**,
 > never at the root: a package that is both depended-on and depending closes cycles by construction.
 > That is exactly how #371 broke — an edge listener on `booking.events.BookingConfirmed` produced
 > `booking → root → booking`, because five modules imported `ApiProblem`/`CurrentOperator` from the
@@ -67,7 +69,7 @@ so the inside never knows whether a real HTTP client, an `@ApplicationModuleTest
 caller is on the other side.
 
 **Assignment rule (mechanical): a module is THIN iff it has no application service** — its `api/`
-port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all seven bounded-context
+port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all eight bounded-context
 modules are full**: `customer` graduated thin → full in S2 (#111), so no module is thin at present — the
 thin template below stays the documented shape for a future serviceless module. `availability` is "small but
 full" — it owns a published command port with real concurrency semantics; small LOC does not make a
