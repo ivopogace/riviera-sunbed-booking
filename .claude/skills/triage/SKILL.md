@@ -3,6 +3,14 @@ name: triage
 description: Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs. Load at the riviera-sdlc PR stage or when sorting/labelling incoming issues and PRs.
 ---
 
+> **In riviera-sunbed-booking (localization):**
+> - **Tracker** = GitHub via the MCP tools (not `gh`) per `docs/agents/issue-tracker.md`;
+>   **label mapping** per `docs/agents/triage-labels.md`. The `/setup-matt-pocock-skills`
+>   line below is upstream boilerplate — this repo's substrate already provides both;
+>   ignore it.
+> - **Issues only in this repo:** PRs are not a triage surface here (see the tracker doc) —
+>   they go through the normal review pipeline; leave in-flight collaborator PRs alone.
+
 # Triage
 
 Move issues on the project issue tracker through a small state machine of triage roles.

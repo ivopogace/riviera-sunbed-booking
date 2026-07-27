@@ -30,14 +30,11 @@ lives in SKILL.md ("The loop"); this file cites it rather than restating it.
    > banks unrun, and those are where the non-project-specific defects live. Half the gate is
    > not the gate.
    >
-   > **`/code-review` is the default — it is the strongest of the three, by measurement.**
-   > It runs as a forked **subagent** fan-out, and on the #351 slice it found three defects that
-   > both the hand-walked overlay *and* inline `/review` had missed: a same-URL activation that
-   > left the popover stuck open (`NavigationSkipped` ≠ `NavigationEnd`), a second focus-strand
-   > in `signOut()` of the very WCAG class the slice had just fixed elsewhere, and a dropped
-   > `cursor: pointer`. Start it first, every time. A standing "don't use the Agent tool"
-   > session instruction is **not** a reason to skip it — ask the human to authorize the
-   > subagent, since that is a one-line answer and the findings above are what it buys.
+   > **`/code-review` is the default — it is the strongest of the three, by measurement**
+   > (case history: #351 — its subagent fan-out found three defects the hand-walked overlay
+   > *and* inline `/review` had both missed). Start it first, every time. A standing "don't
+   > use the Agent tool" session instruction is **not** a reason to skip it — ask the human
+   > to authorize the subagent; that is a one-line answer.
    >
    > **Fallback, only if the subagent genuinely cannot run: `/review <PR>`** — a plain skill
    > that runs inline against the same banks (fetch the diff with the GitHub MCP tools; `gh`
@@ -49,13 +46,8 @@ lives in SKILL.md ("The loop"); this file cites it rather than restating it.
    > the PR saying which half ran and why**, and ask the human to authorize the missing half.
    > Ticking a box whose text names `/code-review` when no review ran makes the PR record lie
    > about the process — precisely what close-out step 4 exists to prevent.
-   > (Case history: PR #353, 2026-07-26 — the overlay bank ran and found two real issues, the
-   > generic banks never ran, and the box was ticked anyway on the belief that no review could
-   > run at all. `/review` could, and when finally run it found a **WCAG 2.4.3 focus-loss
-   > regression** the overlay bank has no item for: the account popover was destroyed by its own
-   > navigation with focus inside it, dropping focus to `document.body` — the #148 find-modal
-   > bug, recurring. Fixed in #355, whose own `/review` pass then caught a false-passing
-   > assertion and a repeat RV-STYLE-1 slip in that very fix.)
+   > (Case history: PR #353/#355 — a box ticked over a half-run gate hid a recurring
+   > WCAG 2.4.3 regression that the unrun half then found.)
 
    **Pick the review effort by risk class** (same principle as the grill gate — the size
    flexes; the gate does not):
@@ -110,8 +102,8 @@ Missing any one means the slice is still in flight — say so rather than report
 1. **Trigger.** The moment the PR is open, the SonarCloud analysis runs on the PR head.
    Wait for the **SonarCloud Code Analysis** check (and the PR's quality-gate status) to
    complete — do not merge on "CI green" alone. The gate must **pass** with **new-code
-   coverage ≥ 80%** — **and** the reported new-issue + duplication *list* (step 2) must be
-   empty-or-resolved, since the gate can be green while that list is non-empty.
+   coverage ≥ 80%** — **and** the reported list (step 2) must be empty-or-resolved (green
+   is necessary, not sufficient — the blockquote above is the canonical statement).
 2. **Read the findings — the actual list, not just the gate conclusion.** The check-run
    (`pull_request_read get_check_runs`) only reports the gate's **pass/fail**; it does
    **not** list the issues. Pull the real reported list from the SonarCloud web API
@@ -123,22 +115,18 @@ Missing any one means the slice is still in flight — say so rather than report
    - **Duplications + new-code measures:** `https://sonarcloud.io/api/measures/component?component=ivopogace_riviera-sunbed-booking&pullRequest=<N>&metricKeys=new_duplicated_lines_density,new_duplicated_blocks,new_bugs,new_vulnerabilities,new_code_smells,new_coverage`.
 
    > **The false-clean read — confirm an analysis actually exists before believing a zero.**
-   > `api/issues/search` returns `"total": 0` with an empty array for a PR that has **not been
-   > analyzed yet**, byte-for-byte identical to a genuinely clean PR. Read it too early and the
-   > gate *looks* passed when it has not run at all. **The tell is the measures call: an empty
-   > `measures` array means nothing has been ingested.** So: confirm `measures` is **non-empty**
-   > (for a code PR, that `new_lines` has a value) **and** that the `SonarCloud Code Analysis`
-   > check-run itself concluded `success`, before accepting a zero issue count. Note the
-   > workflow's own `SonarCloud scan` job can legitimately conclude `skipped` on one of two
-   > duplicate runs — that is not the gate; the `SonarCloud Code Analysis` check is.
-   > Compounding it: `WebFetch` caches responses for **15 minutes**, so one early read can
-   > persist as a stale "clean" answer across the whole gate — cache-bust when re-reading.
-   > (Case history: PR #318, 2026-07-25 — the first read showed 0 issues while no analysis
-   > existed; the real result, 445 new lines at 91.67% coverage, landed minutes later.)
+   > `api/issues/search` returns `"total": 0` for a PR that has **not been analyzed yet**,
+   > byte-for-byte identical to a genuinely clean PR. Before accepting a zero issue count:
+   > confirm `measures` is **non-empty** (for a code PR, that `new_lines` has a value) **and**
+   > that the `SonarCloud Code Analysis` check-run itself concluded `success` (the workflow's
+   > own `SonarCloud scan` job can legitimately conclude `skipped` on one of two duplicate
+   > runs — that is not the gate). Compounding it: `WebFetch` caches responses for
+   > **15 minutes**, so cache-bust when re-reading — one early read can persist as a stale
+   > "clean" answer across the whole gate. (Case history: PR #318.)
 
    Triage **every** entry the list returns — bug, vulnerability, code smell, security
-   hotspot, a **duplicated block**, or a coverage shortfall. A green gate with a
-   **non-empty** issue/duplication list is **not** done.
+   hotspot, a **duplicated block**, or a coverage shortfall (per the blockquote above,
+   even under a green gate).
 3. **Resolve — back through the loop, not around it.** Triage by finding type:
    - **A finding that changes implemented logic** is a code change — it **re-enters at
      Implement per the re-entry rule** (SKILL.md, "The loop"): decide whether the issue is
@@ -159,7 +147,7 @@ Missing any one means the slice is still in flight — say so rather than report
      ("text does not meet the minimal contrast requirement") on translucent glass** — the
      analyzer ignores the rgba alpha / can't composite the glass over the gradient, so a
      pair the `*.contrast.spec.ts` proves AA still flags. Fix it the way
-     `frontend/src/app/shared/_glass.scss` (`failure-icon`, T3) already does: **swap the
+     `frontend/src/app/shared/failure-panel.ts` (`failure-icon`) already does: **swap the
      translucent fill for its solid composited equivalent** (and nudge the ink to clear
      4.5:1 outright); decorative `aria-hidden` glyphs get the same treatment. Only when a
      code fix would genuinely degrade the design do you **mark it resolved in SonarCloud
@@ -168,11 +156,9 @@ Missing any one means the slice is still in flight — say so rather than report
    - Each fix push re-triggers CI **and** the Sonar analysis — **re-check both before
      merging** (being small or post-green is not an exemption; re-entry rule).
 4. **Only then merge.** Merge is reached **only** when CI is green **and** the Review gate
-   has run **and** the **Sonar quality gate is green AND its reported new-issue +
-   duplication list is empty-or-resolved** (each entry code-fixed, or
-   resolved-with-rationale in SonarCloud), new-code coverage ≥ 80%, **and** every finding
-   is resolved/deferred **and** any fix round itself cleared the loop. "Green CI +
-   reviewed + Sonar issue-list cleared," never "the gate went green."
+   has run **and** the Sonar gate is green **with its reported list cleared** (each entry
+   code-fixed, or resolved-with-rationale in SonarCloud; new-code coverage ≥ 80%) **and**
+   any fix round itself cleared the loop.
 
 ## 3. Merge close-out (mandatory — after the merge, before calling the slice done)
 
@@ -200,13 +186,9 @@ Merging is not the last step; the close-out is. Every item, every merge:
    > moment the PR opens, and the SHA is one `git log --grep "(#NN)"` away if anyone needs it.
    > Everything else in this step was always knowable pre-merge — it was only ever done late.
    >
-   > **Why this hardened:** the guidance used to call the leftovers "a one-line follow-up (a
-   > commit on `main`) — not a full PR." That assumes a permission agents don't have: a cloud
-   > session cannot push to `main`, so "one-line follow-up" degrades into a whole PR + CI cycle
-   > every single time. Three consecutive slices paid it — #326→PR #347, #346→PR #352,
-   > #351→PR #354 — each a docs-only PR whose diff was ~96% content that predated the merge
-   > (#354: **3 of 80 changed lines** actually needed the SHA). Removing the dependency beats
-   > optimizing the follow-up.
+   > **Why this hardened:** a "one-line follow-up commit on `main`" assumes a push permission
+   > cloud agents don't have, so it degrades into a whole docs-only PR + CI cycle every time
+   > (case history: the three close-out PRs, #326→#347, #346→#352, #351→#354).
    >
    > **After this step there is no post-merge repo commit.** The only genuinely post-merge
    > items are GitHub edits, not commits: the parent-epic checkbox tick (step 2) and any
@@ -220,8 +202,7 @@ Merging is not the last step; the close-out is. Every item, every merge:
      line, a changed mechanism phrase) don't need the merge SHA — run the staleness grep
      `pre-merge` (the skill's "pre-merge smoke" mode over `origin/main...HEAD`) and fold
      those patches into the *code PR itself***. Don't spin up a whole second docs PR + CI
-     cycle for edits the code PR could have carried (case history: O6 shipped a near-empty
-     docs PR #219 for two one-line patches).
+     cycle for edits the code PR could have carried (case history: O6 / PR #219).
    - **Nothing here is inherently post-merge any more.** Step 4 removed the last repo-commit
      dependency by recording `merged via PR #NN` instead of the merge SHA, so the staleness
      patches and the plan-doc final state both belong in the **code PR itself**. What remains
@@ -230,9 +211,11 @@ Merging is not the last step; the close-out is. Every item, every merge:
      close-out, step 4 was skipped** — that is the signal, not a normal cost.
    - It also runs over every epic's full merge span at epic close-out (case history: #72).
    **Then refresh the knowledge graph for the same doc changes:** the post-commit hook
-   rebuilds *code* only, so after a doc/ADR/plan-touching slice run `graphify update .` to
-   fold the doc edits into the graph (it's gitignored — a local refresh, nothing to commit;
-   skip if the slice touched no docs, since code already rebuilt via the hook).
+   rebuilds *code* only, so after a doc/ADR/plan-touching slice refresh the docs via the
+   graphify skill's update flow and **verify the changed doc actually landed** (grep its
+   name in `graphify-out/graph.json`) — the bare `graphify update .` CLI has been observed
+   to re-extract code only. (The graph is gitignored — a local refresh, nothing to commit;
+   skip if the slice touched no docs, since code already rebuilt via the hook.)
 6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.
 7. **Notify** per *Staying in touch* (SKILL.md): push; email only if a send-capable tool

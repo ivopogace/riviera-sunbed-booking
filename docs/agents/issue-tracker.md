@@ -4,7 +4,7 @@
 
 The engineering skills (`to-issues`, `triage`, `implement`) read from and write to
 GitHub Issues. In this repo, agents reach GitHub through the **GitHub MCP tools**
-(`mcp__github__*`); a contributor running Claude Code locally may use the `gh` CLI
+(`mcp__plugin_github_github__*`); a contributor running Claude Code locally may use the `gh` CLI
 instead — both target the same issues.
 
 **External PRs as a triage surface:** No. Pull requests here are normal review
