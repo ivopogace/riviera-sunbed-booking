@@ -111,12 +111,12 @@ The root mail machinery is replaced by the module — every observable behavior 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Moved listener's `listener_id` no longer matches persisted publications → outstanding booking-confirmation mails dead-letter on post-deploy republish | high (without action) | high | V31 rewrite of `event_publication` + archive, V18 pattern; `ListenerMoveMigrationIT`; roll-forward-only note in migration header | agent | closed — V31 shipped + IT green (phase 1) |
-| R-2 | Suppression check on the request thread would widen the known-email timing oracle (D-8) | med | high | check runs **inside** the dispatched task (off-thread) for the dispatcher vehicle; pinned by `TransactionalMailServiceTest` asserting no suppression read on caller thread | agent | open |
-| R-3 | Hidden test coupling: ~16 test classes touch the moved types; a missed one fails compile or (worse) silently weakens the net | med | med | full inventory in File structure; compile is the net for the former, relocated assertions reviewed one-by-one against the parity ledger for the latter | agent | open |
+| R-2 | Suppression check on the request thread would widen the known-email timing oracle (D-8) | med | high | check runs **inside** the dispatched task (off-thread) for the dispatcher vehicle; pinned by `TransactionalMailServiceTest` asserting no suppression read on caller thread | agent | closed — `theSuppressionReadRunsOffTheCallersThread` green (phase 2) |
+| R-3 | Hidden test coupling: ~16 test classes touch the moved types; a missed one fails compile or (worse) silently weakens the net | med | med | full inventory in File structure; compile is the net for the former, relocated assertions reviewed one-by-one against the parity ledger for the latter | agent | closed — fired once as F-1 (compile passed, context load didn't); every inventory class now run green locally or in CI |
 | R-4 | `PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests` may enumerate module packages and reject the newcomer | med | low | read both tests at phase-1 start; extend the module list, never weaken a rule | agent | closed — both discover modules dynamically; no enumeration; green (phase 1) |
 | R-5 | Flyway V31/V32 collision with a parallel slice | low | med | verified free on `main` and unclaimed by all open PRs (Dependabot-only) at plan time; renumber rule: whoever merges second renumbers | agent | open |
-| R-6 | Suppressed listener skip accidentally implemented as *throw* → permanent retry loop parking the publication | low | med | AC-5 asserts the publication completes; typed internal outcome, no exception for the suppressed branch | agent | open |
-| R-7 | A registry-republished confirmation could race the suppression insert (suppress lands between send attempts) — double semantics unclear | low | low | at-least-once already accepted (ADR-0011); check runs per attempt, so the retry honors the newest suppression state — documented in `TransactionalMailService` Javadoc | agent | open |
+| R-6 | Suppressed listener skip accidentally implemented as *throw* → permanent retry loop parking the publication | low | med | AC-5 asserts the publication completes; typed internal outcome, no exception for the suppressed branch | agent | closed — `suppressedAddressCompletesWithoutSend` green (phase 2) |
+| R-7 | A registry-republished confirmation could race the suppression insert (suppress lands between send attempts) — double semantics unclear | low | low | at-least-once already accepted (ADR-0011); check runs per attempt, so the retry honors the newest suppression state — documented in `TransactionalMailService` Javadoc | agent | closed — documented in the service Javadoc (phase 2) |
 
 ## Open questions / Assumptions
 
@@ -208,16 +208,16 @@ N/A — no contract change (no HTTP surface added or altered).
 
 ## Execution status
 
-**Stage pointer:** implement — phase 1 done, next: phase 2 (suppression list)
+**Stage pointer:** implement — phase 2 done (incl. the F-1 red-CI fix), next: phase 3 (docs)
 
-**Next action:** Phase 2 step 1 — red tests (`TransactionalMailServiceTest` suppression cases +
-`BookingConfirmationMailIT.suppressedAddressCompletesWithoutSend`), then V32 + `EmailSuppressions`.
+**Next action:** Phase 3 — CLAUDE.md module-table row, RESPONSIBILITIES.md `notification`
+section, `shared/package-info.java` paragraph update; then PR + gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed | ✅ | 538a09f |
-| 1 — mechanical move (module + api port + V31 + tests relocated) | ✅ | (this commit) |
-| 2 — suppression list (V32 + enforcement both vehicles) | | |
+| 1 — mechanical move (module + api port + V31 + tests relocated) | ✅ | 495c6a7 |
+| 2 — suppression list (V32 + enforcement both vehicles) + F-1 fix | ✅ | (this commit) |
 | 3 — docs + close-out (CLAUDE.md, RESPONSIBILITIES.md, shared package-info) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -226,6 +226,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run 30294203563, phase-1 push) | `PayoutModuleTest > initializationError`: the root's `CustomerRecovery` now needs `notification.api.MailSender`, absent from payout's `@ApplicationModuleTest` isolation (root beans auto-supplied, module beans not — the #371 kernel lesson, mail edition). R-3 firing exactly as registered: the class was in the phase-1 inventory but only compile-verified, never run. Fix: mock `MailSender`; drop the three #371 facts mocks the departed listener no longer needs. | fixed in phase-2 commit |
 
 ---
 

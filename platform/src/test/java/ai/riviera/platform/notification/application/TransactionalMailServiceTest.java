@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * The chokepoint's contract (#382, absorbing what {@code CustomerRecoveryDispatchTest} pinned at the
@@ -27,12 +29,15 @@ class TransactionalMailServiceTest {
 
 	private static final String EMAIL = "tourist@example.com";
 	private static final URI LINK = URI.create("https://riviera.example/account/reset?token=t");
+	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
 
 	private final Mailer mailer = mock(Mailer.class);
+	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);
 	private final AtomicReference<Runnable> dispatched = new AtomicReference<>();
 
 	private final TransactionalMailService service =
-			new TransactionalMailService(mailer, dispatched::set);
+			new TransactionalMailService(mailer, dispatched::set, suppressions);
 
 	@Test
 	void doesNoMailWorkOnTheCallersThread() {
@@ -70,14 +75,45 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void theBookingConfirmationIsSynchronousAndPropagatesTransportFailures() {
-		BookingConfirmationMail confirmation = new BookingConfirmationMail(
-				"CODE1234", "Vala Beach", java.time.LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
-		service.sendBookingConfirmation(EMAIL, confirmation);
-		verify(mailer).sendBookingConfirmation(EMAIL, confirmation);
+		service.sendBookingConfirmation(EMAIL, CONFIRMATION);
+		verify(mailer).sendBookingConfirmation(EMAIL, CONFIRMATION);
 
 		// The registry vehicle relies on the throw to keep the publication outstanding (#371).
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any());
-		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, confirmation))
+		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
 				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	void suppressedAddressIsNeverDispatchedToTheTransport() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		service.sendPasswordReset(EMAIL, LINK);
+		dispatched.get().run();
+		service.sendEmailVerification(EMAIL, LINK);
+		dispatched.get().run();
+
+		verify(mailer, never()).sendPasswordReset(any(), any());
+		verify(mailer, never()).sendEmailVerification(any(), any());
+	}
+
+	@Test
+	void theSuppressionReadRunsOffTheCallersThread() {
+		// R-2: a suppression SELECT on the request thread would widen the #369 timing oracle.
+		service.sendPasswordReset(EMAIL, LINK);
+
+		verify(suppressions, never()).isSuppressed(any());
+		dispatched.get().run();
+		verify(suppressions).isSuppressed(EMAIL);
+	}
+
+	@Test
+	void suppressedAddressSkipsTheBookingConfirmationWithoutThrowing() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		// Must complete normally: a throw would park the publication in a permanent retry loop (R-6).
+		assertThatCode(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+				.doesNotThrowAnyException();
+		verify(mailer, never()).sendBookingConfirmation(any(), any());
 	}
 }

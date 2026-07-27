@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
@@ -27,6 +28,8 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
+import ai.riviera.platform.notification.application.EmailSuppressions;
+import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -76,6 +79,9 @@ class BookingConfirmationMailIT {
 
 	@Autowired
 	MockMailer mailer;
+
+	@Autowired
+	EmailSuppressions suppressions;
 
 	@Autowired
 	ApplicationEventPublisher publisher;
@@ -205,6 +211,38 @@ class BookingConfirmationMailIT {
 		assertThat(mailer.lastTo(contactEmail).orElseThrow().confirmation())
 				.isEqualTo(new BookingConfirmationMail("PAIDPATH", set.venueName(), date,
 						set.rowLabel(), set.positionNo(), 4400L, "EUR"));
+	}
+
+	@Test
+	void suppressedAddressCompletesWithoutSend() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 6, 14);
+		String suppressed = "suppressed-tourist@example.com";
+		suppressions.suppress(suppressed, SuppressionReason.HARD_BOUNCE, Instant.now());
+
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:e, 'Suppressed Guest', '+355779') RETURNING id")
+				.param("e", suppressed).query(Long.class).single();
+		long bookingId = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES ('SUPPRESS1', :venue, :set, :cust, :date, 2100, 'EUR', 'CONFIRMED')
+				RETURNING id
+				""")
+				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
+				.param("date", date).query(Long.class).single();
+
+		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), date, 2100L, "EUR"));
+
+		// The skip must COMPLETE the publication (AC-5): a throw would park it in a retry loop (R-6).
+		// Completion-mode=archive moves a completed row out of event_publication, so "no outstanding
+		// row for this listener" is completion — and only then is the no-send assertable.
+		Awaitility.await().atMost(WAIT).until(() -> jdbc.sql(
+				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL "
+						+ "AND listener_id LIKE '%BookingConfirmationMailListener%'")
+				.query(Long.class).single() == 0L);
+		assertThat(countTo(suppressed)).isZero();
 	}
 
 	@Test
