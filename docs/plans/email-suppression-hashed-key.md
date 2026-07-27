@@ -47,26 +47,26 @@ for `feature/email-suppression-hashed-key` (riviera-sdlc cloud addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a suppression written via `suppress("Foo@Bar.com ", HARD_BOUNCE, t)`,
+- [x] **AC-1:** Given a suppression written via `suppress("Foo@Bar.com ", HARD_BOUNCE, t)`,
   when the stored row is read raw, then `email_key` equals `v1:` + lower-hex
   HMAC-SHA-256(pepper, `"foo@bar.com"`), `domain` equals `bar.com`, and no column contains
   the cleartext local part. *Pinned by:* `EmailSuppressionIT.storedRowIsHashedKeyPlusCleartextDomain`
-- [ ] **AC-2:** Given `suppress("  Case-Mixed@Example.COM ", …)`, when `isSuppressed` is
+- [x] **AC-2:** Given `suppress("  Case-Mixed@Example.COM ", …)`, when `isSuppressed` is
   asked with any casing/whitespace variant of the same address, then it returns `true`
   (normalization-before-hash on both read and write). *Pinned by:*
   `EmailSuppressionIT.aSuppressedAddressIsFoundInAnyCasing` (existing, must stay green unchanged)
-- [ ] **AC-3:** Given the `prod` profile with the pepper property unset (or left at the
+- [x] **AC-3:** Given the `prod` profile with the pepper property unset (or left at the
   committed dev default), when the context starts, then boot fails with
   `IllegalStateException`; given `prod` + a real pepper, or the default profile, boot
   succeeds. *Pinned by:* `SuppressionPepperProdGuardTest`
-- [ ] **AC-4:** Given an address suppressed twice, when the row is read, then `reason` and
+- [x] **AC-4:** Given an address suppressed twice, when the row is read, then `reason` and
   `last_event_at` reflect the second call and `first_suppressed_at` the first (upsert
   semantics unchanged, now keyed on `email_key`). *Pinned by:*
   `EmailSuppressionIT.reSuppressingUpsertsReasonAndLastEventKeepingFirstSuppressedAt`
-- [ ] **AC-5:** Given two adapters configured with different peppers, when each computes the
+- [x] **AC-5:** Given two adapters configured with different peppers, when each computes the
   key for the same address, then the stored keys differ (the pepper participates in the
   digest). *Pinned by:* `EmailSuppressionIT.aDifferentPepperYieldsADifferentKey`
-- [ ] **AC-6:** Given the full structural net (`ModularityTests`,
+- [x] **AC-6:** Given the full structural net (`ModularityTests`,
   `PackageShapeArchitectureTests`, `JdbcOnlyArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests`), when it runs, then it is green with no new
   published surface — `EmailSuppressions` stays application-internal. *Pinned by:* the
@@ -99,22 +99,28 @@ for `feature/email-suppression-hashed-key` (riviera-sdlc cloud addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | V33 number collision with a parallel slice | low | high | verified free at plan time (latest on `main` is V32; only Dependabot FE PRs open). If a parallel claim appears, whoever merges second renumbers | session | open |
-| R-2 | A strict "throw when pepper blank" breaks every `@SpringBootTest` (they boot on main `application.properties`; no test-scoped file exists) | high (if strict) | high | committed non-prod default `dev-only-suppression-pepper` + `@Profile("prod")` guard rejecting blank/default — prod stays fail-at-boot, tests/dev boot untouched | session | open |
-| R-3 | The deployed env runs the `prod` profile → next deploy after merge **fails at boot** until `RIVIERA_SUPPRESSION_PEPPER` is set on Render | high | med (deliberate, by design) | ops step documented in `docs/deploy/cd-pipeline.md` env list + runbook + called out in the PR body; env var must be set before merging | maintainer | open |
-| R-4 | Guard's dev-default constant drifts from the `application.properties` literal | low | med | both sites carry a lockstep comment (§6a pattern); `SuppressionPepperProdGuardTest` pins the guard side | session | open |
-| R-5 | Writer/reader hash mismatch (casing, charset, hex case) silently breaks lookups | low | high | ONE `keyOf(normalize(…))` helper used by both paths; `HexFormat` lower-hex; DB CHECK `^v1:[0-9a-f]{64}$` rejects any malformed key; AC-2 pins round-trip | session | open |
-| R-6 | Raw address leaks into logs on the suppression path (ADR-0012 forbids) | low | med | no logging added in the adapter; existing chokepoint logs already omit the address (kept) | session | open |
+| R-1 | V33 number collision with a parallel slice | low | high | verified free at plan time (latest on `main` is V32; only Dependabot FE PRs open). If a parallel claim appears, whoever merges second renumbers | session | **closed** — no parallel claim appeared through merge |
+| R-2 | A strict "throw when pepper blank" breaks every `@SpringBootTest` (they boot on main `application.properties`; no test-scoped file exists) | high (if strict) | high | committed non-prod default `dev-only-suppression-pepper` + `@Profile("prod")` guard rejecting blank/default — prod stays fail-at-boot, tests/dev boot untouched | session | **closed** — full CI suite green on every push |
+| R-3 | The deployed env runs the `prod` profile → deploy after merge fails at boot without `RIVIERA_SUPPRESSION_PEPPER` | high | med | env entry documented in `cd-pipeline.md` + activation checklist | maintainer | **closed — risk did not apply**: Render is the dev env on the default profile (maintainer confirmed; the shipped `prod & !mailer`/`prod & !sso` guards prove `prod` isn't active today, or boot would already abort). Pepper is required only at a future real-prod activation; posture decision → #394 |
+| R-4 | Guard's dev-default constant drifts from the `application.properties` literal | low | med | lockstep comments + `SuppressionPepperProdGuardTest.theCommittedDefaultMatchesTheGuardConstant` loading the real properties file (F-5) | session | **closed** — mechanically pinned |
+| R-5 | Writer/reader hash mismatch (casing, charset, hex case) silently breaks lookups | low | high | ONE `keyOf(normalize(…))` helper used by both paths; `HexFormat` lower-hex; DB CHECK `^v1:[0-9a-f]{64}$` rejects any malformed key; AC-2 pins round-trip | session | **closed** — pinned by `EmailSuppressionIT`, CI green |
+| R-6 | Raw address leaks into logs on the suppression path (ADR-0012 forbids) | low | med | no logging added in the adapter; rejection message echoes no input; existing chokepoint logs omit the address | session | **closed** — verified in review (RV-BE-13 walk + conventions finder) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the deployed Render service runs `prod` (per `docs/deploy/cd-pipeline.md`:
-  "production runs `prod,mailer`"), so R-3's ops step is real and deploy-blocking — flagged
-  to the maintainer in the PR body. — *Owner:* maintainer · *Resolves by:* merge
-- **Assumption:** a `suppress()` input with no `@` (defensive case; today only tests and the
-  future provider feed call it) stores `domain = ''` rather than throwing — keeps the send
-  path's never-throw posture; the value is a non-address either way. — *Owner:* session ·
-  *Resolves by:* phase 1 (documented in the adapter javadoc)
+None — all resolved.
+
+### Resolved
+
+- **Assumption (wrong, in a good way):** "the deployed Render service runs `prod`". Maintainer
+  confirmed (2026-07-27, this session) Render is the **dev** env with no pepper set and no
+  `prod` profile in use — consistent with the code (the shipped mock-guards would abort a
+  `prod` boot today). No ops step was needed for merge; the activation-posture question
+  became issue #394. Resolved in the F-12/R-3 close (commit: the PR's close-out commit).
+- **Assumption (superseded by F-4):** "`suppress()` with no `@` stores `domain = ''`". The
+  `/code-review` fan-out showed a silent junk row in a never-deleted table masks caller bugs;
+  changed to a loud `IllegalArgumentException` in 6accb77, pinned by
+  `EmailSuppressionIT.aNonAddressWriteIsRejected`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -164,19 +170,23 @@ N/A — no contract change (no HTTP surface touches suppression).
 > **Session-recovery anchor.** Re-read this section (plus the current riviera-sdlc stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** review gate run (degraded mode: `/review` + overlay; `/code-review` is
-model-invocation-disabled in this session) → awaiting CI + Sonar gate on PR #392
+**Stage pointer:** DONE — merged via PR #392
 
-**Next action:** when CI completes on PR #392, run the Sonar gate per
-`references/pr-gates.md` §2 (pull the actual issue + measures lists, cache-busted), then
-finalize the plan doc in the PR's last commit and merge.
+**Next action:** none — slice complete. Deferred work: #393 (normalize() consolidation),
+#394 (prod-activation posture decision).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 5743576 |
 | 1 — V33 migration + HMAC adapter + IT (TDD) | ✅ | 106fd48 |
 | 2 — pepper prod guard + guard test | ✅ | 1cd4b0f |
-| 3 — docs (RESPONSIBILITIES, CLAUDE.md row, runbook, cd-pipeline) + close-out | ✅ | (this commit; close-out finalization lands with the PR's last commit) |
+| 3 — docs (RESPONSIBILITIES, CLAUDE.md row, runbook, cd-pipeline) | ✅ | 88eed35 |
+| review-fix rounds (gate F-1; `/code-review` fan-out F-3..F-9) | ✅ | 4919393, 6accb77 |
+
+Review gate: `/review 392` + full `riviera-review-overlay` backend bank, then the complete
+`/code-review` subagent fan-out (8 finder angles, user-invoked). Sonar gate: green with the
+API-pulled lists clean (0 issues, 0 duplication, 86.21% new-code coverage, `new_lines`
+non-empty — no false-clean). CI green on every push.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -195,6 +205,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-9 | `/code-review` fan-out (altitude) | v2 dual-scheme migration obligations (dual lookup + duplicate collapse) undocumented | fixed — recorded in V33 header + runbook |
 | F-10 | `/code-review` fan-out (reuse) | `normalize()` is the sixth private copy of email canonicalization; hashing makes drift undebuggable at rest | deferred → issue #393 |
 | F-11 | `/code-review` fan-out (refuted) | hash-over-normalized not schema-verifiable (inherent — DB has no pepper, ADR-0012 accepted); `email_key` as PK instead of surrogate id (repo convention keeps identity PKs); `@ConfigurationProperties` refactor (guard shape mirrors `MockMailerProdGuard`; F-5 closes the real risk); null-email NPE (pre-existing, transport fails on null recipient anyway) | no action — rationale recorded |
+| F-12 | session (maintainer input) | the `prod` profile is opt-in and no deployment runs it today (Render = dev env, default profile) — if a future real prod also runs the default profile, none of the three prod guards fire | deferred → issue #394 (activation-posture decision, pre-dates and exceeds this slice) |
 
 ---
 
@@ -505,26 +516,28 @@ Create `docs/runbooks/suppression-list-ops.md`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** `./gradlew test --tests "*EmailSuppressionIT*" --tests "*SuppressionPepperProdGuardTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** structural net scoped run → PASS. Verified at commit `<sha>`.
-- [ ] (CI) full suite green on the PR — AC-6's authoritative run.
+- [x] **AC-1..AC-5:** scoped `gradle test` (EmailSuppressionIT + SuppressionPepperProdGuardTest,
+  real Postgres via Testcontainers) → PASS. Verified at commit 6accb77.
+- [x] **AC-6:** structural net scoped run (ModularityTests, PackageShape, JdbcOnly,
+  PublishedSurfacePlacement) → PASS. Verified at commit 6accb77.
+- [x] (CI) full suite green on the PR head 6accb77 (both workflow runs) — AC-6's authoritative run.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** N/A justified (no availability path in scope).
-- [ ] Pool + cutoff rules — not in scope.
-- [ ] **Modulith** section filled; no cross-module imports added; no published-surface change (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy — not in scope.
-- [ ] Timezone: timestamps stay caller-supplied UTC instants (invariant #6, unchanged).
-- [ ] Booking codes — not in scope; the *pepper* is the secret here and is never logged.
-- [ ] Flyway V33 present; format-pinning CHECKs tested via the IT writing through the adapter (invariant #12).
-- [ ] **Frontend** — not in scope.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** N/A justified (no availability path in scope).
+- [x] Pool + cutoff rules — not in scope.
+- [x] **Modulith** section filled; no cross-module imports added; no published-surface change (invariant #11).
+- [x] **Payment/payout** N/A.
+- [x] Refund policy — not in scope.
+- [x] Timezone: timestamps stay caller-supplied UTC instants (invariant #6, unchanged).
+- [x] Booking codes — not in scope; the *pepper* is the secret here and is never logged.
+- [x] Flyway V33 present; format-pinning CHECKs tested via the IT writing through the adapter (invariant #12).
+- [x] **Frontend** — not in scope.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final plan-doc state cites `merged via PR #NN`.
+- [x] **The review gate ran in full** — `/code-review` + `riviera-review-overlay`.
