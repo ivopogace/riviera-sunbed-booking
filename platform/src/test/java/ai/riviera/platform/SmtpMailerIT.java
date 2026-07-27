@@ -91,6 +91,44 @@ class SmtpMailerIT {
 	}
 
 	@Test
+	void aVenueNameCarryingNewlinesCannotInjectHeaders() throws Exception {
+		BookingConfirmationMail injected = new BookingConfirmationMail(BOOKING_CODE,
+				"Evil\r\nBcc: attacker@example.com\r\nX-Injected: yes", LocalDate.of(2026, 8, 15),
+				"A", 3, 2500, "EUR");
+
+		mailer().sendBookingConfirmation(TO, injected);
+
+		// Pins the property, not one layer's implementation of it: this passes with or without
+		// SmtpMailer.headerSafe, because Jakarta Mail already refuses to promote a newline in a subject
+		// to a new header. It exists to fail if that ever stops being true — a move to MimeMessageHelper,
+		// a raw header API, or ADR-0011's deferred HTTP API would each put it back in play.
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(message.getHeader("Bcc")).isNull();
+		assertThat(message.getHeader("X-Injected")).isNull();
+		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
+		assertThat(message.getSubject()).doesNotContain("\r", "\n");
+	}
+
+	@Test
+	void aFailedBookingConfirmationThrowsWithoutLoggingTheCode(CapturedOutput output) throws Exception {
+		int closedPort;
+		try (ServerSocket socket = new ServerSocket(0)) {
+			closedPort = socket.getLocalPort();
+		}
+		JavaMailSenderImpl sender = new JavaMailSenderImpl();
+		sender.setHost("127.0.0.1");
+		sender.setPort(closedPort);
+		sender.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
+
+		// The failure must propagate: BookingConfirmationMailListener relies on it to leave the
+		// publication outstanding so a restart retries. Swallowing here would silently turn the
+		// registry's at-least-once contract into fire-and-forget.
+		assertThatThrownBy(() -> new SmtpMailer(sender, FROM).sendBookingConfirmation(TO, CONFIRMATION))
+				.isInstanceOf(MailException.class);
+		assertThat(output).doesNotContain(BOOKING_CODE);
+	}
+
+	@Test
 	void neverLogsTheTokenizedLink(CapturedOutput output) {
 		mailer().sendEmailVerification(TO, LINK);
 		mailer().sendPasswordReset(TO, LINK);

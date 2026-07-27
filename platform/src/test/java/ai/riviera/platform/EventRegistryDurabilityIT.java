@@ -47,6 +47,9 @@ class EventRegistryDurabilityIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
 
+	/** Improbable enough to identify this test's publication in a database other ITs also write to. */
+	private static final long DISTINCTIVE_AMOUNT_MINOR = 987_654_321L;
+
 	@Autowired
 	Environment environment;
 
@@ -59,11 +62,19 @@ class EventRegistryDurabilityIT {
 	@Autowired
 	PlatformTransactionManager txManager;
 
-	private long publicationsIn(String table, long bookingId) {
+	/**
+	 * Publications of <em>this test's</em> event, keyed on its deliberately-improbable amount rather than
+	 * on the booking id: ids are small integers, and every {@code BookingConfirmed} payload in the shared
+	 * database also carries {@code venueId}/{@code setId}/{@code amountMinor}, so a bare
+	 * {@code LIKE '%<id>%'} would match other tests' rows — making the archive assertion pass for the
+	 * wrong reason and the live-table assertion fail for one. The assertions run archive-first, so a
+	 * pattern that matched nothing would fail loudly rather than pass vacuously.
+	 */
+	private long publicationsIn(String table) {
 		return jdbc.sql("SELECT COUNT(*) FROM " + table
-						+ " WHERE event_type = :type AND serialized_event LIKE :idFragment")
+						+ " WHERE event_type = :type AND serialized_event LIKE :amountFragment")
 				.param("type", BookingConfirmed.class.getName())
-				.param("idFragment", "%" + bookingId + "%")
+				.param("amountFragment", "%" + DISTINCTIVE_AMOUNT_MINOR + "%")
 				.query(Long.class).single();
 	}
 
@@ -89,19 +100,20 @@ class EventRegistryDurabilityIT {
 		long bookingId = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES ('ARCHIVE1', :venue, :set, :cust, :date, 1900, 'EUR', 'CONFIRMED')
+				VALUES ('ARCHIVE1', :venue, :set, :cust, :date, :amount, 'EUR', 'CONFIRMED')
 				RETURNING id
 				""")
 				.param("venue", set[1]).param("set", set[0]).param("cust", customerId)
-				.param("date", date).query(Long.class).single();
+				.param("date", date).param("amount", DISTINCTIVE_AMOUNT_MINOR)
+				.query(Long.class).single();
 
 		new TransactionTemplate(txManager).executeWithoutResult(status -> publisher.publishEvent(
 				new BookingConfirmed(new BookingId(bookingId), new VenueId(set[1]), new SetId(set[0]),
-						date, 1900L, "EUR")));
+						date, DISTINCTIVE_AMOUNT_MINOR, "EUR")));
 
 		Awaitility.await().atMost(WAIT)
-				.until(() -> publicationsIn("event_publication_archive", bookingId) > 0);
+				.until(() -> publicationsIn("event_publication_archive") > 0);
 		Awaitility.await().atMost(WAIT)
-				.until(() -> publicationsIn("event_publication", bookingId) == 0);
+				.until(() -> publicationsIn("event_publication") == 0);
 	}
 }

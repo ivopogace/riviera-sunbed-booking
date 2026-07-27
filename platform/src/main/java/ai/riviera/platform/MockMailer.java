@@ -12,10 +12,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Default-profile ({@code @Profile("!mailer")}) recording {@link Mailer} that plays a cooperative mail
- * transport (S8, epic #108, design D-6) — the same stub pattern as {@code MockSsoGateway}. Instead of
- * sending, it keeps each {@link SentEmail} in memory and logs the tokenized link, so "verify your email"
- * and "reset your password" are demoable end-to-end with zero external credentials, and backend ITs can
- * follow the link out of {@link #lastTo}.
+ * transport (S8, epic #108, design D-6; booking confirmations added in #371) — the same stub pattern as
+ * {@code MockSsoGateway}. Instead of sending, it keeps each {@link SentEmail} in memory, so every message
+ * kind is demoable end-to-end with zero external credentials and backend ITs can assert on what was sent
+ * via {@link #lastTo}. Recovery messages additionally log their tokenized link (dev-only, see below);
+ * a booking confirmation deliberately logs no arrival code — the tourist already has it in the app, so
+ * the affordance would buy nothing and invariant #7 costs nothing to honour there.
  *
  * <p>{@code @Profile("!mailer & !smtp4dev")} so exactly one {@link Mailer} bean exists: the mock unless a
  * real-transport profile ({@code mailer}, or the local-dev {@code smtp4dev}) swaps in

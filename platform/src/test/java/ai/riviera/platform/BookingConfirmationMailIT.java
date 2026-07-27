@@ -115,7 +115,11 @@ class BookingConfirmationMailIT {
 	@Test
 	void sendsOneConfirmationCarryingCodeVenueDateSetAndAmount() throws Exception {
 		SetRef set = onlineSet();
-		LocalDate date = LocalDate.now().plusYears(1);
+		// A date no other IT books. Classes sharing this context key share one container, and a claimed
+		// (set, date) is never released (invariant #2), so reusing BookingControllerIT's
+		// plusYears(1) on the same first ONLINE set would 409 whichever class ran second. The suite's
+		// other create-booking ITs offset by hand for the same reason (+7, +11 days).
+		LocalDate date = LocalDate.now().plusYears(1).plusDays(23);
 
 		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content("""

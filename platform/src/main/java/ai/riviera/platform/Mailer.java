@@ -14,8 +14,11 @@ import java.net.URI;
  *
  * <p>Recovery messages carry a raw single-use token inside the emailed link and booking confirmations
  * carry the arrival code — both bearer credentials (invariant #7). The edge hands each here fully
- * formed, so the mailer never touches the token store, the account, or the booking; implementations
- * must never log them. Package-private — edge-internal machinery (RV-BE-11).
+ * formed, so the mailer never touches the token store, the account, or the booking. <strong>No
+ * implementation reachable in production may log them</strong>: {@link SmtpMailer} logs neither, and
+ * {@link MockMailer}'s deliberate dev-only echo of the recovery <em>link</em> is the documented
+ * exception — mock-only, prod-guarded by {@link MockMailerProdGuard}, and never extended to the
+ * arrival code. Package-private — edge-internal machinery (RV-BE-11).
  */
 interface Mailer {
 

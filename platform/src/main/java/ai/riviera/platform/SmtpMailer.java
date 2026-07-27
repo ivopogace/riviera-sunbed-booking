@@ -14,15 +14,16 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
 /**
- * Real SMTP {@link Mailer} (#368, ADR-0011): delivers the verification and reset emails over the
+ * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371): delivers every message kind over the
  * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
  * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active under
  * {@code @Profile("mailer")} — where missing SMTP config fails at boot (unresolved placeholder), never on
  * first send — and under the local-dev {@code smtp4dev} profile, whose defaults target the local sink
  * ({@code application-smtp4dev.properties}). Messages are plain text with no tracking markup
- * (ADR-0011 §25-TDDDG posture), and the tokenized
- * link — a bearer credential (invariant #7) — is never logged here. Package-private (RV-BE-11); pinned
- * by {@code SmtpMailerIT} + {@code MailerProfileWiringTest}.
+ * (ADR-0011 §25-TDDDG posture). Neither bearer credential (invariant #7) is ever logged here — not the
+ * tokenized link, not the arrival code — and untrusted text reaching a <em>header</em> is CRLF-stripped
+ * ({@link #headerSafe}). Package-private (RV-BE-11); pinned by {@code SmtpMailerIT} +
+ * {@code MailerProfileWiringTest}.
  */
 @Component
 @Profile("mailer | smtp4dev")
@@ -71,9 +72,7 @@ class SmtpMailer implements Mailer {
 
 	@Override
 	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-		// The arrival code is deliberately absent from the subject: subjects surface in lock-screen
-		// previews and mail-client list views, and the code is a bearer credential (invariant #7).
-		send(toEmail, CONFIRMATION_SUBJECT.formatted(confirmation.venueName()), """
+		send(toEmail, CONFIRMATION_SUBJECT.formatted(headerSafe(confirmation.venueName())), """
 				Your sunbed set is confirmed.
 
 				  Booking code:  %s
@@ -98,6 +97,21 @@ class SmtpMailer implements Mailer {
 		int fractionDigits = Math.max(Currency.getInstance(currency).getDefaultFractionDigits(), 0);
 		BigDecimal major = BigDecimal.valueOf(amountMinor).movePointLeft(fractionDigits);
 		return "%s %s".formatted(currency, major.setScale(fractionDigits, RoundingMode.UNNECESSARY));
+	}
+
+	/**
+	 * Strip CR/LF from a value destined for a <em>header</em>. The venue name is operator-supplied and
+	 * validated only as non-blank, so it is untrusted text reaching a line-oriented sink — the CRLF class
+	 * {@code riviera-java-conventions} §10 names for logs.
+	 *
+	 * <p><strong>Defence in depth, not a live fix:</strong> {@code SmtpMailerIT}'s injection test passes
+	 * with and without this call, because Jakarta Mail already refuses to turn a newline in a subject into
+	 * a new header. The call keeps the guarantee <em>ours</em> rather than resting on library internals —
+	 * it would start mattering the moment this class moved to {@code MimeMessageHelper}, a raw header API,
+	 * or the provider's HTTP API (which ADR-0011 leaves open for v2). Bodies need no such treatment.
+	 */
+	private static String headerSafe(String value) {
+		return value.replaceAll("[\\r\\n]", " ");
 	}
 
 	private void send(String toEmail, String subject, String body) {
