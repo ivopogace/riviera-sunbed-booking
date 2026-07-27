@@ -159,14 +159,14 @@ N/A — no contract change (no endpoint or DTO touched).
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 > Update in the same commit window as the change it records.
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** phase 1 step 1 — write `MailerProfileWiringTest` red.
+**Next action:** phase 2 — `link-base-url` env placeholder + `cd-pipeline.md` env docs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Real `SmtpMailer` + GreenMail IT | ✅ | `feat(#368): implement SmtpMailer…` (sha at close-out) |
-| 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | | |
+| 0 — Real `SmtpMailer` + GreenMail IT | ✅ | `16e0475` |
+| 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | ✅ | (this commit) |
 | 2 — `link-base-url` env placeholder + deploy docs | | |
 | 3 — Activation runbook | | |
 
@@ -280,6 +280,7 @@ Delete `RealMailerTest.java`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-27 | Phase 1 (fail-at-boot posture, R-2) | Other profile-gated externals that boot with missing/empty credentials and fail on first use | grep `api-key`/`isBlank` across `Stripe*` | `StripeConfig`/`StripeProperties`: `stripe` profile with `STRIPE_API_KEY` unset builds a client with an empty key — fails on first call, not at boot | Out of scope (payment module, own slice); follow-up issue filed at close-out |
 
 ---
 
