@@ -20,8 +20,7 @@
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Notification",
-	// The BookingConfirmed listener's reads, least-privilege (#95): booking supplies the event +
-	// arrival code + contact id, venue the name/spot facts, customer the address. No command surface.
+	// The BookingConfirmed listener's reads, least-privilege (#95) — no command surface granted.
 	allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary",
 			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary" }
 )

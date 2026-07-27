@@ -78,9 +78,9 @@ public class TransactionalMailService implements MailSender {
 				send.run();
 			}
 			catch (RuntimeException e) {
-				// The mailer is a best-effort side channel; never log the raw link/token (invariant #7).
-				log.warn("Recovery email send failed ({}); the token was issued, delivery can be retried",
-						e.getClass().getSimpleName());
+				// Covers the suppression read AND the send; never log the raw link/token (invariant #7).
+				log.warn("Recovery {} mail was not delivered ({}); the token was issued, the user can re-request",
+						kind, e.getClass().getSimpleName());
 			}
 		});
 	}

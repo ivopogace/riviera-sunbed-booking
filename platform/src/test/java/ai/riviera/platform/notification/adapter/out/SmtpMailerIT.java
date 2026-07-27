@@ -5,8 +5,6 @@ import java.net.URI;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
-
-import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -19,6 +17,8 @@ import com.icegreen.greenmail.util.GreenMailUtil;
 import com.icegreen.greenmail.util.ServerSetupTest;
 
 import jakarta.mail.internet.MimeMessage;
+
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

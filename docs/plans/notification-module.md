@@ -58,7 +58,7 @@ in for `feature/notification-module` (riviera-sdlc remote addendum).
 - [ ] **AC-4 (suppression — dispatcher vehicle):** Given `addr@example.com` is suppressed,
   when the edge calls `MailSender.sendEmailVerification`/`sendPasswordReset` for it, then no
   transport send happens (MockMailer records nothing) and the call still returns normally.
-  *Pinned by:* `TransactionalMailServiceTest.suppressedAddressIsNeverDispatched` +
+  *Pinned by:* `TransactionalMailServiceTest.suppressedAddressIsNeverDispatchedToTheTransport` +
   `EmailSuppressionIT` (real Postgres).
 - [ ] **AC-5 (suppression — registry vehicle):** Given a suppressed address and a
   `BookingConfirmed` publication, when the listener runs, then no transport send happens and
@@ -97,7 +97,7 @@ The root mail machinery is replaced by the module — every observable behavior 
 | Exactly one `Mailer` bean per profile: mock under `!mailer & !smtp4dev`, SMTP under `mailer \| smtp4dev` | preserved | classes move to `adapter/out`, `@Profile` expressions byte-identical; `MailerProfileWiringTest` relocated |
 | `MockMailerProdGuard` aborts boot under `prod & !mailer` | preserved | moved unchanged; `MockMailerProdGuardTest` relocated |
 | Recovery sends run off the request thread, bounded queue (1 drainer, cap 100), drop+warn on rejection, MDC carried + cleared, drain on shutdown | preserved | `AsyncMailDispatcher` moves unchanged into `application/`; `AsyncMailDispatcherTest` relocated |
-| Recovery send failures are swallowed inside the dispatched task (never fail the request; no status/timing oracle — D-8) | preserved (moved) | `dispatchQuietly` logic moves from `CustomerRecovery` into `TransactionalMailService`; pinned by `TransactionalMailServiceTest` + `RecoveryMailerFailureIT` |
+| Recovery send failures are swallowed inside the dispatched task (never fail the request; no status/timing oracle — D-8) | preserved (moved) | `dispatchQuietly` logic moves from `CustomerRecovery` into `TransactionalMailService`; pinned by `TransactionalMailServiceTest` + `RecoveryMailerFailureIT`. One accepted drift (review Info-5): the suppression read shares the swallow, so a transient DB failure on it now also drops the send (best-effort contract; log wording covers both) |
 | Token issue stays ON the request thread; only the send moves off it | preserved | `CustomerRecovery` still calls `recovery.issue…` synchronously, then `MailSender.send…` |
 | Booking-confirmation mail rides the Event Publication Registry, `@ApplicationModuleListener`, at-least-once, idempotent per booking; missing booking/set/contact → log+skip (complete), transport failure → propagate (retry) | preserved | listener moves to `adapter/in` unchanged; suppression skip added as a *complete* outcome (AC-5); `BookingConfirmationMailIT` relocated |
 | Bearer-credential payloads never persisted (no registry for recovery mail) | preserved | recovery sends still ride the in-memory dispatcher only; `RecoveryTokenNeverPersistedIT` |
@@ -236,7 +236,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/notification/package-info.java` — `@ApplicationModule` + grants
 - `…/notification/api/package-info.java` — `@NamedInterface("api")`
 - `…/notification/api/MailSender.java` — the published port
-- `…/notification/application/TransactionalMailService.java` — chokepoint (dispatch + swallow + suppression; package-private `sendBookingConfirmation` for the listener)
+- `…/notification/application/TransactionalMailService.java` — chokepoint (dispatch + swallow + suppression; public `sendBookingConfirmation` for the `adapter/in` listener — cross-package, so package-private was never possible; plan corrected)
 - `…/notification/application/EmailSuppressions.java` + `SuppressionReason.java` — internal port + reason
 - `…/notification/adapter/out/JdbcEmailSuppressions.java` — `JdbcClient` adapter
 - `platform/src/main/resources/db/migration/V31__event_publication_listener_move.sql`

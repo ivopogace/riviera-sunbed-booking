@@ -20,7 +20,7 @@
 
 ## 1. Bounded context map
 
-The seven Spring-Modulith modules and how they collaborate. **Solid arrows = domain
+The eight Spring-Modulith modules and how they collaborate. **Solid arrows = domain
 events** (state changes). **Dotted arrows = `api/` port queries** (reads). Modules
 never import each other's internals — only `api/` ports or events (invariant #11).
 
@@ -46,12 +46,16 @@ graph TB
         LEDG["PayoutLedgerEntry<br/>«aggregate root»"]
         BATCH["PayoutBatch<br/>«aggregate root»"]
     end
+    subgraph notification["notification — no aggregate; owns email_suppression (#382)"]
+    end
+
     subgraph operator["operator — per-venue authorization (#13)"]
         OP["Operator<br/>«aggregate root»"]
     end
 
     PAY -- "PaymentConfirmed / PaymentCanceled" --> BOOK
     BOOK -- "BookingConfirmed" --> LEDG
+    BOOK -- "BookingConfirmed (confirmation mail)" --> notification
     BOOK -- "BookingCancelled (proportional reversal)" --> LEDG
 
     BOOK -. "claim / release (set, date)" .-> AVAIL

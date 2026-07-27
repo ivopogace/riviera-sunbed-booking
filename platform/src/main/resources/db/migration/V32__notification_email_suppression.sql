@@ -14,7 +14,9 @@
 CREATE TABLE email_suppression
 (
   id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  email               TEXT NOT NULL,
+  -- Stored normalized (trimmed, lower-cased); the CHECK closes the manual-ops hole where a
+  -- hand-inserted 'Foo@Bar.com' would satisfy every constraint yet never match a send-time lookup.
+  email               TEXT NOT NULL CHECK (email = lower(btrim(email))),
   reason              TEXT NOT NULL CHECK (reason IN ('HARD_BOUNCE', 'COMPLAINT', 'MANUAL')),
   first_suppressed_at TIMESTAMPTZ NOT NULL,
   last_event_at       TIMESTAMPTZ NOT NULL,

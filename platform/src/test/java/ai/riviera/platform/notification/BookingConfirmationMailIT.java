@@ -25,13 +25,13 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
-import ai.riviera.platform.payment.events.PaymentConfirmed;
-import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
+import ai.riviera.platform.notification.adapter.out.SentEmail;
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
-import ai.riviera.platform.notification.application.BookingConfirmationMail;
-import ai.riviera.platform.notification.adapter.out.SentEmail;
+import ai.riviera.platform.payment.events.PaymentConfirmed;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -235,9 +235,7 @@ class BookingConfirmationMailIT {
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), date, 2100L, "EUR"));
 
-		// The skip must COMPLETE the publication (AC-5): a throw would park it in a retry loop (R-6).
-		// Completion-mode=archive moves a completed row out of event_publication, so "no outstanding
-		// row for this listener" is completion — and only then is the no-send assertable.
+		// Archive mode moves completed rows out, so no-outstanding-row = the skip COMPLETED (AC-5, R-6).
 		Awaitility.await().atMost(WAIT).until(() -> jdbc.sql(
 				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL "
 						+ "AND listener_id LIKE '%BookingConfirmationMailListener%'")

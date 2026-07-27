@@ -25,7 +25,9 @@ Spring Data JDBC / `JdbcClient` (one legacy `JdbcTemplate` adapter) only — no 
 
 > **The root package is the composition root, and nothing may depend on it.** `ai.riviera.platform`
 > holds `PlatformApplication`, app-wide config, and the platform's own adapters (controllers, the
-> mailers, edge listeners) — so it *depends on* modules. Types that modules need go in **`shared`**,
+> SSO/auth edge — the mailers and their listener moved to `notification` in #382, leaving the root
+> with no module listeners at all, pinned by `CompositionRootDisciplineTests`) — so it *depends on*
+> modules. Types that modules need go in **`shared`**,
 > never at the root: a package that is both depended-on and depending closes cycles by construction.
 > That is exactly how #371 broke — an edge listener on `booking.events.BookingConfirmed` produced
 > `booking → root → booking`, because five modules imported `ApiProblem`/`CurrentOperator` from the

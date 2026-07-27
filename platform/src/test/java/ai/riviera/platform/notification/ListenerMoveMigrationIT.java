@@ -41,8 +41,9 @@ class ListenerMoveMigrationIT {
 
 	@Test
 	void rewritesTheOldListenerIdAndLeavesTheNewOneAlone() throws Exception {
-		UUID oldRow = seed(OLD_LISTENER_ID);
-		UUID newRow = seed(NEW_LISTENER_ID);
+		UUID oldRow = seed("event_publication", OLD_LISTENER_ID);
+		UUID newRow = seed("event_publication", NEW_LISTENER_ID);
+		UUID archivedRow = seed("event_publication_archive", OLD_LISTENER_ID);
 
 		String script = new String(
 				new ClassPathResource("db/migration/V31__event_publication_listener_move.sql")
@@ -51,12 +52,15 @@ class ListenerMoveMigrationIT {
 		jdbc.sql(script).update();
 
 		try {
-			assertThat(listenerIdOf(oldRow)).isEqualTo(NEW_LISTENER_ID);
-			assertThat(listenerIdOf(newRow)).isEqualTo(NEW_LISTENER_ID);
+			assertThat(listenerIdOf("event_publication", oldRow)).isEqualTo(NEW_LISTENER_ID);
+			assertThat(listenerIdOf("event_publication", newRow)).isEqualTo(NEW_LISTENER_ID);
+			assertThat(listenerIdOf("event_publication_archive", archivedRow)).isEqualTo(NEW_LISTENER_ID);
 		}
 		finally {
 			jdbc.sql("DELETE FROM event_publication WHERE id IN (:a, :b)")
 					.param("a", oldRow).param("b", newRow).update();
+			jdbc.sql("DELETE FROM event_publication_archive WHERE id = :id")
+					.param("id", archivedRow).update();
 		}
 	}
 
@@ -66,19 +70,17 @@ class ListenerMoveMigrationIT {
 	 * would be delivered mid-suite. V31's UPDATE carries no completion filter, so a completed row
 	 * proves the rewrite just as well.
 	 */
-	private UUID seed(String listenerId) {
+	private UUID seed(String table, String listenerId) {
 		UUID id = UUID.randomUUID();
-		jdbc.sql("""
-				INSERT INTO event_publication (id, listener_id, event_type, serialized_event, publication_date, completion_date)
-				VALUES (:id, :listenerId, :eventType, '{}', now(), now())
-				""")
+		jdbc.sql("INSERT INTO " + table + " (id, listener_id, event_type, serialized_event, "
+						+ "publication_date, completion_date) VALUES (:id, :listenerId, :eventType, '{}', now(), now())")
 				.param("id", id).param("listenerId", listenerId).param("eventType", EVENT_TYPE)
 				.update();
 		return id;
 	}
 
-	private String listenerIdOf(UUID id) {
-		return jdbc.sql("SELECT listener_id FROM event_publication WHERE id = :id")
+	private String listenerIdOf(String table, UUID id) {
+		return jdbc.sql("SELECT listener_id FROM " + table + " WHERE id = :id")
 				.param("id", id).query(String.class).single();
 	}
 }

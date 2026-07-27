@@ -132,11 +132,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	AccountErasure accountErasure;
 
-	// #382: the root edge's CustomerRecovery hands recovery sends to notification::api's MailSender —
-	// same isolation story (the notification module isn't bootstrapped here), so the port is mocked.
-	// The #371 facts mocks (BookingNotificationFacts / SetBookingFacts / CustomerLookup) left with the
-	// mail listener: it now lives inside the notification module, so payout's isolated context no
-	// longer contains it — its collaborators are no longer anyone's unmet dependency here.
+	// #382: root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
 	@MockitoBean
 	MailSender mailSender;
 

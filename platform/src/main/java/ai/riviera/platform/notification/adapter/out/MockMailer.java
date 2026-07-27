@@ -14,7 +14,7 @@ import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 
 /**
- * Default-profile ({@code @Profile("!mailer")}) recording {@link Mailer} that plays a cooperative mail
+ * Default-profile ({@code @Profile("!mailer & !smtp4dev")}) recording {@link Mailer} that plays a cooperative mail
  * transport (S8, epic #108, design D-6; booking confirmations added in #371) — the same stub pattern as
  * {@code MockSsoGateway}. Instead of sending, it keeps each {@link SentEmail} in memory, so every message
  * kind is demoable end-to-end with zero external credentials and backend ITs can assert on what was sent
