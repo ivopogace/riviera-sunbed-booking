@@ -103,6 +103,19 @@
       "skillPath": "skills/postgres/SKILL.md",
       "ref": "main",
       "vendored": "trimmed — generic-Postgres subset; PlanetScale-product references removed"
+    },
+    "playwright-cli": {
+      "source": "@playwright/cli",
+      "sourceType": "npm",
+      "skillPath": "playwright-cli/SKILL.md",
+      "vendored": "verbatim — the official Playwright skill shipped with the @playwright/cli npm package; refreshed by reinstalling the package skill, not by hand-editing"
+    },
+    "graphify": {
+      "source": "graphifyy",
+      "sourceType": "pip",
+      "skillPath": "graphify/SKILL.md",
+      "ref": "0.9.6",
+      "vendored": "installed by the graphifyy pip package (upstream github.com/safishamsi/graphify); the companion _is_noise_dir patch lives in site-packages, NOT in this repo — re-verify it after every package upgrade (CLAUDE.md graphify section, #321)"
     }
   }
 }
