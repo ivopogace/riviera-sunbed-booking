@@ -9,12 +9,13 @@ protects an **authenticated** endpoint, so an anonymous flood from one address c
 deny every operator behind it the ability to rotate a credential they believe is compromised.
 
 **Architecture:** Keep the per-IP dimension as volume control, but make the refund policy a
-property **of the budget**, not of the filter: a budget whose endpoints are authenticated is
-marked *refund-on-chain-rejection*, and the filter releases the token it spent when the response
-status shows Spring Security rejected the request **before** the controller (`401`/`403`). This
-inverts — per budget — the spend-then-refund mechanic `throttlePerIdentity` already uses for the
-per-identity login dimension, so the cap stays exact under concurrency. The flag is **mandatory,
-not cosmetic**: `POST /api/auth/operator/login` answers `401` for bad credentials *from its own
+property **of the budget**, not of the filter: a budget guarding authenticated work is marked
+`guardsAuthenticatedWork`, and the filter releases the token it spent when the response status
+shows the request was **denied before reaching that work** (`401`/`403` — from the security chain,
+or from `CurrentCustomer#require`, which precedes every credential read). This inverts — per
+budget — the spend-then-refund mechanic `throttlePerIdentity` already uses for the per-identity
+login dimension, so the cap stays exact under concurrency. The flag is **mandatory, not
+cosmetic**: `POST /api/auth/operator/login` answers `401` for bad credentials *from its own
 controller*, so a global refund-on-`401` would silently disable login throttling altogether.
 
 **Persistence:** JDBC only (invariant #1). N/A — no table, no migration, no SQL. The limiter's
@@ -116,10 +117,12 @@ deliberately **not** held as a plan-doc open question (that section is for quest
       asserts exactly this and now doubles as the R-1 tripwire. No new test was written: a
       filter-wide refund would turn its third request from `429` into `401`, so it already fails
       on the mistake R-1 describes, and a duplicate would be coverage theatre.
-- [ ] **AC-6:** Given the shared recovery budget, when more than `capacity` **unauthenticated**
+- [x] **AC-6:** Given the shared recovery budget, when more than `capacity` **unauthenticated**
       `POST /api/me/verify-email/request` requests arrive from one IP, then a legitimate
       `POST /api/auth/customer/forgot-password` from that IP is still served.
-      *Pinned by:* `RateLimitFilterTest.anUnauthenticatedFloodOnTheVerificationResendDoesNotStarveRecovery`
+      *Pinned by:* `RateLimitFilterTest.anUnauthenticatedFloodOnTheVerificationResendDoesNotStarveRecovery`,
+      with `authenticatedVerificationResendsAreStillThrottled` + `forgotPasswordIsStillThrottled`
+      as the counter-tests proving the budget still bites on both halves of the mixed map.
 - [x] **AC-7:** Given an authenticated operator, when a password change is rejected for a missing
       CSRF token (`403`), then no token is net-consumed — a rejection before the controller costs
       the caller's own IP nothing. *Pinned by:* `RateLimitFilterTest.aCsrfRejectedPasswordChangeDoesNotSpendTheBudget`
@@ -164,7 +167,7 @@ deliberately **not** held as a plan-doc open question (that section is for quest
 | R-2 | Refund-on-`403` makes a CSRF-less flood free, removing volume control from the authenticated budgets | high | low | Accepted + documented: a CSRF rejection happens at `CsrfFilter` with no DB, no bcrypt and no mail — the oracle is never reached. The same is true of every non-throttled endpoint in the app | Claude | open |
 | R-3 | Transient false `429`: spend-then-refund means a burst of `capacity` anonymous requests can leave the bucket momentarily empty for a concurrent legitimate caller | med | low | Accepted, and deliberately chosen over peek-then-spend, which would make the cap inexact under concurrency — the same trade `throttlePerIdentity` already made. Self-heals within one request | Claude | open |
 | R-4 | Per-IP remains the only dimension on an authenticated endpoint, so a stolen-session attacker on a rotating-IP botnet is still under-throttled | low | med | Out of scope by design (Non-goals); the pre-existing posture is not worsened. Note in the plan close-out whether it deserves an issue | Claude | open |
-| R-5 | Shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names them up front; Phase 1 rewrites them to drive the throttle **authenticated**, a strictly better test of the same intent | Claude | **closed** — it was **five**, not the four predicted (`credentialChangeBudgetIsKeyedByClientIp` was missed at plan time). All five reworked, none weakened; `862d32f`..`df4de6c` |
+| R-5 | Shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names them up front; Phase 1 rewrites them to drive the throttle **authenticated**, a strictly better test of the same intent | Claude | **closed** — it was **five**, not the four predicted (`credentialChangeBudgetIsKeyedByClientIp` was missed at plan time). All five reworked, none weakened; `862d32f`..`c5c9bb1` |
 | R-6 | An exception propagating out of `chain.doFilter` skips the refund (no `finally`) | low | low | Deliberate and consistent with `throttlePerIdentity`: a `500` is not a chain rejection and should not be refunded. Documented in the Javadoc | Claude | open |
 | R-7 | Error-contract drift: none of the `401`/`403`/`429` bodies change | low | low | No DTO, no status, no `code` is added or altered (§6b); the `429` body constant is untouched | Claude | open |
 
@@ -230,17 +233,16 @@ were never authenticated.
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 2 (generalization audit)`
+**Stage pointer:** `implement — phase 3 (docs freshness + close-out), then PR`
 
-**Next action:** Run the generalization audit over every budget in `authPostBudgetFor`, flip
-`recoveryBuckets` to `guardsAuthenticatedWork` for `/api/me/verify-email/request`, and pin AC-6.
+**Next action:** Run the touched-area IT regression, load `riviera-docs-freshness`, push and open the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Red: the anonymous flood drains an authenticated budget | ✅ | `862d32f` |
-| 1 — Fix: per-budget refund when access is denied + rework the 5 tests that encoded the defect | ✅ | `df4de6c` |
-| 2 — Generalization audit: the shared recovery budget | ⏳ | |
-| 3 — Docs freshness + close-out | | |
+| 1 — Fix: per-budget refund when access is denied + rework the 5 tests that encoded the defect | ✅ | `c5c9bb1` |
+| 2 — Generalization audit: the shared recovery budget | ✅ | `980ebf8` |
+| 3 — Docs freshness + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -425,6 +427,7 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-27 | Phase 2 (after the Phase-1 fix) | "a budget an unauthenticated caller can spend that guards an authenticated surface" | Enumerated every branch of `authBudgetFor`/`authPostBudgetFor` against its `SecurityConfig` matcher, then read each controller for its reachable statuses (`grep -n "ResponseEntity\|HttpStatus\." <controller>`) | 8 budgets audited; **1 defective**: `recoveryBuckets` (mixed — 3 public paths + the `hasRole(CUSTOMER)` `/api/me/verify-email/request`). `loginBuckets`, `operatorRegisterBuckets`, `customerAuthBuckets`, `ssoBuckets` are wholly anonymous → correctly `spendsEveryRequest`; `ipBuckets`/`codeBuckets` are the public booking budgets with no refund concept | Flagged the whole recovery map `guardsAuthenticatedWork` rather than splitting out a 9th map: the flag is semantically right for all four paths (a public path's only pre-controller denial is a CSRF `403`, which sends no mail). Pinned by AC-6 **plus** two "still throttled" counter-tests, so flagging the map cannot silently disable recovery throttling |
 
 ---
 

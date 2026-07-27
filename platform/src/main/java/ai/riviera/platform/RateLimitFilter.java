@@ -139,10 +139,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
-	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
-	// and the authenticated verification-resend. Each is a mail-sending or token-guessing oracle, so they
-	// ride their OWN per-IP budget — separate from customerAuthBuckets, so recovery spam can never starve
-	// login (the S2 operator-lockout lesson, #127). Exact paths (all POST); no path templates needed.
+	/**
+	 * The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
+	 * and the authenticated verification-resend. Each is a mail-sending or token-guessing oracle, so they
+	 * ride their OWN per-IP budget — separate from {@code customerAuthBuckets}, so recovery spam can never
+	 * starve login (the S2 operator-lockout lesson, #127). Exact paths (all POST); no templates needed.
+	 *
+	 * <p><strong>A mixed budget, and why it still refunds (issue #343 generalization audit).</strong> Three
+	 * of the four are {@code permitAll}; {@code /api/me/verify-email/request} is {@code hasRole(CUSTOMER)}.
+	 * Sharing one map meant an anonymous flood on that one authenticated path drained the budget and blocked
+	 * legitimate {@code forgot-password} for everyone on the address — the same defect as the password
+	 * endpoints, one map over. Flagging the whole map is correct rather than merely convenient: for the
+	 * three public paths the only denial reachable before the controller is a CSRF {@code 403}, which sends
+	 * no mail and redeems no token, so refunding it gives nothing away.
+	 */
 	private static final Set<String> RECOVERY_PATHS = Set.of(
 			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
 			"/api/auth/customer/verify-email", "/api/me/verify-email/request");
@@ -402,7 +412,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 		// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
 		if (RECOVERY_PATHS.contains(path)) {
-			return Optional.of(AuthBudget.spendsEveryRequest(recoveryBuckets));
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(recoveryBuckets));
 		}
 		return Optional.empty();
 	}

@@ -487,6 +487,61 @@ class RateLimitFilterTest {
 		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
 	}
 
+	/** Public + non-enumerating: always {@code 204}, so a {@code 429} is unambiguously the limiter. */
+	private ResultActions forgotPasswordFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/auth/customer/forgot-password").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "someone@example.com"}"""));
+	}
+
+	private ResultActions authenticatedResendFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/me/verify-email/request").with(fromIp(ip)).with(csrf())
+				.with(user(TEST_CUSTOMER).roles("CUSTOMER")));
+	}
+
+	/**
+	 * AC-6, found by the #343 generalization audit. {@code /api/me/verify-email/request} is
+	 * {@code hasRole(CUSTOMER)} but shares {@code recoveryBuckets} with three public paths, so an anonymous
+	 * flood on it drained the budget that legitimate {@code forgot-password} depends on — the password-endpoint
+	 * defect one map over, and unmentioned by the issue.
+	 */
+	@Test
+	void anUnauthenticatedFloodOnTheVerificationResendDoesNotStarveRecovery() throws Exception {
+		String ip = "10.33.0.1";
+		for (int i = 0; i < 10; i++) {
+			mvc.perform(post("/api/me/verify-email/request").with(fromIp(ip)).with(csrf()))
+					.andExpect(status().isUnauthorized());
+		}
+
+		forgotPasswordFromIp(ip).andExpect(status().isNoContent());
+	}
+
+	/**
+	 * The other half of AC-6: the budget must still bite. Without this, flagging the map could silently
+	 * disable recovery throttling and the test above would happily pass.
+	 */
+	@Test
+	void authenticatedVerificationResendsAreStillThrottled() throws Exception {
+		String ip = "10.33.0.2";
+		authenticatedResendFromIp(ip).andExpect(status().isNoContent());
+		authenticatedResendFromIp(ip).andExpect(status().isNoContent());
+		authenticatedResendFromIp(ip)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	/** And the public half stays throttled too — a mail-sending oracle open to anyone with a CSRF token. */
+	@Test
+	void forgotPasswordIsStillThrottled() throws Exception {
+		String ip = "10.33.0.3";
+		forgotPasswordFromIp(ip).andExpect(status().isNoContent());
+		forgotPasswordFromIp(ip).andExpect(status().isNoContent());
+		forgotPasswordFromIp(ip)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
 	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----
 
 	@Test
