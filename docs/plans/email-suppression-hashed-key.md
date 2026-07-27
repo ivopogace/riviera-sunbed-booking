@@ -164,10 +164,12 @@ N/A — no contract change (no HTTP surface touches suppression).
 > **Session-recovery anchor.** Re-read this section (plus the current riviera-sdlc stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** PR stage — merge latest `origin/main`, push, open PR
+**Stage pointer:** review gate run (degraded mode: `/review` + overlay; `/code-review` is
+model-invocation-disabled in this session) → awaiting CI + Sonar gate on PR #392
 
-**Next action:** merge `origin/main` into the branch, push, open the PR into `main`, then run
-the Review gate (`/code-review` + `riviera-review-overlay`) per `references/pr-gates.md`.
+**Next action:** when CI completes on PR #392, run the Sonar gate per
+`references/pr-gates.md` §2 (pull the actual issue + measures lists, cache-busted), then
+finalize the plan doc in the PR's last commit and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -182,6 +184,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (RV-BE-17, invariant #12) | the `email_key` format CHECK was only exercised by valid writes — no test proved the schema *rejects* a cleartext key | fixed — `EmailSuppressionIT.theSchemaRejectsACleartextKey` |
+| F-2 | review (observation) | an address with internal whitespace would fail the `domain` CHECK loudly at write time | no action — visible failure on malformed feed input is acceptable; #370's territory |
 
 ---
 

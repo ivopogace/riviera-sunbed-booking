@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
@@ -22,6 +23,7 @@ import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The suppression list against real Postgres (#382, hashed-key shape #388/ADR-0012): the V33
@@ -102,6 +104,15 @@ class EmailSuppressionIT {
 				.query(Long.class)
 				.single();
 		assertThat(cleartextHits).isZero();
+	}
+
+	@Test
+	void theSchemaRejectsACleartextKey() {
+		assertThatThrownBy(() -> jdbc.sql("""
+				INSERT INTO email_suppression (email_key, domain, reason, first_suppressed_at, last_event_at)
+				VALUES ('cleartext@example.com', 'example.com', 'MANUAL', now(), now())
+				""").update())
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	@Test
