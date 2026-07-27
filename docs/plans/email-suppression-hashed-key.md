@@ -164,15 +164,14 @@ N/A — no contract change (no HTTP surface touches suppression).
 > **Session-recovery anchor.** Re-read this section (plus the current riviera-sdlc stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** plan committed → implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** phase 1 — extend `EmailSuppressionIT` red (hashed-row + different-pepper
-asserts), then V33 + adapter change to green.
+**Next action:** phase 2 — `SuppressionPepperProdGuardTest` red, then the guard bean to green.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — V33 migration + HMAC adapter + IT (TDD) | | |
+| 0 — plan doc | ✅ | 5743576 |
+| 1 — V33 migration + HMAC adapter + IT (TDD) | ✅ | (this commit) |
 | 2 — pepper prod guard + guard test | | |
 | 3 — docs (RESPONSIBILITIES, CLAUDE.md row, runbook, cd-pipeline) + close-out | | |
 
@@ -485,6 +484,7 @@ Create `docs/runbooks/suppression-list-ops.md`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-27 | phase 1 (hashed key) | raw-address persistence/logging on the suppression path | `grep -rn "email" platform/src/main/java/ai/riviera/platform/notification` | chokepoint logs already address-free; `MockMailer`/`SentEmail` record addresses but are the test-only transport, not suppression state | no further sites — skip |
 
 ---
 

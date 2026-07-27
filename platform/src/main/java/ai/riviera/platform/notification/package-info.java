@@ -4,8 +4,9 @@
  * (real SMTP vs the recording mock, profile-swapped), the two delivery vehicles — the Event
  * Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for
  * bearer-credential payloads (ADR-0011 decision 5) — and the module's first owned state: the
- * <strong>email-suppression list</strong>, with its defining invariant <em>no send to a suppressed
- * address</em>, enforced on both vehicles at the {@code application} chokepoint.
+ * <strong>email-suppression list</strong> (hashed/non-PII at rest since #388/ADR-0012 — a peppered
+ * HMAC key + cleartext domain, never the address), with its defining invariant <em>no send to a
+ * suppressed address</em>, enforced on both vehicles at the {@code application} chokepoint.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code api} publishes the one
  * fire-and-forget send port the edge flows call ({@code MailSender}); {@code application} holds the
