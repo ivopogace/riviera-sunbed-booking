@@ -26,6 +26,8 @@ wire vocabulary of two edge controllers.
 **Skills consulted:**
 - `riviera-sdlc` — drove the loop; its issue-intake grill gate surfaced the drift in §Open questions (resolved).
 - `riviera-plan-doc` — this document's structure and the Execution-status anchor.
+- `tdd` — the always-on build spine: every phase below is a literal red/green cycle, and each red step was
+  run and its failure message recorded before the implementation existed.
 - `riviera-java-conventions` (+ `references/error-contract.md`) — **changed the design**: replaced the
   first-draft "new exception type mapped in `ApiErrorHandler`" with a controller-returned typed outcome
   built by `ApiProblem`, per §6 (typed outcomes for expected flows) and §6b (per-controller
@@ -76,6 +78,12 @@ wire vocabulary of two edge controllers.
   never the 8–72 length message and never *"incorrect"*.
   *Pinned by:* `operator-auth.spec.ts` + `customer-auth.spec.ts` (`maps MISSING_CURRENT_PASSWORD …`)
 
+- [ ] **AC-8 (added at the review gate, F-2):** Given a customer account that **has** a password, when the
+  request carries **both** a blank `currentPassword` and a `newPassword` below the policy, then the answer is
+  `400 INVALID_REQUEST` — the opposite precedence to AC-2, because the customer check cannot precede the
+  credential read without breaking the #342 ordering. Pinned so the divergence is a decision, not an accident.
+  *Pinned by:* `SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne`
+
 - [ ] **AC-7:** Given a real render of the customer account page for an account that has a password, when the
   current-password field is left blank and the form submitted, then the page shows *"Enter your current
   password."* and nothing is rotated (the old password still signs in).
@@ -120,7 +128,7 @@ wire vocabulary of two edge controllers.
 | R-1 | **A client not updated in this slice silently degrades**: `customer-auth.setPassword` maps every non-`INVALID_CURRENT_PASSWORD` 400 to `'invalid-password'`, so an un-updated FE would show the *length* message for the new code — the exact bug #345 reports, relocated | high if FE skipped | med | FE mapping ships in the **same** slice (Phase 2, AC-6); both services get a spec asserting the new code maps to `'missing-current'` | agent | **closed** `5c92b88` — both services mapped, both pinned |
 | R-2 | **Mock/controller drift** in `e2e/support/auth-mocks.ts` — #342's review already caught the mocked suite staying green through a real controller reordering | med | med | Phase 3 updates both mock routes in the same branch order as the controllers and keeps the existing "branch order mirrors the controller" comment accurate | agent | **closed** `3da29dc` — both routes re-branched in controller order; the operator one corrected even though its own page cannot reach it |
 | R-3 | **Relaxing the compact constructor weakens the record's invariant** — a `ChangePasswordRequest` can now hold a null `currentPassword`, so a future caller could skip the controller's check | low | med | Only one call site exists (the endpoint's own `@RequestBody`); the shared `CustomerPasswords.isSupplied` predicate is the single definition of "supplied" for both endpoints, and AC-1/AC-2 pin the behaviour | agent | **accepted** `c435493` — verified single call site (`grep -rn "ChangePasswordRequest" platform/src/main`); the record's javadoc states where the check moved to |
-| R-4 | **Twin drift** — the operator and customer branches are deliberate mirrors and have drifted before (#344 wrote the ordering rationale on one and cross-referenced it from the other) | med | low | One shared predicate + one shared FE message constant + cross-referencing javadoc on both controllers | agent | **closed** `6aea431`/`5c92b88` — `CustomerPasswords.isSupplied` + `CURRENT_PASSWORD_REQUIRED_MESSAGE`, and both controller javadocs name the other |
+| R-4 | **Twin drift** — the operator and customer branches are deliberate mirrors and have drifted before (#344 wrote the ordering rationale on one and cross-referenced it from the other) | med | low | One shared predicate + one shared FE message constant + cross-referencing javadoc on both controllers | agent | **closed** — but the first close was wrong, and the review caught it (F-2). A shared predicate fixes the *definition* of "supplied", not the *order* of checks, and the orders do differ: the twins answer a doubly-invalid request differently. Genuinely closed at the fix round: the divergence is now pinned on both sides (`anOmittedCurrentPasswordOutranksTheNewPasswordPolicy` / `aWeakNewPasswordOutranksAnOmittedCurrentOne`) and each controller's javadoc explains it, because it is **forced** — the customer check cannot precede the credential read without breaking the #342 ordering |
 | R-5 | **Error-contract regression**: a hand-rolled body instead of `ApiProblem`, or a per-controller `@ExceptionHandler` | low | med | Both new branches use `ApiProblem.response`; `ErrorContractArchitectureTests` fails the build otherwise | agent | **closed** — `ErrorContractArchitectureTests` green in the Phase-0 scope and the full suite |
 | R-6 | **Simplifying `MyAccountController.currentPasswordMatches`** (its null guard becomes unreachable once the presence check runs first) could unguard a genuinely-null field if the branches are later reordered | low | med | The check stays *nested inside* `existing.isPresent()` directly above the match, so the guarantee is local and readable; AC-4 pins it | agent | **closed** `6aea431` — nested three lines above, with a one-line javadoc on the helper stating the precondition |
 | R-7 | Adding a code to a **published contract** without recording it — the #97 vocabulary list is already stale (it predates `INVALID_CURRENT_PASSWORD`, `ACCOUNT_NOT_ACTIVE`, `BOOTSTRAP_CREDENTIAL_MANAGED`) | med | low | Phase 4 records the new code in this plan's FE↔BE contract section and appends the codes added since #97 to `docs/plans/error-contract-problemdetail.md`'s vocabulary list | agent | **closed** (Phase 4) — the #97 list now carries a dated "snapshot, not a registry" note listing every code added since, plus the regeneration command; the operator runbook gained the new response |
@@ -240,7 +248,11 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review gate (`/code-review`, reviewers 1 + 4 + 5) | **RV-STYLE-1 × 8** — eight inline `//` comments added by the diff run to two lines. Reviewer 4 supplied the aggravating context: the same rule has been an explicit finding on **four consecutive PRs** in this file lineage (#342 F-4, #350, #361 F-1, #363 F-1). | **fixed** — all eight collapsed to one line; the detail that no longer fits was already carried by the enclosing javadoc/TSDoc or the test name |
+| F-2 | review gate (reviewers 2 + 3 + 4, independently) | **Twin ordering asymmetry, undocumented and unpinned.** A doubly-invalid request (blank current + weak new) answers `MISSING_CURRENT_PASSWORD` on the operator endpoint but `INVALID_REQUEST` on the customer one. Reviewer 4 added the sharp part: `SetPasswordIT` had **no test** for the combined case, and R-4 was marked closed on a basis (a shared predicate) that does not constrain ordering. | **fixed** — the asymmetry is *forced* (the customer check cannot precede the credential read without breaking the #342 ordering), so it is kept and now pinned on both sides + explained in both controllers' javadoc; R-4 rewritten to say what it actually closed |
+| F-3 | review gate (reviewer 1) | `tdd` absent from *Skills consulted* though the routing table lists it always-on (hedged: the doc's header blockquote does name it). | **fixed** — added to the line with what it changed |
+| F-4 | review gate (reviewer 5) | `customer-password.e2e.ts`'s file TSDoc still says "**three** failure branches" after this PR added a fourth — the header is now wrong about its own file. | **fixed** — says four and names the new branch |
+| F-5 | review gate (reviewer 5) | `operator-password.spec.ts:118` still asserted the pre-#345 behaviour this PR removes ("a blank current password read as a new-password policy failure (both `INVALID_REQUEST`)"). | **fixed** — rewritten to state why the client guard survives the server-side fix |
 
 ---
 

@@ -209,8 +209,7 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
       expect(await result).toBe('invalid-current');
     });
 
-    // #345 split this out of INVALID_REQUEST: mapping it to invalid-password would tell an operator whose
-    // new password was fine to pick one of 8–72 characters, which is the defect the code exists to end.
+    // #345 split this out of INVALID_REQUEST: mapping it to invalid-password revives the very defect.
     it('maps 400 MISSING_CURRENT_PASSWORD to missing-current', async () => {
       const auth = serviceWithRestore({ username: 'adriatica' });
       await Promise.resolve();

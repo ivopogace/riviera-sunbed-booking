@@ -257,8 +257,7 @@ describe('CustomerAuth', () => {
     expect(await weak).toBe('invalid-password');
   });
 
-  // #345: an account that HAS a password and sends none gets its own code. Without this branch the default
-  // arm below would call it invalid-password and show the length message for a new password that was fine.
+  // #345: without its own arm the default would call this invalid-password and show the length message.
   it('set-password maps MISSING_CURRENT_PASSWORD to its own result, not invalid-password', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 

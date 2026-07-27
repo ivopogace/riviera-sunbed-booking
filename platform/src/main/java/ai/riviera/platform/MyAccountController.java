@@ -70,6 +70,12 @@ class MyAccountController {
 	 * was incorrect; the operator twin split the same conflation out of {@code INVALID_REQUEST}). A weak new
 	 * password is {@code 400 INVALID_REQUEST}.
 	 *
+	 * <p><strong>A doubly-invalid request resolves the opposite way to the operator twin</strong>, which
+	 * answers the omission first. That divergence is forced rather than chosen: whether a current password is
+	 * required here depends on whether the account <em>has</em> one, so the presence check cannot precede
+	 * {@code validate} without moving the credential read ahead of the policy check — the ordering the #342
+	 * review pinned against. Pinned by {@code SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne}.
+	 *
 	 * <p>The success-path effects are <strong>ordered, not transactional</strong> (#344) — encode, revoke,
 	 * write, rotate. {@link OperatorAccountController#changePassword} carries the full rationale, including
 	 * what the ordering does <em>not</em> buy; this is its customer twin and must not drift from it. In
@@ -81,8 +87,7 @@ class MyAccountController {
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
 		CustomerPasswords.validate(request.newPassword());
-		// Empty means "no local password" (findByEmail filters null-hash SSO-only rows), so both current-password
-		// answers below are nested here: an SSO-only account must keep reaching neither of them.
+		// Empty means no local password (null-hash SSO-only rows are filtered), so neither answer below applies.
 		Optional<CustomerAccountCredential> existing = accounts.findByEmail(authentication.getName());
 		if (existing.isPresent()) {
 			if (!CustomerPasswords.isSupplied(request.currentPassword())) {

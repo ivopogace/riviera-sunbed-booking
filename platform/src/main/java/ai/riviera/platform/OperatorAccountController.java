@@ -90,7 +90,9 @@ class OperatorAccountController {
 	 *
 	 * <p><strong>The missing-current check outranks the policy check</strong>, matching the order the page
 	 * validates its own fields in; it reads no stored credential, so the "policy before the credential
-	 * lookup" ordering the #342 review pinned is untouched.
+	 * lookup" ordering the #342 review pinned is untouched. {@link MyAccountController#setPassword} resolves
+	 * the same doubly-invalid request the other way, because there the check cannot precede the lookup —
+	 * the rationale lives on that method, and both are pinned so neither flips unnoticed.
 	 *
 	 * <p><strong>The three success-path effects are ordered, not transactional</strong> (#344). The credential
 	 * write and the session deletes belong to different owners — a module's own transaction and Spring

@@ -112,6 +112,28 @@ class SetPasswordIT {
 		login(email, "originalpass1").andExpect(status().isOk()); // nothing rotated
 	}
 
+	/**
+	 * The doubly-invalid request resolves the OPPOSITE way here to the operator twin, whose
+	 * {@code OperatorAccountControllerTest.anOmittedCurrentPasswordOutranksTheNewPasswordPolicy} pins the
+	 * omission as the winner. The asymmetry is <strong>forced, not an oversight</strong>: whether a current
+	 * password is required at all depends on whether this account has one, so the presence check cannot be
+	 * hoisted above {@code CustomerPasswords.validate} without moving the credential read ahead of the policy
+	 * check — the ordering the #342 review pinned against. Each endpoint therefore keeps the precedence it
+	 * already had. Pinned so the divergence stays a decision rather than something a later edit flips unseen.
+	 */
+	@Test
+	void aWeakNewPasswordOutranksAnOmittedCurrentOne() throws Exception {
+		String email = "setpw-it-both-bad@example.com";
+		register(email, "originalpass1");
+
+		setPassword(email, """
+				{"newPassword": "short"}""")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+		login(email, "originalpass1").andExpect(status().isOk()); // nothing rotated
+	}
+
 	private ResultActions setPassword(String email, String jsonBody) throws Exception {
 		return mvc.perform(post(SET_PASSWORD_PATH).with(user(email).roles("CUSTOMER")).with(csrf())
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())

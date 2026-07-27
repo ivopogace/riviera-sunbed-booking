@@ -70,8 +70,7 @@ export async function mockAuthApi(
       currentPassword?: string;
       newPassword?: string;
     };
-    // The omitted current password outranks the policy check, as in the controller (#345) — and it is its
-    // own code, not the INVALID_REQUEST a weak new password gets.
+    // Outranks the policy check below, as in the controller, and carries its own code (#345).
     if (!body.currentPassword) {
       return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
     }
@@ -472,8 +471,7 @@ export async function mockCustomerRecoveryApi(
     if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
     }
-    // Nested exactly as the controller nests it: `password !== undefined` is "this account HAS a local
-    // password", the one condition under which either current-password answer is reachable (#345).
+    // Nested as the controller nests it: a stored password is what makes either answer reachable (#345).
     if (password !== undefined) {
       if (!body.currentPassword) {
         return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));

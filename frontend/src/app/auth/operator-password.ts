@@ -134,8 +134,7 @@ export class OperatorPassword {
     this.error.set(undefined);
     this.notice.set(undefined);
     const { currentPassword, newPassword } = this.model();
-    // Kept now that the server names this case (#345): since #343 every attempt spends a rate-limit token,
-    // so catching an empty field here saves one — and the check order still mirrors the controller's.
+    // Kept though the server now names this case (#345): since #343 an attempt costs a rate-limit token.
     if (currentPassword.length === 0) {
       this.fail(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
       return;

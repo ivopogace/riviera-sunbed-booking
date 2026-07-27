@@ -111,8 +111,7 @@ describe('SetPassword', () => {
     expect(text(fixture, 'setpw-error')).toContain('current password is incorrect');
   });
 
-  // #345: the page cannot tell an SSO-only account from a password-holding one, so the blank field is only
-  // a fault once the server says so — and "incorrect" was the wrong word for a password never sent.
+  // #345: the page cannot tell an SSO-only account apart, so only the server can call the blank a fault.
   it('asks a password-holding account to fill in the current password it left blank', async () => {
     const auth = authStub({ setPassword: 'missing-current' });
     const fixture = await render(auth);

@@ -115,7 +115,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(text(fixture, 'oppw-error')).toBeDefined();
   });
 
-  // Review finding: a blank current password read as a new-password policy failure (both INVALID_REQUEST).
+  // The guard still spends no request; the server names the case too since #345 (it no longer needs to).
   it('names the empty current-password field instead of blaming the new password', async () => {
     const auth = authStub('changed');
     const fixture = await render(auth);
