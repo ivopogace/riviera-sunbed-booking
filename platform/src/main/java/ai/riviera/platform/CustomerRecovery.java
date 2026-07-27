@@ -40,52 +40,60 @@ class CustomerRecovery {
 	private final RecoveryTokens tokens;
 	private final RecoveryProperties properties;
 	private final Clock clock;
+	private final MailDispatcher dispatcher;
 
 	CustomerRecovery(CustomerAccountRecovery recovery, Mailer mailer, RecoveryTokens tokens,
-			RecoveryProperties properties, Clock clock) {
+			RecoveryProperties properties, Clock clock, MailDispatcher dispatcher) {
 		this.recovery = recovery;
 		this.mailer = mailer;
 		this.tokens = tokens;
 		this.properties = properties;
 		this.clock = clock;
+		this.dispatcher = dispatcher;
 	}
 
-	/** Issue a fresh verification token for the account and (best-effort) email its link. */
+	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link. */
 	void sendVerificationEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()));
-		sendQuietly(() -> mailer.sendEmailVerification(email, link(VERIFY_PATH, rawToken)));
+		dispatchQuietly(() -> mailer.sendEmailVerification(email, link(VERIFY_PATH, rawToken)));
 	}
 
-	/** Issue a fresh password-reset token for the account and (best-effort) email its link. */
+	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link. */
 	void sendPasswordResetEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.resetTokenTtl()));
-		sendQuietly(() -> mailer.sendPasswordReset(email, link(RESET_PATH, rawToken)));
+		dispatchQuietly(() -> mailer.sendPasswordReset(email, link(RESET_PATH, rawToken)));
 	}
 
 	/**
-	 * Run a mail send best-effort: the token is already stored, so a transport failure must never fail the
-	 * triggering request (registration would 500 after the account+session already exist) nor become a
-	 * status-code enumeration oracle (forgot-password must return its uniform 204 whether or not the email
-	 * has an account — D-8). The user can simply re-request. Only the mailer send is guarded — a token-store
-	 * failure is a real error and still propagates.
+	 * Hand a mail send to the {@link MailDispatcher}, best-effort: the token is already stored, so a
+	 * transport failure must never fail the triggering request (registration would 500 after the
+	 * account+session already exist) nor become a status-code enumeration oracle (forgot-password must
+	 * return its uniform 204 whether or not the email has an account — D-8). The user can simply
+	 * re-request. Only the mailer send is guarded — a token-store failure is a real error and still
+	 * propagates.
 	 *
-	 * <p>The real {@code SmtpMailer} (#368) runs its SMTP round-trip <em>synchronously on this request
-	 * thread</em> — so under the {@code mailer} profile a slower known-email branch is a live <em>timing</em>
-	 * oracle until the send moves off-thread (#369; the runbook bars prod activation before it lands).
+	 * <p>The send runs <em>off this request thread</em> (#369): with the real {@code SmtpMailer} (#368) an
+	 * inline SMTP round-trip taken only on the known-email branch was a measurable <em>timing</em>
+	 * enumeration oracle. The catch sits <em>inside</em> the dispatched task so the failure dies wherever
+	 * the task runs; the dispatcher itself never throws, so a rejected dispatch is equally invisible to
+	 * the caller. What remains on this thread is the token issue above — a single insert on the
+	 * known-email branch only, a residual accepted deliberately (plan R-3).
 	 */
-	private void sendQuietly(Runnable send) {
-		try {
-			send.run();
-		}
-		catch (RuntimeException e) {
-			// The mailer is a best-effort side channel; never log the raw link/token (invariant #7).
-			log.warn("Recovery email send failed ({}); the token was issued, delivery can be retried",
-					e.getClass().getSimpleName());
-		}
+	private void dispatchQuietly(Runnable send) {
+		dispatcher.dispatch(() -> {
+			try {
+				send.run();
+			}
+			catch (RuntimeException e) {
+				// The mailer is a best-effort side channel; never log the raw link/token (invariant #7).
+				log.warn("Recovery email send failed ({}); the token was issued, delivery can be retried",
+						e.getClass().getSimpleName());
+			}
+		});
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */

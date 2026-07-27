@@ -400,10 +400,11 @@ class WebSliceStubs {
 		return new RecoveryTokens();
 	}
 
+	/** Inline dispatch (#369) — a web slice asserts on the controller's response, not on a pooled send. */
 	@Bean
 	CustomerRecovery customerRecovery(CustomerAccountRecovery recovery, Mailer mailer,
 			RecoveryTokens recoveryTokens, RecoveryProperties recoveryProperties, Clock clock) {
-		return new CustomerRecovery(recovery, mailer, recoveryTokens, recoveryProperties, clock);
+		return new CustomerRecovery(recovery, mailer, recoveryTokens, recoveryProperties, clock, Runnable::run);
 	}
 
 	/** An empty session repository — the web slices never revoke a session. */

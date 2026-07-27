@@ -100,7 +100,15 @@ one-line comments §6c, and §8's "don't hand-roll thread pools" → Spring's li
 - **Bounce/complaint suppression** (later epic slice) and **lifting the #370 activation
   precondition** — prod `mailer` activation still waits on the domain + DPA.
 - **Virtual threads.** `spring.threads.virtual.enabled` stays untouched (`riviera-java-conventions`
-  §8); the pool here is explicitly bounded.
+  §8), and the dispatcher's own pool stays platform-threaded. Weighed and rejected for this slice on
+  three grounds: the workload is a handful of sends a day capped at 2 concurrent, so there is no
+  blocked-thread pressure to relieve; `SimpleAsyncTaskExecutor(virtualThreads)`'s only bounding knob
+  (`setConcurrencyLimit`) **blocks the submitting thread** when saturated — which is the request
+  thread, re-opening the very oracle this slice closes — while unbounded means unbounded in-flight
+  SMTP connections; and flipping the global flag would move Tomcat and the Modulith money-path
+  listeners too. Worth revisiting if a later slice fans out mail at volume (#371 is the candidate):
+  on **Java 25 the classic objection is gone** — JEP 491 means a virtual thread blocking inside
+  Jakarta Mail's `synchronized` internals no longer pins its carrier.
 
 ## Behavior-parity ledger
 
@@ -207,17 +215,16 @@ explicitly.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** write `CustomerRecoveryDispatchTest` red, then thread `MailDispatcher` through
-`CustomerRecovery` and wire the synchronous test dispatcher (`TestcontainersConfiguration` +
-`WebSliceStubs`).
+**Next action:** write `RecoveryTokenNeverPersistedIT` (AC-3) against the real V28/V8 column names,
+then land the ADR-0011 decision-5 amendment + the runbook's interim-limits edit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | ✅ | `<phase-0-sha>` |
-| 1 — Route `CustomerRecovery` through it + synchronous test wiring | ⏳ | |
-| 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | | |
+| 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | ✅ | `9f5a34d` |
+| 1 — Route `CustomerRecovery` through it + synchronous test wiring | ✅ | `<phase-1-sha>` |
+| 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -845,6 +852,7 @@ class RecoveryTokenNeverPersistedIT {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-27 | phase 0 — new `MailDispatcher` seam | other synchronous edge side-channels on a request thread that could reuse the seam | `grep -rl "Mailer\|sendQuietly" platform/src/main/java` | 8 files, but only `CustomerRecovery` *calls* the `Mailer`; the rest are the port, its two implementations, the prod guard, and the two records | Skip — no second call site exists today. #375's operator-approval mail is the named future reuse and is out of scope per Non-goals |
+| 2026-07-27 | phase 1 — async dispatch could flake any mail-observing test (R-1) | every test context that observes a send | `grep -rl "Mailer" platform/src/test/java` then classify each by harness | 12 files: 6 `@SpringBootTest`+`@Import(TestcontainersConfiguration)` (`PasswordResetIT`, `EmailVerificationIT`, `CustomerRegisterIT`, `SetPasswordIT`, `RecoveryRateLimitIT`, `RecoveryMailerFailureIT`); 3 `@WebMvcTest`+`WebSliceStubs` (`MeSurfaceRoleGateTest`, `MyAccountControllerTest`, `AccountRecoveryControllerTest`); 4 `ApplicationContextRunner` bean-wiring tests that never trigger a send; 2 plain unit/GreenMail tests | Fix all — the two central overrides (`TestcontainersConfiguration` import + `WebSliceStubs` argument) cover all 9 that could race; the other 5 need nothing. **No per-class annotation**, deliberately: a missed class would flake, not fail. R-1 closed |
 
 ---
 
