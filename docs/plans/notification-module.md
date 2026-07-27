@@ -114,21 +114,22 @@ The root mail machinery is replaced by the module — every observable behavior 
 | R-2 | Suppression check on the request thread would widen the known-email timing oracle (D-8) | med | high | check runs **inside** the dispatched task (off-thread) for the dispatcher vehicle; pinned by `TransactionalMailServiceTest` asserting no suppression read on caller thread | agent | closed — `theSuppressionReadRunsOffTheCallersThread` green (phase 2) |
 | R-3 | Hidden test coupling: ~16 test classes touch the moved types; a missed one fails compile or (worse) silently weakens the net | med | med | full inventory in File structure; compile is the net for the former, relocated assertions reviewed one-by-one against the parity ledger for the latter | agent | closed — fired once as F-1 (compile passed, context load didn't); every inventory class now run green locally or in CI |
 | R-4 | `PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests` may enumerate module packages and reject the newcomer | med | low | read both tests at phase-1 start; extend the module list, never weaken a rule | agent | closed — both discover modules dynamically; no enumeration; green (phase 1) |
-| R-5 | Flyway V31/V32 collision with a parallel slice | low | med | verified free on `main` and unclaimed by all open PRs (Dependabot-only) at plan time; renumber rule: whoever merges second renumbers | agent | open |
+| R-5 | Flyway V31/V32 collision with a parallel slice | low | med | verified free on `main` and unclaimed by all open PRs (Dependabot-only) at plan time; renumber rule: whoever merges second renumbers | agent | closed — no parallel backend PR appeared; V31/V32 merged via PR #385 |
 | R-6 | Suppressed listener skip accidentally implemented as *throw* → permanent retry loop parking the publication | low | med | AC-5 asserts the publication completes; typed internal outcome, no exception for the suppressed branch | agent | closed — `suppressedAddressCompletesWithoutSend` green (phase 2) |
 | R-7 | A registry-republished confirmation could race the suppression insert (suppress lands between send attempts) — double semantics unclear | low | low | at-least-once already accepted (ADR-0011); check runs per attempt, so the retry honors the newest suppression state — documented in `TransactionalMailService` Javadoc | agent | closed — documented in the service Javadoc (phase 2) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the api port name `MailSender` and service name `TransactionalMailService`
-  are mine to pick (plan-doc rule: naming is not a user fork). — *Owner:* agent · *Resolves by:* phase 1
-- **Assumption:** suppression matching is on the **normalized (trimmed, lower-cased)** address,
-  normalization applied at the chokepoint on both read and write — verified against how
-  `customer` stores emails at phase-2 start. — *Owner:* agent · *Resolves by:* phase 2
-- **Assumption (grill finding):** `allowedDependencies` grants only surfaces actually imported
-  (`booking::api/events/vocabulary`, `customer::api/vocabulary`, `venue::api/vocabulary`) —
-  the issue's list also names `shared`, which no mail class imports today; a subset satisfies
-  the AC's "naming only the surfaces listed above". — *Owner:* agent · *Resolves by:* phase 1
+None open.
+
+### Resolved
+
+- **Naming (`MailSender` / `TransactionalMailService`):** shipped as picked — 495c6a7.
+- **Normalization:** verified — `customer` stores `trim().toLowerCase(Locale.ROOT)`
+  (`JdbcCustomerDirectory`); the adapter applies the same form on read and write, and the
+  review round added a V32 `CHECK (email = lower(btrim(email)))` pinning it in the DB — a3de354.
+- **`allowedDependencies` subset (no `shared` grant):** shipped; `ModularityTests` green —
+  495c6a7.
 
 ## Availability & concurrency (invariant #2)
 
@@ -208,17 +209,18 @@ N/A — no contract change (no HTTP surface added or altered).
 
 ## Execution status
 
-**Stage pointer:** PR stage — phases 0–3 done; next: open the PR, then the review gate
+**Stage pointer:** DONE — merged via PR #385; merge close-out complete
 
-**Next action:** merge latest `origin/main` into the branch, open the PR into `main`,
-run `/code-review` + `riviera-review-overlay`, then the Sonar gate (`references/pr-gates.md`).
+**Next action:** none — slice complete. Follow-up home for the provider bounce feed: the
+`adapter/in` slice gated on #370 (see Non-goals).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed | ✅ | 538a09f |
 | 1 — mechanical move (module + api port + V31 + tests relocated) | ✅ | 495c6a7 |
 | 2 — suppression list (V32 + enforcement both vehicles) + F-1 fix | ✅ | (this commit) |
-| 3 — docs + close-out (CLAUDE.md, RESPONSIBILITIES.md, shared package-info) | ✅ | (this commit) |
+| 3 — docs + close-out (CLAUDE.md, RESPONSIBILITIES.md, shared package-info) | ✅ | 7ce2e78 |
+| 4 — review-gate + docs-freshness fix round | ✅ | a3de354 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -226,7 +228,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (run 30294203563, phase-1 push) | `PayoutModuleTest > initializationError`: the root's `CustomerRecovery` now needs `notification.api.MailSender`, absent from payout's `@ApplicationModuleTest` isolation (root beans auto-supplied, module beans not — the #371 kernel lesson, mail edition). R-3 firing exactly as registered: the class was in the phase-1 inventory but only compile-verified, never run. Fix: mock `MailSender`; drop the three #371 facts mocks the departed listener no longer needs. | fixed in phase-2 commit |
+| F-1 | CI (run 30294203563, phase-1 push) | `PayoutModuleTest > initializationError`: the root's `CustomerRecovery` now needs `notification.api.MailSender`, absent from payout's `@ApplicationModuleTest` isolation (root beans auto-supplied, module beans not — the #371 kernel lesson, mail edition). R-3 firing exactly as registered: the class was in the phase-1 inventory but only compile-verified, never run. Fix: mock `MailSender`; drop the three #371 facts mocks the departed listener no longer needs. | fixed-in-`a464744` |
+| F-2 | review (`/review 385` + overlay; degraded fallback — `/code-review` unavailable in this session's roster, noted in the PR) | 0 Blocker / 0 Major / 4 Minor / 4 Info: stale `SynchronousMailDispatch` Javadoc citation; 3× RV-STYLE-1 multi-line inline comments; V32 lacked a stored-normalization CHECK; plan-doc drift (public `sendBookingConfirmation`, AC-4 pin name); misleading not-delivered log wording; import ordering; archive rewrite unasserted; stale `MockMailer` profile Javadoc. All 8 fixed (none deferred). | fixed-in-`a3de354` |
+| F-3 | sonar (PR 385) | Quality gate green AND list verified via API: 0 issues, 0 hotspots, 0 duplicated blocks, new-code coverage 93.1% (≥80), analysis confirmed real (`new_lines=847`). | clean — no action |
+| F-4 | docs-freshness (pre-merge smoke) | 3 stale spots: riviera-modulith root blockquote ("the mailers, edge listeners"), domain-model.md "seven modules" + missing context-map node/arrow, docs/agents/domain.md seven-context roster. | fixed-in-`a3de354` |
 
 ---
 
@@ -338,25 +343,37 @@ paragraph → points at the shipped module).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..7:** scoped Gradle runs named per AC above → PASS; recorded here with commits
-  before merge.
+- [x] **AC-1:** structural net (`ModularityTests`, `PackageShapeArchitectureTests`,
+  `PublishedSurfacePlacementArchitectureTests`) green locally per phase and in CI runs
+  30294887615 / 30295282512.
+- [x] **AC-2:** `CompositionRootDisciplineTests` red before the move (21 violations), green after.
+- [x] **AC-3:** `git diff origin/main -- …/shared/` = the package-info paragraph only (1 file, 7+/4−).
+- [x] **AC-4:** `TransactionalMailServiceTest.suppressedAddressIsNeverDispatchedToTheTransport`
+  + `theSuppressionReadRunsOffTheCallersThread` + `EmailSuppressionIT` (3/3, real Postgres) green.
+- [x] **AC-5:** `BookingConfirmationMailIT.suppressedAddressCompletesWithoutSend` green (5/5 in class).
+- [x] **AC-6:** full relocated net green locally (each IT verified `skipped=0`) and in the full-suite
+  CI runs above.
+- [x] **AC-7:** `ListenerMoveMigrationIT` green — old-format row rewritten, new-format untouched,
+  archive row rewritten (review round added the archive assertion).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** N/A justified (invariant #2 untouched).
-- [ ] Pool + cutoff rules not in scope (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** N/A justified.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: `TIMESTAMPTZ` + app-supplied UTC instants on the new table (invariant #6).
-- [ ] Booking codes / bearer credentials never logged or persisted (invariant #7) — parity rows verified.
-- [ ] Flyway migrations V31+V32 present and IT-verified (invariant #12).
-- [ ] Frontend N/A.
-- [ ] Execution status at HEAD matches reality (stage pointer, phase table, findings register).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** N/A justified (invariant #2 untouched).
+- [x] Pool + cutoff rules not in scope (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** N/A justified.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: `TIMESTAMPTZ` + app-supplied UTC instants on the new table (invariant #6).
+- [x] Booking codes / bearer credentials never logged or persisted (invariant #7) — parity rows verified.
+- [x] Flyway migrations V31+V32 present and IT-verified (invariant #12).
+- [x] Frontend N/A.
+- [x] Execution status at HEAD matches reality (stage pointer, phase table, findings register).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #385`.
+- [x] **The review gate ran in full** — `/review 385` (the sanctioned fallback; `/code-review`
+      unavailable in this session's roster — stated in the PR) plus `riviera-review-overlay`,
+      run as a subagent walking the full RV-BE bank; findings F-2 all fixed.
