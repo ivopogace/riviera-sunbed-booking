@@ -238,16 +238,16 @@ its own Playwright coverage.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Write the failing `MockMailerTest.recordsBookingConfirmation` /
-`neverLogsTheBookingCode` tests, then grow the `Mailer` port with the booking-confirmation kind.
+**Next action:** Write the failing `BookingConfirmationMailIT` (AC-1..AC-4), then add the edge
+listener on `BookingConfirmed`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `booking::api` notification-facts read port | ✅ | see `feat(#371): publish booking's notification-facts read port` |
-| 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | ⏳ | |
-| 2 — the edge listener on `BookingConfirmed` | | |
+| 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | ✅ | see `feat(#371): add the booking-confirmation message kind to the Mailer port` |
+| 2 — the edge listener on `BookingConfirmed` | ⏳ | |
 | 3 — registry-config pinning + structural net + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -379,6 +379,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-27 | phase 1 — new `Mailer` method | every `Mailer` implementation | `grep -rn "implements Mailer\|new Mailer()" platform/src` | 3 — `MockMailer`, `SmtpMailer`, the `WebSliceStubs` anonymous bean | Fixed all 3. The `WebSliceStubs` break is the repo's recurring "new edge dep breaks `@WebMvcTest`" pattern and surfaced as a `compileTestJava` failure, not a runtime one |
+| 2026-07-27 | phase 1 — `SentEmail` gained a component (R-5) | canonical-constructor callers | `grep -rn "new SentEmail(" platform/src` | 2 — both inside `SentEmail`'s own factories | No action; the static factories mean no external caller writes the 4-arg form. R-5 closed |
 
 ---
 

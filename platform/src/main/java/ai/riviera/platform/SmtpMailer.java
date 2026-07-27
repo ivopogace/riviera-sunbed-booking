@@ -1,6 +1,11 @@
 package ai.riviera.platform;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
+import java.time.format.DateTimeFormatter;
+import java.util.Currency;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -25,6 +30,11 @@ class SmtpMailer implements Mailer {
 
 	private static final String VERIFICATION_SUBJECT = "Verify your email";
 	private static final String RESET_SUBJECT = "Reset your password";
+	private static final String CONFIRMATION_SUBJECT = "Your booking at %s is confirmed";
+
+	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
+	private static final DateTimeFormatter DATE_FORMAT =
+			DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
 
 	private final JavaMailSender sender;
 	private final String from;
@@ -57,6 +67,37 @@ class SmtpMailer implements Mailer {
 
 				The link is valid once, for a limited time. If you didn't request a reset, you can ignore
 				this message — your password is unchanged.""".formatted(resetLink));
+	}
+
+	@Override
+	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		// The arrival code is deliberately absent from the subject: subjects surface in lock-screen
+		// previews and mail-client list views, and the code is a bearer credential (invariant #7).
+		send(toEmail, CONFIRMATION_SUBJECT.formatted(confirmation.venueName()), """
+				Your sunbed set is confirmed.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Date:          %s
+				  Spot:          Row %s, position %d
+				  Paid:          %s
+
+				Show the booking code at the venue on arrival."""
+				.formatted(confirmation.bookingCode(), confirmation.venueName(),
+						DATE_FORMAT.format(confirmation.bookingDate()), confirmation.rowLabel(),
+						confirmation.positionNo(),
+						formatAmount(confirmation.amountMinor(), confirmation.currency())));
+	}
+
+	/**
+	 * Integer minor units → a display amount (invariant #5). The exponent comes from the ISO currency
+	 * rather than a hard-coded 100, so a zero-decimal currency would render correctly if v1's
+	 * EUR-only collection rule ever widens.
+	 */
+	private static String formatAmount(long amountMinor, String currency) {
+		int fractionDigits = Math.max(Currency.getInstance(currency).getDefaultFractionDigits(), 0);
+		BigDecimal major = BigDecimal.valueOf(amountMinor).movePointLeft(fractionDigits);
+		return "%s %s".formatted(currency, major.setScale(fractionDigits, RoundingMode.UNNECESSARY));
 	}
 
 	private void send(String toEmail, String subject, String body) {

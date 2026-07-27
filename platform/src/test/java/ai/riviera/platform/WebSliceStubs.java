@@ -355,6 +355,10 @@ class WebSliceStubs {
 			@Override
 			public void sendPasswordReset(String toEmail, URI resetLink) {
 			}
+
+			@Override
+			public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+			}
 		};
 	}
 

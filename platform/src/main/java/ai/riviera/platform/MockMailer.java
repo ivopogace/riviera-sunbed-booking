@@ -34,16 +34,28 @@ class MockMailer implements Mailer {
 
 	@Override
 	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		capture(new SentEmail(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink));
+		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink);
+		sent.add(email);
+		logRecovery(email);
 	}
 
 	@Override
 	public void sendPasswordReset(String toEmail, URI resetLink) {
-		capture(new SentEmail(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink));
+		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink);
+		sent.add(email);
+		logRecovery(email);
 	}
 
-	private void capture(SentEmail email) {
-		sent.add(email);
+	@Override
+	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		sent.add(SentEmail.bookingConfirmation(toEmail, confirmation));
+		// No code in the line: unlike a recovery link, the arrival code needs no dev affordance — the
+		// tourist already has it in the app — so invariant #7 costs nothing here.
+		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.BOOKING_CONFIRMATION,
+				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
+	}
+
+	private void logRecovery(SentEmail email) {
 		// Dev-only convenience (design D-6): follow the tokenized link without a real inbox. The email is
 		// user-supplied, so neutralize newlines before logging (log-forging, riviera-java-conventions §10).
 		log.info("[mock-mailer] {} link (to {}): {}", email.kind(), sanitize(email.toEmail()), email.link());
