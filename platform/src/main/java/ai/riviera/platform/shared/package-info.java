@@ -15,10 +15,13 @@
  *
  * <p>Splitting the two roles fixes it permanently: modules depend on this kernel, the root depends
  * on modules, and <strong>nothing depends on the root</strong> — the composition root's proper
- * shape. It also stops the cycle from dictating architecture: with this in place, mail listeners
- * work equally well at the edge (today, per RV-BE-11 and epic #367) or in a future
- * {@code notification} module (once the bounce/complaint suppression table gives them real state),
- * so that choice can be made on merits.
+ * shape. It also stopped the cycle from dictating architecture: with this in place, mail listeners
+ * could live at the edge or in a module, so that choice was made on merits — and #382 made it: the
+ * mail machinery now lives in the {@code notification} module, born with the suppression list as
+ * its first owned state, and the root imports no spine-module surface at all (pinned by
+ * {@code CompositionRootDisciplineTests}). That removal makes dissolving this kernel
+ * <em>technically</em> acyclic again — but only by coincidence, the same pre-#371 fragility;
+ * keeping it is deliberate, so "nothing depends on the root" stays true by construction.
  *
  * <p><strong>{@code type = OPEN}</strong> deliberately: this is technical shared code, not a bounded
  * context, so it publishes no {@code api}/{@code vocabulary} surface and consumers reference its

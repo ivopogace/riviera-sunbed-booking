@@ -208,17 +208,17 @@ N/A — no contract change (no HTTP surface added or altered).
 
 ## Execution status
 
-**Stage pointer:** implement — phase 2 done (incl. the F-1 red-CI fix), next: phase 3 (docs)
+**Stage pointer:** PR stage — phases 0–3 done; next: open the PR, then the review gate
 
-**Next action:** Phase 3 — CLAUDE.md module-table row, RESPONSIBILITIES.md `notification`
-section, `shared/package-info.java` paragraph update; then PR + gates.
+**Next action:** merge latest `origin/main` into the branch, open the PR into `main`,
+run `/code-review` + `riviera-review-overlay`, then the Sonar gate (`references/pr-gates.md`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed | ✅ | 538a09f |
 | 1 — mechanical move (module + api port + V31 + tests relocated) | ✅ | 495c6a7 |
 | 2 — suppression list (V32 + enforcement both vehicles) + F-1 fix | ✅ | (this commit) |
-| 3 — docs + close-out (CLAUDE.md, RESPONSIBILITIES.md, shared package-info) | | |
+| 3 — docs + close-out (CLAUDE.md, RESPONSIBILITIES.md, shared package-info) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

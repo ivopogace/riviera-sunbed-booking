@@ -18,9 +18,9 @@ description: >-
 api/-named-interface boundaries, and the ApplicationModules.verify() contract."*
 
 riviera-sunbed-booking is a Spring Modulith modular monolith: base package **`ai.riviera.platform`**,
-seven bounded-context modules — **venue, availability, booking, payment, payout, customer,
-operator** (table in `CLAUDE.md`) — plus one non-context module, **`shared`** (the OPEN Shared
-Kernel, #371; see below) — on **Spring Boot 4, Spring Modulith 2.1, Java 25, Gradle,
+eight bounded-context modules — **venue, availability, booking, payment, payout, customer,
+operator, notification** (#382; table in `CLAUDE.md`) — plus one non-context module, **`shared`**
+(the OPEN Shared Kernel, #371; see below) — on **Spring Boot 4, Spring Modulith 2.1, Java 25, Gradle,
 Spring Data JDBC / `JdbcClient` (one legacy `JdbcTemplate` adapter) only — no JPA**.
 
 > **The root package is the composition root, and nothing may depend on it.** `ai.riviera.platform`
@@ -67,7 +67,7 @@ so the inside never knows whether a real HTTP client, an `@ApplicationModuleTest
 caller is on the other side.
 
 **Assignment rule (mechanical): a module is THIN iff it has no application service** — its `api/`
-port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all seven bounded-context
+port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all eight bounded-context
 modules are full**: `customer` graduated thin → full in S2 (#111), so no module is thin at present — the
 thin template below stays the documented shape for a future serviceless module. `availability` is "small but
 full" — it owns a published command port with real concurrency semantics; small LOC does not make a
