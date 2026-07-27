@@ -241,7 +241,7 @@ were never authenticated.
 |-------|--------|---------|
 | 0 — Red: the anonymous flood drains an authenticated budget | ✅ | `862d32f` |
 | 1 — Fix: per-budget refund when access is denied + rework the 5 tests that encoded the defect | ✅ | `c5c9bb1` |
-| 2 — Generalization audit: the shared recovery budget | ✅ | `980ebf8` |
+| 2 — Generalization audit: the shared recovery budget | ✅ | `5295495` |
 | 3 — Docs freshness + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
