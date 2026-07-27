@@ -52,42 +52,43 @@ fields wide); `riviera-local-debug` (scoped test-run recipe). **Not loaded, deli
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a confirmed **Instant-mode guest** booking, when `BookingConfirmed` is
+- [x] **AC-1:** Given a confirmed **Instant-mode guest** booking, when `BookingConfirmed` is
   published, then exactly one `BOOKING_CONFIRMATION` email is recorded for the booking's contact
   email, carrying the booking code, venue name, booking date, set location (row label + position)
   and the gross amount in minor units + currency. *Pinned by:*
   `BookingConfirmationMailIT.sendsOneConfirmationCarryingCodeVenueDateSetAndAmount`
 
-- [ ] **AC-2:** Given a booking created while **signed in** (`booking.account_id` non-null), when it
+- [x] **AC-2:** Given a booking created while **signed in** (`booking.account_id` non-null), when it
   is confirmed, then the email goes to the booking's **guest-contact** email (the same resolution
   path as guest checkout — `account_id` is never consulted). *Pinned by:*
   `BookingConfirmationMailIT.sendsToTheBookingContactForASignedInBooking`
 
-- [ ] **AC-3:** Given a booking confirmed through the asynchronous **payment** route — the tail shared by Request-mode pay-on-accept and the Stripe webhook —, when that path
-  it confirms, then the same single confirmation email is produced, since both confirm paths publish from
-  the one `ConfirmBooking` seam. *Pinned by:*
+- [x] **AC-3:** Given a booking confirmed through the asynchronous **payment** route — the tail shared
+  by Request-mode pay-on-accept and the Stripe webhook — when that path confirms it, then the same
+  single confirmation email is produced, since both confirm paths publish from the one
+  `ConfirmBooking` seam. *Pinned by:*
   `BookingConfirmationMailIT.sendsForABookingConfirmedViaThePaymentPath`
 
-- [ ] **AC-4:** Given a `BookingConfirmed` publication that the registry has already **completed**,
+- [x] **AC-4:** Given a `BookingConfirmed` publication that the registry has already **completed**,
   when outstanding publications are resubmitted, then no second email is produced. *Pinned by:*
   `BookingConfirmationMailIT.doesNotResendWhenACompletedPublicationIsResubmitted`
 
-- [ ] **AC-5:** Given the running application, when its event-registry configuration is read, then
+- [x] **AC-5:** Given the running application, when its event-registry configuration is read, then
   `republish-outstanding-events-on-restart` is `true` and `completion-mode` is a bounded mode
   (`archive`), so the live publication table cannot grow without bound. *Pinned by:*
   `EventRegistryDurabilityIT.republishesOutstandingPublicationsOnRestart` + `.boundsTheLivePublicationTableByArchivingCompletions`
 
-- [ ] **AC-6:** Given the confirmation listener, when the structural net runs, then module boundaries
+- [x] **AC-6:** Given the confirmation listener, when the structural net runs, then module boundaries
   hold — the listener consumes an ids-only event from `booking::events` and reads through `api/`
   ports only, and no module gains a mail dependency. *Pinned by:* `ModularityTests`,
   `PublishedSurfacePlacementArchitectureTests`, `PackageShapeArchitectureTests`
 
-- [ ] **AC-7:** Given a booking confirmation, when `MockMailer` records it, then the recorded
+- [x] **AC-7:** Given a booking confirmation, when `MockMailer` records it, then the recorded
   `SentEmail` carries the new `BOOKING_CONFIRMATION` kind and its payload, **and the booking code
   appears in no log line** (invariant #7). *Pinned by:* `MockMailerTest.recordsBookingConfirmation`
   and `MockMailerTest.neverLogsTheBookingCode`
 
-- [ ] **AC-8:** Given the real SMTP transport, when a booking confirmation is sent to a local sink,
+- [x] **AC-8:** Given the real SMTP transport, when a booking confirmation is sent to a local sink,
   then the delivered message is plain text carrying the code/venue/date/spot/amount, with **no
   tracking markup** and no HTML part. *Pinned by:*
   `SmtpMailerIT.deliversBookingConfirmationOverSmtp` + `.neverLogsTheBookingCode`
@@ -241,17 +242,17 @@ its own Playwright coverage.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 3) — phases 0–2 done, plus the unplanned phase 2b (shared-kernel extraction, R-9)`
+**Stage pointer:** `PR — opened, awaiting CI + review gate + Sonar gate` (merge deliberately withheld at the maintainer's instruction)
 
-**Next action:** Finish phase 3 close-out (AC verification table + self-review checklist), then open the PR.
+**Next action:** Run the review gate (`/code-review`), then the Sonar gate; fold any findings back in at Implement per the re-entry rule. **Do not merge** — the maintainer will.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `booking::api` notification-facts read port | ✅ | see `feat(#371): publish booking's notification-facts read port` |
-| 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | ✅ | see `feat(#371): add the booking-confirmation message kind to the Mailer port` |
-| 2 — the edge listener on `BookingConfirmed` | ✅ | see `feat(#371): mail the booking code on BookingConfirmed from the platform edge` |
-| 2b — **shared-kernel extraction** (unplanned; R-9) | ✅ | see `refactor(#371): extract the shared kernel out of the composition root` |
-| 3 — registry-config pinning + structural net + close-out | ⏳ | `EventRegistryDurabilityIT` written and green; close-out pending |
+| 0 — `booking::api` notification-facts read port | ✅ | `223b6e0` |
+| 1 — `Mailer` grows the booking-confirmation kind (mock + SMTP) | ✅ | `744ae24` |
+| 2 — the edge listener on `BookingConfirmed` | ✅ | `f3dac62` |
+| 2b — **shared-kernel extraction** (unplanned; R-9) | ✅ | `5957741` |
+| 3 — registry-config pinning + structural net + close-out | ✅ | `f3dac62` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -308,16 +309,16 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Create `booking/api/BookingNotificationFacts.java`, `booking/vocabulary/BookingNotificationInfo.java`,
 `booking/adapter/out/JdbcBookingNotificationFacts.java` · Modify `booking/api/package-info.java` · Test a new IT
 
-- [ ] **Step 1: Write the failing test** — an IT that creates a booking through the existing fixture
+- [x] **Step 1: Write the failing test** — an IT that creates a booking through the existing fixture
   and asserts `BookingNotificationFacts.notificationInfo(bookingId)` returns its code and the `CustomerId` the
   booking was created against, and `Optional.empty()` for an unknown id.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcBookingNotificationFactsIT*"` → FAIL (no such type)
-- [ ] **Step 3: Minimal implementation** — the port, the record, and a `JdbcClient` text-block
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcBookingNotificationFactsIT*"` → FAIL (no such type)
+- [x] **Step 3: Minimal implementation** — the port, the record, and a `JdbcClient` text-block
   `SELECT code, customer_id FROM booking WHERE id = :id`, package-private adapter.
-- [ ] **Step 4: Run it, verify it passes** → PASS
-- [ ] **Step 5: Structural check** — `./gradlew test --tests "*ModularityTests*" --tests "*PackageShape*" --tests "*PublishedSurfacePlacement*"`
-- [ ] **Step 6: Commit** — `feat(#371): publish booking's confirmed-booking read port (code + contact id)`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** → PASS
+- [x] **Step 5: Structural check** — `./gradlew test --tests "*ModularityTests*" --tests "*PackageShape*" --tests "*PublishedSurfacePlacement*"`
+- [x] **Step 6: Commit** — `feat(#371): publish booking's confirmed-booking read port (code + contact id)`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -326,18 +327,18 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Create `BookingConfirmationMail.java` · Modify `Mailer.java`, `SentEmail.java`,
 `MockMailer.java`, `SmtpMailer.java` · Test `MockMailerTest`, `SmtpMailerIT`
 
-- [ ] **Step 1: Write the failing tests** — `MockMailerTest.recordsBookingConfirmation`,
+- [x] **Step 1: Write the failing tests** — `MockMailerTest.recordsBookingConfirmation`,
   `MockMailerTest.neverLogsTheBookingCode` (assert via a captured log appender), and
   `SmtpMailerIT.deliversBookingConfirmationOverSmtp` + `.neverLogsTheBookingCode` against the existing local sink.
-- [ ] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*MockMailerTest*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — the port method, the payload record, the new `Kind`, the
+- [x] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*MockMailerTest*"` → FAIL
+- [x] **Step 3: Minimal implementation** — the port method, the payload record, the new `Kind`, the
   `SentEmail` factories, kind-aware logging in `MockMailer`, the `SmtpMailer` text block.
-- [ ] **Step 4: Run them, verify they pass** — plus `--tests "*Mailer*"` for the mailer regression set.
-- [ ] **Step 5: Generalization-audit pass** — search every `Mailer` implementation and every
+- [x] **Step 4: Run them, verify they pass** — plus `--tests "*Mailer*"` for the mailer regression set.
+- [x] **Step 5: Generalization-audit pass** — search every `Mailer` implementation and every
   `SentEmail` construction site; confirm no third implementation and no canonical-constructor caller
   was missed.
-- [ ] **Step 6: Commit** — `feat(#371): add the booking-confirmation message kind to the Mailer port`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `feat(#371): add the booking-confirmation message kind to the Mailer port`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -345,20 +346,20 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `BookingConfirmationMailListener.java`, `BookingConfirmationMailIT.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1 through AC-4. AC-4 follows `PayoutAccrualIT`'s
+- [x] **Step 1: Write the failing tests** — AC-1 through AC-4. AC-4 follows `PayoutAccrualIT`'s
   no-second-effect pattern (`Awaitility.await().during(...)` after resubmitting outstanding
   publications) rather than asserting on a timer.
-- [ ] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*BookingConfirmationMailIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — the listener: read NI-1 for code + contact id, NI-2 for
+- [x] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*BookingConfirmationMailIT*"` → FAIL
+- [x] **Step 3: Minimal implementation** — the listener: read NI-1 for code + contact id, NI-2 for
   venue name + set label, NI-3 for the email; compose `BookingConfirmationMail` from those plus the
   event's own date/amount/currency; send. Missing booking or missing contact → log and return (never
   throw a permanently-failing listener into the registry's retry loop).
-- [ ] **Step 4: Run them, verify they pass** — then the async-neighbours regression set:
+- [x] **Step 4: Run them, verify they pass** — then the async-neighbours regression set:
   `--tests "*BookingConfirmationMailIT*" --tests "*PayoutAccrualIT*" --tests "*PayoutModuleTest*"` (R-3, R-4).
-- [ ] **Step 5: Generalization-audit pass** — every other `BookingConfirmed` subscriber, and whether
+- [x] **Step 5: Generalization-audit pass** — every other `BookingConfirmed` subscriber, and whether
   any other edge listener should exist yet (it should not — #373/#374 are separate slices).
-- [ ] **Step 6: Commit** — `feat(#371): mail the booking code on BookingConfirmed from the platform edge`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `feat(#371): mail the booking code on BookingConfirmed from the platform edge`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -366,13 +367,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `EventRegistryDurabilityIT.java` · Modify the plan doc
 
-- [ ] **Step 1: Write the failing test** — AC-5, asserting both registry properties from the running
+- [x] **Step 1: Write the failing test** — AC-5, asserting both registry properties from the running
   context so a future edit cannot silently unbound the publication table.
-- [ ] **Step 2: Run it, verify it fails** if the assertion is wrong; then implement/confirm → PASS.
-- [ ] **Step 3: Full structural net** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*ResponsibilitiesArchitectureTests*"`
-- [ ] **Step 4: Acceptance-criteria verification** — fill the section below with real commands + SHAs.
-- [ ] **Step 5: Commit** — `test(#371): pin the event-registry durability configuration`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** if the assertion is wrong; then implement/confirm → PASS.
+- [x] **Step 3: Full structural net** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*ResponsibilitiesArchitectureTests*"`
+- [x] **Step 4: Acceptance-criteria verification** — fill the section below with real commands + SHAs.
+- [x] **Step 5: Commit** — `test(#371): pin the event-registry durability configuration`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -389,35 +390,48 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*BookingConfirmationMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run, `sendsToTheBookingContactForASignedInBooking` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run, `sendsForABookingConfirmedViaThePaymentPath` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Same run, `doesNotResendWhenACompletedPublicationIsResubmitted` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `./gradlew test --tests "*EventRegistryDurabilityIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run the phase-3 step-3 structural command → all PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `./gradlew test --tests "*MockMailerTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** Run `./gradlew test --tests "*SmtpMailerIT*"` → PASS (skips cleanly without Docker). Verified at commit `<sha>`.
+All verified locally at commit `f3dac62` (JDK 25 + Docker present, so no IT skipped).
+
+- [x] **AC-1:** `./gradlew test --tests "*BookingConfirmationMailIT*"` → PASS
+  (`sendsOneConfirmationCarryingCodeVenueDateSetAndAmount`, driving the real `POST /api/bookings`).
+- [x] **AC-2:** Same run, `sendsToTheBookingContactForASignedInBooking` → PASS.
+- [x] **AC-3:** Same run, `sendsForABookingConfirmedViaThePaymentPath` → PASS.
+- [x] **AC-4:** Same run, `doesNotResendWhenACompletedPublicationIsResubmitted` → PASS.
+- [x] **AC-5:** `./gradlew test --tests "*EventRegistryDurabilityIT*"` → PASS (both properties, plus the
+  behavioural check that a completed publication has *left* the live table).
+- [x] **AC-6:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
+  --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*"
+  --tests "*ResponsibilitiesArchitectureTests*" --tests "*ErrorContractArchitectureTests*"` → all PASS.
+  Note this AC only went green **after** the R-9 shared-kernel extraction; it was red on the listener
+  commit alone, which is how the cycle was caught.
+- [x] **AC-7:** `./gradlew test --tests "*MockMailerTest*"` → PASS (`recordsBookingConfirmation`,
+  `neverLogsTheBookingCode`).
+- [x] **AC-8:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS (`deliversBookingConfirmationOverSmtp`
+  asserts the code is in the body and **absent from the subject**; `neverLogsTheBookingCode`).
+
+Regression set also green in the same run: `PayoutModuleTest`, `PayoutAccrualIT`,
+`JdbcBookingNotificationFactsIT`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified — read-only slice); no new write path.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched, no reservation logic in scope.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payload unchanged and id-based (invariant #11).
-- [ ] **Payment/payout** section filled (N/A justified); `PayoutAccrualIT` still green.
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct: the booking date is rendered as the `Europe/Tirane` `LocalDate` the event carries (invariant #6); no JVM-default zone use.
-- [ ] Booking codes unguessable (invariant #7) — generation untouched; the code is never logged and never enters the event payload / `event_publication`.
-- [ ] Flyway migration present for schema changes — **N/A, no schema change** (invariant #12).
-- [ ] **Frontend** standards — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (N/A justified — read-only slice); no new write path.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched, no reservation logic in scope.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payload unchanged and id-based (invariant #11).
+- [x] **Payment/payout** section filled (N/A justified); `PayoutAccrualIT` still green.
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct: the booking date is rendered as the `Europe/Tirane` `LocalDate` the event carries (invariant #6); no JVM-default zone use.
+- [x] Booking codes unguessable (invariant #7) — generation untouched; the code is never logged and never enters the event payload / `event_publication`.
+- [x] Flyway migration present for schema changes — **N/A, no schema change** (invariant #12).
+- [x] **Frontend** standards — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
