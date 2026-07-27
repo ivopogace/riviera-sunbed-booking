@@ -16,6 +16,14 @@ const ME_API = `${environment.apiBaseUrl}/api/me`;
 export const MIN_PASSWORD_LENGTH = 8;
 export const PASSWORD_LENGTH_MESSAGE = 'Choose a password of 8–72 characters.';
 
+/**
+ * Shown when a current password is required but none was supplied — the case the backend names
+ * `MISSING_CURRENT_PASSWORD` (#345). Distinct from "incorrect", which is what both change-password
+ * endpoints used to say (or imply) for an empty field; one constant so the tourist and operator pages
+ * cannot word the same server answer differently.
+ */
+export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
+
 /** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
 export type ForgotPasswordResult = 'sent' | 'rate-limited' | 'error';
 /** How a reset-token redemption ended. */
@@ -27,9 +35,13 @@ export type ResetPasswordResult =
   | 'error';
 /** How an email-verification token redemption ended. */
 export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
-/** How an authenticated set/change-password ended. */
+/**
+ * How an authenticated set/change-password ended. `missing-current` and `invalid-current` are told apart
+ * by the problem `code` alone (#345) — collapsing them shows "incorrect" for a field the account left blank.
+ */
 export type SetPasswordResult =
   | 'set'
+  | 'missing-current'
   | 'invalid-current'
   | 'invalid-password'
   | 'rate-limited'
@@ -179,7 +191,8 @@ export class CustomerAuth extends SessionAuth {
 
   /**
    * Set or change the signed-in customer's password (S8 #113, closes S4 F-1). An SSO-only account omits
-   * `currentPassword` to set its first one; an account that already has one must supply the correct current.
+   * `currentPassword` to set its first one; an account that already has one must supply the correct current —
+   * omitting it there is `missing-current`, supplying the wrong one `invalid-current`.
    */
   async setPassword(newPassword: string, currentPassword?: string): Promise<SetPasswordResult> {
     try {
@@ -189,7 +202,14 @@ export class CustomerAuth extends SessionAuth {
       return 'set';
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 400) {
-        return problemCode(error) === 'INVALID_CURRENT_PASSWORD' ? 'invalid-current' : 'invalid-password';
+        switch (problemCode(error)) {
+          case 'MISSING_CURRENT_PASSWORD':
+            return 'missing-current';
+          case 'INVALID_CURRENT_PASSWORD':
+            return 'invalid-current';
+          default:
+            return 'invalid-password';
+        }
       }
       // #326 gave this endpoint its first rate-limit budget, so 429 is newly reachable; without its own
       // branch it read as a generic error and the retry advice invited the exact retry being rejected.

@@ -257,6 +257,19 @@ describe('CustomerAuth', () => {
     expect(await weak).toBe('invalid-password');
   });
 
+  // #345: an account that HAS a password and sends none gets its own code. Without this branch the default
+  // arm below would call it invalid-password and show the length message for a new password that was fine.
+  it('set-password maps MISSING_CURRENT_PASSWORD to its own result, not invalid-password', async () => {
+    const auth = await create({ principalType: 'CUSTOMER' });
+
+    const omitted = auth.setPassword('brandnewpass1');
+    http
+      .expectOne(`${ME_API}/password`)
+      .flush({ code: 'MISSING_CURRENT_PASSWORD' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(await omitted).toBe('missing-current');
+  });
+
   // #326 gave this endpoint its first rate-limit budget, so 429 is newly reachable here.
   it('set-password maps a 429 → rate-limited rather than a generic error', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });

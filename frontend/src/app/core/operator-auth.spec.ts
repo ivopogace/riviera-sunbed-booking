@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { OperatorAuth } from './operator-auth';
+import { OperatorAuth, operatorPasswordChangeMessage } from './operator-auth';
 import { OwnedVenues } from './owned-venues';
 
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
@@ -207,6 +207,21 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
         .flush({ code: 'INVALID_CURRENT_PASSWORD' }, { status: 400, statusText: 'Bad Request' });
 
       expect(await result).toBe('invalid-current');
+    });
+
+    // #345 split this out of INVALID_REQUEST: mapping it to invalid-password would tell an operator whose
+    // new password was fine to pick one of 8–72 characters, which is the defect the code exists to end.
+    it('maps 400 MISSING_CURRENT_PASSWORD to missing-current', async () => {
+      const auth = serviceWithRestore({ username: 'adriatica' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('', 'rotated-pass2');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/password`)
+        .flush({ code: 'MISSING_CURRENT_PASSWORD' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toBe('missing-current');
+      expect(operatorPasswordChangeMessage('missing-current')).toBe('Enter your current password.');
     });
 
     it('maps 400 INVALID_REQUEST to invalid-password', async () => {
