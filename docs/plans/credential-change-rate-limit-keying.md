@@ -54,9 +54,10 @@ statements do not survive contact with today's code.
    favour of the issue's second sketch.
 2. **The issue's second sketch is right but its wording inverts a status code.** It says to reuse
    "the same refund-on-non-401 trick" — but on the login dimension `401` is the *only* status that
-   **spends**, whereas here `401` must **refund**. Same number, opposite meaning, because on a login
-   the `401` comes from the controller and on a password change it can only come from the chain.
-   This is why the policy must be per-budget (see R-1).
+   **spends**, whereas here `401` must **refund**. Same number, opposite meaning: on a login it is the
+   controller's answer to a wrong password, while on a password change it means the caller never got
+   as far as the credential check. (Amendment 4 sharpens *why* — the distinction is "did it reach the
+   guarded work", not "did it come from the chain".) This is why the policy must be per-budget (R-1).
 3. **A third path has the same defect, unmentioned by the issue.** `POST /api/me/verify-email/request`
    is authenticated (`/api/me/**` → `hasRole(CUSTOMER)`) but shares the `recoveryBuckets` map with
    three **public** recovery paths. An anonymous flood on it drains the recovery budget and blocks
