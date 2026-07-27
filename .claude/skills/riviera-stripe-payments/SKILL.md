@@ -16,6 +16,10 @@ This is settled. If a task seems to want Connect (`Account`, `Transfer`,
 `application_fee`, `on_behalf_of`, destination charges), stop — that path cannot
 reach Albanian venues. Surface it as an open question, don't build it.
 
+Pending: ADR-0009 (Proposed, epic #284 deferred) re-decides the gateway/entity to
+Paysera + an Albanian sh.p.k. — collect-only is reaffirmed; the Stripe sandbox model
+in this skill stays authoritative until #284 starts.
+
 Operationally this stays cheap: collect-and-disburse is trivial at v1 scale (5–15
 venues), and the internal `PaymentGateway` port (`payment.application`) keeps the
 app **gateway-agnostic** — the domain never touches Stripe types.

@@ -43,10 +43,8 @@ class JdbcBookings implements Bookings {                 // implements an intern
 }
 ```
 
-Rules:
-- **Bind named params** (`:id`), never string-concatenate. SQL lives in a `"""text block"""` next to
-  the call.
-- **Return `Optional<T>`** (or a typed outcome) from query ports — never `null`.
+Rules (the SQL/injection/`Optional` idioms themselves are `riviera-java-conventions` §1/§3/§5 —
+what belongs *here* is placement and the concurrency primitive):
 - **Map typed ids to primitives** at the SQL boundary (`setId.value()`); reconstruct typed ids /
   records in the `RowMapper`.
 - **The atomic claim / upsert is `INSERT ... ON CONFLICT (...) DO NOTHING`** — the concurrency

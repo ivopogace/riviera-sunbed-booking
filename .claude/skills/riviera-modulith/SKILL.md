@@ -7,8 +7,7 @@ description: >-
   Registry, and module-scoped tests. Load BEFORE creating or modifying ANY backend Java in
   platform/ — trigger on "add a module", "expose this to another module", "wire an event between
   X and Y", "where does this class go", "why does ModularityTests fail", or any work in the venue /
-  availability / booking / payment / payout / customer / operator modules. In this repo prefer it over the generic
-  spring-modulith-* skills (ddd-jdbc-module, event-designer, boundary-reviewer). Concrete mechanics
+  availability / booking / payment / payout / customer / operator modules. Concrete mechanics
   for invariants #11 and #1 (canonical in CLAUDE.md). Pairs with riviera-java-conventions,
   codebase-design, and postgres.
 ---
@@ -21,7 +20,7 @@ api/-named-interface boundaries, and the ApplicationModules.verify() contract."*
 riviera-sunbed-booking is a Spring Modulith modular monolith: base package **`ai.riviera.platform`**,
 seven bounded-context modules — **venue, availability, booking, payment, payout, customer,
 operator** (table in `CLAUDE.md`) — on **Spring Boot 4, Spring Modulith 2.1, Java 25, Gradle,
-Spring Data JDBC / `JdbcClient` only — no JPA**.
+Spring Data JDBC / `JdbcClient` (one legacy `JdbcTemplate` adapter) only — no JPA**.
 
 This skill owns the **structural mechanics** — it makes **invariant #11** (hexagonal, id-based
 boundaries) and **invariant #1** (JDBC-only) concrete; the numbered invariants stay canonical in
@@ -72,8 +71,8 @@ ai.riviera.platform.<module>/
 ```
 No `application/`, no `domain/` — a single adapter is a *hypothetical* seam (`codebase-design`);
 don't invent an empty layer for it. If the module grows a real service, it **graduates** to the
-full template — a visible, reviewable refactor, a feature not a cost. The `adapter/out/`-vs-
-`internal/` bucket question is open — settle once (case history).
+full template — a visible, reviewable refactor, a feature not a cost. (The `adapter/out/`-vs-
+`internal/` bucket question is closed as moot — case history.)
 
 ### Full template — everything else
 ```
@@ -89,7 +88,7 @@ ai.riviera.platform.<module>/
 │   └── package-info.java      #   driven ports another module IMPLEMENTS for this one
 ├── application/               # services (package-private @Service/@Transactional) + their driving/driven
 │   │                          #   PORT interfaces, TOGETHER — no in/out sub-split (direction lives in adapter/)
-│   └── <use-case>/            # OPTIONAL sub-grouping by use-case — booking ONLY (reserve/cancel/refund/view)
+│   └── <use-case>/            # OPTIONAL sub-grouping by use-case — booking ONLY (reserve/request/cancel/refund/view)
 ├── domain/                    # INTERNAL: enums, value objects, aggregates, policies (framework-light)
 └── adapter/
     ├── in/                    # driving adapters: @RestController, @ApplicationModuleListener (+ request/response DTOs)
@@ -98,7 +97,8 @@ ai.riviera.platform.<module>/
 All four published surfaces are **optional** — `payout` (publishes nothing, though it now consumes
 `booking::api` for the console takings read, #171) has none; `booking` publishes `api/`
 (`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; `venue` and `customer` have `spi` today
-(`customer.spi.GuestBookingHistory`, implemented by `booking` for the #101 Slice 2 retention sweep). Don't force
+(`customer.spi.GuestBookingHistory`, implemented by `booking` for the #101 Slice 2 retention sweep;
+`venue.spi` holds `SetAvailabilityLookup` + `BookingPresence`, both implemented by siblings). Don't force
 an empty surface onto a module. Published surfaces stay **top-level and exposed** — nesting under
 `application` would hide them from Modulith. Notes the trees can't carry:
 
@@ -110,7 +110,7 @@ an empty surface onto a module. Published surfaces stay **top-level and exposed*
   (`adapter/in/rest`) — the primary split stays **direction**.
 - **Name ports by purpose, never technology** — `CheckoutPort`, not `StripePort`;
   `AvailabilityClaim`, not `JdbcAvailabilityTable`. The name must survive swapping the adapter.
-- `booking` is the **one** module sliced by use-case (8 services): `application/reserve/`,
+- `booking` is the **one** module sliced by use-case: `application/reserve/`, `/request/` (#98),
   `/cancel/`, `/refund/`, `/view/`, with the outbound `Bookings` port shared at `application/` root
   and `domain/` flat and shared. **No other module is sliced** — none has the mass.
 - Keep `@SpringBootApplication` (`PlatformApplication`) and app-wide config (`SecurityConfig`,
@@ -155,9 +155,10 @@ worked example: `references/boundaries.md`.
   `availability.api.AvailabilityClaim.claim(...)` and branches on the `ClaimOutcome` in the same
   transaction.
 - **Domain event (async, decoupled)** when the module just announces a fact — the write-side
-  spine: **U5 `BookingConfirmed`** → `availability` marks the set `BOOKED_ONLINE` *and* `payout`
-  accrues a ledger entry, as two independent listeners. Events break would-be cycles. Sync-vs-async
-  listener choice + the registry: `references/events.md`.
+  spine: **U5 `BookingConfirmed`/`BookingCancelled`** → `payout` accrues / reverses the ledger
+  entry; `booking`'s own `BookingCancelled` listener drives `payment`'s `RefundPort`. (No
+  `availability` listener exists — the claim/release is the synchronous port above.) Events break
+  would-be cycles. Sync-vs-async listener choice + the registry: `references/events.md`.
 
 A module needing many synchronous beans from another is a coupling smell — prefer an event. The
 claim is a deliberate synchronous exception (the caller must know the outcome to proceed —
@@ -168,7 +169,8 @@ invariant #2), documented on `AvailabilityClaim`.
 **Shipped** (#73 module + ownership, #74 per-operator credentials, **#115 self-registration → admin
 approval → creator-owns-on-create**). It owns operator accounts + registration/approval state and the
 **operator↔venue ownership mapping** (now writable — `VenueOwnership.assignOwner`), publishing
-`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorLifecycle` ports) +
+`operator::api` (`VenueOwnership` + the `OperatorRegistration`/`OperatorLifecycle`/`OperatorAccounts`/
+`OperatorDirectory`/`OperatorProvisioning` ports) +
 `operator::vocabulary`. Every venue-scoped **application service** consults `assertOwns` → `403` on
 mismatch (pinned by `CrossVenueDenialIT`) so no driving adapter can bypass the check — invariant #13.
 Since #115 the **owns-all bootstrap is retired** (ownership is strictly the explicit `operator_venue`

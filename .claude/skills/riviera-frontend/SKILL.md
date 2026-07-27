@@ -20,7 +20,7 @@ cheap here and expensive at review.
 | `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service, theme state | `shared/` only — never a feature | `operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts` |
 | `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state | nothing app-internal | `money.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
-| Feature folders (`booking/`, `venue/`, `venue-admin/`, `operator/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
+| Feature folders (`booking/`, `venue/`, `venue-admin/`, `operator/`, `auth/`, `admin/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
 | `environments/` | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
 
 **Import direction is one-way:** features → `core`/`shared`; `core` → `shared`;
@@ -29,9 +29,13 @@ cheap here and expensive at review.
 feature). A feature importing from another feature is the FE version of a
 Modulith boundary violation — flag it, don't ship it.
 
-**New feature = new folder.** The upcoming auth epic (#108) adds e.g. `auth/`
-(sign-in/register pages, account pages) as a feature folder; the session/CSRF
-machinery it uses lives in `core/`, mirroring the backend rule that login
+**New feature = new folder.** The auth epic (#108) added `auth/` as a feature
+folder: **one audience-aware sign-in card** (`auth/auth-page.ts` at
+`/account/sign-in`, S9 #277 — the old `auth/sign-in`, `auth/register` and
+`operator/operator-register` pages are deleted; redirect routes remain for one
+release), plus the S8 forgot/reset/verify/set-password pages and the #326
+`operator-password.ts` at `/account/operator-password`. The session/CSRF
+machinery they use lives in `core/`, mirroring the backend rule that login
 machinery sits at the platform edge, not in a domain module (RV-BE-11).
 
 ## Files inside a feature
@@ -39,8 +43,9 @@ machinery sits at the platform edge, not in a domain module (RV-BE-11).
 Colocate everything the feature owns, flat (no `components/`/`services/`
 subfolders at this app size):
 
-- `<name>.ts` — the component (inline template if small; else `<name>.html` +
-  `<name>.scss` next to it).
+- `<name>.ts` — the component (inline template if small; else `<name>.html` next
+  to it, styled with Tailwind classes — a colocated `<name>.scss` only for the
+  grandfathered cases; see `riviera-tailwind`).
 - `<name>.spec.ts` — unit spec, always.
 - `<name>.a11y.spec.ts` / `<name>.contrast.spec.ts` — axe + contrast specs for
   any user-facing surface (the pattern in `booking/` and `venue/`).
@@ -62,7 +67,10 @@ subfolders at this app size):
   `emptyOnly` strategy — a non-empty child (e.g. an `/operator/:venueId` tab) reads
   `:venueId` from `route.parent`, not its own snapshot (O1 review finding).
 - Route guards are cross-cutting → they live in `core/` and are applied in
-  `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components.
+  `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components. The
+  worked example is `core/operator-session.guard.ts` (S9 #277): restore-aware — it
+  awaits `SessionAuth.whenReady()` before deciding — and applied on `/operator`,
+  `/operator/:venueId`, `/venue-admin` and `/account/operator-password`.
 
 ## `app.config.ts` (the composition root)
 
@@ -91,16 +99,13 @@ The only place providers are wired:
   **not** touch the document attribute / `ThemeService`, so the tourist theme
   choice is preserved. Local pinning like this is fine; writing the **document**
   attribute stays `ThemeService`-only.
-- **Components consume tokens, never palette literals** — a new palette (#143)
+- **The token registry lives in two places, and only two**: a new palette (#143)
   is one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
   component edits. Restyle slices add page-surface tokens there (e.g. the T2
   `--riv-card-*` card-glass set) so later slices reuse them.
-- **Glass contrast is proven by composited math, not eyeballing**: translucent
-  surfaces get a `<page>.contrast.spec.ts` that composites the glass rgba over
-  the theme background's worst-case gradient stops via the shared helpers in
-  `src/testing/contrast.ts` (`composite`/`contrastRatio`), the
-  `app.contrast.spec.ts` pattern. Token values that deviate from the design
-  file for AA carry a comment saying so.
+- **HOW to consume the tokens** — token-first styling, the `:host-context`
+  escape hatch, and the composited-contrast proofs (helpers in
+  `src/testing/contrast.ts`) — is `riviera-tailwind`'s call.
 - **Reduced-motion guards live in the same stylesheet as the animation they
   guard** (component styles' emulated-encapsulation attribute beats a global
   guard's specificity — the #134 lesson).

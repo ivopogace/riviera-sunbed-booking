@@ -29,13 +29,14 @@ a stale fact there propagates into every future plan and review.
 
 | Doc | Stated facts that rot | Typical invalidators |
 |---|---|---|
-| `CLAUDE.md` | module table + shipped/planned notes, invariant wording, the skills list, provisional decisions | a module ships/graduates, an auth/payment mechanism changes, a new skill lands |
+| `CLAUDE.md` (+ `frontend/.claude/CLAUDE.md`) | module table + shipped/planned notes, invariant wording, the skills list, provisional decisions; frontend idioms/styling posture in the nested file | a module ships/graduates, an auth/payment mechanism changes, a new skill lands, a frontend idiom is re-decided |
 | `CONTEXT.md` | glossary terms, canonical value sets (statuses, pools), flow descriptions | a new domain term, a renamed status, a changed flow |
 | `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
 | `docs/plans/*` (final states) | execution-status tables, "Resolved" sections | only the CURRENT slice's plan — historical plans are records, not living docs |
 | `.claude/skills/riviera-*/SKILL.md` | **concrete file names, class names, endpoints, and example tables** inside skills | a rename/removal of anything a skill cites as an example |
 | `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars | build/tooling changes |
+| `docs/deploy/*`, `docs/runbooks/*` | deploy-pipeline shape, hosting/service names, env vars, ops procedures | a CD/hosting change, a rotated secret's name, a new or changed operational mechanism |
 
 ## Procedure
 
@@ -59,9 +60,11 @@ a stale fact there propagates into every future plan and review.
 5. **Report.** One line per finding: `doc:line — stated fact — contradicted by — action
    (patched/flagged)`. Zero findings is a valid result — say so explicitly. Record the
    run (range + findings) in the slice's plan doc or the epic close-out comment.
-6. **Refresh the knowledge graph.** If any doc was patched, run `graphify update .`
-   (the post-commit hook rebuilds code only; the graph is local/gitignored — nothing
-   to commit; skip when `graphify-out/` is absent, e.g. a cloud clone).
+6. **Refresh the knowledge graph.** If any doc was patched, refresh via the graphify
+   skill's update flow and **verify the docs were actually re-extracted** — the bare
+   `graphify update .` CLI has been observed to re-extract code only. (The post-commit
+   hook rebuilds code only; the graph is local/gitignored — nothing to commit; skip
+   when `graphify-out/` is absent, e.g. a cloud clone.)
 
 ## Scope discipline
 

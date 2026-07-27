@@ -19,9 +19,9 @@ complete" push is not). See `riviera-local-debug` for the full-suite-only failur
 Two parallel sessions both claimed migration version **V19**. The loser's PR went
 unmergeable, no PR CI or Sonar could run on it, and a large semantic integration merge
 had to happen at the very end of the session. Lesson: at issue intake, check that the
-next Flyway `V<n>` is free on `main` *and* unclaimed by any open PR's diff; if a
-collision is possible, record in the plan doc **who renumbers** (default: the branch that
-merges second) and expect a merge-from-main before the PR.
+next Flyway `V<n>` is free on `main` *and* unclaimed by any open PR's diff — the
+in-flight check in `references/issue-intake-gate.md` (step 2) owns the rule, including
+who renumbers on a collision.
 
 ## PR #158 — merged green with 9 unaddressed MAJOR smells
 
@@ -46,3 +46,61 @@ committed), so a later session had to **reconstruct the epic from a one-line sum
 Lesson: source-of-intent documents live in the repo — any plan, spec, or improvement plan
 that issues or ADRs reference must be committed (e.g. `docs/architecture/`, `docs/plans/`)
 before or with the artifacts that cite it.
+
+## Epic #141 — O4 and O5 merged with the epic checklist un-ticked
+
+Two consecutive slices of the operator-console epic (#141) merged without ticking their
+lines on the parent epic's checklist — a silent close-out gap caught only at O6's
+close-out, two slices later. Lesson: the issue-intake gate now verifies the
+*previously-merged* sibling's close-out (checklist ticked, issue closed) before planning
+the next slice — you're already reading the epic, and catching it there fixes it one
+slice later instead of at a retro.
+
+## O6 / PR #219 — the near-empty docs PR
+
+O6's close-out shipped a separate docs-only PR (#219) — a whole PR + CI cycle — for two
+one-line staleness patches the code PR could have carried. Lesson: run the
+`riviera-docs-freshness` staleness grep **pre-merge** (over `origin/main...HEAD`) and fold
+the patches into the code PR itself; a second docs PR is a cost, not a habit.
+
+## PR #318 — the false-clean Sonar read (2026-07-25)
+
+The first `api/issues/search` read on PR #318 showed **0 issues** — because no analysis
+existed yet, which is byte-for-byte identical to a genuinely clean PR. The real result
+(445 new lines at 91.67% coverage) landed minutes later, and `WebFetch`'s 15-minute cache
+could have pinned the stale "clean" answer across the whole gate. Lesson: never accept a
+zero issue count without the tells in `pr-gates.md` §2 step 2 — a **non-empty** `measures`
+array, a `success` conclusion on the `SonarCloud Code Analysis` check-run, and a
+cache-bust on every re-read.
+
+## #326→PR #347, #346→PR #352, #351→PR #354 — three docs-only close-out PRs
+
+The close-out guidance used to call the plan-doc leftovers "a one-line follow-up (a
+commit on `main`) — not a full PR." A cloud session cannot push to `main`, so that
+degraded into a whole docs-only PR + CI cycle three slices in a row — each diff ~96%
+content that predated the merge (#354: **3 of 80 changed lines** actually needed the
+SHA). Lesson: record `merged via PR #NN`, never the merge SHA — that makes the plan-doc
+final state pre-merge-able in the PR's own last commit, and removing the dependency beats
+optimizing the follow-up.
+
+## #351 — the review methods measured against each other (2026-07-26)
+
+On the #351 slice, `/code-review`'s forked subagent fan-out found three defects that both
+the hand-walked overlay bank *and* inline `/review` had missed: a same-URL activation
+that left the popover stuck open (`NavigationSkipped` ≠ `NavigationEnd`), a second
+focus-strand in `signOut()` of the very WCAG class the slice had just fixed elsewhere,
+and a dropped `cursor: pointer`. Lesson: `/code-review` is the strongest of the three by
+measurement — start it first, every time, and ask the human to authorize the subagent
+rather than silently downgrade.
+
+## PR #353 / #355 — the ticked box over a half-run gate (2026-07-26)
+
+On PR #353 the overlay bank ran and found two real issues, the generic banks never ran,
+and the review checkbox was ticked anyway on the belief that no review could run at all.
+`/review` could — and when finally run it found a **WCAG 2.4.3 focus-loss regression**
+the overlay bank has no item for: the account popover was destroyed by its own navigation
+with focus inside it, dropping focus to `document.body` — the #148 find-modal bug,
+recurring. Fixed in #355, whose own `/review` pass then caught a false-passing assertion
+and a repeat RV-STYLE-1 slip in that very fix. Lesson: never tick a box for a command
+that didn't run — leave it unticked, say which half ran and why, and ask for the missing
+half; the unrun half is where the recurring defect class hides.

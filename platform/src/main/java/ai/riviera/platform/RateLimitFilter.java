@@ -74,6 +74,16 @@ import jakarta.servlet.http.HttpServletResponse;
  * count-all (request-volume control); per-identity is failure-only (credential-guess control) — a
  * deliberate asymmetry.
  *
+ * <p><strong>Authenticated budgets refund a denied request (issue #343).</strong> This filter is installed
+ * ahead of {@code CsrfFilter} and {@code AuthorizationFilter}, so it spends a token before anything checks
+ * who is calling. On the budgets that guard an <em>authenticated</em> endpoint that let a caller with no
+ * session, no account and no CSRF token drain the budget for everyone on the address — and venue WiFi /
+ * CGNAT is exactly the topology those budgets were split for, so an operator behind it met a {@code 429}
+ * on the page whose purpose is rotating a credential they believe is compromised. Those budgets now
+ * release the token when the request was denied before reaching the work they guard. The policy is
+ * per-budget and not filter-wide, because on a login the identical {@code 401} means the opposite thing —
+ * see {@link AuthBudget}.
+ *
  * <p><strong>State.</strong> In-memory token buckets in bounded {@link ConcurrentHashMap}s — correct
  * for the single Render instance (ADR-0004); no Redis. Each map is hard-bounded by
  * {@code maxTrackedKeys}: when the cap is reached we first prune <em>full</em> (idle) buckets
@@ -129,10 +139,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
-	// The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
-	// and the authenticated verification-resend. Each is a mail-sending or token-guessing oracle, so they
-	// ride their OWN per-IP budget — separate from customerAuthBuckets, so recovery spam can never starve
-	// login (the S2 operator-lockout lesson, #127). Exact paths (all POST); no path templates needed.
+	/**
+	 * The account-recovery POSTs (S8 #113, D-8): forgot-password / reset-password / verify-email (public)
+	 * and the authenticated verification-resend. Each is a mail-sending or token-guessing oracle, so they
+	 * ride their OWN per-IP budget — separate from {@code customerAuthBuckets}, so recovery spam can never
+	 * starve login (the S2 operator-lockout lesson, #127). Exact paths (all POST); no templates needed.
+	 *
+	 * <p><strong>A mixed budget, and why it still refunds (issue #343 generalization audit).</strong> Three
+	 * of the four are {@code permitAll}; {@code /api/me/verify-email/request} is {@code hasRole(CUSTOMER)}.
+	 * Sharing one map meant an anonymous flood on that one authenticated path drained the budget and blocked
+	 * legitimate {@code forgot-password} for everyone on the address — the same defect as the password
+	 * endpoints, one map over. Flagging the whole map is correct rather than merely convenient: for the
+	 * three public paths the only denial reachable before the controller is a CSRF {@code 403}, which sends
+	 * no mail and redeems no token, so refunding it gives nothing away.
+	 */
 	private static final Set<String> RECOVERY_PATHS = Set.of(
 			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
 			"/api/auth/customer/verify-email", "/api/me/verify-email/request");
@@ -224,23 +244,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		// endpoints use SEPARATE bucket maps under the same limit, so customer traffic can't starve
 		// operator login from a shared IP.
 		if (props.enabled()) {
-			Optional<Map<String, TokenBucket>> authBuckets = authBucketsFor(request);
-			if (authBuckets.isPresent()) {
-				Instant now = clock.instant();
-				String ip = clientIps.resolve(request);
-				TokenBucket ipBucket = bucketFor(authBuckets.get(), ip, props.login(), now);
-				if (!ipBucket.tryAcquire(now)) {
-					reject(response, ipBucket.retryAfterSeconds(now), ip, "login");
-					return;
-				}
-				// The two logins additionally carry a per-identity budget (issue #292); the other auth
-				// POSTs (register / recovery / SSO) stay per-IP only.
-				LoginEndpoint login = loginEndpointOf(request);
-				if (login != null) {
-					throttlePerIdentity(login, request, response, chain, ip, now);
-					return;
-				}
-				chain.doFilter(request, response);
+			Optional<AuthBudget> authBudget = authBudgetFor(request);
+			if (authBudget.isPresent()) {
+				throttleAuthEndpoint(authBudget.get(), request, response, chain);
 				return;
 			}
 		}
@@ -279,55 +285,139 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * The per-IP auth budget a request draws on, or {@code null} if it is not an auth POST. Operator
-	 * login draws on {@code loginBuckets}; the customer auth endpoints (login + register) draw on the
-	 * SEPARATE {@code customerAuthBuckets} under the same {@code login} limit, so tourist-side traffic
-	 * can never exhaust operator login (a shared IP on venue WiFi / CGNAT). Never an OPTIONS preflight —
-	 * the method check excludes it.
+	 * The per-IP budget an auth request draws on, and whether a token it spent is released again when the
+	 * request was denied before reaching the work that budget protects (issue #343).
+	 *
+	 * <p><strong>Why the policy travels with the budget instead of being one filter-wide rule.</strong>
+	 * The refund keys on {@code 401}/{@code 403}. On a password change those statuses can only mean the
+	 * caller never reached the credential check — {@link OperatorAccountController} answers
+	 * {@code 400}/{@code 409}/{@code 204}, and {@link MyAccountController} {@code 400}/{@code 204} or the
+	 * {@code 403} of {@link CurrentCustomer#require}, which is itself a "no account resolved, nothing
+	 * checked" outcome. On a <em>login</em> the very same {@code 401} is the controller's answer to a wrong
+	 * password — precisely what that budget exists to charge for. Same status code, opposite meaning, so a
+	 * filter-wide refund would silently disable login throttling while looking like a safety improvement.
+	 *
+	 * <p><strong>What this deliberately gives up.</strong> A caller that omits its CSRF token is refunded
+	 * too, so a token-less flood costs the attacker nothing. That is accepted: {@code CsrfFilter} rejects
+	 * it with no database read, no bcrypt and no mail sent — the guarded work is never reached, which is
+	 * the same reason the refund is correct in the first place. Volume control against traffic the chain
+	 * throws away is not this filter's job; it is not any endpoint's job outside these budgets either.
 	 */
-	private Optional<Map<String, TokenBucket>> authBucketsFor(HttpServletRequest request) {
+	private record AuthBudget(Map<String, TokenBucket> buckets, boolean refundedWhenAccessDenied) {
+
+		/** An anonymous surface: every request spends, because request volume IS what is being limited. */
+		static AuthBudget spendsEveryRequest(Map<String, TokenBucket> buckets) {
+			return new AuthBudget(buckets, false);
+		}
+
+		/** A budget guarding authenticated work: a request denied before reaching it must cost nothing. */
+		static AuthBudget guardsAuthenticatedWork(Map<String, TokenBucket> buckets) {
+			return new AuthBudget(buckets, true);
+		}
+	}
+
+	/**
+	 * Apply an auth endpoint's per-IP budget, run the chain, and refund the token if the budget
+	 * {@linkplain AuthBudget#refundedWhenAccessDenied() refunds} and access was denied.
+	 *
+	 * <p>Spend-then-refund, not peek-then-spend, so the cap stays exact under concurrency — the same trade
+	 * {@link #throttlePerIdentity} already makes, and the reason a burst can leave the bucket momentarily
+	 * empty for a concurrent caller. The refund is deliberately not in a {@code finally}: an exception
+	 * escaping the chain is a {@code 500}, not an access denial, and must not be refunded.
+	 *
+	 * <p><strong>The two logins never reach the refund.</strong> They return early into
+	 * {@link #throttlePerIdentity}, so a login budget's flag is inert — harmless today because both are
+	 * {@link AuthBudget#spendsEveryRequest}, but it means flagging one {@code guardsAuthenticatedWork}
+	 * would silently do nothing rather than fail. Nothing should ever want to: a login's {@code 401} is
+	 * the answer to a wrong password, which is the whole point of charging it.
+	 */
+	private void throttleAuthEndpoint(AuthBudget budget, HttpServletRequest request,
+			HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
+		Instant now = clock.instant();
+		String ip = clientIps.resolve(request);
+		TokenBucket ipBucket = bucketFor(budget.buckets(), ip, props.login(), now);
+		if (!ipBucket.tryAcquire(now)) {
+			reject(response, ipBucket.retryAfterSeconds(now), ip, "login");
+			return;
+		}
+		// Only the two logins carry a per-identity budget (#292); every other auth POST is per-IP only.
+		LoginEndpoint login = loginEndpointOf(request);
+		if (login != null) {
+			throttlePerIdentity(login, request, response, chain, ip, now);
+			return;
+		}
+		chain.doFilter(request, response);
+		if (budget.refundedWhenAccessDenied() && accessWasDenied(response)) {
+			ipBucket.release(now);
+		}
+	}
+
+	/**
+	 * Was the request denied without reaching the work its budget guards? Deliberately not expressed with
+	 * {@link #FAILED_AUTH_STATUS}: that constant is the <em>login controller's</em> {@code 401}, the one
+	 * status that spends a per-identity token. This is the opposite concept wearing the same number, and
+	 * folding the two together is exactly the mistake {@link AuthBudget} warns about.
+	 */
+	private static boolean accessWasDenied(HttpServletResponse response) {
+		int status = response.getStatus();
+		return status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value();
+	}
+
+	/**
+	 * The per-IP auth budget a request draws on, or empty if it is not an auth request. Operator login
+	 * draws on {@code loginBuckets}; the customer auth endpoints (login + register) draw on the SEPARATE
+	 * {@code customerAuthBuckets} under the same {@code login} limit, so tourist-side traffic can never
+	 * exhaust operator login (a shared IP on venue WiFi / CGNAT). Never an OPTIONS preflight — the method
+	 * check excludes it. Each budget also carries its refund policy; see {@link AuthBudget}.
+	 */
+	private Optional<AuthBudget> authBudgetFor(HttpServletRequest request) {
 		String method = request.getMethod();
 		String path = pathWithinApplication(request);
 		if (HttpMethod.POST.matches(method)) {
-			return authPostBucketsFor(path);
+			return authPostBudgetFor(path);
 		}
 		// SSO authorize/callback are GETs (the OIDC redirect flow, S4 #112); throttle them per-IP too. A
 		// cheap prefix pre-check keeps the two AntPathMatcher matches off every hot public venue/booking GET.
 		if (HttpMethod.GET.matches(method) && path.startsWith(SSO_PATH_PREFIX)
 				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
-			return Optional.of(ssoBuckets);
+			return Optional.of(AuthBudget.spendsEveryRequest(ssoBuckets));
 		}
 		return Optional.empty();
 	}
 
 	/**
-	 * The budget an auth <em>POST</em> draws on, split out of {@link #authBucketsFor} so each path stays
+	 * The budget an auth <em>POST</em> draws on, split out of {@link #authBudgetFor} so each path stays
 	 * within the cognitive-complexity bar as budgets accumulate (#326 was the branch that tipped it).
 	 * Every endpoint here is a credential or mail-sending oracle, and each named budget is deliberately
 	 * separate: the recurring defect this shape prevents is one surface's flood exhausting another's
 	 * budget and locking legitimate users out (#111/#127).
+	 *
+	 * <p>The {@code spendsEveryRequest} / {@code guardsAuthenticatedWork} choice per budget is issue #343:
+	 * an anonymous surface throttles every request, while a budget protecting an authenticated endpoint
+	 * refunds a request the chain denied — otherwise a caller with no session at all drains the budget and
+	 * denies real operators the credential rotation the endpoint exists for. See {@link AuthBudget}.
 	 */
-	private Optional<Map<String, TokenBucket>> authPostBucketsFor(String path) {
+	private Optional<AuthBudget> authPostBudgetFor(String path) {
 		if (LOGIN_PATH.equals(path)) {
-			return Optional.of(loginBuckets);
+			return Optional.of(AuthBudget.spendsEveryRequest(loginBuckets));
 		}
 		// Operator self-registration (S6 #115) on its own budget, separate from operator login.
 		if (OPERATOR_REGISTER_PATH.equals(path)) {
-			return Optional.of(operatorRegisterBuckets);
+			return Optional.of(AuthBudget.spendsEveryRequest(operatorRegisterBuckets));
 		}
 		// The password changes (#326) on their own per-principal-type budgets, never the login ones.
 		if (OPERATOR_PASSWORD_PATH.equals(path)) {
-			return Optional.of(operatorPasswordBuckets);
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(operatorPasswordBuckets));
 		}
 		if (CUSTOMER_PASSWORD_PATH.equals(path)) {
-			return Optional.of(customerPasswordBuckets);
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(customerPasswordBuckets));
 		}
 		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
-			return Optional.of(customerAuthBuckets);
+			return Optional.of(AuthBudget.spendsEveryRequest(customerAuthBuckets));
 		}
 		// Account-recovery POSTs (S8 #113) on their own per-IP budget, so recovery spam never starves login.
 		if (RECOVERY_PATHS.contains(path)) {
-			return Optional.of(recoveryBuckets);
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(recoveryBuckets));
 		}
 		return Optional.empty();
 	}

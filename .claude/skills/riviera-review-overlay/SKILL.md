@@ -1,22 +1,22 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (/code-review, /review, or the superpowers *-review-interview skills) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
+description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, /review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
 ---
 
 # Riviera review overlay
 
 ## Purpose
 
-A code review (built-in `/code-review` / `/review`, or superpowers `*-review-interview`)
-walks generic FE/BE/contract banks. This overlay layers in the **riviera-specific**
-items — the `CLAUDE.md` invariants turned into checkable review gates (cited, never
-restated). It is **content**, not a workflow: bank items, severity hints, and
+A code review (today the `code-review` plugin's `/code-review` / `/review`;
+historically the superpowers `*-review-interview` skills) walks its own generic
+FE/BE/contract banks. This overlay layers in the **riviera-specific** items — the
+`CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It is **content**, not a workflow: bank items, severity hints, and
 verification commands contributed to an active review.
 
 ## Activation
 
-Load when **both** hold: a review is **active** (`/code-review` / `/review`, or a
-superpowers `*-review-interview` skill), **and** the work is in the
+Load when **both** hold: a review is **active** (`/code-review` / `/review`, or
+whatever review engine is running), **and** the work is in the
 riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera invariants /
 `.claude/skills/riviera-*`, or an `AGENTS.md`/`CLAUDE.md` referencing
 `ai.riviera.platform.*` modules). This overlay **never runs alone** — it layers
@@ -33,8 +33,9 @@ Three reference files hold the bank items, loaded **by the diff's scope** so a
 frontend-only review never pays for the backend bank:
 
 - **Backend diff** → `references/backend-conventions.md` — the full backend bank
-  (RV-BE-1..17: JDBC-only, Modulith boundaries, availability/concurrency,
-  money/timezone, auth, error contract, responsibility placement, package shape, Flyway).
+  (RV-BE-1..18: JDBC-only, Modulith boundaries, availability/concurrency,
+  money/timezone, auth, error contract, responsibility placement, package shape,
+  Flyway, session lifecycle).
   If the diff changes any **wire shape** (an endpoint, a request/response DTO, an
   error body) — even with no frontend file touched — also load `references/fe-be-contract.md`.
 - **Frontend diff** → `references/frontend-conventions.md` — Angular standards,
@@ -92,16 +93,15 @@ Frontend (run in `frontend/`):
 
 | Thought | Reality |
 |---|---|
-| "I'll add `spring-boot-starter-data-jpa`, it's easier." | JDBC only (invariant #1). A JPA dependency is a Blocker finding. |
 | "Two reservations rarely collide; a check-then-insert is fine." | Check-then-insert races. Needs a unique constraint + row lock / `ON CONFLICT` (invariant #2). |
 | "The frontend confirmed payment, mark the booking paid." | Confirm only on a signature-verified webhook (invariant #8). |
 | "I'll use Stripe Connect to pay the venue." | No Connect (invariant #8) — collect-only + manual BKT payout (invariant #9). |
-| "Store the price as a euro decimal." | Integer minor units (invariant #5). |
-| "`LocalDateTime.now()` is fine for the cutoff." | Use `Europe/Tirane`; store UTC `Instant` (invariant #6). |
 | "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
-| "I'll call the other module's service directly." | Cross-module only via `api/` or events (invariant #11). |
-| "This needs a four-line comment to explain properly." | One line or nothing (RV-STYLE-1). If it won't fit, the code needs the change — not the prose. |
 | "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding (PR #37). |
+
+The authoring-idiom red flags (JPA/Lombok, float money, JVM-default-zone time,
+cross-module service calls, multi-line comments, …) live in the full table in
+`riviera-java-conventions` — stated once there, checked here via the bank items.
 
 ## Output integration & done criteria
 

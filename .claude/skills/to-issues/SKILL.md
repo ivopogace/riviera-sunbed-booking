@@ -3,6 +3,11 @@ name: to-issues
 description: Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. Load at the riviera-sdlc Issue stage, whenever a use case or epic spec has to become GitHub issues.
 ---
 
+> **In riviera-sunbed-booking (localization):**
+> - **Tracker** = GitHub via the MCP tools (not `gh`) per `docs/agents/issue-tracker.md`;
+>   **labels** per `docs/agents/triage-labels.md`. The `/setup-matt-pocock-skills` line
+>   below is upstream boilerplate — this repo's substrate already provides both; ignore it.
+
 # To Issues
 
 Break a plan into independently-grabbable issues using vertical slices (tracer bullets).

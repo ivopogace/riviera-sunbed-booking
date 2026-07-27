@@ -2,9 +2,11 @@
 
 Events are how modules integrate on the write side and how would-be cycles are broken. The
 originating module announces a fact; it does not know or care who listens. In this project the spine
-is: **`BookingConfirmed`** → `availability` marks the set `BOOKED_ONLINE` *and* `payout` accrues a
-ledger entry; **`BookingCancelled`** → `availability` frees the set + `payment` refunds (invariant
-#9/#10). U3 uses a synchronous `api/` port for the claim. **U4** (#8) introduced the *first* event
+is: **`BookingConfirmed`** → `payout` accrues a ledger entry; **`BookingCancelled`** → `payout`
+reverses it, and `booking`'s **own** listener (`BookingRefundListener`) drives `payment`'s
+`RefundPort` (invariant #9/#10). `availability` has **no event listener**: the `(set, date)` row is
+claimed at reserve time and released on cancel synchronously through its `api/` port
+(`AvailabilityClaim.claim/release` — U3, invariant #2), so confirmation changes nothing in its table. **U4** (#8) introduced the *first* event
 seam — `payment` → `booking` (`PaymentConfirmed`/`PaymentCanceled`) — as a **synchronous,
 in-transaction** listener (no registry; see "Synchronous in-transaction events" below). The
 **asynchronous, registry-backed spine** (`@ApplicationModuleListener` + Event Publication Registry)
@@ -22,9 +24,14 @@ typed ids and value data only — never aggregate objects** (invariant #11):
 
 ```java
 // ai.riviera.platform.booking.events  (@NamedInterface("events"))
-public record BookingConfirmed(BookingId bookingId, SetId setId, VenueId venueId,
-                               LocalDate bookingDate) {}
+public record BookingConfirmed(BookingId bookingId, VenueId venueId, SetId setId,
+		LocalDate bookingDate, long amountMinor, String currency) {}
 ```
+
+Note what the real payload carries: typed ids plus the **immutable value facts** of the booking
+(gross amount, currency). What it deliberately does *not* carry is mutable configuration — the
+commission rate is re-read from `venue::api` by the listener, because the rate can change while the
+event sits in the registry.
 
 > **Moving/renaming a published event changes its persisted FQCN** in the Event Publication
 > Registry — BOTH `event_type` and the default `listener_id` (which embeds the parameter type)
@@ -46,7 +53,7 @@ using `ApplicationEventPublisher`, **after** the aggregate reaches its new state
 after the claim/persist succeed within the same transaction that the registry will tie delivery to).
 
 ```java
-publisher.publishEvent(new BookingConfirmed(bookingId, setId, venueId, bookingDate));
+publisher.publishEvent(new BookingConfirmed(bookingId, venueId, setId, bookingDate, amountMinor, currency));
 ```
 
 ## Listening
@@ -57,16 +64,17 @@ publisher commits, in its **own** transaction, asynchronously. A consumer failur
 the producer.
 
 ```java
-// ai.riviera.platform.availability.adapter.in
+// ai.riviera.platform.payout.adapter.in — the real spine listener (U5, #9)
 @Component
-class BookingConfirmedListener {
+class BookingConfirmedPayoutListener {
 
-    private final AvailabilityClaim availability;   // this module's own seam
+    private final PayoutLedger ledger;   // this module's own seam
+    private final VenueRates venues;     // venue::api — re-read mutable config, don't event it
 
     @ApplicationModuleListener
     void on(BookingConfirmed event) {
-        // act on ids only; re-load via a port if more is needed
-        availability.markBookedOnline(event.setId(), event.bookingDate());
+        int commissionBps = venues.commissionBps(event.venueId()).orElseThrow(...);
+        ledger.accrue(PayoutLedgerEntry.accrual(event, commissionBps));  // idempotent upsert
     }
 }
 ```
@@ -115,7 +123,7 @@ joined to the publisher's `@Transactional` unit. So:
 | Failure | rolls back the publisher | does **not** roll back the publisher |
 | Reliability | caller retries (here: Stripe re-delivers) | Event Publication Registry re-submits on restart |
 | Needs registry / Flyway table | no | yes |
-| Use when | the producer *should* fail if the consumer can't apply, and an external retry exists | fan-out that must not block/aborting the producer (payout accrual, availability re-mark) |
+| Use when | the producer *should* fail if the consumer can't apply, and an external retry exists | fan-out that must not block/abort the producer (payout accrual/reversal, the refund kick-off) |
 
 Default to **async `@ApplicationModuleListener`** for write-side fan-out (the spine). Reach for the
 **sync `@EventListener`** only to break a cycle where the producer and consumer genuinely belong in
@@ -129,9 +137,9 @@ restart — **at-least-once with only a database table, no Kafka**.
 
 - It contributes its own schema — Flyway-owned (`V8__event_publication_registry.sql`, invariant
   #12), never auto-DDL.
-- `spring.modulith.events.completion-mode`: `UPDATE` (default, rows kept + marked done), `DELETE`
-  (removed on completion), or `ARCHIVE`. Prefer `DELETE`/`ARCHIVE` to avoid unbounded growth unless
-  completed-event history is wanted.
+- `spring.modulith.events.completion-mode` is **decided: `archive`** (`application.properties`) —
+  completed publications move to `event_publication_archive`, keeping the live table small while
+  retaining the audit trail (which is why `V18` rewrites archive rows too on an event move).
 
 ## When NOT to use an event
 

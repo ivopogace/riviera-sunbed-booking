@@ -16,65 +16,37 @@ visual beach map, and pay in-app; the platform takes a commission per booking an
 pays venues out manually. Full design: `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`;
 visual design (Liquid Glass v3 tourist + v2 operator console): `docs/design/`.
 
-Current state: full stack built and deployed. Since #110 the frontend is served
-**same-origin by the backend** (Spring bundles the Angular SPA into its Docker image) at
-riviera-sunbed-booking.onrender.com; GitHub Pages is retired. The tourist Liquid Glass restyle
-(epic #133, T2–T8) is done; the operator console (epic #141) is **complete** —
-O1 shell + O2 stats strip + O3 layout editor + O4 pricing tab + O5 daily view + O6 requests tab
-(which retired the legacy StaffDaily page) + O7 payouts tab (ledger + statement + weather refund)
-+ O8 venue & commodities tab (details form + amenity chips; retired the legacy
-venue-editor page — now onboarding-only) all merged. Venue photos (#142) are real end-to-end:
-operator upload/replace/delete per slot in the O8 tab, tourists see the cover on the Discover
-card + beach-map banner (ADR-0008 `bytea`-behind-port storage, Flyway V24). Customer accounts
-(epic #108) are underway: S1 session foundation (#109) + S7 same-origin hosting (#110) + **S2
-register/sign-in (#111, Flyway V25)** + **S3 signed-in checkout linking + my-bookings (#114, Flyway
-V26)** + **S4 mocked Google/Apple SSO (#112, Flyway V27)** + **S8 email verification + password reset
-(#113, Flyway V28)** have landed — tourists register + sign in via
-server-side sessions, with a **separate account
-identity** (own `customer_account` table, no FK to the guest row, so registration never auto-claims a
-guest email's bookings — D-6); login machinery stays at the platform edge (RV-BE-11). Since S3, a
-booking made while signed in links to the customer's `CustomerAccountId` (nullable `booking.account_id`,
-no guest-row FK); `GET /api/me/bookings` lists the customer's own bookings (CUSTOMER-only,
-session-principal-scoped, BOLA-safe) via the new `customer::api` `CustomerAccountDirectory` id-resolver
-(resolved at the edge by `CurrentCustomer`, mirroring `CurrentOperator`); the My bookings screen merges
-the account list with this device's remembered codes, deduped. Guest checkout is byte-for-byte
-unchanged. Back-linking past guest bookings is a **permanent non-goal** (D-6, amended at S8 — 2026-07-17; cleanups #246).
-**S4 (#112)** added "Continue with Google/Apple" **against mocked IdPs** (OIDC Authorization Code + PKCE
-completed server-side — D-3): the `SsoGateway` port + mock/real adapters + the redirect/callback flow are
-platform-edge machinery (RV-BE-11); the real `Google`/`Apple` adapters throw `UnsupportedOperationException`
-until S5 (#116) and the mock is barred from prod by a `@Profile("prod & !sso")` startup guard. First SSO
-sign-in resolves-or-creates the account by verified email — **auto-linking** to an existing account when
-the email is taken (D-6) — via the new `customer::api` `SsoAccountProvisioning` port (V27
-`customer_sso_identity` link table; `customer_account.password_hash` relaxed nullable for SSO-only
-accounts). **S8 (#113, Flyway V28)** added email verification + self-service password reset behind a
-**mocked mailer** (`Mailer` port + `MockMailer` / throwing `SmtpMailer` + a `@Profile("prod & !mailer")`
-prod-guard, all at the edge; single-use SHA-256-hashed tokens in the new `customer_account_token` table)
-via the `customer::api` `CustomerAccountRecovery` port (issue/redeem verify+reset, set-password, verified
-read) — **closing the S4 F-1 gap** so an SSO-only account can now gain a password (authenticated
-set-password **or** the token-proven reset). Email verification is **soft/non-blocking** (register mails a
-link, visiting it sets `email_verified`, SSO counts as provider-verified); `/api/auth/me` + customer login
-now return `emailVerified`; the real `SmtpMailer` is deferred (→ #255). **S6 (#115, Flyway V29)** landed
-operator self-registration → admin approval → **creator-owns-on-create**, retiring the owns-all bootstrap
-operator: an operator self-registers (`POST /api/auth/operator/register`, own rate-limit bucket,
-non-enumerating + constant-time — D-8) into a **PENDING** account that cannot authenticate until a platform
-**admin** approves it (`/api/admin/operators`, role-gated to a new `ADMIN` authority, NOT venue-scoped —
-invariant #13's exemption) → ACTIVE; an ACTIVE operator that creates a venue (`POST /api/venues`) **owns it
-from creation** (ownership written in the venue application service, atomically with the insert). **No
-account owns all venues anymore** — V29 drops `owns_all_venues` after backfilling every previously-unowned
-venue (Miramar + anything pre-existing) to the **demoted bootstrap operator**, now the platform admin
-(`is_admin`) that `RIVIERA_OPERATOR_PASSWORD` unlocks (no new prod secret; a venue-scoped edit on a venue
-you don't own is now `403 NOT_VENUE_OWNER` before any existence check, uniformly). **S9 (#277, no migration)**
-unified the five scattered auth surfaces into **one audience-aware page** at `/account/sign-in`: the four
-flows (tourist/operator × sign-in/register) share one Liquid Glass card whose audience toggle picks the
-client *service* — D-2's backend separation is untouched, still two principal types and two login endpoints,
-login machinery at the edge (RV-BE-11). `auth/sign-in`, `auth/register` and `operator/operator-register` are
-deleted (their routes redirect for one release); the operator console's and venue editor's **inline sign-in
-cards are gone**, replaced by a restore-aware `operatorSessionGuard` on `/operator`, `/operator/:venueId`
-and `/venue-admin` that awaits `SessionAuth.whenReady()` before deciding. The one backend addition is
-`GET /api/venues/mine` in `venue/adapter/in` (`hasRole(OPERATOR)`, matcher **above** the public
-`GET /api/venues/**`), which drives the new post-sign-in landing: 0 owned venues → venue onboarding,
-1 → that console, 2+ → the new `/operator` picker; a `returnUrl` outranks all three. Remaining epic slice: S5
-(#116) swaps the mock for real Google/Apple adapters.
+Current state: full stack built and deployed, served **same-origin by the backend**
+(Spring bundles the Angular SPA into its Docker image) at
+riviera-sunbed-booking.onrender.com (#110; GitHub Pages retired). Shipped epics: the
+tourist Liquid Glass restyle (#133), the operator console (#141, O1–O8 tabs — the legacy
+StaffDaily and venue-editor pages are retired; venue-editor survives as onboarding only),
+and venue photos end-to-end (#142, ADR-0008). Customer accounts (epic #108) are all but
+done — S1–S4 and S6–S9 shipped (Flyway V25–V29); the one remaining slice is **S5 (#116)**:
+swap the mocked Google/Apple SSO adapters for real ones. The durable rules that epic
+established (per-slice history: the issues + `docs/plans/`):
+
+- **Separate account identity (D-6):** `customer_account` has no FK to the guest row;
+  registration never auto-claims a guest email's bookings, and back-linking past guest
+  bookings is a **permanent non-goal**. A signed-in booking links via nullable
+  `booking.account_id`; `GET /api/me/bookings` is session-principal-scoped (BOLA-safe).
+  Guest checkout is byte-for-byte unchanged. First SSO sign-in resolves-or-creates by
+  verified email, auto-linking when the email is taken.
+- **Login/session machinery lives at the platform edge**, never in modules (RV-BE-11) —
+  server-side sessions (Spring Session JDBC), **two principal types** with separate
+  authentication managers (D-2), one audience-aware sign-in page at `/account/sign-in`
+  (S9); post-sign-in landing is driven by `GET /api/venues/mine` (0 venues → onboarding,
+  1 → console, 2+ → picker; `returnUrl` outranks all).
+- **Mocked externals are prod-guarded:** the mock SSO IdPs (`@Profile("prod & !sso")`)
+  and mock mailer (`@Profile("prod & !mailer")`) cannot reach prod; real `SmtpMailer`
+  deferred to #255, real SSO adapters are S5.
+- **Auth endpoints are non-enumerating + constant-time on their own rate-limit buckets**
+  (D-8); email verification is **soft/non-blocking** (SSO counts as provider-verified).
+- **Operator lifecycle:** self-registration → admin approval (`PENDING`→`ACTIVE`,
+  role-gated `/api/admin/operators`) → **creator-owns-on-create**. No account owns all
+  venues (V29); the bootstrap `operator` is demoted to the platform admin (`is_admin`,
+  unlocked by `RIVIERA_OPERATOR_PASSWORD`); a venue-scoped edit on a venue you don't own
+  is `403 NOT_VENUE_OWNER` **before any existence check**.
 
 ## Tech stack (locked)
 
@@ -163,49 +135,43 @@ invariant #11.
 | `customer` | tourist identity: guest-checkout contact + the customer account (email + opaque credential hash) for register/sign-in (#111, thin→full) + SSO identity linkage (`(provider, subject)`→account resolve-or-create, #112) + email verification + password recovery/reset tokens + set-password (#113) + GDPR right-to-erasure scrub (#101 Slice 1, ADR-0010: pseudonymize-in-place, retaining the statutory-retention financial records) + the **retention policy** — configured window, expired-basis selection and the scheduled sweep that tombstones guest contacts with no live basis (#101 Slice 2, ships disabled); account identity is separate from the guest row, no FK (D-6, guest-booking back-linking a permanent non-goal) | `Customer`, `CustomerAccount` |
 | `operator` | operator accounts + the operator↔venue ownership mapping (per-venue authorization, invariant #13); the **admin-driven lifecycle state** — self-registration + approval (`PENDING`→`ACTIVE`/`REJECTED`, #115) and suspend/reinstate (`ACTIVE`⇄`SUSPENDED`, #128) — + the `is_admin` platform-admin flag | `Operator` |
 
-> **`operator` shipped** (#73 module + per-venue ownership, #74 per-operator DB-backed
-> credentials, **#115 self-registration → admin approval → creator-owns-on-create**): every
-> venue-scoped application service checks `assertOwns` → `403` (pinned by `CrossVenueDenialIT`),
-> and each operator authenticates with its own hashed credential; operator sessions are server-side
-> in Postgres (Spring Session JDBC, #109). Since #115 the **owns-all bootstrap operator is retired** —
-> ownership is strictly the explicit `operator_venue` mapping (creator-owns-on-create writes it on
-> `POST /api/venues`; a venue-scoped edit on a venue you don't own is `403 NOT_VENUE_OWNER` before any
-> existence check, even for a nonexistent one). The bootstrap `operator` is **demoted to the platform
-> admin** (`is_admin`, unlocked by `RIVIERA_OPERATOR_PASSWORD`, owns the V29-backfilled venues) that
-> approves self-registrations under the role-gated `/api/admin/operators`. **#128 added suspend/reinstate**
-> (`ACTIVE`⇄`SUSPENDED`) on the same ADMIN surface, plus the **session revocation** that makes it bite:
-> the module flips the status and returns the username, and the edge deletes that principal's
-> `SPRING_SESSION` rows (`PrincipalSessionRevoker`, generalized from the S8 customer-only revoker) —
-> synchronous and edge-orchestrated, deliberately not an event. The same revoker fires on a genuine
-> credential rotation and on a customer's own password change. An admin cannot suspend itself
-> (`409 CANNOT_SUSPEND_SELF`). **#357 made that revoke bracket the transition**: the edge now also
-> revokes *before* it, keyed by the new `OperatorLifecycle#activeUsername` pre-read, so a transient
-> revoke failure leaves the account ACTIVE (the retry then does both) instead of committing a
-> suspension whose sessions stay alive; the trailing revoke stays, closing the window in which the
-> account is still ACTIVE. The same bracket now wraps the customer password **reset** (via the
-> resolve-without-consume `CustomerAccountRecovery#emailForResetToken`) and self-service **erasure**. **#326 gave operators the customer-equivalent self-service**
-> (`POST /api/auth/operator/password`, own per-IP budget, page `/account/operator-password`): prove the
-> current password → every *other* session of that operator is revoked and the hash is replaced, the
-> calling one surviving. (#326 shipped the reverse order; the arrow above describes the post-#344 code.)
-> **#344 then fixed the ordering and the survivor**: the revoke runs **before** the write (the two belong to
-> different owners, so a `@Transactional` spanning them would look atomic without being atomic — ordering
-> makes a *revoke* failure one the caller's retry recovers from, though a failure after the write still
-> reports an error with the password already changed),
-> and the surviving session is **re-issued under a new id** (`SessionIdentity#rotate`), so
-> an exfiltrated cookie no longer outlives the change made to kill it. The same two apply to the customer
-> twin `POST /api/me/password`. **#359 made that rotation authoritative** — `changeSessionId()` kept the
-> `SPRING_SESSION` row and deferred the new id to the filter's post-request save, so a request overlapping
-> the rotation wrote the OLD id back (on the login path, where the same helper is the session-fixation
-> defence, that is a fixation bypass); `rotate` now carries the session's attributes over, invalidates the
-> old session — an immediate `DELETE` — and creates a fresh one, so the stale write has no row to target. **Edge-only — the `operator` module is unchanged** (`setPassword` simply gained a
-> second caller); the env-managed bootstrap admin is refused (`409 BOOTSTRAP_CREDENTIAL_MANAGED`) because
-> `OperatorCredentialInitializer` re-stamps it every boot. All login/approval/session machinery
-> stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
+> **`operator` shipped** (#73/#74/#109/#115/#128 + the #326–#359 session-security arc;
+> per-issue history lives in the issues and `docs/plans/`). Every venue-scoped application
+> service checks `assertOwns` → `403` (pinned by `CrossVenueDenialIT`); each operator has its
+> own hashed credential; sessions are server-side in Postgres. The settled rules:
+>
+> - **Session revocation is edge-orchestrated and synchronous — deliberately not an event.**
+>   The module flips state and returns the username; the edge (`PrincipalSessionRevoker`)
+>   deletes that principal's `SPRING_SESSION` rows. Fires on suspend/reinstate
+>   (`ACTIVE`⇄`SUSPENDED`; an admin cannot suspend itself — `409 CANNOT_SUSPEND_SELF`),
+>   genuine credential rotation, password change/reset, and erasure.
+> - **The revoke brackets the state change** (#357): revoke before *and* after, so a
+>   transient revoke failure leaves the account recoverable by retry instead of committing
+>   a transition whose sessions stay alive.
+> - **Self-service password change** (#326/#344: `POST /api/auth/operator/password` and the
+>   customer twin `POST /api/me/password`, each on its own budget): revoke runs **before**
+>   the hash write (two owners — a spanning `@Transactional` would only look atomic); every
+>   *other* session dies and the calling one is **re-issued under a new id** via
+>   `SessionIdentity#rotate`, which (post-#359) carries attributes over, hard-DELETEs the
+>   old row and creates a fresh one — authoritative against overlapping-request writes and
+>   exfiltrated cookies, and the same helper is the login fixation defence. The env-managed
+>   bootstrap admin refuses self-service (`409 BOOTSTRAP_CREDENTIAL_MANAGED` —
+>   `OperatorCredentialInitializer` re-stamps it every boot).
+> - **Rate-limit budgets guarding authenticated work refund on a `401`/`403` denied before
+>   reaching that work** (#343 — `RateLimitFilter` sits ahead of CSRF/authorization, so
+>   anonymous garbage must not drain an operator's budget); the policy is per-budget: a
+>   login's `401` is the controller's answer and is still charged.
+>
+> All login/approval/session machinery stays at the edge (RV-BE-11,
+> `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
-queries** (invariant #11). The spine flow: `BookingConfirmed` → `availability`
-marks the set taken + `payout` accrues a ledger entry; `BookingCancelled` →
-`availability` frees the set + `payment` refunds per policy.
+queries** (invariant #11). The spine flow as built: the availability write happens
+at **claim time** — `booking` claims/releases the `(set, date)` row synchronously via
+`availability`'s `api/` port (`AvailabilityClaim`), so `availability` has **no event
+listener**. `BookingConfirmed` and `BookingCancelled` fan out to **`payout`** (accrue /
+reverse a ledger entry, idempotently); the refund on cancel is driven by `booking`'s
+own `BookingCancelled` listener calling `payment`'s `RefundPort`.
 
 ## Cross-cutting invariants
 
@@ -309,8 +275,9 @@ Flyway over Liquibase (shipped — the plain-SQL migrations under `db/migration`
 
 ## Project skills (`.claude/skills/`)
 
-Repo-scoped — they load when working in this repository (tracked in
-`skills-lock.json`). Each skill's frontmatter description is the authoritative
+Repo-scoped — they load when working in this repository (the vendored/external
+ones are tracked in `skills-lock.json`; the first-party `riviera-*` skills have no
+upstream). Each skill's frontmatter description is the authoritative
 "when to load"; this list is the map, not a paraphrase:
 
 - **`riviera-sdlc`** — the SDLC orchestrator; load at the start of any feature work.
@@ -356,31 +323,22 @@ Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- Keeping the graph current: **code changes rebuild automatically** — the installed post-commit hook re-runs AST extraction on changed code after every commit (no LLM, no API cost). **Doc/ADR/plan changes are NOT covered by the hook** (it's code-only); after editing docs run `graphify update .` to fold them back in (re-extracts only changed docs, small token cost). This graph is doc-heavy, so refresh after doc-touching slices — see the riviera-sdlc merge close-out.
+- Keeping the graph current: **code changes rebuild automatically** — the installed post-commit hook re-runs AST extraction on changed code after every commit (no LLM, no API cost). Doc/ADR/plan changes are **not** covered by the hook; refresh them via the graphify skill's update flow after doc-touching slices, and **verify the changed doc actually landed** (grep its name in `graphify-out/graph.json`) — the bare `graphify update .` CLI has been observed to re-extract code only.
 
 ### The `adapter/out` blind spot (#321) — verify after every graphify upgrade
 
-graphify hard-codes `out` as a build-output directory name (`detect.py` `_SKIP_DIRS`) and prunes
-it from the directory walk **before any `.gitignore` rule is consulted**. In a hexagonal layout
-that silently swallowed **every `adapter/out` package** — all 33 JDBC adapters, i.e. the entire
-persistence layer and every `spi`-port implementor. `graphify path "GuestBookingHistory"
-"JdbcGuestBookingHistory"` answered *"No node matching…"*, which reads as "no such relationship"
-rather than "that layer isn't indexed". The stock Gradle `.gitignore` already spells out the
-exception (`out/` + `!**/src/main/**/out/`), but the skip runs ahead of the ignore machinery, so
-the negation never applied.
-
-**Fixed by a local patch to `_is_noise_dir`** that exempts `out`/`build`/`target`/`dist` when they
-sit under `src/main/` or `src/test/`. **That patch lives in `site-packages`, not in this repo, so
-`pip install -U graphifyy` silently reverts it** — reintroducing the blind spot in exactly the
-silent way that made it expensive the first time. After any graphify upgrade (or on a new machine),
-re-verify:
+Stock graphify prunes `out/` directories before consulting `.gitignore`, silently dropping
+every `adapter/out` package — the whole persistence layer. A local `site-packages` patch
+(`_is_noise_dir` exempts `out`/`build`/`target`/`dist` under `src/main|test/`) fixes it, and
+**any `pip install -U graphifyy` silently reverts the patch**. After every graphify upgrade
+(or on a new machine), re-verify:
 
 ```bash
 git ls-files '*/adapter/out/*.java' | wc -l                   # 33 — what should be indexed
 grep -c '"JdbcGuestBookingHistory"' graphify-out/graph.json   # >0 — what actually is
 ```
 
-If the second returns `0` the patch is gone: reapply it (the diff is on #321) and re-run
-`graphify update .` before trusting any `query`/`path`/`affected` result that touches persistence
-or a port implementation. **General rule this cost us:** an empty graph result is not evidence of
-absence — confirm with `git ls-files`/grep before concluding a thing doesn't exist.
+If the second returns `0`, reapply the patch (diff on #321) and re-run the update before
+trusting any graph result that touches persistence or a port implementation. **General rule
+this cost us: an empty graph result is not evidence of absence** — confirm with
+`git ls-files`/grep before concluding a thing doesn't exist. (Full story: #321.)

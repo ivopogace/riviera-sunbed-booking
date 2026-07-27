@@ -52,7 +52,7 @@ at Implement", it means this paragraph.
 | **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) with `graphify query`/`path` — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. Re-run the Skill-routing gate for each area you touch. | `implement` + `tdd` + the Skill-routing gate (below) |
 | **CI gate** | Every push/PR builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's CI run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
-| **PR** | Merge the latest `origin/main` into the branch first — integrate anything that landed since the cut with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit) — then open the PR into `main`. Opening the PR does not complete the next stage. | `triage` (issue/PR lifecycle) |
+| **PR** | Merge the latest `origin/main` into the branch first — integrate anything that landed since the cut with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit) — then open the PR into `main`. Opening the PR does not complete the next stage. | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
 | **Review** | **Mandatory gate.** **Always start `/code-review` (a subagent fan-out; `/review <PR>` only as a degraded fallback) — the overlay alone is NOT the review** and leaves the generic banks unrun; if tooling blocks it, say so in the PR and leave the box unticked rather than substituting silently. Review the PR diff against the invariants; record findings; each fix re-enters at Implement (re-entry rule). Green CI is not a substitute — procedure: `references/pr-gates.md` §1. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | **Mandatory gate (PR-time; Sonar analyzes PRs + `main` only).** A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge; logic-changing findings re-enter at Implement (re-entry rule) — procedure: `references/pr-gates.md` §2. | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green **and** its issue list cleared + findings resolved through the loop → merge, then run the close-out checklist — procedure: `references/pr-gates.md` §3. | the Merge close-out (`references/pr-gates.md`) |
@@ -72,7 +72,8 @@ sessions (epic map)      seams + out-of-scope      issues (ready-for-agent)
 ```
 
 - **`wayfinder` — foggy epics only.** Use it *only* when the destination is clear but
-  the route is fog and the decisions won't fit one session (candidate: SSO / #112). When
+  the route is fog and the decisions won't fit one session (SSO / #112 had that shape
+  before it shipped). When
   `to-issues` can already cut clean slices — the common case, since the product design spec
   + domain model are captured up front — **skip it**. It charts a `wayfinder:map` issue of
   **decision** tickets (not build slices), resolved one per session until the way is clear.
@@ -112,7 +113,7 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
 | **A Postgres table / Flyway migration / index / SQL query** | **`postgres`** | PK/type/index/constraint design, not first-principles DDL |
 | **Any backend module / structure** (Spring Modulith: new module, `api/` **or `spi/`** port, application service, domain event, JDBC adapter, controller, or moving a class between packages) | **`riviera-modulith`** (module layout, `api/`-vs-`spi/` named-interface boundaries, port-vs-event, `verify()` contract) + **`codebase-design`** (interfaces/seams) + **`domain-modeling`** (glossary/ADRs) | hexagonal package shape + invariant #11 boundaries (incl. the api-vs-spi choice for a cross-module *driven* port) enforced by `ModularityTests` + review (RV-BE-3b), not first-principles structure |
 | **Writing/refactoring any backend Java** (class, record, port, JDBC adapter, event, controller, test) | **`riviera-java-conventions`** (Java idioms) + **`riviera-modulith`** (which package it belongs in) | Java 25 idioms: records, JDBC-only (no JPA/Lombok), constructor injection, package-private adapters, typed outcomes — **and** the right module/package per the hexagon. Both fire on any backend Java create/modify. **Also covers the validation/error contract (§6b).** |
-| **A venue-scoped endpoint/service or operator identity** (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map edit, staff availability, weather refund; the `operator` module; per-venue ownership) | **`riviera-modulith`** (the `operator` module placement + the ownership-check seam) + **`riviera-java-conventions`** | Per-venue authorization is the multi-operator launch blocker (BOLA, OWASP #1) — the actor-owns-venue check must sit in the application service, not the controller. Reviewed by RV-BE-9 (Blocker). |
+| **A venue-scoped endpoint/service or operator identity** (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map edit, staff availability, weather refund; the `operator` module; per-venue ownership) | **`riviera-modulith`** (the `operator` module placement + the ownership-check seam) + **`riviera-java-conventions`** | invariant #13 (application-service check; RV-BE-9 Blocker) |
 | **`payment` / `payout`, Stripe, charge / refund / commission / payout** | **`riviera-stripe-payments`** (+ `postgres` if a ledger table changes) | locks the collect-only / no-Connect model |
 | **The Angular frontend** (component, service, route, styling, forms) | **`riviera-frontend`** (STRUCTURE: which folder — core/feature/shared taxonomy, import direction, routing/interceptor/guard placement) + **`angular-developer`** + the **angular-cli MCP** (`get_best_practices`, `search_documentation`) | placement per the FE structure authority (the `riviera-modulith` mirror); version-correct v22 APIs + a11y, not stale tutorials |
 | **A user-facing frontend flow / behaviour** (any component / route / form / service change a user can observe, or anything under `frontend/e2e/`) | **`playwright-cli`** (official `@playwright/cli` skill — drive the flow, scaffold a best-practice spec, mock requests, generate from actions) | every frontend slice ships e2e coverage authored to Playwright best practice — not an afterthought; checked by RV-FE-E2E. **Project facts the generic skill can't know** — the two-suite split (CI-safe mocked-a11y `frontend/e2e/` vs local-only real-backend `frontend/e2e/real-backend/`) and which suite a spec belongs in — live in the review overlay's RV-FE-E2E item; consult it when placing the spec |
@@ -129,17 +130,9 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
    grep there.) An `area:fullstack` issue almost always trips DB **and** BE **and** FE —
    load all of them; don't stop at the label.
 
-   > **An empty graph result is not evidence of absence.** The graph has a third state
-   > besides present-and-absent: **present but silently incomplete**. A query that returns
-   > nothing reads exactly like "there is nothing there," so confirm a negative with grep
-   > before concluding it. The precedent: **the entire `adapter/out` layer was unindexed**
-   > (issue #321 — 0 of 33 files), so every JDBC adapter and all its SQL was invisible and
-   > `graphify path "<SpiPort>" "<JdbcImpl>"` never resolved a driven port's implementor.
-   > **Root-caused and fixed**, but by a patch in `site-packages` that a `pip install -U
-   > graphifyy` silently reverts — so it is one upgrade away from returning. If a
-   > persistence-touching query comes back thin, run the two-line check in `CLAUDE.md`'s
-   > graphify section before believing it. Treat graphify as a fast way to find things,
-   > never as proof that something is missing.
+   > **An empty graph result is not evidence of absence** — confirm any negative with
+   > `git ls-files`/grep before concluding a thing doesn't exist; the #321 blind-spot
+   > check lives in `CLAUDE.md`'s graphify section.
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
    so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
    `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
@@ -161,15 +154,8 @@ sentence (re-load it; see Context hygiene) — and re-loading is cheap: when in 
 
 1. **One vertical slice per issue/PR.** A slice cuts through every layer (DB → API → UI → tests) and is demoable on its own — never a horizontal layer.
 2. **Branch per issue:** `feature/<slug>` or `bugfix/<slug>` off `main`; reference `#NN` in commits.
-3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Don't merge red; after each
-   push that claims green, confirm its CI run before the next phase (red-TDD / labeled-partial exempt); red → `diagnosing-bugs`.
-4. **The review gate is non-negotiable too — and "ran" means `/code-review` actually ran.**
-   Green CI is not a review, and neither is walking `riviera-review-overlay`'s bank by hand:
-   the overlay layers onto an active review, so on its own it leaves the generic FE/BE/contract
-   banks unrun. Don't merge, or call a slice done, until the Review gate has run **in full** and
-   its findings are resolved or deferred. A session that *cannot* start the review (no Agent
-   tool, restricted toolset) reports that in the PR and leaves the checkbox unticked — it never
-   ticks a box for a command it didn't run (`references/pr-gates.md` §1).
+3. **The CI gate is non-negotiable — and it runs per push, not per PR** — the CI-gate row (The loop); red → `diagnosing-bugs`.
+4. **The review gate is non-negotiable too — and "ran" means `/code-review` actually ran** — the Review row (The loop) plus the procedure (`references/pr-gates.md` §1).
 5. **The plan owns the invariants.** If the slice touches booking, availability, or money, the plan doc states how the invariant holds, and review checks it.
 6. **Right-size it.** A one-line/copy fix skips the plan doc; a spine-touching feature does not. (A code change still gets the review gate — proportional to size.)
 7. **An existing issue gets grilled before it gets planned** — entering at a written ticket skips
@@ -229,10 +215,7 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
   Don't create the literal `feature/<slug>` branch. If the designated branch's PR already
   merged, restart the branch from latest `main` (same name) before new work.
 - **Local builds & tests:** load **`riviera-local-debug`** before the session's first
-  `./gradlew` or `npm` invocation. It owns the cloud specifics: the proxy blocks the
-  Gradle-wrapper download (use system Gradle per `docs/agents/gradle-proxy-trust.md`),
-  the full backend `test` task can OOM-kill the container (run scoped test classes; CI
-  owns the full suite), and Docker-gated Testcontainers ITs skip locally by design.
+  `./gradlew` or `npm` invocation — it owns the cloud specifics.
 - **Toolset drift:** verify a tool can actually do what a skill assumes before promising
   it (recurring: Gmail is draft-only → push is the only notification channel; GitHub is
   via the MCP tools, not `gh`). When an instruction is impossible in the current toolset,
@@ -304,4 +287,5 @@ developer machine's.
 - `references/pr-gates.md` — read the moment a PR exists: the Review gate, the
   SonarCloud gate (API URLs, triage rules), and the Merge close-out checklist.
 - `references/case-history.md` — the incidents behind the rules (#122/#127, #158, #72,
-  #93); read when you want the why.
+  #93, epic #141's un-ticked checklist, O6/PR #219, PR #318, the three docs-only
+  close-out PRs, #351, PR #353/#355); read when you want the why.

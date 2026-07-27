@@ -1,7 +1,8 @@
 # Riviera frontend overlay items
 
-Repo-specific frontend bank items. Loaded by `riviera-review-overlay` and walked
-**after** the generic frontend bank in `~/.claude/skills/review-question-banks/frontend.md`.
+Repo-specific frontend bank items. Loaded by `riviera-review-overlay` and layered
+onto whatever generic frontend bank the active review engine runs (today: the
+`code-review` plugin) — walked after it.
 
 Item format: gate → follow-up → default severity → skill framing. Invariant numbers
 reference `CLAUDE.md`.
@@ -158,8 +159,10 @@ in the **suite that will actually run it**?
 > real-backend suite (`frontend/e2e/real-backend/`, boots Spring Boot + Flyway Postgres,
 > `playwright.config.ts`). Render/a11y/interaction → mocked suite (so CI covers it);
 > wiring / real HTTP status / DB UNIQUE constraint / cross-feature round-trip → real-backend
-> suite. A spec must live in exactly one tree. Browser is pinned at `/opt/pw-browsers/chromium`
-> (`--no-sandbox`); don't `playwright install`.
+> suite. A spec must live in exactly one tree. **In cloud sessions** the browser is
+> pre-installed at `/opt/pw-browsers/chromium` (`--no-sandbox`) — don't `playwright install`
+> there; on local machines the config falls back to Playwright's own browser resolution
+> (`frontend/playwright.config.ts` is conditional; `PW_CHROMIUM_EXECUTABLE` overrides).
 
 **Follow-up:**
 - A frontend flow change with **no** e2e consideration, or a backend-only spec dropped into
