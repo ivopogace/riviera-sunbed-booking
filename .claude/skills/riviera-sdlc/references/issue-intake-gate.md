@@ -54,6 +54,19 @@ Read this at plan entry, whenever work starts from an already-written GitHub iss
    A surprise caught at this gate is far cheaper than one caught at the review gate or in
    production.
 
+## Escalation — drift vs. fog
+
+Most of what the grill surfaces is **drift** — the code moved, an AC went stale — and step 3
+handles it: reconcile and plan. But if the grill surfaces **fog** — a genuinely unresolved
+decision the slice depends on, one that can't be settled within this slice's own session(s) —
+do **not** plan against it and do not park it as a plan-doc open question: that section is for
+questions the slice itself will answer. Escalate it to `wayfinder` instead — a decision ticket
+on the epic's existing map, or a freshly charted map if none exists — and hold the slice until
+the decision closes. The test is wayfinder's own: can you state the question sharply *and*
+resolve it inside this slice? Drift reconciles here; fog gets a ticket. (Wayfinder's ticket
+taxonomy — research / grilling / prototype / task, AFK vs. HITL — is useful vocabulary for
+classifying what the grill turned up, even when nothing escalates.)
+
 ## Proportional, never skipped
 
 A one-line/copy fix needs only a quick sanity read, not a full interview; a spine-touching
