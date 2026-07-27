@@ -62,41 +62,65 @@ statements do not survive contact with today's code.
    legitimate `forgot-password` for everyone on that address — the identical defect class, one map
    over. Verified safe to include: `AccountRecoveryController` returns only `204`/`400`, never
    `401`/`403`, so the refund rule cannot misfire on the public members of that budget.
-4. **Verified, not assumed:** neither password controller can produce `401` or `403`.
-   `OperatorAccountController#changePassword` returns `400` / `409` / `204`;
-   `MyAccountController#setPassword` returns `400` / `204`. On those paths `401`/`403` is therefore
-   an unambiguous signal that the request never reached the credential check.
+4. **Verified, not assumed — and the first reading was wrong.** `OperatorAccountController#changePassword`
+   returns `400` / `409` / `204` and can never produce `401`/`403`. But `MyAccountController#setPassword`
+   opens with `CurrentCustomer#require`, which throws `AccessDeniedException` → **`403 ACCESS_DENIED`
+   from the controller** when the session principal resolves to no account. So "only the chain can emit
+   `401`/`403`" is false, and the rule had to be restated one level deeper: **the refund fires when the
+   request was denied before reaching the work the budget guards** — which a `403` from `require` also
+   is, since it precedes every credential read. The implementation is unchanged by this; the *reason*
+   is, and so is the helper's name (`accessWasDenied`, not `chainRejectedBeforeController`).
 
 **Not stale:** the issue's core claim, its cited filter placement, and its cited test
 (`RateLimitFilterTest.credentialChangeFloodDoesNotStarveOperatorLogin`) are all accurate today.
+
+### Drift vs. fog (issue-intake gate, `d059aca`)
+
+Applying the gate's escalation test — *can the question be stated sharply **and** resolved inside this
+slice?* — to what the grill turned up:
+
+| Grill finding | Verdict | Handling |
+|---|---|---|
+| Amendments 1–2 (the issue's suggested fix is unimplementable / its status wording inverts) | **drift** | Reconciled here; the plan builds on sketch 2 |
+| Amendment 3 (a third path shares the defect) | **drift** (scope) | One boolean + one test, verified safe → Phase 2 of this slice |
+| Amendment 4 (a controller-emitted `403` exists) | **drift** | Rule restated, code unaffected |
+| R-4: should authenticated credential endpoints carry a **per-principal** budget, given the filter sits ahead of `AuthorizationFilter`? | **fog** — but the slice does **not** depend on it | Not escalated to `wayfinder`: #343 has no epic/map, and the DoS is fully closed without it. Recorded as a Non-goal and filed as a follow-up issue at close-out |
+
+R-4 is the only item that fails the "resolve it inside this slice" half — settling it means choosing
+between moving the filter, adding a second filter after `AuthorizationFilter`, or duplicating session
+resolution, which is a decision about the edge's filter topology affecting all eight budgets. It is
+deliberately **not** held as a plan-doc open question (that section is for questions this slice answers).
 
 ---
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the operator password-change budget, when more than `capacity`
+- [x] **AC-1:** Given the operator password-change budget, when more than `capacity`
       **unauthenticated** `POST /api/auth/operator/password` requests arrive from one IP, then none
       is rate-limited and the budget is not drained — a subsequent authenticated change from the
       same IP is still served. *Pinned by:* `RateLimitFilterTest.anUnauthenticatedFloodDoesNotDrainTheOperatorPasswordBudget`
-- [ ] **AC-2:** Given the customer password budget, when more than `capacity` **unauthenticated**
+- [x] **AC-2:** Given the customer password budget, when more than `capacity` **unauthenticated**
       `POST /api/me/password` requests arrive from one IP, then the budget is not drained.
       *Pinned by:* `RateLimitFilterTest.anUnauthenticatedFloodDoesNotDrainTheCustomerPasswordBudget`
-- [ ] **AC-3:** Given the operator password budget at capacity 2, when three **authenticated**
+- [x] **AC-3:** Given the operator password budget at capacity 2, when three **authenticated**
       password changes arrive from one IP, then the third is `429` with `Retry-After` and
       `code: RATE_LIMITED` — the credential oracle stays throttled, which is what the budget is for.
       *Pinned by:* `RateLimitFilterTest.authenticatedOperatorPasswordChangesAreStillThrottled`
-- [ ] **AC-4:** Given the customer password budget at capacity 2, when three **authenticated**
+- [x] **AC-4:** Given the customer password budget at capacity 2, when three **authenticated**
       set-password requests arrive from one IP, then the third is `429`.
       *Pinned by:* `RateLimitFilterTest.authenticatedCustomerPasswordChangesAreStillThrottled`
-- [ ] **AC-5:** Given the operator login budget at capacity 2, when three unauthenticated logins
+- [x] **AC-5:** Given the operator login budget at capacity 2, when three unauthenticated logins
       with bad credentials arrive from one IP, then the third is still `429` — the refund is scoped
       to the authenticated budgets and does **not** weaken login throttling (the R-1 regression).
-      *Pinned by:* `RateLimitFilterTest.aFailedLoginStillSpendsItsBudget`
+      *Pinned by:* `RateLimitFilterTest.loginIsPerIpLimited` — the **pre-existing** test, which
+      asserts exactly this and now doubles as the R-1 tripwire. No new test was written: a
+      filter-wide refund would turn its third request from `429` into `401`, so it already fails
+      on the mistake R-1 describes, and a duplicate would be coverage theatre.
 - [ ] **AC-6:** Given the shared recovery budget, when more than `capacity` **unauthenticated**
       `POST /api/me/verify-email/request` requests arrive from one IP, then a legitimate
       `POST /api/auth/customer/forgot-password` from that IP is still served.
       *Pinned by:* `RateLimitFilterTest.anUnauthenticatedFloodOnTheVerificationResendDoesNotStarveRecovery`
-- [ ] **AC-7:** Given an authenticated operator, when a password change is rejected for a missing
+- [x] **AC-7:** Given an authenticated operator, when a password change is rejected for a missing
       CSRF token (`403`), then no token is net-consumed — a rejection before the controller costs
       the caller's own IP nothing. *Pinned by:* `RateLimitFilterTest.aCsrfRejectedPasswordChangeDoesNotSpendTheBudget`
 
@@ -140,7 +164,7 @@ statements do not survive contact with today's code.
 | R-2 | Refund-on-`403` makes a CSRF-less flood free, removing volume control from the authenticated budgets | high | low | Accepted + documented: a CSRF rejection happens at `CsrfFilter` with no DB, no bcrypt and no mail — the oracle is never reached. The same is true of every non-throttled endpoint in the app | Claude | open |
 | R-3 | Transient false `429`: spend-then-refund means a burst of `capacity` anonymous requests can leave the bucket momentarily empty for a concurrent legitimate caller | med | low | Accepted, and deliberately chosen over peek-then-spend, which would make the cap inexact under concurrency — the same trade `throttlePerIdentity` already made. Self-heals within one request | Claude | open |
 | R-4 | Per-IP remains the only dimension on an authenticated endpoint, so a stolen-session attacker on a rotating-IP botnet is still under-throttled | low | med | Out of scope by design (Non-goals); the pre-existing posture is not worsened. Note in the plan close-out whether it deserves an issue | Claude | open |
-| R-5 | Four shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names all four up front; Phase 1 rewrites them to drive the throttle **authenticated**, which is a strictly better test of the same intent | Claude | open |
+| R-5 | Shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names them up front; Phase 1 rewrites them to drive the throttle **authenticated**, a strictly better test of the same intent | Claude | **closed** — it was **five**, not the four predicted (`credentialChangeBudgetIsKeyedByClientIp` was missed at plan time). All five reworked, none weakened; `862d32f`..`df4de6c` |
 | R-6 | An exception propagating out of `chain.doFilter` skips the refund (no `finally`) | low | low | Deliberate and consistent with `throttlePerIdentity`: a `500` is not a chain rejection and should not be refunded. Documented in the Javadoc | Claude | open |
 | R-7 | Error-contract drift: none of the `401`/`403`/`429` bodies change | low | low | No DTO, no status, no `code` is added or altered (§6b); the `429` body constant is untouched | Claude | open |
 
@@ -150,9 +174,16 @@ statements do not survive contact with today's code.
   slice rather than a follow-up issue — it is the same defect class, one boolean, and the repo's
   generalization-audit norm (#326 found the customer twin exactly this way). — *Owner:* Claude ·
   *Resolves by:* Phase 2
-- **Assumption:** `RateLimitFilterTest`'s `@WebMvcTest` slice can serve an authenticated request via
-  `SecurityMockMvcRequestPostProcessors.user(…)` with the stubs `WebSliceStubs` already provides
-  (both password controllers are loaded by the slice today). — *Owner:* Claude · *Resolves by:* Phase 0
+### Resolved
+
+- **Assumption (resolved, Phase 0):** `RateLimitFilterTest`'s `@WebMvcTest` slice can serve an
+  authenticated request via `SecurityMockMvcRequestPostProcessors.user(…)` with the stubs
+  `WebSliceStubs` already provides. **Half true.** The operator side works as-is (the stub
+  `OperatorAccounts` returns empty → `400 INVALID_CURRENT_PASSWORD`). The customer side does not:
+  `WebSliceStubs`' `CustomerAccountDirectory` resolves every principal to empty, so
+  `CurrentCustomer#require` throws and the endpoint answers `403` — which the new refund treats as
+  "never reached the credential check", making the customer budget impossible to exercise
+  authenticated. Resolved by overriding that one bean with a `@MockitoBean` in the test.
 
 ## Availability & concurrency (invariant #2)
 
@@ -199,16 +230,16 @@ were never authenticated.
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — authored, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 2 (generalization audit)`
 
-**Next action:** Load `riviera-local-debug`, then write the Phase 0 red tests (AC-1, AC-2) and prove
-they fail against the unmodified filter.
+**Next action:** Run the generalization audit over every budget in `authPostBudgetFor`, flip
+`recoveryBuckets` to `guardsAuthenticatedWork` for `/api/me/verify-email/request`, and pin AC-6.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Red: the anonymous flood drains an authenticated budget | | |
-| 1 — Fix: per-budget refund on chain rejection + rework the 4 tests that encoded the defect | | |
-| 2 — Generalization audit: the shared recovery budget | | |
+| 0 — Red: the anonymous flood drains an authenticated budget | ✅ | `862d32f` |
+| 1 — Fix: per-budget refund when access is denied + rework the 5 tests that encoded the defect | ✅ | `df4de6c` |
+| 2 — Generalization audit: the shared recovery budget | ⏳ | |
 | 3 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

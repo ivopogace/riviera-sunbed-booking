@@ -263,9 +263,11 @@ class RateLimitFilterTest {
 	// ---- Operator self-service password change rides its OWN per-IP budget (#326, D-8) ----
 
 	/**
-	 * An anonymous attempt is enough to exercise the budget: {@code RateLimitFilter} runs <em>ahead of</em>
-	 * authorization, so the request spends a token and then lands as the endpoint's {@code 401} — which
-	 * makes a {@code 429} unambiguously the limiter, the same oracle every other test here uses.
+	 * An <strong>anonymous</strong> attempt at the operator change endpoint. Until #343 this was enough to
+	 * exercise the budget — the filter runs ahead of authorization, so the request spent a token and then
+	 * landed as the endpoint's {@code 401}. That is exactly the defect: the token is now refunded, so this
+	 * helper drives the "must not drain" cases and {@link #authenticatedChangePasswordFromIp} drives the
+	 * budget itself.
 	 */
 	private ResultActions changePasswordFromIp(String ip) throws Exception {
 		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
@@ -275,16 +277,18 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * AC-8 / R-5. The #111 review found a real operator lockout caused by a shared bucket, so both halves
-	 * are asserted: the change endpoint <em>does</em> throttle, and operator login from the SAME IP still
-	 * works afterwards. A change flood must never cost an operator the ability to sign in.
+	 * AC-3 (#326's AC-8 / R-5, redriven authenticated for #343). The #111 review found a real operator
+	 * lockout caused by a shared bucket, so both halves are still asserted: the change endpoint <em>does</em>
+	 * throttle, and operator login from the SAME IP still works afterwards. Since #343 only a signed-in
+	 * caller net-spends the budget — which is the stronger test, because it is the signed-in caller that
+	 * reaches the credential oracle the budget exists to throttle.
 	 */
 	@Test
-	void credentialChangeFloodDoesNotStarveOperatorLogin() throws Exception {
+	void authenticatedOperatorPasswordChangesAreStillThrottled() throws Exception {
 		String ip = "10.30.0.1";
-		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
-		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
-		changePasswordFromIp(ip)
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
+		authenticatedChangePasswordFromIp(ip)
 				.andExpect(status().isTooManyRequests())
 				.andExpect(header().exists("Retry-After"))
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -292,6 +296,27 @@ class RateLimitFilterTest {
 
 		// The whole point of a separate map: the same IP's operator-login budget is untouched.
 		loginFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	/**
+	 * AC-7. A CSRF-less change is rejected by {@code CsrfFilter} with a {@code 403}, before the controller
+	 * and therefore before the credential check — so it must cost nothing. This is the deliberate
+	 * give-up documented on {@code AuthBudget}: a token-less flood is free, because the chain throws it
+	 * away without a database read, a bcrypt or a mail send.
+	 */
+	@Test
+	void aCsrfRejectedPasswordChangeDoesNotSpendTheBudget() throws Exception {
+		String ip = "10.30.0.4";
+		for (int i = 0; i < 10; i++) {
+			mvc.perform(post("/api/auth/operator/password").with(fromIp(ip))
+							.with(user(TEST_OPERATOR).roles("OPERATOR"))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("""
+									{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
+					.andExpect(status().isForbidden());
+		}
+
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
 	}
 
 	/**
@@ -305,12 +330,14 @@ class RateLimitFilterTest {
 	@Test
 	void aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget() throws Exception {
 		String ip = "10.30.0.9";
-		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
-		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		// Authenticated (#343): an anonymous drain is refunded, so it could no longer set up this probe.
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
 
 		// URI.create, NOT post(String): the string overload re-encodes, turning %64 into %2564 — which the
 		// firewall then rejects as an encoded percent, so the test would pass on the wrong mechanism.
 		mvc.perform(post(URI.create("/api/auth/operator/passwor%64")).with(fromIp(ip)).with(csrf())
+				.with(user(TEST_OPERATOR).roles("OPERATOR"))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
@@ -359,15 +386,15 @@ class RateLimitFilterTest {
 
 	@Test
 	void credentialChangeBudgetIsKeyedByClientIp() throws Exception {
-		changePasswordFromIp("10.30.0.2").andExpect(status().isUnauthorized());
-		changePasswordFromIp("10.30.0.2").andExpect(status().isUnauthorized());
-		changePasswordFromIp("10.30.0.2").andExpect(status().isTooManyRequests());
+		authenticatedChangePasswordFromIp("10.30.0.2").andExpect(status().isBadRequest());
+		authenticatedChangePasswordFromIp("10.30.0.2").andExpect(status().isBadRequest());
+		authenticatedChangePasswordFromIp("10.30.0.2").andExpect(status().isTooManyRequests());
 
 		// A different IP keeps its own budget.
-		changePasswordFromIp("10.30.0.3").andExpect(status().isUnauthorized());
+		authenticatedChangePasswordFromIp("10.30.0.3").andExpect(status().isBadRequest());
 	}
 
-	/** The customer's authenticated set/change-password endpoint — the same oracle, throttled the same way. */
+	/** An <strong>anonymous</strong> attempt at the customer endpoint — refunded since #343, like its twin. */
 	private ResultActions customerPasswordChangeFromIp(String ip) throws Exception {
 		return mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
@@ -381,11 +408,11 @@ class RateLimitFilterTest {
 	 * owner out. Same oracle as the operator endpoint, so it gets the same treatment.
 	 */
 	@Test
-	void customerPasswordChangeIsThrottled() throws Exception {
+	void authenticatedCustomerPasswordChangesAreStillThrottled() throws Exception {
 		String ip = "10.31.0.1";
-		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
-		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
-		customerPasswordChangeFromIp(ip)
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip)
 				.andExpect(status().isTooManyRequests())
 				.andExpect(header().exists("Retry-After"))
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
@@ -402,11 +429,11 @@ class RateLimitFilterTest {
 	@Test
 	void customerPasswordChangeDoesNotStarveTheOperatorOne() throws Exception {
 		String ip = "10.31.0.2";
-		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
-		customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
-		customerPasswordChangeFromIp(ip).andExpect(status().isTooManyRequests());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isTooManyRequests());
 
-		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
 	}
 
 	// ---- An anonymous flood must not drain an AUTHENTICATED endpoint's budget (issue #343) ----
