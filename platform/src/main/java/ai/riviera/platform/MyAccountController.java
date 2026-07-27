@@ -65,8 +65,10 @@ class MyAccountController {
 	/**
 	 * Set or change the signed-in customer's password. SSO-only accounts (no stored credential) set their
 	 * first password with no current-password check (F-1); accounts that already have one must supply the
-	 * matching current password (else {@code 400 INVALID_CURRENT_PASSWORD}). A weak new password is
-	 * {@code 400 INVALID_REQUEST}.
+	 * matching current password — omitted is {@code 400 MISSING_CURRENT_PASSWORD}, supplied-but-wrong is
+	 * {@code 400 INVALID_CURRENT_PASSWORD} (#345: one code for both told a caller a password it never sent
+	 * was incorrect; the operator twin split the same conflation out of {@code INVALID_REQUEST}). A weak new
+	 * password is {@code 400 INVALID_REQUEST}.
 	 *
 	 * <p>The success-path effects are <strong>ordered, not transactional</strong> (#344) — encode, revoke,
 	 * write, rotate. {@link OperatorAccountController#changePassword} carries the full rationale, including
@@ -79,10 +81,18 @@ class MyAccountController {
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
 		CustomerPasswords.validate(request.newPassword());
+		// Empty means "no local password" (findByEmail filters null-hash SSO-only rows), so both current-password
+		// answers below are nested here: an SSO-only account must keep reaching neither of them.
 		Optional<CustomerAccountCredential> existing = accounts.findByEmail(authentication.getName());
-		if (existing.isPresent() && !currentPasswordMatches(request, existing.get())) {
-			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
-					"The current password is incorrect.");
+		if (existing.isPresent()) {
+			if (!CustomerPasswords.isSupplied(request.currentPassword())) {
+				return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
+						"Enter your current password.");
+			}
+			if (!currentPasswordMatches(request, existing.get())) {
+				return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
+						"The current password is incorrect.");
+			}
 		}
 		// Encoded before the revoke: bcrypt costs ~80ms, which would otherwise widen the window below.
 		String newPasswordHash = passwordEncoder.encode(request.newPassword());
@@ -101,8 +111,8 @@ class MyAccountController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/** Only reached once the caller supplied a current password — the presence branch above guarantees it. */
 	private boolean currentPasswordMatches(SetPasswordRequest request, CustomerAccountCredential credential) {
-		return request.currentPassword() != null
-				&& passwordEncoder.matches(request.currentPassword(), credential.passwordHash());
+		return passwordEncoder.matches(request.currentPassword(), credential.passwordHash());
 	}
 }

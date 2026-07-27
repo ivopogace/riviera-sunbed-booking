@@ -31,9 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * S8 (#113, AC-5) authenticated set-password — closes the S4 F-1 gap. An SSO-only (password-less)
  * account sets its first password from within its own session (its SSO email is provider-verified), then
- * can password-login. An account that already has a password must supply the correct current one; a
- * missing/wrong current password is {@code 400 INVALID_CURRENT_PASSWORD}, and the stored password is
- * unchanged. The signed-in principal is faked with {@code user(email).roles("CUSTOMER")} so the SSO-only
+ * can password-login. An account that already has a password must supply the correct current one; an omitted
+ * one is {@code 400 MISSING_CURRENT_PASSWORD} and a supplied-but-wrong one {@code 400 INVALID_CURRENT_PASSWORD}
+ * (#345 — one code for both told a caller a password it never sent was incorrect), and the stored password is
+ * unchanged either way. The signed-in principal is faked with {@code user(email).roles("CUSTOMER")} so the SSO-only
  * case (which cannot password-login) can still be driven; {@code CurrentCustomer} resolves it to the real
  * DB account by email. Never a register-time UPSERT.
  */
@@ -79,10 +80,6 @@ class SetPasswordIT {
 				{"newPassword": "changedpass2", "currentPassword": "the-wrong-one"}""")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_CURRENT_PASSWORD"));
-		setPassword(email, """
-				{"newPassword": "changedpass2"}""") // missing current password on an account that has one
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_CURRENT_PASSWORD"));
 		login(email, "originalpass1").andExpect(status().isOk()); // unchanged
 
 		setPassword(email, """
@@ -90,6 +87,29 @@ class SetPasswordIT {
 				.andExpect(status().isNoContent());
 		login(email, "originalpass1").andExpect(status().isUnauthorized()); // old gone
 		login(email, "changedpass2").andExpect(status().isOk());             // new works
+	}
+
+	/**
+	 * #345: an account that HAS a password and sends none is told the field is missing — not that what it
+	 * sent was wrong, because it sent nothing. Until this slice both answered {@code INVALID_CURRENT_PASSWORD}.
+	 * {@link #ssoOnlyAccountSetsFirstPasswordThenCanLogin} is the other half of the pair: the same omission
+	 * stays legal where there is no credential to prove, so the two branches can never collapse into one answer.
+	 */
+	@Test
+	void existingPasswordAccountReportsAnOmittedCurrentPasswordDistinctly() throws Exception {
+		String email = "setpw-it-missing@example.com";
+		register(email, "originalpass1");
+
+		setPassword(email, """
+				{"newPassword": "changedpass2"}""") // the field absent from the body entirely
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+		setPassword(email, """
+				{"newPassword": "changedpass2", "currentPassword": ""}""") // present but empty
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+
+		login(email, "originalpass1").andExpect(status().isOk()); // nothing rotated
 	}
 
 	private ResultActions setPassword(String email, String jsonBody) throws Exception {

@@ -220,15 +220,15 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read it
 > (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Phase 1 step 1 — add the failing `existingPasswordAccountReportsAnOmittedCurrentPasswordDistinctly` to `SetPasswordIT`.
+**Next action:** Phase 2 step 1 — add the failing `'missing-current'` mapping specs to `customer-auth.spec.ts`, `operator-auth.spec.ts` and `set-password.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: operator endpoint answers `MISSING_CURRENT_PASSWORD` | ✅ | (this commit) |
-| 1 — Backend: the customer twin | ⏳ | |
-| 2 — Frontend: both auth services + both pages map the new code | | |
+| 0 — Backend: operator endpoint answers `MISSING_CURRENT_PASSWORD` | ✅ | `c435493` |
+| 1 — Backend: the customer twin | ✅ | (this commit) |
+| 2 — Frontend: both auth services + both pages map the new code | ⏳ | |
 | 3 — e2e: mocks mirror the controllers + a real render of the new branch | | |
 | 4 — Docs sweep + close-out | | |
 
@@ -706,6 +706,7 @@ customer route (nested under "the account has a credential", exactly as the cont
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-27 | Phase 0 | every backend edge surface reading a `currentPassword` | `grep -rn "currentPassword" platform/src/main/java` | `OperatorAccountController` (fixed here), `MyAccountController` | Fix both — the second is Phase 1, already the declared twin; the shared `CustomerPasswords.isSupplied` is what keeps them one rule |
+| 2026-07-27 | Phase 1 | backend readers of the old code | `grep -rn "INVALID_CURRENT_PASSWORD" platform/src` | the 2 controllers (both fixed) + 4 test classes | Closed — both call sites now route the omission to the new code; `SetPasswordIT`'s missing-current block moved into its own test rather than being deleted |
 
 ---
 
