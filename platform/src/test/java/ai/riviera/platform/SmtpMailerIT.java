@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.net.ServerSocket;
 import java.net.URI;
 
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 import com.icegreen.greenmail.junit5.GreenMailExtension;
@@ -16,6 +18,7 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Integration spec for the real {@link SmtpMailer} (#368, ADR-0011) against an in-JVM SMTP sink
@@ -60,6 +63,23 @@ class SmtpMailerIT {
 		mailer().sendEmailVerification(TO, LINK);
 		mailer().sendPasswordReset(TO, LINK);
 
+		assertThat(output).doesNotContain("s3cret-t0ken");
+	}
+
+	@Test
+	void aFailedSendThrowsWithoutLoggingTheTokenizedLink(CapturedOutput output) throws Exception {
+		int closedPort;
+		try (ServerSocket socket = new ServerSocket(0)) {
+			closedPort = socket.getLocalPort();
+		}
+		JavaMailSenderImpl sender = new JavaMailSenderImpl();
+		sender.setHost("127.0.0.1");
+		sender.setPort(closedPort);
+		sender.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
+		SmtpMailer mailer = new SmtpMailer(sender, FROM);
+
+		// The exception propagates to the caller (CustomerRecovery.sendQuietly logs only its class name).
+		assertThatThrownBy(() -> mailer.sendEmailVerification(TO, LINK)).isInstanceOf(MailException.class);
 		assertThat(output).doesNotContain("s3cret-t0ken");
 	}
 

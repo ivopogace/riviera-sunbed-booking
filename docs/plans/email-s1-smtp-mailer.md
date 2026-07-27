@@ -65,7 +65,8 @@ port unchanged, no module surface touched), `riviera-plan-doc` (this doc),
   *Pinned by:* `MailerProfileWiringTest.linkBaseUrlDefaultsToLocalDevSpa` + doc review
 - [ ] **AC-7:** Given a send through `SmtpMailer`, when it succeeds or fails, then the raw
   tokenized link never appears in log output at the transport layer (invariant #7).
-  *Pinned by:* `SmtpMailerIT.neverLogsTheTokenizedLink` (OutputCapture)
+  *Pinned by:* `SmtpMailerIT.neverLogsTheTokenizedLink` +
+  `SmtpMailerIT.aFailedSendThrowsWithoutLoggingTheTokenizedLink` (OutputCapture)
 - [ ] **AC-8:** The activation runbook exists at `docs/runbooks/mailer-profile-smoke-test.md`
   mirroring the Stripe smoke test: profile, env vars, a smoke send, verification steps.
   *Pinned by:* doc review (no test)
@@ -172,10 +173,18 @@ N/A — no contract change (no endpoint or DTO touched).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Findings register**
+**Findings register** — review gate ran 2026-07-27 (`/code-review` 5-agent fan-out +
+`riviera-review-overlay`); 7 candidates, none ≥ the 80-confidence bar, 5 fixed anyway:
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (75) | `Mailer.java` Javadoc still said the real adapter is deferred | fixed — review-fix commit |
+| F-2 | review (75) | `CustomerRecovery.sendQuietly` Javadoc: throw removed, "when it ships" happened, no #369 pointer | fixed — rewritten as live risk + #369 pointer |
+| F-3 | review (75) | `RecoveryProperties` Javadoc: "cosmetic until the real mailer ships" contradicts the PR's own properties comment | fixed |
+| F-4 | review (50) | `RecoveryMailerFailureIT` comment described the retired throwing posture | fixed — now "simulates a mail-transport failure" |
+| F-5 | review (25) | Sync send on the request thread vs ADR-0011 §5, no code guard on `prod,mailer` | resolved by design — the epic's deliberate slicing (#368 transport / #369 async); AC of #368 requires `prod,mailer` to boot; prod exposure impossible until #370; runbook bars activation before #369 |
+| F-6 | review (75) | AC-7 promised "succeeds or fails" but only the success path was tested | fixed — `SmtpMailerIT.aFailedSendThrowsWithoutLoggingTheTokenizedLink` |
+| F-7 | review (0) | `RealMailerTest` deleted instead of "evolved" (epic wording) | false positive — behavior-parity ledger documents the replace; coverage intact |
 
 ---
 
