@@ -42,7 +42,7 @@ Upstream: the `/code-review` fan-out over `63270f1` (#382, PR #385); ADR-0011 de
 - `postgres` — the `CHECK`-over-native-`ENUM` house style carried into the tightened `domain`
   constraint; named the new constraint explicitly instead of relying on PG's auto-generated name.
 - `riviera-java-conventions` — records/no-Lombok, package-private adapters, §6 *catch the narrowest
-  type* (the fail-open catch is `DataAccessException`, not `RuntimeException`), §6a name-your-literals
+  type* (the fail-open catch is `TransientDataAccessException` — narrowed from `DataAccessException` at the review gate, F-3), §6a name-your-literals
   (the timeout default), §6c one-line-or-no inline comments.
 - `riviera-local-debug` — **to load before this session's first `./gradlew`** (phase 0 step 2).
 - `riviera-review-overlay` — at the review gate.
@@ -54,14 +54,14 @@ branch name applies — no cloud-branch substitution)*
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a fixture root class importing a module surface outside the granted set
+- [x] **AC-1:** Given a fixture root class importing a module surface outside the granted set
   (`notification.application`), when the root-discipline rule runs, then it fails naming that class —
   and the granted set is an **allowlist** (`customer`, `operator`, `notification::api`, `shared`)
   matching the test's own Javadoc, so a ninth module needs no test edit.
   *Pinned by:* `CompositionRootDisciplineTests.rootTouchesOnlyGrantedModuleSurfaces` +
   `CompositionRootDisciplineTests.ungrantedModuleSurfaceIsRejected` (fixture negative proof).
 
-- [ ] **AC-2:** Given the production classpath as it stands today, when the allowlist rule runs, then it
+- [x] **AC-2:** Given the production classpath as it stands today, when the allowlist rule runs, then it
   passes with **no production change** — the root's actual module imports are exactly
   `customer.api`, `customer.vocabulary`, `notification.api`, `operator.api`, `operator.vocabulary`,
   `shared.*`. *Pinned by:* `CompositionRootDisciplineTests.rootTouchesOnlyGrantedModuleSurfaces`.
@@ -80,39 +80,39 @@ branch name applies — no cloud-branch substitution)*
   > `[:space:]` class is collation-dependent, so a blanket ban would not even mean the same thing in
   > every environment. V34 mirrors `String#trim()` exactly (`btrim(domain, E' \t\n\r\f\v')`) instead.
 
-- [ ] **AC-4:** Given `suppress("user@")` (an address with an empty domain part), when it runs, then the
+- [x] **AC-4:** Given `suppress("user@")` (an address with an empty domain part), when it runs, then the
   adapter rejects it with `IllegalArgumentException` before touching the DB — closing the gap where
   `atIndex < 1` passed but stored an empty `domain`.
   *Pinned by:* `EmailSuppressionIT.aNonAddressWriteIsRejected` (extended case).
 
-- [ ] **AC-5:** Given a suppression lookup that blocks longer than the configured timeout, when a
+- [x] **AC-5:** Given a suppression lookup that blocks longer than the configured timeout, when a
   recovery mail is dispatched, then the read aborts inside the timeout **and the mail is still sent**
   (fail-open, recovery vehicle only) rather than being silently dropped.
   *Pinned by:* `SuppressionQueryTimeoutIT.aWedgedSuppressionReadAbortsInsteadOfStallingTheDrainerThread` (the abort, against a real `ACCESS EXCLUSIVE` lock — 1.05s against a 1s timeout) + `TransactionalMailServiceTest.aSuppressionReadFailureStillSendsTheRecoveryMail` (the mail still goes).
 
-- [ ] **AC-6:** Given a suppression read that throws, when the **booking-confirmation** (registry)
+- [x] **AC-6:** Given a suppression read that throws, when the **booking-confirmation** (registry)
   vehicle sends, then the exception still propagates so the Event Publication Registry retries —
   fail-open is scoped to recovery and does not leak to the at-least-once vehicle.
   *Pinned by:* `TransactionalMailServiceTest.aSuppressionReadFailureStillPropagatesOnTheRegistryVehicle`.
 
-- [ ] **AC-7:** Given the six former private copies of `trim().toLowerCase(Locale.ROOT)`, when the slice
+- [x] **AC-7:** Given the six former private copies of `trim().toLowerCase(Locale.ROOT)`, when the slice
   lands, then exactly one definition exists (`customer.vocabulary.Emails#normalize`) and all six sites
   delegate to it — coverage by **deletion**, not by an agreement test.
   *Pinned by:* `EmailsTest` (contract, incl. the inputs the DB CHECK must agree on) + compilation.
 
-- [ ] **AC-8:** Given the fully component-scanned application context (no `@Primary` synchronous
+- [x] **AC-8:** Given the fully component-scanned application context (no `@Primary` synchronous
   dispatch override), when the `MailSender` bean **the edge actually receives** sends a password reset,
   then both the suppression read and the transport run on a `recovery-mail-` pool thread, never the
   caller's — so a future decorating/`@Primary` `MailSender` doing inline I/O fails the build.
   *Pinned by:* `MailSenderWiringIT.theEdgeInjectedMailSenderDispatchesOffTheCallersThread`.
 
-- [ ] **AC-9:** Cleanup sweep done — `PackageShapeArchitectureTests` Javadoc names the real module set,
+- [x] **AC-9:** Cleanup sweep done — `PackageShapeArchitectureTests` Javadoc names the real module set,
   `docs/plans/notification-module.md` no longer references the dropped `RecordedMailbox` probe, import
   grouping fixed in the five named files, `BookingConfirmationMailIT` seeds via one
   `seedConfirmedBooking` helper on the class's unique-date discipline, `ListenerMoveMigrationIT` drops
   its redundant try/finally. *Pinned by:* the existing suites staying green + review.
 
-- [ ] **AC-10:** Sonar reports **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** on the PR.
+- [x] **AC-10:** Sonar reports **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** on the PR.
   *Pinned by:* the SonarCloud PR analysis (merge bar, `riviera-sdlc` pr-gates §2).
 
 ## Non-goals
@@ -154,11 +154,11 @@ branch name applies — no cloud-branch substitution)*
 | R-1 | V34's `DROP CONSTRAINT` targets PG's **auto-generated** name for V33's inline `domain` CHECK (`email_suppression_domain_check`); if the real name differs the migration fails | med | med | Name the replacement constraint **explicitly** so no future migration inherits the guess; a wrong drop name fails Flyway loudly on the first Testcontainers IT run, before any PR. Verify the actual name via `\d email_suppression` in phase 2 step 2 before writing the DDL | plan | **closed** — probed `pg_constraint` against the real container before writing the DDL: the name is `email_suppression_domain_check`, as predicted. The replacement is named `email_suppression_domain_normalized`, so the guess is not inherited |
 | R-2 | A **global** `spring.jdbc.template.query-timeout` would also bound `availability`'s `SELECT … FOR UPDATE` — the serialization point of invariant #2 — aborting a legitimate lock wait under contention | low | **high** | The timeout is scoped to a `JdbcClient` built inside `JdbcEmailSuppressions` only; the global property is **never** set. Phase 3 asserts the global property is absent | plan | **closed** — the bound lives in `JdbcEmailSuppressions#boundedClient` (its own `JdbcTemplate` over the shared `DataSource`); `grep -rn "query-timeout" platform/src/main/resources` returns nothing, and the rationale is recorded in that method's Javadoc so the next person does not "simplify" it into the global property |
 | R-3 | Fail-open punches a hole in the module's defining invariant *no send to a suppressed address* | med | med | Scoped to the recovery vehicle alone; the registry vehicle still propagates (AC-6 pins it); the read failure is logged distinctly from a transport failure; decision recorded in the Javadoc **and** the amended Info-5 row | maintainer (decided at intake) | resolved — see Resolved |
-| R-4 | `Emails` in `customer::vocabulary` introduces cross-module imports from `notification` + the root | low | low | Both already hold `customer::vocabulary` (grants unchanged); `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` prove it (a final class is legal in `vocabulary`, which rejects only plain interfaces) | plan | open |
-| R-5 | Extracting `PostgresContainerConfiguration` lets a future IT import the container **without** `SynchronousMailDispatch` → async sends race `MockMailer` assertions → flake, which does not fail loudly | med | med | `TestcontainersConfiguration` keeps `@Import`-ing both and stays the default entry point; the new config's Javadoc states it is for `MailSenderWiringIT` only; no existing test is repointed | plan | open |
-| R-6 | Flyway `V34` collision with a parallel slice | **low** | high | Verified free on `main` @ `59a9e52`; all 10 open PRs are Dependabot **frontend** bumps with no migration in their diff. Default rule recorded: whoever merges second renumbers | plan | open |
+| R-4 | `Emails` in `customer::vocabulary` introduces cross-module imports from `notification` + the root | low | low | Both already hold `customer::vocabulary` (grants unchanged); `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` prove it (a final class is legal in `vocabulary`, which rejects only plain interfaces) | plan | **closed** — `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` green with no grant change. Review flagged the *kind* question separately (F-8, accepted deviation) |
+| R-5 | Extracting `PostgresContainerConfiguration` lets a future IT import the container **without** `SynchronousMailDispatch` → async sends race `MockMailer` assertions → flake, which does not fail loudly | med | med | `TestcontainersConfiguration` keeps `@Import`-ing both and stays the default entry point; the new config's Javadoc states it is for `MailSenderWiringIT` only; no existing test is repointed | plan | **closed** — `TestcontainersConfiguration` still imports both; `MailSenderWiringIT` is the only importer of the split config, and both classes' Javadoc says why opting out is legitimate. The recovery ITs were re-run and stayed green |
+| R-6 | Flyway `V34` collision with a parallel slice | **low** | high | Verified free on `main` @ `59a9e52`; all 10 open PRs are Dependabot **frontend** bumps with no migration in their diff. Default rule recorded: whoever merges second renumbers | plan | **closed** — no collision; V34 merged uncontested (no other open PR carried a migration) |
 | R-7 | `queryTimeout` cannot bound a black-holed socket (the PG cancel can wedge too) | low | med | Out of scope by decision (Non-goals); a connection-global `socketTimeout` is the instrument and carries app-wide blast radius. Revisit with #370, when a real relay + real bounce volume exist | plan | deferred |
-| R-8 | The wiring IT (AC-8) asserts on a thread-name prefix, coupling it to `AsyncMailDispatcher`'s `THREAD_NAME_PREFIX` | low | low | Same coupling `AsyncMailDispatcherTest` already accepts deliberately; assert *both* "not the caller's thread" and the prefix, so a renamed prefix fails on the prefix clause only and reads obviously | plan | open |
+| R-8 | The wiring IT (AC-8) asserts on a thread-name prefix, coupling it to `AsyncMailDispatcher`'s `THREAD_NAME_PREFIX` | low | low | Same coupling `AsyncMailDispatcherTest` already accepts deliberately; assert *both* "not the caller's thread" and the prefix, so a renamed prefix fails on the prefix clause only and reads obviously | plan | **closed** — accepted as designed; `MailSenderWiringIT` asserts both clauses, so a renamed prefix fails on the prefix clause alone and reads obviously |
 
 ## Open questions / Assumptions
 
@@ -244,10 +244,23 @@ No event is added, moved, or renamed — so **no Flyway `event_type` rewrite is 
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying; then Sonar gate`
+**Stage pointer:** `merge close-out — CI green, review gate run, Sonar gate green and its list cleared`
 
-**Next action:** Merge latest `origin/main` with full phase discipline, push, open the PR into `main`,
-then run the **review gate** (`/code-review`, not the overlay alone) and the Sonar gate.
+**Next action:** Merge PR #396, then run the close-out checklist (tick the epic/issue, `riviera-docs-freshness`).
+
+**Gates (all run, none assumed):**
+
+- **CI:** green on `1ccd998` — all 10 checks, including the **full** backend suite (the full-suite-only
+  failure class this repo has hit twice did not fire, despite this slice touching shared test config).
+- **Review gate:** `/code-review` **ran in full** — a five-reviewer fan-out (CLAUDE.md compliance,
+  shallow bug scan, git history, prior-PR feedback, code-comment compliance) plus verification.
+  7 findings → 5 real and fixed, 1 rejected after direct verification, 1 accepted deviation. See the
+  findings register below and [the PR comment](https://github.com/ivopogace/riviera-sunbed-booking/pull/396#issuecomment-5097779670).
+  `gh` is not installed here, so the fan-out used local git + the GitHub MCP tools.
+- **Sonar gate:** green **and its reported list pulled, not assumed** —
+  `new_lines = 177` (so an analysis genuinely ran, ruling out the false-clean read),
+  **0 issues**, `new_code_smells 0`, `new_bugs 0`, `new_vulnerabilities 0`,
+  **`new_duplicated_blocks 0`**, **`new_coverage 100.0%`**. All three merge-bar items met.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -257,8 +270,11 @@ then run the **review gate** (`/code-review`, not the overlay alone) and the Son
 | 3 — Bounded suppression read + fail-open (item 3) | ✅ | `9fc24f6` |
 | 4 — Fire-and-forget wiring IT (item 5) | ✅ | `b65ac19` |
 | 5 — Cleanup sweep + docs (item 6) | ✅ | `ac4f35a` |
+| 6 — Review-gate findings | ✅ | `795ce2b`, `1ccd998` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Merged via PR #396.**
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
@@ -501,16 +517,16 @@ would not see a future decorator at all.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*CompositionRootDisciplineTests*"` → PASS incl. the fixture negative proof.
-- [ ] **AC-2:** same run → green with zero production-file changes in phase 0's diff.
-- [ ] **AC-3:** `./gradlew test --tests "*EmailSuppressionIT*"` → `theSchemaRejectsADenormalizedDomain` PASS.
-- [ ] **AC-4:** same run → `aNonAddressWriteIsRejected` PASS with the `"user@"` case.
-- [ ] **AC-5:** `./gradlew test --tests "*SuppressionQueryTimeoutIT*"` → PASS.
-- [ ] **AC-6:** `./gradlew test --tests "*TransactionalMailServiceTest*"` → PASS.
-- [ ] **AC-7:** `rg "trim\(\)\.toLowerCase" platform/src/main/java` → only `Emails.java`.
-- [ ] **AC-8:** `./gradlew test --tests "*MailSenderWiringIT*"` → PASS.
-- [ ] **AC-9:** the structural net + touched suites green; the stale references are gone.
-- [ ] **AC-10:** SonarCloud PR analysis → 0 new issues, 0 duplicated blocks, ≥80% new-code coverage.
+- [x] **AC-1:** `./gradlew test --tests "*CompositionRootDisciplineTests*"` → PASS incl. the fixture negative proof.
+- [x] **AC-2:** same run → green with zero production-file changes in phase 0's diff.
+- [x] **AC-3:** `./gradlew test --tests "*EmailSuppressionIT*"` → `theSchemaRejectsADenormalizedDomain` PASS.
+- [x] **AC-4:** same run → `aNonAddressWriteIsRejected` PASS with the `"user@"` case.
+- [x] **AC-5:** `./gradlew test --tests "*SuppressionQueryTimeoutIT*"` → PASS.
+- [x] **AC-6:** `./gradlew test --tests "*TransactionalMailServiceTest*"` → PASS.
+- [x] **AC-7:** `rg "trim\(\)\.toLowerCase" platform/src/main/java` → only `Emails.java`.
+- [x] **AC-8:** `./gradlew test --tests "*MailSenderWiringIT*"` → PASS.
+- [x] **AC-9:** the structural net + touched suites green; the stale references are gone.
+- [x] **AC-10:** SonarCloud PR analysis → 0 new issues, 0 duplicated blocks, ≥80% new-code coverage.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
