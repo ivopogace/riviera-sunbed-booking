@@ -7,9 +7,11 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * Real-render CI-safe e2e for the signed-in customer's set/change-password page (S8 #113, issue #346) —
  * the last credential-rotation surface with no e2e at all, next to the reset, verify and operator-password
  * specs. It proves the rotation is REAL the way those do: after a successful change, sign out and show that
- * only the new password gets back in. The three failure branches each get their own render — a wrong current
- * password, a password under the policy minimum (caught client-side, so no request at all), and the 429 that
- * #326 made newly reachable and #342 mapped but never rendered.
+ * only the new password gets back in. The four failure branches each get their own render — a wrong current
+ * password, a current password omitted by an account that has one (`MISSING_CURRENT_PASSWORD`, #345 — the
+ * branch this page alone can reach, since it cannot know whether the account has a local password), a
+ * password under the policy minimum (caught client-side, so no request at all), and the 429 that #326 made
+ * newly reachable and #342 mapped but never rendered.
  *
  * <p>The SSO-only account is the second test because it is why this page exists (closing the S4 F-1 gap):
  * with no stored credential it sets its first password with the current-password field left blank.
@@ -128,6 +130,29 @@ test('an SSO-only account sets its first password with no current password', asy
   await expect(page.getByTestId('nav-signin')).toBeVisible();
 
   await signIn(page, NEW_PASSWORD);
+  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+});
+
+test('a blank current password is reported as missing, not incorrect', async ({ page }) => {
+  await mockCustomerRecoveryApi(page, {
+    email: EMAIL,
+    initialPassword: OLD_PASSWORD,
+    signedIn: true,
+  });
+
+  await page.goto('/');
+  await gotoAccount(page);
+
+  // This account has a password, so the blank field is an omission the server must name, not a wrong guess.
+  await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
+  await page.getByTestId('setpw-submit').click();
+  await expect(page.getByTestId('setpw-error')).toContainText('Enter your current password.');
+  await expect(page.getByTestId('setpw-notice')).toBeHidden();
+  await expectNoSeriousAxeViolations(page, 'omitted current password');
+
+  // And nothing rotated: the original password still signs in.
+  await signOut(page);
+  await signIn(page, OLD_PASSWORD);
   await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
 });
 

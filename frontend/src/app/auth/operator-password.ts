@@ -134,8 +134,7 @@ export class OperatorPassword {
     this.error.set(undefined);
     this.notice.set(undefined);
     const { currentPassword, newPassword } = this.model();
-    // Checked before the length rule: the backend answers a blank current password with the same
-    // INVALID_REQUEST code as a policy violation, which would misreport it as a new-password problem.
+    // Kept though the server now names this case (#345): since #343 an attempt costs a rate-limit token.
     if (currentPassword.length === 0) {
       this.fail(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
       return;

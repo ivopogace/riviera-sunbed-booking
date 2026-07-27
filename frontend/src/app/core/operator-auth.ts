@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { PASSWORD_LENGTH_MESSAGE } from './customer-auth';
+import { CURRENT_PASSWORD_REQUIRED_MESSAGE, PASSWORD_LENGTH_MESSAGE } from './customer-auth';
 import { OwnedVenues } from './owned-venues';
 import {
   AUTH_API,
@@ -26,13 +26,14 @@ export type { SignInResult } from './session-auth';
 export type OperatorRegisterResult = 'submitted' | 'invalid-password' | 'rate-limited' | 'error';
 
 /**
- * How a self-service password change ended (#326). The two `400`s are distinguished by the problem
- * `code`, never by the status alone — reporting a wrong current password as a policy violation would
- * send the operator off changing a password that was fine. `bootstrap-managed` is the env-managed
- * bootstrap admin, whose credential rotates via `RIVIERA_OPERATOR_PASSWORD` + restart, not here.
+ * How a self-service password change ended (#326). The three `400`s are distinguished by the problem
+ * `code`, never by the status alone — reporting a wrong or omitted current password as a policy violation
+ * would send the operator off changing a password that was fine (#345). `bootstrap-managed` is the
+ * env-managed bootstrap admin, whose credential rotates via `RIVIERA_OPERATOR_PASSWORD` + restart, not here.
  */
 export type OperatorPasswordChangeResult =
   | 'changed'
+  | 'missing-current'
   | 'invalid-current'
   | 'invalid-password'
   | 'bootstrap-managed'
@@ -49,11 +50,13 @@ export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-
 export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**
- * Shown when the current-password field is left empty. It needs its own message because the backend
- * answers a blank one with `INVALID_REQUEST` — the same code a policy violation uses — so without this
- * the operator is told their NEW password is the wrong length when the real fault is the empty field.
+ * Shown when the current-password field is left empty — from the client-side guard, and now also from the
+ * server, which names the case `MISSING_CURRENT_PASSWORD` since #345 (before that it answered the same
+ * `INVALID_REQUEST` a policy violation uses, so this message was the *only* thing standing between the
+ * operator and "your new password is the wrong length"). Sourced from the customer constant like the
+ * length message above: one wording for both principal types, no byte-for-byte copy to desync.
  */
-export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
+export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = CURRENT_PASSWORD_REQUIRED_MESSAGE;
 
 /**
  * The server caps the password at bcrypt's 72-**byte** input limit, not 72 characters. The two agree
@@ -202,6 +205,8 @@ function passwordChangeFailure(error: unknown): OperatorPasswordChangeResult {
     return 'session-lost';
   }
   switch ((error.error as { code?: string } | null)?.code) {
+    case 'MISSING_CURRENT_PASSWORD':
+      return 'missing-current';
     case 'INVALID_CURRENT_PASSWORD':
       return 'invalid-current';
     case 'INVALID_REQUEST':
@@ -223,6 +228,8 @@ export function operatorPasswordChangeMessage(result: OperatorPasswordChangeResu
   switch (result) {
     case 'changed':
       return 'Your password has been changed. Any other devices signed in as you have been signed out.';
+    case 'missing-current':
+      return OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE;
     case 'invalid-current':
       return 'That current password is incorrect.';
     case 'invalid-password':

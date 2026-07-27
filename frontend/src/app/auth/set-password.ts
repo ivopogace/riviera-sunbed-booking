@@ -2,7 +2,12 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
-import { CustomerAuth, MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from '../core/customer-auth';
+import {
+  CURRENT_PASSWORD_REQUIRED_MESSAGE,
+  CustomerAuth,
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_LENGTH_MESSAGE,
+} from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
 
 /**
@@ -195,6 +200,9 @@ export class SetPassword {
       case 'set':
         this.notice.set('Your password has been saved.');
         this.model.set({ newPassword: '', currentPassword: '' });
+        break;
+      case 'missing-current':
+        this.error.set(CURRENT_PASSWORD_REQUIRED_MESSAGE);
         break;
       case 'invalid-current':
         this.error.set('The current password is incorrect.');

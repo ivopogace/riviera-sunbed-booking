@@ -111,6 +111,19 @@ describe('SetPassword', () => {
     expect(text(fixture, 'setpw-error')).toContain('current password is incorrect');
   });
 
+  // #345: the page cannot tell an SSO-only account apart, so only the server can call the blank a fault.
+  it('asks a password-holding account to fill in the current password it left blank', async () => {
+    const auth = authStub({ setPassword: 'missing-current' });
+    const fixture = await render(auth);
+
+    setModel(fixture, 'brandnewpass2', '');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'setpw-error')).toContain('Enter your current password.');
+  });
+
   // Newly reachable since #326 throttled this endpoint; "try again" would invite the rejected retry.
   it('tells a throttled customer to wait rather than to retry immediately', async () => {
     const auth = authStub({ setPassword: 'rate-limited' });
