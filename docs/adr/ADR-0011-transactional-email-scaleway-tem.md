@@ -80,8 +80,9 @@ Provider landscape (condensed; full table in the research doc):
      single-use token inside the tokenized link (invariant #7), so routing it through the registry
      would write that credential to the database in cleartext — undoing the S8 design in which only
      the SHA-256 digest is ever stored. Recovery mail (#369) therefore dispatches through a
-     dedicated, bounded in-memory executor; the operator-approval mail (#375) uses the same vehicle
-     (no secret, but it is edge-orchestrated from an admin request rather than a domain event).
+     dedicated, bounded in-memory executor — shipped. The operator-approval mail (#375) **will use
+     that same vehicle** when it is built (no secret, but it is edge-orchestrated from an admin
+     request rather than a domain event); nothing in that flow exists yet.
 
    The executor's trade-off is accepted deliberately: it is **best-effort, not at-least-once** — a
    crash, a redeploy past the drain window, or a saturated queue loses the send, and that is

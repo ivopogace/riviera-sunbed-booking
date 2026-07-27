@@ -154,7 +154,7 @@ one-line comments §6c, and §8's "don't hand-roll thread pools" → Spring's li
   **Confirmed** against `V28`: the table is `customer_account_token` with a `token_hash` column
   (SHA-256 hex, `UNIQUE`), and `V8`'s `serialized_event` is `TEXT` (so the scan needs no `encode()`).
   The test's positive control asserts the *digest* of the same token is present exactly once, which
-  is what keeps the three zero-assertions from passing vacuously. Resolved in `<phase-2-sha>`.
+  is what keeps the three zero-assertions from passing vacuously. Resolved in `1d913aa`.
 
 - **Open question:** how far should the timing closure go — the mail send only, or the whole
   known-branch body (token mint + insert + send)? → **Issue scope: the send only**, residual
@@ -229,7 +229,7 @@ the Sonar gate; findings re-enter at Implement.
 |-------|--------|---------|
 | 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | ✅ | `9f5a34d` |
 | 1 — Route `CustomerRecovery` through it + synchronous test wiring | ✅ | `aa4a076` |
-| 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | ✅ | `<phase-2-sha>` |
+| 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | ✅ | `1d913aa` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,7 +239,9 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review`, prior-PR-comment agent) | Renaming `sendQuietly` → `dispatchQuietly` left a stale reference in a file the PR never opened: `SmtpMailerIT.java:81` named the old method. Exactly the doc-drift class this repo's reviewers flagged in PR #362 (F-2/F-3) and PR #377 — a mechanism-changing slice must sweep symbol references outside its own diff. The phase-1 audit grep looked for *racing* tests (`Mailer`/`lastTo`), not for *renamed-symbol* references, so it could not have caught this | **fixed** in `<fix-round-sha>` |
+| F-2 | review (comment-accuracy agent) | The ADR-0011 amendment stated the operator-approval mail (#375) "uses the same vehicle" in present tense, alongside the now-true claim about recovery mail — reading as shipped when no such code exists, and contradicting this plan's own Non-goals | **fixed** in `<fix-round-sha>` — reworded to "will use … when it is built; nothing in that flow exists yet" |
+| F-3 | review (bug-scan agent) | `MAX_POOL_SIZE = 2` was unreachable in practice: a `ThreadPoolExecutor` grows past core size only when the queue is **full**, so with `queue=100` the second thread would never start until 100 sends were backed up. Not a correctness bug (off-thread + drop-on-saturation both held) but a misleading config inviting a bad future "tune" | **fixed** in `<fix-round-sha>` — collapsed to a single `POOL_SIZE = 1` with the serial-drain rationale in the Javadoc, incl. why a stuck send cannot stall the queue (`SmtpMailer`'s finite timeouts, #368) |
 
 ---
 

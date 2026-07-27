@@ -25,14 +25,20 @@ import org.springframework.stereotype.Component;
  * <p>The caller's logging context rides along so a failed send stays traceable to its request (the
  * correlation id from {@code CorrelationIdFilter}), and is cleared afterwards so it cannot leak onto the
  * next task sharing the pooled thread. Package-private (RV-BE-11); pinned by {@code AsyncMailDispatcherTest}.
+ *
+ * <p><strong>One drainer thread, deliberately</strong> — recovery mail is a handful of sends a day, and a
+ * serial drain behind a 100-deep buffer is the whole requirement. Core and max are equal on purpose: a
+ * {@code ThreadPoolExecutor} grows past its core size only once the queue is <em>full</em>, so a larger max
+ * with this queue would add no headroom until 100 sends were already backed up — an inviting number to
+ * "tune" and a misleading one to read. A stuck send cannot stall the queue indefinitely because
+ * {@code SmtpMailer}'s connect/read/write timeouts are finite (#368).
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	private static final Logger log = LoggerFactory.getLogger(AsyncMailDispatcher.class);
 
-	private static final int CORE_POOL_SIZE = 1;
-	private static final int MAX_POOL_SIZE = 2;
+	private static final int POOL_SIZE = 1;
 	private static final int QUEUE_CAPACITY = 100;
 	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
 	private static final String THREAD_NAME_PREFIX = "recovery-mail-";
@@ -41,8 +47,8 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	AsyncMailDispatcher() {
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
-		pool.setCorePoolSize(CORE_POOL_SIZE);
-		pool.setMaxPoolSize(MAX_POOL_SIZE);
+		pool.setCorePoolSize(POOL_SIZE);
+		pool.setMaxPoolSize(POOL_SIZE);
 		pool.setQueueCapacity(QUEUE_CAPACITY);
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
 		// A redeploy must not silently swallow a reset link a user is already waiting for.
