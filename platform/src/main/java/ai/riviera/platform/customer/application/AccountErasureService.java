@@ -1,6 +1,5 @@
 package ai.riviera.platform.customer.application;
 
-import java.util.Locale;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -10,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 
 /**
@@ -51,7 +51,7 @@ class AccountErasureService implements AccountErasure {
 	@Override
 	@Transactional
 	public EraseOutcome eraseByEmail(String email) {
-		String normalized = normalize(email);
+		String normalized = Emails.normalize(email);
 		boolean accountScrubbed = store.eraseAccountByEmail(normalized);
 		int guestsScrubbed = store.eraseGuestByEmail(normalized);
 		EraseOutcome outcome = accountScrubbed || guestsScrubbed > 0 ? EraseOutcome.ERASED : EraseOutcome.NOT_FOUND;
@@ -65,7 +65,4 @@ class AccountErasureService implements AccountErasure {
 		return outcome;
 	}
 
-	private static String normalize(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
-	}
 }

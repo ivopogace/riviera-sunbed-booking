@@ -5,7 +5,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.Locale;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -14,13 +13,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
 
 /**
  * {@link EmailSuppressions} over the V33 {@code email_suppression} table (#382, hashed shape
- * #388/ADR-0012). Callers keep passing raw addresses; this adapter normalizes (trim + lower-case,
- * the {@code customer} module's canonical form) and then keys the row on {@code v1:} + lower-hex
+ * #388/ADR-0012). Callers keep passing raw addresses; this adapter normalizes through
+ * {@link Emails#normalize} — the platform's one canonical form, shared with {@code customer} rather
+ * than re-implemented here (#386), because normalization is this key's <em>input contract</em>: a
+ * divergent copy would hash to a key that never matches at send time, silently defeating the
+ * module's defining invariant with no error anywhere — and then keys the row on {@code v1:} + lower-hex
  * HMAC-SHA-256(pepper, normalized) on <em>both</em> read and write — so no cleartext address ever
  * reaches the table, lookups hit the {@code UNIQUE (email_key)} index regardless of the caller's
  * casing, and the future #370 bounce feed inherits normalization + hashing for free. The cleartext
@@ -58,14 +61,14 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 		return jdbc.sql("""
 				SELECT EXISTS (SELECT 1 FROM email_suppression WHERE email_key = :key)
 				""")
-				.param("key", keyOf(normalize(email)))
+				.param("key", keyOf(Emails.normalize(email)))
 				.query(Boolean.class)
 				.single();
 	}
 
 	@Override
 	public void suppress(String email, SuppressionReason reason, Instant at) {
-		String normalized = normalize(email);
+		String normalized = Emails.normalize(email);
 		int atIndex = normalized.lastIndexOf('@');
 		if (atIndex < 1) {
 			// No address echoed (PII posture) — rows are never deleted, so junk must fail loudly here.
@@ -95,9 +98,5 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 		catch (NoSuchAlgorithmException | InvalidKeyException e) {
 			throw new IllegalStateException("HMAC-SHA-256 unavailable for the suppression key", e);
 		}
-	}
-
-	private static String normalize(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
 	}
 }

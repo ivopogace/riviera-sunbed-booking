@@ -235,15 +235,15 @@ No event is added, moved, or renamed — so **no Flyway `event_type` rewrite is 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 (one canonical Emails.normalize)`
+**Stage pointer:** `implement — phase 2 (V34 domain CHECK + empty-domain guard)`
 
-**Next action:** Write `EmailsTest` (red), then add `customer.vocabulary.Emails` and delete the six
-private `trim().toLowerCase(Locale.ROOT)` copies.
+**Next action:** Extend `EmailSuppressionIT` with the padded/empty-`domain` rejection cases (red),
+confirm the auto-generated constraint name (R-1), then write V34.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Allowlist-form root discipline (item 1) | ✅ | `43e0f20` |
-| 1 — One canonical `Emails.normalize` (item 4) | | |
+| 0 — Allowlist-form root discipline (item 1) | ✅ | `116d4ec` |
+| 1 — One canonical `Emails.normalize` (item 4) | ✅ | `<phase-1>` |
 | 2 — V34 `domain` CHECK + empty-domain guard (item 2) | | |
 | 3 — Bounded suppression read + fail-open (item 3) | | |
 | 4 — Fire-and-forget wiring IT (item 5) | | |
@@ -475,6 +475,7 @@ would not see a future decorator at all.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | Phase 1 — six private copies of one correctness-critical rule | Any surviving email normalization outside `Emails` | `grep -rn "toLowerCase" --include=*.java platform/src` | 5 hits, **0** of them email normalization: `StripePaymentGateway:70` (ISO currency for Stripe), `SsoProviders:30`, `PhotoUploadResponse:23,28`, `VenueProfileResponse:41` (enum names for the wire) | **Correctly left alone.** These lowercase a *closed enum name or ISO code* for wire representation — no trim, no user input, no cross-component agreement requirement. Folding them into `Emails.normalize` would couple unrelated concepts to an identity rule. The email rule now has exactly one definition; `CustomerPasswords.normalizeEmail` was deleted rather than left as a delegating wrapper, so its 3 external callers now name `Emails.normalize` directly. |
 | 2026-07-27 | Phase 0 — deny-list fitness function weaker than its own prose | Other ArchUnit rules stated as a deny-list over an *enumerable, growing* set | `rg "noClasses\(\)\|resideInAnyPackage" platform/src/test` | 4: `CustomerAuthPlacementTests`, `OperatorAuthPlacementTests`, `PackageShapeArchitectureTests#applicationAndDomainDoNotDependOnAdapters`, `VenueApiRoleSplitTests` | **Skip all 4, none share the defect.** The two auth-placement rules deny one *third-party* package (`org.springframework.security..`); "all auth libraries" is not an enumerable set, so an allowlist is not the stronger form — and module→module grants are already allowlisted by `allowedDependencies`. The hexagon-direction rule's denied set (`adapter..`) is closed by construction, since assertion 1 already bounds a module's top-level packages to a fixed set. `VenueApiRoleSplitTests` denies one *named type* outside one module — effectively already an allowlist, with no growing set behind it. The #386 failure mode (a ninth module silently escaping) needs a set that grows with the codebase; none of these have one. |
 
 ---

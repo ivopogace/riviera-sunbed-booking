@@ -1,7 +1,6 @@
 package ai.riviera.platform;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 
 /**
  * The customer password policy + email normalization, shared by every edge surface that accepts a new
@@ -40,8 +39,4 @@ final class CustomerPasswords {
 		}
 	}
 
-	/** The canonical email form the module stores/looks up by (lower-cased + trimmed). */
-	static String normalizeEmail(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
-	}
 }

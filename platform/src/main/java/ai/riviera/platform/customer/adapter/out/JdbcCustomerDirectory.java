@@ -1,12 +1,11 @@
 package ai.riviera.platform.customer.adapter.out;
 
-import java.util.Locale;
-
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 /**
@@ -31,7 +30,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 
 	@Override
 	public CustomerId findOrCreate(GuestContact contact) {
-		String email = contact.email().trim().toLowerCase(Locale.ROOT);
+		String email = Emails.normalize(contact.email());
 		long id = jdbc.sql("""
 				INSERT INTO customer (email, full_name, phone)
 				VALUES (:email, :name, :phone)
