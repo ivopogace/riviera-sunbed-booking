@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification.adapter.out;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,5 +48,20 @@ class SuppressionPepperProdGuardTest {
 	@Test
 	void defaultProfileBootsWithoutTheGuard() {
 		runner.run(context -> assertThat(context).hasNotFailed());
+	}
+
+	/**
+	 * Pins the lockstep between {@link SuppressionPepperProdGuard#DEV_DEFAULT_PEPPER} and the committed
+	 * default in {@code application.properties}: if the two drift, an unset prod env would resolve to a
+	 * committed value the guard no longer recognizes — boot would succeed on a public, repo-committed
+	 * pepper. Loads the real properties file (env var unset in CI/dev) so the drift fails here first.
+	 */
+	@Test
+	void theCommittedDefaultMatchesTheGuardConstant() {
+		new ApplicationContextRunner()
+				.withInitializer(new ConfigDataApplicationContextInitializer())
+				.run(context -> assertThat(
+						context.getEnvironment().getProperty("riviera.notification.suppression-pepper"))
+						.isEqualTo(SuppressionPepperProdGuard.DEV_DEFAULT_PEPPER));
 	}
 }

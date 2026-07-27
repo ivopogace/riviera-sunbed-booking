@@ -24,8 +24,10 @@ import ai.riviera.platform.notification.application.SuppressionReason;
  * HMAC-SHA-256(pepper, normalized) on <em>both</em> read and write — so no cleartext address ever
  * reaches the table, lookups hit the {@code UNIQUE (email_key)} index regardless of the caller's
  * casing, and the future #370 bounce feed inherits normalization + hashing for free. The cleartext
- * {@code domain} (the part after the last {@code '@'}, or {@code ''} for a non-address input —
- * never a local part) is stored for provider-level triage. The pepper is a long-lived env-managed
+ * {@code domain} (the part after the last {@code '@'} — never a local part) is stored for
+ * provider-level triage; a write with no {@code '@'} (or an empty local part) is rejected loudly —
+ * rows are never deleted, so a junk write would otherwise persist forever and mask the caller's
+ * bug. The pepper is a long-lived env-managed
  * secret ({@code riviera.notification.suppression-pepper}; {@code SuppressionPepperProdGuard}
  * enforces a real one in prod) — rotating it orphans every stored row, the accepted ADR-0012
  * consequence. Repeat suppression is an {@code ON CONFLICT} upsert refreshing reason +
@@ -42,7 +44,7 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	private final SecretKeySpec pepperKey;
 
 	JdbcEmailSuppressions(JdbcClient jdbc,
-			@Value("${riviera.notification.suppression-pepper}") String pepper) {
+			@Value("${riviera.notification.suppression-pepper:}") String pepper) {
 		if (pepper.isBlank()) {
 			throw new IllegalStateException(
 					"riviera.notification.suppression-pepper must not be blank (set RIVIERA_SUPPRESSION_PEPPER)");
@@ -64,6 +66,12 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	@Override
 	public void suppress(String email, SuppressionReason reason, Instant at) {
 		String normalized = normalize(email);
+		int atIndex = normalized.lastIndexOf('@');
+		if (atIndex < 1) {
+			// No address echoed (PII posture) — rows are never deleted, so junk must fail loudly here.
+			throw new IllegalArgumentException(
+					"suppress() requires an email address (local@domain); refusing to store a non-address");
+		}
 		jdbc.sql("""
 				INSERT INTO email_suppression (email_key, domain, reason, first_suppressed_at, last_event_at)
 				VALUES (:key, :domain, :reason, :at, :at)
@@ -71,7 +79,7 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 				SET reason = EXCLUDED.reason, last_event_at = EXCLUDED.last_event_at
 				""")
 				.param("key", keyOf(normalized))
-				.param("domain", domainOf(normalized))
+				.param("domain", normalized.substring(atIndex + 1))
 				.param("reason", reason.name())
 				.param("at", java.sql.Timestamp.from(at))
 				.update();
@@ -87,11 +95,6 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 		catch (NoSuchAlgorithmException | InvalidKeyException e) {
 			throw new IllegalStateException("HMAC-SHA-256 unavailable for the suppression key", e);
 		}
-	}
-
-	private static String domainOf(String normalized) {
-		int at = normalized.lastIndexOf('@');
-		return at >= 0 ? normalized.substring(at + 1) : "";
 	}
 
 	private static String normalize(String email) {

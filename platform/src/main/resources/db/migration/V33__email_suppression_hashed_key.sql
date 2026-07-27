@@ -12,6 +12,19 @@
 -- schema, and UNIQUE doubles as the lookup index (V32 pattern). domain is the cleartext part
 -- after '@' of the normalized address (a bare domain is not PII — ADR-0012), kept for
 -- provider-level bounce triage, with V32's normalization CHECK carried over.
+--
+-- A future v2 scheme migration owes two things this schema cannot express: isSuppressed must
+-- dual-look-up (v2 then v1) during the transition, and duplicate rows for one address across
+-- schemes must be collapsed keeping the older first_suppressed_at (#388 addendum).
+
+-- Enforce the emptiness assumption instead of assuming it: a row here (e.g. a manual-ops
+-- insert since V32) must fail the deploy loudly, never be dropped silently.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM email_suppression) THEN
+    RAISE EXCEPTION 'email_suppression has rows; V33 assumes an empty table — migrate them before recreating';
+  END IF;
+END $$;
 
 DROP TABLE email_suppression;
 

@@ -19,16 +19,30 @@ below cover what ops still needs.
 
 ## Check whether a specific address is suppressed
 
-Normalize (trim, lower-case) the address, HMAC it with the pepper, prefix `v1:`:
+Normalize (trim, lower-case) the address, HMAC it with the pepper, prefix `v1:`. **Never put
+the pepper on a command line** (argv is world-readable in the process table and lands in shell
+history); read it from the environment instead — and let an unset variable fail loudly:
 
 ```bash
-KEY="v1:$(printf '%s' 'foo@bar.com' | openssl dgst -sha256 -hmac "$RIVIERA_SUPPRESSION_PEPPER" -r | cut -d' ' -f1)"
+KEY="$(python3 - 'Foo@Bar.com' <<'PY'
+import hashlib, hmac, os, sys
+address = sys.argv[1].strip().lower()
+pepper = os.environ["RIVIERA_SUPPRESSION_PEPPER"]  # KeyError = loud failure when unset
+print("v1:" + hmac.new(pepper.encode(), address.encode(), hashlib.sha256).hexdigest())
+PY
+)"
 psql "$DATABASE_URL" -c "SELECT reason, first_suppressed_at, last_event_at
                          FROM email_suppression WHERE email_key = '$KEY';"
 ```
 
-(`printf '%s'` — no trailing newline; the address must already be trimmed + lower-cased,
-exactly the adapter's normalization.)
+The recipe normalizes for you (trim + lower-case, matching the adapter). Caveat for
+internationalized addresses: the adapter lower-cases with Java's `Locale.ROOT`; Python's
+`.lower()` matches it for all practical cases, but a shell `tr '[:upper:]' '[:lower:]'` is
+ASCII-only — don't hand-normalize non-ASCII addresses.
+
+A future `v2` key scheme must dual-look-up (v2 then v1) during its transition and collapse
+duplicate rows per address keeping the older `first_suppressed_at` — obligations recorded in
+the V33 header and the #388 addendum.
 
 ## Provider-level deliverability triage
 

@@ -91,19 +91,31 @@ class EmailSuppressionIT {
 		suppressions.suppress("  Hashed-Row@Example.COM ", SuppressionReason.MANUAL,
 				Instant.parse("2026-07-27T10:00:00Z"));
 
-		String expected = expectedKey(pepper(), "hashed-row@example.com");
-		var row = jdbc.sql("SELECT email_key, domain FROM email_suppression WHERE email_key = :key")
-				.param("key", expected)
-				.query((rs, n) -> new String[] { rs.getString("email_key"), rs.getString("domain") })
+		String domain = jdbc.sql("SELECT domain FROM email_suppression WHERE email_key = :key")
+				.param("key", expectedKey(pepper(), "hashed-row@example.com"))
+				.query(String.class)
 				.single();
-		assertThat(row[0]).isEqualTo(expected);
-		assertThat(row[1]).isEqualTo("example.com");
+		assertThat(domain).isEqualTo("example.com");
 
-		Long cleartextHits = jdbc.sql("SELECT count(*) FROM email_suppression "
-						+ "WHERE email_key LIKE '%hashed-row%' OR domain LIKE '%hashed-row%'")
+		Long cleartextHits = jdbc.sql("""
+						SELECT count(*) FROM email_suppression
+						WHERE email_key LIKE '%hashed-row%' OR domain LIKE '%hashed-row%'
+						""")
 				.query(Long.class)
 				.single();
 		assertThat(cleartextHits).isZero();
+	}
+
+	@Test
+	void aNonAddressWriteIsRejected() {
+		Instant at = Instant.parse("2026-07-27T10:00:00Z");
+
+		assertThatThrownBy(() -> suppressions.suppress("   ", SuppressionReason.MANUAL, at))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> suppressions.suppress("no-at-sign.example.com", SuppressionReason.MANUAL, at))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> suppressions.suppress("@no-local-part.example.com", SuppressionReason.MANUAL, at))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test

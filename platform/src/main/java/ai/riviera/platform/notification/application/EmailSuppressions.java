@@ -28,7 +28,9 @@ public interface EmailSuppressions {
 
 	/**
 	 * Put the address on the do-not-mail list, or refresh it: a repeat suppression updates the reason
-	 * and {@code last_event_at} while keeping the original {@code first_suppressed_at}.
+	 * and {@code last_event_at} while keeping the original {@code first_suppressed_at}. A value with
+	 * no {@code local@domain} shape is rejected with {@link IllegalArgumentException} — entries are
+	 * never deleted, so a junk write would persist forever.
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 }

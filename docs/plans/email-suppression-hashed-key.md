@@ -186,6 +186,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | review (RV-BE-17, invariant #12) | the `email_key` format CHECK was only exercised by valid writes — no test proved the schema *rejects* a cleartext key | fixed — `EmailSuppressionIT.theSchemaRejectsACleartextKey` |
 | F-2 | review (observation) | an address with internal whitespace would fail the `domain` CHECK loudly at write time | no action — visible failure on malformed feed input is acceptable; #370's territory |
+| F-3 | `/code-review` fan-out (angles A+B) | V33 `DROP TABLE` rested on an unenforced "table is empty" assumption | fixed — guard `DO` block RAISEs if rows exist |
+| F-4 | `/code-review` fan-out (altitude + cross-file) | `suppress()` silently stored junk rows for blank/`@`-less input (durable — rows never deleted) | fixed — rejected with `IllegalArgumentException`; pinned by `EmailSuppressionIT.aNonAddressWriteIsRejected` |
+| F-5 | `/code-review` fan-out (4 angles converged) | `DEV_DEFAULT_PEPPER` ↔ `application.properties` lockstep was comment-only; drift would silently defang the prod guard | fixed — `SuppressionPepperProdGuardTest.theCommittedDefaultMatchesTheGuardConstant` loads the real properties file |
+| F-6 | `/code-review` fan-out (altitude + line-scan) | runbook recipe exposed the pepper via `openssl -hmac` argv and silently HMAC'd with an empty key when unset | fixed — env-reading python recipe, loud on unset, Unicode caveat added |
+| F-7 | `/code-review` fan-out (cross-file) | `mailer-profile-smoke-test.md` prod-activation checklist missing `RIVIERA_SUPPRESSION_PEPPER` | fixed — checklist names it |
+| F-8 | `/code-review` fan-out (conventions + simplification) | concatenated SQL in the IT count query; tautological `row[0]` assertion | fixed — text block; assertion dropped |
+| F-9 | `/code-review` fan-out (altitude) | v2 dual-scheme migration obligations (dual lookup + duplicate collapse) undocumented | fixed — recorded in V33 header + runbook |
+| F-10 | `/code-review` fan-out (reuse) | `normalize()` is the sixth private copy of email canonicalization; hashing makes drift undebuggable at rest | deferred → issue #393 |
+| F-11 | `/code-review` fan-out (refuted) | hash-over-normalized not schema-verifiable (inherent — DB has no pepper, ADR-0012 accepted); `email_key` as PK instead of surrogate id (repo convention keeps identity PKs); `@ConfigurationProperties` refactor (guard shape mirrors `MockMailerProdGuard`; F-5 closes the real risk); null-email NPE (pre-existing, transport fails on null recipient anyway) | no action — rationale recorded |
 
 ---
 
