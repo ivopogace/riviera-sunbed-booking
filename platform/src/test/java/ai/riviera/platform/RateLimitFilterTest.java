@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,11 +8,16 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.net.URI;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -21,7 +27,10 @@ import ch.qos.logback.core.read.ListAppender;
 import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -64,6 +73,21 @@ class RateLimitFilterTest {
 
 	@Autowired
 	MockMvc mvc;
+
+	/**
+	 * Overrides the {@link WebSliceStubs} bean, which resolves every principal to {@link Optional#empty()}.
+	 * That default makes {@code CurrentCustomer#require} throw {@code AccessDeniedException}, so an
+	 * authenticated {@code /api/me/password} call would answer {@code 403} — a status the #343 refund treats
+	 * as "never reached the credential check". The customer-side budget could then never be exercised
+	 * authenticated at all, so the resolution is stubbed to succeed here.
+	 */
+	@MockitoBean
+	CustomerAccountDirectory customerAccountDirectory;
+
+	@BeforeEach
+	void resolveTheSignedInCustomer() {
+		when(customerAccountDirectory.accountFor(any())).thenReturn(Optional.of(new CustomerAccountId(1)));
+	}
 
 	private ResultActions viewFromIp(String ip, String code) throws Exception {
 		return mvc.perform(get("/api/bookings/{code}", code).with(fromIp(ip)));
@@ -383,6 +407,57 @@ class RateLimitFilterTest {
 		customerPasswordChangeFromIp(ip).andExpect(status().isTooManyRequests());
 
 		changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+	}
+
+	// ---- An anonymous flood must not drain an AUTHENTICATED endpoint's budget (issue #343) ----
+
+	/** Deliberately not {@code operator}: the env-managed bootstrap admin is refused with a 409. */
+	private static final String TEST_OPERATOR = "venue-op";
+	private static final String TEST_CUSTOMER = "tourist@example.com";
+
+	/** The signed-in operator's own change — the only caller that reaches the credential oracle. */
+	private ResultActions authenticatedChangePasswordFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
+				.with(user(TEST_OPERATOR).roles("OPERATOR"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
+	}
+
+	private ResultActions authenticatedCustomerPasswordChangeFromIp(String ip) throws Exception {
+		return mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf())
+				.with(user(TEST_CUSTOMER).roles("CUSTOMER"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
+	}
+
+	/**
+	 * AC-1. {@code POST /api/auth/operator/password} is {@code hasRole(OPERATOR)}, but this filter runs
+	 * before {@code AuthorizationFilter}, so until #343 a caller with no session, no account and no CSRF
+	 * token spent its tokens anyway. Ten requests is five times the budget: every operator behind that
+	 * address — venue WiFi / CGNAT is exactly the topology the budget was split for (#326) — then met a
+	 * {@code 429} on the page whose whole purpose is rotating a credential they believe is compromised.
+	 */
+	@Test
+	void anUnauthenticatedFloodDoesNotDrainTheOperatorPasswordBudget() throws Exception {
+		String ip = "10.32.0.1";
+		for (int i = 0; i < 10; i++) {
+			changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+		}
+
+		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
+	}
+
+	/** AC-2. The customer twin of AC-1 — same filter position, same defect, same fix. */
+	@Test
+	void anUnauthenticatedFloodDoesNotDrainTheCustomerPasswordBudget() throws Exception {
+		String ip = "10.32.0.2";
+		for (int i = 0; i < 10; i++) {
+			customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		}
+
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
 	}
 
 	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----
