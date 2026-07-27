@@ -164,15 +164,15 @@ N/A — no contract change (no HTTP surface touches suppression).
 > **Session-recovery anchor.** Re-read this section (plus the current riviera-sdlc stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3 — docs)
 
-**Next action:** phase 2 — `SuppressionPepperProdGuardTest` red, then the guard bean to green.
+**Next action:** phase 3 — RESPONSIBILITIES.md + CLAUDE.md touch-ups, ops runbook, cd-pipeline env entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 5743576 |
-| 1 — V33 migration + HMAC adapter + IT (TDD) | ✅ | (this commit) |
-| 2 — pepper prod guard + guard test | | |
+| 1 — V33 migration + HMAC adapter + IT (TDD) | ✅ | 106fd48 |
+| 2 — pepper prod guard + guard test | ✅ | (this commit) |
 | 3 — docs (RESPONSIBILITIES, CLAUDE.md row, runbook, cd-pipeline) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -485,6 +485,7 @@ Create `docs/runbooks/suppression-list-ops.md`
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-27 | phase 1 (hashed key) | raw-address persistence/logging on the suppression path | `grep -rn "email" platform/src/main/java/ai/riviera/platform/notification` | chokepoint logs already address-free; `MockMailer`/`SentEmail` record addresses but are the test-only transport, not suppression state | no further sites — skip |
+| 2026-07-27 | phase 2 (conditional prod guard) | other env secrets needing a reject-the-committed-default guard | reviewed `RIVIERA_MAIL_FROM` (SmtpMailer fails at boot itself), `RIVIERA_OPERATOR_PASSWORD` (deliberate graceful lock, #115) | none | skip — existing postures are deliberate |
 
 ---
 
