@@ -113,6 +113,37 @@ Provider landscape (condensed; full table in the research doc):
 7. **Bounces/complaints are consumed and suppressed.** A signature-verified webhook endpoint
    records hard bounces + complaints; suppressed addresses are not sent to again.
 
+   > **Amended 2026-07-28 (#386).** "Not sent to again" holds on every path except one, and the
+   > exception is deliberate: on the **recovery vehicle** (password reset / email verification), a
+   > **transient** failure of the suppression *lookup itself* now sends the mail rather than dropping
+   > it. This bullet was written when suppression was a decision the code would simply make; it
+   > became a database read that can fail, and the bullet had no answer for what to do then.
+   >
+   > The trade, taken with the maintainer rather than inferred: the suppression list is **empty in
+   > production** until #370's bounce feed lands, so today the branch can only fire against an empty
+   > table; a user-*requested* reset sent to a suppressed address is the most harmless send available
+   > (they asked for it, and a hard-bounced address simply bounces again); and design **D-8** makes
+   > the HTTP response byte- and timing-identical either way, so a dropped reset is a dead end the
+   > user gets no signal about and cannot distinguish from success. Failing closed traded a
+   > *certain* user-visible dead end for an *unlikely* deliverability ding.
+   >
+   > **Bounded three ways**, so this is a carve-out and not a hole:
+   > - **Transient only.** The catch is `TransientDataAccessException`, not `DataAccessException`
+   >   (narrowed at #386's review gate). A structurally broken lookup — a revoked grant, schema
+   >   drift — is *not* a blip and still drops the mail; failing open on one would mail every
+   >   suppressed address indefinitely behind a single log line.
+   > - **Recovery vehicle only.** On the registry vehicle the throw is load-bearing: it keeps the
+   >   publication outstanding so the at-least-once contract retries against a healthy database
+   >   instead of burning the delivery on a blip. Pinned by
+   >   `TransactionalMailServiceTest.aSuppressionReadFailureStillPropagatesOnTheRegistryVehicle`.
+   > - **The read is bounded.** It runs on the single mail-drainer thread, so it now carries a finite
+   >   `queryTimeout` scoped to its own adapter (never the global property, which would also bound
+   >   `availability`'s `SELECT … FOR UPDATE` — invariant #2). That bound is what makes this branch
+   >   reachable at all, which is why the two shipped together.
+   >
+   > **Revisit when #370 lands.** Once a real bounce feed populates the list, the list stops being
+   > empty and the calculus above changes: re-weigh whether the recovery vehicle should fail closed.
+
 ## Preconditions (Proposed → Accepted)
 
 - A **real sending domain exists** — the platform has none (`*.onrender.com` cannot be a sender
