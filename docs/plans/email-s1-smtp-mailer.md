@@ -180,7 +180,8 @@ patched in this PR).
 | 3 — Activation runbook | ✅ | `55d5347` |
 | review-fix round (F-1..F-4, F-6) | ✅ | `44cb2ce` |
 | 4 — STARTTLS-required env override for local sinks (user request, post-review) | ✅ | `44eb284` — `${RIVIERA_SMTP_STARTTLS_REQUIRED:true}`, pinned by `MailerProfileWiringTest.theEnvironmentCanRelaxStarttlsRequiredForLocalSinks`; deployed default stays `true` |
-| close-out (plan final state + CLAUDE.md freshness patch) | ✅ | (this PR's last commit) |
+| close-out (plan final state + CLAUDE.md freshness patch) | ✅ | `51bdb13` |
+| 5 — `smtp4dev` local-dev profile (Ivo, post-close-out): `@Profile("mailer \| smtp4dev")` / mock `!mailer & !smtp4dev`, `application-smtp4dev.properties` (defaults on purpose), sink script under `platform/tools/smtp4dev/` | ✅ | `89921d5` + reconcile commit (header comment rewritten to match the profile's actual posture, `SmtpMailer`/`MockMailer` Javadoc updated, runbook one-flag path, pinned by `MailerProfileWiringTest.smtp4devProfileBootsTheRealMailerOnLocalDefaultsWithoutEnv`) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

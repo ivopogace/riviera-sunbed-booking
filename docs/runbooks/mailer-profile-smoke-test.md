@@ -70,7 +70,21 @@ interceptor handles the cookie-to-header dance that a bare `curl` would have to 
 
 ## Local variant (no Scaleway, no credentials)
 
-GreenMail as the relay — proves the transport wiring without a provider:
+**One-flag path — the `smtp4dev` profile** (#368): a dedicated local-dev profile whose defaults
+target a local [smtp4dev](https://github.com/rnwood/smtp4dev) sink, so no env vars are needed at
+all. Start the sink (`platform/tools/smtp4dev/start smtp4dev.bat` — SMTP on `:2525`, inbox UI on
+<http://localhost:3000>), then:
+
+```bash
+SPRING_PROFILES_ACTIVE=smtp4dev ./gradlew bootRun    # (in platform/)
+```
+
+Real sends land in the smtp4dev inbox UI. `prod,smtp4dev` still aborts at boot (the mock-mailer
+guard fires on `prod & !mailer`) — this profile is local-only by construction; pinned by
+`MailerProfileWiringTest.smtp4devProfileBootsTheRealMailerOnLocalDefaultsWithoutEnv`.
+
+**Env-driven path — any sink under the `mailer` profile** (proves the deployment posture's
+wiring, e.g. with GreenMail):
 
 ```bash
 docker run --rm -p 3025:3025 greenmail/standalone:2.1.3   # SMTP on 3025, all creds accepted

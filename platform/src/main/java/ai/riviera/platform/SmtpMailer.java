@@ -11,9 +11,11 @@ import org.springframework.stereotype.Component;
 /**
  * Real SMTP {@link Mailer} (#368, ADR-0011): delivers the verification and reset emails over the
  * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
- * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active only under
- * {@code @Profile("mailer")}; missing SMTP config fails at boot (unresolved placeholder), never on first
- * send. Messages are plain text with no tracking markup (ADR-0011 §25-TDDDG posture), and the tokenized
+ * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active under
+ * {@code @Profile("mailer")} — where missing SMTP config fails at boot (unresolved placeholder), never on
+ * first send — and under the local-dev {@code smtp4dev} profile, whose defaults target the local sink
+ * ({@code application-smtp4dev.properties}). Messages are plain text with no tracking markup
+ * (ADR-0011 §25-TDDDG posture), and the tokenized
  * link — a bearer credential (invariant #7) — is never logged here. Package-private (RV-BE-11); pinned
  * by {@code SmtpMailerIT} + {@code MailerProfileWiringTest}.
  */

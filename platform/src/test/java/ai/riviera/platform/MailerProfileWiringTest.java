@@ -83,6 +83,18 @@ class MailerProfileWiringTest {
 	}
 
 	@Test
+	void smtp4devProfileBootsTheRealMailerOnLocalDefaultsWithoutEnv() {
+		runner.withPropertyValues("spring.profiles.active=smtp4dev")
+				.run(context -> {
+					assertThat(context).hasSingleBean(Mailer.class);
+					assertThat(context.getBean(Mailer.class)).isInstanceOf(SmtpMailer.class);
+					JavaMailSenderImpl sender = (JavaMailSenderImpl) context.getBean(JavaMailSender.class);
+					assertThat(sender.getHost()).isEqualTo("localhost");
+					assertThat(sender.getPort()).isEqualTo(2525);
+				});
+	}
+
+	@Test
 	void defaultProfileKeepsTheRecordingMockAndNoMailSession() {
 		runner.run(context -> {
 			assertThat(context).hasSingleBean(Mailer.class);
