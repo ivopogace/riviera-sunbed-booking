@@ -207,15 +207,16 @@ explicitly.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — authored, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** load `riviera-local-debug`, then start phase 0 (write
-`AsyncMailDispatcherTest.runsTheSendOffTheCallersThread` red).
+**Next action:** write `CustomerRecoveryDispatchTest` red, then thread `MailDispatcher` through
+`CustomerRecovery` and wire the synchronous test dispatcher (`TestcontainersConfiguration` +
+`WebSliceStubs`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | | |
-| 1 — Route `CustomerRecovery` through it + synchronous test wiring | | |
+| 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | ✅ | `<phase-0-sha>` |
+| 1 — Route `CustomerRecovery` through it + synchronous test wiring | ⏳ | |
 | 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -843,6 +844,7 @@ class RecoveryTokenNeverPersistedIT {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-27 | phase 0 — new `MailDispatcher` seam | other synchronous edge side-channels on a request thread that could reuse the seam | `grep -rl "Mailer\|sendQuietly" platform/src/main/java` | 8 files, but only `CustomerRecovery` *calls* the `Mailer`; the rest are the port, its two implementations, the prod guard, and the two records | Skip — no second call site exists today. #375's operator-approval mail is the named future reuse and is out of scope per Non-goals |
 
 ---
 
