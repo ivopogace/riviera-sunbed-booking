@@ -8,9 +8,9 @@ import java.net.URI;
  * builds the link and hands it here fully formed, so the mailer never touches the token store or the
  * account. Exactly one implementation is active per profile (mirroring {@code StubPaymentGateway} vs
  * {@code StripePaymentGateway}, and {@code MockSsoGateway} vs {@code RealSsoGateway}): the recording
- * {@link MockMailer} under the default profile, {@link SmtpMailer} under {@code mailer}. A real
- * SMTP/provider adapter is deferred like the S5 SSO credentials; {@link MockMailerProdGuard} forbids the
- * mock from running in production. Package-private — edge-internal machinery (RV-BE-11).
+ * {@link MockMailer} under the default profile, the real SMTP {@link SmtpMailer} under {@code mailer}
+ * (#368, ADR-0011); {@link MockMailerProdGuard} forbids the mock from running in production.
+ * Package-private — edge-internal machinery (RV-BE-11).
  */
 interface Mailer {
 

@@ -98,6 +98,18 @@ must include `frontend/`, so:
     when moving to a CDN that publishes the originating client under a different name (e.g.
     `True-Client-IP`); an empty value disables the preferred path and falls back to the #129
     `X-Forwarded-For` walk.
+  - `RIVIERA_RECOVERY_LINK_BASE_URL` (#368) — the absolute origin every emailed verify/reset
+    link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
+    same-origin since #110), i.e. `https://<name>.onrender.com` today. Unset ⇒ the shipped
+    default `http://localhost:4200`, which is only right for local dev — with the real mailer
+    active every emailed link would point at a dead origin.
+  - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
+    `prod,mailer`; without these the profile aborts at boot, by design):
+    `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default
+    `587`, STARTTLS), `RIVIERA_SMTP_USERNAME` / `RIVIERA_SMTP_PASSWORD` (the TEM SMTP
+    credentials — **secrets, env-only**, the Stripe-key posture), `RIVIERA_MAIL_FROM`
+    (`noreply@<platform sending domain>`, #370). Activation steps + smoke send:
+    [`docs/runbooks/mailer-profile-smoke-test.md`](../runbooks/mailer-profile-smoke-test.md).
 - **Health Check Path:** `/actuator/health`.
 - **Instances / scaling: keep at exactly ONE.** Do **not** raise the instance count (Render
   *Scaling*). Two in-memory rate-limit buckets and two lockless scheduler sweeps assume a single

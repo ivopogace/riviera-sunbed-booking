@@ -21,9 +21,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * S8 (#113) review fix: the recovery-email send is <strong>best-effort</strong>. A mail-transport failure
  * must never fail the triggering request (registration would 500 <em>after</em> the account+session
  * already exist) nor turn forgot-password's uniform 204 into a 500-vs-204 account-enumeration oracle (D-8).
- * Here the {@link Mailer} is replaced with one that throws on every send (the posture of the deferred real
- * {@code SmtpMailer}): registration still returns 201 and forgot-password still returns 204. Unique emails
- * against a fresh Testcontainers DB (no cleanup).
+ * Here the {@link Mailer} is replaced with one that throws on every send (simulating a mail-transport
+ * failure, e.g. an unreachable SMTP relay): registration still returns 201 and forgot-password still
+ * returns 204. Unique emails against a fresh Testcontainers DB (no cleanup).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

@@ -73,9 +73,9 @@ class CustomerRecovery {
 	 * has an account — D-8). The user can simply re-request. Only the mailer send is guarded — a token-store
 	 * failure is a real error and still propagates.
 	 *
-	 * <p>The real {@code SmtpMailer} is deferred (throws {@code UnsupportedOperationException}); when it
-	 * ships, its <em>synchronous</em> SMTP round-trip should also move off the request thread so a slower
-	 * known-email branch cannot become a <em>timing</em> oracle (tracked with the real-mailer follow-up).
+	 * <p>The real {@code SmtpMailer} (#368) runs its SMTP round-trip <em>synchronously on this request
+	 * thread</em> — so under the {@code mailer} profile a slower known-email branch is a live <em>timing</em>
+	 * oracle until the send moves off-thread (#369; the runbook bars prod activation before it lands).
 	 */
 	private void sendQuietly(Runnable send) {
 		try {
