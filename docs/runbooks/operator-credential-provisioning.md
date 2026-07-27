@@ -68,6 +68,10 @@ compromised had to find a platform admin.
   `400 INVALID_CURRENT_PASSWORD`, nothing written, nothing revoked. The check is
   `matches(rawInput, storedHash)` — never encode-then-compare, which bcrypt's re-salting makes
   always-false (the defect behind #128 and S8; `OperatorPasswordChangeIT` pins it).
+- **Omitted entirely** (absent or empty) → `400 MISSING_CURRENT_PASSWORD`, checked ahead of the policy
+  rule below. Its own code since #345: sharing `INVALID_REQUEST` with a policy violation told a caller
+  whose new password was fine to pick a different length. The customer twin `POST /api/me/password`
+  answers the same code, where the omission previously read as `INVALID_CURRENT_PASSWORD`.
 - **New password policy** is the shared one (8–72 bytes) → `400 INVALID_REQUEST` otherwise.
 - **Other sessions die, and yours is re-issued under a new id.** On success the edge deletes every
   *other* `SPRING_SESSION` row for that principal (`PrincipalSessionRevoker`, #128), then rotates

@@ -117,13 +117,13 @@ wire vocabulary of two edge controllers.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **A client not updated in this slice silently degrades**: `customer-auth.setPassword` maps every non-`INVALID_CURRENT_PASSWORD` 400 to `'invalid-password'`, so an un-updated FE would show the *length* message for the new code — the exact bug #345 reports, relocated | high if FE skipped | med | FE mapping ships in the **same** slice (Phase 2, AC-6); both services get a spec asserting the new code maps to `'missing-current'` | agent | open |
-| R-2 | **Mock/controller drift** in `e2e/support/auth-mocks.ts` — #342's review already caught the mocked suite staying green through a real controller reordering | med | med | Phase 3 updates both mock routes in the same branch order as the controllers and keeps the existing "branch order mirrors the controller" comment accurate | agent | open |
-| R-3 | **Relaxing the compact constructor weakens the record's invariant** — a `ChangePasswordRequest` can now hold a null `currentPassword`, so a future caller could skip the controller's check | low | med | Only one call site exists (the endpoint's own `@RequestBody`); the shared `CustomerPasswords.isSupplied` predicate is the single definition of "supplied" for both endpoints, and AC-1/AC-2 pin the behaviour | agent | open |
-| R-4 | **Twin drift** — the operator and customer branches are deliberate mirrors and have drifted before (#344 wrote the ordering rationale on one and cross-referenced it from the other) | med | low | One shared predicate + one shared FE message constant + cross-referencing javadoc on both controllers | agent | open |
-| R-5 | **Error-contract regression**: a hand-rolled body instead of `ApiProblem`, or a per-controller `@ExceptionHandler` | low | med | Both new branches use `ApiProblem.response`; `ErrorContractArchitectureTests` fails the build otherwise | agent | open |
-| R-6 | **Simplifying `MyAccountController.currentPasswordMatches`** (its null guard becomes unreachable once the presence check runs first) could unguard a genuinely-null field if the branches are later reordered | low | med | The check stays *nested inside* `existing.isPresent()` directly above the match, so the guarantee is local and readable; AC-4 pins it | agent | open |
-| R-7 | Adding a code to a **published contract** without recording it — the #97 vocabulary list is already stale (it predates `INVALID_CURRENT_PASSWORD`, `ACCOUNT_NOT_ACTIVE`, `BOOTSTRAP_CREDENTIAL_MANAGED`) | med | low | Phase 4 records the new code in this plan's FE↔BE contract section and appends the codes added since #97 to `docs/plans/error-contract-problemdetail.md`'s vocabulary list | agent | open |
+| R-1 | **A client not updated in this slice silently degrades**: `customer-auth.setPassword` maps every non-`INVALID_CURRENT_PASSWORD` 400 to `'invalid-password'`, so an un-updated FE would show the *length* message for the new code — the exact bug #345 reports, relocated | high if FE skipped | med | FE mapping ships in the **same** slice (Phase 2, AC-6); both services get a spec asserting the new code maps to `'missing-current'` | agent | **closed** `5c92b88` — both services mapped, both pinned |
+| R-2 | **Mock/controller drift** in `e2e/support/auth-mocks.ts` — #342's review already caught the mocked suite staying green through a real controller reordering | med | med | Phase 3 updates both mock routes in the same branch order as the controllers and keeps the existing "branch order mirrors the controller" comment accurate | agent | **closed** `3da29dc` — both routes re-branched in controller order; the operator one corrected even though its own page cannot reach it |
+| R-3 | **Relaxing the compact constructor weakens the record's invariant** — a `ChangePasswordRequest` can now hold a null `currentPassword`, so a future caller could skip the controller's check | low | med | Only one call site exists (the endpoint's own `@RequestBody`); the shared `CustomerPasswords.isSupplied` predicate is the single definition of "supplied" for both endpoints, and AC-1/AC-2 pin the behaviour | agent | **accepted** `c435493` — verified single call site (`grep -rn "ChangePasswordRequest" platform/src/main`); the record's javadoc states where the check moved to |
+| R-4 | **Twin drift** — the operator and customer branches are deliberate mirrors and have drifted before (#344 wrote the ordering rationale on one and cross-referenced it from the other) | med | low | One shared predicate + one shared FE message constant + cross-referencing javadoc on both controllers | agent | **closed** `6aea431`/`5c92b88` — `CustomerPasswords.isSupplied` + `CURRENT_PASSWORD_REQUIRED_MESSAGE`, and both controller javadocs name the other |
+| R-5 | **Error-contract regression**: a hand-rolled body instead of `ApiProblem`, or a per-controller `@ExceptionHandler` | low | med | Both new branches use `ApiProblem.response`; `ErrorContractArchitectureTests` fails the build otherwise | agent | **closed** — `ErrorContractArchitectureTests` green in the Phase-0 scope and the full suite |
+| R-6 | **Simplifying `MyAccountController.currentPasswordMatches`** (its null guard becomes unreachable once the presence check runs first) could unguard a genuinely-null field if the branches are later reordered | low | med | The check stays *nested inside* `existing.isPresent()` directly above the match, so the guarantee is local and readable; AC-4 pins it | agent | **closed** `6aea431` — nested three lines above, with a one-line javadoc on the helper stating the precondition |
+| R-7 | Adding a code to a **published contract** without recording it — the #97 vocabulary list is already stale (it predates `INVALID_CURRENT_PASSWORD`, `ACCOUNT_NOT_ACTIVE`, `BOOTSTRAP_CREDENTIAL_MANAGED`) | med | low | Phase 4 records the new code in this plan's FE↔BE contract section and appends the codes added since #97 to `docs/plans/error-contract-problemdetail.md`'s vocabulary list | agent | **closed** (Phase 4) — the #97 list now carries a dated "snapshot, not a registry" note listing every code added since, plus the regeneration command; the operator runbook gained the new response |
 
 ## Open questions / Assumptions
 
@@ -220,17 +220,17 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read it
 > (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 4 (docs sweep)`
+**Stage pointer:** `PR — opening; review + sonar gates next`
 
-**Next action:** Phase 4 step 1 — append the codes added since #97 to `docs/plans/error-contract-problemdetail.md`'s vocabulary list (R-7).
+**Next action:** Merge `origin/main`, push, open the PR, then run `/code-review` + the SonarCloud gate before the close-out commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: operator endpoint answers `MISSING_CURRENT_PASSWORD` | ✅ | `c435493` |
 | 1 — Backend: the customer twin | ✅ | `6aea431` |
 | 2 — Frontend: both auth services + both pages map the new code | ✅ | `5c92b88` |
-| 3 — e2e: mocks mirror the controllers + a real render of the new branch | ✅ | (this commit) |
-| 4 — Docs sweep + close-out | ⏳ | |
+| 3 — e2e: mocks mirror the controllers + a real render of the new branch | ✅ | `3da29dc` |
+| 4 — Docs sweep + close-out | ⏳ | (this commit — close-out pending the PR number) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -714,13 +714,18 @@ customer route (nested under "the account has a credential", exactly as the cont
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*OperatorAccountControllerTest*"` → `reportsAnOmittedCurrentPasswordDistinctly` PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same command → `anOmittedCurrentPasswordOutranksTheNewPasswordPolicy` PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same command → `rejectsWeakNewPassword` still PASS (unmodified). Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `gradle test --tests "*SetPasswordIT*"` → `existingPasswordAccountReportsAnOmittedCurrentPasswordDistinctly` PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Same command → `ssoOnlyAccountSetsFirstPasswordThenCanLogin` still PASS (unmodified). Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npm test` → the three new specs PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `npm run test:e2e:a11y -- customer-password` → the new test PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `./gradlew test --tests "*OperatorAccountControllerTest*"` → `reportsAnOmittedCurrentPasswordDistinctly` PASS (14 tests). Verified at commit `c435493`.
+- [x] **AC-2:** Same command → `anOmittedCurrentPasswordOutranksTheNewPasswordPolicy` PASS. Verified at commit `c435493`.
+- [x] **AC-3:** Same command → `rejectsWeakNewPassword` still PASS, unmodified. Verified at commit `c435493`.
+- [x] **AC-4:** Run `./gradlew test --tests "*SetPasswordIT*"` → `existingPasswordAccountReportsAnOmittedCurrentPasswordDistinctly` PASS against real Postgres (Docker present, 0 skipped). Verified at commit `6aea431`.
+- [x] **AC-5:** Same command → `ssoOnlyAccountSetsFirstPasswordThenCanLogin` still PASS, unmodified. Verified at commit `6aea431`.
+- [x] **AC-6:** Run `npm test` → 892 tests / 110 files PASS, including the three new specs; `npm run lint` clean. Verified at commit `5c92b88`.
+- [x] **AC-7:** Run `npm run test:e2e:a11y -- customer-password operator-password password-reset unified-auth` → 19 PASS, including the new test. Verified at commit `3da29dc`.
+
+**Whole-suite verification** (beyond the per-AC scopes): `./gradlew test` full backend suite BUILD
+SUCCESSFUL (3m42s, Docker present so the ITs ran rather than skipped) and `npm run build` succeeds —
+run before the PR precisely because scoped batches cannot show the full-suite-only failure class
+(`riviera-local-debug`). The pre-existing `booking-pay.scss` budget warning is untouched by this slice.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
