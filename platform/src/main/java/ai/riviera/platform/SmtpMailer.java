@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
  * by {@code SmtpMailerIT} + {@code MailerProfileWiringTest}.
  */
 @Component
-@Profile("mailer")
+@Profile("mailer | smtp4dev")
 class SmtpMailer implements Mailer {
 
 	private static final String VERIFICATION_SUBJECT = "Verify your email";

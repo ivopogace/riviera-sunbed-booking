@@ -17,14 +17,14 @@ import org.springframework.stereotype.Component;
  * and "reset your password" are demoable end-to-end with zero external credentials, and backend ITs can
  * follow the link out of {@link #lastTo}.
  *
- * <p>{@code @Profile("!mailer")} so exactly one {@link Mailer} bean exists: the mock when {@code mailer}
- * is absent, {@link SmtpMailer} when it is present. {@link MockMailerProdGuard} additionally forbids this
- * mock from ever running under {@code prod}. The link carries a single-use bearer token (invariant #7);
- * logging it is a deliberate <em>dev-only</em> affordance — mock-only and prod-guarded, it never runs in
- * production. Package-private (invariant #11).
+ * <p>{@code @Profile("!mailer & !smtp4dev")} so exactly one {@link Mailer} bean exists: the mock when
+ * {@code mailer} is absent, {@link SmtpMailer} when it is present. {@link MockMailerProdGuard} additionally
+ * forbids this mock from ever running under {@code prod}. The link carries a single-use bearer token
+ * (invariant #7); logging it is a deliberate <em>dev-only</em> affordance — mock-only and prod-guarded, it
+ * never runs in production. Package-private (invariant #11).
  */
 @Component
-@Profile("!mailer")
+@Profile("!mailer & !smtp4dev")
 class MockMailer implements Mailer {
 
 	private static final Logger log = LoggerFactory.getLogger(MockMailer.class);
