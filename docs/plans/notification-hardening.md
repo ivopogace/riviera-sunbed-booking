@@ -235,14 +235,14 @@ No event is added, moved, or renamed — so **no Flyway `event_type` rewrite is 
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, ready for implement (phase 0)`
+**Stage pointer:** `implement — phase 1 (one canonical Emails.normalize)`
 
-**Next action:** Load `riviera-local-debug` (first `./gradlew` of the session), then start phase 0
-(allowlist-form `CompositionRootDisciplineTests`, red first).
+**Next action:** Write `EmailsTest` (red), then add `customer.vocabulary.Emails` and delete the six
+private `trim().toLowerCase(Locale.ROOT)` copies.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Allowlist-form root discipline (item 1) | | |
+| 0 — Allowlist-form root discipline (item 1) | ✅ | `43e0f20` |
 | 1 — One canonical `Emails.normalize` (item 4) | | |
 | 2 — V34 `domain` CHECK + empty-domain guard (item 2) | | |
 | 3 — Bounded suppression read + fail-open (item 3) | | |
@@ -475,6 +475,7 @@ would not see a future decorator at all.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-27 | Phase 0 — deny-list fitness function weaker than its own prose | Other ArchUnit rules stated as a deny-list over an *enumerable, growing* set | `rg "noClasses\(\)\|resideInAnyPackage" platform/src/test` | 4: `CustomerAuthPlacementTests`, `OperatorAuthPlacementTests`, `PackageShapeArchitectureTests#applicationAndDomainDoNotDependOnAdapters`, `VenueApiRoleSplitTests` | **Skip all 4, none share the defect.** The two auth-placement rules deny one *third-party* package (`org.springframework.security..`); "all auth libraries" is not an enumerable set, so an allowlist is not the stronger form — and module→module grants are already allowlisted by `allowedDependencies`. The hexagon-direction rule's denied set (`adapter..`) is closed by construction, since assertion 1 already bounds a module's top-level packages to a fixed set. `VenueApiRoleSplitTests` denies one *named type* outside one module — effectively already an allowlist, with no growing set behind it. The #386 failure mode (a ninth module silently escaping) needs a set that grows with the codebase; none of these have one. |
 
 ---
 
