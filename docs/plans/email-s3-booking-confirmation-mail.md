@@ -242,9 +242,9 @@ its own Playwright coverage.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `review gate — complete, findings fixed or deferred; awaiting CI + Sonar before merge`
+**Stage pointer:** `DONE — merged via PR #381`
 
-**Next action:** Confirm CI green on `4f6efb2`, then pull the SonarCloud new-issue list and clear it before merging.
+**Next action:** None. Merge close-out complete; the two deferred findings live on #383, which blocks #370 activating the mailer profile.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -253,6 +253,7 @@ its own Playwright coverage.
 | 2 — the edge listener on `BookingConfirmed` | ✅ | `f3dac62` |
 | 2b — **shared-kernel extraction** (unplanned; R-9) | ✅ | `5957741` |
 | 3 — registry-config pinning + structural net + close-out | ✅ | `f3dac62` |
+| 4 — review-gate fixes (10 findings) | ✅ | `4f6efb2`, `3e16adf` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -424,6 +425,15 @@ All verified locally at commit `f3dac62` (JDK 25 + Docker present, so no IT skip
 
 Regression set also green in the same run: `PayoutModuleTest`, `PayoutAccrualIT`,
 `JdbcBookingNotificationFactsIT`.
+
+**CI green on `3e16adf`** — Backend (build + test), Frontend (lint + test + build), CodeQL
+(java-kotlin + javascript-typescript), SonarCloud: all success, no failures. The backend job is the
+full suite, which is what actually clears the full-suite-only failure class scoped local runs cannot
+(see F-1).
+
+**Sonar gate cleared on the issue list, not the badge** (the merge bar is 0 new issues + 0 duplicated
+blocks + ≥80% new-code coverage): `new_violations` **0**, `new_duplicated_lines_density` **0.0%**,
+`new_coverage` **90.2%** over 624 new lines; `api/issues/search` returns `total: 0`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
