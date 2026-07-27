@@ -30,8 +30,16 @@ import org.springframework.stereotype.Component;
  * serial drain behind a 100-deep buffer is the whole requirement. Core and max are equal on purpose: a
  * {@code ThreadPoolExecutor} grows past its core size only once the queue is <em>full</em>, so a larger max
  * with this queue would add no headroom until 100 sends were already backed up — an inviting number to
- * "tune" and a misleading one to read. A stuck send cannot stall the queue indefinitely because
- * {@code SmtpMailer}'s connect/read/write timeouts are finite (#368).
+ * "tune" and a misleading one to read.
+ *
+ * <p><strong>Everything that runs on this thread must be bounded</strong>, because one serial drainer
+ * means one wedged task stalls the queue and then silently drops sends once the 100 slots fill. Two
+ * things run here, not one: the SMTP round-trip, whose connect/read/write timeouts are finite (#368),
+ * and — since the {@code notification} module gained the suppression list (#382) — a database read.
+ * That read arrived after this class was written and inherited Postgres's infinite default statement
+ * timeout; {@code JdbcEmailSuppressions} now gives it a finite {@code queryTimeout} of its own (#386),
+ * deliberately scoped to that one lookup rather than set globally, where it would also bound
+ * {@code availability}'s {@code SELECT … FOR UPDATE} (invariant #2).
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {

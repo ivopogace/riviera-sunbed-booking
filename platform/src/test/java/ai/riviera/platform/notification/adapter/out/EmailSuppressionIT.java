@@ -9,6 +9,7 @@ import java.util.List;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,9 @@ class EmailSuppressionIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	DataSource dataSource;
 
 	@Autowired
 	Environment env;
@@ -200,7 +204,7 @@ class EmailSuppressionIT {
 
 	@Test
 	void aDifferentPepperYieldsADifferentKey() {
-		var otherPepper = new JdbcEmailSuppressions(jdbc, "a-completely-different-pepper");
+		var otherPepper = new JdbcEmailSuppressions(dataSource, "a-completely-different-pepper", 5);
 		otherPepper.suppress("pepper-proof@example.com", SuppressionReason.HARD_BOUNCE,
 				Instant.parse("2026-07-27T10:00:00Z"));
 

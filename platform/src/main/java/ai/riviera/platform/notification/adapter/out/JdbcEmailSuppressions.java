@@ -8,8 +8,10 @@ import java.util.HexFormat;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
@@ -43,17 +45,45 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	private static final String KEY_SCHEME_PREFIX = "v1:";
 	private static final String HMAC_ALGORITHM = "HmacSHA256";
 
+	/** Generous for a single indexed-key lookup, short enough that a wedged read cannot stall the queue. */
+	private static final String DEFAULT_QUERY_TIMEOUT_SECONDS = "5";
+
 	private final JdbcClient jdbc;
 	private final SecretKeySpec pepperKey;
 
-	JdbcEmailSuppressions(JdbcClient jdbc,
-			@Value("${riviera.notification.suppression-pepper:}") String pepper) {
+	JdbcEmailSuppressions(DataSource dataSource,
+			@Value("${riviera.notification.suppression-pepper:}") String pepper,
+			@Value("${riviera.notification.suppression-query-timeout-seconds:"
+					+ DEFAULT_QUERY_TIMEOUT_SECONDS + "}") int queryTimeoutSeconds) {
 		if (pepper.isBlank()) {
 			throw new IllegalStateException(
 					"riviera.notification.suppression-pepper must not be blank (set RIVIERA_SUPPRESSION_PEPPER)");
 		}
-		this.jdbc = jdbc;
+		this.jdbc = boundedClient(dataSource, queryTimeoutSeconds);
 		this.pepperKey = new SecretKeySpec(pepper.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM);
+	}
+
+	/**
+	 * A {@link JdbcClient} of this adapter's own, with a finite {@code queryTimeout} (#386).
+	 *
+	 * <p>{@code isSuppressed} runs on {@code AsyncMailDispatcher}'s <strong>single</strong> drainer
+	 * thread, behind a 100-slot queue. Postgres's default statement timeout is infinite, so one wedged
+	 * read — a lock wait, a saturated pool — stalls the whole recovery-mail queue and then silently
+	 * drops every new send once the buffer fills. #368 gave the SMTP round-trip finite timeouts for
+	 * exactly this reason; this closes the other half, the half that arrived later with the
+	 * suppression check.
+	 *
+	 * <p><strong>Scoped here on purpose, not set globally.</strong> The obvious instrument,
+	 * {@code spring.jdbc.template.query-timeout}, bounds <em>every</em> statement in the application —
+	 * including {@code availability}'s {@code SELECT … FOR UPDATE}, the serialization point of
+	 * invariant #2. Under set contention a legitimate lock wait could then abort as a timeout rather
+	 * than serialize, turning the platform's single most important correctness guarantee into a flaky
+	 * one to fix a mail-queue concern. A dedicated client keeps the blast radius at this one lookup.
+	 */
+	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
+		JdbcTemplate bounded = new JdbcTemplate(dataSource);
+		bounded.setQueryTimeout(queryTimeoutSeconds);
+		return JdbcClient.create(bounded);
 	}
 
 	@Override

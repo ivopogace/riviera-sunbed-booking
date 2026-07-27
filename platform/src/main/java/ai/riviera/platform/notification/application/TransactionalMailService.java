@@ -4,6 +4,7 @@ import java.net.URI;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.notification.api.MailSender;
@@ -71,17 +72,46 @@ public class TransactionalMailService implements MailSender {
 	private void dispatchQuietly(String kind, String toEmail, Runnable send) {
 		dispatcher.dispatch(() -> {
 			try {
-				if (suppressions.isSuppressed(toEmail)) {
+				if (isSuppressedOrFailOpen(kind, toEmail)) {
 					log.info("Recovery {} mail skipped: the address is suppressed", kind);
 					return;
 				}
 				send.run();
 			}
 			catch (RuntimeException e) {
-				// Covers the suppression read AND the send; never log the raw link/token (invariant #7).
+				// Never log the raw link/token (invariant #7); the outer net also covers a read bug
+				// that is not a DataAccessException, which must not escape onto the pooled thread.
 				log.warn("Recovery {} mail was not delivered ({}); the token was issued, the user can re-request",
 						kind, e.getClass().getSimpleName());
 			}
 		});
+	}
+
+	/**
+	 * The suppression state for a recovery send, <strong>failing open</strong> when the lookup itself
+	 * cannot be completed (#386).
+	 *
+	 * <p>Until #386 this read shared the transport's catch, so a transient DB failure dropped the mail
+	 * behind a log line that read like an SMTP failure (recorded as accepted drift Info-5). Sending
+	 * anyway is the better trade on this vehicle: the suppression list is empty in production until
+	 * #370's bounce feed lands, a user-requested reset to a suppressed address is the most harmless
+	 * send available, and D-8 makes the HTTP response identical either way — so a dropped reset is a
+	 * dead end the user gets no signal about and cannot distinguish from success. Bounding this read
+	 * with a finite query timeout (same slice) makes the failure branch <em>more</em> reachable, since
+	 * a wedged read now aborts instead of hanging.
+	 *
+	 * <p>Deliberately <strong>not</strong> shared with {@link #sendBookingConfirmation}: on the registry
+	 * vehicle the throw is load-bearing, keeping the publication outstanding so the at-least-once
+	 * contract (#371) retries against a healthy database instead of burning the delivery on a blip.
+	 */
+	private boolean isSuppressedOrFailOpen(String kind, String toEmail) {
+		try {
+			return suppressions.isSuppressed(toEmail);
+		}
+		catch (DataAccessException e) {
+			log.warn("Suppression lookup failed for the {} mail ({}); sending anyway rather than dropping it",
+					kind, e.getClass().getSimpleName());
+			return false;
+		}
 	}
 }

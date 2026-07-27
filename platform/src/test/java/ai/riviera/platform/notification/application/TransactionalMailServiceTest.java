@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.TransientDataAccessResourceException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -105,6 +106,41 @@ class TransactionalMailServiceTest {
 		verify(suppressions, never()).isSuppressed(any());
 		dispatched.get().run();
 		verify(suppressions).isSuppressed(EMAIL);
+	}
+
+	/**
+	 * #386: a failing suppression <em>read</em> fails <strong>open</strong> on the recovery vehicle —
+	 * the mail goes. This deliberately reverses accepted drift Info-5, under which the read shared the
+	 * transport's catch and a transient DB blip silently dropped a reset the user was waiting for,
+	 * behind a log line that read like an SMTP failure. Three reasons: the list is empty in production
+	 * until #370's bounce feed lands; a user-requested reset to a suppressed address is the most
+	 * harmless send there is; and D-8 makes the response identical either way, so a dropped reset is a
+	 * dead end with no signal to the user. Bounding the read with a query timeout (same slice) makes
+	 * this path <em>more</em> reachable, since a slow read now throws instead of hanging.
+	 */
+	@Test
+	void aSuppressionReadFailureStillSendsTheRecoveryMail() {
+		when(suppressions.isSuppressed(EMAIL)).thenThrow(new TransientDataAccessResourceException("pool exhausted"));
+
+		service.sendPasswordReset(EMAIL, LINK);
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		verify(mailer).sendPasswordReset(EMAIL, LINK);
+	}
+
+	/**
+	 * The other half of the same decision: fail-open is scoped to the recovery vehicle and must not
+	 * leak to the registry one. There the throw is load-bearing — it keeps the publication outstanding
+	 * so the at-least-once contract (#371) retries against a healthy DB, rather than burning the
+	 * delivery on a blip.
+	 */
+	@Test
+	void aSuppressionReadFailureStillPropagatesOnTheRegistryVehicle() {
+		when(suppressions.isSuppressed(EMAIL)).thenThrow(new TransientDataAccessResourceException("pool exhausted"));
+
+		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+				.isInstanceOf(TransientDataAccessResourceException.class);
+		verify(mailer, never()).sendBookingConfirmation(any(), any());
 	}
 
 	@Test
