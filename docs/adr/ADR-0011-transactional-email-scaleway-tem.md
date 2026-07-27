@@ -4,6 +4,7 @@
 - **Date:** 2026-07-27
 - **Research basis:** `docs/architecture/research/2026-07-27-dsgvo-transactional-email-provider.md`
   (provider landscape, DSGVO analysis, pricing — researched 2026-07-27)
+- **Epic:** #367 (transactional-email epic; absorbs #255)
 
 ## Context
 
