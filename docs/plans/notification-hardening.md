@@ -66,10 +66,19 @@ branch name applies — no cloud-branch substitution)*
   `customer.api`, `customer.vocabulary`, `notification.api`, `operator.api`, `operator.vocabulary`,
   `shared.*`. *Pinned by:* `CompositionRootDisciplineTests.rootTouchesOnlyGrantedModuleSurfaces`.
 
-- [ ] **AC-3:** Given a hand-inserted `email_suppression` row whose `domain` is whitespace/control-padded
-  (tab, newline, NBSP) or empty, when the insert runs, then Postgres rejects it — i.e. the DB rejects
-  every `domain` value the Java normalization could not produce.
-  *Pinned by:* `EmailSuppressionIT.theSchemaRejectsADenormalizedDomain`.
+- [x] **AC-3:** Given a hand-inserted `email_suppression` row whose `domain` carries edge whitespace
+  (space, tab, newline, CR, form feed), is empty, or is not lower-case, when the insert runs, then
+  Postgres rejects it — i.e. the DB rejects every `domain` value the Java writer could not produce,
+  **and accepts every value it can** (an interior space survives `trim()`, so a blanket whitespace ban
+  would be stricter than the writer and would raise a constraint violation on the drainer thread).
+  *Pinned by:* `EmailSuppressionIT.theSchemaRejectsADenormalizedDomain` +
+  `EmailSuppressionIT.aDomainTheWriterCanProduceIsStillAccepted`.
+
+  > **Correction to this AC as first written.** It claimed NBSP (`U+00A0`) coverage. That was wrong in
+  > two ways found while implementing: `String#trim()` strips only code points `<= U+0020`, so an NBSP
+  > **is** producible by the writer and must stay acceptable for the two sides to agree; and Postgres's
+  > `[:space:]` class is collation-dependent, so a blanket ban would not even mean the same thing in
+  > every environment. V34 mirrors `String#trim()` exactly (`btrim(domain, E' \t\n\r\f\v')`) instead.
 
 - [ ] **AC-4:** Given `suppress("user@")` (an address with an empty domain part), when it runs, then the
   adapter rejects it with `IllegalArgumentException` before touching the DB — closing the gap where
@@ -142,7 +151,7 @@ branch name applies — no cloud-branch substitution)*
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | V34's `DROP CONSTRAINT` targets PG's **auto-generated** name for V33's inline `domain` CHECK (`email_suppression_domain_check`); if the real name differs the migration fails | med | med | Name the replacement constraint **explicitly** so no future migration inherits the guess; a wrong drop name fails Flyway loudly on the first Testcontainers IT run, before any PR. Verify the actual name via `\d email_suppression` in phase 2 step 2 before writing the DDL | plan | open |
+| R-1 | V34's `DROP CONSTRAINT` targets PG's **auto-generated** name for V33's inline `domain` CHECK (`email_suppression_domain_check`); if the real name differs the migration fails | med | med | Name the replacement constraint **explicitly** so no future migration inherits the guess; a wrong drop name fails Flyway loudly on the first Testcontainers IT run, before any PR. Verify the actual name via `\d email_suppression` in phase 2 step 2 before writing the DDL | plan | **closed** — probed `pg_constraint` against the real container before writing the DDL: the name is `email_suppression_domain_check`, as predicted. The replacement is named `email_suppression_domain_normalized`, so the guess is not inherited |
 | R-2 | A **global** `spring.jdbc.template.query-timeout` would also bound `availability`'s `SELECT … FOR UPDATE` — the serialization point of invariant #2 — aborting a legitimate lock wait under contention | low | **high** | The timeout is scoped to a `JdbcClient` built inside `JdbcEmailSuppressions` only; the global property is **never** set. Phase 3 asserts the global property is absent | plan | open |
 | R-3 | Fail-open punches a hole in the module's defining invariant *no send to a suppressed address* | med | med | Scoped to the recovery vehicle alone; the registry vehicle still propagates (AC-6 pins it); the read failure is logged distinctly from a transport failure; decision recorded in the Javadoc **and** the amended Info-5 row | maintainer (decided at intake) | resolved — see Resolved |
 | R-4 | `Emails` in `customer::vocabulary` introduces cross-module imports from `notification` + the root | low | low | Both already hold `customer::vocabulary` (grants unchanged); `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` prove it (a final class is legal in `vocabulary`, which rejects only plain interfaces) | plan | open |
@@ -235,16 +244,17 @@ No event is added, moved, or renamed — so **no Flyway `event_type` rewrite is 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 (V34 domain CHECK + empty-domain guard)`
+**Stage pointer:** `implement — phase 3 (bounded suppression read + fail-open)`
 
-**Next action:** Extend `EmailSuppressionIT` with the padded/empty-`domain` rejection cases (red),
-confirm the auto-generated constraint name (R-1), then write V34.
+**Next action:** Write `SuppressionQueryTimeoutIT` + the two `TransactionalMailServiceTest` cases
+(red), then scope a `queryTimeout` to the suppression adapter's own `JdbcClient` and split the read
+out of the transport catch.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Allowlist-form root discipline (item 1) | ✅ | `116d4ec` |
-| 1 — One canonical `Emails.normalize` (item 4) | ✅ | `<phase-1>` |
-| 2 — V34 `domain` CHECK + empty-domain guard (item 2) | | |
+| 1 — One canonical `Emails.normalize` (item 4) | ✅ | `f671840` |
+| 2 — V34 `domain` CHECK + empty-domain guard (item 2) | ✅ | `<phase-2>` |
 | 3 — Bounded suppression read + fail-open (item 3) | | |
 | 4 — Fire-and-forget wiring IT (item 5) | | |
 | 5 — Cleanup sweep + docs (item 6) | | |
@@ -475,6 +485,7 @@ would not see a future decorator at all.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | Phase 2 — a normalization CHECK weaker than the Java that feeds it | Other Flyway CHECKs asserting a stored value is normalized | `grep -rn "btrim\|lower(" platform/src/main/resources/db/migration/` | 2, both the same column's history: V32's `email` CHECK (that column was **dropped** by V33 — moot, and V32 is immutable) and V33's `domain` (this fix) | **No other table has one.** Noted but deliberately skipped: `customer.email` and `customer_account.email` are normalized in Java with **no** DB CHECK at all — the same class of gap. Skipped because those tables hold real data (a CHECK could fail the deploy on a pre-existing row), they are written and read by the same adapter, and no bearer-credential invariant rides on them. Flagged in the PR body so a reviewer can disagree rather than have it pass silently. |
 | 2026-07-28 | Phase 1 — six private copies of one correctness-critical rule | Any surviving email normalization outside `Emails` | `grep -rn "toLowerCase" --include=*.java platform/src` | 5 hits, **0** of them email normalization: `StripePaymentGateway:70` (ISO currency for Stripe), `SsoProviders:30`, `PhotoUploadResponse:23,28`, `VenueProfileResponse:41` (enum names for the wire) | **Correctly left alone.** These lowercase a *closed enum name or ISO code* for wire representation — no trim, no user input, no cross-component agreement requirement. Folding them into `Emails.normalize` would couple unrelated concepts to an identity rule. The email rule now has exactly one definition; `CustomerPasswords.normalizeEmail` was deleted rather than left as a delegating wrapper, so its 3 external callers now name `Emails.normalize` directly. |
 | 2026-07-27 | Phase 0 — deny-list fitness function weaker than its own prose | Other ArchUnit rules stated as a deny-list over an *enumerable, growing* set | `rg "noClasses\(\)\|resideInAnyPackage" platform/src/test` | 4: `CustomerAuthPlacementTests`, `OperatorAuthPlacementTests`, `PackageShapeArchitectureTests#applicationAndDomainDoNotDependOnAdapters`, `VenueApiRoleSplitTests` | **Skip all 4, none share the defect.** The two auth-placement rules deny one *third-party* package (`org.springframework.security..`); "all auth libraries" is not an enumerable set, so an allowlist is not the stronger form — and module→module grants are already allowlisted by `allowedDependencies`. The hexagon-direction rule's denied set (`adapter..`) is closed by construction, since assertion 1 already bounds a module's top-level packages to a fixed set. `VenueApiRoleSplitTests` denies one *named type* outside one module — effectively already an allowlist, with no growing set behind it. The #386 failure mode (a ninth module silently escaping) needs a set that grows with the codebase; none of these have one. |
 

@@ -70,7 +70,8 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	public void suppress(String email, SuppressionReason reason, Instant at) {
 		String normalized = Emails.normalize(email);
 		int atIndex = normalized.lastIndexOf('@');
-		if (atIndex < 1) {
+		// atIndex >= 1 alone let "user@" through, storing an empty domain (#386) — require both parts.
+		if (atIndex < 1 || atIndex == normalized.length() - 1) {
 			// No address echoed (PII posture) — rows are never deleted, so junk must fail loudly here.
 			throw new IllegalArgumentException(
 					"suppress() requires an email address (local@domain); refusing to store a non-address");
