@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import jakarta.servlet.http.HttpServletRequest;
@@ -207,7 +208,7 @@ class AuthController {
 		// (stored lower-cased/trimmed) — otherwise the displayed email would change after a reload. The
 		// module normalizes again internally (idempotent); the edge only encodes the password, never
 		// touching a Spring Security type inside the module (RV-BE-11).
-		String email = CustomerPasswords.normalizeEmail(registration.email());
+		String email = Emails.normalize(registration.email());
 		RegistrationOutcome outcome =
 				customerAccounts.register(email, passwordEncoder.encode(registration.password()));
 		if (outcome instanceof RegistrationOutcome.Registered(

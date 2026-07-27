@@ -51,17 +51,11 @@ class ListenerMoveMigrationIT {
 				StandardCharsets.UTF_8);
 		jdbc.sql(script).update();
 
-		try {
-			assertThat(listenerIdOf("event_publication", oldRow)).isEqualTo(NEW_LISTENER_ID);
-			assertThat(listenerIdOf("event_publication", newRow)).isEqualTo(NEW_LISTENER_ID);
-			assertThat(listenerIdOf("event_publication_archive", archivedRow)).isEqualTo(NEW_LISTENER_ID);
-		}
-		finally {
-			jdbc.sql("DELETE FROM event_publication WHERE id IN (:a, :b)")
-					.param("a", oldRow).param("b", newRow).update();
-			jdbc.sql("DELETE FROM event_publication_archive WHERE id = :id")
-					.param("id", archivedRow).update();
-		}
+		// No cleanup, matching EmailSuppressionIT: the rows are seeded COMPLETED (see seed()), so they are
+		// inert to any resubmit an IT sharing this context performs, and the ids are random per run.
+		assertThat(listenerIdOf("event_publication", oldRow)).isEqualTo(NEW_LISTENER_ID);
+		assertThat(listenerIdOf("event_publication", newRow)).isEqualTo(NEW_LISTENER_ID);
+		assertThat(listenerIdOf("event_publication_archive", archivedRow)).isEqualTo(NEW_LISTENER_ID);
 	}
 
 	/**

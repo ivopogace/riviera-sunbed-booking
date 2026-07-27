@@ -1,11 +1,7 @@
 package ai.riviera.platform;
 
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import ai.riviera.platform.notification.application.SynchronousMailDispatch;
 
@@ -17,15 +13,14 @@ import ai.riviera.platform.notification.application.SynchronousMailDispatch;
  * <p>It also pulls in {@link SynchronousMailDispatch} (#369) so recovery-mail sends stay inline in every
  * integration test. That rides here deliberately rather than on each test class: since #369 the production
  * dispatcher is asynchronous, and a test class that missed the override would not fail — it would flake.
+ *
+ * <p>The container bean itself moved to {@link PostgresContainerConfiguration} in #386, so a test whose
+ * subject <em>is</em> the asynchrony can take the container without the override. This class keeps
+ * importing both, so every existing test is unaffected and the default stays the safe one — see
+ * {@link PostgresContainerConfiguration} for when opting out is legitimate.
  */
 @TestConfiguration(proxyBeanMethods = false)
-@Import(SynchronousMailDispatch.class)
+@Import({ PostgresContainerConfiguration.class, SynchronousMailDispatch.class })
 public class TestcontainersConfiguration {
-
-	@Bean
-	@ServiceConnection
-	PostgreSQLContainer postgresContainer() {
-		return new PostgreSQLContainer(DockerImageName.parse("postgres:17"));
-	}
 
 }

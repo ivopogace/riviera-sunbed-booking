@@ -97,12 +97,12 @@ The root mail machinery is replaced by the module — every observable behavior 
 | Exactly one `Mailer` bean per profile: mock under `!mailer & !smtp4dev`, SMTP under `mailer \| smtp4dev` | preserved | classes move to `adapter/out`, `@Profile` expressions byte-identical; `MailerProfileWiringTest` relocated |
 | `MockMailerProdGuard` aborts boot under `prod & !mailer` | preserved | moved unchanged; `MockMailerProdGuardTest` relocated |
 | Recovery sends run off the request thread, bounded queue (1 drainer, cap 100), drop+warn on rejection, MDC carried + cleared, drain on shutdown | preserved | `AsyncMailDispatcher` moves unchanged into `application/`; `AsyncMailDispatcherTest` relocated |
-| Recovery send failures are swallowed inside the dispatched task (never fail the request; no status/timing oracle — D-8) | preserved (moved) | `dispatchQuietly` logic moves from `CustomerRecovery` into `TransactionalMailService`; pinned by `TransactionalMailServiceTest` + `RecoveryMailerFailureIT`. One accepted drift (review Info-5): the suppression read shares the swallow, so a transient DB failure on it now also drops the send (best-effort contract; log wording covers both) |
+| Recovery send failures are swallowed inside the dispatched task (never fail the request; no status/timing oracle — D-8) | preserved (moved) | `dispatchQuietly` logic moves from `CustomerRecovery` into `TransactionalMailService`; pinned by `TransactionalMailServiceTest` + `RecoveryMailerFailureIT`. One accepted drift (review Info-5): the suppression read shares the swallow, so a transient DB failure on it now also drops the send (best-effort contract; log wording covers both). **Reversed in #386** — the read now fails **open** (send anyway) in its own `catch (DataAccessException)`, with a distinct log line, because the list is empty in production until #370's bounce feed lands, a user-requested reset to a suppressed address is the most harmless send available, and D-8 makes the response identical either way, so a dropped reset was a dead end the user got no signal about. Bounding the read with a `queryTimeout` (same slice) made this branch *more* reachable. The registry vehicle still propagates — fail-open is recovery-only |
 | Token issue stays ON the request thread; only the send moves off it | preserved | `CustomerRecovery` still calls `recovery.issue…` synchronously, then `MailSender.send…` |
 | Booking-confirmation mail rides the Event Publication Registry, `@ApplicationModuleListener`, at-least-once, idempotent per booking; missing booking/set/contact → log+skip (complete), transport failure → propagate (retry) | preserved | listener moves to `adapter/in` unchanged; suppression skip added as a *complete* outcome (AC-5); `BookingConfirmationMailIT` relocated |
 | Bearer-credential payloads never persisted (no registry for recovery mail) | preserved | recovery sends still ride the in-memory dispatcher only; `RecoveryTokenNeverPersistedIT` |
 | No bearer credential logged at transport; CRLF stripped for headers (`headerSafe`) and logs (`sanitize`) | preserved | `SmtpMailer`/`MockMailer` move unchanged |
-| Mock records `SentEmail`s; ITs assert via `lastTo`/`sent`/`clear`; dev-only recovery-link log line | preserved | mock unchanged (package-private in `adapter/out`); external ITs assert through a new same-package `@TestComponent` probe (`RecordedMailbox`) |
+| Mock records `SentEmail`s; ITs assert via `lastTo`/`sent`/`clear`; dev-only recovery-link log line | preserved | mock behavior unchanged; **`MockMailer` + `SentEmail` are public in `adapter/out`** so external ITs assert on recorded contents directly (see *Plan change (phase 1, recorded)* below — the planned `RecordedMailbox` probe was dropped) |
 | `@WebMvcTest` slices stub `Mailer` + synchronous dispatcher via `WebSliceStubs`; DB ITs get `SynchronousMailDispatch` via `TestcontainersConfiguration` | changed (equivalent) | stubs target the new seams: `MailSender` for web slices; `SynchronousMailDispatch` moves to the notification test package, still `@Primary MailDispatcher` |
 | Outstanding registry publications re-deliver to the listener across restarts | preserved | **V31 `listener_id` rewrite** — without it the moved listener's id no longer matches and rows dead-letter (V18 case history) |
 
@@ -247,7 +247,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/resources/db/migration/V31__event_publication_listener_move.sql`
 - `platform/src/main/resources/db/migration/V32__notification_email_suppression.sql`
 - `platform/src/test/java/ai/riviera/platform/CompositionRootDisciplineTests.java` — AC-2
-- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/RecordedMailbox.java` — public `@TestComponent` probe over the package-private mock
 - notification test classes: `TransactionalMailServiceTest`, `EmailSuppressionIT`, `ListenerMoveMigrationIT`
 
 **Moved (main, behavior unchanged):** `Mailer`, `MailDispatcher`, `AsyncMailDispatcher`,
@@ -293,7 +292,7 @@ paragraph → points at the shipped module).
   booking/venue/payment/payout/availability) — fails while the listener still sits at root.
 - [ ] **Step 3 (green):** Create the module skeleton + package-infos; move the nine classes;
   introduce `MailSender` + `TransactionalMailService` (absorbing `dispatchQuietly`); rewire
-  `CustomerRecovery`; relocate/rewire tests + `RecordedMailbox` probe; add V31 with
+  `CustomerRecovery`; relocate/rewire tests; add V31 with
   `ListenerMoveMigrationIT`.
 - [ ] **Step 4:** Scoped run: `ModularityTests`, the three arch tests, `CompositionRootDisciplineTests`,
   all relocated mail tests, `EmailVerificationIT`/`PasswordResetIT`/`RecoveryMailerFailureIT`/

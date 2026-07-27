@@ -13,10 +13,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import jakarta.servlet.http.Cookie;
-
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
+
+import jakarta.servlet.http.Cookie;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;

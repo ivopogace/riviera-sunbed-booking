@@ -29,8 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * (published surfaces optional per kind — ADR-0007 Amendment 1 / issue #95):
  * <ul>
  *   <li><strong>full</strong> — {@code api?} / {@code spi?} / {@code vocabulary?} / {@code events?} /
- *       {@code application} / {@code domain} / {@code adapter/{in,out}} (today: <strong>all seven</strong> —
- *       booking, venue, payment, payout, availability, operator, customer);</li>
+ *       {@code application} / {@code domain?} / {@code adapter/{in,out}} (today: <strong>all eight</strong>
+ *       bounded contexts — booking, venue, payment, payout, availability, operator, customer, and
+ *       {@code notification} since #382. {@code domain} is marked optional because of that eighth one:
+ *       {@code notification} owns table-backed state but no aggregate yet, so it has no {@code domain}
+ *       package — full is defined by <em>having an application service</em>, not by using every
+ *       package);</li>
  *   <li><strong>thin</strong> — {@code api} / {@code vocabulary?} / {@code adapter/out} only
  *       (<strong>none today</strong>: {@code customer} was the last one and graduated at S2 #111, when it
  *       gained {@code CustomerAccountService}; it has since added {@code spi} + {@code adapter/in} for the
@@ -46,7 +50,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  *
  * <p>Root-level platform config ({@code PlatformApplication}, {@code SecurityConfig},
  * {@code WebCorsConfig}, {@code TimeConfig}, …) sits directly under {@code ai.riviera.platform} and is
- * <strong>not</strong> a module — it is excluded from the package-shape assertions.
+ * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
+ * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. The non-context {@code shared} kernel
+ * (#371) matches neither template deliberately — four flat classes at the module root, no published
+ * surface — and passes here because types sitting at a module root are skipped.
  */
 class PackageShapeArchitectureTests {
 

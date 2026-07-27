@@ -1,11 +1,10 @@
 package ai.riviera.platform;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 
 /**
- * The customer password policy + email normalization, shared by every edge surface that accepts a new
- * password or an email (login/register in {@code AuthController}, the S8 recovery/set-password
+ * The customer password policy, shared by every edge surface that accepts a new
+ * password (login/register in {@code AuthController}, the S8 recovery/set-password
  * controllers). A stateless static helper — no bean, no Spring Security type — so the same rules apply
  * without threading a collaborator through each constructor (keeping them under the parameter budget).
  *
@@ -40,8 +39,4 @@ final class CustomerPasswords {
 		}
 	}
 
-	/** The canonical email form the module stores/looks up by (lower-cased + trimmed). */
-	static String normalizeEmail(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
-	}
 }

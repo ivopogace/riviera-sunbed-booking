@@ -12,8 +12,6 @@ import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.Scenario;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import ai.riviera.platform.shared.CurrentCustomer;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
@@ -25,14 +23,16 @@ import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
-import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.venue.api.VenueRates;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

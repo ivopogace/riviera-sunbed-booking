@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.shared.ApiProblem;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -562,7 +563,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	/**
 	 * The scoped SHA-256 bucket key for the identity in {@code body}, or {@code null} when the field is
 	 * absent/blank or the body is unparseable. The customer email is normalised through the one canonical
-	 * {@link CustomerPasswords#normalizeEmail} so it matches how the module stores it (AC-3); the operator
+	 * {@link Emails#normalize} so it matches how the module stores it (AC-3); the operator
 	 * username is used raw. Hashing keeps any valid username out of the tracking map + logs (AC-5/AC-6).
 	 */
 	private String identityKeyOf(LoginEndpoint login, byte[] body) {
@@ -570,7 +571,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (raw == null || raw.isBlank()) {
 			return null;
 		}
-		String identity = login.normalizeEmail ? CustomerPasswords.normalizeEmail(raw) : raw;
+		String identity = login.normalizeEmail ? Emails.normalize(raw) : raw;
 		return login.scope + ':' + saltedSha256Hex(identity);
 	}
 

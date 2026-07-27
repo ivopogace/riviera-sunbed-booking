@@ -1,7 +1,6 @@
 package ai.riviera.platform.customer.application;
 
 import java.time.Instant;
-import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -14,6 +13,7 @@ import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -49,24 +49,24 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 
 	@Override
 	public Optional<CustomerAccountCredential> findByEmail(String email) {
-		return store.findByEmail(normalize(email));
+		return store.findByEmail(Emails.normalize(email));
 	}
 
 	@Override
 	public Optional<CustomerAccountId> accountFor(String email) {
-		return store.findIdByEmail(normalize(email));
+		return store.findIdByEmail(Emails.normalize(email));
 	}
 
 	@Override
 	@Transactional
 	public RegistrationOutcome register(String email, String passwordHash) {
-		return store.insertIfAbsent(normalize(email), passwordHash);
+		return store.insertIfAbsent(Emails.normalize(email), passwordHash);
 	}
 
 	@Override
 	@Transactional
 	public CustomerAccountId resolveOrCreate(SsoProvider provider, String subject, String email) {
-		return store.resolveSsoAccount(provider, subject, normalize(email));
+		return store.resolveSsoAccount(provider, subject, Emails.normalize(email));
 	}
 
 	@Override
@@ -119,7 +119,4 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 		return store.isEmailVerified(accountId);
 	}
 
-	private static String normalize(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
-	}
 }

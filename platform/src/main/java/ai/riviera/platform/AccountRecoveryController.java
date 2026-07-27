@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
+import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
@@ -78,7 +79,7 @@ class AccountRecoveryController {
 	 */
 	@PostMapping(FORGOT_PASSWORD_PATH)
 	ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-		String email = CustomerPasswords.normalizeEmail(request.email());
+		String email = Emails.normalize(request.email());
 		directory.accountFor(email).ifPresent(accountId -> recovery.sendPasswordResetEmail(accountId, email));
 		return ResponseEntity.noContent().build();
 	}
