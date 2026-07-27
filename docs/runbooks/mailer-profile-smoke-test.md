@@ -102,8 +102,9 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
 
 ## Production activation (when #370 closes)
 
-1. Set `RIVIERA_SMTP_*`, `RIVIERA_MAIL_FROM`, `RIVIERA_RECOVERY_LINK_BASE_URL` on the Render
-   service (env section: `docs/deploy/cd-pipeline.md`).
+1. Set `RIVIERA_SMTP_*`, `RIVIERA_MAIL_FROM`, `RIVIERA_RECOVERY_LINK_BASE_URL`, and
+   `RIVIERA_SUPPRESSION_PEPPER` (#388 — the `prod` profile aborts at boot without a real pepper)
+   on the Render service (env section: `docs/deploy/cd-pipeline.md`).
 2. Change `SPRING_PROFILES_ACTIVE` to `prod,mailer`.
 3. Redeploy; confirm boot (a missing var aborts, by design), then run step 2's smoke send
    against the deployed origin.

@@ -98,6 +98,12 @@ must include `frontend/`, so:
     when moving to a CDN that publishes the originating client under a different name (e.g.
     `True-Client-IP`); an empty value disables the preferred path and falls back to the #129
     `X-Forwarded-For` walk.
+  - `RIVIERA_SUPPRESSION_PEPPER` (#388, ADR-0012) — **required under the `prod` profile;
+    boot aborts without it** (`SuppressionPepperProdGuard` also rejects the committed dev
+    default). The HMAC pepper for the hashed email-suppression key — a **secret, env-only**
+    (the Stripe-key posture) and **long-lived**: rotating it orphans every stored suppression
+    row (accepted ADR-0012 consequence), so treat it like a KMS root key. Generate once, e.g.
+    `openssl rand -base64 48`. Ops recipes: [`docs/runbooks/suppression-list-ops.md`](../runbooks/suppression-list-ops.md).
   - `RIVIERA_RECOVERY_LINK_BASE_URL` (#368) — the absolute origin every emailed verify/reset
     link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
     same-origin since #110), i.e. `https://<name>.onrender.com` today. Unset ⇒ the shipped
