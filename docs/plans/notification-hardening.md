@@ -244,19 +244,18 @@ No event is added, moved, or renamed — so **no Flyway `event_type` rewrite is 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 4 (fire-and-forget wiring IT)`
+**Stage pointer:** `implement — phase 5 (cleanup sweep + docs)`
 
-**Next action:** Extract `PostgresContainerConfiguration` out of `TestcontainersConfiguration` (keeping
-the latter importing both, so no existing IT changes), then write `MailSenderWiringIT` against the
-full component-scanned context.
+**Next action:** The item-6 sweep: `PackageShapeArchitectureTests` Javadoc, the stale `RecordedMailbox`
+references, import grouping in the five named files, `seedConfirmedBooking`, `ListenerMoveMigrationIT`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Allowlist-form root discipline (item 1) | ✅ | `116d4ec` |
 | 1 — One canonical `Emails.normalize` (item 4) | ✅ | `f671840` |
 | 2 — V34 `domain` CHECK + empty-domain guard (item 2) | ✅ | `310bff9` |
-| 3 — Bounded suppression read + fail-open (item 3) | ✅ | `<phase-3>` |
-| 4 — Fire-and-forget wiring IT (item 5) | | |
+| 3 — Bounded suppression read + fail-open (item 3) | ✅ | `9fc24f6` |
+| 4 — Fire-and-forget wiring IT (item 5) | ✅ | `<phase-4>` |
 | 5 — Cleanup sweep + docs (item 6) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -485,6 +484,7 @@ would not see a future decorator at all.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | Phase 4 — a `@Primary` test bean hiding the property under test | Any other place where a test override makes the real wiring unobservable | `grep -rn "@Primary" --include=*.java platform/src/test/java` | **1**: `SynchronousMailDispatch` — the very one this phase addressed | **Nothing further to do.** It is the only `@Primary` override in the whole test tree, and `MailSenderWiringIT` now covers the property it hides. Mutation-checked rather than assumed: re-pointing the IT at `TestcontainersConfiguration` (which brings the override back) makes it fail, so the guard is real and not vacuously green. |
 | 2026-07-28 | Phase 3 — an unbounded query on a bounded/serial executor | Any *other* unbounded query running on a serial or bounded executor | `grep -rn "@Scheduled" --include=*.java platform/src/main/java` + `grep -rn "scheduling" platform/src/main/resources` | **4 scheduled sweeps sharing ONE thread**: `AbandonedBookingScheduler`, `RequestSweepScheduler`, `GuestContactRetentionScheduler`, `MoneyPathAlertCheck` — `spring.task.scheduling.pool.size` is unset, so Boot's default of 1 applies, and none of their queries has a timeout | **Real, and filed as #395 rather than fixed here.** A wedged query in any one stalls all four; the worst victim is `AbandonedBookingScheduler`, which releases availability claims for abandoned bookings — if it stops, those sets stay unsellable (a silent availability *leak*, safe-direction, not a double-sell) while `MoneyPathAlertCheck`, the thing that would notice, is stalled on the same thread. Not fixed in this slice because the fix lands in `booking` + `customer` + platform config, well outside a `notification` hardening slice. #395 carries over the constraint that matters: the global `spring.jdbc.template.query-timeout` is the wrong instrument (invariant #2). |
 | 2026-07-28 | Phase 2 — a normalization CHECK weaker than the Java that feeds it | Other Flyway CHECKs asserting a stored value is normalized | `grep -rn "btrim\|lower(" platform/src/main/resources/db/migration/` | 2, both the same column's history: V32's `email` CHECK (that column was **dropped** by V33 — moot, and V32 is immutable) and V33's `domain` (this fix) | **No other table has one.** Noted but deliberately skipped: `customer.email` and `customer_account.email` are normalized in Java with **no** DB CHECK at all — the same class of gap. Skipped because those tables hold real data (a CHECK could fail the deploy on a pre-existing row), they are written and read by the same adapter, and no bearer-credential invariant rides on them. Flagged in the PR body so a reviewer can disagree rather than have it pass silently. |
 | 2026-07-28 | Phase 1 — six private copies of one correctness-critical rule | Any surviving email normalization outside `Emails` | `grep -rn "toLowerCase" --include=*.java platform/src` | 5 hits, **0** of them email normalization: `StripePaymentGateway:70` (ISO currency for Stripe), `SsoProviders:30`, `PhotoUploadResponse:23,28`, `VenueProfileResponse:41` (enum names for the wire) | **Correctly left alone.** These lowercase a *closed enum name or ISO code* for wire representation — no trim, no user input, no cross-component agreement requirement. Folding them into `Emails.normalize` would couple unrelated concepts to an identity rule. The email rule now has exactly one definition; `CustomerPasswords.normalizeEmail` was deleted rather than left as a delegating wrapper, so its 3 external callers now name `Emails.normalize` directly. |
