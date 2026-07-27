@@ -179,6 +179,11 @@ retaining the booking/payment/payout records under the **statutory-retention exc
 which guest contacts have no remaining **retention basis**, and the sweep that tombstones them.
 Retention is the same PII-lifecycle concern over the same rows as erasure, so it lives here —
 I ask `booking` for the recency *fact*, but the window and the scrub are mine.
+Since #386 I also own the **canonical form of an email address** (`customer.vocabulary.Emails`) —
+the platform's one definition, used by my own services, by the platform edge, and by
+`notification`, where it is the input contract of the suppression key's HMAC. It lives here
+because the canonical form of an address is identity vocabulary, and it could *not* live in the
+`shared` kernel: `shared` depends on `customer::api`, so my calling into it would close a cycle.
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
@@ -270,7 +275,13 @@ first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
 with the defining invariant **no send to a suppressed address**, enforced at the one send chokepoint
-(`TransactionalMailService`) on both vehicles. Publishes exactly one surface:
+(`TransactionalMailService`) on both vehicles — with **one deliberate carve-out** (#386): on the
+recovery vehicle a *transient* failure of the lookup itself sends the mail rather than dropping it,
+because the list is empty until #370's feed lands and D-8 makes a dropped reset indistinguishable
+from success to the user. The registry vehicle still propagates, so at-least-once retries against a
+healthy DB. The lookup is bounded by a `queryTimeout` scoped to its own adapter — never the global
+property, which would also bound `availability`'s `SELECT … FOR UPDATE` (invariant #2). V34 tightened
+the `domain` CHECK to mirror the Java writer exactly. Publishes exactly one surface:
 `notification::api`'s fire-and-forget `MailSender` (never throws, runs off the caller's
 thread, suppression-enforced) — consumed by the composition root alone; **no module depends
 on `notification`**.
