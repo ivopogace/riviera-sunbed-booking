@@ -187,6 +187,13 @@ invariant #11.
 > (`POST /api/auth/operator/password`, own per-IP budget, page `/account/operator-password`): prove the
 > current password → every *other* session of that operator is revoked and the hash is replaced, the
 > calling one surviving. (#326 shipped the reverse order; the arrow above describes the post-#344 code.)
+> **#343 fixed how that budget is spent**: `RateLimitFilter` sits ahead of `CsrfFilter` and
+> `AuthorizationFilter`, so a caller with no session, no account and no CSRF token used to drain it and
+> deny the rotation to every operator behind the same address. A budget guarding authenticated work now
+> **refunds** the token when the request was denied (`401`/`403`) before reaching that work; the policy is
+> per-budget, because on a login the identical `401` is the controller's answer to a wrong password and
+> must still be charged. The same flag covers the mixed recovery budget, whose `/api/me/verify-email/request`
+> member is `hasRole(CUSTOMER)`.
 > **#344 then fixed the ordering and the survivor**: the revoke runs **before** the write (the two belong to
 > different owners, so a `@Transactional` spanning them would look atomic without being atomic — ordering
 > makes a *revoke* failure one the caller's retry recovers from, though a failure after the write still
@@ -203,9 +210,12 @@ invariant #11.
 > stays at the edge (RV-BE-11, `OperatorAuthPlacementTests`). See `riviera-modulith` + `RESPONSIBILITIES.md`.
 
 Cross-module collaboration is **events for state changes, `api/` ports for
-queries** (invariant #11). The spine flow: `BookingConfirmed` → `availability`
-marks the set taken + `payout` accrues a ledger entry; `BookingCancelled` →
-`availability` frees the set + `payment` refunds per policy.
+queries** (invariant #11). The spine flow as built: the availability write happens
+at **claim time** — `booking` claims/releases the `(set, date)` row synchronously via
+`availability`'s `api/` port (`AvailabilityClaim`), so `availability` has **no event
+listener**. `BookingConfirmed` and `BookingCancelled` fan out to **`payout`** (accrue /
+reverse a ledger entry, idempotently); the refund on cancel is driven by `booking`'s
+own `BookingCancelled` listener calling `payment`'s `RefundPort`.
 
 ## Cross-cutting invariants
 

@@ -412,10 +412,22 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
 
 ## Phase 3 — Docs freshness + close-out
 
-- [ ] **Step 1: Full backend regression** for the touched area — the auth/session IT corpus plus the
-      limiter tests, per `riviera-local-debug` scoping. CI owns the full suite.
-- [ ] **Step 2: Load `riviera-docs-freshness`** and audit the substrate docs against the diff.
-      `CLAUDE.md` has no statement about rate-limit keying today; verify rather than assume.
+- [x] **Step 1: Regression over the touched area** — `RecoveryRateLimitIT`, `OperatorPasswordChangeIT`,
+      `SetPasswordIT`, `AuthSessionIT`, `EmailVerificationIT`, `PasswordResetIT`,
+      `AccountRecoveryControllerTest`, `SessionIdentityTest` + the three sibling limiter tests and the
+      structural net. All green; the six ITs ran against Testcontainers Postgres with `skipped="0"`
+      (24 IT tests), so they were really executed rather than Docker-skipped. CI owns the full suite —
+      and per `riviera-local-debug`, this slice touches a **filter**, the one category whose failures
+      surface only in the full suite's cumulative traffic. Direction of risk is favourable (the change
+      only ever *releases* tokens), but the push's CI run is the real verdict.
+- [x] **Step 2: `riviera-docs-freshness` over `3234880..HEAD`** — **zero findings.** No substrate doc
+      states how a budget is spent; `CLAUDE.md:58` ("own rate-limit bucket") and `:187` ("own per-IP
+      budget") both stay true, and `error-contract.md` ("rate limit → `429`", "mirrors the shape by
+      hand") is unaffected. ADR-0006's "all seven per-IP dimensions" sits inside a dated
+      *Resolved 2026-07-22 by issue #129* block — historical narrative, and already understated by
+      #326's two password budgets, so not this slice's drift (pre-existing staleness is #319).
+      Separately — as the slice's own job, not the audit's — `CLAUDE.md` gained a #343 sentence in the
+      credential-security paragraph, matching how #344/#357/#359 each recorded themselves there.
 - [ ] **Step 3: Finalize this Execution status, citing `merged via PR #NN`, never a merge SHA.**
 - [ ] **Step 4: Push, open the PR, run the review gate, then the Sonar gate.**
 
