@@ -50,44 +50,44 @@ wire vocabulary of two edge controllers.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in, ACTIVE operator, when a password change arrives with an **empty or
+- [x] **AC-1:** Given a signed-in, ACTIVE operator, when a password change arrives with an **empty or
   absent** `currentPassword` and a policy-valid `newPassword`, then the endpoint answers
   `400` with `code == "MISSING_CURRENT_PASSWORD"`, and **neither** the credential write **nor** the session
   revoke happens. *Pinned by:* `OperatorAccountControllerTest.reportsAnOmittedCurrentPasswordDistinctly`
 
-- [ ] **AC-2:** Given the same operator, when **both** faults are present (blank `currentPassword` **and** a
+- [x] **AC-2:** Given the same operator, when **both** faults are present (blank `currentPassword` **and** a
   `newPassword` below the policy minimum), then the answer is `MISSING_CURRENT_PASSWORD` — the omitted field
   outranks the policy check, matching the order the page itself validates in.
   *Pinned by:* `OperatorAccountControllerTest.anOmittedCurrentPasswordOutranksTheNewPasswordPolicy`
 
-- [ ] **AC-3 (regression):** Given a supplied, correct `currentPassword` and a `newPassword` below the
+- [x] **AC-3 (regression):** Given a supplied, correct `currentPassword` and a `newPassword` below the
   policy, then the answer is still `400 INVALID_REQUEST` — the code this slice splits **keeps** its
   new-password meaning. *Pinned by:* `OperatorAccountControllerTest.rejectsWeakNewPassword` (existing)
 
-- [ ] **AC-4:** Given a customer account that **has** a local password, when `POST /api/me/password` arrives
+- [x] **AC-4:** Given a customer account that **has** a local password, when `POST /api/me/password` arrives
   with an empty or absent `currentPassword`, then the answer is `400 MISSING_CURRENT_PASSWORD` (previously
   `INVALID_CURRENT_PASSWORD`) and the stored credential is unchanged.
   *Pinned by:* `SetPasswordIT.existingPasswordAccountReportsAnOmittedCurrentPasswordDistinctly`
 
-- [ ] **AC-5 (regression):** Given an **SSO-only** account (no stored credential), when the same request
+- [x] **AC-5 (regression):** Given an **SSO-only** account (no stored credential), when the same request
   arrives with no `currentPassword`, then it still succeeds (`204`) and sets the first password — the F-1
   behaviour is untouched. *Pinned by:* `SetPasswordIT.ssoOnlyAccountSetsFirstPasswordThenCanLogin` (existing)
 
-- [ ] **AC-6:** Given the backend answers `MISSING_CURRENT_PASSWORD`, when either Angular auth service maps
+- [x] **AC-6:** Given the backend answers `MISSING_CURRENT_PASSWORD`, when either Angular auth service maps
   it, then the result is a distinct `'missing-current'` variant carrying *"Enter your current password."* —
   never the 8–72 length message and never *"incorrect"*.
   *Pinned by:* `operator-auth.spec.ts` + `customer-auth.spec.ts` (`maps MISSING_CURRENT_PASSWORD …`)
 
-- [ ] **AC-8 (added at the review gate, F-2):** Given a customer account that **has** a password, when the
+- [x] **AC-7:** Given a real render of the customer account page for an account that has a password, when the
+  current-password field is left blank and the form submitted, then the page shows *"Enter your current
+  password."* and nothing is rotated (the old password still signs in).
+  *Pinned by:* `customer-password.e2e.ts` → *"a blank current password is reported as missing, not incorrect"*
+
+- [x] **AC-8 (added at the review gate, F-2):** Given a customer account that **has** a password, when the
   request carries **both** a blank `currentPassword` and a `newPassword` below the policy, then the answer is
   `400 INVALID_REQUEST` — the opposite precedence to AC-2, because the customer check cannot precede the
   credential read without breaking the #342 ordering. Pinned so the divergence is a decision, not an accident.
   *Pinned by:* `SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne`
-
-- [ ] **AC-7:** Given a real render of the customer account page for an account that has a password, when the
-  current-password field is left blank and the form submitted, then the page shows *"Enter your current
-  password."* and nothing is rotated (the old password still signs in).
-  *Pinned by:* `customer-password.e2e.ts` → *"a blank current password is reported as missing, not incorrect"*
 
 ## Non-goals
 
@@ -228,9 +228,10 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session, re-read it
 > (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `PR — opening; review + sonar gates next`
+**Stage pointer:** `DONE — merged via PR #366`
 
-**Next action:** Merge `origin/main`, push, open the PR, then run `/code-review` + the SonarCloud gate before the close-out commit.
+**Next action:** None. All gates cleared: CI green, review gate run in full (`/code-review` five-reviewer
+fan-out + `riviera-review-overlay`) with all five findings fixed, Sonar green **with an empty reported list**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -238,9 +239,20 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
 | 1 — Backend: the customer twin | ✅ | `6aea431` |
 | 2 — Frontend: both auth services + both pages map the new code | ✅ | `5c92b88` |
 | 3 — e2e: mocks mirror the controllers + a real render of the new branch | ✅ | `3da29dc` |
-| 4 — Docs sweep + close-out | ⏳ | (this commit — close-out pending the PR number) |
+| 4 — Docs sweep | ✅ | `85ba870` |
+| 5 — Review-gate fix round (F-1…F-5, re-entered at Implement) | ✅ | `e0c6e9a` |
+| 6 — Close-out | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Sonar gate (PR #366)** — green **and** the reported list pulled and empty, which is the part a green
+conclusion alone does not prove (case history #158). Read via `curl` rather than `WebFetch` to sidestep the
+15-minute response cache that produced a stale false-clean on PR #318. Confirmed the analysis genuinely ran
+before trusting the zeros: `new_lines = 104`.
+
+| new_bugs | new_vulnerabilities | new_code_smells | new_security_hotspots | new_duplicated_blocks | new_coverage | issues total |
+|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 0 | 0 (0.0%) | **92.31%** (bar: ≥80%) | **0** |
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix re-enters at
 Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for what the fix touches
@@ -283,7 +295,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 `platform/src/main/java/ai/riviera/platform/OperatorAccountController.java:71-78,109-134` ·
 Test `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 	/**
@@ -335,13 +347,13 @@ Test `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.j
 	}
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
   `gradle test --tests "*OperatorAccountControllerTest*"` → FAIL: both expect
   `MISSING_CURRENT_PASSWORD` but the body is `INVALID_REQUEST`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 `CustomerPasswords.java` — the shared predicate:
 
@@ -388,20 +400,20 @@ Test `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.j
 Update the method javadoc's outcome list to name the new code, and keep the existing "a weak new password is
 `400 INVALID_REQUEST`" line — it is still true for a supplied current password.
 
-- [ ] **Step 4: Run them, verify they pass** —
+- [x] **Step 4: Run them, verify they pass** —
   `gradle test --tests "*OperatorAccountControllerTest*"` → PASS (all 14, including the untouched
   `rejectsWeakNewPassword` = AC-3).
 
 > Scope (end-of-phase regression): broaden to the edge's password/auth slice —
 > `gradle test --tests "*OperatorAccountControllerTest*" --tests "*OperatorPasswordChangeIT*" --tests "*ApiErrorHandlerTest*" --tests "*ErrorContractArchitectureTests*"`.
 
-- [ ] **Step 5: Generalization-audit pass** — search every edge surface that reads a `currentPassword`:
+- [x] **Step 5: Generalization-audit pass** — search every edge surface that reads a `currentPassword`:
   `grep -rn "currentPassword" platform/src/main/java` → candidates: `OperatorAccountController` (this phase),
   `MyAccountController` (Phase 1 — the declared twin). Decision: fix both; record the row.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#345): give the omitted operator current password its own code"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#345): give the omitted operator current password its own code"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -410,7 +422,7 @@ Update the method javadoc's outcome list to name the new code, and keep the exis
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/MyAccountController.java:78-107` ·
 Test `platform/src/test/java/ai/riviera/platform/SetPasswordIT.java`
 
-- [ ] **Step 1: Write the failing test** — beside the existing
+- [x] **Step 1: Write the failing test** — beside the existing
   `existingPasswordAccountRequiresTheCorrectCurrentPassword`:
 
 ```java
@@ -438,11 +450,11 @@ Test `platform/src/test/java/ai/riviera/platform/SetPasswordIT.java`
 > `SetPasswordIT`'s own existing fixtures (the ones
 > `existingPasswordAccountRequiresTheCorrectCurrentPassword` already uses) rather than adding new ones.
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `gradle test --tests "*SetPasswordIT*"` → FAIL: `code` is `INVALID_CURRENT_PASSWORD`.
   (Needs Docker; without a daemon the IT skips — then run it before pushing.)
 
-- [ ] **Step 3: Minimal implementation** — nest the two current-password answers so an SSO-only account
+- [x] **Step 3: Minimal implementation** — nest the two current-password answers so an SSO-only account
   reaches neither:
 
 ```java
@@ -471,18 +483,18 @@ where it is visible):
 Extend the class javadoc's set-password paragraph to name the missing-vs-incorrect split and point at
 `OperatorAccountController` as the twin (mirroring how #344 cross-references the ordering rationale).
 
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*SetPasswordIT*"` → PASS, including the
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*SetPasswordIT*"` → PASS, including the
   untouched `ssoOnlyAccountSetsFirstPasswordThenCanLogin` (AC-5).
 
 > Scope (end-of-phase regression):
 > `gradle test --tests "*SetPasswordIT*" --tests "*MyAccountControllerTest*" --tests "*MeSurfaceRoleGateTest*" --tests "*ModularityTests*"`.
 
-- [ ] **Step 5: Generalization-audit pass** — the Phase-0 search is now exhausted (both call sites fixed,
+- [x] **Step 5: Generalization-audit pass** — the Phase-0 search is now exhausted (both call sites fixed,
   one shared predicate). Record the closing row.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#345): report an omitted customer current password as missing, not incorrect"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#345): report an omitted customer current password as missing, not incorrect"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -492,7 +504,7 @@ Extend the class javadoc's set-password paragraph to name the missing-vs-incorre
 `auth/set-password.ts` · `auth/operator-password.ts` ·
 Test `core/customer-auth.spec.ts` · `core/operator-auth.spec.ts` · `auth/set-password.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** (AC-6) — one per service, plus the page render:
+- [x] **Step 1: Write the failing specs** (AC-6) — one per service, plus the page render:
 
 ```ts
   it('maps MISSING_CURRENT_PASSWORD to its own result, never the length message', async () => {
@@ -525,10 +537,10 @@ Test `core/customer-auth.spec.ts` · `core/operator-auth.spec.ts` · `auth/set-p
   });
 ```
 
-- [ ] **Step 2: Run them, verify they fail** — `npm test` (Vitest, runs once) → FAIL:
+- [x] **Step 2: Run them, verify they fail** — `npm test` (Vitest, runs once) → FAIL:
   the services return `'invalid-password'` / `'error'`, and the page renders the length message.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 `core/customer-auth.ts` — the shared message lands here, matching how `PASSWORD_LENGTH_MESSAGE` is already
 sourced once and aliased by the operator module:
@@ -600,16 +612,16 @@ export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = CURRENT_PASSWORD_REQUI
     // so catching an empty field here saves one.
 ```
 
-- [ ] **Step 4: Run them, verify they pass** — `npm test` → PASS; then `npm run lint` → clean.
+- [x] **Step 4: Run them, verify they pass** — `npm test` → PASS; then `npm run lint` → clean.
 
 > Scope: Vitest runs the whole (fast) unit suite in one pass; no narrowing needed.
 
-- [ ] **Step 5: Generalization-audit pass** — `grep -rn "INVALID_CURRENT_PASSWORD" frontend/src` →
+- [x] **Step 5: Generalization-audit pass** — `grep -rn "INVALID_CURRENT_PASSWORD" frontend/src` →
   candidates: the two services (both fixed) and their specs. Decision: complete; record the row.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#345): map MISSING_CURRENT_PASSWORD on both auth surfaces"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#345): map MISSING_CURRENT_PASSWORD on both auth surfaces"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -618,7 +630,7 @@ export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = CURRENT_PASSWORD_REQUI
 **Files:** Modify `frontend/e2e/support/auth-mocks.ts:62-87,454-476` ·
 Test `frontend/e2e/customer-password.e2e.ts`
 
-- [ ] **Step 1: Write the failing spec** (AC-7) — the customer page is the one that can reach the branch
+- [x] **Step 1: Write the failing spec** (AC-7) — the customer page is the one that can reach the branch
   through the UI (the operator page guards client-side), added after the wrong-current-password test:
 
 ```ts
@@ -646,10 +658,10 @@ test('a blank current password is reported as missing, not incorrect', async ({ 
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- customer-password` → FAIL:
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- customer-password` → FAIL:
   the page renders *"The current password is incorrect."*
 
-- [ ] **Step 3: Minimal implementation** — both mock routes gain the branch **in controller order**:
+- [x] **Step 3: Minimal implementation** — both mock routes gain the branch **in controller order**:
 
 operator route (missing-current first, still ahead of the policy check, still after the env-managed guard):
 
@@ -679,18 +691,18 @@ customer route (nested under "the account has a credential", exactly as the cont
     }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y -- customer-password` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y -- customer-password` → PASS.
 
 > Scope (end-of-phase regression): the credential specs together —
 > `npm run test:e2e:a11y -- customer-password operator-password password-reset unified-auth`.
 > (Windows: the mocked suite is `test:e2e:a11y`; `test:e2e` is the local-only real-backend suite.)
 
-- [ ] **Step 5: Generalization-audit pass** — `grep -rn "INVALID_CURRENT_PASSWORD" frontend/e2e` →
+- [x] **Step 5: Generalization-audit pass** — `grep -rn "INVALID_CURRENT_PASSWORD" frontend/e2e` →
   candidates: the two mock routes (both fixed). Decision: complete; record the row.
 
-- [ ] **Step 6: Commit** — `git commit -m "test(#345): render the missing-current-password branch end to end"`
+- [x] **Step 6: Commit** — `git commit -m "test(#345): render the missing-current-password branch end to end"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -698,16 +710,16 @@ customer route (nested under "the account has a credential", exactly as the cont
 
 **Files:** Modify `docs/plans/error-contract-problemdetail.md` · this plan doc
 
-- [ ] **Step 1** — Append the codes added since #97 to that plan's **Code vocabulary (stable)** list, with a
+- [x] **Step 1** — Append the codes added since #97 to that plan's **Code vocabulary (stable)** list, with a
   one-line note that it is a living list: `INVALID_CREDENTIALS`, `UNAUTHENTICATED`,
   `INVALID_OR_EXPIRED_TOKEN`, `INVALID_CURRENT_PASSWORD`, **`MISSING_CURRENT_PASSWORD`**,
   `ACCOUNT_NOT_ACTIVE`, `BOOTSTRAP_CREDENTIAL_MANAGED`, `PAYLOAD_TOO_LARGE`, `NOT_MARKED` (R-7).
   Verify each against `grep -rn "ApiProblem.response\|ApiProblem.of" platform/src/main/java` before listing it.
-- [ ] **Step 2** — Run `riviera-docs-freshness` over the branch range (merge close-out step 5); patch or
+- [x] **Step 2** — Run `riviera-docs-freshness` over the branch range (merge close-out step 5); patch or
   flag anything the diff contradicts. `CLAUDE.md` needs no edit — it names no error codes.
-- [ ] **Step 3** — Finalize the Execution status **in this PR's last commit**: stage pointer `DONE`, every
+- [x] **Step 3** — Finalize the Execution status **in this PR's last commit**: stage pointer `DONE`, every
   phase ✅ with its commit, risk rows closed, `merged via PR #NN` (the number, never a squash SHA).
-- [ ] **Step 4** — Commit — `git commit -m "docs(#345): record the new error code and close out the plan"`
+- [x] **Step 4** — Commit — `git commit -m "docs(#345): record the new error code and close out the plan"`
 
 ---
 
@@ -733,6 +745,7 @@ customer route (nested under "the account has a credential", exactly as the cont
 - [x] **AC-5:** Same command → `ssoOnlyAccountSetsFirstPasswordThenCanLogin` still PASS, unmodified. Verified at commit `6aea431`.
 - [x] **AC-6:** Run `npm test` → 892 tests / 110 files PASS, including the three new specs; `npm run lint` clean. Verified at commit `5c92b88`.
 - [x] **AC-7:** Run `npm run test:e2e:a11y -- customer-password operator-password password-reset unified-auth` → 19 PASS, including the new test. Verified at commit `3da29dc`.
+- [x] **AC-8:** Run `./gradlew test --tests "*SetPasswordIT*"` → `aWeakNewPasswordOutranksAnOmittedCurrentOne` PASS (7/7, `skipped=0`). Verified at commit `e0c6e9a`.
 
 **Whole-suite verification** (beyond the per-AC scopes): `./gradlew test` full backend suite BUILD
 SUCCESSFUL (3m42s, Docker present so the ITs ran rather than skipped) and `npm run build` succeeds —
@@ -743,22 +756,22 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (`N/A` justified); no availability write path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — not reached by this slice.
-- [ ] **Modulith** section filled; edge-only, no cross-module import added; `ModularityTests` green (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A` justified) (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched; no code or password value reaches a log or a `detail` string (invariant #7).
-- [ ] No schema change, so no Flyway migration — and none claimed (invariant #12).
-- [ ] Error bodies come from `ApiProblem` only; no per-controller `@ExceptionHandler`
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (`N/A` justified); no availability write path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — not reached by this slice.
+- [x] **Modulith** section filled; edge-only, no cross-module import added; `ModularityTests` green (invariant #11).
+- [x] **Payment/payout** section filled (`N/A` justified) (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched; no code or password value reaches a log or a `detail` string (invariant #7).
+- [x] No schema change, so no Flyway migration — and none claimed (invariant #12).
+- [x] Error bodies come from `ApiProblem` only; no per-controller `@ExceptionHandler`
       (`ErrorContractArchitectureTests` green).
-- [ ] **Frontend** standards met; no `as any` on the contract; both mapping functions exhaustive.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **Frontend** standards met; no `as any` on the contract; both mapping functions exhaustive.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
