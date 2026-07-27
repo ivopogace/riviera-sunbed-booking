@@ -4,9 +4,11 @@ import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
@@ -74,6 +76,30 @@ class MailerProfileWiringTest {
 			assertThat(context.getBean(Mailer.class)).isInstanceOf(MockMailer.class);
 			assertThat(context).doesNotHaveBean(JavaMailSender.class);
 		});
+	}
+
+	@Test
+	void linkBaseUrlDefaultsToLocalDevSpa() {
+		recoveryRunner().run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+				.isEqualTo("http://localhost:4200"));
+	}
+
+	@Test
+	void theEnvironmentOverridesTheLinkBaseUrl() {
+		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://app.example")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("https://app.example"));
+	}
+
+	private static ApplicationContextRunner recoveryRunner() {
+		return new ApplicationContextRunner()
+				.withInitializer(new ConfigDataApplicationContextInitializer())
+				.withUserConfiguration(RecoveryBindOnly.class);
+	}
+
+	@Configuration
+	@EnableConfigurationProperties(RecoveryProperties.class)
+	static class RecoveryBindOnly {
 	}
 
 	private static org.assertj.core.api.ThrowingConsumer<String> finiteMillis() {

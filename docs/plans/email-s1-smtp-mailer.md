@@ -159,15 +159,15 @@ N/A — no contract change (no endpoint or DTO touched).
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 > Update in the same commit window as the change it records.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 — `link-base-url` env placeholder + `cd-pipeline.md` env docs.
+**Next action:** phase 3 — write `docs/runbooks/mailer-profile-smoke-test.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Real `SmtpMailer` + GreenMail IT | ✅ | `16e0475` |
-| 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | ✅ | (this commit) |
-| 2 — `link-base-url` env placeholder + deploy docs | | |
+| 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | ✅ | `80ceddb` |
+| 2 — `link-base-url` env placeholder + deploy docs | ✅ | (this commit) |
 | 3 — Activation runbook | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
