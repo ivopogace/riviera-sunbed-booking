@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.out;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -13,6 +13,9 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.Mailer;
+
 /**
  * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371): delivers every message kind over the
  * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
@@ -22,8 +25,8 @@ import org.springframework.stereotype.Component;
  * ({@code application-smtp4dev.properties}). Messages are plain text with no tracking markup
  * (ADR-0011 §25-TDDDG posture). Neither bearer credential (invariant #7) is ever logged here — not the
  * tokenized link, not the arrival code — and untrusted text reaching a <em>header</em> is CRLF-stripped
- * ({@link #headerSafe}). Package-private (RV-BE-11); pinned by {@code SmtpMailerIT} +
- * {@code MailerProfileWiringTest}.
+ * ({@link #headerSafe}). Package-private driven adapter (invariant #11); pinned by
+ * {@code SmtpMailerIT} + {@code MailerProfileWiringTest}.
  */
 @Component
 @Profile("mailer | smtp4dev")

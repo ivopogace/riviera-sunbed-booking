@@ -1,6 +1,8 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.out;
 
 import java.net.URI;
+
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
 
 /**
  * One email the {@link MockMailer} recorded instead of sending (S8, epic #108; extended for the
@@ -10,12 +12,13 @@ import java.net.URI;
  *
  * <p>Exactly one of {@link #link} / {@link #confirmation} is populated, per {@link #kind}; use the
  * {@link #recovery} and {@link #bookingConfirmation} factories rather than the canonical constructor
- * so no caller has to remember which slot goes with which kind.
+ * so no caller has to remember which slot goes with which kind. Public alongside {@link MockMailer}
+ * (#382): it is the value the mock's observation seam speaks to ITs outside this package.
  */
-record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmationMail confirmation) {
+public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmationMail confirmation) {
 
 	/** Which message this is. */
-	enum Kind {
+	public enum Kind {
 		EMAIL_VERIFICATION,
 		PASSWORD_RESET,
 		BOOKING_CONFIRMATION

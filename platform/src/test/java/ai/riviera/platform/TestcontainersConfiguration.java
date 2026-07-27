@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Import;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import ai.riviera.platform.notification.application.SynchronousMailDispatch;
+
 /**
  * Shared Testcontainers Postgres for Spring Boot integration tests. Public so feature
  * integration tests in module sub-packages (e.g. {@code ai.riviera.platform.venue}) can

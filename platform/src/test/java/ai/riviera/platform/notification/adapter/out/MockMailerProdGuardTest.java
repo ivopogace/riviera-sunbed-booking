@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.out;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

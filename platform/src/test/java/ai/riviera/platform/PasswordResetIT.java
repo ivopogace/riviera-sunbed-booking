@@ -17,6 +17,9 @@ import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import jakarta.servlet.http.Cookie;
 
+import ai.riviera.platform.notification.adapter.out.MockMailer;
+import ai.riviera.platform.notification.adapter.out.SentEmail;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;

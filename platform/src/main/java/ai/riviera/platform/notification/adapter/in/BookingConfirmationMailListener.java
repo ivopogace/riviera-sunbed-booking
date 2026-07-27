@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.in;
 
 import java.util.Optional;
 
@@ -12,20 +12,22 @@ import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * Mails the tourist their booking code when a booking is confirmed (#371, epic #367 story 1) — the
- * design spec's promised "booking code plus an email", which until now lived only in a browser tab.
+ * design spec's promised "booking code plus an email", which until #371 lived only in a browser tab.
  *
- * <p>It lives at the <strong>platform edge</strong>, not in a module: mail composition is an edge
- * concern and no bounded context may depend on {@link Mailer} (RV-BE-11, epic #367's locked seam
- * decision). The root package is not a Modulith module, so this listener may read several modules'
- * published ports — which is exactly what it does, assembling one message from three owners:
- * {@code booking} supplies the arrival code + contact id, {@code venue} the venue name + set label,
- * {@code customer} the address. Nothing is re-derived that the event already carries: the date,
- * amount and currency are immutable facts of the confirmation and ride the payload.
+ * <p>The {@code notification} module's driving adapter for the registry vehicle (#382; until then
+ * this listener sat at the platform edge — the move is why the module's {@code allowedDependencies}
+ * read like a fan-in). It assembles one message from three owners' published ports: {@code booking}
+ * supplies the arrival code + contact id, {@code venue} the venue name + set label, {@code customer}
+ * the address. Nothing is re-derived that the event already carries: the date, amount and currency
+ * are immutable facts of the confirmation and ride the payload. Delivery goes through
+ * {@link TransactionalMailService} — the chokepoint — never the transport directly.
  *
  * <p><strong>Asynchronous</strong> {@code @ApplicationModuleListener} (= {@code @Async} +
  * {@code @Transactional} + {@code @TransactionalEventListener(AFTER_COMMIT)}), so a mail failure can
@@ -51,14 +53,14 @@ class BookingConfirmationMailListener {
 	private final BookingNotificationFacts bookings;
 	private final SetBookingFacts sets;
 	private final CustomerLookup customers;
-	private final Mailer mailer;
+	private final TransactionalMailService mails;
 
 	BookingConfirmationMailListener(BookingNotificationFacts bookings, SetBookingFacts sets,
-			CustomerLookup customers, Mailer mailer) {
+			CustomerLookup customers, TransactionalMailService mails) {
 		this.bookings = bookings;
 		this.sets = sets;
 		this.customers = customers;
-		this.mailer = mailer;
+		this.mails = mails;
 	}
 
 	@ApplicationModuleListener
@@ -82,7 +84,7 @@ class BookingConfirmationMailListener {
 			return;
 		}
 
-		mailer.sendBookingConfirmation(contact.get().email(), new BookingConfirmationMail(
+		mails.sendBookingConfirmation(contact.get().email(), new BookingConfirmationMail(
 				booking.get().code(), set.get().venueName(), event.bookingDate(),
 				set.get().rowLabel(), set.get().positionNo(), event.amountMinor(), event.currency()));
 	}

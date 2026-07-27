@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -20,10 +20,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.jayway.jsonpath.JsonPath;
 
+import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.notification.adapter.out.MockMailer;
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 

@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.adapter.out;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;

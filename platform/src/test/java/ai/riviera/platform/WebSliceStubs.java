@@ -41,6 +41,7 @@ import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
+import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -342,24 +343,20 @@ class WebSliceStubs {
 	/**
 	 * S8 (#113): the edge account-recovery collaborators the recovery/set-password controllers +
 	 * {@code AuthController} depend on. All inert — the web slices (CORS + rate-limit) never redeem a token,
-	 * send mail, or revoke a session, so an always-invalid recovery port, a no-op mailer, and an
+	 * send mail, or revoke a session, so an always-invalid recovery port, a no-op send port, and an
 	 * empty-session repository are enough for the context to load and for a rate-limit attempt to reach the
 	 * limiter. {@code RecoveryProperties} + {@code Clock} come from {@code SecurityConfig}'s
 	 * {@code @EnableConfigurationProperties} and the fixed {@link #clock()} bean above.
 	 */
 	@Bean
-	Mailer mailer() {
-		return new Mailer() {
+	MailSender mailSender() {
+		return new MailSender() {
 			@Override
 			public void sendEmailVerification(String toEmail, URI verificationLink) {
 			}
 
 			@Override
 			public void sendPasswordReset(String toEmail, URI resetLink) {
-			}
-
-			@Override
-			public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
 			}
 		};
 	}
@@ -406,11 +403,10 @@ class WebSliceStubs {
 		return new RecoveryTokens();
 	}
 
-	/** Inline dispatch (#369) — a web slice asserts on the controller's response, not on a pooled send. */
 	@Bean
-	CustomerRecovery customerRecovery(CustomerAccountRecovery recovery, Mailer mailer,
+	CustomerRecovery customerRecovery(CustomerAccountRecovery recovery, MailSender mailSender,
 			RecoveryTokens recoveryTokens, RecoveryProperties recoveryProperties, Clock clock) {
-		return new CustomerRecovery(recovery, mailer, recoveryTokens, recoveryProperties, clock, Runnable::run);
+		return new CustomerRecovery(recovery, mailSender, recoveryTokens, recoveryProperties, clock);
 	}
 
 	/** An empty session repository — the web slices never revoke a session. */

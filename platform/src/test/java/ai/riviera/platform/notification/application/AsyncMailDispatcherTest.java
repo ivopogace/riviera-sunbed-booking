@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.notification.application;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

@@ -110,10 +110,10 @@ The root mail machinery is replaced by the module — every observable behavior 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Moved listener's `listener_id` no longer matches persisted publications → outstanding booking-confirmation mails dead-letter on post-deploy republish | high (without action) | high | V31 rewrite of `event_publication` + archive, V18 pattern; `ListenerMoveMigrationIT`; roll-forward-only note in migration header | agent | open |
+| R-1 | Moved listener's `listener_id` no longer matches persisted publications → outstanding booking-confirmation mails dead-letter on post-deploy republish | high (without action) | high | V31 rewrite of `event_publication` + archive, V18 pattern; `ListenerMoveMigrationIT`; roll-forward-only note in migration header | agent | closed — V31 shipped + IT green (phase 1) |
 | R-2 | Suppression check on the request thread would widen the known-email timing oracle (D-8) | med | high | check runs **inside** the dispatched task (off-thread) for the dispatcher vehicle; pinned by `TransactionalMailServiceTest` asserting no suppression read on caller thread | agent | open |
 | R-3 | Hidden test coupling: ~16 test classes touch the moved types; a missed one fails compile or (worse) silently weakens the net | med | med | full inventory in File structure; compile is the net for the former, relocated assertions reviewed one-by-one against the parity ledger for the latter | agent | open |
-| R-4 | `PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests` may enumerate module packages and reject the newcomer | med | low | read both tests at phase-1 start; extend the module list, never weaken a rule | agent | open |
+| R-4 | `PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests` may enumerate module packages and reject the newcomer | med | low | read both tests at phase-1 start; extend the module list, never weaken a rule | agent | closed — both discover modules dynamically; no enumeration; green (phase 1) |
 | R-5 | Flyway V31/V32 collision with a parallel slice | low | med | verified free on `main` and unclaimed by all open PRs (Dependabot-only) at plan time; renumber rule: whoever merges second renumbers | agent | open |
 | R-6 | Suppressed listener skip accidentally implemented as *throw* → permanent retry loop parking the publication | low | med | AC-5 asserts the publication completes; typed internal outcome, no exception for the suppressed branch | agent | open |
 | R-7 | A registry-republished confirmation could race the suppression insert (suppress lands between send attempts) — double semantics unclear | low | low | at-least-once already accepted (ADR-0011); check runs per attempt, so the retry honors the newest suppression state — documented in `TransactionalMailService` Javadoc | agent | open |
@@ -208,16 +208,15 @@ N/A — no contract change (no HTTP surface added or altered).
 
 ## Execution status
 
-**Stage pointer:** plan committed — next: implement (phase 1)
+**Stage pointer:** implement — phase 1 done, next: phase 2 (suppression list)
 
-**Next action:** Phase 1 step 1 — read `PackageShapeArchitectureTests` +
-`PublishedSurfacePlacementArchitectureTests` for module enumeration (R-4), then create the
-module skeleton.
+**Next action:** Phase 2 step 1 — red tests (`TransactionalMailServiceTest` suppression cases +
+`BookingConfirmationMailIT.suppressedAddressCompletesWithoutSend`), then V32 + `EmailSuppressions`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc committed | ⏳ | |
-| 1 — mechanical move (module + api port + V31 + tests relocated) | | |
+| 0 — plan doc committed | ✅ | 538a09f |
+| 1 — mechanical move (module + api port + V31 + tests relocated) | ✅ | (this commit) |
 | 2 — suppression list (V32 + enforcement both vehicles) | | |
 | 3 — docs + close-out (CLAUDE.md, RESPONSIBILITIES.md, shared package-info) | | |
 
@@ -257,11 +256,20 @@ call `MailSender`).
 `SmtpMailerIT`, `MailerProfileWiringTest`, `BookingConfirmationMailIT`, `SynchronousMailDispatch`
 → notification test packages; `WebSliceStubs` (stub `MailSender` instead of `Mailer`+dispatcher),
 `TestcontainersConfiguration` (import path), `EmailVerificationIT`, `PasswordResetIT`,
-`RecoveryTokenNeverPersistedIT`, `RecoveryMailerFailureIT` (assert via `RecordedMailbox`),
-`CustomerRecoveryDispatchTest` (absorbed into `TransactionalMailServiceTest`; the residual
-`CustomerRecovery` test keeps token-issue-on-caller-thread), `RateLimitPropertiesBindingTest`,
-`GuestContactRetentionSchedulerConfigTest` (Javadoc sibling references only, if any code change
-at all), `payout/PayoutModuleTest` (kernel-bean mocks — verify unaffected).
+`RecoveryTokenNeverPersistedIT`, `RecoveryMailerFailureIT` (import updates — see the probe-plan
+change below), `CustomerRecoveryDispatchTest` → renamed `CustomerRecoveryTest` (off-thread +
+swallow assertions absorbed into `TransactionalMailServiceTest`; the residual test keeps
+token-issue-on-caller-thread + link correctness), `MailerProfileWiringTest`'s two
+`RecoveryProperties` binding tests split back to a new root `RecoveryPropertiesBindingTest`
+(the link base URL is edge config and `RecoveryProperties` stays root-package-private).
+
+**Plan change (phase 1, recorded):** the planned `RecordedMailbox` `@TestComponent` probe was
+dropped — the ITs assert on recorded `SentEmail` contents (`.confirmation()`, `.link()`, `.kind()`),
+so a probe would have had to either mirror the whole record or expose it anyway. Instead
+`MockMailer` + `SentEmail` are **public in `adapter/out`** with a Javadoc note: the recording
+surface is the platform test suite's established observation seam; no production caller exists
+(Modulith walls modules off; the root talks only to `notification::api`, pinned by
+`CompositionRootDisciplineTests`).
 
 **Modified (docs, phase 3):** `CLAUDE.md` (module table row), `RESPONSIBILITIES.md`
 (`notification` section), `shared/package-info.java` (the "future notification module"
