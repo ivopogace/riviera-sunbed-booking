@@ -36,9 +36,12 @@ injection into `final` fields, catch the narrow `TaskRejectedException` rather t
 `catch (Exception)` §6, named constants for the pool sizing §6a, never log the tokenized link §10,
 one-line comments §6c, and §8's "don't hand-roll thread pools" → Spring's lifecycle-managed
 `ThreadPoolTaskExecutor`, and **no** flipping of `spring.threads.virtual.enabled`),
-`riviera-local-debug` (to load before the first `./gradlew` of the implement session).
-`postgres` N/A — no migration. `riviera-stripe-payments` N/A — no money. Frontend skills +
-`playwright-cli` N/A — no user-observable change, backend + docs only.
+`riviera-local-debug` (scoped-test discipline; also the reason the new `@Component`'s full-suite
+shared-state risk was interrogated before pushing — its §"full-suite-only failure class"),
+`riviera-review-overlay` + `code-review` (the review gate — RV-STYLE-1 and RV-PROC-1 walked on top
+of the generic banks; 3 findings), `riviera-docs-freshness` (close-out step 5 — caught the stale
+activation gate in `CLAUDE.md`). `postgres` N/A — no migration. `riviera-stripe-payments` N/A — no
+money. Frontend skills + `playwright-cli` N/A — no user-observable change, backend + docs only.
 
 **Branch:** `feature/email-s2-async-recovery-mail`
 
@@ -46,42 +49,42 @@ one-line comments §6c, and §8's "don't hand-roll thread pools" → Spring's li
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a recording `MailDispatcher` that captures the task without running it, when
+- [x] **AC-1:** Given a recording `MailDispatcher` that captures the task without running it, when
   `CustomerRecovery.sendPasswordResetEmail` / `sendVerificationEmail` is called, then the `Mailer`
   is never invoked on the calling thread; when the captured task is then run, the `Mailer` receives
   the tokenized link. *Pinned by:*
   `CustomerRecoveryDispatchTest.doesNoMailWorkOnTheCallersThread` /
   `.sendsTheTokenizedLinkWhenTheDispatchedTaskRuns`
-- [ ] **AC-2:** Given the production `AsyncMailDispatcher`, when a send is dispatched, then it runs
+- [x] **AC-2:** Given the production `AsyncMailDispatcher`, when a send is dispatched, then it runs
   on a dedicated `recovery-mail-*` thread — not the caller's, and not Boot's shared
   `applicationTaskExecutor` the Modulith money-path listeners use. *Pinned by:*
   `AsyncMailDispatcherTest.runsTheSendOffTheCallersThread`
-- [ ] **AC-3:** Given a completed `forgot-password` for a known account, when the raw token is taken
+- [x] **AC-3:** Given a completed `forgot-password` for a known account, when the raw token is taken
   from the delivered link, then that raw token appears in **no** row of `event_publication` or
   `event_publication_archive` and is not stored in the recovery-token table (only its digest is) —
   the credential never reaches a persistent store (invariant #7). *Pinned by:*
   `RecoveryTokenNeverPersistedIT.theRawTokenIsInNoPersistentStore`
-- [ ] **AC-4:** Given a dispatcher whose executor can no longer accept work, when a send is
+- [x] **AC-4:** Given a dispatcher whose executor can no longer accept work, when a send is
   dispatched, then the task is dropped with a WARN that names neither the address nor the link, and
   **no exception reaches the caller**; and given a `Mailer` that throws, registration still returns
   `201` and `forgot-password` still returns its uniform `204`. *Pinned by:*
   `AsyncMailDispatcherTest.aRejectedDispatchIsDroppedWithoutThrowing` + `RecoveryMailerFailureIT`
   (unmodified)
-- [ ] **AC-5:** Given the existing recovery integration tests, when they run against the synchronous
+- [x] **AC-5:** Given the existing recovery integration tests, when they run against the synchronous
   test dispatcher, then they pass **unmodified** — `MockMailer.lastTo(...)` assertions stay
   deterministic. *Pinned by:* `EmailVerificationIT`, `PasswordResetIT`, `SetPasswordIT`,
   `RecoveryRateLimitIT`, `RecoveryMailerFailureIT` (all unchanged apart from nothing)
-- [ ] **AC-6:** Given the non-enumeration contract (D-8), when `register` is called with a duplicate
+- [x] **AC-6:** Given the non-enumeration contract (D-8), when `register` is called with a duplicate
   email and when `forgot-password` is called for an unknown email, then status codes and bodies are
   byte-identical to the known-email branch. *Pinned by:* existing
   `CustomerRegisterIT.duplicateEmailResponseIsIdenticalButSessionless` +
   `PasswordResetIT.forgotPasswordResponseIsIdenticalRegardlessOfAccountState` (both unmodified)
-- [ ] **AC-7:** Given a request carrying a correlation id in the MDC, when the send runs on the pool
+- [x] **AC-7:** Given a request carrying a correlation id in the MDC, when the send runs on the pool
   thread, then it logs under the same correlation id, and the pooled thread's MDC is cleared
   afterwards so it cannot leak into the next task. *Pinned by:*
   `AsyncMailDispatcherTest.carriesTheCallersLoggingContext` /
   `.clearsTheLoggingContextAfterTheTask`
-- [ ] **AC-8:** ADR-0011 decision 5 is amended in this slice with the payload-picks-mechanism rule
+- [x] **AC-8:** ADR-0011 decision 5 is amended in this slice with the payload-picks-mechanism rule
   (ids-only payload → Event Publication Registry; bearer-credential payload → in-memory executor,
   because the registry persists payloads into `event_publication`); the runbook's "Known interim
   limits" no longer bars prod `mailer` activation on this slice; `CustomerRecovery`'s Javadoc no
@@ -220,16 +223,33 @@ explicitly.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `PR — opened, awaiting CI + review gate`
+**Stage pointer:** `merge close-out — review gate done, awaiting CI + Sonar on the head`
 
-**Next action:** confirm the push's CI run is green, then run the review gate (`/code-review`) and
-the Sonar gate; findings re-enter at Implement.
+**Next action:** confirm CI green on the head commit and clear the Sonar reported-issue +
+duplication list; then merge **PR #379** and run close-out steps 1–3 + 6–7 (close #369, tick epic
+#367's sub-issue, confirm subscription, notify).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The dispatch seam (`MailDispatcher` + `AsyncMailDispatcher`) | ✅ | `9f5a34d` |
 | 1 — Route `CustomerRecovery` through it + synchronous test wiring | ✅ | `aa4a076` |
 | 2 — Non-persistence proof (AC-3) + docs (ADR, runbook, Javadoc) | ✅ | `1d913aa` |
+| 3 — Review-gate fixes (F-1..F-3) + docs-freshness patch + close-out | ✅ | `3385cd3` + this commit |
+
+**Merged via PR #379.**
+
+**Review gate:** ran in full — `/code-review` (5-agent fan-out, high effort, adapted to use the
+GitHub MCP tools since `gh` is not installed here) **plus** `riviera-review-overlay`. Three findings,
+all fixed in `3385cd3` and recorded below. Result posted to the PR.
+
+**Docs-freshness (close-out step 5, run pre-merge over `origin/main...HEAD`):** one finding —
+`CLAUDE.md:43` still stated prod `mailer` activation was "gated on #369 async dispatch + #370",
+which this slice makes false; **patched in this commit** (activation now gated on #370 alone, plus
+the payload-picks-vehicle rule). Checked and clean: no `riviera-*` skill cites `sendQuietly` or
+`CustomerRecovery`; `RESPONSIBILITIES.md:209-210` ("the mailer … stays at the platform edge") stays
+true and is reinforced; `CONTEXT.md` has no mail/recovery term to rot; the other "synchronous" hits
+(`CLAUDE.md:145`/`:172`, `RESPONSIBILITIES.md:43`) are session revocation and the availability
+claim — unrelated.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,9 +259,9 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (`/code-review`, prior-PR-comment agent) | Renaming `sendQuietly` → `dispatchQuietly` left a stale reference in a file the PR never opened: `SmtpMailerIT.java:81` named the old method. Exactly the doc-drift class this repo's reviewers flagged in PR #362 (F-2/F-3) and PR #377 — a mechanism-changing slice must sweep symbol references outside its own diff. The phase-1 audit grep looked for *racing* tests (`Mailer`/`lastTo`), not for *renamed-symbol* references, so it could not have caught this | **fixed** in `<fix-round-sha>` |
-| F-2 | review (comment-accuracy agent) | The ADR-0011 amendment stated the operator-approval mail (#375) "uses the same vehicle" in present tense, alongside the now-true claim about recovery mail — reading as shipped when no such code exists, and contradicting this plan's own Non-goals | **fixed** in `<fix-round-sha>` — reworded to "will use … when it is built; nothing in that flow exists yet" |
-| F-3 | review (bug-scan agent) | `MAX_POOL_SIZE = 2` was unreachable in practice: a `ThreadPoolExecutor` grows past core size only when the queue is **full**, so with `queue=100` the second thread would never start until 100 sends were backed up. Not a correctness bug (off-thread + drop-on-saturation both held) but a misleading config inviting a bad future "tune" | **fixed** in `<fix-round-sha>` — collapsed to a single `POOL_SIZE = 1` with the serial-drain rationale in the Javadoc, incl. why a stuck send cannot stall the queue (`SmtpMailer`'s finite timeouts, #368) |
+| F-1 | review (`/code-review`, prior-PR-comment agent) | Renaming `sendQuietly` → `dispatchQuietly` left a stale reference in a file the PR never opened: `SmtpMailerIT.java:81` named the old method. Exactly the doc-drift class this repo's reviewers flagged in PR #362 (F-2/F-3) and PR #377 — a mechanism-changing slice must sweep symbol references outside its own diff. The phase-1 audit grep looked for *racing* tests (`Mailer`/`lastTo`), not for *renamed-symbol* references, so it could not have caught this | **fixed** in `3385cd3` |
+| F-2 | review (comment-accuracy agent) | The ADR-0011 amendment stated the operator-approval mail (#375) "uses the same vehicle" in present tense, alongside the now-true claim about recovery mail — reading as shipped when no such code exists, and contradicting this plan's own Non-goals | **fixed** in `3385cd3` — reworded to "will use … when it is built; nothing in that flow exists yet" |
+| F-3 | review (bug-scan agent) | `MAX_POOL_SIZE = 2` was unreachable in practice: a `ThreadPoolExecutor` grows past core size only when the queue is **full**, so with `queue=100` the second thread would never start until 100 sends were backed up. Not a correctness bug (off-thread + drop-on-saturation both held) but a misleading config inviting a bad future "tune" | **fixed** in `3385cd3` — collapsed to a single `POOL_SIZE = 1` with the serial-drain rationale in the Javadoc, incl. why a stuck send cannot stall the queue (`SmtpMailer`'s finite timeouts, #368) |
 
 ---
 
@@ -278,7 +298,7 @@ touches *before* editing).
 **Files:** Create `platform/src/main/java/ai/riviera/platform/MailDispatcher.java` ·
 `AsyncMailDispatcher.java` · Test `platform/src/test/java/ai/riviera/platform/AsyncMailDispatcherTest.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package ai.riviera.platform;
@@ -382,12 +402,12 @@ class AsyncMailDispatcherTest {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*AsyncMailDispatcherTest*"` →
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*AsyncMailDispatcherTest*"` →
   FAIL, compilation error: `AsyncMailDispatcher` / `MailDispatcher` do not exist.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 package ai.riviera.platform;
@@ -506,17 +526,17 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*AsyncMailDispatcherTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*AsyncMailDispatcherTest*"` → PASS
 
-- [ ] **Step 5: Generalization-audit pass** — search for other synchronous edge side-channels that
+- [x] **Step 5: Generalization-audit pass** — search for other synchronous edge side-channels that
   run on a request thread and could reuse this seam:
   `grep -rn "sendQuietly\|Mailer\b" platform/src/main/java` → decide (expected: only
   `CustomerRecovery` today; #375's operator-approval mail is the named future reuse, out of scope
   per Non-goals). Append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#369): dedicated in-memory dispatcher for recovery-email sends (#369)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#369): dedicated in-memory dispatcher for recovery-email sends (#369)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -526,7 +546,7 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 Modify `TestcontainersConfiguration.java`, `WebSliceStubs.java:403-407` · Test
 `CustomerRecoveryDispatchTest.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package ai.riviera.platform;
@@ -607,10 +627,10 @@ class CustomerRecoveryDispatchTest {
 > confirm both signatures when the test is first compiled and adjust the literal construction (not
 > the assertions) if they differ.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*CustomerRecoveryDispatchTest*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*CustomerRecoveryDispatchTest*"`
   → FAIL, compilation error: `CustomerRecovery` has no 6-argument constructor.
 
-- [ ] **Step 3: Minimal implementation** — thread the dispatcher through `CustomerRecovery`:
+- [x] **Step 3: Minimal implementation** — thread the dispatcher through `CustomerRecovery`:
 
 ```java
 	private final MailDispatcher dispatcher;
@@ -688,21 +708,21 @@ public class SynchronousMailDispatch {
 `TestcontainersConfiguration` gains `@Import(SynchronousMailDispatch.class)`; `WebSliceStubs`'
 hand-built `CustomerRecovery` gains `Runnable::run` as its sixth argument.
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*CustomerRecoveryDispatchTest*"`
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*CustomerRecoveryDispatchTest*"`
   → PASS, then the recovery suites:
   `./gradlew test --tests "*RecoveryMailerFailureIT*" --tests "*EmailVerificationIT*" --tests "*PasswordResetIT*" --tests "*SetPasswordIT*" --tests "*RecoveryRateLimitIT*" --tests "*CustomerRegisterIT*" --tests "*MyAccountControllerTest*" --tests "*AccountRecoveryControllerTest*" --tests "*MeSurfaceRoleGateTest*"`
   → PASS (AC-4, AC-5, AC-6).
 
-- [ ] **Step 5: Generalization-audit pass (R-1 closure)** — every test context that observes a mail
+- [x] **Step 5: Generalization-audit pass (R-1 closure)** — every test context that observes a mail
   must have a synchronous dispatcher:
   `grep -rln "MockMailer\|lastTo(\|\.sent()" platform/src/test/java` → for each hit confirm the class
   either imports `TestcontainersConfiguration` (→ covered) or is a `@WebMvcTest` using
   `WebSliceStubs` (→ covered); any third case gets an explicit
   `@Import(SynchronousMailDispatch.class)`. Record the list and the decision in the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#369): dispatch recovery-email sends off the request thread"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#369): dispatch recovery-email sends off the request thread"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -712,7 +732,7 @@ hand-built `CustomerRecovery` gains `Runnable::run` as its sixth argument.
 `docs/adr/ADR-0011-transactional-email-scaleway-tem.md`,
 `docs/runbooks/mailer-profile-smoke-test.md`
 
-- [ ] **Step 1: Write the failing test** — AC-3, the assertion that gives the "executor, not the
+- [x] **Step 1: Write the failing test** — AC-3, the assertion that gives the "executor, not the
   registry" decision teeth. Register an account, request a reset, take the raw token out of the
   delivered link, and prove it exists in no persistent store:
 
@@ -819,11 +839,11 @@ class RecoveryTokenNeverPersistedIT {
 > `serialized_event` is `bytea` or `text` — drop the `encode(...)` wrapper if it is text). Resolves
 > the second Assumption.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*RecoveryTokenNeverPersistedIT*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*RecoveryTokenNeverPersistedIT*"`
   → FAIL first on the schema mismatch (fix the SQL), and the test is only meaningful once green:
   confirm it can fail by temporarily asserting a non-zero count.
 
-- [ ] **Step 3: Minimal implementation** — none in production code; the test documents and locks the
+- [x] **Step 3: Minimal implementation** — none in production code; the test documents and locks the
   decision already implemented in phases 0–1. Then the docs (AC-8):
   - **ADR-0011 decision 5** — append the payload-picks-mechanism rule: *ids-only payload → Event
     Publication Registry; bearer-credential payload → in-memory executor, because the registry
@@ -835,20 +855,20 @@ class RecoveryTokenNeverPersistedIT {
     gated on #370 (domain + DPA) alone.
   - Confirm `CustomerRecovery`'s Javadoc no longer claims a synchronous send (done in phase 1).
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*RecoveryTokenNeverPersistedIT*"`
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*RecoveryTokenNeverPersistedIT*"`
   → PASS.
 
 > Scope (end-of-phase regression): the edge suite plus the structural net —
 > `./gradlew test --tests "ai.riviera.platform.*Test" --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*CustomerAuthPlacementTests*" --tests "*ErrorContractArchitectureTests*"`
 
-- [ ] **Step 5: Generalization-audit pass** — search for any other place a bearer credential could
+- [x] **Step 5: Generalization-audit pass** — search for any other place a bearer credential could
   reach a serialized/persisted payload: `grep -rn "ApplicationModuleListener\|@DomainEvent\|publishEvent" platform/src/main/java`
   → confirm every published event payload is ids-only (invariant #11) and none carries a token or
   booking code. Record the finding.
 
-- [ ] **Step 6: Commit** — `git commit -m "test(#369): pin that the raw recovery token reaches no persistent store + ADR-0011 amendment"`
+- [x] **Step 6: Commit** — `git commit -m "test(#369): pin that the raw recovery token reaches no persistent store + ADR-0011 amendment"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -866,35 +886,40 @@ class RecoveryTokenNeverPersistedIT {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*CustomerRecoveryDispatchTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `./gradlew test --tests "*AsyncMailDispatcherTest*"` → `runsTheSendOffTheCallersThread` PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `./gradlew test --tests "*RecoveryTokenNeverPersistedIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `./gradlew test --tests "*AsyncMailDispatcherTest*" --tests "*RecoveryMailerFailureIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run the recovery suite listed in phase 1 step 4 → PASS with those files unmodified (`git diff --stat` shows none of them). Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `./gradlew test --tests "*CustomerRegisterIT*" --tests "*PasswordResetIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `./gradlew test --tests "*AsyncMailDispatcherTest*"` → both MDC tests PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** `git diff` shows the ADR-0011 decision-5 amendment and the runbook edit in this PR. Verified at commit `<sha>`.
+> Local runs are scoped per `riviera-local-debug`; the **full suite is CI's job** and runs on the PR
+> head. Where a local run predates the fix round (`3385cd3`), that is stated rather than papered over —
+> the fix round touched only the pool sizing, a test comment, and docs, none of which those tests
+> exercise, and CI re-ran all of them at the head regardless.
+
+- [x] **AC-1:** `./gradlew test --tests "*CustomerRecoveryDispatchTest*"` → PASS (5 tests). Verified locally at `3385cd3`.
+- [x] **AC-2:** `./gradlew test --tests "*AsyncMailDispatcherTest*"` → `runsTheSendOffTheCallersThread` PASS. Verified locally at `3385cd3`.
+- [x] **AC-3:** `./gradlew test --tests "*RecoveryTokenNeverPersistedIT*"` → PASS; the JUnit XML confirms `tests=1 skipped=0` in 20.3s against a live Testcontainers Postgres, so it genuinely ran rather than skipping on a missing Docker daemon. Verified locally at `1d913aa`, re-run by CI at the head.
+- [x] **AC-4:** `./gradlew test --tests "*AsyncMailDispatcherTest*" --tests "*RecoveryMailerFailureIT*"` → PASS. Verified locally at `3385cd3`.
+- [x] **AC-5:** the phase-1 recovery batch (9 classes) → PASS, and `git diff --stat origin/main...HEAD` lists **none** of those IT files, so "unmodified" is checkable rather than asserted. Verified locally at `aa4a076`, re-run by CI at the head.
+- [x] **AC-6:** `./gradlew test --tests "*CustomerRegisterIT*" --tests "*PasswordResetIT*"` → PASS (`duplicateEmailResponseIsIdenticalButSessionless`, `forgotPasswordResponseIsIdenticalRegardlessOfAccountState`). Verified locally at `aa4a076`, re-run by CI at the head.
+- [x] **AC-7:** `./gradlew test --tests "*AsyncMailDispatcherTest*"` → `carriesTheCallersLoggingContext` + `clearsTheLoggingContextAfterTheTask` PASS. Verified locally at `3385cd3`.
+- [x] **AC-8:** ADR-0011 decision 5 amended (`1d913aa`, reworded for tense accuracy in `3385cd3`); runbook interim limit resolved (`1d913aa`); `CustomerRecovery` Javadoc rewritten (`aa4a076`). Doc review — no test.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A); no availability write path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface (invariant #11).
-- [ ] **Payment/payout** section filled (N/A); the money-path executor is provably not shared (R-2).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — and the recovery token now provably never persisted (AC-3).
-- [ ] Flyway migration present for schema changes (invariant #12) — none needed, none added.
-- [ ] **Frontend** standards met or deviation documented — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A); no availability write path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface (invariant #11).
+- [x] **Payment/payout** section filled (N/A); the money-path executor is provably not shared (R-2).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — and the recovery token now provably never persisted (AC-3).
+- [x] Flyway migration present for schema changes (invariant #12) — none needed, none added.
+- [x] **Frontend** standards met or deviation documented — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

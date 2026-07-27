@@ -39,9 +39,13 @@ established (per-slice history: the issues + `docs/plans/`):
   1 → console, 2+ → picker; `returnUrl` outranks all).
 - **Mocked externals are prod-guarded:** the mock SSO IdPs (`@Profile("prod & !sso")`)
   and mock mailer (`@Profile("prod & !mailer")`) cannot reach prod; the real `SmtpMailer`
-  shipped in #368 (SMTP relay per ADR-0011, `mailer` profile, fail-at-boot config —
-  activation gated on #369 async dispatch + #370 provider setup; epic #367 absorbed #255),
-  real SSO adapters are S5.
+  shipped in #368 (SMTP relay per ADR-0011, `mailer` profile, fail-at-boot config) and #369
+  moved recovery sends **off the request thread** (bounded in-memory `MailDispatcher`, closing
+  the timing enumeration oracle), so prod activation is now gated on **#370 provider setup
+  alone**; epic #367 absorbed #255. Which vehicle a mail uses follows from its payload
+  (ADR-0011 decision 5): **ids-only → Event Publication Registry; bearer-credential → the
+  in-memory dispatcher**, because the registry persists payloads into `event_publication`.
+  Real SSO adapters are S5.
 - **Auth endpoints are non-enumerating + constant-time on their own rate-limit buckets**
   (D-8); email verification is **soft/non-blocking** (SSO counts as provider-verified).
 - **Operator lifecycle:** self-registration → admin approval (`PENDING`→`ACTIVE`,
