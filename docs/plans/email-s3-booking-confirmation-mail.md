@@ -242,9 +242,9 @@ its own Playwright coverage.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `PR — opened, awaiting CI + review gate + Sonar gate` (merge deliberately withheld at the maintainer's instruction)
+**Stage pointer:** `review gate — complete, findings fixed or deferred; awaiting CI + Sonar before merge`
 
-**Next action:** Run the review gate (`/code-review`), then the Sonar gate; fold any findings back in at Implement per the re-entry rule. **Do not merge** — the maintainer will.
+**Next action:** Confirm CI green on `4f6efb2`, then pull the SonarCloud new-issue list and clear it before merging.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -260,9 +260,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
 Skill-routing gate for what the fix touches *before* editing).
 
+Review gate ran `2026-07-27` — five independent reviewers (CLAUDE.md + `riviera-review-overlay` bank,
+shallow bug scan, git history, prior-PR comments, in-code guidance). Nine findings survived
+verification; full write-up in [PR #381's review comment](https://github.com/ivopogace/riviera-sunbed-booking/pull/381#issuecomment-5094538369).
+
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review — bug scan | `BookingConfirmationMailIT` booked the same `(set, date)` as `BookingControllerIT`; shared context + never-released claim ⇒ order-dependent `409 SET_TAKEN`, full-suite-only | fixed-in-`4f6efb2` |
+| F-2 | review — bug scan | `EventRegistryDurabilityIT` keyed on `LIKE '%<bookingId>%'`, matching other tests' payloads: archive assertion could pass for the wrong reason, live assertion fail for one | fixed-in-`4f6efb2` |
+| F-3 | review — history + in-code guidance | The shared-kernel move left `CurrentOperator`/`CurrentCustomer`/`ObservabilityMetrics` claiming they live at the root, plus three dangling `{@link ApiErrorHandler}` links | fixed-in-`4f6efb2` |
+| F-4 | review — prior PR comments | `error-contract.md` still placed `ApiProblem` in the root package (third occurrence of this doc-drift class) | fixed-in-`4f6efb2` |
+| F-5 | review — in-code guidance | `Mailer`'s new "implementations must never log them" contradicted `MockMailer`'s deliberate prod-guarded dev echo | fixed-in-`4f6efb2` |
+| F-6 | review — in-code guidance | Both mailer class docs still described two message kinds | fixed-in-`4f6efb2` |
+| F-7 | review — prior PR comments | No failure-path test on the new kind; #377's review added exactly this for the tokenized link | fixed-in-`4f6efb2` |
+| F-8 | review — CLAUDE.md/overlay | Operator-controlled `venueName` reaching the SMTP `Subject:` raw (CRLF header injection) | **investigated — not a defect.** Jakarta Mail already refuses to promote a subject newline into a header; verified by running the injection test with the sanitizer removed. Kept a one-line sanitizer as documented defence-in-depth |
+| F-9 | review — history + in-code guidance (**two reviewers independently**) | Registry-borne mail runs on the shared `applicationTaskExecutor` holding a DB transaction across a blocking SMTP call — the money-path spine's executor, which `AsyncMailDispatcher`'s Javadoc exists to keep mail off | deferred → **#383**, blocking before #370 activates the mailer. Not fixed here: the fix means decomposing `@ApplicationModuleListener` into its parts, which needs verification that the registry still tracks the listener — durability is this slice's whole idempotency story |
+| F-10 | review — history | A permanently failing send never completes its publication ⇒ resubmitted forever, holding `riviera.outbox.pending` (read by `MoneyPathAlertCheck`) above threshold for a non-money reason | deferred → **#383**; the absorbing mechanism is ADR-0011 decision 7's suppression list, not yet built |
 
 ---
 
@@ -432,6 +445,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
