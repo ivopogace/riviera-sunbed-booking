@@ -1,47 +1,43 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
-import ai.riviera.platform.shared.CurrentOperator;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 
-import ai.riviera.platform.booking.vocabulary.BookingId;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
-import ai.riviera.platform.payout.domain.BatchStatus;
-import ai.riviera.platform.payout.domain.PayoutBatch;
-import ai.riviera.platform.payout.domain.PeriodKey;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
-import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
-import ai.riviera.platform.booking.application.reserve.CreateBooking;
-import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
+import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.DeclineOutcome;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
 import ai.riviera.platform.booking.application.request.PendingRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
+import ai.riviera.platform.booking.application.reserve.BookingOutcome;
+import ai.riviera.platform.booking.application.reserve.CreateBooking;
+import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
-import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
-import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -50,41 +46,39 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
-import java.util.Map;
-import org.springframework.session.FindByIndexNameSessionRepository;
-import org.springframework.session.Session;
+import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
-import ai.riviera.platform.operator.api.OperatorLifecycle;
-import ai.riviera.platform.operator.vocabulary.OperatorAccount;
-import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
+import ai.riviera.platform.payment.adapter.out.StripeProperties;
+import ai.riviera.platform.payment.application.NewPayment;
+import ai.riviera.platform.payment.application.Payments;
+import ai.riviera.platform.payment.application.StripeWebhookEvents;
+import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.application.VenueLedger;
 import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.payout.application.ViewPayoutLedger;
-import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.payment.application.NewPayment;
-import ai.riviera.platform.payment.application.Payments;
-import ai.riviera.platform.payment.application.StripeWebhookEvents;
-import ai.riviera.platform.payment.domain.PaymentStatus;
-import ai.riviera.platform.payment.adapter.out.StripeProperties;
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
-import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.payout.domain.BatchStatus;
+import ai.riviera.platform.payout.domain.PayoutBatch;
+import ai.riviera.platform.payout.domain.PeriodKey;
+import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueRates;
-import ai.riviera.platform.venue.vocabulary.VenueFilter;
-import ai.riviera.platform.venue.vocabulary.VenueId;
-import ai.riviera.platform.venue.vocabulary.VenueMapView;
-import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
@@ -92,11 +86,11 @@ import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.PhotoProcessingResult;
+import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
-import ai.riviera.platform.venue.application.PhotoProcessingResult;
-import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.StoredBytes;
@@ -104,6 +98,12 @@ import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueFilter;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueMapView;
+import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
  * Shared collaborators for {@code @WebMvcTest} slices that load the whole web layer (the CORS/security
@@ -146,7 +146,6 @@ class WebSliceStubs {
 	ExpireRequests expireRequests() {
 		return () -> 0;
 	}
-
 
 	/** Stamp a client IP onto a MockMvc request (shared by the rate-limit slices). */
 	static RequestPostProcessor fromIp(String ip) {

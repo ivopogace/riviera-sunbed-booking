@@ -102,7 +102,7 @@ The root mail machinery is replaced by the module — every observable behavior 
 | Booking-confirmation mail rides the Event Publication Registry, `@ApplicationModuleListener`, at-least-once, idempotent per booking; missing booking/set/contact → log+skip (complete), transport failure → propagate (retry) | preserved | listener moves to `adapter/in` unchanged; suppression skip added as a *complete* outcome (AC-5); `BookingConfirmationMailIT` relocated |
 | Bearer-credential payloads never persisted (no registry for recovery mail) | preserved | recovery sends still ride the in-memory dispatcher only; `RecoveryTokenNeverPersistedIT` |
 | No bearer credential logged at transport; CRLF stripped for headers (`headerSafe`) and logs (`sanitize`) | preserved | `SmtpMailer`/`MockMailer` move unchanged |
-| Mock records `SentEmail`s; ITs assert via `lastTo`/`sent`/`clear`; dev-only recovery-link log line | preserved | mock unchanged (package-private in `adapter/out`); external ITs assert through a new same-package `@TestComponent` probe (`RecordedMailbox`) |
+| Mock records `SentEmail`s; ITs assert via `lastTo`/`sent`/`clear`; dev-only recovery-link log line | preserved | mock behavior unchanged; **`MockMailer` + `SentEmail` are public in `adapter/out`** so external ITs assert on recorded contents directly (see *Plan change (phase 1, recorded)* below — the planned `RecordedMailbox` probe was dropped) |
 | `@WebMvcTest` slices stub `Mailer` + synchronous dispatcher via `WebSliceStubs`; DB ITs get `SynchronousMailDispatch` via `TestcontainersConfiguration` | changed (equivalent) | stubs target the new seams: `MailSender` for web slices; `SynchronousMailDispatch` moves to the notification test package, still `@Primary MailDispatcher` |
 | Outstanding registry publications re-deliver to the listener across restarts | preserved | **V31 `listener_id` rewrite** — without it the moved listener's id no longer matches and rows dead-letter (V18 case history) |
 
@@ -247,7 +247,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/resources/db/migration/V31__event_publication_listener_move.sql`
 - `platform/src/main/resources/db/migration/V32__notification_email_suppression.sql`
 - `platform/src/test/java/ai/riviera/platform/CompositionRootDisciplineTests.java` — AC-2
-- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/RecordedMailbox.java` — public `@TestComponent` probe over the package-private mock
 - notification test classes: `TransactionalMailServiceTest`, `EmailSuppressionIT`, `ListenerMoveMigrationIT`
 
 **Moved (main, behavior unchanged):** `Mailer`, `MailDispatcher`, `AsyncMailDispatcher`,
@@ -293,7 +292,7 @@ paragraph → points at the shipped module).
   booking/venue/payment/payout/availability) — fails while the listener still sits at root.
 - [ ] **Step 3 (green):** Create the module skeleton + package-infos; move the nine classes;
   introduce `MailSender` + `TransactionalMailService` (absorbing `dispatchQuietly`); rewire
-  `CustomerRecovery`; relocate/rewire tests + `RecordedMailbox` probe; add V31 with
+  `CustomerRecovery`; relocate/rewire tests; add V31 with
   `ListenerMoveMigrationIT`.
 - [ ] **Step 4:** Scoped run: `ModularityTests`, the three arch tests, `CompositionRootDisciplineTests`,
   all relocated mail tests, `EmailVerificationIT`/`PasswordResetIT`/`RecoveryMailerFailureIT`/

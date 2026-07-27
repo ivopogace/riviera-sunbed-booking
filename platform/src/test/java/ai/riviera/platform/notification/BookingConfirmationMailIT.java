@@ -123,6 +123,39 @@ class BookingConfirmationMailIT {
 		new TransactionTemplate(txManager).executeWithoutResult(status -> publisher.publishEvent(event));
 	}
 
+	/**
+	 * Seed a guest contact plus a booking on {@code set}. The four SQL-seeded tests below differed only
+	 * in code, date, amount, status and whether an account is linked, so this lived in four
+	 * near-identical copies — and the newest copy silently reused another test's booking date, breaking
+	 * the unique-date discipline the whole class depends on (see the comment on the first test: classes
+	 * sharing this context share one container and one online set, and a claimed {@code (set, date)} is
+	 * never released, invariant #2).
+	 *
+	 * @param accountId the linked customer account, or {@code null} for a guest booking
+	 */
+	private long seedBooking(SetRef set, String code, LocalDate date, String contactEmail,
+			long amountMinor, String status, Long accountId) {
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:e, 'Test Guest', '+355777') RETURNING id")
+				.param("e", contactEmail).query(Long.class).single();
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES (:code, :venue, :set, :cust, :account, :date, :amount, 'EUR', :status)
+				RETURNING id
+				""")
+				.param("code", code).param("venue", set.venueId()).param("set", set.setId())
+				.param("cust", customerId).param("account", accountId).param("date", date)
+				.param("amount", amountMinor).param("status", status)
+				.query(Long.class).single();
+	}
+
+	/** The common case: a confirmed guest booking, no linked account. */
+	private long seedConfirmedBooking(SetRef set, String code, LocalDate date, String contactEmail,
+			long amountMinor) {
+		return seedBooking(set, code, date, contactEmail, amountMinor, "CONFIRMED", null);
+	}
+
 	@Test
 	void sendsOneConfirmationCarryingCodeVenueDateSetAndAmount() throws Exception {
 		SetRef set = onlineSet();
@@ -162,17 +195,7 @@ class BookingConfirmationMailIT {
 		long accountId = jdbc.sql("INSERT INTO customer_account (email, password_hash) "
 						+ "VALUES ('signed-in-account@example.com', '{bcrypt}$2a$10$notarealhash') RETURNING id")
 				.query(Long.class).single();
-		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES (:e, 'Signed In Guest', '+355777') RETURNING id")
-				.param("e", contactEmail).query(Long.class).single();
-		long bookingId = jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
-				                     amount_minor, amount_currency, status)
-				VALUES ('SIGNEDIN', :venue, :set, :cust, :account, :date, 3200, 'EUR', 'CONFIRMED')
-				RETURNING id
-				""")
-				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
-				.param("account", accountId).param("date", date).query(Long.class).single();
+		long bookingId = seedBooking(set, "SIGNEDIN", date, contactEmail, 3200L, "CONFIRMED", accountId);
 
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), date, 3200L, "EUR"));
@@ -189,17 +212,7 @@ class BookingConfirmationMailIT {
 		LocalDate date = LocalDate.of(2029, 6, 14);
 		String contactEmail = "paid-on-accept@example.com";
 
-		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES (:e, 'Paying Guest', '+355779') RETURNING id")
-				.param("e", contactEmail).query(Long.class).single();
-		long bookingId = jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
-				                     amount_minor, amount_currency, status)
-				VALUES ('PAIDPATH', :venue, :set, :cust, :date, 4400, 'EUR', 'AWAITING_PAYMENT')
-				RETURNING id
-				""")
-				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
-				.param("date", date).query(Long.class).single();
+		long bookingId = seedBooking(set, "PAIDPATH", date, contactEmail, 4400L, "AWAITING_PAYMENT", null);
 
 		// The asynchronous confirm route: a signature-verified payment (invariant #8) drives
 		// booking's PaymentEventListener → ConfirmBooking → BookingConfirmed. That is the tail of
@@ -216,21 +229,13 @@ class BookingConfirmationMailIT {
 	@Test
 	void suppressedAddressCompletesWithoutSend() {
 		SetRef set = onlineSet();
-		LocalDate date = LocalDate.of(2029, 6, 14);
+		// 06-15, not 06-14: this test was added last and reused sendsForABookingConfirmedViaThePaymentPath's
+		// date, which the class's unique-date discipline forbids (#386 cleanup).
+		LocalDate date = LocalDate.of(2029, 6, 15);
 		String suppressed = "suppressed-tourist@example.com";
 		suppressions.suppress(suppressed, SuppressionReason.HARD_BOUNCE, Instant.now());
 
-		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES (:e, 'Suppressed Guest', '+355779') RETURNING id")
-				.param("e", suppressed).query(Long.class).single();
-		long bookingId = jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
-				                     amount_minor, amount_currency, status)
-				VALUES ('SUPPRESS1', :venue, :set, :cust, :date, 2100, 'EUR', 'CONFIRMED')
-				RETURNING id
-				""")
-				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
-				.param("date", date).query(Long.class).single();
+		long bookingId = seedConfirmedBooking(set, "SUPPRESS1", date, suppressed, 2100L);
 
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), date, 2100L, "EUR"));
@@ -249,17 +254,7 @@ class BookingConfirmationMailIT {
 		LocalDate date = LocalDate.of(2029, 6, 13);
 		String contactEmail = "replay-me@example.com";
 
-		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES (:e, 'Replay Guest', '+355778') RETURNING id")
-				.param("e", contactEmail).query(Long.class).single();
-		long bookingId = jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
-				                     amount_minor, amount_currency, status)
-				VALUES ('REPLAY01', :venue, :set, :cust, :date, 2100, 'EUR', 'CONFIRMED')
-				RETURNING id
-				""")
-				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
-				.param("date", date).query(Long.class).single();
+		long bookingId = seedConfirmedBooking(set, "REPLAY01", date, contactEmail, 2100L);
 
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), date, 2100L, "EUR"));
