@@ -8,6 +8,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -17,6 +18,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
+import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 import ch.qos.logback.classic.Level;
@@ -84,9 +87,25 @@ class RateLimitFilterTest {
 	@MockitoBean
 	CustomerAccountDirectory customerAccountDirectory;
 
+	/**
+	 * Overrides the {@link WebSliceStubs} bean for the same reason: its default resolves every email to
+	 * {@link Optional#empty()}, which sends {@code MyAccountController#setPassword} down the SSO-onboarding
+	 * "no password yet" branch — so the customer tests would assert throttling on a path that never reaches
+	 * the credential check, while their operator twins do. Stubbed per-email rather than for {@code any()}
+	 * so the customer <em>login</em> tests below keep their empty-store {@code 401}.
+	 */
+	@MockitoBean
+	CustomerAccounts customerAccounts;
+
+	@Autowired
+	PasswordEncoder passwordEncoder;
+
 	@BeforeEach
 	void resolveTheSignedInCustomer() {
 		when(customerAccountDirectory.accountFor(any())).thenReturn(Optional.of(new CustomerAccountId(1)));
+		when(customerAccounts.findByEmail(any())).thenReturn(Optional.empty());
+		when(customerAccounts.findByEmail(TEST_CUSTOMER)).thenReturn(Optional.of(
+				new CustomerAccountCredential(TEST_CUSTOMER, passwordEncoder.encode("not-the-submitted-one"))));
 	}
 
 	private ResultActions viewFromIp(String ip, String code) throws Exception {
@@ -410,8 +429,8 @@ class RateLimitFilterTest {
 	@Test
 	void authenticatedCustomerPasswordChangesAreStillThrottled() throws Exception {
 		String ip = "10.31.0.1";
-		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
-		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isBadRequest());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isBadRequest());
 		authenticatedCustomerPasswordChangeFromIp(ip)
 				.andExpect(status().isTooManyRequests())
 				.andExpect(header().exists("Retry-After"))
@@ -429,8 +448,8 @@ class RateLimitFilterTest {
 	@Test
 	void customerPasswordChangeDoesNotStarveTheOperatorOne() throws Exception {
 		String ip = "10.31.0.2";
-		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
-		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isBadRequest());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isBadRequest());
 		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isTooManyRequests());
 
 		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
@@ -484,7 +503,7 @@ class RateLimitFilterTest {
 			customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
 		}
 
-		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isNoContent());
+		authenticatedCustomerPasswordChangeFromIp(ip).andExpect(status().isBadRequest());
 	}
 
 	/** Public + non-enumerating: always {@code 204}, so a {@code 429} is unambiguously the limiter. */

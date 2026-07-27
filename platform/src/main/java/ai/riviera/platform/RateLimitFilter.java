@@ -324,6 +324,12 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * {@link #throttlePerIdentity} already makes, and the reason a burst can leave the bucket momentarily
 	 * empty for a concurrent caller. The refund is deliberately not in a {@code finally}: an exception
 	 * escaping the chain is a {@code 500}, not an access denial, and must not be refunded.
+	 *
+	 * <p><strong>The two logins never reach the refund.</strong> They return early into
+	 * {@link #throttlePerIdentity}, so a login budget's flag is inert — harmless today because both are
+	 * {@link AuthBudget#spendsEveryRequest}, but it means flagging one {@code guardsAuthenticatedWork}
+	 * would silently do nothing rather than fail. Nothing should ever want to: a login's {@code 401} is
+	 * the answer to a wrong password, which is the whole point of charging it.
 	 */
 	private void throttleAuthEndpoint(AuthBudget budget, HttpServletRequest request,
 			HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
@@ -334,8 +340,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "login");
 			return;
 		}
-		// The two logins additionally carry a per-identity budget (issue #292); the other auth
-		// POSTs (register / recovery / SSO) stay per-IP only.
+		// Only the two logins carry a per-identity budget (#292); every other auth POST is per-IP only.
 		LoginEndpoint login = loginEndpointOf(request);
 		if (login != null) {
 			throttlePerIdentity(login, request, response, chain, ip, now);

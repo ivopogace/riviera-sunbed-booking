@@ -151,7 +151,7 @@ deliberately **not** held as a plan-doc open question (that section is for quest
 | Unauthenticated `POST /api/me/password` spends a customer-password token | **changed** (the defect) | Same refund |
 | Unauthenticated `POST /api/me/verify-email/request` spends a recovery token | **changed** (amendment 3) | Same refund, via the shared `recoveryBuckets` flag |
 | Authenticated password change spends a token; over-limit → `429` | **preserved** | Non-`401`/`403` outcomes (`204`/`400`/`409`) never refund — AC-3/AC-4 |
-| Failed login (`401` from `AuthController`) spends a per-IP login token | **preserved** | `loginBuckets` carries `refundedWhenChainRejects = false` — AC-5 |
+| Failed login (`401` from `AuthController`) spends a per-IP login token | **preserved** | `loginBuckets` is `AuthBudget.spendsEveryRequest` (`refundedWhenAccessDenied = false`), and the login path returns into `throttlePerIdentity` before the refund point anyway — AC-5 |
 | Failed login net-spends a per-**identity** token (#292) | **preserved** | `throttlePerIdentity` is untouched; it returns before the new refund point |
 | Login/register/SSO budgets are pure volume control | **preserved** | All flagged `false`; anonymous flood on an anonymous surface *should* throttle |
 | Password-change budgets are separate per principal type (#326) | **preserved** | Two maps, unchanged |
@@ -167,7 +167,7 @@ deliberately **not** held as a plan-doc open question (that section is for quest
 | R-2 | Refund-on-`403` makes a CSRF-less flood free, removing volume control from the authenticated budgets | high | low | Accepted + documented: a CSRF rejection happens at `CsrfFilter` with no DB, no bcrypt and no mail — the oracle is never reached. The same is true of every non-throttled endpoint in the app | Claude | open |
 | R-3 | Transient false `429`: spend-then-refund means a burst of `capacity` anonymous requests can leave the bucket momentarily empty for a concurrent legitimate caller | med | low | Accepted, and deliberately chosen over peek-then-spend, which would make the cap inexact under concurrency — the same trade `throttlePerIdentity` already made. Self-heals within one request | Claude | open |
 | R-4 | Per-IP remains the only dimension on an authenticated endpoint, so a stolen-session attacker on a rotating-IP botnet is still under-throttled | low | med | Out of scope by design (Non-goals); the pre-existing posture is not worsened. Note in the plan close-out whether it deserves an issue | Claude | open |
-| R-5 | Shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names them up front; Phase 1 rewrites them to drive the throttle **authenticated**, a strictly better test of the same intent | Claude | **closed** — it was **five**, not the four predicted (`credentialChangeBudgetIsKeyedByClientIp` was missed at plan time). All five reworked, none weakened; `862d32f`..`c5c9bb1` |
+| R-5 | Shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names them up front; Phase 1 rewrites them to drive the throttle **authenticated**, a strictly better test of the same intent | Claude | **closed** — it was **five**, not the four predicted. The one missed at plan time was `aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget` (the #342 percent-encoding pin, which sets its probe up by draining the budget first); `credentialChangeBudgetIsKeyedByClientIp` *was* predicted, as Phase 1 Step 2's "the per-IP-keying case". All five reworked, none weakened; `862d32f`..`c5c9bb1` |
 | R-6 | An exception propagating out of `chain.doFilter` skips the refund (no `finally`) | low | low | Deliberate and consistent with `throttlePerIdentity`: a `500` is not a chain rejection and should not be refunded. Documented in the Javadoc | Claude | open |
 | R-7 | Error-contract drift: none of the `401`/`403`/`429` bodies change | low | low | No DTO, no status, no `code` is added or altered (§6b); the `429` body constant is untouched | Claude | open |
 
@@ -251,15 +251,23 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (agents 1 + 4) | A two-line inline `//` comment was carried into the newly-extracted `throttleAuthEndpoint`, breaking `riviera-java-conventions` §6c / RV-STYLE-1. Agent 4 read it as arguably exempt (relocated, not authored); agent 1 read it strictly. Fixed either way — the strict reading costs one line. | fixed-in-`<review>` |
+| F-2 | review (agent 3) | `authenticatedCustomerPasswordChangeFromIp` never reached the credential check: the `WebSliceStubs` `CustomerAccounts` default returns empty, so `setPassword` took the SSO-onboarding "no password yet" branch (`204`). The throttling assertion was still valid, but the test's prose ("same oracle as the operator endpoint") overstated it. Fixed properly rather than by softening the prose: `CustomerAccounts` is now stubbed **per-email** so the customer tests drive the real wrong-current-password branch (`400`) like their operator twins, while the customer *login* tests keep their empty-store `401`. | fixed-in-`<review>` |
+| F-3 | review (agent 5) | Behavior-parity ledger cited `refundedWhenChainRejects`; the shipped field is `refundedWhenAccessDenied`. Stale from before amendment 4's rename. | fixed-in-`<review>` |
+| F-4 | review (agent 5) | R-5's resolution misattributed the plan-time miss: it named `credentialChangeBudgetIsKeyedByClientIp`, which Phase 1 Step 2 *had* predicted as "the per-IP-keying case". The genuinely unpredicted fifth test was `aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget`. | fixed-in-`<review>` |
+| F-5 | review (agent 5) | The File-structure section still named `authBucketsFor`/`authPostBucketsFor` after the rename to `authBudgetFor`/`authPostBudgetFor`. | fixed-in-`<review>` |
+| F-6 | review (agent 3) | Latent footgun: the two login paths return into `throttlePerIdentity` before the refund point, so a login budget's flag is **inert** — flagging one `guardsAuthenticatedWork` would silently do nothing rather than fail. Not a defect today (both are `spendsEveryRequest`). Documented on `throttleAuthEndpoint` rather than restructured, since logins must never refund. | fixed-in-`<review>` |
+| — | review (agents 2, 4) | No bugs; both prior-review lessons (#310 spend-then-refund concurrency, #342/#111 never-share-a-bucket) verified as correctly carried forward. | no action |
+| — | sonar | 0 new bugs / vulnerabilities / code smells, 100% new-code coverage, 0 duplicated blocks, issue list `total: 0`, on `new_lines: 122` (non-empty — guards the #318 false-clean read). | no action |
 
 ---
 
 ## File structure
 
 - `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — the whole fix: the
-  `AuthBudget` record, `authBucketsFor`/`authPostBucketsFor` returning it, the post-chain refund,
-  and the Javadoc that explains why the flag is per-budget.
+  `AuthBudget` record, `authBudgetFor`/`authPostBudgetFor` (renamed from `authBucketsFor`/
+  `authPostBucketsFor`) returning it, the extracted `throttleAuthEndpoint` carrying the post-chain
+  refund, `accessWasDenied`, and the Javadoc that explains why the flag is per-budget.
 - `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — the seven ACs, plus the
   rework of the four existing tests that drain the password budgets anonymously.
 
@@ -426,8 +434,10 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
       hand") is unaffected. ADR-0006's "all seven per-IP dimensions" sits inside a dated
       *Resolved 2026-07-22 by issue #129* block — historical narrative, and already understated by
       #326's two password budgets, so not this slice's drift (pre-existing staleness is #319).
-      Separately — as the slice's own job, not the audit's — `CLAUDE.md` gained a #343 sentence in the
-      credential-security paragraph, matching how #344/#357/#359 each recorded themselves there.
+      Separately — as the slice's own job, not the audit's — `CLAUDE.md` records the fix. It was first
+      written changelog-style, matching how #344/#357/#359 had recorded themselves; the maintainer's
+      `521b8de` ("put CLAUDE.md back on its own charter — end-state rules, not a changelog") landed
+      mid-slice and recast it as an end-state bullet. The bullet is the correct form and is kept.
 - [ ] **Step 3: Finalize this Execution status, citing `merged via PR #NN`, never a merge SHA.**
 - [ ] **Step 4: Push, open the PR, run the review gate, then the Sonar gate.**
 
