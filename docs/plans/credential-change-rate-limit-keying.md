@@ -86,7 +86,7 @@ slice?* — to what the grill turned up:
 | Amendments 1–2 (the issue's suggested fix is unimplementable / its status wording inverts) | **drift** | Reconciled here; the plan builds on sketch 2 |
 | Amendment 3 (a third path shares the defect) | **drift** (scope) | One boolean + one test, verified safe → Phase 2 of this slice |
 | Amendment 4 (a controller-emitted `403` exists) | **drift** | Rule restated, code unaffected |
-| R-4: should authenticated credential endpoints carry a **per-principal** budget, given the filter sits ahead of `AuthorizationFilter`? | **fog** — but the slice does **not** depend on it | Not escalated to `wayfinder`: #343 has no epic/map, and the DoS is fully closed without it. Recorded as a Non-goal and filed as a follow-up issue at close-out |
+| R-4: should authenticated credential endpoints carry a **per-principal** budget, given the filter sits ahead of `AuthorizationFilter`? | **fog** — but the slice does **not** depend on it | Not escalated to `wayfinder`: #343 has no epic/map, and the DoS is fully closed without it. Recorded as a Non-goal and filed as **#364** at close-out |
 
 R-4 is the only item that fails the "resolve it inside this slice" half — settling it means choosing
 between moving the filter, adding a second filter after `AuthorizationFilter`, or duplicating session
@@ -164,13 +164,13 @@ deliberately **not** held as a plan-doc open question (that section is for quest
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A global refund-on-`401` would disable **login** throttling — a failed login's `401` comes from the controller and is precisely what that budget must charge for. The single highest-impact way to get this slice wrong. | med | **critical** | Refund is a per-budget flag, `false` for every anonymous surface; AC-5 pins the login budget as a regression test | Claude | open |
-| R-2 | Refund-on-`403` makes a CSRF-less flood free, removing volume control from the authenticated budgets | high | low | Accepted + documented: a CSRF rejection happens at `CsrfFilter` with no DB, no bcrypt and no mail — the oracle is never reached. The same is true of every non-throttled endpoint in the app | Claude | open |
-| R-3 | Transient false `429`: spend-then-refund means a burst of `capacity` anonymous requests can leave the bucket momentarily empty for a concurrent legitimate caller | med | low | Accepted, and deliberately chosen over peek-then-spend, which would make the cap inexact under concurrency — the same trade `throttlePerIdentity` already made. Self-heals within one request | Claude | open |
-| R-4 | Per-IP remains the only dimension on an authenticated endpoint, so a stolen-session attacker on a rotating-IP botnet is still under-throttled | low | med | Out of scope by design (Non-goals); the pre-existing posture is not worsened. Note in the plan close-out whether it deserves an issue | Claude | open |
+| R-1 | A global refund-on-`401` would disable **login** throttling — a failed login's `401` comes from the controller and is precisely what that budget must charge for. The single highest-impact way to get this slice wrong. | med | **critical** | Refund is a per-budget flag, `false` for every anonymous surface; AC-5 pins the login budget as a regression test | Claude | **closed** — the flag is per-budget and every anonymous surface is `spendsEveryRequest`; AC-5 (`loginIsPerIpLimited`) is the standing tripwire, and the review's history reviewer independently confirmed the login budget still nets a real spend. `c5c9bb1` |
+| R-2 | Refund-on-`403` makes a CSRF-less flood free, removing volume control from the authenticated budgets | high | low | Accepted + documented: a CSRF rejection happens at `CsrfFilter` with no DB, no bcrypt and no mail — the oracle is never reached. The same is true of every non-throttled endpoint in the app | Claude | **closed** — accepted and documented on `AuthBudget` + AC-7. Two independent reviewers examined it and agreed it is the documented trade, not a hole: `CsrfFilter` rejects with no DB read, no bcrypt, no mail. `c5c9bb1` |
+| R-3 | Transient false `429`: spend-then-refund means a burst of `capacity` anonymous requests can leave the bucket momentarily empty for a concurrent legitimate caller | med | low | Accepted, and deliberately chosen over peek-then-spend, which would make the cap inexact under concurrency — the same trade `throttlePerIdentity` already made. Self-heals within one request | Claude | **closed** — accepted; spend-then-refund is the same choice `throttlePerIdentity` made for #292, and peek-then-spend would make the cap inexact under concurrency. `c5c9bb1` |
+| R-4 | Per-IP remains the only dimension on an authenticated endpoint, so a stolen-session attacker on a rotating-IP botnet is still under-throttled | low | med | Out of scope by design (Non-goals); the pre-existing posture is not worsened. Note in the plan close-out whether it deserves an issue | Claude | **closed** — out of scope by design and confirmed **fog** by the intake gate's test. Filed as **#364** with the three candidate filter-topology shapes. Not escalated to `wayfinder` (no epic map exists and this slice never depended on it). |
 | R-5 | Shipped tests encode the OLD behaviour and will fail — mistaking them for "the fix broke something" and weakening the fix to keep them green | med | high | The parity ledger names them up front; Phase 1 rewrites them to drive the throttle **authenticated**, a strictly better test of the same intent | Claude | **closed** — it was **five**, not the four predicted. The one missed at plan time was `aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget` (the #342 percent-encoding pin, which sets its probe up by draining the budget first); `credentialChangeBudgetIsKeyedByClientIp` *was* predicted, as Phase 1 Step 2's "the per-IP-keying case". All five reworked, none weakened; `862d32f`..`c5c9bb1` |
-| R-6 | An exception propagating out of `chain.doFilter` skips the refund (no `finally`) | low | low | Deliberate and consistent with `throttlePerIdentity`: a `500` is not a chain rejection and should not be refunded. Documented in the Javadoc | Claude | open |
-| R-7 | Error-contract drift: none of the `401`/`403`/`429` bodies change | low | low | No DTO, no status, no `code` is added or altered (§6b); the `429` body constant is untouched | Claude | open |
+| R-6 | An exception propagating out of `chain.doFilter` skips the refund (no `finally`) | low | low | Deliberate and consistent with `throttlePerIdentity`: a `500` is not a chain rejection and should not be refunded. Documented in the Javadoc | Claude | **closed** — deliberate and consistent with `throttlePerIdentity`; documented on `throttleAuthEndpoint`. A `500` is not an access denial. `c5c9bb1` |
+| R-7 | Error-contract drift: none of the `401`/`403`/`429` bodies change | low | low | No DTO, no status, no `code` is added or altered (§6b); the `429` body constant is untouched | Claude | **closed** — confirmed: no DTO, status or `code` added or altered; `RATE_LIMITED_BODY` untouched. Sonar reported 0 new issues. `c5c9bb1` |
 
 ## Open questions / Assumptions
 
@@ -234,16 +234,17 @@ were never authenticated.
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 3 (docs freshness + close-out), then PR`
+**Stage pointer:** `DONE — merged via PR #363`
 
-**Next action:** Run the touched-area IT regression, load `riviera-docs-freshness`, push and open the PR.
+**Next action:** None — the slice is closed out. Follow-up work lives in **#364**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Red: the anonymous flood drains an authenticated budget | ✅ | `862d32f` |
 | 1 — Fix: per-budget refund when access is denied + rework the 5 tests that encoded the defect | ✅ | `c5c9bb1` |
 | 2 — Generalization audit: the shared recovery budget | ✅ | `5295495` |
-| 3 — Docs freshness + close-out | ⏳ | |
+| 3 — Docs freshness + close-out | ✅ | `e9d60f6` |
+| 4 — Review gate (F-1..F-6) + Sonar gate + close-out | ✅ | `a6bfbac`, `0d132a0`, `f39b66e` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -281,7 +282,7 @@ No other file is expected to change. `SecurityConfig`, both password controllers
 
 **Files:** Modify `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-1, AC-2). The slice's limits are capacity 2, so three
+- [x] **Step 1: Write the failing tests** (AC-1, AC-2). The slice's limits are capacity 2, so three
       anonymous POSTs are one past the budget; under today's filter the third is a `429`, which is
       the defect. The assertion is that it is **not** rate-limited.
 
@@ -318,11 +319,11 @@ void anUnauthenticatedFloodDoesNotDrainTheCustomerPasswordBudget() throws Except
 > answers in this slice (a stubbed `OperatorAccounts` yields `400 INVALID_CURRENT_PASSWORD`); Step 2
 > pins the real value. **The assertion that matters is that it is not `429`.**
 
-- [ ] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*RateLimitFilterTest*"` →
+- [x] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*RateLimitFilterTest*"` →
       FAIL: the 3rd anonymous POST returns `429`, not `401`. Record the authenticated call's real
       status and replace the placeholders.
 
-- [ ] **Step 3: Commit the red tests** — `git commit -m "test(#343): pin that an anonymous flood must not drain the authenticated password budgets (RED)"`
+- [x] **Step 3: Commit the red tests** — `git commit -m "test(#343): pin that an anonymous flood must not drain the authenticated password budgets (RED)"`
 
 ---
 
@@ -331,7 +332,7 @@ void anUnauthenticatedFloodDoesNotDrainTheCustomerPasswordBudget() throws Except
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` ·
 Modify `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java`
 
-- [ ] **Step 1: Introduce the budget value + the refund**
+- [x] **Step 1: Introduce the budget value + the refund**
 
 ```java
 /**
@@ -379,24 +380,24 @@ private static boolean chainRejectedBeforeController(HttpServletResponse respons
 `customerAuthBuckets` and `ssoBuckets` — every anonymous surface, where an anonymous flood *should*
 be throttled. `recoveryBuckets` is decided in Phase 2.
 
-- [ ] **Step 2: Rework the four tests that encoded the defect (R-5).** `credentialChangeFloodDoesNotStarveOperatorLogin`,
+- [x] **Step 2: Rework the five tests that encoded the defect (R-5).** `credentialChangeFloodDoesNotStarveOperatorLogin`,
       `customerPasswordChangeIsThrottled`, `customerPasswordChangeDoesNotStarveTheOperatorOne` and the
       per-IP-keying case all drain the password budgets with anonymous POSTs. Each keeps its
       **intent** and drives the throttle authenticated instead — a strictly better test, since it
       exercises the real credential oracle rather than the chain's rejection. Adds AC-3, AC-4, AC-7.
 
-- [ ] **Step 3: Add the login-unchanged regression pin (AC-5)** — the R-1 tripwire.
+- [x] **Step 3: Add the login-unchanged regression pin (AC-5)** — the R-1 tripwire.
 
-- [ ] **Step 4: Run them, verify they pass** — `./gradlew test --tests "*RateLimitFilterTest*"` → PASS
+- [x] **Step 4: Run them, verify they pass** — `./gradlew test --tests "*RateLimitFilterTest*"` → PASS
 
-- [ ] **Step 5: Anti-vacuity check** — temporarily revert the refund; AC-1, AC-2 and AC-7 must fail.
+- [x] **Step 5: Anti-vacuity check** — temporarily revert the refund; AC-1, AC-2 and AC-7 must fail.
       Restore and re-run.
 
-- [ ] **Step 6: Structural regression** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*ErrorContractArchitectureTests*"` → PASS
+- [x] **Step 6: Structural regression** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*ErrorContractArchitectureTests*"` → PASS
 
-- [ ] **Step 7: Commit** — `git commit -m "fix(#343): refund the rate-limit token when the chain rejects an authenticated request"`
+- [x] **Step 7: Commit** — `git commit -m "fix(#343): refund the rate-limit token when the chain rejects an authenticated request"`
 
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -404,18 +405,18 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
 
 **Files:** Modify `RateLimitFilter.java` · Modify `RateLimitFilterTest.java`
 
-- [ ] **Step 1: Run the audit.** The pattern is "a budget reachable by an unauthenticated caller
+- [x] **Step 1: Run the audit.** The pattern is "a budget reachable by an unauthenticated caller
       that protects an authenticated surface". Enumerate every path in `authPostBucketsFor` /
       `authBucketsFor` against its `SecurityConfig` matcher, and confirm for each whether its
       controller can emit `401`/`403`.
 
-- [ ] **Step 2: Fix the site it finds** — `/api/me/verify-email/request` is `hasRole(CUSTOMER)` but
+- [x] **Step 2: Fix the site it finds** — `/api/me/verify-email/request` is `hasRole(CUSTOMER)` but
       rides `recoveryBuckets` with three public paths. Flag that budget `true`; verified safe
       because `AccountRecoveryController` returns only `204`/`400`.
 
-- [ ] **Step 3: Pin it (AC-6)** and run `./gradlew test --tests "*RateLimitFilterTest*"` → PASS
+- [x] **Step 3: Pin it (AC-6)** and run `./gradlew test --tests "*RateLimitFilterTest*"` → PASS
 
-- [ ] **Step 4: Append to the Generalization-audit log; commit.**
+- [x] **Step 4: Append to the Generalization-audit log; commit.**
 
 ---
 
@@ -439,8 +440,8 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
       written changelog-style, matching how #344/#357/#359 had recorded themselves; the maintainer's
       `521b8de` ("put CLAUDE.md back on its own charter — end-state rules, not a changelog") landed
       mid-slice and recast it as an end-state bullet. The bullet is the correct form and is kept.
-- [ ] **Step 3: Finalize this Execution status, citing `merged via PR #NN`, never a merge SHA.**
-- [ ] **Step 4: Push, open the PR, run the review gate, then the Sonar gate.**
+- [x] **Step 3: Finalize this Execution status**, citing `merged via PR #363` (never a merge SHA — the squash SHA cannot exist before the merge).
+- [x] **Step 4: Pushed, opened PR #363, ran the review gate (`/code-review`, 5 reviewers → F-1..F-6, all fixed) and the Sonar gate (0 new issues on `new_lines: 122`).**
 
 ---
 
@@ -456,30 +457,30 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*RateLimitFilterTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** as above. Verified at commit `<sha>`.
-- [ ] **AC-3:** as above. Verified at commit `<sha>`.
-- [ ] **AC-4:** as above. Verified at commit `<sha>`.
-- [ ] **AC-5:** as above. Verified at commit `<sha>`.
-- [ ] **AC-6:** as above. Verified at commit `<sha>`.
-- [ ] **AC-7:** as above. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `./gradlew test --tests "*RateLimitFilterTest*"` → PASS (37 tests). Verified at `f39b66e`; CI re-verified on the PR.
+- [x] **AC-2:** as above. Verified at `f39b66e`; CI re-verified on the PR.
+- [x] **AC-3:** as above. Verified at `f39b66e`; CI re-verified on the PR.
+- [x] **AC-4:** as above. Verified at `f39b66e`; CI re-verified on the PR.
+- [x] **AC-5:** as above. Verified at `f39b66e`; CI re-verified on the PR.
+- [x] **AC-6:** as above. Verified at `f39b66e`; CI re-verified on the PR.
+- [x] **AC-7:** as above. Verified at `f39b66e`; CI re-verified on the PR.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (no booking/availability/map code in the diff) (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — not in scope, unchanged.
-- [ ] **Modulith** section filled; no module touched; `ModularityTests` + the package-shape tests green (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9) — no money in the diff.
-- [ ] Refund policy enforced server-side (invariant #10) — not in scope, unchanged.
-- [ ] Timezone correct (invariant #6) — the limiter's `Instant`s come from the injected `Clock`, unchanged.
-- [ ] Booking codes unguessable (invariant #7) — no code is logged; `reject(…)` untouched.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** N/A — no frontend file in the diff and no wire contract change.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (no booking/availability/map code in the diff) (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — not in scope, unchanged.
+- [x] **Modulith** section filled; no module touched; `ModularityTests` + the package-shape tests green (invariant #11).
+- [x] **Payment/payout** N/A (invariants #5, #8, #9) — no money in the diff.
+- [x] Refund policy enforced server-side (invariant #10) — not in scope, unchanged.
+- [x] Timezone correct (invariant #6) — the limiter's `Instant`s come from the injected `Clock`, unchanged.
+- [x] Booking codes unguessable (invariant #7) — no code is logged; `reject(…)` untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** N/A — no frontend file in the diff and no wire contract change.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #363`.
+- [x] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
