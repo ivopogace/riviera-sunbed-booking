@@ -78,7 +78,7 @@ class SmtpMailerIT {
 		sender.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
 		SmtpMailer mailer = new SmtpMailer(sender, FROM);
 
-		// The exception propagates to the caller (CustomerRecovery.sendQuietly logs only its class name).
+		// The exception propagates to the caller (CustomerRecovery.dispatchQuietly logs only its class name).
 		assertThatThrownBy(() -> mailer.sendEmailVerification(TO, LINK)).isInstanceOf(MailException.class);
 		assertThat(output).doesNotContain("s3cret-t0ken");
 	}

@@ -111,7 +111,13 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
 
 ## Known interim limits (this slice)
 
-- Sends are **synchronous on the request thread** until #369 (async dispatch + the
-  timing-oracle closure) — do not activate `mailer` in production before #369 lands.
+- ~~Sends are **synchronous on the request thread** until #369~~ — **resolved by #369**: recovery
+  sends now dispatch off the request thread through a dedicated bounded in-memory executor, so the
+  timing account-enumeration oracle is closed and this is no longer a bar to activation. Activation
+  remains gated on **#370** alone (sending domain + DPA). Two consequences worth knowing before you
+  activate: a send is **best-effort** (a crash or redeploy past the 5s drain window loses it — the
+  user re-requests), and a failed send is logged at WARN by `AsyncMailDispatcher` /
+  `CustomerRecovery` naming only the exception class, never the address or link — so "did it send?"
+  is answered from the provider console, not from our logs.
 - Only verification + reset emails exist; the booking-confirmation email is #371.
 - No bounce/complaint suppression yet (later slice) — watch the TEM console during early use.

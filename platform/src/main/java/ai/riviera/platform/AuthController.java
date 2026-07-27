@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -208,11 +209,13 @@ class AuthController {
 		String email = CustomerPasswords.normalizeEmail(registration.email());
 		RegistrationOutcome outcome =
 				customerAccounts.register(email, passwordEncoder.encode(registration.password()));
-		if (outcome instanceof RegistrationOutcome.Registered registered) {
+		if (outcome instanceof RegistrationOutcome.Registered(
+                CustomerAccountId accountId
+        )) {
 			establishSession(customerManager, email, registration.password(), request, response);
 			// S8 (#113): a fresh account gets a verification email (soft/non-blocking). Only on the
 			// Registered branch — the neutral already-registered branch sends nothing, so no enumeration leak.
-			recovery.sendVerificationEmail(registered.accountId(), email);
+			recovery.sendVerificationEmail(accountId, email);
 		}
 		else {
 			// Constant-time (D-8): the fresh branch spends a bcrypt verify inside establishSession's

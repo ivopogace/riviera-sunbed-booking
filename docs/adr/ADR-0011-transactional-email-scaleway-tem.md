@@ -64,12 +64,37 @@ Provider landscape (condensed; full table in the research doc):
    for it only if templating/analytics needs outgrow SMTP.
 4. **Open/click tracking stays off permanently** for transactional mail (§25 TDDDG). No pixels,
    no rewritten links.
-5. **Sends are asynchronous and at-least-once.** Nothing sends on a request thread (the #255
-   timing-oracle finding: a synchronous SMTP round-trip only on the known-email branch of
-   `register`/`forgot-password` is a measurable account-enumeration oracle). Event-driven mail
-   (booking confirmation) rides the Spring Modulith **Event Publication Registry** (already on
-   the classpath, JDBC-backed) with republish-on-restart; every send is **idempotent** keyed on
-   the driving event/booking id, so a retried publication never double-sends.
+5. **Sends are asynchronous, and the payload picks the mechanism.** Nothing sends on a request
+   thread (the #255 timing-oracle finding: a synchronous SMTP round-trip only on the known-email
+   branch of `register`/`forgot-password` is a measurable account-enumeration oracle). *Which*
+   asynchronous vehicle a mail uses is not the implementer's taste — it follows from what the
+   payload carries:
+
+   - **Ids-only payload → the Spring Modulith Event Publication Registry.** Event-driven mail
+     (booking confirmation) rides the registry (already on the classpath, JDBC-backed) with
+     republish-on-restart; every send is **idempotent** keyed on the driving event/booking id, so
+     a retried publication never double-sends.
+   - **Bearer-credential payload → an in-memory async executor, never the registry.** The registry
+     persists each publication's payload into `event_publication` as text, and under our `archive`
+     completion mode retains it after the send. A recovery mail's payload carries the raw
+     single-use token inside the tokenized link (invariant #7), so routing it through the registry
+     would write that credential to the database in cleartext — undoing the S8 design in which only
+     the SHA-256 digest is ever stored. Recovery mail (#369) therefore dispatches through a
+     dedicated, bounded in-memory executor — shipped. The operator-approval mail (#375) **will use
+     that same vehicle** when it is built (no secret, but it is edge-orchestrated from an admin
+     request rather than a domain event); nothing in that flow exists yet.
+
+   The executor's trade-off is accepted deliberately: it is **best-effort, not at-least-once** — a
+   crash, a redeploy past the drain window, or a saturated queue loses the send, and that is
+   tolerable precisely because the flow is user-retryable (re-request the email) and the durable
+   half, the token, is already committed. The pool is deliberately **not** Boot's shared
+   `applicationTaskExecutor`, which carries the Modulith money-path listeners; and it drops on
+   saturation rather than running the send on the caller's thread, which would re-open the oracle.
+   One **residual** is knowingly left open: the token row is still inserted synchronously on the
+   known-email branch only, a sub-millisecond delta against the ~100ms SMTP round-trip this closes.
+   Equalizing it was considered and rejected — on `register` the branch asymmetry is structural and
+   pre-existing (the fresh branch also inserts an account and a session row), and D-8 answers that
+   class with bcrypt-cost equalization rather than write-count equalization.
 6. **One platform sending domain.** SPF + DKIM (2048-bit) + DMARC (`p=none` → tighten) on the
    platform domain; shared IP pool (our volume never keeps a dedicated IP warm). Mail "from" an
    operator's own domain (per-tenant DKIM delegation) is explicitly out until an operator
