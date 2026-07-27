@@ -137,6 +137,12 @@ class EmailSuppressionIT {
 		// #386: lastIndexOf('@') >= 1 passed this one, then stored an EMPTY domain.
 		assertThatThrownBy(() -> suppressions.suppress("no-domain-part@", SuppressionReason.MANUAL, at))
 				.isInstanceOf(IllegalArgumentException.class);
+		// #386 review: normalize() trims the whole address, never the domain substring, so a space right
+		// after the '@' survived and produced a padded domain the V34 CHECK rejects — a
+		// DataIntegrityViolationException raised on the drainer thread instead of a clean rejection here.
+		assertThatThrownBy(() -> suppressions.suppress("user@ padded.example.com", SuppressionReason.MANUAL, at))
+				.as("a domain with edge whitespace must be refused by the adapter, not by the CHECK")
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
@@ -184,6 +190,12 @@ class EmailSuppressionIT {
 	void aDomainTheWriterCanProduceIsStillAccepted() {
 		assertThatCode(() -> insertDomain("accepted-domain.example.com")).doesNotThrowAnyException();
 		assertThatCode(() -> insertDomain("interior space.example.com")).doesNotThrowAnyException();
+		// Pins the E'' escape set itself. An unrecognized \x escape in a Postgres string degrades to the
+		// literal character, so if \v ever stopped meaning vertical tab the constraint would btrim the
+		// LETTER v and reject every domain starting or ending with one — silently, and only for some
+		// domains. Verified as vertical tab (ascii 11) on postgres:17; these two are the canary.
+		assertThatCode(() -> insertDomain("vodafone.al")).doesNotThrowAnyException();
+		assertThatCode(() -> insertDomain("example.tv")).doesNotThrowAnyException();
 	}
 
 	/** The padding character, as U+XXXX — a raw one in an assertion message is invisible. */

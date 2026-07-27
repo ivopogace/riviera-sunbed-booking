@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.dao.TransientDataAccessResourceException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -126,6 +127,24 @@ class TransactionalMailServiceTest {
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer).sendPasswordReset(EMAIL, LINK);
+	}
+
+	/**
+	 * Fail-open is scoped to <em>transient</em> failures, which is the only case the decision was argued
+	 * for (a wedged or timed-out read, made reachable by this slice's query timeout). A structurally
+	 * broken lookup — a bad grant, schema drift, a typo'd column after a refactor — is not transient, and
+	 * failing open on it would mail every suppressed address indefinitely behind a single log line. Those
+	 * fall through to the outer catch instead: the mail is dropped, as before (#386 review).
+	 */
+	@Test
+	void aStructurallyBrokenSuppressionReadDoesNotFailOpen() {
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
+
+		service.sendPasswordReset(EMAIL, LINK);
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendPasswordReset(any(), any());
 	}
 
 	/**

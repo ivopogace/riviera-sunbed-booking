@@ -68,10 +68,14 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	 *
 	 * <p>{@code isSuppressed} runs on {@code AsyncMailDispatcher}'s <strong>single</strong> drainer
 	 * thread, behind a 100-slot queue. Postgres's default statement timeout is infinite, so one wedged
-	 * read — a lock wait, a saturated pool — stalls the whole recovery-mail queue and then silently
+	 * read — a lock wait, a pathological plan — stalls the whole recovery-mail queue and then silently
 	 * drops every new send once the buffer fills. #368 gave the SMTP round-trip finite timeouts for
 	 * exactly this reason; this closes the other half, the half that arrived later with the
 	 * suppression check.
+	 *
+	 * <p>Note what this does <em>not</em> bound: {@code queryTimeout} limits execution on a connection
+	 * already acquired, so a genuinely exhausted pool is still governed by the pool's own acquisition
+	 * timeout, not by this.
 	 *
 	 * <p><strong>Scoped here on purpose, not set globally.</strong> The obvious instrument,
 	 * {@code spring.jdbc.template.query-timeout}, bounds <em>every</em> statement in the application —
@@ -100,8 +104,10 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	public void suppress(String email, SuppressionReason reason, Instant at) {
 		String normalized = Emails.normalize(email);
 		int atIndex = normalized.lastIndexOf('@');
-		// atIndex >= 1 alone let "user@" through, storing an empty domain (#386) — require both parts.
-		if (atIndex < 1 || atIndex == normalized.length() - 1) {
+		String domain = atIndex < 0 ? "" : normalized.substring(atIndex + 1);
+		// normalize() trims the whole address, never the domain substring, so "user@ x.com" reaches here
+		// with padding the V34 CHECK rejects — refuse it now, not as a DataIntegrityViolationException.
+		if (atIndex < 1 || domain.isEmpty() || !domain.equals(domain.trim())) {
 			// No address echoed (PII posture) — rows are never deleted, so junk must fail loudly here.
 			throw new IllegalArgumentException(
 					"suppress() requires an email address (local@domain); refusing to store a non-address");
@@ -113,7 +119,7 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 				SET reason = EXCLUDED.reason, last_event_at = EXCLUDED.last_event_at
 				""")
 				.param("key", keyOf(normalized))
-				.param("domain", normalized.substring(atIndex + 1))
+				.param("domain", domain)
 				.param("reason", reason.name())
 				.param("at", java.sql.Timestamp.from(at))
 				.update();

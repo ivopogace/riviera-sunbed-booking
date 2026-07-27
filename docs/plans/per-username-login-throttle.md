@@ -112,9 +112,16 @@ N/A — does not touch `booking`, `availability`, or the beach map. This is an a
 N/A — **no module code in scope.** All changes are in the root package
 (`ai.riviera.platform.{RateLimitFilter,RateLimitProperties,TokenBucket,SecurityConfig}`), the
 app-level web/edge layer that is deliberately *not* a Modulith module (RV-BE-11, like
-`SecurityConfig`/`WebCorsConfig`). The filter imports nothing from any module; it reuses the
-root-package `CustomerPasswords.normalizeEmail` static helper (already the one canonical email
-normaliser). No `api`/`spi`/`vocabulary`/`events` surface, no `allowedDependencies`, no event.
+`SecurityConfig`/`WebCorsConfig`). The filter reuses the one canonical email normaliser rather than
+adding a copy. No `api`/`spi`/`vocabulary`/`events` surface, no `allowedDependencies`, no event.
+
+> **Updated by #386:** that normaliser was `CustomerPasswords.normalizeEmail`, a root-package static
+> helper, when this plan was written. #386 consolidated six private copies into
+> `customer.vocabulary.Emails#normalize` and deleted the root helper, so the filter now calls
+> `Emails.normalize` — which does mean the filter imports one `customer::vocabulary` type, a published
+> surface the root already depended on. The "imports nothing from any module" claim above no longer
+> holds literally; the RV-BE-11 point it was making (no module *internals*, no login machinery in a
+> module) is unchanged.
 
 ### Module ownership (§4a)
 

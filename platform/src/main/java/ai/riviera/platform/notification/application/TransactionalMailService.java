@@ -4,7 +4,7 @@ import java.net.URI;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.notification.api.MailSender;
@@ -28,7 +28,10 @@ import ai.riviera.platform.notification.api.MailSender;
  *
  * <p><strong>Suppression</strong> — the module's defining invariant, <em>no send to a suppressed
  * address</em> — is enforced here for both vehicles, per send attempt (so a registry retry honors
- * the newest suppression state, R-7). A suppressed skip completes normally on either vehicle: on
+ * the newest suppression state, R-7), with <strong>one deliberate carve-out</strong>: on the recovery
+ * vehicle a <em>transient</em> failure of the lookup itself sends the mail rather than dropping it
+ * (#386 — {@link #isSuppressedOrFailOpen} argues the trade and bounds it to blips).
+ * A suppressed skip completes normally on either vehicle: on
  * the registry vehicle a throw would park the publication in a permanent retry loop (R-6). The
  * recovery-side check runs <em>inside</em> the dispatched task, off the request thread — a
  * suppression SELECT on the caller's thread would widen the very timing oracle the dispatcher
@@ -100,6 +103,12 @@ public class TransactionalMailService implements MailSender {
 	 * with a finite query timeout (same slice) makes the failure branch <em>more</em> reachable, since
 	 * a wedged read now aborts instead of hanging.
 	 *
+	 * <p><strong>Transient failures only</strong>, deliberately narrower than {@code DataAccessException}.
+	 * The trade above is argued for a blip — a wedged, timed-out or briefly unavailable read. A
+	 * structurally broken lookup (a revoked grant, schema drift, a typo'd column after a refactor) is not
+	 * a blip: failing open on it would mail <em>every</em> suppressed address indefinitely, behind one log
+	 * line. Those fall through to the caller's outer catch, where the mail is dropped as it always was.
+	 *
 	 * <p>Deliberately <strong>not</strong> shared with {@link #sendBookingConfirmation}: on the registry
 	 * vehicle the throw is load-bearing, keeping the publication outstanding so the at-least-once
 	 * contract (#371) retries against a healthy database instead of burning the delivery on a blip.
@@ -108,9 +117,9 @@ public class TransactionalMailService implements MailSender {
 		try {
 			return suppressions.isSuppressed(toEmail);
 		}
-		catch (DataAccessException e) {
-			log.warn("Suppression lookup failed for the {} mail ({}); sending anyway rather than dropping it",
-					kind, e.getClass().getSimpleName());
+		catch (TransientDataAccessException e) {
+			log.warn("Suppression lookup failed transiently for the {} mail ({}); sending anyway rather than "
+					+ "dropping it", kind, e.getClass().getSimpleName());
 			return false;
 		}
 	}
