@@ -36,38 +36,38 @@ port unchanged, no module surface touched), `riviera-plan-doc` (this doc),
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an `SmtpMailer` wired to a local SMTP sink (GreenMail), when
+- [x] **AC-1:** Given an `SmtpMailer` wired to a local SMTP sink (GreenMail), when
   `sendEmailVerification(to, link)` is invoked, then exactly one message is delivered to
   `to` with the verification subject and a plain-text body containing the tokenized link
   exactly as handed in (built on the configured base URL), with no HTML/tracking markup.
   *Pinned by:* `SmtpMailerIT.deliversVerificationEmailOverSmtp`
-- [ ] **AC-2:** Given the same wiring, when `sendPasswordReset(to, link)` is invoked, then
+- [x] **AC-2:** Given the same wiring, when `sendPasswordReset(to, link)` is invoked, then
   the reset message is delivered with the reset subject and the tokenized link, plain text
   only. *Pinned by:* `SmtpMailerIT.deliversPasswordResetEmailOverSmtp`
-- [ ] **AC-3:** Given the `mailer` profile's mail session, then connection, read, and write
+- [x] **AC-3:** Given the `mailer` profile's mail session, then connection, read, and write
   timeouts are all finite (the Jakarta Mail infinite defaults are overridden).
   *Pinned by:* `MailerProfileWiringTest.smtpTimeoutsAreFinite`
-- [ ] **AC-4:** Given the `mailer` profile with SMTP env config absent, when the context
+- [x] **AC-4:** Given the `mailer` profile with SMTP env config absent, when the context
   starts, then boot fails (unresolved placeholder), and given the config present it boots
   with `SmtpMailer` as the sole `Mailer`. *Pinned by:*
   `MailerProfileWiringTest.mailerProfileWithoutSmtpConfigFailsAtBoot` /
   `.mailerProfileWithSmtpConfigBootsSmtpMailer`
-- [ ] **AC-5:** Given the `prod` profile alone, when the context starts, then boot still
+- [x] **AC-5:** Given the `prod` profile alone, when the context starts, then boot still
   aborts (guard unchanged); the default profile still wires the recording `MockMailer` and
   every existing suite stays green unchanged. *Pinned by:* existing
   `MockMailerProdGuardTest` + `MockMailerTest` + `EmailVerificationIT` + `PasswordResetIT`
   (all unmodified)
-- [ ] **AC-6:** Given no `RIVIERA_RECOVERY_LINK_BASE_URL` in the environment, when
+- [x] **AC-6:** Given no `RIVIERA_RECOVERY_LINK_BASE_URL` in the environment, when
   `RecoveryProperties` binds, then `linkBaseUrl` is `http://localhost:4200` (the placeholder
   default), and the property line is the explicit
   `${RIVIERA_RECOVERY_LINK_BASE_URL:http://localhost:4200}` form documented in
   `docs/deploy/cd-pipeline.md` with the deployed value stated as the backend's own origin.
   *Pinned by:* `MailerProfileWiringTest.linkBaseUrlDefaultsToLocalDevSpa` + doc review
-- [ ] **AC-7:** Given a send through `SmtpMailer`, when it succeeds or fails, then the raw
+- [x] **AC-7:** Given a send through `SmtpMailer`, when it succeeds or fails, then the raw
   tokenized link never appears in log output at the transport layer (invariant #7).
   *Pinned by:* `SmtpMailerIT.neverLogsTheTokenizedLink` +
   `SmtpMailerIT.aFailedSendThrowsWithoutLoggingTheTokenizedLink` (OutputCapture)
-- [ ] **AC-8:** The activation runbook exists at `docs/runbooks/mailer-profile-smoke-test.md`
+- [x] **AC-8:** The activation runbook exists at `docs/runbooks/mailer-profile-smoke-test.md`
   mirroring the Stripe smoke test: profile, env vars, a smoke send, verification steps.
   *Pinned by:* doc review (no test)
 
@@ -98,20 +98,23 @@ The replaced surface is the `mailer`-profile `SmtpMailer` itself (deliberately t
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Synchronous SMTP round-trip on the request thread under `mailer` re-opens the timing account-enumeration oracle (#255 item 2) and can pin request threads | high (once activated) | med | Known interim state, explicitly scoped to #369 (next slice); prod activation is separately blocked on #370's human setup, so no production exposure inside this slice. `sendQuietly` already prevents transport failures from failing the request | Claude | open |
-| R-2 | `spring.mail.host=${…:}` with an **empty default** in the main `application.properties` would satisfy `@ConditionalOnProperty` and activate `MailSenderAutoConfiguration` in the default profile (and defeat fail-at-boot) | med | high | All `spring.mail.*` lives ONLY in `application-mailer.properties`, placeholders **without defaults** → unresolved placeholder aborts boot under `mailer`, and the default profile never sees a `spring.mail.host` | Claude | open |
-| R-3 | SMTP credentials or the tokenized link leak into repo, image, or logs (invariant #7) | low | high | Credentials only via env placeholders (Stripe-key posture); `SmtpMailer` logs nothing but exception class names on failure — asserted by `SmtpMailerIT.neverLogsTheTokenizedLink`; STARTTLS `required=true` so credentials never cross plaintext | Claude | open |
+| R-1 | Synchronous SMTP round-trip on the request thread under `mailer` re-opens the timing account-enumeration oracle (#255 item 2) and can pin request threads | high (once activated) | med | Known interim state, explicitly scoped to #369 (next slice); prod activation is separately blocked on #370's human setup, so no production exposure inside this slice. `sendQuietly` already prevents transport failures from failing the request | Claude | closed → deferred to #369 by design (review F-5 concurred); runbook bars prod activation before #369; `CustomerRecovery` Javadoc states the live risk |
+| R-2 | `spring.mail.host=${…:}` with an **empty default** in the main `application.properties` would satisfy `@ConditionalOnProperty` and activate `MailSenderAutoConfiguration` in the default profile (and defeat fail-at-boot) | med | high | All `spring.mail.*` lives ONLY in `application-mailer.properties`, placeholders **without defaults** → unresolved placeholder aborts boot under `mailer`, and the default profile never sees a `spring.mail.host` | Claude | closed — shipped that way; pinned by `MailerProfileWiringTest.defaultProfileKeepsTheRecordingMockAndNoMailSession` + `.mailerProfileWithoutSmtpConfigFailsAtBoot` |
+| R-3 | SMTP credentials or the tokenized link leak into repo, image, or logs (invariant #7) | low | high | Credentials only via env placeholders (Stripe-key posture); `SmtpMailer` logs nothing but exception class names on failure — asserted by `SmtpMailerIT.neverLogsTheTokenizedLink` (+ the failure-path twin); STARTTLS required by default (`RIVIERA_SMTP_STARTTLS_REQUIRED` override is local-sink-only) | Claude | closed — both log-hygiene tests green; no secret in the diff |
 | R-4 | GreenMail / Jakarta Mail version mismatch with Spring Boot 4 (jakarta namespace) | med | med | Use the GreenMail 2.x line (`com.icegreen:greenmail-junit5`), which targets jakarta.mail; verify the exact current version at implement time before pinning | Claude | resolved — 2.1.3 pinned, `SmtpMailerIT` green (phase 0) |
-| R-5 | Full-suite-only failure from context/profile tests polluting shared state (case history #122/#127) | low | med | `MailerProfileWiringTest` uses `ApplicationContextRunner` (no shared context caching); scoped local runs + the CI gate per push | Claude | open |
-| R-6 | A future provider switch breaks silently | low | low | No Scaleway-specific code anywhere — host/port/creds are pure config; the runbook names Scaleway values only in its env-example section | Claude | open |
+| R-5 | Full-suite-only failure from context/profile tests polluting shared state (case history #122/#127) | low | med | `MailerProfileWiringTest` uses `ApplicationContextRunner` (no shared context caching); scoped local runs + the CI gate per push | Claude | closed — full CI suite green on `44eb284` (10/10 checks) |
+| R-6 | A future provider switch breaks silently | low | low | No Scaleway-specific code anywhere — host/port/creds are pure config; the runbook names Scaleway values only in its env-example section | Claude | closed — verified in review; adapter is provider-agnostic |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the From address needs its own env-configured value (the issue doesn't name
-  one; the epic says `From: noreply@` and the domain is undecided until #370/#291) — modeled
-  as `riviera.mail.from=${RIVIERA_MAIL_FROM}` (no default) in `application-mailer.properties`,
-  validated non-blank in the `SmtpMailer` constructor. — *Owner:* Claude · *Resolves by:* phase 1
+(none open)
+
 ### Resolved
+
+- **Assumption (resolved, phase 1):** the From address needs its own env-configured value —
+  shipped as `riviera.mail.from=${RIVIERA_MAIL_FROM}` (no default) in
+  `application-mailer.properties`, validated non-blank in the `SmtpMailer` constructor;
+  the concrete address (`noreply@<domain>`) lands with #370/#291.
 
 - **Assumption (resolved, phase 0):** subjects are "Verify your email" / "Reset your
   password" — plain-text English v1, shipped as constants in `SmtpMailer`, pinned by
@@ -160,9 +163,14 @@ N/A — no contract change (no endpoint or DTO touched).
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 > Update in the same commit window as the change it records.
 
-**Stage pointer:** PR #377 open — CI gate running; review gate (`/code-review` + overlay) next.
+**Stage pointer:** DONE — merged via PR #377. All gates ran: CI green (10/10 checks on
+`44eb284`), review gate ran 2026-07-27 (`/code-review` 5-agent fan-out + overlay; register
+below), Sonar gate green **with the list pulled and clean** (0 new issues, 0 duplicated
+blocks, new-code coverage 89.47% on new_lines=55 — a real analysis, not the false-clean read).
 
-**Next action:** verify PR #377's CI run is green, then run the review gate.
+**Next action:** none — post-merge GitHub-only steps: epic #367 tick, Stripe fail-at-boot
+follow-up issue, docs-freshness ran pre-merge (one finding, `CLAUDE.md` §mocked-externals,
+patched in this PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -170,7 +178,9 @@ N/A — no contract change (no endpoint or DTO touched).
 | 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | ✅ | `80ceddb` |
 | 2 — `link-base-url` env placeholder + deploy docs | ✅ | `f830d8e` |
 | 3 — Activation runbook | ✅ | `55d5347` |
-| 4 — STARTTLS-required env override for local sinks (user request, post-review) | ✅ | (this commit) — `${RIVIERA_SMTP_STARTTLS_REQUIRED:true}`, pinned by `MailerProfileWiringTest.theEnvironmentCanRelaxStarttlsRequiredForLocalSinks`; deployed default stays `true` |
+| review-fix round (F-1..F-4, F-6) | ✅ | `44cb2ce` |
+| 4 — STARTTLS-required env override for local sinks (user request, post-review) | ✅ | `44eb284` — `${RIVIERA_SMTP_STARTTLS_REQUIRED:true}`, pinned by `MailerProfileWiringTest.theEnvironmentCanRelaxStarttlsRequiredForLocalSinks`; deployed default stays `true` |
+| close-out (plan final state + CLAUDE.md freshness patch) | ✅ | (this PR's last commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -179,7 +189,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (75) | `Mailer.java` Javadoc still said the real adapter is deferred | fixed — review-fix commit |
+| F-1 | review (75) | `Mailer.java` Javadoc still said the real adapter is deferred | fixed-in-`44cb2ce` |
 | F-2 | review (75) | `CustomerRecovery.sendQuietly` Javadoc: throw removed, "when it ships" happened, no #369 pointer | fixed — rewritten as live risk + #369 pointer |
 | F-3 | review (75) | `RecoveryProperties` Javadoc: "cosmetic until the real mailer ships" contradicts the PR's own properties comment | fixed |
 | F-4 | review (50) | `RecoveryMailerFailureIT` comment described the retired throwing posture | fixed — now "simulates a mail-transport failure" |
@@ -221,57 +231,57 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `platform/build.gradle`, `SmtpMailer.java` · Create `SmtpMailerIT.java` ·
 Delete `RealMailerTest.java`
 
-- [ ] **Step 1: Write the failing test** — `SmtpMailerIT`: GreenMail (`greenmail-junit5`
+- [x] **Step 1: Write the failing test** — `SmtpMailerIT`: GreenMail (`greenmail-junit5`
   `@RegisterExtension`, SMTP on a dynamic port), a real `JavaMailSenderImpl` pointed at it,
   `new SmtpMailer(sender, "noreply@test.local")`; assert delivery, recipient, subject,
   plain-text body containing the exact link, no `text/html` part, and (OutputCapture) the
   link/token absent from logs.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `./gradlew test --tests "*SmtpMailerIT*"` → FAIL (throws `UnsupportedOperationException`)
-- [ ] **Step 3: Minimal implementation** — `SmtpMailer` gains
+- [x] **Step 3: Minimal implementation** — `SmtpMailer` gains
   `SmtpMailer(JavaMailSender sender, @Value("${riviera.mail.from}") String from)`
   (constructor validates from non-blank), builds a `SimpleMailMessage` (plain text) per kind,
   subject constants named (§6a), no logging of the link; delete `RealMailerTest`.
-- [ ] **Step 4: Run it, verify it passes** —
+- [x] **Step 4: Run it, verify it passes** —
   `./gradlew test --tests "*SmtpMailerIT*" --tests "*MockMailer*"` → PASS
-- [ ] **Step 5: Generalization-audit pass** — N/A unless a bug surfaces (record if so).
-- [ ] **Step 6: Commit** — `feat(#368): implement SmtpMailer over JavaMailSender, proven against a GreenMail sink`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — N/A unless a bug surfaces (record if so).
+- [x] **Step 6: Commit** — `feat(#368): implement SmtpMailer over JavaMailSender, proven against a GreenMail sink`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Boot-time config posture
 
 **Files:** Create `application-mailer.properties`, `MailerProfileWiringTest.java`
 
-- [ ] **Step 1: Write the failing test** — `MailerProfileWiringTest`
+- [x] **Step 1: Write the failing test** — `MailerProfileWiringTest`
   (`ApplicationContextRunner` + the mailer auto-config + `SmtpMailer`/`MockMailer`/guard
   beans): `mailer` profile without SMTP properties → context failure (unresolved
   placeholder); with them → single `Mailer` = `SmtpMailer`; session timeouts finite;
   `prod` alone still aborts (delegating to the existing guard behavior).
-- [ ] **Step 2: Run red** — `./gradlew test --tests "*MailerProfileWiringTest*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `application-mailer.properties` with no-default
+- [x] **Step 2: Run red** — `./gradlew test --tests "*MailerProfileWiringTest*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `application-mailer.properties` with no-default
   placeholders (`RIVIERA_SMTP_HOST`, `RIVIERA_SMTP_PORT` defaulting 587 is allowed,
   `RIVIERA_SMTP_USERNAME`, `RIVIERA_SMTP_PASSWORD`, `RIVIERA_MAIL_FROM`), STARTTLS
   enable+require, `mail.smtp.connectiontimeout/timeout/writetimeout` finite.
-- [ ] **Step 4: Run green + scoped regression** —
+- [x] **Step 4: Run green + scoped regression** —
   `./gradlew test --tests "*Mailer*" --tests "*Recovery*"` → PASS
-- [ ] **Step 5: Generalization-audit** — check the Stripe profile posture for the same
+- [x] **Step 5: Generalization-audit** — check the Stripe profile posture for the same
   empty-default trap (R-2 pattern) — record findings, fix only if in scope.
-- [ ] **Step 6: Commit** — `feat(#368): fail at boot when the mailer profile lacks SMTP config`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `feat(#368): fail at boot when the mailer profile lacks SMTP config`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 2 — `link-base-url` env placeholder + deploy docs
 
 **Files:** Modify `application.properties:221`, `docs/deploy/cd-pipeline.md`
 
-- [ ] **Step 1: Test first** — extend `MailerProfileWiringTest.linkBaseUrlDefaultsToLocalDevSpa`
+- [x] **Step 1: Test first** — extend `MailerProfileWiringTest.linkBaseUrlDefaultsToLocalDevSpa`
   binding `RecoveryProperties` against the real property source → default stays
   `http://localhost:4200`.
-- [ ] **Step 2–4:** flip the property line to
+- [x] **Step 2–4:** flip the property line to
   `${RIVIERA_RECOVERY_LINK_BASE_URL:http://localhost:4200}`; document all six new env vars in
   `cd-pipeline.md` (deployed `RIVIERA_RECOVERY_LINK_BASE_URL` = the backend's own origin,
   same-origin per #110); scoped run PASS.
-- [ ] **Step 6: Commit** — `feat(#368): make the recovery link base URL an explicit env placeholder`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `feat(#368): make the recovery link base URL an explicit env placeholder`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 3 — Activation runbook
 
@@ -296,24 +306,24 @@ Delete `RealMailerTest.java`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/2/3/7:** `./gradlew test --tests "*SmtpMailerIT*" --tests "*MailerProfileWiringTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `MailerProfileWiringTest` both directions → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** full CI run green with `MockMailerProdGuardTest`/`MockMailerTest`/`EmailVerificationIT`/`PasswordResetIT` unmodified. Verified at CI run `<url>`.
-- [ ] **AC-6:** property line + `cd-pipeline.md` section present; binding test PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** runbook committed. Verified at commit `<sha>`.
+- [x] **AC-1/2/3/7:** `./gradlew test --tests "*SmtpMailerIT*" --tests "*MailerProfileWiringTest*"` → PASS. Verified locally at `44eb284`.
+- [x] **AC-4:** `MailerProfileWiringTest` both directions → PASS. Verified locally at `44eb284`.
+- [x] **AC-5:** full CI run green with `MockMailerProdGuardTest`/`MockMailerTest`/`EmailVerificationIT`/`PasswordResetIT` unmodified. Verified at CI run 30266110385 (all 10 checks green on `44eb284`).
+- [x] **AC-6:** property line + `cd-pipeline.md` section present; binding test PASS. Verified at `f830d8e`/`44eb284`.
+- [x] **AC-8:** runbook committed at `55d5347` (SPA-driven smoke path corrected against the real endpoints + CSRF posture).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** N/A justified (no availability code in scope).
-- [ ] **Modulith** section filled; no module code touched; `ModularityTests` +
+- [x] Every AC has an implementing task and a verifying test (AC-8 is a doc, verified by review).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — `spring-boot-starter-mail` only.
+- [x] **Availability** N/A justified (no availability code in scope).
+- [x] **Modulith** section filled; no module code touched; `ModularityTests` +
       `PackageShapeArchitectureTests` green untouched (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] No secret in repo/image/logs; no tokenized link logged at the transport layer (invariant #7).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` plus `riviera-review-overlay`.
+- [x] **Payment/payout** N/A.
+- [x] No secret in repo/image/logs; no tokenized link logged at the transport layer (invariant #7).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final plan-doc state cites `merged via PR #377`.
+- [x] **The review gate ran in full** — `/code-review` (5-agent fan-out) plus `riviera-review-overlay`.
