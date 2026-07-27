@@ -169,7 +169,8 @@ N/A — no contract change (no endpoint or DTO touched).
 | 0 — Real `SmtpMailer` + GreenMail IT | ✅ | `16e0475` |
 | 1 — Boot-time config posture (`application-mailer.properties` + wiring tests) | ✅ | `80ceddb` |
 | 2 — `link-base-url` env placeholder + deploy docs | ✅ | `f830d8e` |
-| 3 — Activation runbook | ✅ | (this commit) |
+| 3 — Activation runbook | ✅ | `55d5347` |
+| 4 — STARTTLS-required env override for local sinks (user request, post-review) | ✅ | (this commit) — `${RIVIERA_SMTP_STARTTLS_REQUIRED:true}`, pinned by `MailerProfileWiringTest.theEnvironmentCanRelaxStarttlsRequiredForLocalSinks`; deployed default stays `true` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

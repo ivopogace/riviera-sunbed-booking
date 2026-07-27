@@ -80,10 +80,11 @@ RIVIERA_MAIL_FROM=noreply@local.test \
 SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
 ```
 
-> GreenMail's standalone image does not require STARTTLS upgrade; if the handshake is refused,
-> this variant may need `mail.smtp.starttls.required=false` — deployment posture keeps it
-> required. CI's `SmtpMailerIT` covers this path automatically; the variant is only for
-> hand-driving the full flow.
+> Local sinks (GreenMail standalone, smtp4dev, Mailpit) often speak plain SMTP without STARTTLS;
+> if the handshake is refused, add `RIVIERA_SMTP_STARTTLS_REQUIRED=false` to the env above —
+> STARTTLS upgrade stays opportunistic, only the hard requirement is relaxed. **Never set this
+> deployed** (the default `true` is the posture that keeps credentials off plaintext hops). CI's
+> `SmtpMailerIT` covers this path automatically; the variant is only for hand-driving the full flow.
 
 ## Production activation (when #370 closes)
 

@@ -70,6 +70,19 @@ class MailerProfileWiringTest {
 	}
 
 	@Test
+	void theEnvironmentCanRelaxStarttlsRequiredForLocalSinks() {
+		runner.withPropertyValues("spring.profiles.active=mailer")
+				.withSystemProperties(SMTP_ENV)
+				.withSystemProperties("RIVIERA_SMTP_STARTTLS_REQUIRED=false")
+				.run(context -> {
+					JavaMailSenderImpl sender = (JavaMailSenderImpl) context.getBean(JavaMailSender.class);
+					// enable stays on (opportunistic upgrade); only the hard requirement is relaxed.
+					assertThat(sender.getJavaMailProperties().getProperty("mail.smtp.starttls.enable")).isEqualTo("true");
+					assertThat(sender.getJavaMailProperties().getProperty("mail.smtp.starttls.required")).isEqualTo("false");
+				});
+	}
+
+	@Test
 	void defaultProfileKeepsTheRecordingMockAndNoMailSession() {
 		runner.run(context -> {
 			assertThat(context).hasSingleBean(Mailer.class);
