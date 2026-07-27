@@ -1,10 +1,11 @@
 # ADR-0012: The email-suppression list stores a peppered hash, not the address — and survives erasure
 
-- **Status:** Accepted (decided by #387; realized by #388)
+- **Status:** Accepted (decided by #387; implementation tracked in #388)
 - **Date:** 2026-07-27
 - **Relates to:** ADR-0010 (erasure is pseudonymize-in-place), ADR-0011 (transactional email /
-  Scaleway TEM), #382/#385 (the V32 suppression-list slice), #370 (provider setup + the future
-  bounce/complaint feed), #101 (privacy-policy/processor work), invariant #6 (UTC timestamps)
+  Scaleway TEM), #382/#385 (the V32 suppression-list slice), #370 (provider setup, gating the
+  bounce/complaint feed — epic #367 story 10), #101 (privacy-policy/processor work), invariant #6
+  (UTC timestamps)
 
 ## Context
 
@@ -14,8 +15,9 @@ address") that both delivery vehicles consult on every send. The post-merge revi
 interplay nobody had examined: ADR-0010's right-to-erasure scrub pseudonymizes `customer` /
 `customer_account` and never touches this table, so **a suppressed tourist who exercises erasure
 would keep their cleartext address here indefinitely**. Today that is theoretical (only tests
-write the table), but the #370 bounce/complaint feed will write real tourists' addresses the
-moment it lands — so the posture had to be decided first (#387).
+write the table), but the bounce/complaint feed (epic #367 story 10, gated on #370 provider
+setup) will write real tourists' addresses the moment it lands — so the posture had to be
+decided first (#387).
 
 The deciding constraint: the **only** operation the system ever performs against this table is an
 equality lookup on the normalized address (`isSuppressed`), plus the upsert that writes it.
@@ -29,7 +31,7 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
 - The write path normalizes exactly as today (trim, lower-case — the `customer` module's
   canonical form), then keys the row on `HMAC-SHA-256(pepper, normalized-address)` (lower-case
   hex). `isSuppressed` applies the same normalize-then-hash before lookup. Both live in the one
-  `adapter/out` (`JdbcEmailSuppressions`), so the #370 feed inherits them for free.
+  `adapter/out` (`JdbcEmailSuppressions`), so the bounce feed inherits them for free.
 - The **pepper** is an env-managed, long-lived secret (fail-at-boot in prod when unset, the
   `SmtpMailer` posture) held outside the database — that is what makes a leaked table dump
   inert, where a plain unsalted digest of an enumerable identifier would be
@@ -63,14 +65,14 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   suppressed" as addresses is gone by design. Domain-level triage survives via `domain`.
 - The `MANUAL` suppression path takes raw addresses as input like every caller and hashes at the
   chokepoint — no caller ever handles keys directly.
-- The #370 feed webhook must pass raw provider addresses through the same adapter; writing
+- The bounce-feed webhook must pass raw provider addresses through the same adapter; writing
   pre-hashed values from anywhere else is a defect.
 - A future implementer must **not** add a cleartext address column back, log raw addresses on
   the suppression path, or scrub this table from the erasure flow — any of these re-opens this
   ADR (the last one would *harm* the data subject: see the rebooking scenario above).
-- Migration cost today is zero (the table is empty everywhere); the reverse decision after #370
-  ships real data would have been a one-way door (cleartext is unrecoverable from hashes — which
-  is the point).
+- Migration cost today is zero (the table is empty everywhere); the reverse decision after the
+  feed ships real data would have been a one-way door (cleartext is unrecoverable from hashes —
+  which is the point).
 
 ## Alternatives considered
 
