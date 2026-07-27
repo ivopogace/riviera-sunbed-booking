@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.jayway.jsonpath.JsonPath;
 
-import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;

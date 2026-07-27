@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.MeterBinder;
 
@@ -16,7 +17,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * whole app shares: the {@link CorrelationIdFilter} registration and the money-path metrics that back
  * the alert self-check.
  *
- * <p>Metric names live in {@link ObservabilityMetrics} (a public root vocabulary) so the emitters
+ * <p>Metric names live in {@link ObservabilityMetrics} (a public {@code shared}-kernel vocabulary) so the emitters
  * and the reader ({@code MoneyPathAlertCheck}) share one source of truth.
  */
 @Configuration

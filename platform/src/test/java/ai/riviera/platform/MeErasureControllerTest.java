@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.CurrentCustomer;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;

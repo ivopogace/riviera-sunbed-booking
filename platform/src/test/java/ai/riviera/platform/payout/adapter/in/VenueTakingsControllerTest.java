@@ -8,7 +8,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
-import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.ViewDailyTakings;

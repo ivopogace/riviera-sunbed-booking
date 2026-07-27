@@ -12,10 +12,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Default-profile ({@code @Profile("!mailer")}) recording {@link Mailer} that plays a cooperative mail
- * transport (S8, epic #108, design D-6) — the same stub pattern as {@code MockSsoGateway}. Instead of
- * sending, it keeps each {@link SentEmail} in memory and logs the tokenized link, so "verify your email"
- * and "reset your password" are demoable end-to-end with zero external credentials, and backend ITs can
- * follow the link out of {@link #lastTo}.
+ * transport (S8, epic #108, design D-6; booking confirmations added in #371) — the same stub pattern as
+ * {@code MockSsoGateway}. Instead of sending, it keeps each {@link SentEmail} in memory, so every message
+ * kind is demoable end-to-end with zero external credentials and backend ITs can assert on what was sent
+ * via {@link #lastTo}. Recovery messages additionally log their tokenized link (dev-only, see below);
+ * a booking confirmation deliberately logs no arrival code — the tourist already has it in the app, so
+ * the affordance would buy nothing and invariant #7 costs nothing to honour there.
  *
  * <p>{@code @Profile("!mailer & !smtp4dev")} so exactly one {@link Mailer} bean exists: the mock unless a
  * real-transport profile ({@code mailer}, or the local-dev {@code smtp4dev}) swaps in
@@ -34,16 +36,28 @@ class MockMailer implements Mailer {
 
 	@Override
 	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		capture(new SentEmail(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink));
+		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink);
+		sent.add(email);
+		logRecovery(email);
 	}
 
 	@Override
 	public void sendPasswordReset(String toEmail, URI resetLink) {
-		capture(new SentEmail(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink));
+		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink);
+		sent.add(email);
+		logRecovery(email);
 	}
 
-	private void capture(SentEmail email) {
-		sent.add(email);
+	@Override
+	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		sent.add(SentEmail.bookingConfirmation(toEmail, confirmation));
+		// No code in the line: unlike a recovery link, the arrival code needs no dev affordance — the
+		// tourist already has it in the app — so invariant #7 costs nothing here.
+		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.BOOKING_CONFIRMATION,
+				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
+	}
+
+	private void logRecovery(SentEmail email) {
 		// Dev-only convenience (design D-6): follow the tokenized link without a real inbox. The email is
 		// user-supplied, so neutralize newlines before logging (log-forging, riviera-java-conventions §10).
 		log.info("[mock-mailer] {} link (to {}): {}", email.kind(), sanitize(email.toEmail()), email.link());

@@ -14,6 +14,6 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payment",
-    allowedDependencies = {}
+    allowedDependencies = { "shared" }
 )
 package ai.riviera.platform.payment;

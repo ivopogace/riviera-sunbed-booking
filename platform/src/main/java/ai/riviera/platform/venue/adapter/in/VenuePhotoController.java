@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import ai.riviera.platform.ApiProblem;
-import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.shared.ApiProblem;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.application.PhotoUploadResult;

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.venue.vocabulary.VenueId;

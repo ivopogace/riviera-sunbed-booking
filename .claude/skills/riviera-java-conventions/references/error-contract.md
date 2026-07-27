@@ -3,7 +3,9 @@
 Every API error is an **RFC-7807 `ProblemDetail`** (`application/problem+json`) carrying a
 stable machine-readable **`code`** extension. The shape is built in exactly two places:
 
-- **`ApiProblem`** (root package) — the one factory for the wire shape. Controllers use it
+- **`ApiProblem`** (`ai.riviera.platform.shared`, the Shared Kernel — moved out of the root
+  package in #371 so modules may depend on it without cycling back into the composition root)
+  — the one factory for the wire shape. Controllers use it
   when an exhaustive typed-outcome `switch` rejects (typed outcomes are returned, not thrown
   — SKILL.md §6 — so an advice never sees them). `detail` must be safe for any caller: never
   a booking code (invariant #7), an exception message, or another internal echo.

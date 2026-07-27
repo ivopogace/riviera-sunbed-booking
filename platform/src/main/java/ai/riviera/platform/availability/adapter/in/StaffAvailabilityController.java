@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.ApiProblem;
-import ai.riviera.platform.CurrentOperator;
+import ai.riviera.platform.shared.ApiProblem;
+import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;

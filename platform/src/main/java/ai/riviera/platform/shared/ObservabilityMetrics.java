@@ -1,8 +1,8 @@
-package ai.riviera.platform;
+package ai.riviera.platform.shared;
 
 /**
  * The names of the money-path metrics (issue #100, D4) — the single source of truth shared by the
- * emitters and the alert self-check. A public root-package vocabulary (like {@link ApiProblem}) so a
+ * emitters and the alert self-check. A public {@code shared}-kernel vocabulary (like {@link ApiProblem}) so a
  * module emitter can reference a name without reaching into another module; the {@code String}
  * constants are inlined at compile time, so referencing one creates no runtime dependency on this
  * class (invariant #11).

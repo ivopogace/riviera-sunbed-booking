@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.ApiProblem;
+import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;

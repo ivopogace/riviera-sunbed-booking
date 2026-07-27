@@ -15,6 +15,6 @@
     // pulls a venue's gross confirmed-online takings synchronously. operator::api (#73): both reads assert
     // per-venue ownership (invariant #13). Deny-by-default: each provider granted per surface at least
     // privilege (issue #95) — api+events+vocabulary from booking, api+vocabulary from venue and operator.
-    allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary" }
+    allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary", "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary", "shared" }
 )
 package ai.riviera.platform.payout;

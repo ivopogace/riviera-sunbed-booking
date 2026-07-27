@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.shared;
 
 import java.net.URI;
 
@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
  * token clients switch on ({@code type} stays {@code about:blank} in v1; the contract's
  * identity lives in {@code code}). Controllers use this factory when an exhaustive
  * typed-outcome {@code switch} rejects (typed outcomes are returned, not thrown, so
- * {@link ApiErrorHandler} never sees them); the advice uses it for everything thrown.
+ * the root {@code ApiErrorHandler} advice never sees them); that advice uses it for everything thrown.
  * Nothing else may hand-roll an error body — pinned by {@code ErrorContractArchitectureTests}
  * and the controller ITs.
  *

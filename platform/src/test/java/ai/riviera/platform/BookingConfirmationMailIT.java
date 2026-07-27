@@ -1,0 +1,234 @@
+package ai.riviera.platform;
+
+import java.time.Duration;
+import java.time.LocalDate;
+
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.events.IncompleteEventPublications;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import com.jayway.jsonpath.JsonPath;
+
+import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.payment.events.PaymentConfirmed;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * The booking-confirmation email end-to-end (#371, Email S3) — the edge listener on
+ * {@code BookingConfirmed}, through the Event Publication Registry, to the recording
+ * {@link MockMailer}:
+ *
+ * <ul>
+ *   <li><strong>AC-1:</strong> a real Instant-Book guest checkout yields exactly one
+ *       {@code BOOKING_CONFIRMATION} to the contact address, carrying code, venue, date, spot and
+ *       the gross amount.</li>
+ *   <li><strong>AC-2:</strong> a booking made while signed in still mails the <em>guest contact</em>
+ *       — {@code booking.account_id} is never consulted (design D-6).</li>
+ *   <li><strong>AC-3:</strong> a booking confirmed through the asynchronous <em>payment</em> route —
+ *       the tail shared by Request-mode pay-on-accept and the Stripe webhook (invariant #8) — mails
+ *       the same single confirmation, so the listener is path-agnostic rather than coupled to
+ *       Instant Book.</li>
+ *   <li><strong>AC-4:</strong> resubmitting outstanding publications — what
+ *       {@code republish-outstanding-events-on-restart} does at boot — produces no second email,
+ *       because the registry never redelivers a publication it has already completed. This is the
+ *       whole idempotency story: there is no dedupe table, by design.</li>
+ * </ul>
+ *
+ * <p>Testcontainers; skipped where Docker is absent.
+ */
+@EnabledIfDockerAvailable
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest
+@AutoConfigureMockMvc
+class BookingConfirmationMailIT {
+
+	private static final Duration WAIT = Duration.ofSeconds(15);
+	private static final String GUEST_EMAIL = "confirm-me@example.com";
+
+	@Autowired
+	MockMvc mvc;
+
+	@Autowired
+	JdbcClient jdbc;
+
+	@Autowired
+	MockMailer mailer;
+
+	@Autowired
+	ApplicationEventPublisher publisher;
+
+	@Autowired
+	PlatformTransactionManager txManager;
+
+	@Autowired
+	IncompleteEventPublications incompletePublications;
+
+	private record SetRef(long setId, long venueId, String venueName, String rowLabel, int positionNo) {
+	}
+
+	@BeforeEach
+	void isolateOutbox() {
+		mailer.clear();
+	}
+
+	private SetRef onlineSet() {
+		return jdbc.sql("""
+				SELECT sp.id, sp.venue_id, v.name, sp.row_label, sp.position_no
+				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
+				WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
+				""")
+				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"),
+						rs.getString("name"), rs.getString("row_label"), rs.getInt("position_no")))
+				.single();
+	}
+
+	private long countTo(String email) {
+		return mailer.sent().stream()
+				.filter(e -> e.kind() == SentEmail.Kind.BOOKING_CONFIRMATION)
+				.filter(e -> e.toEmail().equals(email))
+				.count();
+	}
+
+	/** Publish inside a transaction so the AFTER_COMMIT registry-backed listeners are triggered. */
+	private void publishInTransaction(Object event) {
+		new TransactionTemplate(txManager).executeWithoutResult(status -> publisher.publishEvent(event));
+	}
+
+	@Test
+	void sendsOneConfirmationCarryingCodeVenueDateSetAndAmount() throws Exception {
+		SetRef set = onlineSet();
+		// A date no other IT books. Classes sharing this context key share one container, and a claimed
+		// (set, date) is never released (invariant #2), so reusing BookingControllerIT's
+		// plusYears(1) on the same first ONLINE set would 409 whichever class ran second. The suite's
+		// other create-booking ITs offset by hand for the same reason (+7, +11 days).
+		LocalDate date = LocalDate.now().plusYears(1).plusDays(23);
+
+		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"setId": %d, "bookingDate": "%s",
+								 "contact": {"email": "%s", "fullName": "Holiday Guest", "phone": "+355699"}}
+								""".formatted(set.setId(), date, GUEST_EMAIL)))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+
+		String code = JsonPath.read(response, "$.code");
+		long amountMinor = ((Number) JsonPath.read(response, "$.amount.minorUnits")).longValue();
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(GUEST_EMAIL) == 1L);
+
+		SentEmail sent = mailer.lastTo(GUEST_EMAIL).orElseThrow();
+		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.BOOKING_CONFIRMATION);
+		assertThat(sent.confirmation()).isEqualTo(new BookingConfirmationMail(
+				code, set.venueName(), date, set.rowLabel(), set.positionNo(), amountMinor, "EUR"));
+	}
+
+	@Test
+	void sendsToTheBookingContactForASignedInBooking() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 6, 12);
+		String contactEmail = "guest-contact@example.com";
+
+		// The account's address is deliberately DIFFERENT from the booking's guest contact: if the
+		// listener ever resolved through account_id, this test fails loudly instead of passing by luck.
+		long accountId = jdbc.sql("INSERT INTO customer_account (email, password_hash) "
+						+ "VALUES ('signed-in-account@example.com', '{bcrypt}$2a$10$notarealhash') RETURNING id")
+				.query(Long.class).single();
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:e, 'Signed In Guest', '+355777') RETURNING id")
+				.param("e", contactEmail).query(Long.class).single();
+		long bookingId = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES ('SIGNEDIN', :venue, :set, :cust, :account, :date, 3200, 'EUR', 'CONFIRMED')
+				RETURNING id
+				""")
+				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
+				.param("account", accountId).param("date", date).query(Long.class).single();
+
+		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), date, 3200L, "EUR"));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
+		assertThat(countTo("signed-in-account@example.com"))
+				.as("the guest contact is the recipient; account_id is never consulted (D-6)")
+				.isZero();
+	}
+
+	@Test
+	void sendsForABookingConfirmedViaThePaymentPath() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 6, 14);
+		String contactEmail = "paid-on-accept@example.com";
+
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:e, 'Paying Guest', '+355779') RETURNING id")
+				.param("e", contactEmail).query(Long.class).single();
+		long bookingId = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES ('PAIDPATH', :venue, :set, :cust, :date, 4400, 'EUR', 'AWAITING_PAYMENT')
+				RETURNING id
+				""")
+				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
+				.param("date", date).query(Long.class).single();
+
+		// The asynchronous confirm route: a signature-verified payment (invariant #8) drives
+		// booking's PaymentEventListener → ConfirmBooking → BookingConfirmed. That is the tail of
+		// Request-mode pay-on-accept as well as of the Stripe-webhook path, and it is the one confirm
+		// route this listener does not otherwise see — proving it is path-agnostic.
+		publishInTransaction(new PaymentConfirmed(new BookingRef(bookingId), "pi_test_confirm"));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
+		assertThat(mailer.lastTo(contactEmail).orElseThrow().confirmation())
+				.isEqualTo(new BookingConfirmationMail("PAIDPATH", set.venueName(), date,
+						set.rowLabel(), set.positionNo(), 4400L, "EUR"));
+	}
+
+	@Test
+	void doesNotResendWhenACompletedPublicationIsResubmitted() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 6, 13);
+		String contactEmail = "replay-me@example.com";
+
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:e, 'Replay Guest', '+355778') RETURNING id")
+				.param("e", contactEmail).query(Long.class).single();
+		long bookingId = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES ('REPLAY01', :venue, :set, :cust, :date, 2100, 'EUR', 'CONFIRMED')
+				RETURNING id
+				""")
+				.param("venue", set.venueId()).param("set", set.setId()).param("cust", customerId)
+				.param("date", date).query(Long.class).single();
+
+		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), date, 2100L, "EUR"));
+		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
+
+		// Exactly what republish-outstanding-events-on-restart does at boot. The publication this
+		// listener just completed is not outstanding, so nothing is redelivered.
+		incompletePublications.resubmitIncompletePublications(publication -> true);
+
+		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
+				.until(() -> countTo(contactEmail) == 1L);
+	}
+}
