@@ -259,3 +259,37 @@ non-sealed interfaces; events surfaces hold only records; vocabulary surfaces ho
 interfaces; every cross-module `@ApplicationModuleListener` parameter type lives in its owner's
 `events` surface. Proven against fixtures in `ai.riviera.placementfixture`.
 `PackageShapeArchitectureTests`' allowed sets were widened accordingly.
+
+## Amendment 2 — a third, non-context template: the OPEN shared kernel (issue #371, 2026-07-27)
+
+The two templates above describe **bounded contexts**. #371 added a module that is not one, and it
+needs naming here so the canonical shape rule stops contradicting the codebase.
+
+**Context.** The root package `ai.riviera.platform` was doing two jobs with opposite dependency
+directions: the composition root (`PlatformApplication`, `SecurityConfig`, the platform's own
+controllers and mailers), which *depends on* modules — and the home of `ApiProblem`,
+`CurrentOperator`, `CurrentCustomer` and `ObservabilityMetrics`, which five of seven modules
+*depend on*. A package that is both closes cycles by construction (Acyclic Dependencies Principle).
+It held only by coincidence — every edge class happened to touch just `customer` and `operator`, the
+two modules that happen not to use those types — until an edge listener on
+`booking.events.BookingConfirmed` needed `root → booking` and produced `booking → root → booking`.
+
+**Decision.** Those four types move to `ai.riviera.platform.shared`, declared
+`@ApplicationModule(type = OPEN)`. This is a **Shared Kernel** (Evans, DDD ch. 14), not a bounded
+context: it owns no aggregate, publishes no `api`/`vocabulary`/`events`/`spi` surface (OPEN means
+consumers reference its types directly), and its four classes sit flat at the module root — so it
+matches **neither** the thin nor the full template, deliberately. `PackageShapeArchitectureTests`
+permits this because it skips types sitting at a module root; that is now an intentional allowance
+rather than an accident.
+
+**The rule this restores, which the root should always have followed:** modules depend on `shared`,
+the root depends on modules, and **nothing depends on the root**.
+
+**Admission test** (also in `RESPONSIBILITIES.md`, and the reason this must not become a dumping
+ground — a shared kernel earns its keep only while it stays small, because changes here ripple
+through every context): no business logic, no module-owned state, and no dependency on a module that
+depends back. `shared` may reach only `customer::api` and `operator::api`.
+
+**Do not copy this shape for a bounded context.** A new context is still thin-or-full per the
+mechanical rule above; OPEN is reserved for technical shared code, and today `shared` is the only
+instance.

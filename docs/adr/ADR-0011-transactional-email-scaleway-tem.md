@@ -72,8 +72,19 @@ Provider landscape (condensed; full table in the research doc):
 
    - **Ids-only payload → the Spring Modulith Event Publication Registry.** Event-driven mail
      (booking confirmation) rides the registry (already on the classpath, JDBC-backed) with
-     republish-on-restart; every send is **idempotent** keyed on the driving event/booking id, so
-     a retried publication never double-sends.
+     republish-on-restart. Delivery is **at-least-once, deduplicated by the registry's own
+     `completion_date`** — a completed publication is never redelivered.
+
+     > **Amended 2026-07-27 (#371).** This bullet previously promised that "every send is
+     > **idempotent** keyed on the driving event/booking id, so a retried publication never
+     > double-sends." That is not what shipped, and could not be: a `Message-ID` is invisible at the
+     > `Mailer` port, so nothing can test it and no relay guarantees dedupe on it; and a dedupe table
+     > buys nothing, because a row written inside the listener's transaction has the *identical*
+     > crash window as `completion_date` (send succeeds → process dies → row rolls back → republish
+     > → second email). Both are database writes wrapped around a non-transactional SMTP call, so
+     > neither is exactly-once. The narrow *sent-then-crashed-before-completion* window is
+     > **accepted and documented**, not defended against. User story 9's "neither loses nor
+     > duplicates" holds as *"does not lose; may duplicate once in a crash window"*.
    - **Bearer-credential payload → an in-memory async executor, never the registry.** The registry
      persists each publication's payload into `event_publication` as text, and under our `archive`
      completion mode retains it after the send. A recovery mail's payload carries the raw
