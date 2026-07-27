@@ -259,6 +259,7 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-4 | review (agent 5) | R-5's resolution misattributed the plan-time miss: it named `credentialChangeBudgetIsKeyedByClientIp`, which Phase 1 Step 2 *had* predicted as "the per-IP-keying case". The genuinely unpredicted fifth test was `aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget`. | fixed-in-`a6bfbac` |
 | F-5 | review (agent 5) | The File-structure section still named `authBucketsFor`/`authPostBucketsFor` after the rename to `authBudgetFor`/`authPostBudgetFor`. | fixed-in-`a6bfbac` |
 | F-6 | review (agent 3) | Latent footgun: the two login paths return into `throttlePerIdentity` before the refund point, so a login budget's flag is **inert** — flagging one `guardsAuthenticatedWork` would silently do nothing rather than fail. Not a defect today (both are `spendsEveryRequest`). Documented on `throttleAuthEndpoint` rather than restructured, since logins must never refund. | fixed-in-`a6bfbac` |
+| F-7 | post-merge (self, at maintainer's request) | The Phase-1/Phase-2 sections still showed the **draft** code — `refundedWhenChainRejects`, `chainRejectedBeforeController`, `authPostBucketsFor` — under ticked steps, so the plan displayed code that was never built. Agent 5 had seen it and judged it acceptable as illustrative, and I accepted that judgement at merge; on reflection it is the same class as #359's stale-mechanism prose, and a ticked step is a claim about what shipped. Phase-1 blocks replaced with the shipped code and marked as such; every surviving mention of a draft name is now explicitly historical. | fixed-in-`<postmerge>` |
 | — | review (agents 2, 4) | No bugs; both prior-review lessons (#310 spend-then-refund concurrency, #342/#111 never-share-a-bucket) verified as correctly carried forward. | no action |
 | — | sonar | 0 new bugs / vulnerabilities / code smells, 100% new-code coverage, 0 duplicated blocks, issue list `total: 0`, on `new_lines: 122` (non-empty — guards the #318 false-clean read). | no action |
 
@@ -334,49 +335,73 @@ Modify `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java`
 
 - [x] **Step 1: Introduce the budget value + the refund**
 
+> **These blocks are the code as it shipped, not the pre-implementation sketch.** They were
+> originally written against the draft names (`refundedWhenChainRejects`,
+> `chainRejectedBeforeController`, `authPostBucketsFor`) and rewritten here after the merge, because
+> a ticked step showing code that was never built is the same defect class as #359's stale
+> mechanism prose. The renames themselves — and *why* the "chain" framing was wrong — are recorded
+> in amendment 4 and findings F-3/F-5.
+
 ```java
 /**
- * The per-IP budget an auth request draws on, and whether a token it spent is released again when
- * Spring Security rejects the request <em>before</em> the controller.
+ * The per-IP budget an auth request draws on, and whether a token it spent is released again when the
+ * request was denied before reaching the work that budget protects (issue #343).
  *
- * <p><strong>Why this is a per-budget flag and not one rule for the filter</strong> (issue #343).
- * The refund keys on {@code 401}/{@code 403}, and on an <em>authenticated</em> endpoint those two
- * statuses can only come from the chain — {@code OperatorAccountController} answers
- * {@code 400}/{@code 409}/{@code 204} and {@code MyAccountController} {@code 400}/{@code 204}. On a
- * <em>login</em> the same {@code 401} is the controller's answer to a wrong password, which is
- * exactly what that budget exists to charge for: a filter-wide refund would silently disable login
- * throttling. Same status code, opposite meaning, so the policy travels with the budget.
+ * <p><strong>Why the policy travels with the budget instead of being one filter-wide rule.</strong>
+ * The refund keys on {@code 401}/{@code 403}. On a password change those statuses can only mean the
+ * caller never reached the credential check — {@link OperatorAccountController} answers
+ * {@code 400}/{@code 409}/{@code 204}, and {@link MyAccountController} {@code 400}/{@code 204} or the
+ * {@code 403} of {@link CurrentCustomer#require}, which is itself a "no account resolved, nothing
+ * checked" outcome. On a <em>login</em> the very same {@code 401} is the controller's answer to a wrong
+ * password — precisely what that budget exists to charge for. Same status code, opposite meaning, so a
+ * filter-wide refund would silently disable login throttling while looking like a safety improvement.
+ *
+ * <p><strong>What this deliberately gives up.</strong> A caller that omits its CSRF token is refunded
+ * too, so a token-less flood costs the attacker nothing. That is accepted: {@code CsrfFilter} rejects
+ * it with no database read, no bcrypt and no mail sent — the guarded work is never reached, which is
+ * the same reason the refund is correct in the first place.
  */
-private record AuthBudget(Map<String, TokenBucket> buckets, boolean refundedWhenChainRejects) {
+private record AuthBudget(Map<String, TokenBucket> buckets, boolean refundedWhenAccessDenied) {
+
+	/** An anonymous surface: every request spends, because request volume IS what is being limited. */
+	static AuthBudget spendsEveryRequest(Map<String, TokenBucket> buckets) {
+		return new AuthBudget(buckets, false);
+	}
+
+	/** A budget guarding authenticated work: a request denied before reaching it must cost nothing. */
+	static AuthBudget guardsAuthenticatedWork(Map<String, TokenBucket> buckets) {
+		return new AuthBudget(buckets, true);
+	}
 }
 ```
 
-The `doFilterInternal` auth branch gains the post-chain release; the early `return` for the two
-logins is unchanged, so `throttlePerIdentity` keeps its own inverted accounting:
+The auth branch of `doFilterInternal` is extracted into `throttleAuthEndpoint`, which gains the
+post-chain release; the early `return` for the two logins is unchanged, so `throttlePerIdentity`
+keeps its own inverted accounting:
 
 ```java
 chain.doFilter(request, response);
-if (budget.refundedWhenChainRejects() && chainRejectedBeforeController(response)) {
+if (budget.refundedWhenAccessDenied() && accessWasDenied(response)) {
 	ipBucket.release(now);
 }
-return;
 ```
 
 ```java
 /**
- * Did the security chain reject this request before it reached the controller? Deliberately not
- * expressed with {@link #FAILED_AUTH_STATUS}: that constant is the <em>login controller's</em>
- * {@code 401}, the one status that spends a per-identity token. This is the opposite concept that
- * happens to share a number, and folding the two together is the mistake issue #343 warns about.
+ * Was the request denied without reaching the work its budget guards? Deliberately not expressed with
+ * {@link #FAILED_AUTH_STATUS}: that constant is the <em>login controller's</em> {@code 401}, the one
+ * status that spends a per-identity token. This is the opposite concept wearing the same number, and
+ * folding the two together is exactly the mistake {@link AuthBudget} warns about.
  */
-private static boolean chainRejectedBeforeController(HttpServletResponse response) {
+private static boolean accessWasDenied(HttpServletResponse response) {
 	int status = response.getStatus();
 	return status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value();
 }
 ```
 
-`authPostBucketsFor` returns `AuthBudget`s: `true` for `operatorPasswordBuckets` and
-`customerPasswordBuckets`; `false` for `loginBuckets`, `operatorRegisterBuckets`,
+`authPostBudgetFor` (renamed from `authPostBucketsFor`) returns `AuthBudget`s built through the two
+named factories rather than a bare boolean: `guardsAuthenticatedWork` for `operatorPasswordBuckets`
+and `customerPasswordBuckets`; `spendsEveryRequest` for `loginBuckets`, `operatorRegisterBuckets`,
 `customerAuthBuckets` and `ssoBuckets` — every anonymous surface, where an anonymous flood *should*
 be throttled. `recoveryBuckets` is decided in Phase 2.
 
@@ -406,13 +431,13 @@ be throttled. `recoveryBuckets` is decided in Phase 2.
 **Files:** Modify `RateLimitFilter.java` · Modify `RateLimitFilterTest.java`
 
 - [x] **Step 1: Run the audit.** The pattern is "a budget reachable by an unauthenticated caller
-      that protects an authenticated surface". Enumerate every path in `authPostBucketsFor` /
-      `authBucketsFor` against its `SecurityConfig` matcher, and confirm for each whether its
+      that protects an authenticated surface". Enumerate every path in `authPostBudgetFor` /
+      `authBudgetFor` against its `SecurityConfig` matcher, and confirm for each whether its
       controller can emit `401`/`403`.
 
 - [x] **Step 2: Fix the site it finds** — `/api/me/verify-email/request` is `hasRole(CUSTOMER)` but
-      rides `recoveryBuckets` with three public paths. Flag that budget `true`; verified safe
-      because `AccountRecoveryController` returns only `204`/`400`.
+      rides `recoveryBuckets` with three public paths. Flag that budget `guardsAuthenticatedWork`;
+      verified safe because `AccountRecoveryController` returns only `204`/`400`.
 
 - [x] **Step 3: Pin it (AC-6)** and run `./gradlew test --tests "*RateLimitFilterTest*"` → PASS
 
