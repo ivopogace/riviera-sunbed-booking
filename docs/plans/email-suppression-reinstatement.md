@@ -219,18 +219,23 @@ New endpoint, **no existing contract changes** and no Angular client consumes it
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus `riviera-sdlc`'s reference file for the current stage) before acting.
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Phase 1 — add `reinstate` to `EmailSuppressions`, the sealed `ReinstateOutcome`,
-and the single-statement CTE in `JdbcEmailSuppressions` (AC-1, AC-3, AC-4), test-first.
+**Next action:** Phase 2 — the `ReinstateSuppression` driving port and its package-private
+`@Service` (injected `Clock`, one audit log line carrying outcome + reason only), AC-5.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V35 migration + `reinstated_at`-aware read/write | ✅ | `<phase-0>` |
-| 1 — `reinstate` on the port + sealed outcome + CTE adapter | | |
+| 0 — V35 migration + `reinstated_at`-aware read/write | ✅ | `8d71339` |
+| 1 — `reinstate` on the port + sealed outcome + CTE adapter | ✅ | `<phase-1>` |
 | 2 — Application service: clock, audit log, driving port | | |
 | 3 — Admin controller + `SecurityConfig` gate + `WebSliceStubs` | | |
 | 4 — Contract amendments (javadoc, ADR-0012, runbook, RESPONSIBILITIES, CONTEXT) + #367 note | | |
+
+**Verified so far:** `EmailSuppressionReinstatementIT` — 6 tests, 0 failures, 0 skipped (Docker
+29.4.3 present, so nothing silently skipped): AC-1, AC-3, AC-4, AC-6, AC-8 + the re-suppression
+cycle. `EmailSuppressionIT` / `SuppressionQueryTimeoutIT` / `TransactionalMailServiceTest` green
+**unmodified** — the real check on the changed `isSuppressed` predicate (R-2).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

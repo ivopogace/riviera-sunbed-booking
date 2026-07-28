@@ -3,6 +3,8 @@ package ai.riviera.platform.notification.adapter.out;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HexFormat;
 
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.notification.application.EmailSuppressions;
+import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.SuppressionReason;
 
 /**
@@ -141,6 +144,58 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 				.param("reason", reason.name())
 				.param("at", java.sql.Timestamp.from(at))
 				.update();
+	}
+
+	/**
+	 * Lift a suppression and report what was there, in <strong>one statement</strong>.
+	 *
+	 * <p>The obvious shape — {@code UPDATE … RETURNING}, then a {@code SELECT} when it matched nothing
+	 * to tell "never listed" from "already lifted" — is two statements, and between them a concurrent
+	 * {@code suppress} can make the pair report a state that never existed. A data-modifying CTE
+	 * removes the window instead of documenting it: Postgres runs the {@code UPDATE} exactly once and
+	 * to completion, while the outer {@code SELECT} reads the <em>same snapshot</em> and therefore does
+	 * <strong>not</strong> see it. That is what makes the three cases readable off one row:
+	 *
+	 * <ul>
+	 * <li>no row → {@link ReinstateOutcome.NotSuppressed} (nothing was written either);</li>
+	 * <li>{@code just_lifted} → {@link ReinstateOutcome.Reinstated}, and the row's pre-update
+	 * {@code reinstated_at} is necessarily {@code NULL};</li>
+	 * <li>otherwise → {@link ReinstateOutcome.AlreadyReinstated}, carrying the <em>original</em>
+	 * lift instant, so repeat calls are idempotent.</li>
+	 * </ul>
+	 *
+	 * <p>The fourth combination — not lifted, yet {@code reinstated_at IS NULL} — is unreachable under
+	 * one snapshot: the {@code UPDATE}'s {@code WHERE} would have matched that very row.
+	 */
+	@Override
+	public ReinstateOutcome reinstate(String email, Instant at) {
+		return jdbc.sql("""
+				WITH lifted AS (
+				  UPDATE email_suppression SET reinstated_at = :at
+				  WHERE email_key = :key AND reinstated_at IS NULL
+				  RETURNING id
+				)
+				SELECT s.reason, s.first_suppressed_at, s.last_event_at, s.reinstated_at,
+				       EXISTS (SELECT 1 FROM lifted) AS just_lifted
+				FROM email_suppression s
+				WHERE s.email_key = :key
+				""")
+				.param("key", keyOf(Emails.normalize(email)))
+				.param("at", java.sql.Timestamp.from(at))
+				.query(JdbcEmailSuppressions::readOutcome)
+				.optional()
+				.orElseGet(ReinstateOutcome.NotSuppressed::new);
+	}
+
+	private static ReinstateOutcome readOutcome(ResultSet row, int rowNumber) throws SQLException {
+		SuppressionReason reason = SuppressionReason.valueOf(row.getString("reason"));
+		Instant firstSuppressedAt = row.getTimestamp("first_suppressed_at").toInstant();
+		Instant lastEventAt = row.getTimestamp("last_event_at").toInstant();
+		if (row.getBoolean("just_lifted")) {
+			return new ReinstateOutcome.Reinstated(reason, firstSuppressedAt, lastEventAt);
+		}
+		return new ReinstateOutcome.AlreadyReinstated(reason, firstSuppressedAt, lastEventAt,
+				row.getTimestamp("reinstated_at").toInstant());
 	}
 
 	private String keyOf(String normalized) {
