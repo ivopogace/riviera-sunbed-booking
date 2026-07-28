@@ -22,7 +22,9 @@
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Notification",
 	// The BookingConfirmed listener's reads, least-privilege (#95) — no command surface granted.
+	// "shared" is the OPEN kernel, granted for the admin adapter's RFC-7807 ApiProblem factory (#391);
+	// it has no named interfaces, so the whole (deliberately tiny) module root is the narrowest grant.
 	allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary",
-			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary" }
+			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary", "shared" }
 )
 package ai.riviera.platform.notification;

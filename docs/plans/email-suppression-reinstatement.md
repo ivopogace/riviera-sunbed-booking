@@ -219,23 +219,35 @@ New endpoint, **no existing contract changes** and no Angular client consumes it
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus `riviera-sdlc`'s reference file for the current stage) before acting.
 
-**Stage pointer:** `implement — phase 3`
+**Stage pointer:** `implement — phase 4`
 
-**Next action:** Phase 3 — `AdminEmailSuppressionController` in `notification/adapter/in`, the
-`SecurityConfig` ADMIN rule, and the `WebSliceStubs` bean **in the same commit** (R-3), AC-7.
+**Next action:** Phase 4 — amend every documented "never deleted" statement (`ADR-0012`
+Consequences, `docs/runbooks/suppression-list-ops.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
+`notification/package-info.java`) and post the R-5 note on #367. Closes R-8.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V35 migration + `reinstated_at`-aware read/write | ✅ | `8d71339` |
 | 1 — `reinstate` on the port + sealed outcome + CTE adapter | ✅ | `2ecb87b` |
-| 2 — Application service: clock, audit log, driving port | ✅ | `<phase-2>` |
-| 3 — Admin controller + `SecurityConfig` gate + `WebSliceStubs` | | |
+| 2 — Application service: clock, audit log, driving port | ✅ | `6965244` |
+| 3 — Admin controller + `SecurityConfig` gate + `WebSliceStubs` | ✅ | `<phase-3>` |
 | 4 — Contract amendments (javadoc, ADR-0012, runbook, RESPONSIBILITIES, CONTEXT) + #367 note | | |
 
-**Verified so far:** `EmailSuppressionReinstatementIT` — 6 tests, 0 failures, 0 skipped (Docker
-29.4.3 present, so nothing silently skipped): AC-1, AC-3, AC-4, AC-6, AC-8 + the re-suppression
-cycle. `EmailSuppressionIT` / `SuppressionQueryTimeoutIT` / `TransactionalMailServiceTest` green
-**unmodified** — the real check on the changed `isSuppressed` predicate (R-2).
+**Verified so far** (Docker 29.4.3 present, so nothing silently skipped):
+
+| Test | Result | Covers |
+|---|---|---|
+| `EmailSuppressionReinstatementIT` | 6 / 0 failed / 0 skipped | AC-1, AC-3, AC-4, AC-6, AC-8 + the re-suppression cycle |
+| `SuppressionReinstatementServiceTest` | 4 / 0 / 0 | AC-5 (audit line; no address, no domain) |
+| `AdminEmailSuppressionControllerTest` | 6 / 0 / 0 | AC-7 (401/403/200) + the three-outcome wire contract + validation |
+| `EmailSuppressionIT` | 9 / 0 / 0 | **unmodified** — the real check on the changed `isSuppressed` predicate (R-2) |
+| `AdminErasureControllerTest` | 4 / 0 / 0 | **unmodified** — a sibling web slice still loads (R-3) |
+| structural net (6 classes) | 22 / 0 / 0 | `ModularityTests`, package shape, published-surface placement, composition-root discipline, JDBC-only, error contract |
+
+> **Structural finding, fixed in phase 3 (not a test edit).** `ModularityTests` failed:
+> `notification` reached `shared.ApiProblem` without a grant. Fixed at the source — `"shared"` added
+> to the module's `allowedDependencies`, matching how `payout` declares the same need. The kernel is
+> OPEN with no named interfaces, so the module root is the narrowest available grant.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
