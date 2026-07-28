@@ -233,17 +233,24 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `plan — committing the plan doc`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Start phase 0 — write `SuppressedConfirmationMailDeliveryTest` red, then add
-`booking.spi.ConfirmationMailDelivery` + `notification`'s implementation.
+**Next action:** Thread `emailWithheld` through the booking read + create paths — `BookingRecord`
+gains `customerId`, `ViewBookingService` computes the flag for `CONFIRMED` only.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `booking.spi` port + `notification` implementation | | |
-| 1 — carry `emailWithheld` on the booking read + create paths | | |
+| 0 — `booking.spi` port + `notification` implementation | ✅ | `9cd1f7b` |
+| 1 — carry `emailWithheld` on the booking read + create paths | ⏳ | |
 | 2 — Angular notice on both post-payment surfaces | | |
 | 3 — Playwright e2e (mocked suite) | | |
+
+> **Phase-0 deviation from the plan as written:** the test needs no `NotificationAdapters` factory —
+> it lives in `notification.adapter.out`, the implementation's own package, so the package-private
+> class is directly reachable (matching `MockMailerTest`). The factory idea is dropped.
+> The catch is `DataAccessException` (all data-access failures), deliberately **wider** than the send
+> path's transient-only carve-out (#386): degrading an advisory notice is always right, whereas
+> dropping a bearer-credential mail is not.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -600,6 +607,7 @@ the `*.a11y.spec.ts` / `*.contrast.spec.ts` siblings
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | phase 0 | User-facing copy that *claims* a mail was sent, and so could lie under suppression | `grep -rn "emailed\|email you\|sent you\|Check your" frontend/src --include=*.ts` | 3 real claims: `booking-confirmation.ts:38` ("We've also emailed it to you."); `forgot-password.ts:24` ("If an account exists for that email, we've sent a link…"); `set-password.ts:247` ("Verification email sent. Check your inbox.") | **Fix 1 of 3.** `booking-confirmation` is this slice. `forgot-password` is **deliberately excluded** — its copy is already hedged *because* of D-8, and making it conditional on suppression would rebuild the exact account-enumeration oracle #369 closed. `set-password`'s resend is a genuine sibling gap (a signed-in user with a suppressed address is told "sent" when it was withheld) but sits on the recovery vehicle and a different surface — **out of scope here, surfaced for a follow-up issue**, not silently fixed. |
 
 ---
 
