@@ -79,15 +79,18 @@ stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote adde
 - [ ] **AC-4:** Given the suppression lookup throws, when the endpoint runs, then it still answers
       `200 emailWithheld = false` (degrade to today's copy; the resend never 500s).
       *Pinned by:* `CustomerRecoveryTest.reportsDeliverableWhenTheLookupFails`
-- [ ] **AC-5:** Given an address on the suppression list, when `notification`'s `MailDeliverability`
+- [x] **AC-5:** Given an address on the suppression list, when `notification`'s `MailDeliverability`
       implementation is asked, then it reports withheld; for an address that is not on the list it
-      reports not withheld — and it answers on the **canonical** email form, so a differently-cased
-      or space-padded address resolves to the same row.
-      *Pinned by:* `SuppressedMailDeliverabilityTest.reportsWithheldForASuppressedAddress`,
-      `…​.reportsDeliverableForAnUnlistedAddress`, `…​.answersOnTheCanonicalEmailForm`
+      reports not withheld; and a failing lookup — transient **or** structural — reports not withheld.
+      *Pinned by:* `MailDeliverabilityServiceTest.reportsWithheldForASuppressedAddress`,
+      `…​.reportsDeliverableForAnUnlistedAddress`,
+      `…​.reportsDeliverableWhenTheLookupFailsTransiently`,
+      `…​.reportsDeliverableWhenTheLookupIsStructurallyBroken`
 - [ ] **AC-6:** Given the real bean wiring and a real suppression row, when a signed-in customer
       hits the endpoint, then the wire body carries `emailWithheld` computed through the real
-      HMAC/normalization chain. *Pinned by:* `EmailVerificationIT.reportsWithheldForASuppressedAddress`
+      HMAC/**normalization** chain — the row is written in a differently-cased, space-padded form
+      from the one the caller signs in with, so dropping `Emails.normalize` on either side fails it
+      (the #390 G-4 lesson). *Pinned by:* `EmailVerificationIT.reportsWithheldForASuppressedAddress`
 - [ ] **AC-7:** Given `requestVerification()` resolves `'withheld'`, when the account page renders
       the resend notice, then it says no email was sent and **drops** "Verification email sent.
       Check your inbox."; given `'sent'` it renders today's string byte-for-byte.
@@ -96,7 +99,7 @@ stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote adde
 - [ ] **AC-8:** Given a mocked backend answering `emailWithheld: true`, when a signed-in customer
       clicks *Resend verification email*, then the withheld notice is visible and the "sent" copy
       is absent; with `false` the sent copy shows. *Pinned by:* `frontend/e2e/email-verification.e2e.ts`
-- [ ] **AC-9:** Given the new `notification::api` port, when the structural net runs, then the
+- [x] **AC-9:** Given the new `notification::api` port, when the structural net runs, then the
       module structure verifies. *Pinned by:* `ModularityTests.verifiesModularStructure`,
       `PublishedSurfacePlacementArchitectureTests`, `PackageShapeArchitectureTests`
 - [ ] **AC-10:** Given the endpoint's status changed `204 → 200`, when the role-gate and rate-limit
@@ -208,7 +211,7 @@ added read is a single-row `SELECT` on `email_suppression` bounded by that adapt
 | Capability (what the slice adds/changes) | Owner module | Justification |
 |---|---|---|
 | Decide whether a mail to a given address would be withheld | `notification` | **Job:** owns the email-suppression list and the defining invariant *no send to a suppressed address*. No other module may hold that state (ADR-0012). |
-| Normalize the address to its canonical form before the lookup | `customer` (via `customer.vocabulary.Emails`) | **Job:** owns the platform's one canonical email form (#386); it is already the suppression key's HMAC input, so the query must use the same function or it would miss rows. `notification` already holds the grant. |
+| Normalize the address to its canonical form before the lookup | `customer` (via `customer.vocabulary.Emails`), applied by `notification`'s existing adapter | **Job:** `customer` owns the platform's one canonical email form (#386), already the suppression key's HMAC input. **Unchanged by this slice** — `JdbcEmailSuppressions` normalizes on both read and write, so the new port inherits it and adds no second normalization site (phase-0 deviation 1). |
 | Decide *when* to send, mint/hash the token, build the link, and shape the HTTP answer | *(root / platform edge)* | RV-BE-11: login/session/credential-material machinery lives at the platform edge, never in a module. `customer`'s **Not My Job** explicitly excludes tokens/mail/crypto. |
 | Render the branched copy | frontend `auth/` feature | The claim being corrected is UI copy on the account page. |
 
@@ -246,16 +249,30 @@ no new styled surface — hence no Tailwind/contrast work (`riviera-tailwind` co
 
 ## Execution status
 
-**Stage pointer:** `PLAN — written, not yet committed`
+**Stage pointer:** `IMPLEMENT — phase 0 done`
 
-**Next action:** commit the plan doc, then phase 0.
+**Next action:** phase 1 — the edge reports it (`204 → 200`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `notification.api.MailDeliverability` + its implementation | | |
+| 0 — `notification.api.MailDeliverability` + its implementation | ✅ | *(this commit)* |
 | 1 — the edge reports it (`CustomerRecovery` + `MyAccountController`, `204 → 200`) | | |
 | 2 — Angular: branch the resend copy | | |
 | 3 — Playwright e2e (mocked suite) | | |
+
+> **Phase-0 deviations from the plan as written.**
+> 1. **No `Emails.normalize` in the service.** `JdbcEmailSuppressions` already normalizes on both
+>    read and write — it owns that key's input contract (#386/#388) — so normalizing again here
+>    would re-create the second definition #386 removed. AC-5's canonical-form case therefore moves
+>    to AC-6's IT, which is where the real chain can actually prove it; the §4a ownership row is
+>    corrected to say the adapter already does this, unchanged by this slice.
+> 2. **Names.** `MailDeliverabilityService` + `MailDeliverabilityServiceTest` in
+>    `notification/application/`, matching `TransactionalMailService(Test)`, rather than the plan's
+>    `SuppressedMailDeliverabilityTest` in `notification/`. The service is package-private, so the
+>    test sits in its own package and needs no widening.
+> 3. **The degrade catches every `DataAccessException`**, not just transient ones — documented on
+>    the class as an accepted asymmetry against the send path's narrower carve-out, with the
+>    divergence stated rather than denied (the #390 F-8 lesson).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -276,15 +293,14 @@ Skill-routing gate for what the fix touches *before* editing).
 - `notification/api/MailDeliverability.java` — **new.** The published query port: would a mail to
   this address be withheld?
 - `notification/application/MailDeliverabilityService.java` — **new.** Package-private `@Service`
-  answering the port from `EmailSuppressions`, normalizing through `Emails` and degrading to
-  "not withheld" on a lookup failure.
+  answering the port from `EmailSuppressions`, degrading to "not withheld" on a lookup failure.
 - `CustomerRecovery.java` — `sendVerificationEmail` returns `VerificationMailOutcome`.
 - `VerificationMailOutcome.java` — **new.** Package-private edge enum (`SENT` / `WITHHELD`).
 - `MyAccountController.java` — `200` + `VerificationRequestedView` record.
 
 **Backend tests — `platform/src/test/java/ai/riviera/platform/`**
 
-- `notification/SuppressedMailDeliverabilityTest.java` — **new** (AC-5).
+- `notification/application/MailDeliverabilityServiceTest.java` — **new** (AC-5).
 - `CustomerRecoveryTest.java` — extend (AC-3, AC-4).
 - `MyAccountControllerTest.java` — extend (AC-1, AC-2).
 - `EmailVerificationIT.java` — extend (AC-6).
@@ -307,16 +323,16 @@ Skill-routing gate for what the fix touches *before* editing).
 `notification/application/MailDeliverabilityService.java`,
 `platform/src/test/java/ai/riviera/platform/notification/SuppressedMailDeliverabilityTest.java`
 
-- [ ] **Step 1: Write the failing test** — three cases (AC-5): a suppressed address reports withheld,
+- [x] **Step 1: Write the failing test** — four cases (AC-5): a suppressed address reports withheld,
       an unlisted one reports not withheld, and a differently-cased/space-padded address resolves to
       the same row (so dropping `Emails.normalize` fails the test — the #390 G-4 lesson: never assert
       canonicalization with byte-identical inputs on both sides). Reach the package-private service
       the way the module's existing tests reach their package-private classes.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*SuppressedMailDeliverabilityTest*"`
-      → FAIL: the port does not exist.
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*MailDeliverabilityServiceTest*"`
+      → FAIL: `cannot find symbol: class MailDeliverabilityService`.
 
-- [ ] **Step 3: Minimal implementation** — the port in `api/` with javadoc stating (a) it is a
+- [x] **Step 3: Minimal implementation** — the port in `api/` with javadoc stating (a) it is a
       **present-tense** question, not a record of a past send (R-3), (b) it never throws for an
       operational failure, answering `false` instead (R-4), and (c) why it is a separate port from
       `MailSender` rather than a method on it. The service normalizes through
@@ -325,14 +341,14 @@ Skill-routing gate for what the fix touches *before* editing).
       send path's deliberately *transient-only* carve-out (#386), which is the opposite trade for a
       different stake.
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (4 tests)
 
-- [ ] **Step 5: Run the structural net** (AC-9) —
-      `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
+- [x] **Step 5: Run the structural net** (AC-9) —
+      `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*"` → PASS
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#400): notification.api port answering whether a mail would be withheld"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#400): notification.api port answering whether a mail would be withheld"`
 
-- [ ] **Step 7: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -431,11 +447,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **AC-1 / AC-2:** `./gradlew test --tests "*MyAccountControllerTest*"` → _pending_
 - [ ] **AC-3 / AC-4:** `./gradlew test --tests "*CustomerRecoveryTest*"` → _pending_
-- [ ] **AC-5:** `./gradlew test --tests "*SuppressedMailDeliverabilityTest*"` → _pending_
+- [x] **AC-5:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (4 tests)
 - [ ] **AC-6:** `./gradlew test --tests "*EmailVerificationIT*"` → _pending_
 - [ ] **AC-7:** `npm test` → _pending_
 - [ ] **AC-8:** `npm run test:e2e:a11y` → _pending_
-- [ ] **AC-9:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → _pending_
+- [x] **AC-9:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
 - [ ] **AC-10:** `./gradlew test --tests "*MeSurfaceRoleGateTest*" --tests "*RateLimitFilterTest*"` → _pending_
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
