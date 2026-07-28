@@ -60,8 +60,11 @@ migration **V35**; `JdbcEmailSuppressions` is the only writer.
   domain (invariant #7 posture, #100 pattern). *Pinned by:*
   `SuppressionReinstatementServiceTest.logsTheOutcomeWithoutTheAddress`
 - [ ] **AC-6:** Given a reinstated address, when a transactional mail is sent to it, then it is
-  **delivered** on both vehicles (the defining invariant tracks the flag, not row presence).
-  *Pinned by:* `TransactionalMailServiceTest.aReinstatedAddressIsNoLongerSuppressed`
+  **delivered** (the defining invariant tracks the flag, not row presence). *Pinned by:*
+  `EmailSuppressionReinstatementIT.aReinstatedAddressReceivesMailAgain`
+  > Corrected at phase 0 from a `TransactionalMailServiceTest` pin: that test mocks
+  > `EmailSuppressions`, so an AC-6 assertion there would only prove the mock. The claim is only
+  > real end-to-end — real adapter, real chokepoint, recording `MockMailer`.
 - [ ] **AC-7:** Given the reinstate endpoint, when a non-admin (anonymous, `OPERATOR`, `CUSTOMER`)
   calls it, then the response is `401`/`403` and nothing is written; an `ADMIN` gets `200`.
   *Pinned by:* `AdminEmailSuppressionControllerTest.onlyAnAdminMayReinstate`
@@ -216,14 +219,14 @@ New endpoint, **no existing contract changes** and no Angular client consumes it
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus `riviera-sdlc`'s reference file for the current stage) before acting.
 
-**Stage pointer:** `plan — complete, awaiting implement phase 0`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Load `riviera-local-debug`, then start phase 0 (V35 migration + the
-`reinstated_at`-aware read/write) test-first.
+**Next action:** Phase 1 — add `reinstate` to `EmailSuppressions`, the sealed `ReinstateOutcome`,
+and the single-statement CTE in `JdbcEmailSuppressions` (AC-1, AC-3, AC-4), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V35 migration + `reinstated_at`-aware read/write | | |
+| 0 — V35 migration + `reinstated_at`-aware read/write | ✅ | `<phase-0>` |
 | 1 — `reinstate` on the port + sealed outcome + CTE adapter | | |
 | 2 — Application service: clock, audit log, driving port | | |
 | 3 — Admin controller + `SecurityConfig` gate + `WebSliceStubs` | | |
@@ -328,6 +331,15 @@ the endpoint. A comment goes on **#367** recording R-5 so the #372 feed slice in
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | phase 0 — the `isSuppressed` predicate changed | every reader/writer of `email_suppression` | `git ls-files \| … Select-String "email_suppression"` (see note) | `JdbcEmailSuppressions` only (+ 4 migrations, 3 ITs) | Both of its statements updated together — the read filter and the upsert's `reinstated_at = NULL` clear. No other reader exists, so no further sites. |
+
+> **Tooling note that shaped the audit above.** A `Grep` rooted at `platform/src` **silently omits
+> every `adapter/out` package** — including `JdbcEmailSuppressions`, the only file that mattered
+> here. Cause: `platform/.gitignore`'s stock IntelliJ block (`out/` plus
+> `!**/src/main/**/out/` re-includes). Git resolves the negation (`git check-ignore` exits 1);
+> ripgrep does not when the search root is *inside* `src`. Roots `platform/` and
+> `platform/src/main/java` are correct; `platform/src` is not. Same root-cause class as the
+> graphify blind spot in `CLAUDE.md`/#321 — confirm any negative with `git ls-files`.
 
 ---
 

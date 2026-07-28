@@ -93,13 +93,28 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	@Override
 	public boolean isSuppressed(String email) {
 		return jdbc.sql("""
-				SELECT EXISTS (SELECT 1 FROM email_suppression WHERE email_key = :key)
+				SELECT EXISTS (
+				  SELECT 1 FROM email_suppression WHERE email_key = :key AND reinstated_at IS NULL
+				)
 				""")
 				.param("key", keyOf(Emails.normalize(email)))
 				.query(Boolean.class)
 				.single();
 	}
 
+	/**
+	 * The upsert, which since #391 also <strong>clears {@code reinstated_at}</strong> — that is the
+	 * whole re-suppression path: a bounce after a reinstatement needs no new code, only the flag reset,
+	 * and {@code first_suppressed_at} survives the cycle (the point of a flag over a {@code DELETE}).
+	 *
+	 * <p><strong>Obligation handed to the #372 bounce-feed slice.</strong> Epic #367 parks a finding
+	 * for that slice: guard this {@code DO UPDATE} with
+	 * {@code WHERE excluded.last_event_at >= email_suppression.last_event_at}, so an at-least-once feed
+	 * replaying a delayed <em>older</em> event cannot downgrade {@code reason} or rewind
+	 * {@code last_event_at}. Whoever adds it must keep the {@code reinstated_at = NULL} clear reachable:
+	 * under a naive guard a stale event would skip the clear and leave a bounced address deliverable —
+	 * the module's defining invariant, silently inverted.
+	 */
 	@Override
 	public void suppress(String email, SuppressionReason reason, Instant at) {
 		String normalized = Emails.normalize(email);
@@ -116,7 +131,10 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 				INSERT INTO email_suppression (email_key, domain, reason, first_suppressed_at, last_event_at)
 				VALUES (:key, :domain, :reason, :at, :at)
 				ON CONFLICT (email_key) DO UPDATE
-				SET reason = EXCLUDED.reason, last_event_at = EXCLUDED.last_event_at
+				SET reason = EXCLUDED.reason,
+				    last_event_at = EXCLUDED.last_event_at,
+				    -- Must survive any future out-of-order guard (#367); see this method's javadoc.
+				    reinstated_at = NULL
 				""")
 				.param("key", keyOf(normalized))
 				.param("domain", domain)

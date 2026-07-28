@@ -1,0 +1,36 @@
+-- Issue #391: a sanctioned un-suppress path — as a FLAG on the row, never a DELETE.
+--
+-- Until now the list had no reinstatement path at all: entries are never deleted by design (#382,
+-- ADR-0012), and the only write is the `suppress` upsert. Correct as a default, but it means an
+-- address that hard-bounced for a transient reason (full mailbox, a domain that later came back, a
+-- provider hiccup mis-fed as a hard bounce) is cut off from transactional mail forever, with no ops
+-- remedy short of hand-run SQL.
+--
+-- WHY A COLUMN AND NOT A DELETE. A `DELETE` is the smaller diff, and it was considered and
+-- rejected (#391, decided by the maintainer). Deleting erases `first_suppressed_at` and the prior
+-- `reason`, so a repeatedly-reinstated address looks brand new on every cycle and a reinstatement
+-- loop — precisely the pattern ops needs to see — becomes invisible. It also contradicts ADR-0012's
+-- "durable deliverability record" contract *literally* rather than by amendment. With a flag the
+-- contract survives intact and only its wording changes: rows are still never deleted; one may now
+-- be marked reinstated. Re-suppression then needs no new code path at all — the existing
+-- `ON CONFLICT ... DO UPDATE` upsert clears the flag while keeping `first_suppressed_at`.
+--
+-- The read changes with it: `isSuppressed` becomes `email_key = ? AND reinstated_at IS NULL`. That
+-- is the module's defining invariant (*no send to a suppressed address*), so the two halves must
+-- move together — see `JdbcEmailSuppressions` and `EmailSuppressionReinstatementIT`.
+--
+-- NO INDEX, DELIBERATELY. The lookup is an equality hit on `email_key`, whose UNIQUE constraint
+-- already yields at most one row; `reinstated_at IS NULL` is a filter on that single row, not a
+-- selectivity problem. A partial index here would cost writes and buy nothing.
+--
+-- NO CHECK CONSTRAINT, DELIBERATELY. `reinstated_at >= first_suppressed_at` holds for the real
+-- writer (the column is set from an injected Clock, long after the row is inserted), but V34's
+-- lesson was that a constraint must not be STRICTER than the writer: the reinstate timestamp is
+-- caller-supplied (invariant #6), so a fixed test clock is a legitimate producer of any ordering.
+-- The column carries no invariant worth a spurious DataIntegrityViolationException.
+--
+-- NULL = active suppression. Non-NULL = deliberately lifted by a platform admin at that instant
+-- (UTC, invariant #6). Nullable with no default, so every existing row keeps suppressing.
+
+ALTER TABLE email_suppression
+  ADD COLUMN reinstated_at TIMESTAMPTZ NULL;
