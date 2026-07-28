@@ -9,13 +9,15 @@ import java.time.Instant;
  * The {@code 200} response body for {@code GET /api/bookings/{code}} (U6) — the booking summary plus
  * the server-computed cancellation terms the Angular app renders. Money travels as {@link MoneyView}
  * (integer minor units + ISO currency, invariant #5); the date as an ISO {@code LocalDate} string.
- * {@code refundedAmount} is {@code null} unless the booking is already cancelled. Mirrors the FE
- * {@code BookingDetail} type.
+ * {@code refundedAmount} is {@code null} unless the booking is already cancelled.
+ * {@code emailWithheld} (#390) is {@code true} only for a {@code CONFIRMED} booking whose
+ * confirmation mail was suppressed — never before payment, so this code-gated view cannot be used as
+ * a suppression oracle (D-8). Mirrors the FE {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean beforeCutoff,
 		MoneyView refundIfCancelledNow, MoneyView refundedAmount, Instant requestExpiresAt,
-		PaymentCredentialsView payment) {
+		PaymentCredentialsView payment, boolean emailWithheld) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
@@ -23,7 +25,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(), d.requestExpiresAt(),
 				d.payment() == null ? null
 						: new PaymentCredentialsView(d.payment().clientSecret(),
-								d.payment().paymentIntentId()));
+								d.payment().paymentIntentId()),
+				d.emailWithheld());
 	}
 
 	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT} (#98). */

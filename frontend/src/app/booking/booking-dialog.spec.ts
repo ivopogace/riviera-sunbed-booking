@@ -30,6 +30,7 @@ const CONFIRMATION: BookingConfirmation = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
+  emailWithheld: false,
 };
 
 const AWAITING: AwaitingPayment = {

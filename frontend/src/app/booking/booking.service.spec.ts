@@ -34,6 +34,7 @@ const CONFIRMATION: BookingConfirmation = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
+  emailWithheld: false,
 };
 
 const AWAITING: AwaitingPayment = {
@@ -78,6 +79,7 @@ const DETAIL: BookingDetail = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  emailWithheld: false,
 };
 
 describe('BookingService', () => {
@@ -244,6 +246,7 @@ describe('BookingService', () => {
       refundedAmount: null,
       requestExpiresAt: null,
       payment: null,
+      emailWithheld: false,
     };
     let received: BookingDetail | undefined;
     service.getByCode('ABCD234567').subscribe((d) => (received = d));

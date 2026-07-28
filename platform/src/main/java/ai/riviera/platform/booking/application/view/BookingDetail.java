@@ -17,10 +17,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * PaymentIntent's credentials, present <strong>only</strong> while {@code AWAITING_PAYMENT} with a
  * payable intent on record, so an accepted guest can pay from this code-gated view. A pure value
  * carried out of the use case.
+ *
+ * <p>{@code emailWithheld} (#390) says the confirmation mail was suppressed, so the post-payment
+ * surface can tell the guest the code on screen is their only record. It is {@code true} only for a
+ * {@code CONFIRMED} booking whose address is on the do-not-mail list; for every other status it is
+ * {@code false} <em>without the question being asked</em> — the `202` create hands out the code
+ * before payment, so answering earlier would make this code-gated view a suppression oracle (D-8).
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, boolean cancellable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		java.time.Instant requestExpiresAt,
-		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment) {
+		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld) {
 }

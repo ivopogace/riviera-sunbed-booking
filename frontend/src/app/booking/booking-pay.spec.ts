@@ -45,6 +45,7 @@ const DETAIL: BookingDetail = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  emailWithheld: false,
 };
 
 const CREATE_URL = `${environment.apiBaseUrl}/api/bookings`;
@@ -140,6 +141,57 @@ describe('BookingPay', () => {
       await vi.advanceTimersByTimeAsync(1500);
       httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
       expect(comp.state()).toBe('confirmed');
+
+      httpMock.verify();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows the withheld-email notice once confirmed, and announces it (#390)', async () => {
+    const gateway = new FakeGateway();
+    const { comp, fixture, httpMock } = await setup(gateway);
+    vi.useFakeTimers();
+    try {
+      await comp.pay();
+      await vi.advanceTimersByTimeAsync(0);
+      httpMock
+        .expectOne(STATUS_URL)
+        .flush({ ...DETAIL, status: 'CONFIRMED', emailWithheld: true });
+      expect(comp.state()).toBe('confirmed');
+      fixture.detectChanges();
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('[data-testid="email-withheld"]')?.textContent).toContain(
+        'We couldn’t email you.',
+      );
+      // The page's ONE persistent live region carries it — a region created with the done panel
+      // would never announce its initial text.
+      expect(host.querySelector('[data-testid="pay-status"]')?.textContent).toContain(
+        'save your booking code',
+      );
+
+      httpMock.verify();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('omits the withheld-email notice when the confirmation mail was sent', async () => {
+    const gateway = new FakeGateway();
+    const { comp, fixture, httpMock } = await setup(gateway);
+    vi.useFakeTimers();
+    try {
+      await comp.pay();
+      await vi.advanceTimersByTimeAsync(0);
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+      fixture.detectChanges();
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('[data-testid="email-withheld"]')).toBeNull();
+      expect(host.querySelector('[data-testid="pay-status"]')?.textContent).toContain(
+        'Your booking is confirmed.',
+      );
 
       httpMock.verify();
     } finally {

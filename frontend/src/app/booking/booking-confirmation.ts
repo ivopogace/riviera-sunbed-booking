@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
+import { WithheldEmailNotice } from './withheld-email-notice';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
@@ -13,10 +14,17 @@ import { BookingService } from './booking.service';
  * confirmation. On a cold load with no confirmation in memory (e.g. a hard refresh) it shows a
  * "start over" message rather than a blank screen. No Guest row — the server confirmation carries
  * no guest name (the dialog's Review step shows it, where the form knows it).
+ *
+ * <p>When the server reports `emailWithheld` (#390 — the address is on the do-not-mail list, so the
+ * confirmation mail was suppressed), the "We've also emailed it to you" half of the code note is
+ * dropped and a save-your-code notice takes its place. The claim and the send decision come from the
+ * same backend fact, so this surface cannot promise a mail that was never sent. No live region: the
+ * notice is present at first render, and a live region only announces content that mutates after it
+ * is already in the DOM.
  */
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [RouterLink, CardGlass],
+  imports: [RouterLink, CardGlass, WithheldEmailNotice],
   template: `
     @if (confirmation(); as c) {
       <section class="confirmation" appCardGlass aria-labelledby="confirmation-title">
@@ -35,7 +43,15 @@ import { BookingService } from './booking.service';
         <div class="code-card" data-testid="booking-code">
           <span class="code-label">Booking code</span>
           <div class="code">{{ c.code }}</div>
-          <p class="code-note">Show this code to staff when you arrive. We’ve also emailed it to you.</p>
+          <p class="code-note">
+            Show this code to staff when you arrive.
+            @if (!c.emailWithheld) {
+              <span>We’ve also emailed it to you.</span>
+            }
+          </p>
+          @if (c.emailWithheld) {
+            <app-withheld-email-notice />
+          }
         </div>
 
         <a routerLink="/" class="btn-primary">Back to the beach</a>
