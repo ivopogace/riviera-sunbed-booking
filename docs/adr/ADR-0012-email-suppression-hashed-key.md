@@ -23,6 +23,12 @@ The deciding constraint: the **only** operation the system ever performs against
 equality lookup on the normalized address (`isSuppressed`), plus the upsert that writes it.
 Nothing reads the raw address back out.
 
+> **Updated 2026-07-28 (#391).** There is now a third operation — an admin *reinstatement* that
+> locks the row by the same hashed key and sets `reinstated_at` (see the Decision amendment below).
+> It does not weaken the constraint this decision rests on: it too addresses the row by
+> normalize-then-hash, and it still reads no raw address back out. Recorded here so a future reader
+> does not take "only a lookup and an upsert" as a live inventory of the write paths.
+
 ## Decision
 
 **Store a peppered HMAC-SHA-256 of the normalized address (`email_key`) instead of cleartext,
@@ -49,6 +55,28 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   the objection itself (an erased tourist who rebooks with the same address must stay
   suppressed). Storing that record hashed is the data-minimization measure (Art. 5(1)(c)) the
   same guidance points to.
+
+  > **Amended 2026-07-28 (#391).** The never-deleted contract stands, with exactly **one sanctioned
+  > exception — and it is still not a deletion.** A platform admin can *reinstate* an address
+  > (`POST /api/admin/email-suppressions/reinstate`, ADMIN-gated), which sets a `reinstated_at`
+  > instant on the row (V35) rather than removing it; `isSuppressed` becomes
+  > `email_key = ? AND reinstated_at IS NULL`. The row, its `first_suppressed_at` and its `reason`
+  > all survive, so the deliverability history stays intact and a repeated reinstate→re-bounce cycle
+  > remains visible to ops; a later bounce re-suppresses through the ordinary upsert, which clears
+  > the flag.
+  >
+  > This bullet needed amending because it was written as though "never deleted" and "never lifted"
+  > were the same commitment. They are not, and conflating them had a real cost: an address that
+  > hard-bounced for a *transient* reason (a full mailbox, a domain that later came back, a provider
+  > hiccup mis-classified as a hard bounce) was cut off from transactional mail permanently, with no
+  > remedy short of the hand-run `DELETE` the ops runbook used to prescribe — which *would* have
+  > destroyed the record this ADR set out to keep.
+  >
+  > **A hard `DELETE` on this table remains a defect.** Reinstatement is an admin judgment call and
+  > never automatic — in particular it is **not** an erasure side-effect: the paragraph above, that
+  > the entry survives right-to-erasure, is unchanged. There is deliberately no self-service
+  > un-suppress: a complainer lifting their own suppression through a public endpoint would be both
+  > an abuse vector and an enumeration oracle.
 - **The hash is still personal data.** A peppered HMAC is pseudonymization, not anonymization —
   the controller holds the pepper and can re-compute the key for any known address (Recital 26
   "singling out"). The posture claimed is *minimization under a documented legitimate
@@ -64,7 +92,15 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   works — normalize and hash it (a small ops runbook note, owed by #388); listing "who is
   suppressed" as addresses is gone by design. Domain-level triage survives via `domain`.
 - The `MANUAL` suppression path takes raw addresses as input like every caller and hashes at the
-  chokepoint — no caller ever handles keys directly.
+  chokepoint — no caller ever handles keys directly. **Its mirror, reinstatement (#391), does the
+  same:** the admin endpoint takes a raw address, because after this ADR there is nothing readable
+  left to select a row by. Ops therefore never needs the pepper to *act* — only to investigate,
+  via the recipe below.
+- **Ops can lift a suppression without touching the database.** The reinstate endpoint answers with
+  the row's technical facts (`reason`, `first_suppressed_at`, `last_event_at`, and on a repeat call
+  the original `reinstatedAt`), which is why #391 shipped no separate lookup endpoint: the
+  check-then-lift workflow is one call. Listing *who* is suppressed as addresses remains gone by
+  design.
 - The bounce-feed webhook must pass raw provider addresses through the same adapter; writing
   pre-hashed values from anywhere else is a defect.
 - A future implementer must **not** add a cleartext address column back, log raw addresses on

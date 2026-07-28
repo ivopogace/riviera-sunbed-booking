@@ -3,8 +3,11 @@ package ai.riviera.platform.notification.adapter.out;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Optional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -14,9 +17,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.notification.application.EmailSuppressions;
+import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.SuppressionReason;
 
 /**
@@ -93,13 +98,28 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	@Override
 	public boolean isSuppressed(String email) {
 		return jdbc.sql("""
-				SELECT EXISTS (SELECT 1 FROM email_suppression WHERE email_key = :key)
+				SELECT EXISTS (
+				  SELECT 1 FROM email_suppression WHERE email_key = :key AND reinstated_at IS NULL
+				)
 				""")
 				.param("key", keyOf(Emails.normalize(email)))
 				.query(Boolean.class)
 				.single();
 	}
 
+	/**
+	 * The upsert, which since #391 also <strong>clears {@code reinstated_at}</strong> — that is the
+	 * whole re-suppression path: a bounce after a reinstatement needs no new code, only the flag reset,
+	 * and {@code first_suppressed_at} survives the cycle (the point of a flag over a {@code DELETE}).
+	 *
+	 * <p><strong>Obligation handed to the #372 bounce-feed slice.</strong> Epic #367 parks a finding
+	 * for that slice: guard this {@code DO UPDATE} with
+	 * {@code WHERE excluded.last_event_at >= email_suppression.last_event_at}, so an at-least-once feed
+	 * replaying a delayed <em>older</em> event cannot downgrade {@code reason} or rewind
+	 * {@code last_event_at}. Whoever adds it must keep the {@code reinstated_at = NULL} clear reachable:
+	 * under a naive guard a stale event would skip the clear and leave a bounced address deliverable —
+	 * the module's defining invariant, silently inverted.
+	 */
 	@Override
 	public void suppress(String email, SuppressionReason reason, Instant at) {
 		String normalized = Emails.normalize(email);
@@ -116,13 +136,78 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 				INSERT INTO email_suppression (email_key, domain, reason, first_suppressed_at, last_event_at)
 				VALUES (:key, :domain, :reason, :at, :at)
 				ON CONFLICT (email_key) DO UPDATE
-				SET reason = EXCLUDED.reason, last_event_at = EXCLUDED.last_event_at
+				SET reason = EXCLUDED.reason,
+				    last_event_at = EXCLUDED.last_event_at,
+				    -- Must survive any future out-of-order guard (#367); see this method's javadoc.
+				    reinstated_at = NULL
 				""")
 				.param("key", keyOf(normalized))
 				.param("domain", domain)
 				.param("reason", reason.name())
 				.param("at", java.sql.Timestamp.from(at))
 				.update();
+	}
+
+	/**
+	 * Lift a suppression and report what was there, behind an explicit row lock.
+	 *
+	 * <p>{@code SELECT … FOR UPDATE} first, then a conditional {@code UPDATE} in the same transaction —
+	 * the {@code JdbcAvailabilityClaim} shape. The lock is what makes the three outcomes trustworthy
+	 * under concurrency: no row → {@link ReinstateOutcome.NotSuppressed} (and nothing is written); a
+	 * row already carrying {@code reinstated_at} → {@link ReinstateOutcome.AlreadyReinstated} with the
+	 * <em>original</em> instant, so repeats are idempotent; otherwise the lift happens and we report
+	 * {@link ReinstateOutcome.Reinstated}.
+	 *
+	 * <p><strong>This replaced a single-statement data-modifying CTE, which was wrong</strong> (found
+	 * by the #398 review, reproduced against postgres:17). That version claimed the combination
+	 * "didn't lift it, yet {@code reinstated_at IS NULL}" was unreachable because the CTE's
+	 * {@code UPDATE} and the outer {@code SELECT} share one snapshot. They do — but only while nobody
+	 * else touches the row. Under READ COMMITTED an {@code UPDATE} that blocks on a concurrent writer
+	 * re-checks its own {@code WHERE} against the <em>newest committed</em> version (EvalPlanQual),
+	 * while the outer {@code SELECT} keeps the original snapshot. Two simultaneous reinstates of one
+	 * address therefore produced exactly that "unreachable" row, and the mapper dereferenced a null
+	 * {@code Timestamp}. {@code FOR UPDATE} has the property the CTE was assumed to have: the waiting
+	 * reader re-fetches the committed row, so it observes the lift that actually won.
+	 */
+	@Override
+	@Transactional
+	public ReinstateOutcome reinstate(String email, Instant at) {
+		String key = keyOf(Emails.normalize(email));
+		Optional<Suppression> locked = jdbc.sql("""
+				SELECT reason, first_suppressed_at, last_event_at, reinstated_at
+				FROM email_suppression
+				WHERE email_key = :key
+				FOR UPDATE
+				""")
+				.param("key", key)
+				.query(JdbcEmailSuppressions::readSuppression)
+				.optional();
+		if (locked.isEmpty()) {
+			return new ReinstateOutcome.NotSuppressed();
+		}
+		Suppression row = locked.get();
+		if (row.reinstatedAt() != null) {
+			return new ReinstateOutcome.AlreadyReinstated(row.reason(), row.firstSuppressedAt(),
+					row.lastEventAt(), row.reinstatedAt());
+		}
+		jdbc.sql("UPDATE email_suppression SET reinstated_at = :at WHERE email_key = :key")
+				.param("at", java.sql.Timestamp.from(at))
+				.param("key", key)
+				.update();
+		return new ReinstateOutcome.Reinstated(row.reason(), row.firstSuppressedAt(), row.lastEventAt());
+	}
+
+	/** The locked row, as read. {@code reinstatedAt} is null while the suppression is active. */
+	private record Suppression(SuppressionReason reason, Instant firstSuppressedAt, Instant lastEventAt,
+			Instant reinstatedAt) {
+	}
+
+	private static Suppression readSuppression(ResultSet row, int rowNumber) throws SQLException {
+		java.sql.Timestamp reinstatedAt = row.getTimestamp("reinstated_at");
+		return new Suppression(SuppressionReason.valueOf(row.getString("reason")),
+				row.getTimestamp("first_suppressed_at").toInstant(),
+				row.getTimestamp("last_event_at").toInstant(),
+				reinstatedAt == null ? null : reinstatedAt.toInstant());
 	}
 
 	private String keyOf(String normalized) {

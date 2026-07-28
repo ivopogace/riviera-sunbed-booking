@@ -144,6 +144,12 @@ class SecurityConfig {
 	 * (the same {@code /api/admin/**} exemption from invariant #13 as the operator-approval surface).
 	 */
 	private static final String ADMIN_ERASURE_PATH = "/api/admin/erasure";
+	/**
+	 * Lifting an email suppression (#391) — the same ADMIN gate and the same {@code /api/admin/**}
+	 * exemption from invariant #13. Deliberately admin-only and never self-service: a complainer
+	 * un-suppressing themselves through a public endpoint would be an abuse and enumeration vector.
+	 */
+	private static final String ADMIN_SUPPRESSION_REINSTATE_PATH = "/api/admin/email-suppressions/reinstate";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -308,6 +314,8 @@ class SecurityConfig {
 								ADMIN_OPERATOR_REINSTATE_PATH).hasRole(ADMIN_ROLE)
 						// Platform-admin data-subject erasure (#101 [D5]) — ADMIN only, not venue-scoped.
 						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
+						// Lifting an email suppression (#391) — same ADMIN gate, never self-service.
+						.requestMatchers(HttpMethod.POST, ADMIN_SUPPRESSION_REINSTATE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

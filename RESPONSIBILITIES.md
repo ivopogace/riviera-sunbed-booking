@@ -281,7 +281,13 @@ because the list is empty until #370's feed lands and D-8 makes a dropped reset 
 from success to the user. The registry vehicle still propagates, so at-least-once retries against a
 healthy DB. The lookup is bounded by a `queryTimeout` scoped to its own adapter — never the global
 property, which would also bound `availability`'s `SELECT … FOR UPDATE` (invariant #2). V34 tightened
-the `domain` CHECK to mirror the Java writer exactly. Publishes exactly one surface:
+the `domain` CHECK to mirror the Java writer exactly. **V35/#391 added the one sanctioned
+exception to never-deleted — and it is still not a deletion:** an ADMIN-gated
+`POST /api/admin/email-suppressions/reinstate` sets a `reinstated_at` flag on the row (so
+`isSuppressed` reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at`
+and the prior `reason` so a reinstate→re-bounce loop stays visible; a later bounce clears the flag
+through the ordinary upsert. A hard `DELETE` on this table remains a defect. Publishes exactly one
+surface:
 `notification::api`'s fire-and-forget `MailSender` (never throws, runs off the caller's
 thread, suppression-enforced) — consumed by the composition root alone; **no module depends
 on `notification`**.

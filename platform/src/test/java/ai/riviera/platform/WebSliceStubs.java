@@ -47,6 +47,8 @@ import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.notification.application.ReinstateOutcome;
+import ai.riviera.platform.notification.application.ReinstateSuppression;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
@@ -358,6 +360,15 @@ class WebSliceStubs {
 			public void sendPasswordReset(String toEmail, URI resetLink) {
 			}
 		};
+	}
+
+	/**
+	 * {@code AdminEmailSuppressionController}'s port (#391). Inert: the web slices never lift a real
+	 * suppression, and "nothing was on the list" is the outcome that writes nothing.
+	 */
+	@Bean
+	ReinstateSuppression reinstateSuppression() {
+		return _ -> new ReinstateOutcome.NotSuppressed();
 	}
 
 	@Bean

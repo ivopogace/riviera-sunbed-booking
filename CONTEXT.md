@@ -126,6 +126,26 @@ model in `docs/architecture/domain-model.md`.
   basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**.
   It touches guest contacts only, never accounts, and never the retained financial records.
 
+## Transactional mail
+
+- **Suppression list** — the platform's do-not-mail record: the addresses no transactional mail
+  may go to, because they hard-bounced or their recipient complained. It is a **durable
+  deliverability record, not a cache** — entries are never deleted, and deliberately survive a
+  tourist's **erasure** (ADR-0012), so someone who objected and later re-books with the same
+  address stays protected. Stored non-identifiably (a peppered hash plus the bare domain), so
+  nobody can read *who* is on it.
+- **Suppressed address** — an address currently on that list. The one invariant the whole
+  `notification` context exists to keep is *no send to a suppressed address*.
+- **Reinstatement** — a platform admin deliberately lifting a suppression, so the address is
+  mailable again. The remedy for a bounce that turned out to be temporary (a full mailbox, a
+  domain that came back). It is **not a deletion**: the entry stays and is marked lifted, so the
+  history survives and a later bounce simply suppresses it again. Always an ops judgment call,
+  never self-service and never a side-effect of erasure.
+
+  > Not to be confused with **operator reinstatement** below, which returns a *suspended operator
+  > account* to `ACTIVE`. Same verb, unrelated subjects: one acts on an email address in the
+  > do-not-mail record, the other on a person's ability to sign in.
+
 ## Operators (venue management side)
 
 - **Operator** — an account that manages one or more venues (the venue's people, not the
@@ -141,3 +161,8 @@ model in `docs/architecture/domain-model.md`.
   self-registrations via the ADMIN-gated `/api/admin/operators`. Unlocked by `RIVIERA_OPERATOR_PASSWORD`
   (no new prod secret). Every operator is now strictly per-venue, owning what it creates
   (creator-owns-on-create).
+- **Suspension / operator reinstatement** — an admin putting an `ACTIVE` operator account out of
+  action (`SUSPENDED`) and later returning it to `ACTIVE`. Either transition kills that operator's
+  live sessions immediately, so a suspension takes effect now rather than at their next sign-in.
+  An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
+  which lifts a suppressed email address and has nothing to do with sign-in.

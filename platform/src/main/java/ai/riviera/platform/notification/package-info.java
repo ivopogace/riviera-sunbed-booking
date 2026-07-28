@@ -6,7 +6,9 @@
  * bearer-credential payloads (ADR-0011 decision 5) — and the module's first owned state: the
  * <strong>email-suppression list</strong> (hashed/non-PII at rest since #388/ADR-0012 — a peppered
  * HMAC key + cleartext domain, never the address), with its defining invariant <em>no send to a
- * suppressed address</em>, enforced on both vehicles at the {@code application} chokepoint.
+ * suppressed address</em>, enforced on both vehicles at the {@code application} chokepoint. Since
+ * #391 that state has a lift: an ADMIN-gated reinstatement marks a row {@code reinstated_at} rather
+ * than deleting it, so the invariant tracks the flag and the deliverability record still survives.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code api} publishes the one
  * fire-and-forget send port the edge flows call ({@code MailSender}); {@code application} holds the
@@ -18,11 +20,15 @@
  * <p>The edge keeps deciding <em>when</em> to send and keeps all credential-material machinery
  * (token minting/hashing, link building — RV-BE-11); this module is handed fully-formed links and
  * booking facts and owns only delivery. Nothing depends on {@code notification} except the root.
+ *
+ * <p>The grants below are the {@code BookingConfirmed} listener's reads, least-privilege (#95) — no
+ * command surface. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
+ * {@code ApiProblem} factory (#391); it publishes no named interfaces, so the whole (deliberately
+ * tiny) module root is the narrowest grant available, exactly as {@code payout} declares it.
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Notification",
-	// The BookingConfirmed listener's reads, least-privilege (#95) — no command surface granted.
 	allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary",
-			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary" }
+			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary", "shared" }
 )
 package ai.riviera.platform.notification;
