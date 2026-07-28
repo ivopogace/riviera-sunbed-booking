@@ -217,7 +217,9 @@ export class BookingPay {
     () => this.state() === 'ready' || (this.state() === 'error' && !this.terminalError()),
   );
   /** The single announcement for the persistent live region — mutates as the state advances so a
-   *  screen reader hears each transition (loading → confirming → confirmed/awaiting). */
+   *  screen reader hears each transition (loading → confirming → confirmed/awaiting). Reads two
+   *  signals; `computed` is lazy and memoized, so the order the poll writes them in is irrelevant —
+   *  no intermediate value is ever rendered. */
   protected readonly liveStatus = computed(() => {
     switch (this.state()) {
       case 'mounting':
@@ -303,7 +305,6 @@ export class BookingPay {
       )
       .subscribe((detail) => {
         if (detail?.status === 'CONFIRMED') {
-          // Set before the state flip so the live region's first read already carries the notice.
           this.emailWithheld.set(detail.emailWithheld);
           this.state.set('confirmed');
           this.pollSub?.unsubscribe();
