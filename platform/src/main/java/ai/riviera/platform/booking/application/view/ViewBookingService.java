@@ -26,14 +26,17 @@ class ViewBookingService implements ViewBooking {
 	private final CancellationPolicy cancellationPolicy;
 	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
+	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
 			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
-			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail) {
+			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
+			ai.riviera.platform.payment.api.CollectionGuarantee collection) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.checkout = checkout;
 		this.confirmationMail = confirmationMail;
+		this.collection = collection;
 	}
 
 	@Override
@@ -51,9 +54,15 @@ class ViewBookingService implements ViewBooking {
 	 * the same status today: those are different rules, and letting a future "the guest may withdraw an
 	 * open request" change to the cancellation policy silently widen this one is exactly the accident
 	 * worth spending a method on. Pinned by {@code ViewBookingServiceTest}'s no-interaction cases.
+	 *
+	 * <p><strong>Status alone is not enough</strong>, which the review gate caught: it means
+	 * "post-payment" only where the wired gateway actually collects before confirming. Under the
+	 * in-process stub {@code CONFIRMED} is reached having taken no money, so the flag would be free to
+	 * probe; {@code payment.api.CollectionGuarantee} is asked rather than a profile string, so the gate
+	 * is a checkable property of the payment model and survives a third gateway.
 	 */
-	private static boolean mayDiscloseMailStatus(BookingRecord b) {
-		return b.status() == BookingStatus.CONFIRMED;
+	private boolean mayDiscloseMailStatus(BookingRecord b) {
+		return b.status() == BookingStatus.CONFIRMED && collection.provenBeforeConfirmation();
 	}
 
 	private BookingDetail toDetail(BookingRecord b) {

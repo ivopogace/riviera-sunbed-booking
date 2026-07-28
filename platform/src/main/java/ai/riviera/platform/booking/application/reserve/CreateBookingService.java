@@ -59,16 +59,19 @@ class CreateBookingService implements CreateBooking {
 	private final ConfirmBooking confirmBooking;
 	private final ReleaseAbandonedBooking releaseAbandoned;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
+	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
 	private final Clock clock;
 
 	CreateBookingService(ReserveSetService reservation, CheckoutPort checkout,
 			ConfirmBooking confirmBooking, ReleaseAbandonedBooking releaseAbandoned,
-			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail, Clock clock) {
+			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
+			ai.riviera.platform.payment.api.CollectionGuarantee collection, Clock clock) {
 		this.reservation = reservation;
 		this.checkout = checkout;
 		this.confirmBooking = confirmBooking;
 		this.releaseAbandoned = releaseAbandoned;
 		this.confirmationMail = confirmationMail;
+		this.collection = collection;
 		this.clock = clock;
 	}
 
@@ -128,9 +131,15 @@ class CreateBookingService implements CreateBooking {
 				}
 				log.info("confirmed booking {} for set {} on {}", reserved.bookingId(),
 						set.setId().value(), command.bookingDate());
+				// Same gate as the code-gated view: only a gateway that actually collects before
+				// confirming makes this post-payment, so the stub's synchronous Succeeded discloses
+				// nothing (#390). Today no shipped gateway both collects AND confirms in-process, so
+				// this branch is unreachable-but-correct rather than dead by construction.
+				boolean emailWithheld = collection.provenBeforeConfirmation()
+						&& confirmationMail.isWithheld(reserved.customerId());
 				yield new BookingOutcome.Confirmed(new BookingConfirmation(
 						reserved.code(), BookingStatus.CONFIRMED, set, command.bookingDate(),
-						confirmationMail.isWithheld(reserved.customerId())));
+						emailWithheld));
 			}
 			case PaymentOutcome.Pending pending -> {
 				// Real Stripe: a PaymentIntent exists; the booking stays AWAITING_PAYMENT and is

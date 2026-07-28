@@ -69,12 +69,15 @@ const AWAITING_DETAIL = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  cancellable: true,
+  // Mirrors what ViewBookingService actually returns for AWAITING_PAYMENT: cancellable is
+  // status == CONFIRMED (so false here), and the open intent's credentials ARE populated for
+  // exactly this status.
+  cancellable: false,
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
   requestExpiresAt: null,
-  payment: null,
+  payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
   // Present but false before payment: BookingDetailView always carries the field, and the backend
   // never even consults the port unless the booking is CONFIRMED.
   emailWithheld: false,
@@ -138,7 +141,13 @@ test('the notice reaches the stripe-profile payment surface once the booking con
       json:
         polls++ === 0
           ? AWAITING_DETAIL
-          : { ...AWAITING_DETAIL, status: 'CONFIRMED', emailWithheld: true },
+          : {
+              ...AWAITING_DETAIL,
+              status: 'CONFIRMED',
+              cancellable: true,
+              payment: null,
+              emailWithheld: true,
+            },
     }),
   );
 

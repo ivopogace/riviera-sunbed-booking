@@ -42,17 +42,23 @@ posture, ADR-0006 booking-code URL as the durable record).
 - `riviera-plan-doc` — this document's structure and the AC-at-the-inner-hexagon rule.
 - `riviera-java-conventions` — *(phase 0/1)* records for the DTOs, package-private adapter,
   no Lombok, typed outcome over exception.
-- `riviera-frontend` + `angular-developer` + angular-cli MCP — *(phase 2)* component placement
-  and v22 signal APIs.
-- `riviera-tailwind` — *(phase 2)* styling call for the new notice: **kept as SCSS**, deliberately.
-  Tailwind is the go-forward and SCSS is retiring, but both target components are grandfathered
-  fully-SCSS files, and a lone Tailwind island inside them would leave two styling systems in one
-  file for the `booking/` migration slice to untangle. The notice reuses the *existing* proven-AA
-  amber composite (`#fcf0d9` / `#8a5410`) already used by `.done-badge.warn` and `.form-error` — a
-  solid fill rather than a translucent tint, precisely so the contrast proof is exact rather than
-  surface-dependent. It migrates with the rest of the file when `booking/` is ported.
+- `riviera-frontend` + `angular-developer` + angular-cli MCP — *(phase 2)* component placement and
+  v22 signal APIs; *(review-fix round)* re-consulted for the extracted notice — it is colocated in
+  `booking/`, **not** promoted to `shared/`, because its promotion trigger is *two features* needing
+  the thing and both consumers are in this one feature.
+- `riviera-tailwind` — *(phase 2)* styling call, **reversed in the review-fix round**. Phase 2 kept
+  the notice as SCSS in both grandfathered stylesheets; the review found that duplicated it six ways,
+  so it is now one Tailwind-styled component — which is also the skill's go-forward, and as a new file
+  it is no island inside a retiring stylesheet. It still reuses the *existing* proven-AA amber
+  composite (`#fcf0d9` / `#8a5410`) from `.done-badge.warn` / `.form-error`: a solid fill, not a
+  translucent tint, so the contrast proof (and SonarCloud's `css:S7924`) computes the real 5.5:1.
 - `playwright-cli` — *(phase 3)* e2e spec authored to best practice, in the CI-safe mocked suite.
 - `riviera-local-debug` — scoped test recipes for this cloud session.
+- `riviera-stripe-payments` — *(second review-fix round)* the F-1 gate is a payment-model judgement,
+  so the routing table's payment row applies. It placed the capability as a **role-split `payment::api`
+  port** (`CollectionGuarantee`) answered beside the gateways, rather than a method on the internal
+  `PaymentGateway` (which several fakes implement, one as a `@FunctionalInterface`) or a `@Profile`
+  string duplicated into a consuming module.
 - `riviera-docs-freshness` — *(review-fix round)* pre-merge smoke over `origin/main...HEAD`; found
   four present-tense statements the new `booking::spi` surface falsified and patched all four.
 
@@ -266,18 +272,43 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
 Skill-routing gate for what the fix touches *before* editing).
 
+> **Two review rounds ran.** Round 1 (`/code-review`, high) returned F-1..F-10. Round 2 re-reviewed
+> the fix diff per the re-entry rule and returned G-1..G-15 — including the fact that round 1's own
+> F-1 fix had a consequence the escalation understated. Both rounds are recorded; nothing was closed
+> without a fix or an explicit, maintainer-approved decision.
+
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (`/code-review`, high) | **Blocker.** With `STRIPE_API_KEY` unset the deployed service runs the in-process stub gateway, so `201 CONFIRMED` is reached with **no payment collected** — the `status == CONFIRMED` gate is not a post-payment gate there, and the flag becomes a free suppression oracle for any address. R-1's mitigation only holds under the `stripe` profile. | **fixed** — maintainer chose the profile gate: the answering adapter is `@Profile(\"stripe\")`, `NonDisclosingConfirmationMailDelivery` (`@Profile(\"!stripe\")`) answers a flat `false` wherever CONFIRMED is not proof of payment. Pinned by `ConfirmationMailDeliveryProfileWiringTest` + `BookingViewSuppressionIT` (which runs under `stripe` for exactly that reason). |
-| F-2 | review | The port's javadoc promises it never throws operationally, but the impl catches only `DataAccessException`; a non-DAE runtime failure escapes into `CreateBookingService.collect` **after** the confirm committed and the card was charged — uncompensatable, and a 500 on the page carrying the code. | **fixed** — the impl is now an explicit fault barrier (`RuntimeException`, documented deviation from the catch-narrowly convention: the port's contract is total and the caller runs post-payment) |
-| F-3 | review | The flag is a live "would it be withheld *now*" answer rendered as the historical "your mail *was* withheld"; the javadoc's "stable and race-free" is falsified by a later bounce or a #391 reinstatement. | **fixed** — the port javadoc now reads as a present-tense question and names both drift directions (a later bounce, a #391 reinstatement) |
-| F-4 | review | The D-8 oracle gate and `cancellable` are the same boolean, so a future cancellation-policy change silently widens the oracle. | **fixed** — the gate is its own named predicate `mayDiscloseMailStatus`, documented as a security constraint distinct from `cancellable` |
-| F-5 | review | `JdbcEmailSuppressions.boundedClient`'s javadoc justifies its 5 s bound by "runs on the dispatcher's single drainer thread" — no longer true; the read is now on request threads. | **fixed** — `boundedClient`'s javadoc now states both callers and that the bound is the request-thread latency ceiling |
-| F-6 | review | The notice is duplicated six ways (markup ×2, SCSS ×2, contrast constants + assertion ×2); an edit to one surface leaves the other lying, and both duplicated tests stay green. | **fixed** — one `shared/withheld-email-notice.ts` (Tailwind, the go-forward) replaces markup ×2 + SCSS ×2 + contrast constants/assertion ×2, with its own spec + contrast spec |
-| F-7 | review | The new `booking::spi` surface is absent from `booking/package-info.java`'s layout line, `RESPONSIBILITIES.md`, and the `CLAUDE.md` module table. | **fixed** — `booking/package-info.java`, `riviera-modulith` SKILL.md, `RESPONSIBILITIES.md` and the `CLAUDE.md` module table all record the new `booking::spi` surface |
-| F-8 | review | The impl javadoc claims the surface claim and the send decision "cannot diverge", but they handle lookup failure oppositely (degrade vs propagate), so a DB blip diverges them exactly as documented-impossible. | **fixed** — the impl javadoc records the degrade-vs-propagate asymmetry as an accepted trade instead of denying divergence |
-| F-9 | review | No backend test exercises the real chain — every new test mocks the seam it proves, so bean wiring, the real HMAC/normalize path, and the `emailWithheld` wire name are unpinned. | **fixed** — three `BookingViewIT` cases drive the real chain (real HMAC + normalization + bean wiring) and assert the `emailWithheld` wire name, incl. the AWAITING_PAYMENT no-disclosure case; 6 tests, `skipped=0` |
-| F-10 | review | The e2e `202 AWAITING` fixture carries an `emailWithheld` the real `AwaitingPaymentView` does not have — the mock is a superset of the contract, masking the very boundary it stands in for. | **fixed** — the e2e `AWAITING` fixture mirrors `AwaitingPaymentView` exactly (no `emailWithheld`) |
+| F-1 | review (round 1) | **Blocker.** With `STRIPE_API_KEY` unset the deployed service runs the in-process stub gateway, so `201 CONFIRMED` is reached with **no payment collected** — the `status == CONFIRMED` gate is not a post-payment gate there, and the flag becomes a free suppression oracle for any address. R-1's mitigation only holds under the `stripe` profile. | **fixed** — maintainer chose the profile gate: the answering adapter is `@Profile(\"stripe\")`, `NonDisclosingConfirmationMailDelivery` (`@Profile(\"!stripe\")`) answers a flat `false` wherever CONFIRMED is not proof of payment. Pinned by `ConfirmationMailDeliveryProfileWiringTest` + `BookingViewSuppressionIT` (which runs under `stripe` for exactly that reason). |
+| F-2 | review (round 1) | The port's javadoc promises it never throws operationally, but the impl catches only `DataAccessException`; a non-DAE runtime failure escapes into `CreateBookingService.collect` **after** the confirm committed and the card was charged — uncompensatable, and a 500 on the page carrying the code. | **fixed** — the impl is now an explicit fault barrier (`RuntimeException`, documented deviation from the catch-narrowly convention: the port's contract is total and the caller runs post-payment) |
+| F-3 | review (round 1) | The flag is a live "would it be withheld *now*" answer rendered as the historical "your mail *was* withheld"; the javadoc's "stable and race-free" is falsified by a later bounce or a #391 reinstatement. | **fixed** — the port javadoc now reads as a present-tense question and names both drift directions (a later bounce, a #391 reinstatement) |
+| F-4 | review (round 1) | The D-8 oracle gate and `cancellable` are the same boolean, so a future cancellation-policy change silently widens the oracle. | **fixed** — the gate is its own named predicate `mayDiscloseMailStatus`, documented as a security constraint distinct from `cancellable` |
+| F-5 | review (round 1) | `JdbcEmailSuppressions.boundedClient`'s javadoc justifies its 5 s bound by "runs on the dispatcher's single drainer thread" — no longer true; the read is now on request threads. | **fixed** — `boundedClient`'s javadoc now states both callers and that the bound is the request-thread latency ceiling |
+| F-6 | review (round 1) | The notice is duplicated six ways (markup ×2, SCSS ×2, contrast constants + assertion ×2); an edit to one surface leaves the other lying, and both duplicated tests stay green. | **fixed** — one `shared/withheld-email-notice.ts` (Tailwind, the go-forward) replaces markup ×2 + SCSS ×2 + contrast constants/assertion ×2, with its own spec + contrast spec |
+| F-7 | review (round 1) | The new `booking::spi` surface is absent from `booking/package-info.java`'s layout line, `RESPONSIBILITIES.md`, and the `CLAUDE.md` module table. | **fixed** — `booking/package-info.java`, `riviera-modulith` SKILL.md, `RESPONSIBILITIES.md` and the `CLAUDE.md` module table all record the new `booking::spi` surface |
+| F-8 | review (round 1) | The impl javadoc claims the surface claim and the send decision "cannot diverge", but they handle lookup failure oppositely (degrade vs propagate), so a DB blip diverges them exactly as documented-impossible. | **fixed** — the impl javadoc records the degrade-vs-propagate asymmetry as an accepted trade instead of denying divergence |
+| F-9 | review (round 1) | No backend test exercises the real chain — every new test mocks the seam it proves, so bean wiring, the real HMAC/normalize path, and the `emailWithheld` wire name are unpinned. | **fixed** — three `BookingViewIT` cases drive the real chain (real HMAC + normalization + bean wiring) and assert the `emailWithheld` wire name, incl. the AWAITING_PAYMENT no-disclosure case; 6 tests, `skipped=0` |
+| F-10 | review (round 1) | The e2e `202 AWAITING` fixture carries an `emailWithheld` the real `AwaitingPaymentView` does not have — the mock is a superset of the contract, masking the very boundary it stands in for. | **fixed** — the e2e `AWAITING` fixture mirrors `AwaitingPaymentView` exactly (no `emailWithheld`) |
+
+**Round 2** (re-review of the fix diff):
+
+| # | Finding | Status |
+|---|---|---|
+| G-1 | **Blocker.** The F-1 profile gate made the whole `/booking/confirmation` half dead by construction: only `StubPaymentGateway` returns `PaymentOutcome.Succeeded` (so only it produces the `201` body), and it is exactly the profile where the gate hard-codes `false`. Under `stripe` the `201` path never runs. | **fixed** — maintainer chose the capability gate: `payment.api.CollectionGuarantee` replaces the profile string, the gate moves into `booking` (which owns the lifecycle and already held `payment::api`), and `notification`'s adapter goes back to a pure suppression lookup with no profile knowledge. The `201` branch is now unreachable-but-correct rather than hard-coded off, and comes alive for any gateway that both collects and confirms in-process. |
+| G-2 | The substrate docs stated the capability unconditionally while it was in fact gated off everywhere. | **fixed** — `CLAUDE.md` and `RESPONSIBILITIES.md` now state the two-part gate and that the flag is inert outside `stripe`. |
+| G-3 | The gate's premise leaks anyway: under `stripe` an attacker pays, reads the flag, then cancels before the #4 cutoff for a **full** refund (invariant #10), so "they already paid" costs ≈0. | **accepted, recorded** — maintainer's call. Each probe still needs a real, traceable card payment (fee, identifiable payer, claimed inventory) for one bit about an address whose booking flow the prober already drove. The overstatement is corrected in R-1 and the javadoc; residual tracked in the follow-up issue. |
+| G-4 | `BookingViewSuppressionIT` claimed to catch a normalization mismatch but used byte-identical canonical addresses on both sides. | **fixed** — the suppressed case now writes `"  Suppressed-View@Example.COM "` and reads `suppressed-view@example.com`, so dropping `Emails.normalize` on either side fails it. |
+| G-5 | RV-PROC-1: the *Skills consulted* `riviera-tailwind` entry still recorded the phase-2 SCSS decision the fix round reversed. | **fixed** — the entry records the reversal and why; `riviera-frontend` gains its re-consultation note. |
+| G-6 | RV-PROC-1: `riviera-stripe-payments` was absent although the fix's central decision is a payment-model judgement. | **fixed** — loaded, recorded, and it changed the design (role-split `payment::api` port instead of widening `PaymentGateway` or duplicating a profile string). |
+| G-7 | The widened `catch (RuntimeException)` logged only the class name, making the programming errors it newly swallows undiagnosable. | **fixed** — the exception is passed to SLF4J, so the stack trace survives. |
+| G-8 | F-10's fix corrected one e2e fixture and left its sibling `AWAITING_DETAIL` diverging the same way (`cancellable: true` and `payment: null` for `AWAITING_PAYMENT`, both impossible). | **fixed** — both fixtures now mirror what `ViewBookingService` actually returns per status. |
+| G-9 | Altitude: a security control encoded as another module's profile string, invisible to `ModularityTests`. | **fixed** — subsumed by G-1's capability port; no module outside `payment` names a profile. |
+| G-10 | The extracted notice was placed in `shared/` although both consumers are in the one `booking/` feature — not `riviera-frontend`'s promotion trigger. | **fixed** — colocated at `booking/withheld-email-notice.ts`. |
+| G-11 | The IT's `UNIQUE_DATE` comment attributed a collision risk to invariant #2 that the seed cannot trigger (no `set_availability` row; `booking`'s index is deliberately non-unique). | **fixed** — the comment states what the date is actually for. |
+| G-12 | The profile-wiring test bypassed component scanning, so it proved only that two `@Profile` expressions are complements. | **fixed** — deleted with the profile approach; the behavior is now pinned where it is real, in `ViewBookingServiceTest` + `CreateBookingServiceTest` + `BookingViewSuppressionIT`. |
+| G-13 | The retained `.email-withheld` marker class was dead and its justification circular — no CSS used it and no pre-existing spec queried it. | **fixed** — class and its assertion dropped; every consumer queries `data-testid`. |
+| G-14 | The 5 s `queryTimeout` became a user-facing latency ceiling but kept its queue-drain value. | **fixed** — default lowered to 2 s, with the two callers' differing stakes documented. |
+| G-15 | Stray double blank line left by the contrast-test deletion. | **fixed** |
 
 ---
 

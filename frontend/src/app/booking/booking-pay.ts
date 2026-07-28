@@ -16,7 +16,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { PanelGlass } from '../shared/panel-glass';
-import { WithheldEmailNotice } from '../shared/withheld-email-notice';
+import { WithheldEmailNotice } from './withheld-email-notice';
 import { BookingService } from './booking.service';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 

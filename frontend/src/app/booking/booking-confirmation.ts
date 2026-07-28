@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
-import { WithheldEmailNotice } from '../shared/withheld-email-notice';
+import { WithheldEmailNotice } from './withheld-email-notice';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';

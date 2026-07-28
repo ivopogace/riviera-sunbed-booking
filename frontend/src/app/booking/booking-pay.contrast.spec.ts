@@ -62,7 +62,6 @@ describe('Payment page — theme-independent CTA (WCAG AA, issue #137)', () => {
     }
   });
 
-
   it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
     // .form-error now sits on an opaque #f6e8e7 box (was a translucent red tint), so the pair is a
     // single fixed hex in both themes — a real ~6.6:1, not the ~1:1 the analyser saw on the tint.

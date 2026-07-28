@@ -51,7 +51,8 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	private static final String HMAC_ALGORITHM = "HmacSHA256";
 
 	/** Generous for a single indexed-key lookup, short enough that a wedged read cannot stall the queue. */
-	private static final String DEFAULT_QUERY_TIMEOUT_SECONDS = "5";
+	// 2 s, not 5: since #390 this also bounds a user-facing read (see boundedClient).
+	private static final String DEFAULT_QUERY_TIMEOUT_SECONDS = "2";
 
 	private final JdbcClient jdbc;
 	private final SecretKeySpec pepperKey;
@@ -81,8 +82,11 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	 * every new send once the buffer fills. Since #390 it is <em>also</em> reached from
 	 * {@code SuppressedConfirmationMailDelivery} on a <strong>request</strong> thread, serving the
 	 * confirmed-booking read — so the same bound is now what stops a wedged read from holding a
-	 * user-facing response open, and it is the ceiling on that latency rather than an
-	 * queue-drain concern alone.
+	 * user-facing response open, and it is the ceiling on that latency rather than a queue-drain
+	 * concern alone. That is why the default is <strong>2 s</strong> and not the 5 s a mail queue
+	 * alone would tolerate: the view caller degrades to "no notice" on timeout, so a shorter bound
+	 * costs an advisory line and saves the page carrying the guest's booking code. The mail path is
+	 * unharmed — there a timeout fails open (recovery) or propagates for retry (registry).
 	 *
 	 * <p>Note what this does <em>not</em> bound: {@code queryTimeout} limits execution on a connection
 	 * already acquired, so a genuinely exhausted pool is still governed by the pool's own acquisition

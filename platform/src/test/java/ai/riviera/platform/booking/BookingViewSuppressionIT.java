@@ -30,15 +30,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * chain: {@code booking.spi.ConfirmationMailDelivery} → {@code notification}'s adapter →
  * {@code customer.api.CustomerLookup} → the peppered-HMAC {@code email_suppression} read, and out of
  * {@code GET /api/bookings/{code}} under its published field name. Every unit test on this path mocks
- * the seam it proves, so this is what actually catches a wiring break, a pepper/normalization
- * mismatch, or a rename of the record component.
+ * the seam it proves, so this is what actually catches a wiring break, a pepper mismatch, a dropped
+ * {@code Emails.normalize} (the suppressed case deliberately writes and reads different forms of the
+ * same address), or a rename of the record component.
  *
- * <p><strong>Runs under the {@code stripe} profile deliberately</strong> — that is the gate. Without
- * it the in-process stub gateway makes {@code CONFIRMED} reachable with nothing collected, so
- * {@code NonDisclosingConfirmationMailDelivery} answers and the flag is always {@code false}
- * (`ConfirmationMailDeliveryProfileWiringTest` pins that half). Bookings are seeded by SQL rather than
- * through the API, so the profile's {@code 202} create path is irrelevant here; {@link StripeClient}
- * is mocked, so no live Stripe call is made.
+ * <p><strong>Runs under the {@code stripe} profile deliberately</strong> — that is the gate. Only a
+ * gateway that really collects before confirming makes {@code CONFIRMED} mean "post-payment", so
+ * {@code payment.api.CollectionGuarantee} answers {@code true} only here; under the in-process stub
+ * the flag stays {@code false} however suppressed the address is
+ * ({@code ViewBookingServiceTest.neverConsultsMailDeliveryWhenConfirmationDoesNotProveCollection}
+ * pins that half). Bookings are seeded by SQL rather than through the API, so the profile's
+ * {@code 202} create path is irrelevant here; {@link StripeClient} is mocked, so no live Stripe call
+ * is made.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -48,8 +51,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {"stripe.api-key=sk_test_dummy", "stripe.webhook-secret=whsec_test"})
 class BookingViewSuppressionIT {
 
-	// A distinctive far-future date so this (set, date) can never collide with a sibling IT sharing
-	// the Testcontainers context (invariant #2 would otherwise reject the seed).
+	// A distinctive far-future date, purely so these rows are easy to tell apart from sibling ITs
+	// sharing the Testcontainers context. (No availability row is written here, and booking's
+	// (set_id, booking_date) index is deliberately non-unique per V5 — so nothing about this seed
+	// touches invariant #2; each call also creates its own venue + set.)
 	private static final LocalDate UNIQUE_DATE = LocalDate.of(2035, 7, 7);
 
 	@Autowired
@@ -66,9 +71,11 @@ class BookingViewSuppressionIT {
 
 	@Test
 	void confirmedBookingReportsAWithheldConfirmationMailForASuppressedGuest() throws Exception {
-		String suppressed = "suppressed-view@example.com";
-		suppressions.suppress(suppressed, SuppressionReason.HARD_BOUNCE, Instant.now());
-		String code = seedBooking("VIEWSUPP1", suppressed, "CONFIRMED");
+		// Deliberately mismatched forms on the two sides, so a dropped Emails.normalize on EITHER the
+		// write or the read fails this test — byte-identical canonical strings would not.
+		suppressions.suppress("  Suppressed-View@Example.COM ", SuppressionReason.HARD_BOUNCE,
+				Instant.now());
+		String code = seedBooking("VIEWSUPP1", "suppressed-view@example.com", "CONFIRMED");
 
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(status().isOk())
@@ -100,7 +107,7 @@ class BookingViewSuppressionIT {
 				.andExpect(jsonPath("$.emailWithheld").value(false));
 	}
 
-	/** A booking on its own venue + set, so the (set, date) can never collide with a sibling IT. */
+	/** A booking on its own freshly-created venue + set, so no sibling IT can observe or collide. */
 	private String seedBooking(String code, String email, String status) {
 		long venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)

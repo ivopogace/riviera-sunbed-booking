@@ -11,6 +11,7 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
@@ -47,9 +48,10 @@ class ViewBookingServiceTest {
 	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
 	private final PaymentCredentialsLookup checkout = mock(PaymentCredentialsLookup.class);
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
+	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 
 	private final ViewBookingService service =
-			new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery);
+			new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery, collection);
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {
@@ -92,7 +94,21 @@ class ViewBookingServiceTest {
 		verifyNoInteractions(mailDelivery);
 	}
 
+	@Test
+	void neverConsultsMailDeliveryWhenConfirmationDoesNotProveCollection() {
+		// The stub gateway reaches CONFIRMED having taken no money, so "post-payment" is not true
+		// there and the flag would be a free suppression oracle for any address (#390 F-1).
+		givenBooking(BookingStatus.CONFIRMED);
+		when(collection.provenBeforeConfirmation()).thenReturn(false);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.emailWithheld()).isFalse();
+		verifyNoInteractions(mailDelivery);
+	}
+
 	private void givenBooking(BookingStatus status) {
+		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
 				4500L, "EUR", null, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));

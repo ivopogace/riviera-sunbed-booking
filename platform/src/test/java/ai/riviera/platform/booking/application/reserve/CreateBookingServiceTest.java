@@ -53,6 +53,8 @@ class CreateBookingServiceTest {
 
 	private final RecordingBookings bookings = new RecordingBookings();
 	private final RecordingMailDelivery confirmationMail = new RecordingMailDelivery();
+	// Default: a gateway that really collects, so the existing cases mean what they always meant.
+	private final RecordingCollection collection = new RecordingCollection();
 	private final RecordingConfirm confirmer = new RecordingConfirm();
 	private final RecordingRelease release = new RecordingRelease();
 
@@ -75,7 +77,7 @@ class CreateBookingServiceTest {
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
 				codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
-				CLOCK);
+				collection, CLOCK);
 	}
 
 	private CreateBookingCommand command() {
@@ -145,6 +147,24 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void neverAsksAboutTheConfirmationMailWhenTheGatewayCollectedNothing() {
+		// The in-process stub answers Succeeded without taking money, so this 201 CONFIRMED is NOT
+		// post-payment and the flag would be a free suppression oracle for any address (#390 F-1).
+		collection.proven = false;
+		confirmationMail.withheld = true;
+		CreateBookingService service = service(set("ONLINE"),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				() -> "CODE123456");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
+		assertFalse(confirmed.confirmation().emailWithheld());
+		assertTrue(confirmationMail.asked.isEmpty(), "no oracle where confirmation isn't payment");
+	}
+
+	@Test
 	void neverAsksAboutTheConfirmationMailBeforePayment() {
 		// The 202 hands the code out BEFORE the card is collected, so asking here would leak
 		// suppression status for any address a checkout can be started with (D-8, #390 constraint 1).
@@ -200,7 +220,7 @@ class CreateBookingServiceTest {
 				customers, collidingOnce, codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
-				CLOCK);
+				collection, CLOCK);
 
 		BookingOutcome outcome = service.create(command());
 
@@ -273,7 +293,7 @@ class CreateBookingServiceTest {
 				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
-				confirmationMail, CLOCK);
+				confirmationMail, collection, CLOCK);
 
 		assertThrows(IllegalStateException.class, () -> service.create(command()));
 		assertEquals(1, release.released.size(),
@@ -583,6 +603,18 @@ class CreateBookingServiceTest {
 		public boolean isWithheld(CustomerId customerId) {
 			asked.add(customerId);
 			return withheld;
+		}
+	}
+
+	/** A {@code CollectionGuarantee} fake — whether this deployment's gateway really collects. */
+	private static final class RecordingCollection
+			implements ai.riviera.platform.payment.api.CollectionGuarantee {
+
+		private boolean proven = true;
+
+		@Override
+		public boolean provenBeforeConfirmation() {
+			return proven;
 		}
 	}
 }

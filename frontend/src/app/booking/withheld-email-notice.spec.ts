@@ -16,8 +16,6 @@ describe('WithheldEmailNotice', () => {
     const notice = host.querySelector('[data-testid="email-withheld"]');
     expect(notice?.textContent).toContain('We couldn’t email you.');
     expect(notice?.textContent).toContain('save it or take a screenshot');
-    // The marker class is retained as an inert test hook (riviera-tailwind rule 2).
-    expect(notice?.classList.contains('email-withheld')).toBe(true);
   });
 
   it('carries no live region — it enters the DOM with its container, so it would never announce', () => {

@@ -132,8 +132,10 @@ Orchestrate the reserve → pay → confirm flow across `availability` and `paym
 - Deciding whether a confirmation email will be sent, or knowing any address → **`notification`**
   (suppression) and **`customer`** (the contact). Since #390 I *expose* the withheld fact on a
   confirmed booking's read model, but I only ask it through `booking.spi.ConfirmationMailDelivery`,
-  by `CustomerId` — I never handle an address, and the gate that I only ask once the booking is
-  settled is mine, because the lifecycle is mine
+  by `CustomerId` — I never handle an address. The gate is mine, because the lifecycle is mine, and it
+  is two-part: the booking must be `CONFIRMED` **and** `payment.api.CollectionGuarantee` must say this
+  deployment's gateway really collects before confirming (the in-process stub does not, so the flag is
+  inert there — otherwise it would be a free suppression oracle, D-8)
 
 ---
 
