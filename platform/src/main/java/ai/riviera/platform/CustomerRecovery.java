@@ -11,6 +11,7 @@ import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 /**
@@ -36,14 +37,16 @@ class CustomerRecovery {
 
 	private final CustomerAccountRecovery recovery;
 	private final MailSender mails;
+	private final MailDeliverability deliverability;
 	private final RecoveryTokens tokens;
 	private final RecoveryProperties properties;
 	private final Clock clock;
 
-	CustomerRecovery(CustomerAccountRecovery recovery, MailSender mails, RecoveryTokens tokens,
-			RecoveryProperties properties, Clock clock) {
+	CustomerRecovery(CustomerAccountRecovery recovery, MailSender mails, MailDeliverability deliverability,
+			RecoveryTokens tokens, RecoveryProperties properties, Clock clock) {
 		this.recovery = recovery;
 		this.mails = mails;
+		this.deliverability = deliverability;
 		this.tokens = tokens;
 		this.properties = properties;
 		this.clock = clock;
@@ -56,6 +59,23 @@ class CustomerRecovery {
 				clock.instant().plus(properties.verificationTokenTtl()));
 		// The token store above is NOT best-effort and stays on this thread; only the send is (#369, R-3).
 		mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
+	}
+
+	/**
+	 * Whether a mail to this address would be withheld as suppressed, so a surface can stop claiming one
+	 * was sent (#400).
+	 *
+	 * <p><strong>Deliberately not folded into {@link #sendVerificationEmail}.</strong> That method's other
+	 * caller is anonymous registration ({@code AuthController}, {@code permitAll}), where an extra
+	 * synchronous {@code email_suppression} SELECT on the request thread would widen exactly the D-8
+	 * latency gap #369 closed — for an answer registration discards. Keeping it a separate call means only
+	 * the endpoint allowed to disclose the fact pays for it, and the send is untouched on both paths.
+	 *
+	 * <p>Safe only where the caller already owns the address: the one consumer is the authenticated
+	 * resend, which asks about its own session principal.
+	 */
+	boolean isVerificationMailWithheld(String email) {
+		return deliverability.isWithheld(email);
 	}
 
 	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link. */

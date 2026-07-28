@@ -126,7 +126,7 @@ class MeSurfaceRoleGateTest {
 
 		MvcResult result = mvc.perform(isolated(post(REQUEST_VERIFICATION))
 						.with(user(CUSTOMER_EMAIL).roles("CUSTOMER")))
-				.andExpect(status().isNoContent())
+				.andExpect(status().isOk())
 				.andReturn();
 
 		assertThat(result.getHandler())

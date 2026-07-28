@@ -428,6 +428,8 @@ export async function mockCustomerRecoveryApi(
      * proving the FE's rate-limit rendering sets something small rather than clicking ten times.
      */
     readonly passwordChangeBudget?: number;
+    /** Whether the do-not-email list withholds the verification resend (#400). Defaults to deliverable. */
+    readonly verificationMailWithheld?: boolean;
   },
 ): Promise<void> {
   const { email, validToken } = options;
@@ -507,6 +509,11 @@ export async function mockCustomerRecoveryApi(
     }
     return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
   });
+
+  // Mirrors the real 200 {emailWithheld} shape exactly (#400); before this there was no route at all.
+  await page.route(/\/api\/me\/verify-email\/request$/, (route) =>
+    route.fulfill({ json: { emailWithheld: options.verificationMailWithheld ?? false } }),
+  );
 
   await page.route(/\/api\/auth\/logout$/, (route) => {
     signedIn = false;

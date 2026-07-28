@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +19,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * The edge orchestration around a recovery send (#369, reshaped by #382): {@code CustomerRecovery}
@@ -36,8 +39,10 @@ class CustomerRecoveryTest {
 
 	private final CustomerAccountRecovery accounts = mock(CustomerAccountRecovery.class);
 	private final MailSender mails = mock(MailSender.class);
+	private final MailDeliverability deliverability = mock(MailDeliverability.class);
 
-	private final CustomerRecovery recovery = new CustomerRecovery(accounts, mails, new RecoveryTokens(),
+	private final CustomerRecovery recovery = new CustomerRecovery(accounts, mails, deliverability,
+			new RecoveryTokens(),
 			new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), BASE_URL),
 			Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC));
 
@@ -66,5 +71,36 @@ class CustomerRecoveryTest {
 		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
 		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
 		assertThat(link.getValue()).asString().startsWith(BASE_URL + CustomerRecovery.VERIFY_PATH + "?token=");
+	}
+
+	/**
+	 * AC-3 (#400), and the regression guard the review round added: sending consults the do-not-mail list
+	 * <strong>not at all</strong>. {@code sendVerificationEmail}'s other caller is anonymous registration
+	 * ({@code AuthController}, {@code permitAll}), so a suppression SELECT folded in here would put a
+	 * discarded synchronous read on that request thread — widening the very D-8 latency gap #369 closed.
+	 */
+	@Test
+	void sendingNeverConsultsTheDoNotMailList() {
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
+
+		verify(accounts).issueEmailVerificationToken(eq(ACCOUNT), any(), any());
+		verify(mails).sendEmailVerification(eq(EMAIL), any());
+		verifyNoInteractions(deliverability);
+	}
+
+	@Test
+	void answersTheWithheldQuestionOnlyWhenAsked() {
+		when(deliverability.isWithheld(EMAIL)).thenReturn(true);
+
+		assertThat(recovery.isVerificationMailWithheld(EMAIL)).isTrue();
+	}
+
+	@Test
+	void reportsDeliverableForAnUnsuppressedAddress() {
+		when(deliverability.isWithheld(EMAIL)).thenReturn(false);
+
+		assertThat(recovery.isVerificationMailWithheld(EMAIL)).isFalse();
+		// false is Mockito's default, so without this the case would pass against a hardcoded literal.
+		verify(deliverability).isWithheld(EMAIL);
 	}
 }

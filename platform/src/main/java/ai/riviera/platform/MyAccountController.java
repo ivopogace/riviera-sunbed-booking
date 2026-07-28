@@ -110,12 +110,32 @@ class MyAccountController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/** Re-issue a verification email to the signed-in customer's own address. Always {@code 204}. */
+	/** Wire DTO for the resend: whether the do-not-mail list withheld the message that was just asked for. */
+	record VerificationRequestedView(boolean emailWithheld) {
+	}
+
+	/**
+	 * Re-issue a verification email to the signed-in customer's own address. Always {@code 200}, carrying
+	 * whether that mail was withheld as suppressed (#400) — the page previously said "Verification email
+	 * sent" unconditionally, which is false for an address on the do-not-mail list.
+	 *
+	 * <p><strong>Why disclosing it here does not reopen D-8.</strong> This endpoint is
+	 * {@code ROLE_CUSTOMER}-gated and takes no address: it answers about {@code authentication.getName()},
+	 * the caller's own session principal, so there is no id to tamper with (BOLA-safe by shape) and no
+	 * account whose existence the answer could reveal — the caller is signed in to it. The anonymous
+	 * {@code forgot-password} flow keeps its deliberately hedged copy and its {@code 204}: branching
+	 * <em>that</em> on suppression would rebuild the enumeration oracle #369 closed.
+	 *
+	 * <p>The send itself is unchanged — issued, dispatched off-thread, best-effort. The suppression read is
+	 * a <strong>separate call after it</strong>, so nothing about the answer can gate the send, and the
+	 * anonymous registration path that shares {@code sendVerificationEmail} pays nothing for it.
+	 */
 	@PostMapping(REQUEST_VERIFICATION_PATH)
-	ResponseEntity<Void> requestVerification(Authentication authentication) {
+	ResponseEntity<VerificationRequestedView> requestVerification(Authentication authentication) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
-		recovery.sendVerificationEmail(accountId, authentication.getName());
-		return ResponseEntity.noContent().build();
+		String email = authentication.getName();
+		recovery.sendVerificationEmail(accountId, email);
+		return ResponseEntity.ok(new VerificationRequestedView(recovery.isVerificationMailWithheld(email)));
 	}
 
 	/** Only reached once the caller supplied a current password — the presence branch above guarantees it. */

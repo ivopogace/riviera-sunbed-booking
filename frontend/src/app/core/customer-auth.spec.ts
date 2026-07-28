@@ -279,12 +279,16 @@ describe('CustomerAuth', () => {
     expect(await throttled).toBe('rate-limited');
   });
 
-  it('request-verification maps 204 → sent and a failure → error', async () => {
+  it('request-verification maps the withheld flag → sent / withheld, and a failure → error', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 
     const sent = auth.requestVerification();
-    http.expectOne(`${ME_API}/verify-email/request`).flush(null, { status: 204, statusText: 'No Content' });
+    http.expectOne(`${ME_API}/verify-email/request`).flush({ emailWithheld: false });
     expect(await sent).toBe('sent');
+
+    const withheld = auth.requestVerification();
+    http.expectOne(`${ME_API}/verify-email/request`).flush({ emailWithheld: true });
+    expect(await withheld).toBe('withheld');
 
     const errored = auth.requestVerification();
     http.expectOne(`${ME_API}/verify-email/request`).flush({}, { status: 500, statusText: 'Error' });
