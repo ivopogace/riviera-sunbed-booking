@@ -40,6 +40,11 @@ own Javadoc (#369) and ADR-0011 decision 5.
   supplied the tension this plan has to argue rather than ignore: §8 says *"don't hand-roll thread
   pools in application code"* — see R-4.
 - `riviera-plan-doc` — this document's structure and the Execution-status discipline.
+- `riviera-docs-freshness` (phase 3) — the pre-merge substrate sweep; it is what surfaced F-1, a live
+  test-coverage hole rather than mere stale prose.
+- `riviera-review-overlay` + the inline `/review` engine (review gate) — the RV-BE bank walk that
+  surfaced F-2 and F-3. Both fixes re-entered at Implement under `riviera-modulith` +
+  `riviera-java-conventions` (a Spring bean-definition change in `adapter/in`, and test robustness).
 - `riviera-local-debug` — the cloud recipe (system `gradle`, JDK-25 toolchain registration, daemon on
   21) and the scoped-test discipline used for every phase command below.
 - **Not loaded, deliberately:** `postgres` (no migration, no schema, no new query — the tests read
@@ -134,7 +139,7 @@ The slice replaces the listener's *dispatch mechanics*, so the ledger covers wha
 | R-4 | `riviera-java-conventions` §8 says "don't hand-roll thread pools in application code" — this slice hand-rolls one | n/a | n/a | **Closed — accepted with reason:** §8's target is using threads as a *concurrency primitive* (the DB unique index owns that, invariant #2). This pool is a **bulkhead**, the opposite — it exists to *limit* concurrency and isolate a failure domain. The precedent (`AsyncMailDispatcher`, #369) was accepted on the same grounds, and the issue is that the precedent was not applied consistently | agent | **closed** |
 | R-5 | The wedging IT leaves a blocked executor or a claimed `(set, date)` behind and poisons the shared Spring context for other ITs (invariant #2: a claim is never released) | med | med | The IT declares a nested `@TestConfiguration`, which gives it **its own context cache key** rather than the shared one; the latch is released in `@AfterEach` unconditionally; bookings are SQL-seeded on dates no other IT uses (the class-level unique-date discipline `BookingConfirmationMailIT` documents) | agent | **closed** — plus a lesson the build paid for: see Info-1 |
 | R-6 | Saturation shedding is *silent* — a shed send is invisible until the next restart republishes it | med | med | The rejection handler logs a WARN (no address, invariant #7 posture); the shed publication keeps `riviera.outbox.pending` non-zero, which `MoneyPathAlertCheck` already surfaces. Documented on the config class as the saturation contract AC-2 requires | agent | **closed** — implemented as described |
-| R-7 | A full-suite-only failure (the `riviera-local-debug` shared-state class): a new bounded, long-lived pool accumulating wedged threads across cached contexts | med | med | The only test that wedges the pool owns its own context (R-5) and releases in `@AfterEach`; no `@Scheduled`, no filter, no rate-limit key involved | agent | open until this push's CI run — the failure class scoped runs cannot show |
+| R-7 | A full-suite-only failure (the `riviera-local-debug` shared-state class): a new bounded, long-lived pool accumulating wedged threads across cached contexts | med | med | The only test that wedges the pool owns its own context (R-5) and releases in `@AfterEach`; no `@Scheduled`, no filter, no rate-limit key involved | agent | **closed** — the PR's CI run (`b89cd1d`, Backend build + test) is green on the full suite |
 
 ## Open questions / Assumptions
 
@@ -247,18 +252,18 @@ loaded for that reason.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR #403 open — awaiting CI, then the review + Sonar gates`
+**Stage pointer:** `PR #403 — CI green, Sonar gate cleared, review gate run; ready to merge`
 
-**Next action:** Run `/code-review` + `riviera-review-overlay` on PR **#403**, then pull the SonarCloud
-new-issue list for PR 403 from the API (the bot comment is not the check). R-7 closes only on this
-push's CI run. **Merged via PR #403.**
+**Next action:** Merge PR **#403**, then the GitHub-only close-out: close #383, and file the deferred
+`BookingRefundListener` follow-up (Scope notes). **Merged via PR #403.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the bounded executor + its saturation contract | ✅ | `aaddc71` |
 | 1 — decompose the listener onto it; registry durability + listener_id proven | ✅ | `431caf3` |
 | 2 — the structural rule (AC-6) + substrate docs | ✅ | `87c3bab` |
-| 3 — pre-merge docs-freshness + the coverage hole it found | ✅ | `884a8cd` |
+| 3 — pre-merge docs-freshness + the coverage hole it found | ✅ | `884a8cd`, `b4c65cd` |
+| 4 — review-gate findings F-2, F-3 | ✅ | `b89cd1d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,6 +273,8 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | **review gate** (RV-BE-11 / RV-BE-12 walk over the new `@Configuration`) | **Blocker.** Boot declares `applicationTaskExecutor` `@ConditionalOnMissingBean(Executor.class)`, so simply *defining* the mail pool as an `Executor` bean made Boot skip the shared pool entirely — and unqualified `@Async`, i.e. **every money-path listener**, fell through to an unbounded `SimpleAsyncTaskExecutor`, one thread per event. The bulkhead would have shipped having *removed* a bound from the path it exists to protect. Invisible to every test, `RegistryMailBulkheadIT` included: unbounded threads always keep up, so AC-1 passed either way. Fixed with `defaultCandidate = false` (keeps the bean addressable by name, out of by-type resolution) and pinned by the new `RegistryMailExecutorWiringIT`, which asserts both that the shared pool exists **and** that unqualified `@Async` resolves to it | fixed-in-`b89cd1d` |
+| F-3 | review gate (test robustness) | `RegistryMailBulkheadIT`'s publication lookups matched a bare `"value":<bookingId>`, but a `BookingConfirmed` payload carries `bookingId`, `venueId` and `setId` as identically-shaped `{"value":n}` records — so a sibling IT's row whose venue or set shared the number would have made the counts flaky. This is the lesson `EventRegistryDurabilityIT` already documents; re-keyed onto an improbable `amountMinor`, as that class does | fixed-in-`b89cd1d` |
 | F-1 | self, `riviera-docs-freshness` pre-merge smoke | **A real coverage hole the decomposition opened, found by the audit rather than by a red build.** `PublishedSurfacePlacementArchitectureTests` keyed its cross-module-listener rule on `@ApplicationModuleListener` alone, so rewriting the listener as `@Async` + `@TransactionalEventListener` quietly removed it from that rule — the check stopped applying and nothing went red (the rule's own vacuity guard stayed satisfied by the five money-path listeners). Broadened to match either spelling, with a new `BadDecomposedListener` fixture as the negative proof; `docs/adr/ADR-0007` and `riviera-modulith`'s SKILL.md restated to match. Re-entered at Implement per the re-entry rule (`riviera-modulith` — its own contract) | fixed-in-`884a8cd` |
 | Info-1 | self, phase 1 (red-stage verification) | The first draft of `RegistryMailBulkheadIT` went **green against the unfixed listener**: its wedging latch was a single `CountDownLatch` shared across tests, so once any `@AfterEach` released it the gate never blocked again — and the gate's own `await` timeout was shorter than the test's Awaitility budget, so even a fresh gate reopened mid-test. Both were fixed (a per-test gate + a backstop timeout that outlasts every wait) *before* the fix was written, which is the only reason the RED is trustworthy. Recorded because "the test failed" is not the same as "the test failed for the reason claimed" — the first run failed on the wrong assertion | fixed-in-phase-1 |
 
@@ -438,4 +445,8 @@ default for the five money-path listeners; #383 is a mail-only exception, not a 
       run — it is the full-suite-only failure class scoped runs cannot show. Open Questions empty.
 - [x] **Close-out written in THIS PR** — this document's final state is committed here, citing
       `merged via PR #403`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+- [x] **The review gate ran** — `riviera-review-overlay` layered onto the inline `/review` engine, walking
+      the full RV-BE bank. It found **two real defects (F-2 Blocker, F-3)**, both fixed and re-reviewed.
+      **Degraded mode, stated honestly:** the stronger `/code-review` subagent fan-out did not run — the
+      skill was unavailable for most of this session and the session's standing instruction bars launching
+      subagents unasked. Recorded in the PR rather than silently substituted (`pr-gates.md` §1).
