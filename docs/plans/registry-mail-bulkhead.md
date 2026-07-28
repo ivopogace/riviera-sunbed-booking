@@ -128,11 +128,11 @@ The slice replaces the listener's *dispatch mechanics*, so the ledger covers wha
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The decomposition silently loses registry tracking, converting at-least-once into fire-and-forget with no failing test — the issue's stated main reason this wasn't folded into #371 | low | **critical** | Bytecode-verified that `@ApplicationModuleListener` *is* exactly these three annotations, so tracking (which keys on `@TransactionalEventListener`) cannot change; then proven both directions — AC-3 (outstanding on failure) and AC-4 (completed on success), the latter by the **existing, unmodified** #371 ITs | agent | open |
-| R-2 | Dropping `@Transactional` breaks completion registration or archive atomicity | low | high | AC-4's existing ITs are the detector, and they run in phase 1. **Fallback if red:** restore `@Transactional(propagation = REQUIRES_NEW, readOnly = true)` and drop AC-7 — the executor bulkhead (the issue's primary fix) stands either way; record the outcome here and in the parity ledger | agent | open |
+| R-1 | The decomposition silently loses registry tracking, converting at-least-once into fire-and-forget with no failing test — the issue's stated main reason this wasn't folded into #371 | low | **critical** | Bytecode-verified that `@ApplicationModuleListener` *is* exactly these three annotations, so tracking (which keys on `@TransactionalEventListener`) cannot change; then proven both directions — AC-3 (outstanding on failure) and AC-4 (completed on success), the latter by the **existing, unmodified** #371 ITs | agent | **closed** — AC-3 green, and `BookingConfirmationMailIT` + `EventRegistryDurabilityIT` + `ListenerMoveMigrationIT` pass unmodified after the swap |
+| R-2 | Dropping `@Transactional` breaks completion registration or archive atomicity | low | high | AC-4's existing ITs are the detector, and they run in phase 1. **Fallback if red:** restore `@Transactional(propagation = REQUIRES_NEW, readOnly = true)` and drop AC-7 — the executor bulkhead (the issue's primary fix) stands either way | agent | **closed** — not needed. Completion and archiving both survive; `EventRegistryDurabilityIT` still observes the publication leaving the live table |
 | R-3 | The two mail pools drift into looking like duplication, and a future slice "unifies" them — re-opening the #369 timing oracle or the #383 bulkhead | med | high | Documented on both classes as **deliberately different saturation semantics**: the recovery dispatcher must *drop* (its payload is a bearer credential the registry may not persist, ADR-0011 decision 5, so there is nothing to retry from), while this one *sheds to the registry*, which still holds the work. AC-6 makes the split structural, not advisory | agent | open |
 | R-4 | `riviera-java-conventions` §8 says "don't hand-roll thread pools in application code" — this slice hand-rolls one | n/a | n/a | Accepted with reason: §8's target is using threads as a *concurrency primitive* (the DB unique index owns that, invariant #2). This pool is a **bulkhead**, the opposite — it exists to *limit* concurrency and isolate a failure domain. The precedent (`AsyncMailDispatcher`, #369) was accepted on the same grounds, and the issue is that the precedent was not applied consistently | agent | open |
-| R-5 | The wedging IT leaves a blocked executor or a claimed `(set, date)` behind and poisons the shared Spring context for other ITs (invariant #2: a claim is never released) | med | med | The IT declares a nested `@TestConfiguration`, which gives it **its own context cache key** rather than the shared one; the latch is released in `@AfterEach` unconditionally; bookings are SQL-seeded on dates no other IT uses (the class-level unique-date discipline `BookingConfirmationMailIT` documents) | agent | open |
+| R-5 | The wedging IT leaves a blocked executor or a claimed `(set, date)` behind and poisons the shared Spring context for other ITs (invariant #2: a claim is never released) | med | med | The IT declares a nested `@TestConfiguration`, which gives it **its own context cache key** rather than the shared one; the latch is released in `@AfterEach` unconditionally; bookings are SQL-seeded on dates no other IT uses (the class-level unique-date discipline `BookingConfirmationMailIT` documents) | agent | **closed** — plus a lesson the build paid for: see Info-1 |
 | R-6 | Saturation shedding is *silent* — a shed send is invisible until the next restart republishes it | med | med | The rejection handler logs a WARN (no address, invariant #7 posture); the shed publication keeps `riviera.outbox.pending` non-zero, which `MoneyPathAlertCheck` already surfaces. Documented on the config class as the saturation contract AC-2 requires | agent | open |
 | R-7 | A full-suite-only failure (the `riviera-local-debug` shared-state class): a new bounded, long-lived pool accumulating wedged threads across cached contexts | med | med | The only test that wedges the pool owns its own context (R-5) and releases in `@AfterEach`; no `@Scheduled`, no filter, no rate-limit key involved. Verified by the push's CI run before the next phase, per the SDLC CI-gate rule |  agent | open |
 
@@ -241,16 +241,16 @@ loaded for that reason.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write `RegistryMailBulkheadIT` (AC-1/3/5/7), watch it fail, then swap the
-listener's annotations.
+**Next action:** Phase 2 — add `MailListenerExecutorArchitectureTests` (AC-6), then the
+`AsyncMailDispatcher` Javadoc and substrate-doc reconciliation.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the bounded executor + its saturation contract | ✅ | see phase-0 commit |
-| 1 — decompose the listener onto it; registry durability + listener_id proven | ⏳ | |
-| 2 — the structural rule (AC-6) + substrate docs | | |
+| 0 — the bounded executor + its saturation contract | ✅ | `aaddc71` |
+| 1 — decompose the listener onto it; registry durability + listener_id proven | ✅ | see phase-1 commit |
+| 2 — the structural rule (AC-6) + substrate docs | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -260,7 +260,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| Info-1 | self, phase 1 (red-stage verification) | The first draft of `RegistryMailBulkheadIT` went **green against the unfixed listener**: its wedging latch was a single `CountDownLatch` shared across tests, so once any `@AfterEach` released it the gate never blocked again — and the gate's own `await` timeout was shorter than the test's Awaitility budget, so even a fresh gate reopened mid-test. Both were fixed (a per-test gate + a backstop timeout that outlasts every wait) *before* the fix was written, which is the only reason the RED is trustworthy. Recorded because "the test failed" is not the same as "the test failed for the reason claimed" — the first run failed on the wrong assertion | fixed-in-phase-1 |
 
 ---
 
