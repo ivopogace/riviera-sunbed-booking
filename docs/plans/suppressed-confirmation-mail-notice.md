@@ -70,37 +70,38 @@ literal `feature/*` branch is deliberately not created.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `CONFIRMED` booking whose guest contact is on the suppression list, when the
+- [x] **AC-1:** Given a `CONFIRMED` booking whose guest contact is on the suppression list, when the
       view-a-booking use case loads it by code, then the returned `BookingDetail` reports
       `emailWithheld = true`. *Pinned by:* `ViewBookingServiceTest.flagsWithheldConfirmationMailForSuppressedGuest`
-- [ ] **AC-2:** Given a `CONFIRMED` booking whose guest contact is not suppressed, when it is loaded
+- [x] **AC-2:** Given a `CONFIRMED` booking whose guest contact is not suppressed, when it is loaded
       by code, then `emailWithheld = false`. *Pinned by:* `ViewBookingServiceTest.doesNotFlagWithheldMailForDeliverableGuest`
-- [ ] **AC-3:** Given a booking that is **not** `CONFIRMED` (`AWAITING_PAYMENT` or `PENDING_REQUEST`),
+- [x] **AC-3:** Given a booking that is **not** `CONFIRMED` (`AWAITING_PAYMENT` or `PENDING_REQUEST`),
       when it is loaded by code, then `ConfirmationMailDelivery` is **never consulted** and
       `emailWithheld = false` — the pre-payment oracle stays closed.
       *Pinned by:* `ViewBookingServiceTest.neverConsultsMailDeliveryBeforeConfirmation`
-- [ ] **AC-4:** Given an instant-confirm create (the `201 CONFIRMED` path) for a suppressed guest,
+- [x] **AC-4:** Given an instant-confirm create (the `201 CONFIRMED` path) for a suppressed guest,
       when the booking is created, then the returned `BookingConfirmation` reports
       `emailWithheld = true`. *Pinned by:* `CreateBookingServiceTest.flagsWithheldConfirmationMailOnInstantConfirm`
-- [ ] **AC-5:** Given a `CustomerId` whose contact address is on the suppression list, when
+- [x] **AC-5:** Given a `CustomerId` whose contact address is on the suppression list, when
       `notification`'s `ConfirmationMailDelivery` implementation is asked, then it reports withheld;
       given an unknown `CustomerId`, it reports **not** withheld (nothing to withhold).
       *Pinned by:* `SuppressedConfirmationMailDeliveryTest.reportsWithheldForSuppressedContact`,
       `…​.reportsDeliverableForUnknownCustomer`
-- [ ] **AC-6:** Given the suppression lookup throws, when a confirmed booking is loaded, then the read
+- [x] **AC-6:** Given the suppression lookup throws, when a confirmed booking is loaded, then the read
       still succeeds with `emailWithheld = false` (the notice degrades; the booking view never 500s).
       *Pinned by:* `SuppressedConfirmationMailDeliveryTest.reportsDeliverableWhenTheLookupFails`
-- [ ] **AC-7:** Given a confirmation hand-off with `emailWithheld = true`, when the confirmation screen
+- [x] **AC-7:** Given a confirmation hand-off with `emailWithheld = true`, when the confirmation screen
       renders, then it shows the "we couldn't email you — save your code" notice and **drops** the
       "We've also emailed it to you." claim; with `false`, the screen is byte-for-byte as today.
       *Pinned by:* `booking-confirmation.spec.ts` ("shows the withheld-email notice…", "keeps the emailed-it copy…")
-- [ ] **AC-8:** Given the payment page reaches `confirmed` and the polled detail carries
+- [x] **AC-8:** Given the payment page reaches `confirmed` and the polled detail carries
       `emailWithheld = true`, when the done panel renders, then it shows the same notice.
       *Pinned by:* `booking-pay.spec.ts` ("shows the withheld-email notice once confirmed")
-- [ ] **AC-9:** Given a mocked backend returning a suppressed confirmed booking, when a guest completes
+- [x] **AC-9:** Given a mocked backend returning a suppressed confirmed booking, when a guest completes
       the booking flow, then the notice is visible on the post-payment surface; with a deliverable
       address it is absent. *Pinned by:* `frontend/e2e/suppressed-confirmation.e2e.ts`
-- [ ] **AC-10:** Given the new `booking.spi` surface and `notification`'s grant, when the structural
+- [x] **AC-10:**
+- [x] **AC-11 (added at review):** `./gradlew test --tests "*BookingViewSuppressionIT*"` → PASS (3 tests, `skipped=0`) Given the new `booking.spi` surface and `notification`'s grant, when the structural
       net runs, then the module structure verifies. *Pinned by:* `ModularityTests.verifiesModularStructure`,
       `PublishedSurfacePlacementArchitectureTests`, `PackageShapeArchitectureTests`
 
@@ -247,10 +248,9 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `review gate — all 10 findings fixed; re-review + Sonar list next`
+**Stage pointer:** `DONE — merged via PR #399`
 
-**Next action:** Re-run `/code-review` over the fix diff, then pull the SonarCloud issue +
-duplication list for PR #399 from the API and clear every entry before merge.
+**Next action:** none. Residuals live on **#400**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -258,6 +258,8 @@ duplication list for PR #399 from the API and clear every entry before merge.
 | 1 — carry `emailWithheld` on the booking read + create paths | ✅ | `e5ed88c` |
 | 2 — Angular notice on both post-payment surfaces | ✅ | `bb25832` |
 | 3 — Playwright e2e (mocked suite) | ✅ | `7a18073` |
+| 4 — review round 1 (F-1..F-10) | ✅ | `1aefef1`, `8ad2419` |
+| 5 — review round 2 (G-1..G-15) | ✅ | `7d1a381` |
 
 > **Phase-0 deviation from the plan as written:** the test needs no `NotificationAdapters` factory —
 > it lives in `notification.adapter.out`, the implementation's own package, so the package-private
@@ -360,7 +362,7 @@ Skill-routing gate for what the fix touches *before* editing).
 `platform/src/test/java/ai/riviera/platform/notification/SuppressedConfirmationMailDeliveryTest.java` ·
 Modify `notification/package-info.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package ai.riviera.platform.notification;
@@ -430,10 +432,10 @@ class SuppressedConfirmationMailDeliveryTest {
 > package-private-adapter convention (`riviera-java-conventions`). If an equivalent seam already
 > exists in the module's tests, reuse it instead of adding one.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"`
       → FAIL: `package ai.riviera.platform.booking.spi does not exist`
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // booking/spi/ConfirmationMailDelivery.java
@@ -535,17 +537,17 @@ allowedDependencies = { "booking::api", "booking::events", "booking::spi", "book
         "customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary", "shared" }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"` → PASS
 
-- [ ] **Step 5: Run the structural net** —
+- [x] **Step 5: Run the structural net** —
       `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS (AC-10)
 
-- [ ] **Step 6: Generalization-audit pass** — search for other read surfaces that claim an email was
+- [x] **Step 6: Generalization-audit pass** — search for other read surfaces that claim an email was
       sent (`grep -rn "emailed" frontend/src platform/src`), record the candidates and the decision.
 
-- [ ] **Step 7: Commit** — `git commit -m "feat(#390): booking.spi port for confirmation-mail suppression, implemented by notification"`
+- [x] **Step 7: Commit** — `git commit -m "feat(#390): booking.spi port for confirmation-mail suppression, implemented by notification"`
 
-- [ ] **Step 8: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -556,7 +558,7 @@ allowedDependencies = { "booking::api", "booking::events", "booking::spi", "book
 `booking/adapter/out/JdbcBookings.java`, `booking/adapter/in/{BookingDetailView,BookingConfirmationView}.java` ·
 Test `booking/ViewBookingServiceTest.java`, `booking/CreateBookingServiceTest.java`
 
-- [ ] **Step 1: Write the failing tests** — the three `ViewBookingServiceTest` cases (AC-1/2/3) and the
+- [x] **Step 1: Write the failing tests** — the three `ViewBookingServiceTest` cases (AC-1/2/3) and the
       `CreateBookingServiceTest` case (AC-4). The AC-3 case is the important one and asserts a
       *negative interaction*:
 
@@ -572,11 +574,11 @@ void neverConsultsMailDeliveryBeforeConfirmation() {
 }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `./gradlew test --tests "*ViewBookingServiceTest*" --tests "*CreateBookingServiceTest*"`
       → FAIL: `cannot find symbol: method emailWithheld()`
 
-- [ ] **Step 3: Minimal implementation** — thread the flag through:
+- [x] **Step 3: Minimal implementation** — thread the flag through:
   - `BookingRecord` gains `CustomerId customerId`; both `SELECT`s in `JdbcBookings` add
     `customer_id` and the shared mapper reads it.
   - `BookingDetail` gains `boolean emailWithheld`; `ViewBookingService.toDetail` computes
@@ -588,13 +590,13 @@ void neverConsultsMailDeliveryBeforeConfirmation() {
     and `Requested` branches pass `false`.
   - `BookingDetailView` / `BookingConfirmationView` expose the field; the `202` views are untouched.
 
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS
+- [x] **Step 4: Run them, verify they pass** — same command → PASS
 
-- [ ] **Step 5: End-of-phase regression** — `./gradlew test --tests "ai.riviera.platform.booking.*"` → PASS
+- [x] **Step 5: End-of-phase regression** — `./gradlew test --tests "ai.riviera.platform.booking.*"` → PASS
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#390): expose the withheld-confirmation-mail flag on the confirmed booking read models"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#390): expose the withheld-confirmation-mail flag on the confirmed booking read models"`
 
-- [ ] **Step 7: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -604,13 +606,13 @@ void neverConsultsMailDeliveryBeforeConfirmation() {
 `booking/booking-pay.ts` + `.scss` · Test `booking-confirmation.spec.ts`, `booking-pay.spec.ts`,
 the `*.a11y.spec.ts` / `*.contrast.spec.ts` siblings
 
-- [ ] **Step 1: Write the failing specs** (AC-7, AC-8) — assert on a stable
+- [x] **Step 1: Write the failing specs** (AC-7, AC-8) — assert on a stable
       `data-testid="email-withheld"`, that the "We've also emailed it to you." string is **absent**
       when withheld and **present** when not, and that the notice carries `role="status"`.
 
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- booking-confirmation booking-pay` → FAIL
+- [x] **Step 2: Run them, verify they fail** — `npm test -- booking-confirmation booking-pay` → FAIL
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
   - `booking.model.ts`: `BookingConfirmation` and `BookingDetail` gain
     `readonly emailWithheld: boolean;`
   - `booking-confirmation.ts`: split the `code-note` sentence; add the notice block.
@@ -618,13 +620,13 @@ the `*.a11y.spec.ts` / `*.contrast.spec.ts` siblings
     resolves `CONFIRMED`, and render the same notice in the done panel.
   - Update every fixture the new required field breaks (R-6).
 
-- [ ] **Step 4: Run them, verify they pass** — `npm test` and `npm run test:a11y` → PASS
+- [x] **Step 4: Run them, verify they pass** — `npm test` and `npm run test:a11y` → PASS
 
-- [ ] **Step 5: Lint** — `npm run lint` → PASS
+- [x] **Step 5: Lint** — `npm run lint` → PASS
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#390): tell the tourist when the confirmation email was withheld"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#390): tell the tourist when the confirmation email was withheld"`
 
-- [ ] **Step 7: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -632,20 +634,20 @@ the `*.a11y.spec.ts` / `*.contrast.spec.ts` siblings
 
 **Files:** Create `frontend/e2e/suppressed-confirmation.e2e.ts`
 
-- [ ] **Step 1: Write the failing spec** (AC-9) — route-mock `POST /api/bookings` /
+- [x] **Step 1: Write the failing spec** (AC-9) — route-mock `POST /api/bookings` /
       `GET /api/bookings/*` per the suite's existing helpers; one test asserts the notice is visible
       for a suppressed confirmed booking, one asserts it is absent otherwise. **Mocked suite**
       (`frontend/e2e/`), not `real-backend/` — it needs no live backend and must run in CI (RV-FE-E2E).
 
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- suppressed-confirmation` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- suppressed-confirmation` → FAIL
 
-- [ ] **Step 3: Make it pass** — no product change expected; fix the spec's selectors/mocks.
+- [x] **Step 3: Make it pass** — no product change expected; fix the spec's selectors/mocks.
 
-- [ ] **Step 4: Run the suite** — `npm run test:e2e:a11y` → PASS
+- [x] **Step 4: Run the suite** — `npm run test:e2e:a11y` → PASS
 
-- [ ] **Step 5: Commit** — `git commit -m "test(#390): e2e coverage for the withheld-confirmation-email notice"`
+- [x] **Step 5: Commit** — `git commit -m "test(#390): e2e coverage for the withheld-confirmation-email notice"`
 
-- [ ] **Step 6: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -661,33 +663,34 @@ the `*.a11y.spec.ts` / `*.contrast.spec.ts` siblings
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2 / AC-3:** `./gradlew test --tests "*ViewBookingServiceTest*"` → PASS
-- [ ] **AC-4:** `./gradlew test --tests "*CreateBookingServiceTest*"` → PASS
-- [ ] **AC-5 / AC-6:** `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"` → PASS
-- [ ] **AC-7 / AC-8:** `npm test` → PASS
+- [x] **AC-1 / AC-2 / AC-3 / AC-3b:** `./gradlew test --tests "*ViewBookingServiceTest*"` → PASS
+- [x] **AC-4:** `./gradlew test --tests "*CreateBookingServiceTest*"` → PASS
+- [x] **AC-5 / AC-6:** `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"` → PASS
+- [x] **AC-7 / AC-8:** `npm test` → PASS
 - [x] **AC-9:** `npm run test:e2e:a11y` → PASS (88/88; the 3 new tests include axe audits of the notice)
-- [ ] **AC-10:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
+- [x] **AC-10:**
+- [x] **AC-11 (added at review):** `./gradlew test --tests "*BookingViewSuppressionIT*"` → PASS (3 tests, `skipped=0`) `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified `N/A` — read-side only); no new write path.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; the new port is in `spi/` not `api/`; no cross-module
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified `N/A` — read-side only); no new write path.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; the new port is in `spi/` not `api/`; no cross-module
       `application.*`/`adapter.*` imports; `booking` gains no dependency (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A`); confirmation still webhook-driven (invariant #8).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes unguessable and never logged (invariant #7).
-- [ ] No Flyway migration needed; no schema change (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] **Payment/payout** section filled (`N/A`); confirmation still webhook-driven (invariant #8).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes unguessable and never logged (invariant #7).
+- [x] No Flyway migration needed; no schema change (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
