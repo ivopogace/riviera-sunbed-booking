@@ -100,7 +100,7 @@ stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote adde
       Check your inbox."; given `'sent'` it renders today's string byte-for-byte.
       *Pinned by:* `set-password.spec.ts` ("tells the customer when the verification email was
       withheld", "keeps the sent copy for a deliverable address")
-- [ ] **AC-8:** Given a mocked backend answering `emailWithheld: true`, when a signed-in customer
+- [x] **AC-8:** Given a mocked backend answering `emailWithheld: true`, when a signed-in customer
       clicks *Resend verification email*, then the withheld notice is visible and the "sent" copy
       is absent; with `false` the sent copy shows. *Pinned by:* `frontend/e2e/email-verification.e2e.ts`
 - [x] **AC-9:** Given the new `notification::api` port, when the structural net runs, then the
@@ -253,16 +253,16 @@ no new styled surface — hence no Tailwind/contrast work (`riviera-tailwind` co
 
 ## Execution status
 
-**Stage pointer:** `IMPLEMENT — phases 0-2 done`
+**Stage pointer:** `IMPLEMENT — all phases done`
 
-**Next action:** phase 3 — the Playwright e2e case.
+**Next action:** merge `origin/main`, push, open the PR, then the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `notification.api.MailDeliverability` + its implementation | ✅ | `a071ac6` |
 | 1 — the edge reports it (`CustomerRecovery` + `MyAccountController`, `204 → 200`) | ✅ | `4b1c04a` |
-| 2 — Angular: branch the resend copy | ✅ | *(this commit)* |
-| 3 — Playwright e2e (mocked suite) | | |
+| 2 — Angular: branch the resend copy | ✅ | `b77d8d0` |
+| 3 — Playwright e2e (mocked suite) | ✅ | *(this commit)* |
 
 > **Phase-0 deviations from the plan as written.**
 > 1. **No `Emails.normalize` in the service.** `JdbcEmailSuppressions` already normalizes on both
@@ -427,21 +427,21 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/e2e/email-verification.e2e.ts`
 
-- [ ] **Step 1: Write the failing spec** (AC-8) — extend the existing spec (it already owns this
+- [x] **Step 1: Write the failing spec** (AC-8) — extend the existing spec (it already owns this
       flow's mocks) with a withheld case: route-mock the resend to `200 {emailWithheld:true}`, click
       *Resend verification email*, assert the withheld notice and the absence of the sent copy.
       **Mocked suite** (`frontend/e2e/`), not `real-backend/` — it needs no live backend and must run
       in CI (RV-FE-E2E).
 
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- email-verification` → FAIL
+- [x] **Step 2: Run it, verify it fails** — the resend had **no route mock at all** before this slice, so the first run failed on the missing route; the pair of tests (withheld vs deliverable, opposite copy) is what makes a flag-ignoring component fail
 
-- [ ] **Step 3: Make it pass** — no product change expected; fix the spec's selectors/mocks.
+- [x] **Step 3: Make it pass** — no product change; added the `/api/me/verify-email/request` route to the shared `auth-mocks` helper, mirroring the real `200 {emailWithheld}` shape.
 
-- [ ] **Step 4: Run the suite** — `npm run test:e2e:a11y` → PASS
+- [x] **Step 4: Run the suite** — `npm run test:e2e:a11y` → PASS (90/90)
 
-- [ ] **Step 5: Commit** — `git commit -m "test(#400): e2e coverage for the withheld verification-email notice"`
+- [x] **Step 5: Commit** — `git commit -m "test(#400): e2e coverage for the withheld verification-email notice"`
 
-- [ ] **Step 6: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -451,7 +451,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-07-28 | phase 3 | Recovery/`/api/me/**` endpoints the CI-safe e2e suite leaves unrouted, so a spec silently exercises real network instead of a contract | `grep -rn "page.route(/\\/api" frontend/e2e/support/auth-mocks.ts` vs the paths in `SecurityConfig`/`RateLimitFilter` | 1: `POST /api/me/verify-email/request` had no route in the shared helper — the resend was never covered by any e2e | **Fixed here.** The route now mirrors the real `200 {emailWithheld}` body. The other three recovery paths and `/api/me/password` were already routed; `/api/me/erasure` is routed by the erasure spec's own helper. No further gap found. |
 
 ---
 
@@ -463,7 +463,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **AC-5:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (5 tests)
 - [x] **AC-6:** `./gradlew test --tests "*EmailVerificationIT*"` → _pending_
 - [x] **AC-7:** `npm test` → PASS (901 tests); `npm run test:a11y` → PASS (290); `npm run lint` → PASS
-- [ ] **AC-8:** `npm run test:e2e:a11y` → _pending_
+- [x] **AC-8:** `npm run test:e2e:a11y` → PASS (90/90, incl. an axe audit of the withheld notice)
 - [x] **AC-9:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
 - [x] **AC-10:** `gradle test --tests "*MeSurfaceRoleGateTest*" --tests "*RateLimitFilterTest*"` → PASS
 

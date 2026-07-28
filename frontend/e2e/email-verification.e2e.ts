@@ -13,11 +13,13 @@ import { mockCustomerRecoveryApi } from './support/auth-mocks';
  */
 
 const VALID_TOKEN = 'valid-verify-token';
+const EMAIL = 'ana@example.com';
+const PASSWORD = 'password123';
 
 test('following the verification link verifies the email', async ({ page }) => {
   await mockCustomerRecoveryApi(page, {
-    email: 'ana@example.com',
-    initialPassword: 'password123',
+    email: EMAIL,
+    initialPassword: PASSWORD,
     validToken: VALID_TOKEN,
   });
 
@@ -26,10 +28,46 @@ test('following the verification link verifies the email', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'email verified page');
 });
 
+/**
+ * AC-8 (#400): the account page must not tell an unverified customer a mail is on its way when the
+ * do-not-email list withheld it. Both halves are asserted in one journey — the withheld copy appears
+ * AND the old unconditional claim is gone — because a caveat bolted onto "sent" would be the same lie.
+ */
+test('the resend says no email was sent when the address is suppressed', async ({ page }) => {
+  await mockCustomerRecoveryApi(page, {
+    email: EMAIL,
+    initialPassword: PASSWORD,
+    signedIn: true,
+    emailVerified: false,
+    verificationMailWithheld: true,
+  });
+
+  await page.goto('/account/password');
+  await page.getByTestId('setpw-resend').click();
+
+  await expect(page.getByTestId('setpw-notice')).toContainText("couldn't send");
+  await expect(page.getByTestId('setpw-notice')).not.toContainText('Verification email sent');
+  await expectNoSeriousAxeViolations(page, 'account page with a withheld verification email');
+});
+
+test('the resend keeps the sent copy for a deliverable address', async ({ page }) => {
+  await mockCustomerRecoveryApi(page, {
+    email: EMAIL,
+    initialPassword: PASSWORD,
+    signedIn: true,
+    emailVerified: false,
+  });
+
+  await page.goto('/account/password');
+  await page.getByTestId('setpw-resend').click();
+
+  await expect(page.getByTestId('setpw-notice')).toContainText('Verification email sent. Check your inbox.');
+});
+
 test('an invalid or missing verification link is a clear dead-end', async ({ page }) => {
   await mockCustomerRecoveryApi(page, {
-    email: 'ana@example.com',
-    initialPassword: 'password123',
+    email: EMAIL,
+    initialPassword: PASSWORD,
     validToken: VALID_TOKEN,
   });
 
