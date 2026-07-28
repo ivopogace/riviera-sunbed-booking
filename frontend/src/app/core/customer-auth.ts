@@ -48,6 +48,10 @@ export type SetPasswordResult =
   | 'error';
 /** How a self-service right-to-erasure ended (#101 [D5]). */
 export type EraseAccountResult = 'erased' | 'error';
+/** The verification-resend response body (#400): whether the do-not-email list withheld the message. */
+interface VerificationRequested {
+  readonly emailWithheld: boolean;
+}
 
 /** The stable machine-readable `code` on an RFC-7807 error body (the backend's error contract, #97). */
 function problemCode(error: unknown): string | undefined {
@@ -236,11 +240,20 @@ export class CustomerAuth extends SessionAuth {
     return 'erased';
   }
 
-  /** Re-request a verification email to the signed-in customer's own address (S8 #113). */
-  async requestVerification(): Promise<'sent' | 'error'> {
+  /**
+   * Re-request a verification email to the signed-in customer's own address (S8 #113).
+   *
+   * `'withheld'` means the backend accepted the request but the address is on the do-not-email list,
+   * so no message will leave (#400) — distinct from `'error'`, where the request itself failed and
+   * retrying may work. The distinction only exists on this authenticated endpoint; the anonymous
+   * forgot-password flow stays deliberately uninformative (D-8).
+   */
+  async requestVerification(): Promise<'sent' | 'withheld' | 'error'> {
     try {
-      await firstValueFrom(this.http.post<void>(`${ME_API}/verify-email/request`, null));
-      return 'sent';
+      const result = await firstValueFrom(
+        this.http.post<VerificationRequested>(`${ME_API}/verify-email/request`, null),
+      );
+      return result?.emailWithheld ? 'withheld' : 'sent';
     } catch {
       return 'error';
     }

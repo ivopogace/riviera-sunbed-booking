@@ -11,7 +11,7 @@ interface Overrides {
   readonly restoring?: boolean;
   readonly emailVerified?: boolean | undefined;
   readonly setPassword?: SetPasswordResult;
-  readonly requestVerification?: 'sent' | 'error';
+  readonly requestVerification?: 'sent' | 'withheld' | 'error';
   readonly eraseAccount?: EraseAccountResult;
 }
 
@@ -163,6 +163,30 @@ describe('SetPassword', () => {
 
     expect(auth.requestVerification).toHaveBeenCalled();
     expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
+  });
+
+  it('tells the customer when the verification email was withheld', async () => {
+    const auth = authStub({ emailVerified: false, requestVerification: 'withheld' });
+    const fixture = await render(auth);
+
+    click(fixture, 'setpw-resend');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The whole point of #400: the old copy must be gone, not merely accompanied by a caveat.
+    expect(text(fixture, 'setpw-notice')).not.toContain('Verification email sent');
+    expect(text(fixture, 'setpw-notice')).toContain("couldn't send");
+  });
+
+  it('keeps the sent copy for a deliverable address', async () => {
+    const auth = authStub({ emailVerified: false, requestVerification: 'sent' });
+    const fixture = await render(auth);
+
+    click(fixture, 'setpw-resend');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'setpw-notice')).toContain('Verification email sent. Check your inbox.');
   });
 
   it('shows the verified badge for a verified account (no nudge)', async () => {

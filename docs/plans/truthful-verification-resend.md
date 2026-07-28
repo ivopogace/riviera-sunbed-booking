@@ -95,7 +95,7 @@ stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote adde
       HMAC/**normalization** chain — the row is written in a differently-cased, space-padded form
       from the one the caller signs in with, so dropping `Emails.normalize` on either side fails it
       (the #390 G-4 lesson). *Pinned by:* `EmailVerificationIT.reportsWithheldForASuppressedAddress`
-- [ ] **AC-7:** Given `requestVerification()` resolves `'withheld'`, when the account page renders
+- [x] **AC-7:** Given `requestVerification()` resolves `'withheld'`, when the account page renders
       the resend notice, then it says no email was sent and **drops** "Verification email sent.
       Check your inbox."; given `'sent'` it renders today's string byte-for-byte.
       *Pinned by:* `set-password.spec.ts` ("tells the customer when the verification email was
@@ -232,7 +232,7 @@ payment-adjacent judgement, is explicitly out of scope; see Non-goals.)
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
 | FE-1 | `core/customer-auth.ts` | modified | `@Service` | `requestVerification()` widens to `'sent' \| 'withheld' \| 'error'` | none |
-| FE-2 | `auth/set-password.ts` | modified | standalone component | existing `notice` signal; the resend handler picks the copy | none |
+| FE-2 | `auth/set-password.ts` | modified | standalone component | existing `notice` signal; the resend handler indexes a `RESEND_NOTICES` lookup | none |
 
 **Standards:** standalone components, `inject()`, `@if`, signal APIs, no `changeDetection`/`standalone`
 declarations (v22 defaults). The notice reuses the page's existing `role="status"`
@@ -253,15 +253,15 @@ no new styled surface — hence no Tailwind/contrast work (`riviera-tailwind` co
 
 ## Execution status
 
-**Stage pointer:** `IMPLEMENT — phases 0-1 done`
+**Stage pointer:** `IMPLEMENT — phases 0-2 done`
 
-**Next action:** phase 2 — branch the resend copy in Angular.
+**Next action:** phase 3 — the Playwright e2e case.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `notification.api.MailDeliverability` + its implementation | ✅ | `a071ac6` |
-| 1 — the edge reports it (`CustomerRecovery` + `MyAccountController`, `204 → 200`) | ✅ | *(this commit)* |
-| 2 — Angular: branch the resend copy | | |
+| 1 — the edge reports it (`CustomerRecovery` + `MyAccountController`, `204 → 200`) | ✅ | `4b1c04a` |
+| 2 — Angular: branch the resend copy | ✅ | *(this commit)* |
 | 3 — Playwright e2e (mocked suite) | | |
 
 > **Phase-0 deviations from the plan as written.**
@@ -402,24 +402,24 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `core/customer-auth.ts`, `auth/set-password.ts` · Test `core/customer-auth.spec.ts`,
 `auth/set-password.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** (AC-7) — `customer-auth.spec.ts`: a `200 {emailWithheld:true}`
+- [x] **Step 1: Write the failing specs** (AC-7) — `customer-auth.spec.ts`: a `200 {emailWithheld:true}`
       resolves `'withheld'`, `false` resolves `'sent'`, a non-2xx resolves `'error'`.
       `set-password.spec.ts`: the withheld branch renders the new sentence in the existing
       `setpw-notice` region and the string "Verification email sent" is **absent**; the deliverable
       branch renders it unchanged.
 
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- customer-auth set-password` → FAIL
+- [x] **Step 2: Run them, verify they fail** — `npm test` → FAIL (2 tests: `expected 'sent' to be 'withheld'`)
 
-- [ ] **Step 3: Minimal implementation** — widen the service's return union and read the typed body;
+- [x] **Step 3: Minimal implementation** — widen the service's return union and read the typed body;
       branch the component's `notice` copy three ways. No template structure change beyond the string.
 
-- [ ] **Step 4: Run them, verify they pass** — `npm test` and `npm run test:a11y` → PASS
+- [x] **Step 4: Run them, verify they pass** — `npm test` (901) and `npm run test:a11y` (290) → PASS
 
-- [ ] **Step 5: Lint** — `npm run lint` → PASS
+- [x] **Step 5: Lint** — `npm run lint` → PASS
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#400): stop claiming a verification email was sent when it was withheld"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#400): stop claiming a verification email was sent when it was withheld"`
 
-- [ ] **Step 7: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update the plan-doc execution status** in the same commit window.
 
 ---
 
@@ -462,7 +462,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **AC-4:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (5 tests)
 - [x] **AC-5:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (5 tests)
 - [x] **AC-6:** `./gradlew test --tests "*EmailVerificationIT*"` → _pending_
-- [ ] **AC-7:** `npm test` → _pending_
+- [x] **AC-7:** `npm test` → PASS (901 tests); `npm run test:a11y` → PASS (290); `npm run lint` → PASS
 - [ ] **AC-8:** `npm run test:e2e:a11y` → _pending_
 - [x] **AC-9:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
 - [x] **AC-10:** `gradle test --tests "*MeSurfaceRoleGateTest*" --tests "*RateLimitFilterTest*"` → PASS

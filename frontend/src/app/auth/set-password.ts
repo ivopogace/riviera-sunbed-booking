@@ -11,6 +11,19 @@ import {
 import { CardGlass } from '../shared/card-glass';
 
 /**
+ * What the resend notice says for each outcome (#400). `withheld` is the reason this is a lookup and
+ * not a ternary: the address is on the do-not-email list, so the message never leaves — saying "sent"
+ * there was the defect. It names the consequence rather than the mechanism, and points at the one
+ * action that can help, since the customer cannot lift a suppression themselves (#391 is admin-only).
+ */
+const RESEND_NOTICES = {
+  sent: 'Verification email sent. Check your inbox.',
+  withheld:
+    "We couldn't send it — email to your address keeps failing, so we've stopped trying. Get in touch and we'll help you sort it out.",
+  error: 'Could not send the email. Please try again.',
+} as const;
+
+/**
  * The signed-in customer's account page (S8 #113): set or change a password, and see/resend email
  * verification. This closes the S4 F-1 gap — an account created via Google/Apple SSO (no local password)
  * sets its first password here (leaving the current-password field blank), while an account that already
@@ -242,10 +255,6 @@ export class SetPassword {
     this.resending.set(true);
     const result = await this.auth.requestVerification();
     this.resending.set(false);
-    this.notice.set(
-      result === 'sent'
-        ? 'Verification email sent. Check your inbox.'
-        : 'Could not send the email. Please try again.',
-    );
+    this.notice.set(RESEND_NOTICES[result]);
   }
 }
