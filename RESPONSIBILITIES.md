@@ -294,10 +294,16 @@ exception to never-deleted — and it is still not a deletion:** an ADMIN-gated
 `isSuppressed` reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at`
 and the prior `reason` so a reinstate→re-bounce loop stays visible; a later bounce clears the flag
 through the ordinary upsert. A hard `DELETE` on this table remains a defect. Publishes exactly one
-surface:
-`notification::api`'s fire-and-forget `MailSender` (never throws, runs off the caller's
-thread, suppression-enforced) — consumed by the composition root alone; **no module depends
-on `notification`**. Since #390 it also *implements* one port it does not own —
+named interface, `notification::api`, holding **two role-split ports**:
+the fire-and-forget `MailSender` (never throws, runs off the caller's thread,
+suppression-enforced) and, since #400, the synchronous read `MailDeliverability`
+("would a mail to this address be withheld right now?"). They are deliberately separate
+conversations — `MailSender`'s contract is that a send influences neither the triggering
+response's status nor its latency (D-8, #369), which the anonymous `forgot-password` flow
+depends on, so the one surface that *does* reflect the answer cannot ride it.
+`MailDeliverability` is safe only where the caller already owns the address: its sole consumer is
+the authenticated verification-resend, which asks about its own session principal. Both are
+consumed by the composition root alone; **no module depends on `notification`**. Since #390 it also *implements* one port it does not own —
 `booking.spi.ConfirmationMailDelivery`, answering "would this customer's confirmation mail be
 withheld?" so a confirmed booking's read model can tell the guest to save their code. That is the
 inverted direction and preserves the rule: the dependency edge is still `notification → booking`.

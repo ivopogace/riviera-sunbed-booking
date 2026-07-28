@@ -10,8 +10,10 @@
  * #391 that state has a lift: an ADMIN-gated reinstatement marks a row {@code reinstated_at} rather
  * than deleting it, so the invariant tracks the flag and the deliverability record still survives.
  *
- * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code api} publishes the one
- * fire-and-forget send port the edge flows call ({@code MailSender}); {@code application} holds the
+ * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code api} publishes two role-split
+ * ports the edge flows call — the fire-and-forget send port ({@code MailSender}) and, since #400, the
+ * synchronous {@code MailDeliverability} read that lets the authenticated verification-resend stop
+ * claiming a mail was sent when suppression withheld it; {@code application} holds the
  * chokepoint service, the internal transport/dispatch/suppression ports and the dispatcher;
  * {@code adapter/in} the {@code BookingConfirmed} listener (a driving adapter); {@code adapter/out}
  * the transports and the suppression repository. No {@code domain} — the module owns table-backed
