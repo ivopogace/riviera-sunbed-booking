@@ -44,7 +44,13 @@ posture, ADR-0006 booking-code URL as the durable record).
   no Lombok, typed outcome over exception.
 - `riviera-frontend` + `angular-developer` + angular-cli MCP — *(phase 2)* component placement
   and v22 signal APIs.
-- `riviera-tailwind` — *(phase 2)* styling call for the new notice element on two SCSS components.
+- `riviera-tailwind` — *(phase 2)* styling call for the new notice: **kept as SCSS**, deliberately.
+  Tailwind is the go-forward and SCSS is retiring, but both target components are grandfathered
+  fully-SCSS files, and a lone Tailwind island inside them would leave two styling systems in one
+  file for the `booking/` migration slice to untangle. The notice reuses the *existing* proven-AA
+  amber composite (`#fcf0d9` / `#8a5410`) already used by `.done-badge.warn` and `.form-error` — a
+  solid fill rather than a translucent tint, precisely so the contrast proof is exact rather than
+  surface-dependent. It migrates with the rest of the file when `booking/` is ported.
 - `playwright-cli` — *(phase 3)* e2e spec authored to best practice, in the CI-safe mocked suite.
 - `riviera-local-debug` — scoped test recipes for this cloud session.
 
@@ -233,18 +239,17 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Render the notice on both post-payment Angular surfaces — load `riviera-frontend`,
-`angular-developer` + the angular-cli MCP, and `riviera-tailwind` before editing anything under
-`frontend/src`.
+**Next action:** Author the mocked-suite Playwright spec (`frontend/e2e/suppressed-confirmation.e2e.ts`)
+— load `playwright-cli` first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `booking.spi` port + `notification` implementation | ✅ | `3d94528` |
-| 1 — carry `emailWithheld` on the booking read + create paths | ✅ | (this commit) |
-| 2 — Angular notice on both post-payment surfaces | ⏳ | |
-| 3 — Playwright e2e (mocked suite) | | |
+| 1 — carry `emailWithheld` on the booking read + create paths | ✅ | `e5ed88c` |
+| 2 — Angular notice on both post-payment surfaces | ✅ | (this commit) |
+| 3 — Playwright e2e (mocked suite) | ⏳ | |
 
 > **Phase-0 deviation from the plan as written:** the test needs no `NotificationAdapters` factory —
 > it lives in `notification.adapter.out`, the implementation's own package, so the package-private

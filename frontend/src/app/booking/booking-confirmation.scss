@@ -137,3 +137,20 @@ h1 {
   outline: 3px solid var(--riv-accent-ink);
   outline-offset: 2px;
 }
+
+/* #390: the confirmation mail was suppressed, so the code on screen is the guest's only record.
+   Solid composite of the design's translucent amber tint (matching .done-badge.warn) rather than an
+   alpha fill — it makes the AA proof in the contrast spec exact instead of surface-dependent. */
+.email-withheld {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fcf0d9;
+  color: #8a5410;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+}
+.email-withheld strong {
+  font-weight: 700;
+}

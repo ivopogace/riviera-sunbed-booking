@@ -32,6 +32,12 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
  * booking is confirmed only by the signature-verified webhook (invariant #8), **never** from the
  * Stripe.js result. Restyle only: the state machine, poll, and every `data-testid` are unchanged.
  *
+ * <p>When the confirming poll reports `emailWithheld` (#390 — the address is on the do-not-mail
+ * list, so the confirmation mail was suppressed), the done panel adds a save-your-code notice and
+ * the page's one persistent live region announces it. The notice deliberately gets no live region of
+ * its own: it is created together with the done panel, and a region only announces content that
+ * mutates after it is already in the DOM.
+ *
  * <p>States: `mounting` → `ready` (card form) → on pay: `error` (declined/failed — retry in place,
  * the element stays mounted, no polling) or `processing` (polling, "Confirming your booking…") →
  * `confirmed` (backend said so) or `awaiting` (webhook hasn't landed within ~30s — "payment
@@ -80,6 +86,14 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
           <span class="code-label">Booking code</span>
           <strong>{{ code }}</strong>
         </p>
+
+        @if (emailWithheld()) {
+          <p class="email-withheld" data-testid="email-withheld">
+            <strong>We couldn’t email you.</strong> We weren’t able to send a confirmation to
+            that address, so this code is your only record — save it or take a screenshot
+            before you leave this page.
+          </p>
+        }
 
         <a [routerLink]="['/booking', code]" class="btn-primary" data-testid="manage-link">
           View or manage this booking
@@ -186,6 +200,8 @@ export class BookingPay {
   /** A terminal failure (e.g. the payment was declined server-side and the booking cancelled):
    *  retrying the same PaymentIntent is futile, so the page offers "start over" instead of "Pay". */
   protected readonly terminalError = signal(false);
+  /** The confirmed booking's mail was suppressed (#390) — read from the poll, never assumed. */
+  protected readonly emailWithheld = signal(false);
 
   /** The awaiting-payment summary handed off by the 202 POST; absent on a cold load. */
   protected readonly booking = this.bookings.lastAwaitingPayment();
@@ -212,7 +228,9 @@ export class BookingPay {
       case 'processing':
         return 'Confirming your booking — please don’t close this page…';
       case 'confirmed':
-        return 'Your booking is confirmed.';
+        return this.emailWithheld()
+          ? 'Your booking is confirmed. We could not email you — save your booking code.'
+          : 'Your booking is confirmed.';
       case 'awaiting':
         return 'Payment received — awaiting confirmation.';
       default:
@@ -288,6 +306,8 @@ export class BookingPay {
       )
       .subscribe((detail) => {
         if (detail?.status === 'CONFIRMED') {
+          // Set before the state flip so the live region's first read already carries the notice.
+          this.emailWithheld.set(detail.emailWithheld);
           this.state.set('confirmed');
           this.pollSub?.unsubscribe();
         } else if (detail?.status === 'CANCELLED') {

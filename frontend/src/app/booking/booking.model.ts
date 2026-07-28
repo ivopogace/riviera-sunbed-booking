@@ -32,6 +32,8 @@ export interface BookingConfirmation {
   readonly positionNo: number;
   readonly bookingDate: string;
   readonly amount: MoneyView;
+  /** The confirmation email was suppressed (#390), so this code is the guest's only record. */
+  readonly emailWithheld: boolean;
 }
 
 /**
@@ -119,6 +121,11 @@ export interface BookingDetail {
   readonly requestExpiresAt: string | null;
   /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */
   readonly payment: BookingPayment | null;
+  /**
+   * The confirmation email was suppressed (#390). Only ever `true` for a `CONFIRMED` booking — the
+   * backend does not even ask the question before payment, so this can't be read as an oracle.
+   */
+  readonly emailWithheld: boolean;
 }
 
 /** The open PaymentIntent of an `AWAITING_PAYMENT` booking (issue #98 "Pay now" resume path). */

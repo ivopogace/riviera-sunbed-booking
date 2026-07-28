@@ -22,6 +22,7 @@ const DETAIL: BookingDetail = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  emailWithheld: false,
 };
 
 /** A found-by-code stub; `getByCode`/`primeDetail`/`takePrefetched` are spies for assertions. */

@@ -33,6 +33,7 @@ function detail(
     refundedAmount: null,
     requestExpiresAt: null,
     payment: null,
+    emailWithheld: false,
     ...extra,
   };
 }

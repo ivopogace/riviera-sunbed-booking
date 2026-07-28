@@ -21,6 +21,8 @@ const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 const CARD_INK_SOFT_ALPHA = 0.78;
 const ACCENT = '#085a6e'; // --riv-accent-ink (Paid, big code, link)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the "Back to the beach" button
+const WITHHELD_FILL = '#fcf0d9'; // .email-withheld solid amber box (#390; matches .done-badge.warn)
+const WITHHELD_INK = '#8a5410'; // .email-withheld ink
 
 interface Theme {
   readonly name: string;
@@ -33,6 +35,11 @@ const THEMES: readonly Theme[] = [
 ];
 
 describe('Confirmation card — theme-independent CTA (WCAG AA, issue #137)', () => {
+  it('the withheld-email notice meets AA on its solid amber fill (theme-independent, #390)', () => {
+    // Solid fill, not a translucent tint — so the pair is one fixed hex in both themes and static
+    // CSS analysis computes the real ratio (the .form-error / .done-badge.warn precedent).
+    expect(contrastRatio(WITHHELD_INK, WITHHELD_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
   it('the primary button (white) meets AA over both CTA-gradient stops', () => {
     for (const stop of CTA_STOPS) {
       expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);

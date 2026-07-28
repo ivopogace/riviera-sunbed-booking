@@ -23,6 +23,7 @@ const DETAIL: BookingDetail = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  emailWithheld: false,
 };
 
 const CANCELLATION: Cancellation = {
