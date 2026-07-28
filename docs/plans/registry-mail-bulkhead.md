@@ -241,15 +241,15 @@ loaded for that reason.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `RegistryMailExecutorConfigTest`, watch it fail, then add
-`RegistryMailExecutorConfig`.
+**Next action:** Phase 1 — write `RegistryMailBulkheadIT` (AC-1/3/5/7), watch it fail, then swap the
+listener's annotations.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the bounded executor + its saturation contract | ⏳ | |
-| 1 — decompose the listener onto it; registry durability + listener_id proven | | |
+| 0 — the bounded executor + its saturation contract | ✅ | see phase-0 commit |
+| 1 — decompose the listener onto it; registry durability + listener_id proven | ⏳ | |
 | 2 — the structural rule (AC-6) + substrate docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -354,6 +354,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | phase 0 (new pattern: a dedicated bounded executor for a listener doing blocking external I/O) | every async event listener, to see which others put a blocking round-trip on the shared `applicationTaskExecutor` | `rg '^\s*@(ApplicationModuleListener\|Async\|EventListener\|TransactionalEventListener)' platform/src/main/java` | 6: `payout` ×2 (`BookingConfirmed`/`BookingCancelled` accrual+reversal), `booking.PaymentEventListener` ×2, `booking.BookingRefundListener`, `notification.BookingConfirmationMailListener` | **Subset.** Only the mail listener moves (this slice). The four `payout`/`PaymentEventListener` methods are DB-only and *are* the spine — giving the spine a smaller pool than it has today would shed money-path work, which is strictly worse (Non-goals). **One genuine sibling found:** `BookingRefundListener` drives `payment`'s `RefundPort` — a blocking **Stripe HTTP** round-trip on the shared spine executor, the same hazard class as this issue with a different transport. Out of scope here (it is payment work, needs `riviera-stripe-payments`, and shedding a refund is not obviously right) → **raised as a follow-up issue at close-out**, not silently dropped |
 
 ---
 
