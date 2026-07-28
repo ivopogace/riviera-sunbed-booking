@@ -247,16 +247,18 @@ loaded for that reason.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR — awaiting CI, then the review + Sonar gates`
+**Stage pointer:** `PR #403 open — awaiting CI, then the review + Sonar gates`
 
-**Next action:** Open the PR into `main`, then run `/code-review` + `riviera-review-overlay` and pull
-the SonarCloud new-issue list. R-7 closes only on this push's CI run.
+**Next action:** Run `/code-review` + `riviera-review-overlay` on PR **#403**, then pull the SonarCloud
+new-issue list for PR 403 from the API (the bot comment is not the check). R-7 closes only on this
+push's CI run. **Merged via PR #403.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the bounded executor + its saturation contract | ✅ | `aaddc71` |
 | 1 — decompose the listener onto it; registry durability + listener_id proven | ✅ | `431caf3` |
-| 2 — the structural rule (AC-6) + substrate docs | ✅ | see phase-2 commit |
+| 2 — the structural rule (AC-6) + substrate docs | ✅ | `87c3bab` |
+| 3 — pre-merge docs-freshness + the coverage hole it found | ✅ | `884a8cd` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -266,6 +268,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | self, `riviera-docs-freshness` pre-merge smoke | **A real coverage hole the decomposition opened, found by the audit rather than by a red build.** `PublishedSurfacePlacementArchitectureTests` keyed its cross-module-listener rule on `@ApplicationModuleListener` alone, so rewriting the listener as `@Async` + `@TransactionalEventListener` quietly removed it from that rule — the check stopped applying and nothing went red (the rule's own vacuity guard stayed satisfied by the five money-path listeners). Broadened to match either spelling, with a new `BadDecomposedListener` fixture as the negative proof; `docs/adr/ADR-0007` and `riviera-modulith`'s SKILL.md restated to match. Re-entered at Implement per the re-entry rule (`riviera-modulith` — its own contract) | fixed-in-`884a8cd` |
 | Info-1 | self, phase 1 (red-stage verification) | The first draft of `RegistryMailBulkheadIT` went **green against the unfixed listener**: its wedging latch was a single `CountDownLatch` shared across tests, so once any `@AfterEach` released it the gate never blocked again — and the gate's own `await` timeout was shorter than the test's Awaitility budget, so even a fresh gate reopened mid-test. Both were fixed (a per-test gate + a backstop timeout that outlasts every wait) *before* the fix was written, which is the only reason the RED is trustworthy. Recorded because "the test failed" is not the same as "the test failed for the reason claimed" — the first run failed on the wrong assertion | fixed-in-phase-1 |
 
 ---
@@ -287,6 +290,12 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
   — **new.** Plain unit test (no Spring): bounds + shed-on-saturation (AC-2).
 - `platform/src/test/java/ai/riviera/platform/notification/RegistryMailBulkheadIT.java`
   — **new.** Testcontainers IT with a controllable `Mailer`: AC-1, AC-3, AC-5, AC-7.
+- `platform/src/test/java/ai/riviera/platform/PublishedSurfacePlacementArchitectureTests.java` +
+  `platform/src/test/java/ai/riviera/placementfixture/consumer/adapter/in/BadDecomposedListener.java`
+  — **modified / new (phase 3, finding F-1).** The cross-module-listener placement rule now matches
+  either spelling of a transactional event listener; the fixture is its negative proof.
+- `docs/adr/ADR-0007-package-structure.md`, `.claude/skills/riviera-modulith/SKILL.md`
+  — **modified (phase 3).** Both state that rule in prose and both said `@ApplicationModuleListener`.
 - `platform/src/test/java/ai/riviera/platform/notification/adapter/in/MailListenerExecutorArchitectureTest.java`
   — **new.** The fitness function for AC-6. Placed in the module rather than with the root arch tests,
   following `payment`'s `NoStripeConnectArchitectureTest` precedent: it needs the package-private
@@ -302,58 +311,90 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 **Files:** Create `notification/adapter/in/RegistryMailExecutorConfig.java` · Test
 `notification/adapter/in/RegistryMailExecutorConfigTest.java`
 
-- [ ] **Step 1: Write the failing test** — assert the pool is bounded (core, max, queue) and that
+- [x] **Step 1: Write the failing test** — assert the pool is bounded (core, max, queue) and that
   submitting past capacity neither throws nor runs on the caller's thread.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `gradle --no-daemon --console=plain test --tests "*RegistryMailExecutorConfigTest*"` → FAIL
   (compilation: `RegistryMailExecutorConfig` does not exist).
-- [ ] **Step 3: Minimal implementation** — the `@Configuration` + `@Bean`, with a rejection handler
+- [x] **Step 3: Minimal implementation** — the `@Configuration` + `@Bean`, with a rejection handler
   that logs and discards.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search for other unqualified `@Async` / bare
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — search for other unqualified `@Async` / bare
   `@ApplicationModuleListener` sites and decide which are in scope (expected: the money-path listeners
   are deliberately out — see Non-goals).
-- [ ] **Step 6: Commit** — `git commit -m "feat(#383): add a bounded executor for registry-borne mail"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "feat(#383): add a bounded executor for registry-borne mail"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Decompose the listener onto it; prove the registry intact
 
 **Files:** Modify `notification/adapter/in/BookingConfirmationMailListener.java` · Test
 `notification/RegistryMailBulkheadIT.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1 (wedged mail vs. the spine), AC-3 (failure leaves the
+- [x] **Step 1: Write the failing tests** — AC-1 (wedged mail vs. the spine), AC-3 (failure leaves the
   publication outstanding and is retried), AC-5 (`listener_id` unchanged), AC-7 (no transaction held
   around the send).
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
   `gradle --no-daemon --console=plain test --tests "*RegistryMailBulkheadIT*"` → FAIL (AC-1 times out:
   mail is on the shared executor; AC-7 fails: a transaction is active).
-- [ ] **Step 3: Minimal implementation** — swap the annotations on the listener.
-- [ ] **Step 4: Run them, verify they pass** — the same command, then the regression scope that
+- [x] **Step 3: Minimal implementation** — swap the annotations on the listener.
+- [x] **Step 4: Run them, verify they pass** — the same command, then the regression scope that
   guards R-1/R-2:
   `gradle --no-daemon --console=plain test --tests "*BookingConfirmationMailIT*" --tests "*EventRegistryDurabilityIT*" --tests "*ListenerMoveMigrationIT*" --tests "*PayoutAccrualIT*"`
   → PASS **unmodified** (that they are unmodified is the point: they are the #371 durability contract).
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** —
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** —
   `git commit -m "fix(#383): run booking-confirmation mail on its own bounded executor"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Make the rule structural, and reconcile the substrate
 
 **Files:** Create `MailListenerExecutorArchitectureTests.java` · Modify `AsyncMailDispatcher.java`
 (Javadoc) · Modify `RESPONSIBILITIES.md`, `CLAUDE.md`
 
-- [ ] **Step 1: Write the failing test** — every `@TransactionalEventListener` method in the
+- [x] **Step 1: Write the failing test** — every `@TransactionalEventListener` method in the
   `notification` module must carry `@Async` naming the mail executor; prove it is not vacuously green
   (it must actually find the listener).
-- [ ] **Step 2: Run it, verify it fails** — temporarily revert the listener to
+- [x] **Step 2: Run it, verify it fails** — temporarily revert the listener to
   `@ApplicationModuleListener` → FAIL; restore.
-- [ ] **Step 3: Implementation** — the rule, plus the Javadoc and substrate-doc updates.
-- [ ] **Step 4: Run the structural net** —
+- [x] **Step 3: Implementation** — the rule, plus the Javadoc and substrate-doc updates.
+- [x] **Step 4: Run the structural net** —
   `gradle --no-daemon --console=plain test --tests "*MailListenerExecutorArchitectureTests*" --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*CompositionRootDisciplineTests*"`
   → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "test(#383): pin that every notification mail listener names its executor"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "test(#383): pin that every notification mail listener names its executor"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
+
+---
+
+## Phase 3 — Pre-merge docs-freshness, and the hole it found
+
+**Files:** Modify `PublishedSurfacePlacementArchitectureTests.java`, `ADR-0007`, `riviera-modulith/SKILL.md`,
+`CLAUDE.md`, `RESPONSIBILITIES.md` · Create `placementfixture/.../BadDecomposedListener.java`
+
+- [x] **Step 1: Run the audit** — `riviera-docs-freshness` over `origin/main...HEAD`. Grepping the
+  substrate for the old fact (`@ApplicationModuleListener`) hit three present-tense statements of the
+  placement rule — one of which turned out to be a live test hole, not merely stale prose.
+- [x] **Step 2: Write the failing test** — the `BadDecomposedListener` fixture +
+  `eventListenedFromOutsideEventsSurfaceIsRejectedForADecomposedListenerToo` → FAIL.
+- [x] **Step 3: Close the hole** — the rule matches `@ApplicationModuleListener` **or**
+  `@TransactionalEventListener` (direct or meta); the ADR and skill restate it accordingly.
+- [x] **Step 4: Re-run** the full architecture set + the slice's own tests → PASS.
+- [x] **Step 5: Commit** (`884a8cd`) and finalize this document.
+
+**Freshness report** (range `origin/main...HEAD`) — 5 findings, all patched, none needing a human decision:
+
+| Doc | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `PublishedSurfacePlacementArchitectureTests` | the cross-module listener rule keys on `@ApplicationModuleListener` | the decomposed listener falls outside it | **patched** (F-1) |
+| `docs/adr/ADR-0007` §Enforcement (C1) | "every cross-module `@ApplicationModuleListener` parameter type lives in its owner's `events` surface" | same | patched |
+| `.claude/skills/riviera-modulith/SKILL.md` | the same sentence, published-surface section | same | patched |
+| `CLAUDE.md` module table, `notification` row | said nothing about which executor a vehicle drains on | #383 | patched |
+| `RESPONSIBILITIES.md` `notification` **Job** | same | #383 | patched |
+
+Deliberately **not** patched: `riviera-modulith/SKILL.md`'s `adapter/in` tree comment and its
+"`@RestController` and `@ApplicationModuleListener` are both driving adapters" line, and
+`references/events.md`'s listener guidance — all still true. `@ApplicationModuleListener` remains the
+default for the five money-path listeners; #383 is a mail-only exception, not a repo-wide replacement.
 
 ---
 
@@ -363,6 +404,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | phase 3 (bug fix: F-1) | other fitness functions keying on `@ApplicationModuleListener`, which the decomposition would have exempted the same way | `grep -rn ApplicationModuleListener platform/src/test .claude/skills docs/adr` | 1 test (`PublishedSurfacePlacementArchitectureTests`) + 2 prose statements; `MailListenerExecutorArchitectureTest` already matches merged annotations, and `ModularityTests` keys on package dependencies, not annotations | **Fix all three.** No other rule keys on the annotation |
 | 2026-07-28 | phase 2 (rule introduced) | listeners in `notification` that would silently land on the shared executor — including ones not yet written (#373, #374) | `MailListenerExecutorArchitectureTest` (a standing rule, not a one-off search) | 1 today; the rule covers every future one | **Fix all, by construction.** Proven non-vacuous by reverting the listener to `@ApplicationModuleListener` and watching it fail |
 | 2026-07-28 | phase 0 (new pattern: a dedicated bounded executor for a listener doing blocking external I/O) | every async event listener, to see which others put a blocking round-trip on the shared `applicationTaskExecutor` | `rg '^\s*@(ApplicationModuleListener\|Async\|EventListener\|TransactionalEventListener)' platform/src/main/java` | 6: `payout` ×2 (`BookingConfirmed`/`BookingCancelled` accrual+reversal), `booking.PaymentEventListener` ×2, `booking.BookingRefundListener`, `notification.BookingConfirmationMailListener` | **Subset.** Only the mail listener moves (this slice). The four `payout`/`PaymentEventListener` methods are DB-only and *are* the spine — giving the spine a smaller pool than it has today would shed money-path work, which is strictly worse (Non-goals). **One genuine sibling found:** `BookingRefundListener` drives `payment`'s `RefundPort` — a blocking **Stripe HTTP** round-trip on the shared spine executor, the same hazard class as this issue with a different transport. Out of scope here (it is payment work, needs `riviera-stripe-payments`, and shedding a refund is not obviously right) → **raised as a follow-up issue at close-out**, not silently dropped |
 
@@ -392,6 +434,8 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 - [x] No Flyway migration needed — and that claim is pinned by AC-5, not asserted (invariant #12).
 - [x] **Frontend** N/A.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Risk register: R-1…R-6 closed with outcomes; **R-7 stays open by design** until this push's CI
+      run — it is the full-suite-only failure class scoped runs cannot show. Open Questions empty.
+- [x] **Close-out written in THIS PR** — this document's final state is committed here, citing
+      `merged via PR #403`, so no docs-only follow-up PR is needed.
 - [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
