@@ -249,7 +249,7 @@ then open the PR and run `/code-review`.
 | 0 — `booking.spi` port + `notification` implementation | ✅ | `3d94528` |
 | 1 — carry `emailWithheld` on the booking read + create paths | ✅ | `e5ed88c` |
 | 2 — Angular notice on both post-payment surfaces | ✅ | `bb25832` |
-| 3 — Playwright e2e (mocked suite) | ✅ | (this commit) |
+| 3 — Playwright e2e (mocked suite) | ✅ | `7a18073` |
 
 > **Phase-0 deviation from the plan as written:** the test needs no `NotificationAdapters` factory —
 > it lives in `notification.adapter.out`, the implementation's own package, so the package-private
