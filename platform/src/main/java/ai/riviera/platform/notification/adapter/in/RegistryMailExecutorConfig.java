@@ -19,7 +19,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * {@link ai.riviera.platform.notification.application.AsyncMailDispatcher} to prevent exactly that
  * for recovery mail and said so in its own Javadoc; #371 then put a higher-volume send back on the
  * shared pool. This is the missing half of that decision, and
- * {@code MailListenerExecutorArchitectureTests} keeps it from going missing again.
+ * {@code MailListenerExecutorArchitectureTest} keeps it from going missing again.
  *
  * <p><strong>Bounded on every axis, and the saturation behaviour is a contract, not an accident.</strong>
  * Core equals max deliberately: a {@code ThreadPoolExecutor} grows past its core size only once the
@@ -39,6 +39,16 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * {@code riviera.outbox.pending} non-zero, which {@code MoneyPathAlertCheck} already watches. The two
  * pools stay separate on purpose: the recovery vehicle carries a bearer credential the registry may
  * not persist (ADR-0011 decision 5), so it has nothing to be retried from and <em>must</em> drop.
+ *
+ * <p><strong>{@code defaultCandidate = false} is load-bearing — do not "tidy" it away.</strong> Boot
+ * declares {@code applicationTaskExecutor} {@code @ConditionalOnMissingBean(Executor.class)}, so
+ * merely <em>defining</em> a second {@link java.util.concurrent.Executor} bean makes Boot skip the
+ * shared pool entirely. Unqualified {@code @Async} — every money-path listener — then falls through
+ * to an unbounded {@code SimpleAsyncTaskExecutor}, one new thread per event: this bulkhead would have
+ * removed a bound from the exact path it exists to protect, and no test would have failed, because
+ * unbounded threads always keep up. Excluding this bean from by-type resolution keeps Boot's
+ * condition unmet while leaving it addressable by name, which is all {@code @Async} needs.
+ * {@code RegistryMailExecutorWiringIT} pins both halves.
  */
 @Configuration
 class RegistryMailExecutorConfig {
@@ -59,7 +69,7 @@ class RegistryMailExecutorConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(RegistryMailExecutorConfig.class);
 
-	@Bean(MAIL_EXECUTOR)
+	@Bean(name = MAIL_EXECUTOR, defaultCandidate = false)
 	ThreadPoolTaskExecutor registryMailExecutor() {
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
 		pool.setCorePoolSize(POOL_SIZE);

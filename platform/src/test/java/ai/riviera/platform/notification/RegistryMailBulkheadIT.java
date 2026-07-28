@@ -97,6 +97,11 @@ class RegistryMailBulkheadIT {
 	private static final String LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
 
+	/** Improbable enough to identify one test's publication in a database several IT classes write to. */
+	private static final long RETRY_AMOUNT_MINOR = 383_000_601L;
+
+	private static final long LISTENER_ID_AMOUNT_MINOR = 383_000_602L;
+
 	@TestConfiguration(proxyBeanMethods = false)
 	static class ControllableMailerConfiguration {
 
@@ -265,13 +270,21 @@ class RegistryMailBulkheadIT {
 				.param("id", bookingId).query(Long.class).single();
 	}
 
-	private long outstandingMailPublications(long bookingId) {
+	/**
+	 * Publications of <em>one test's</em> event, keyed on its deliberately-improbable amount rather than
+	 * on the booking id — the lesson {@code EventRegistryDurabilityIT} already paid for. A
+	 * {@code BookingConfirmed} payload carries {@code bookingId}, {@code venueId} and {@code setId} as
+	 * identically-shaped {@code {"value":n}} records, so matching a bare {@code "value":<id>} also matches
+	 * another test's row whose venue or set happens to share the number — and ids here are small integers
+	 * in a container several IT classes write to.
+	 */
+	private long outstandingMailPublications(long amountMinor) {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND serialized_event LIKE :booking
+				  AND serialized_event LIKE :amountFragment
 				""")
-				.param("listener", LISTENER_ID).param("booking", "%\"value\":" + bookingId + "%")
+				.param("listener", LISTENER_ID).param("amountFragment", "%" + amountMinor + "%")
 				.query(Long.class).single();
 	}
 
@@ -322,15 +335,15 @@ class RegistryMailBulkheadIT {
 		SetRef set = onlineSet();
 		LocalDate date = LocalDate.of(2031, 5, 3);
 		String contact = "retry-me@example.com";
-		long bookingId = seedBooking(set, "RETRYME1", date, contact, 2600L, "CONFIRMED");
+		long bookingId = seedBooking(set, "RETRYME1", date, contact, RETRY_AMOUNT_MINOR, "CONFIRMED");
 
 		transport.failEverySend(true);
-		publishInTransaction(confirmationOf(set, bookingId, date, 2600L));
+		publishInTransaction(confirmationOf(set, bookingId, date, RETRY_AMOUNT_MINOR));
 
 		Awaitility.await("the failing send was attempted").atMost(WAIT)
 				.until(() -> transport.attemptsMatching(contact) >= 1);
 		Awaitility.await("the publication is still outstanding, so a restart would retry it").atMost(WAIT)
-				.until(() -> outstandingMailPublications(bookingId) == 1L);
+				.until(() -> outstandingMailPublications(RETRY_AMOUNT_MINOR) == 1L);
 
 		transport.failEverySend(false);
 		incompletePublications.resubmitIncompletePublications(publication ->
@@ -340,7 +353,7 @@ class RegistryMailBulkheadIT {
 		Awaitility.await("the retry delivered").atMost(WAIT)
 				.until(() -> transport.deliveriesMatching(contact) == 1L);
 		Awaitility.await("and the publication is now complete").atMost(WAIT)
-				.until(() -> outstandingMailPublications(bookingId) == 0L);
+				.until(() -> outstandingMailPublications(RETRY_AMOUNT_MINOR) == 0L);
 	}
 
 	/**
@@ -352,17 +365,18 @@ class RegistryMailBulkheadIT {
 	void keepsTheListenerIdV31Migrated() {
 		SetRef set = onlineSet();
 		LocalDate date = LocalDate.of(2031, 6, 4);
-		long bookingId = seedBooking(set, "LSTNRID1", date, "listener-id@example.com", 2700L, "CONFIRMED");
+		long bookingId = seedBooking(set, "LSTNRID1", date, "listener-id@example.com", LISTENER_ID_AMOUNT_MINOR,
+				"CONFIRMED");
 
 		transport.failEverySend(true);
-		publishInTransaction(confirmationOf(set, bookingId, date, 2700L));
+		publishInTransaction(confirmationOf(set, bookingId, date, LISTENER_ID_AMOUNT_MINOR));
 
 		Awaitility.await("an outstanding row exists under the migrated listener id").atMost(WAIT)
-				.until(() -> outstandingMailPublications(bookingId) == 1L);
+				.until(() -> outstandingMailPublications(LISTENER_ID_AMOUNT_MINOR) == 1L);
 
 		List<String> ids = jdbc.sql("SELECT listener_id FROM event_publication "
-						+ "WHERE completion_date IS NULL AND serialized_event LIKE :booking")
-				.param("booking", "%\"value\":" + bookingId + "%")
+						+ "WHERE completion_date IS NULL AND serialized_event LIKE :amountFragment")
+				.param("amountFragment", "%" + LISTENER_ID_AMOUNT_MINOR + "%")
 				.query(String.class).list();
 		assertThat(ids)
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding row")
