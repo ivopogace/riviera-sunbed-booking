@@ -48,6 +48,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_AMOUNT_MINOR = "amount_minor";
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
 	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
+	private static final String COL_CUSTOMER_ID = "customer_id";
 
 	private final JdbcClient jdbc;
 
@@ -217,7 +218,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.PendingRequestRow(
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong("customer_id")),
+						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 						rs.getTimestamp("created_at").toInstant(),
 						rs.getTimestamp(COL_REQUEST_EXPIRES_AT).toInstant()))
@@ -227,7 +228,7 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
-				SELECT id, code, status, venue_id, set_id, booking_date,
+				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
 				FROM booking
 				WHERE code = :code
@@ -244,7 +245,7 @@ class JdbcBookings implements Bookings {
 		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
 		// uniformly; a guest booking (NULL account_id) can never match.
 		return jdbc.sql("""
-				SELECT id, code, status, venue_id, set_id, booking_date,
+				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
 				FROM booking
 				WHERE account_id = :account
@@ -264,6 +265,7 @@ class JdbcBookings implements Bookings {
 				rs.getLong("id"), rs.getString("code"),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 				new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
+				new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 				rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,

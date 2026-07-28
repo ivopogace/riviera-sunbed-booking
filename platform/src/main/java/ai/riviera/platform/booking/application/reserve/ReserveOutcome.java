@@ -17,9 +17,12 @@ sealed interface ReserveOutcome {
 	/**
 	 * The set was claimed (invariant #2) and the booking row inserted ({@code AWAITING_PAYMENT}),
 	 * committed together. Carries the technical id + code and the {@link SetBookingInfo} the collect
-	 * phase needs to build the {@code Money} and the confirmation view.
+	 * phase needs to build the {@code Money} and the confirmation view, plus the {@code customerId}
+	 * the instant-confirm branch asks about the confirmation mail's deliverability (#390) — an id, so
+	 * this module still never handles the guest's address.
 	 */
-	record Reserved(long bookingId, String code, SetBookingInfo set) implements ReserveOutcome {
+	record Reserved(long bookingId, String code, SetBookingInfo set,
+			ai.riviera.platform.customer.vocabulary.CustomerId customerId) implements ReserveOutcome {
 	}
 
 	/**

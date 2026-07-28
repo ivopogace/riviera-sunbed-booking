@@ -52,6 +52,7 @@ class CreateBookingServiceTest {
 			Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 
 	private final RecordingBookings bookings = new RecordingBookings();
+	private final RecordingMailDelivery confirmationMail = new RecordingMailDelivery();
 	private final RecordingConfirm confirmer = new RecordingConfirm();
 	private final RecordingRelease release = new RecordingRelease();
 
@@ -73,7 +74,8 @@ class CreateBookingServiceTest {
 		CustomerDirectory customers = _ -> new CustomerId(99);
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
 				codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
-		return new CreateBookingService(reservation, checkout, confirmer, release, CLOCK);
+		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
+				CLOCK);
 	}
 
 	private CreateBookingCommand command() {
@@ -113,6 +115,69 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void flagsWithheldConfirmationMailOnInstantConfirm() {
+		// #390: the instant-confirm response is built before the after-commit mail listener runs, so
+		// the flag can only come from asking whether the mail WOULD be withheld — never from the send.
+		confirmationMail.withheld = true;
+		CreateBookingService service = service(set("ONLINE"),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				() -> "CODE123456");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
+		assertTrue(confirmed.confirmation().emailWithheld(), "the guest is told no email is coming");
+		assertEquals(List.of(new CustomerId(99)), confirmationMail.asked, "asked about that guest");
+	}
+
+	@Test
+	void reportsADeliverableConfirmationMailAsNotWithheld() {
+		CreateBookingService service = service(set("ONLINE"),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				() -> "CODE123456");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
+		assertFalse(confirmed.confirmation().emailWithheld());
+	}
+
+	@Test
+	void neverAsksAboutTheConfirmationMailBeforePayment() {
+		// The 202 hands the code out BEFORE the card is collected, so asking here would leak
+		// suppression status for any address a checkout can be started with (D-8, #390 constraint 1).
+		confirmationMail.withheld = true;
+		CreateBookingService service = service(set("ONLINE"),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Pending("cs_test", "pi_test"),
+				() -> "CODE123456");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.AwaitingPayment awaiting =
+				assertInstanceOf(BookingOutcome.AwaitingPayment.class, outcome);
+		assertFalse(awaiting.confirmation().emailWithheld());
+		assertTrue(confirmationMail.asked.isEmpty(), "no suppression oracle before payment");
+	}
+
+	@Test
+	void neverAsksAboutTheConfirmationMailForAPendingRequest() {
+		confirmationMail.withheld = true;
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				() -> "CODE123456");
+
+		BookingOutcome outcome = service.create(command());
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertFalse(requested.confirmation().emailWithheld());
+		assertTrue(confirmationMail.asked.isEmpty(), "no suppression oracle before payment");
+	}
+
+	@Test
 	void regeneratesCodeOnCollisionAndConfirms() {
 		// First insert "collides" (empty), second succeeds — the booking must still confirm with
 		// the second code (proves the ON CONFLICT retry actually recovers).
@@ -134,7 +199,8 @@ class CreateBookingServiceTest {
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
 				customers, collidingOnce, codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, CLOCK);
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
+				CLOCK);
 
 		BookingOutcome outcome = service.create(command());
 
@@ -206,7 +272,8 @@ class CreateBookingServiceTest {
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
 				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release, CLOCK);
+				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
+				confirmationMail, CLOCK);
 
 		assertThrows(IllegalStateException.class, () -> service.create(command()));
 		assertEquals(1, release.released.size(),
@@ -499,6 +566,23 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 			return Optional.ofNullable(info);
+		}
+	}
+
+	/**
+	 * A {@code ConfirmationMailDelivery} fake that records who was asked (#390) — so the confirmed
+	 * branch can be shown to carry the answer, and the pre-payment branches to never ask at all.
+	 */
+	private static final class RecordingMailDelivery
+			implements ai.riviera.platform.booking.spi.ConfirmationMailDelivery {
+
+		private final List<CustomerId> asked = new ArrayList<>();
+		private boolean withheld;
+
+		@Override
+		public boolean isWithheld(CustomerId customerId) {
+			asked.add(customerId);
+			return withheld;
 		}
 	}
 }

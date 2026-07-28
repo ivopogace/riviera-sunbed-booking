@@ -109,7 +109,7 @@ class ReserveSetService {
 		}
 		Inserted inserted = insertWithUniqueCode(set, customerId, command,
 				bookings::insertAwaitingPayment);
-		return new ReserveOutcome.Reserved(inserted.id(), inserted.code(), set);
+		return new ReserveOutcome.Reserved(inserted.id(), inserted.code(), set, customerId);
 	}
 
 	private static Instant min(Instant a, Instant b) {

@@ -25,12 +25,15 @@ class ViewBookingService implements ViewBooking {
 	private final Bookings bookings;
 	private final CancellationPolicy cancellationPolicy;
 	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
+	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
-			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout) {
+			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
+			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.checkout = checkout;
+		this.confirmationMail = confirmationMail;
 	}
 
 	@Override
@@ -41,7 +44,10 @@ class ViewBookingService implements ViewBooking {
 	private BookingDetail toDetail(BookingRecord b) {
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
-		boolean cancellable = b.status() == BookingStatus.CONFIRMED;
+		boolean confirmed = b.status() == BookingStatus.CONFIRMED;
+		// Short-circuit, not a filter on the answer: asking before confirmation would make this
+		// code-gated view a suppression oracle for any address a checkout can be started with (#390).
+		boolean emailWithheld = confirmed && confirmationMail.isWithheld(b.customerId());
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
@@ -54,7 +60,7 @@ class ViewBookingService implements ViewBooking {
 						: null;
 		return new BookingDetail(b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(),
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
-				cancellable, quote.beforeCutoff(), new MoneyView(quote.refundMinor(), b.currency()),
-				refunded, b.requestExpiresAt(), payment);
+				confirmed, quote.beforeCutoff(), new MoneyView(quote.refundMinor(), b.currency()),
+				refunded, b.requestExpiresAt(), payment, emailWithheld);
 	}
 }

@@ -233,16 +233,17 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Thread `emailWithheld` through the booking read + create paths — `BookingRecord`
-gains `customerId`, `ViewBookingService` computes the flag for `CONFIRMED` only.
+**Next action:** Render the notice on both post-payment Angular surfaces — load `riviera-frontend`,
+`angular-developer` + the angular-cli MCP, and `riviera-tailwind` before editing anything under
+`frontend/src`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `booking.spi` port + `notification` implementation | ✅ | `9cd1f7b` |
-| 1 — carry `emailWithheld` on the booking read + create paths | ⏳ | |
-| 2 — Angular notice on both post-payment surfaces | | |
+| 0 — `booking.spi` port + `notification` implementation | ✅ | `3d94528` |
+| 1 — carry `emailWithheld` on the booking read + create paths | ✅ | (this commit) |
+| 2 — Angular notice on both post-payment surfaces | ⏳ | |
 | 3 — Playwright e2e (mocked suite) | | |
 
 > **Phase-0 deviation from the plan as written:** the test needs no `NotificationAdapters` factory —
