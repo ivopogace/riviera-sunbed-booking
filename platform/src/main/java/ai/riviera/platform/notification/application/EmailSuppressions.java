@@ -38,6 +38,16 @@ public interface EmailSuppressions {
 	 * this one path. A value with no {@code local@domain} shape is rejected with
 	 * {@link IllegalArgumentException} — entries are never deleted, so a junk write would persist
 	 * forever.
+	 *
+	 * <p><strong>It has no caller yet, and that is load-bearing for a security residual.</strong> The
+	 * bounce/complaint feed (#372) will be the first; until then this list is empty in every
+	 * environment, so every {@link #isSuppressed} answer is {@code false} and #390's {@code
+	 * emailWithheld} on the code-gated booking read is a constant rather than a per-address fact.
+	 * Giving this method its first caller therefore turns that flag into a real (if expensive)
+	 * suppression oracle — the probe #400 item 2 assessed and deferred here. Read the disposition in
+	 * {@code docs/plans/suppressed-confirmation-mail-notice.md} (<em>Residual G-3</em>) before
+	 * shipping #372: it records why a dedicated rate-limit budget would not bind and why the
+	 * "hand-off only" alternative does not exist under the {@code stripe} profile.
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 
