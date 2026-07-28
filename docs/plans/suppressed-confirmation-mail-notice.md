@@ -127,13 +127,13 @@ literal `feature/*` branch is deliberately not created.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Pre-payment suppression oracle** — an attacker creates a booking for an arbitrary address, gets the code in the `202` body before paying, and reads suppression from `GET /api/bookings/{code}` (breaks D-8 non-enumeration) | med | high | The flag is computed **only** when `status == CONFIRMED`; the port is not called otherwise, and `AwaitingPaymentView`/`RequestedView` gain no field. Pinned by **AC-3** | agent | open |
-| R-2 | A suppression-lookup failure turns the confirmation read into a `500`, breaking the page that carries the booking code | low | high | `notification`'s implementation catches and reports "not withheld"; the notice degrades, the code always renders. Pinned by **AC-6** | agent | open |
-| R-3 | **Module cycle** `booking ↔ notification` | low | high | The port lives in `booking.spi` and is *implemented* by `notification`; `booking`'s `allowedDependencies` are unchanged. Pinned by **AC-10** | agent | open |
-| R-4 | Extra DB round-trip on every confirmed booking read — `booking-pay` polls `GET /api/bookings/{code}` every 1.5 s | med | low | Polling stops the moment it sees `CONFIRMED`, so at most one or two lookups per booking; the read is a PK-shaped hit on `email_suppression` bounded by the adapter's own `queryTimeout` (#386) — never the global property, which would also bound `availability`'s `SELECT … FOR UPDATE` (invariant #2) | agent | open |
-| R-5 | Guest **PII leaking** into the booking module or the response | low | med | The port speaks `CustomerId` and returns a `boolean`; `booking` never handles an address, the wire carries no address, and no log line names one (the module's existing PII posture) | agent | open |
-| R-6 | Adding a required field to the FE `BookingDetail` type breaks existing spec fixtures | high | low | Mechanical: update fixtures in the same phase; `npm test` is the gate. A required boolean is the project convention (cf. `requestExpiresAt`, #98) — no optional-field weakening of the contract | agent | open |
-| R-7 | The error contract of the touched endpoints drifts to a per-controller body | low | med | No new error path is added; `BookingController` keeps its centralized `ApiProblem`/`ProblemDetail` mapping (`riviera-java-conventions` §6b) | agent | open |
+| R-1 | **Pre-payment suppression oracle** — an attacker creates a booking for an arbitrary address, gets the code in the `202` body before paying, and reads suppression from `GET /api/bookings/{code}` (breaks D-8 non-enumeration) | med | high | Two gates, because the review proved one was not enough. (a) The flag is computed **only** when `status == CONFIRMED` — its own named predicate, never `cancellable` (F-4); `AwaitingPaymentView`/`RequestedView` gain no field. (b) The answering adapter is `@Profile("stripe")`: without a real gateway the stub returns `Succeeded` synchronously, so `CONFIRMED` is **not** proof of payment and `NonDisclosingConfirmationMailDelivery` answers `false` instead (F-1). Pinned by **AC-3**, `ConfirmationMailDeliveryProfileWiringTest`, `BookingViewSuppressionIT` | agent | **closed** — both gates shipped and pinned |
+| R-2 | A suppression-lookup failure turns the confirmation read into a `500`, breaking the page that carries the booking code | low | high | The implementation is an explicit fault barrier over `RuntimeException` (widened from `DataAccessException` at review — F-2 found non-DAE throwers reaching a post-payment caller). Pinned by **AC-6** | agent | **closed** |
+| R-3 | **Module cycle** `booking ↔ notification` | low | high | The port lives in `booking.spi` and is *implemented* by `notification`; `booking`'s `allowedDependencies` are unchanged. Pinned by **AC-10** | agent | **closed** — structural net green |
+| R-4 | Extra DB round-trip on every confirmed booking read — `booking-pay` polls `GET /api/bookings/{code}` every 1.5 s | med | low | Polling stops the moment it sees `CONFIRMED`, so at most one or two lookups per booking; the read is a PK-shaped hit on `email_suppression` bounded by the adapter's own `queryTimeout` (#386) — never the global property, which would also bound `availability`'s `SELECT … FOR UPDATE` (invariant #2) | agent | **closed** — accepted and documented on both callers (F-5) |
+| R-5 | Guest **PII leaking** into the booking module or the response | low | med | The port speaks `CustomerId` and returns a `boolean`; `booking` never handles an address, the wire carries no address, and no log line names one (the module's existing PII posture) | agent | **closed** — the port speaks `CustomerId` and returns a boolean; no address reaches `booking` or the wire |
+| R-6 | Adding a required field to the FE `BookingDetail` type breaks existing spec fixtures | high | low | Mechanical: update fixtures in the same phase; `npm test` is the gate. A required boolean is the project convention (cf. `requestExpiresAt`, #98) — no optional-field weakening of the contract | agent | **closed** — fixtures updated; the shared component (F-6) also cut the surface area |
+| R-7 | The error contract of the touched endpoints drifts to a per-controller body | low | med | No new error path is added; `BookingController` keeps its centralized `ApiProblem`/`ProblemDetail` mapping (`riviera-java-conventions` §6b) | agent | **closed** — no new error path; `BookingController` keeps its centralized mapping |
 
 ## Open questions / Assumptions
 
@@ -241,10 +241,10 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `review gate — 9 of 10 findings fixed, F-1 escalated`
+**Stage pointer:** `review gate — all 10 findings fixed; re-review + Sonar list next`
 
-**Next action:** Get the maintainer's call on **F-1** (the stub-gateway oracle), implement it, then
-re-run the review gate on the new diff and clear the Sonar list.
+**Next action:** Re-run `/code-review` over the fix diff, then pull the SonarCloud issue +
+duplication list for PR #399 from the API and clear every entry before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -268,7 +268,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (`/code-review`, high) | **Blocker.** With `STRIPE_API_KEY` unset the deployed service runs the in-process stub gateway, so `201 CONFIRMED` is reached with **no payment collected** — the `status == CONFIRMED` gate is not a post-payment gate there, and the flag becomes a free suppression oracle for any address. R-1's mitigation only holds under the `stripe` profile. | escalated to the maintainer |
+| F-1 | review (`/code-review`, high) | **Blocker.** With `STRIPE_API_KEY` unset the deployed service runs the in-process stub gateway, so `201 CONFIRMED` is reached with **no payment collected** — the `status == CONFIRMED` gate is not a post-payment gate there, and the flag becomes a free suppression oracle for any address. R-1's mitigation only holds under the `stripe` profile. | **fixed** — maintainer chose the profile gate: the answering adapter is `@Profile(\"stripe\")`, `NonDisclosingConfirmationMailDelivery` (`@Profile(\"!stripe\")`) answers a flat `false` wherever CONFIRMED is not proof of payment. Pinned by `ConfirmationMailDeliveryProfileWiringTest` + `BookingViewSuppressionIT` (which runs under `stripe` for exactly that reason). |
 | F-2 | review | The port's javadoc promises it never throws operationally, but the impl catches only `DataAccessException`; a non-DAE runtime failure escapes into `CreateBookingService.collect` **after** the confirm committed and the card was charged — uncompensatable, and a 500 on the page carrying the code. | **fixed** — the impl is now an explicit fault barrier (`RuntimeException`, documented deviation from the catch-narrowly convention: the port's contract is total and the caller runs post-payment) |
 | F-3 | review | The flag is a live "would it be withheld *now*" answer rendered as the historical "your mail *was* withheld"; the javadoc's "stable and race-free" is falsified by a later bounce or a #391 reinstatement. | **fixed** — the port javadoc now reads as a present-tense question and names both drift directions (a later bounce, a #391 reinstatement) |
 | F-4 | review | The D-8 oracle gate and `cancellable` are the same boolean, so a future cancellation-policy change silently widens the oracle. | **fixed** — the gate is its own named predicate `mayDiscloseMailStatus`, documented as a security constraint distinct from `cancellable` |

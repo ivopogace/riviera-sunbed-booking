@@ -2,6 +2,7 @@ package ai.riviera.platform.notification.adapter.out;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
@@ -24,6 +25,15 @@ import ai.riviera.platform.notification.application.EmailSuppressions;
  * throw protects a mail, here it would break the page carrying the guest's only copy of the booking
  * code.
  *
+ * <p><strong>Only under the {@code stripe} profile</strong>, and that is a security gate, not a
+ * packaging detail. #390's whole non-enumeration argument is "the requester already paid, so the leak
+ * value is minimal" — and the gate implementing it is {@code status == CONFIRMED}. That equivalence
+ * holds only where a real gateway stands between the two: under the default profile the in-process
+ * stub returns {@code Succeeded} synchronously, so {@code POST /api/bookings} yields {@code 201
+ * CONFIRMED} with nothing collected, and answering here would be a free suppression oracle for any
+ * address (D-8). Where confirmation is not proof of payment, {@link NonDisclosingConfirmationMailDelivery}
+ * answers instead — never. Pinned by {@code ConfirmationMailDeliveryProfileWiringTest}.
+ *
  * <p><strong>A fault barrier, by contract.</strong> {@link ConfirmationMailDelivery} promises never
  * to throw for an operational failure, so this catches {@code RuntimeException} rather than the
  * narrower {@code DataAccessException} the convention would prefer — the reachable throwers are not
@@ -34,6 +44,7 @@ import ai.riviera.platform.notification.application.EmailSuppressions;
  * rather than hanging the response.
  */
 @Component
+@Profile("stripe")
 class SuppressedConfirmationMailDelivery implements ConfirmationMailDelivery {
 
 	private static final Logger log = LoggerFactory.getLogger(SuppressedConfirmationMailDelivery.class);
