@@ -58,7 +58,14 @@ intake; it stays the recorded residual #390 accepted.
   two-state enum over a direct boolean question was ceremony.)*
 - `riviera-frontend` — placement: the change is confined to the existing `auth/` feature folder and
   `core/customer-auth.ts`; nothing is promoted to `shared/` (one consumer).
-- `angular-developer` + angular-cli MCP — v22 signal APIs for the branched notice.
+- `angular-developer` + **angular-cli MCP** — `list_projects` (confirmed the single v22 workspace at
+  `frontend/angular.json`), workspace-scoped `get_best_practices`, and `search_documentation`. The
+  substantive answer it gave: **`httpResource` is the wrong tool here** — the docs say outright
+  *"Avoid using `httpResource` for mutations like `POST` or `PUT`. Instead, prefer directly using the
+  underlying `HttpClient` APIs"*, because it fetches eagerly and re-fetches on signal change. So the
+  resend keeps `firstValueFrom(http.post<VerificationRequested>(…))`, matching the five sibling methods
+  in `customer-auth.ts` rather than drifting to the newer reactive API. It also confirmed the v22
+  defaults this diff relies on (no explicit `standalone`/`OnPush`, signals for local state).
 - `playwright-cli` — *(phase 3)* the e2e case extends the existing `email-verification.e2e.ts` in
   the CI-safe mocked suite.
 - `riviera-local-debug` — scoped test recipes for this cloud session.
@@ -262,9 +269,18 @@ no new styled surface — hence no Tailwind/contrast work (`riviera-tailwind` co
 
 ## Execution status
 
-**Stage pointer:** `REVIEW — round 1 findings fixed, awaiting re-review + CI`
+**Stage pointer:** `SONAR — green and cleared; awaiting round-2 re-review before merge`
 
-**Next action:** confirm CI green on the fix push, then the Sonar gate.
+**Next action:** fold any round-2 findings, then merge + close-out.
+
+**CI (fix push `b6dbe3a`):** Backend ✅ · Frontend ✅ · CodeQL (java-kotlin + javascript-typescript) ✅ ·
+SonarCloud Code Analysis ✅.
+
+**Sonar gate:** green **and its reported list pulled and empty** — not the gate conclusion alone
+(#158). Analysis confirmed real (`new_lines = 193`, so not the #318 false-clean read of an unanalyzed
+PR): `api/issues/search` → `total: 0`; `new_bugs 0`, `new_vulnerabilities 0`, `new_code_smells 0`,
+`new_duplicated_blocks 0`, `new_duplicated_lines_density 0.0`, **`new_coverage 100.0`**. Nothing to
+triage, so nothing re-entered the loop from this gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
