@@ -239,17 +239,17 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `CI gate`
 
-**Next action:** Author the mocked-suite Playwright spec (`frontend/e2e/suppressed-confirmation.e2e.ts`)
-— load `playwright-cli` first.
+**Next action:** Push the branch, confirm that push's CI run is green, merge latest `origin/main`,
+then open the PR and run `/code-review`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `booking.spi` port + `notification` implementation | ✅ | `3d94528` |
 | 1 — carry `emailWithheld` on the booking read + create paths | ✅ | `e5ed88c` |
-| 2 — Angular notice on both post-payment surfaces | ✅ | (this commit) |
-| 3 — Playwright e2e (mocked suite) | ⏳ | |
+| 2 — Angular notice on both post-payment surfaces | ✅ | `bb25832` |
+| 3 — Playwright e2e (mocked suite) | ✅ | (this commit) |
 
 > **Phase-0 deviation from the plan as written:** the test needs no `NotificationAdapters` factory —
 > it lives in `notification.adapter.out`, the implementation's own package, so the package-private
@@ -623,7 +623,7 @@ the `*.a11y.spec.ts` / `*.contrast.spec.ts` siblings
 - [ ] **AC-4:** `./gradlew test --tests "*CreateBookingServiceTest*"` → PASS
 - [ ] **AC-5 / AC-6:** `./gradlew test --tests "*SuppressedConfirmationMailDeliveryTest*"` → PASS
 - [ ] **AC-7 / AC-8:** `npm test` → PASS
-- [ ] **AC-9:** `npm run test:e2e:a11y` → PASS
+- [x] **AC-9:** `npm run test:e2e:a11y` → PASS (88/88; the 3 new tests include axe audits of the notice)
 - [ ] **AC-10:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
