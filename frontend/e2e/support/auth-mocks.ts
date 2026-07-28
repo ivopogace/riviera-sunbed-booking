@@ -510,8 +510,7 @@ export async function mockCustomerRecoveryApi(
     return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
   });
 
-  // Mirrors the real 200 {emailWithheld} shape exactly (#400) — the resend had no route here at all
-  // before, so nothing pinned what the account page does with the answer.
+  // Mirrors the real 200 {emailWithheld} shape exactly (#400); before this there was no route at all.
   await page.route(/\/api\/me\/verify-email\/request$/, (route) =>
     route.fulfill({ json: { emailWithheld: options.verificationMailWithheld ?? false } }),
   );

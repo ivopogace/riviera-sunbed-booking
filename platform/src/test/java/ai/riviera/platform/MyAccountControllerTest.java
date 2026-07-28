@@ -170,6 +170,8 @@ class MyAccountControllerTest {
 		mvc.perform(requestVerification())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.emailWithheld").value(false));
+		// false is Mockito's default, so without this the case would pass against a hardcoded literal.
+		verify(recovery).isVerificationMailWithheld(EMAIL);
 	}
 
 	private void givenAccountWithPassword() {

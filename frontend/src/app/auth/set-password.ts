@@ -13,18 +13,23 @@ import { CardGlass } from '../shared/card-glass';
 /**
  * What the resend notice says for each outcome (#400). `withheld` is the reason this is a lookup and
  * not a ternary: the address is on the do-not-email list, so the message never leaves — saying "sent"
- * there was the defect. It names the consequence rather than the mechanism, and points at the one
- * action that can help, since the customer cannot lift a suppression themselves (#391 is admin-only).
+ * there was the defect.
  *
- * The wording stays deliberately **reason-neutral**: the response carries no suppression reason, and
- * only one of the three (`HARD_BOUNCE`) is a delivery failure — a customer who marked our mail as spam
- * (`COMPLAINT`) or an ops decision (`MANUAL`) would be told a new false thing by copy that blamed
- * bouncing, which is exactly the class of bug this slice exists to remove.
+ * Two constraints shape the withheld wording, both of them "don't replace one false statement with
+ * another":
+ *
+ * 1. **Reason-neutral.** The response carries no suppression reason, and only one of the three
+ *    (`HARD_BOUNCE`) is a delivery failure — copy that blamed bouncing would lie to a customer who
+ *    marked our mail as spam (`COMPLAINT`) or was suppressed by an ops decision (`MANUAL`).
+ * 2. **No action the product cannot honour.** The customer cannot lift a suppression themselves
+ *    (#391 reinstatement is ADMIN-gated) and the app ships no contact/support surface, so "get in
+ *    touch" would point at nothing. Instead it says what is actually true and reassuring: email
+ *    verification is soft/non-blocking here, so nothing they came to do is blocked.
  */
 const RESEND_NOTICES = {
   sent: 'Verification email sent. Check your inbox.',
   withheld:
-    "We couldn't send it — we're not able to email this address at the moment. Get in touch and we'll help you sort it out.",
+    "We couldn't send it — we're not able to email this address at the moment. Your account still works as normal; your email just stays unverified.",
   error: 'Could not send the email. Please try again.',
 } as const;
 

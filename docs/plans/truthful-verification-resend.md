@@ -269,9 +269,10 @@ no new styled surface — hence no Tailwind/contrast work (`riviera-tailwind` co
 
 ## Execution status
 
-**Stage pointer:** `SONAR — green and cleared; awaiting round-2 re-review before merge`
+**Stage pointer:** `MERGE — all gates cleared, close-out written`
 
-**Next action:** fold any round-2 findings, then merge + close-out.
+**Next action:** merge PR #401, then the post-merge GitHub-only steps (issue close, deferred-finding
+propagation to #400 for item 2).
 
 **CI (fix push `b6dbe3a`):** Backend ✅ · Frontend ✅ · CodeQL (java-kotlin + javascript-typescript) ✅ ·
 SonarCloud Code Analysis ✅.
@@ -287,7 +288,9 @@ triage, so nothing re-entered the loop from this gate.
 | 0 — `notification.api.MailDeliverability` + its implementation | ✅ | `a071ac6` |
 | 1 — the edge reports it (`CustomerRecovery` + `MyAccountController`, `204 → 200`) | ✅ | `4b1c04a` |
 | 2 — Angular: branch the resend copy | ✅ | `b77d8d0` |
-| 3 — Playwright e2e (mocked suite) | ✅ | *(this commit)* |
+| 3 — Playwright e2e (mocked suite) | ✅ | `7c3b4c7` |
+| 4 — review round 1 (F-1..F-3) + CI (C-1) | ✅ | `b6dbe3a` |
+| 5 — review round 2 (H-1..H-4) | ✅ | *(this commit)* |
 
 > **Phase-0 deviations from the plan as written.**
 > 1. **No `Emails.normalize` in the service.** `JdbcEmailSuppressions` already normalizes on both
@@ -323,6 +326,18 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-2 | review (round 1) | The withheld copy said "email to your address keeps failing", but the response carries no reason and two of three `SuppressionReason` values (`COMPLAINT`, `MANUAL`) are **not** delivery failures — a spam-marking customer would get a *new* false statement from the slice whose purpose is removing one. | **fixed** — reason-neutral wording ("we're not able to email this address at the moment"), with the constraint recorded in the TSDoc so a future edit does not re-add a cause. |
 | F-3 | review (round 1) | `notification/api/package-info.java` still documented the surface as "call-me interfaces only: `MailSender`" — the module `package-info`, `RESPONSIBILITIES.md` and `CLAUDE.md` were updated for the new port, this one was missed. | **fixed** — it now lists both ports and states *why* they are role-split rather than one wide port. |
 | C-1 | CI (backend, run 30375814996) | `PayoutModuleTest > initializationError` — `NoSuchBeanDefinitionException`. `@ApplicationModuleTest` boots the root package but not another module's beans, and root-edge `CustomerRecovery` gained a `notification::api` dependency the test had no mock for. **The full-suite-only failure class** `riviera-local-debug` warns about: invisible to every scoped run in this session. | **fixed** — `@MockitoBean MailDeliverability` added beside the existing `MailSender` mock, with the same one-line rationale. Verified: 2 tests, `skipped=0`. |
+
+**Round 2** (re-review of the fix diff, `a837fd8..HEAD`). It confirmed F-1's fix is real — including by
+**re-folding the read back into `sendVerificationEmail` and watching
+`sendingNeverConsultsTheDoNotMailList` fail**, so the guard is not vacuous — and returned no Blocker or
+Major. Four Minors:
+
+| # | Finding | Status |
+|---|---|---|
+| H-1 | RV-STYLE-1: the new route-mock comment in `e2e/support/auth-mocks.ts` is a **two-line** inline comment; the TSDoc exemption does not cover `//` between statements. | **fixed** — cut to one line; the "no route existed before" half already lives in the generalization-audit row. |
+| H-2 | The two **deliverable** cases pass **vacuously**: `thenReturn(false)` stubs Mockito's own default, so the assertion holds even against a hardcoded `false`. **Proven by mutation** — replacing the controller body with `new VerificationRequestedView(false)` left `reportsADeliverableVerificationMail` green. | **fixed** — both cases now assert the interaction (`verify(recovery).isVerificationMailWithheld(EMAIL)` / `verify(deliverability).isWithheld(EMAIL)`), so the port must actually be consulted. |
+| H-3 | The AC-verification block contradicted the tests: AC-3 recorded "5 tests" after the fix round made it 6, AC-6 was ticked while recording `_pending_`, and the phase table still carried a `*(this commit)*` placeholder. | **fixed** — counts measured from the JUnit XML, AC-6 filled in (4 tests, `skipped=0`), phase table completed with real SHAs. |
+| H-4 | The withheld copy said "Get in touch and we'll help you sort it out", but the app ships **no contact/support surface** (grep: no `mailto:`/`support@`, no such route) and the customer cannot self-lift a suppression (#391 is ADMIN-gated) — telling them to do something the product cannot honour is the same "the UI says something untrue" class this slice exists to remove. | **fixed** — the copy now states what is actually true and reassuring: *"Your account still works as normal; your email just stays unverified"* — accurate because verification here is **soft/non-blocking** (`CLAUDE.md`). The TSDoc records both wording constraints so a later edit does not re-add a channel or a cause. |
 
 ---
 
@@ -485,11 +500,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1 / AC-2:** `gradle test --tests "*MyAccountControllerTest*"` → PASS
-- [x] **AC-3:** `gradle test --tests "*CustomerRecoveryTest*"` → PASS (5 tests)
-- [x] **AC-4:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (5 tests)
-- [x] **AC-5:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (5 tests)
-- [x] **AC-6:** `./gradlew test --tests "*EmailVerificationIT*"` → _pending_
+- [x] **AC-1 / AC-2:** `gradle test --tests "*MyAccountControllerTest*"` → PASS (6 tests, `skipped=0`)
+- [x] **AC-3:** `gradle test --tests "*CustomerRecoveryTest*"` → PASS (6 tests, `skipped=0`)
+- [x] **AC-4 / AC-5:** `gradle test --tests "*MailDeliverabilityServiceTest*"` → PASS (5 tests, `skipped=0`)
+- [x] **AC-6:** `gradle test --tests "*EmailVerificationIT*"` → PASS (4 tests, `skipped=0` — real Postgres
+      via Testcontainers, so this is not a Docker-absent skip)
 - [x] **AC-7:** `npm test` → PASS (901 tests); `npm run test:a11y` → PASS (290); `npm run lint` → PASS
 - [x] **AC-8:** `npm run test:e2e:a11y` → PASS (90/90, incl. an axe audit of the withheld notice)
 - [x] **AC-9:** `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS

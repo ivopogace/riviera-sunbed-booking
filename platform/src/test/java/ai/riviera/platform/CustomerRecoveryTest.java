@@ -100,5 +100,7 @@ class CustomerRecoveryTest {
 		when(deliverability.isWithheld(EMAIL)).thenReturn(false);
 
 		assertThat(recovery.isVerificationMailWithheld(EMAIL)).isFalse();
+		// false is Mockito's default, so without this the case would pass against a hardcoded literal.
+		verify(deliverability).isWithheld(EMAIL);
 	}
 }
