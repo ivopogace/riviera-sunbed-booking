@@ -72,7 +72,14 @@ intake; it stays the recorded residual #390 accepted.
 - `riviera-tailwind` — *(phase 2)* consulted and **found not to apply**: the notice reuses the
   page's existing `auth-intro` `role="status"` paragraph; no new styled surface, no new class.
 - `riviera-review-overlay` — the RV-BE/FE/CT bank at the review gate.
-- `riviera-docs-freshness` — merge close-out step 5.
+- `riviera-docs-freshness` — **pre-merge smoke over `origin/main...HEAD`** (close-out step 5, run
+  before merge so patches ride in this PR). Two invalidators: `notification::api` gained a second
+  port, and the resend's status changed `204 → 200`. Both substrate statements were patched **in
+  this PR** (`CLAUDE.md` module row, `RESPONSIBILITIES.md` §notification, both `package-info`s).
+  Re-swept after: no doc states the resend's status code, no skill cites a renamed/removed file
+  (nothing was deleted in the net diff), `CONTEXT.md`'s suppression glossary and the `riviera-modulith`
+  surface list stay true, `docs/architecture/*` has no hits. **Zero remaining findings.** Graph refresh
+  N/A — `graphify-out/` is absent in this cloud clone.
 
 **Branch:** cloud session — the designated remote branch **`claude/sdlc-400-review-gate-e22v1k`**
 stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote addendum). The literal
