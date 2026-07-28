@@ -23,6 +23,11 @@ for — into the change. So the fact arrives through a **second, role-split publ
 synchronous query the edge consults **only** on the authenticated resend endpoint. `api/` and not
 `spi/` is forced by the direction rule: the consumer (the root edge) *calls* it, so it is inbound.
 
+The read is a **separate edge call from the send** (`CustomerRecovery.isVerificationMailWithheld`,
+not a return value of `sendVerificationEmail`). That is not stylistic: `sendVerificationEmail` is
+also called by anonymous `permitAll` registration, so folding the lookup in put a discarded
+synchronous SELECT on a D-8-sensitive request thread. The review caught it; see finding F-1.
+
 Why a synchronous read is safe **here** and nowhere else in the recovery family: the caller is
 signed in and the address queried is **its own session principal's**. It learns one bit about an
 address it already owns — no account-enumeration and no timing oracle, because there is no
@@ -46,8 +51,11 @@ intake; it stays the recorded residual #390 accepted.
   for `notification`) and decided a **second port** over a method on `MailSender` (the #94
   role-split rule: "send this, best-effort" and "would this arrive" are different conversations
   with opposite contracts). Confirmed the root already depends on `notification`, so no new edge.
-- `riviera-java-conventions` — records for the wire DTO, a typed outcome (`VerificationMailOutcome`)
-  over a bare `boolean` return, package-private edge classes, narrow catch, one-line comments.
+- `riviera-java-conventions` — records for the wire DTO, package-private edge classes, one-line
+  comments, and the fault-barrier deviation from catch-narrowly (§6, argued in the class javadoc).
+  *(A typed `VerificationMailOutcome` enum was introduced and then **deleted** in the review-fix
+  round: once F-1 moved the read off the send path there was no send outcome left to name, and a
+  two-state enum over a direct boolean question was ceremony.)*
 - `riviera-frontend` — placement: the change is confined to the existing `auth/` feature folder and
   `core/customer-auth.ts`; nothing is promoted to `shared/` (one consumer).
 - `angular-developer` + angular-cli MCP — v22 signal APIs for the branched notice.
@@ -75,7 +83,8 @@ stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote adde
       *Pinned by:* `MyAccountControllerTest.reportsADeliverableVerificationMail`
 - [x] **AC-3:** Given either outcome, when the endpoint runs, then the verification token is issued
       and the send is dispatched **exactly as today** — the disclosure changes nothing about the
-      send. *Pinned by:* `CustomerRecoveryTest.issuesAndDispatchesRegardlessOfSuppression`
+      send — and after F-1, the send path does not consult the do-not-mail list **at all**.
+      *Pinned by:* `CustomerRecoveryTest.sendingNeverConsultsTheDoNotMailList`
 - [x] **AC-4:** Given the suppression lookup throws — a data-access failure **or** a programming error —
       when the endpoint runs, then it still answers `200 emailWithheld = false` (degrade to today's
       copy; the resend never 500s). The barrier lives in the port's implementation, where its total
@@ -143,13 +152,13 @@ stands in for `feature/truthful-verification-resend` (`riviera-sdlc` remote adde
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Enumeration oracle** — the new disclosure leaks whether an address is suppressed | low | high | The read is reachable **only** from `hasRole(CUSTOMER)` on `/api/me/**`, and it answers about `authentication.getName()` — the caller's *own* session principal, never a path/body-supplied address. There is no id in the request to tamper with (BOLA-safe by shape). The three `permitAll` recovery paths are untouched. Pinned by **AC-1/AC-2** + `MeSurfaceRoleGateTest` | agent | open |
-| R-2 | **Timing oracle** (#369) — a synchronous suppression SELECT on the request thread re-widens what the dispatcher closed | low | med | #369's oracle is *anonymous* forgot-password: latency differing by whether an account exists. Here the caller is authenticated and the address is its own, so the timing carries no fact it doesn't already hold. The send itself stays off-thread and its own check stays inside the dispatched task — unchanged. The added read is bounded by the adapter's 2 s `queryTimeout` (#386/G-14) | agent | open |
-| R-3 | The edge's answer and the dispatched task's own check **diverge** (a bounce lands between them, or a #391 reinstatement) | med | low | Accepted and documented on the port as a **present-tense** question ("would a mail to this address be withheld *now*"), not a record of what happened — the #390 F-3 lesson. The window is milliseconds and the consequence is one advisory sentence | agent | open |
-| R-4 | The lookup fails and the page claims the wrong thing | med | low | Degrade to `false` — today's copy, today's behavior. Deliberately **not** the send path's transient-only carve-out: that one decides whether to *drop a bearer-credential mail*, this one decides whether to show a sentence. Documented as an asymmetry rather than denied (the #390 F-8 lesson). Pinned by **AC-4** | agent | open |
-| R-5 | `204 → 200` breaks an existing caller | med | low | Two known callers: `customer-auth.ts` (updated in phase 2) and two backend suites (**AC-10**). `200` with a body is strictly more informative; no client parses `204` semantics | agent | open |
-| R-6 | PII: an address reaches a log line or a module that shouldn't hold it | low | med | The port speaks the address `notification` already receives on every send, returns a `boolean`, and no new log line names one (the module's PII posture, ADR-0012). `booking` and `customer` are untouched | agent | open |
-| R-7 | The error contract of the touched endpoint drifts to a per-controller body | low | med | No new error path; `MyAccountController` keeps the centralized `ApiProblem`/`ApiErrorHandler` mapping (`riviera-java-conventions` §6b, `ErrorContractArchitectureTests`) | agent | open |
+| R-1 | **Enumeration oracle** — the new disclosure leaks whether an address is suppressed | low | high | The read is reachable **only** from `hasRole(CUSTOMER)` on `/api/me/**`, and it answers about `authentication.getName()` — the caller's *own* session principal, never a path/body-supplied address. There is no id in the request to tamper with (BOLA-safe by shape). The three `permitAll` recovery paths are untouched. **The first implementation did not actually hold this** — see F-1, where the read sat on a method anonymous registration also calls; the mitigation is only true since that fix. Pinned by **AC-1/AC-2**, `CustomerRecoveryTest.sendingNeverConsultsTheDoNotMailList`, `MeSurfaceRoleGateTest` | agent | **closed** — fixed and pinned |
+| R-2 | **Timing oracle** (#369) — a synchronous suppression SELECT on the request thread re-widens what the dispatcher closed | low | med | #369's oracle is *anonymous* forgot-password: latency differing by whether an account exists. Here the caller is authenticated and the address is its own, so the timing carries no fact it doesn't already hold. The send itself stays off-thread and its own check stays inside the dispatched task — unchanged. The added read is bounded by the adapter's 2 s `queryTimeout` (#386/G-14) | agent | **closed** |
+| R-3 | The edge's answer and the dispatched task's own check **diverge** (a bounce lands between them, or a #391 reinstatement) | med | low | Accepted and documented on the port as a **present-tense** question ("would a mail to this address be withheld *now*"), not a record of what happened — the #390 F-3 lesson. The window is milliseconds and the consequence is one advisory sentence | agent | **closed** |
+| R-4 | The lookup fails and the page claims the wrong thing | med | low | Degrade to `false` — today's copy, today's behavior. Deliberately **not** the send path's transient-only carve-out: that one decides whether to *drop a bearer-credential mail*, this one decides whether to show a sentence. Documented as an asymmetry rather than denied (the #390 F-8 lesson). Pinned by **AC-4** | agent | **closed** |
+| R-5 | `204 → 200` breaks an existing caller | med | low | Two known callers: `customer-auth.ts` (updated in phase 2) and two backend suites (**AC-10**). `200` with a body is strictly more informative; no client parses `204` semantics | agent | **closed** |
+| R-6 | PII: an address reaches a log line or a module that shouldn't hold it | low | med | The port speaks the address `notification` already receives on every send, returns a `boolean`, and no new log line names one (the module's PII posture, ADR-0012). `booking` and `customer` are untouched | agent | **closed** |
+| R-7 | The error contract of the touched endpoint drifts to a per-controller body | low | med | No new error path; `MyAccountController` keeps the centralized `ApiProblem`/`ApiErrorHandler` mapping (`riviera-java-conventions` §6b, `ErrorContractArchitectureTests`) | agent | **closed** |
 
 ## Open questions / Assumptions
 
@@ -253,9 +262,9 @@ no new styled surface — hence no Tailwind/contrast work (`riviera-tailwind` co
 
 ## Execution status
 
-**Stage pointer:** `IMPLEMENT — all phases done`
+**Stage pointer:** `REVIEW — round 1 findings fixed, awaiting re-review + CI`
 
-**Next action:** merge `origin/main`, push, open the PR, then the review gate.
+**Next action:** confirm CI green on the fix push, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -294,7 +303,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review (round 1) | **Blocker.** The suppression read was folded into `CustomerRecovery.sendVerificationEmail`, whose **other caller is `AuthController.register`** — anonymous, `permitAll`, constant-time by design. Registration therefore paid a discarded synchronous `email_suppression` SELECT on the request thread, widening the D-8 latency gap #369 closed; and the "only reachable from `hasRole(CUSTOMER)`" claim in the port javadoc, `CustomerRecovery`'s javadoc, `RESPONSIBILITIES.md` and R-1/R-2 was **false as written**. | **fixed** — the read moved to its own `CustomerRecovery.isVerificationMailWithheld`, called only by `MyAccountController.requestVerification`. `sendVerificationEmail` is `void` again and byte-for-byte its pre-slice self on both paths; `VerificationMailOutcome` deleted as it no longer describes anything. Pinned by `CustomerRecoveryTest.sendingNeverConsultsTheDoNotMailList` (`verifyNoInteractions`), which is the regression guard the finding earned. |
+| F-2 | review (round 1) | The withheld copy said "email to your address keeps failing", but the response carries no reason and two of three `SuppressionReason` values (`COMPLAINT`, `MANUAL`) are **not** delivery failures — a spam-marking customer would get a *new* false statement from the slice whose purpose is removing one. | **fixed** — reason-neutral wording ("we're not able to email this address at the moment"), with the constraint recorded in the TSDoc so a future edit does not re-add a cause. |
+| F-3 | review (round 1) | `notification/api/package-info.java` still documented the surface as "call-me interfaces only: `MailSender`" — the module `package-info`, `RESPONSIBILITIES.md` and `CLAUDE.md` were updated for the new port, this one was missed. | **fixed** — it now lists both ports and states *why* they are role-split rather than one wide port. |
+| C-1 | CI (backend, run 30375814996) | `PayoutModuleTest > initializationError` — `NoSuchBeanDefinitionException`. `@ApplicationModuleTest` boots the root package but not another module's beans, and root-edge `CustomerRecovery` gained a `notification::api` dependency the test had no mock for. **The full-suite-only failure class** `riviera-local-debug` warns about: invisible to every scoped run in this session. | **fixed** — `@MockitoBean MailDeliverability` added beside the existing `MailSender` mock, with the same one-line rationale. Verified: 2 tests, `skipped=0`. |
 
 ---
 
@@ -306,8 +318,8 @@ Skill-routing gate for what the fix touches *before* editing).
   this address be withheld?
 - `notification/application/MailDeliverabilityService.java` — **new.** Package-private `@Service`
   answering the port from `EmailSuppressions`, degrading to "not withheld" on a lookup failure.
-- `CustomerRecovery.java` — `sendVerificationEmail` returns `VerificationMailOutcome`.
-- `VerificationMailOutcome.java` — **new.** Package-private edge enum (`SENT` / `WITHHELD`).
+- `CustomerRecovery.java` — gains `isVerificationMailWithheld(String)`; `sendVerificationEmail`
+  stays `void` and unchanged (F-1 — anonymous registration shares it).
 - `MyAccountController.java` — `200` + `VerificationRequestedView` record.
 
 **Backend tests — `platform/src/test/java/ai/riviera/platform/`**
@@ -379,11 +391,11 @@ Skill-routing gate for what the fix touches *before* editing).
       `gradle test --tests "*CustomerRecoveryTest*" --tests "*MyAccountControllerTest*"` → FAIL (symbol `VerificationMailOutcome` absent)
 
 - [x] **Step 3: Minimal implementation**
-  - `CustomerRecovery.sendVerificationEmail` returns `VerificationMailOutcome`: issue the token,
-    dispatch the send (both unchanged and in that order), then consult `MailDeliverability`. The
-    disclosure is computed **after** the dispatch so no failure of it can alter the send.
-  - `MyAccountController.requestVerification` returns
-    `ResponseEntity.ok(new VerificationRequestedView(outcome == WITHHELD))`.
+  - `CustomerRecovery` gains `isVerificationMailWithheld(String)` over `MailDeliverability`;
+    `sendVerificationEmail` is untouched (F-1 — its other caller is anonymous registration).
+  - `MyAccountController.requestVerification` sends, then asks, then returns
+    `ResponseEntity.ok(new VerificationRequestedView(withheld))` — the ask after the send, so no
+    failure of it can alter the send.
   - Update `MeSurfaceRoleGateTest` / `RateLimitFilterTest` expectations to `200` (AC-10).
 
 - [x] **Step 4: Run them, verify they pass** — same command → PASS

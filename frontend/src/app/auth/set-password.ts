@@ -15,11 +15,16 @@ import { CardGlass } from '../shared/card-glass';
  * not a ternary: the address is on the do-not-email list, so the message never leaves — saying "sent"
  * there was the defect. It names the consequence rather than the mechanism, and points at the one
  * action that can help, since the customer cannot lift a suppression themselves (#391 is admin-only).
+ *
+ * The wording stays deliberately **reason-neutral**: the response carries no suppression reason, and
+ * only one of the three (`HARD_BOUNCE`) is a delivery failure — a customer who marked our mail as spam
+ * (`COMPLAINT`) or an ops decision (`MANUAL`) would be told a new false thing by copy that blamed
+ * bouncing, which is exactly the class of bug this slice exists to remove.
  */
 const RESEND_NOTICES = {
   sent: 'Verification email sent. Check your inbox.',
   withheld:
-    "We couldn't send it — email to your address keeps failing, so we've stopped trying. Get in touch and we'll help you sort it out.",
+    "We couldn't send it — we're not able to email this address at the moment. Get in touch and we'll help you sort it out.",
   error: 'Could not send the email. Please try again.',
 } as const;
 

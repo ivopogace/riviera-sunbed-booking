@@ -154,17 +154,18 @@ class MyAccountControllerTest {
 	@Test
 	void reportsAWithheldVerificationMailForASuppressedAddress() throws Exception {
 		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
-		when(recovery.sendVerificationEmail(ACCOUNT_ID, EMAIL)).thenReturn(VerificationMailOutcome.WITHHELD);
+		when(recovery.isVerificationMailWithheld(EMAIL)).thenReturn(true);
 
 		mvc.perform(requestVerification())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.emailWithheld").value(true));
+		verify(recovery).sendVerificationEmail(ACCOUNT_ID, EMAIL);
 	}
 
 	@Test
 	void reportsADeliverableVerificationMail() throws Exception {
 		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
-		when(recovery.sendVerificationEmail(ACCOUNT_ID, EMAIL)).thenReturn(VerificationMailOutcome.SENT);
+		when(recovery.isVerificationMailWithheld(EMAIL)).thenReturn(false);
 
 		mvc.perform(requestVerification())
 				.andExpect(status().isOk())

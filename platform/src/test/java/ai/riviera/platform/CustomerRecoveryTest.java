@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -73,25 +74,31 @@ class CustomerRecoveryTest {
 	}
 
 	/**
-	 * AC-3 (#400): the disclosure is a <em>read</em> bolted onto the answer, not a gate on the send. A
-	 * suppressed address still gets its token issued and its send dispatched exactly as before — whether
-	 * that send is then withheld stays {@code notification}'s decision at its own chokepoint, taken off
-	 * this thread.
+	 * AC-3 (#400), and the regression guard the review round added: sending consults the do-not-mail list
+	 * <strong>not at all</strong>. {@code sendVerificationEmail}'s other caller is anonymous registration
+	 * ({@code AuthController}, {@code permitAll}), so a suppression SELECT folded in here would put a
+	 * discarded synchronous read on that request thread — widening the very D-8 latency gap #369 closed.
 	 */
 	@Test
-	void issuesAndDispatchesRegardlessOfSuppression() {
-		when(deliverability.isWithheld(EMAIL)).thenReturn(true);
-
-		assertThat(recovery.sendVerificationEmail(ACCOUNT, EMAIL)).isEqualTo(VerificationMailOutcome.WITHHELD);
+	void sendingNeverConsultsTheDoNotMailList() {
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
 
 		verify(accounts).issueEmailVerificationToken(eq(ACCOUNT), any(), any());
 		verify(mails).sendEmailVerification(eq(EMAIL), any());
+		verifyNoInteractions(deliverability);
 	}
 
 	@Test
-	void reportsSentForADeliverableAddress() {
+	void answersTheWithheldQuestionOnlyWhenAsked() {
+		when(deliverability.isWithheld(EMAIL)).thenReturn(true);
+
+		assertThat(recovery.isVerificationMailWithheld(EMAIL)).isTrue();
+	}
+
+	@Test
+	void reportsDeliverableForAnUnsuppressedAddress() {
 		when(deliverability.isWithheld(EMAIL)).thenReturn(false);
 
-		assertThat(recovery.sendVerificationEmail(ACCOUNT, EMAIL)).isEqualTo(VerificationMailOutcome.SENT);
+		assertThat(recovery.isVerificationMailWithheld(EMAIL)).isFalse();
 	}
 }

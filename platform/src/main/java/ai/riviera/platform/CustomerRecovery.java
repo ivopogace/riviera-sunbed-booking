@@ -52,23 +52,30 @@ class CustomerRecovery {
 		this.clock = clock;
 	}
 
-	/**
-	 * Issue a fresh verification token for the account, (best-effort, off-thread) email its link, and
-	 * report whether the do-not-mail list will withhold it (#400).
-	 *
-	 * <p>The disclosure is a read <em>alongside</em> the send, never a gate on it: the token is issued and
-	 * the send dispatched exactly as before, and only then is the question asked — so nothing about this
-	 * answer can suppress a mail that would otherwise have gone out. Reporting it is safe only because
-	 * this flow is authenticated and {@code email} is the caller's own session principal; the anonymous
-	 * {@link #sendPasswordResetEmail} deliberately reports nothing (D-8, #369).
-	 */
-	VerificationMailOutcome sendVerificationEmail(CustomerAccountId accountId, String email) {
+	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link. */
+	void sendVerificationEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()));
 		// The token store above is NOT best-effort and stays on this thread; only the send is (#369, R-3).
 		mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
-		return deliverability.isWithheld(email) ? VerificationMailOutcome.WITHHELD : VerificationMailOutcome.SENT;
+	}
+
+	/**
+	 * Whether a mail to this address would be withheld as suppressed, so a surface can stop claiming one
+	 * was sent (#400).
+	 *
+	 * <p><strong>Deliberately not folded into {@link #sendVerificationEmail}.</strong> That method's other
+	 * caller is anonymous registration ({@code AuthController}, {@code permitAll}), where an extra
+	 * synchronous {@code email_suppression} SELECT on the request thread would widen exactly the D-8
+	 * latency gap #369 closed — for an answer registration discards. Keeping it a separate call means only
+	 * the endpoint allowed to disclose the fact pays for it, and the send is untouched on both paths.
+	 *
+	 * <p>Safe only where the caller already owns the address: the one consumer is the authenticated
+	 * resend, which asks about its own session principal.
+	 */
+	boolean isVerificationMailWithheld(String email) {
+		return deliverability.isWithheld(email);
 	}
 
 	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link. */

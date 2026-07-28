@@ -126,13 +126,16 @@ class MyAccountController {
 	 * {@code forgot-password} flow keeps its deliberately hedged copy and its {@code 204}: branching
 	 * <em>that</em> on suppression would rebuild the enumeration oracle #369 closed.
 	 *
-	 * <p>The send itself is unchanged — issued, dispatched off-thread, best-effort. Only the answer grew.
+	 * <p>The send itself is unchanged — issued, dispatched off-thread, best-effort. The suppression read is
+	 * a <strong>separate call after it</strong>, so nothing about the answer can gate the send, and the
+	 * anonymous registration path that shares {@code sendVerificationEmail} pays nothing for it.
 	 */
 	@PostMapping(REQUEST_VERIFICATION_PATH)
 	ResponseEntity<VerificationRequestedView> requestVerification(Authentication authentication) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
-		VerificationMailOutcome outcome = recovery.sendVerificationEmail(accountId, authentication.getName());
-		return ResponseEntity.ok(new VerificationRequestedView(outcome == VerificationMailOutcome.WITHHELD));
+		String email = authentication.getName();
+		recovery.sendVerificationEmail(accountId, email);
+		return ResponseEntity.ok(new VerificationRequestedView(recovery.isVerificationMailWithheld(email)));
 	}
 
 	/** Only reached once the caller supplied a current password — the presence branch above guarantees it. */

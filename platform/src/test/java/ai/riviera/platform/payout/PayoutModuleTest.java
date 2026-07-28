@@ -23,6 +23,7 @@ import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
@@ -135,6 +136,10 @@ class PayoutModuleTest {
 	// #382: root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
 	@MockitoBean
 	MailSender mailSender;
+
+	// #400: and its second, role-split sibling, which the same root-edge bean now also depends on.
+	@MockitoBean
+	MailDeliverability mailDeliverability;
 
 	@Autowired
 	JdbcClient jdbc;
