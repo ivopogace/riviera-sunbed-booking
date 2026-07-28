@@ -21,6 +21,19 @@ import java.time.Instant;
 public sealed interface ReinstateOutcome {
 
 	/**
+	 * The stable token for this outcome — <strong>one definition</strong> serving both the audit-log
+	 * value and the wire {@code outcome} field, so the two can never drift and neither is a literal
+	 * repeated at a call site ({@code riviera-java-conventions} §6a).
+	 */
+	default String code() {
+		return switch (this) {
+			case Reinstated ignored -> "REINSTATED";
+			case AlreadyReinstated ignored -> "ALREADY_REINSTATED";
+			case NotSuppressed ignored -> "NOT_SUPPRESSED";
+		};
+	}
+
+	/**
 	 * The address was actively suppressed and is now mailable again; the fields describe the
 	 * suppression that was just lifted.
 	 */

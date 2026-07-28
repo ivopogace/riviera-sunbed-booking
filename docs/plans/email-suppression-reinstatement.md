@@ -219,16 +219,16 @@ New endpoint, **no existing contract changes** and no Angular client consumes it
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus `riviera-sdlc`'s reference file for the current stage) before acting.
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `implement — phase 3`
 
-**Next action:** Phase 2 — the `ReinstateSuppression` driving port and its package-private
-`@Service` (injected `Clock`, one audit log line carrying outcome + reason only), AC-5.
+**Next action:** Phase 3 — `AdminEmailSuppressionController` in `notification/adapter/in`, the
+`SecurityConfig` ADMIN rule, and the `WebSliceStubs` bean **in the same commit** (R-3), AC-7.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V35 migration + `reinstated_at`-aware read/write | ✅ | `8d71339` |
-| 1 — `reinstate` on the port + sealed outcome + CTE adapter | ✅ | `<phase-1>` |
-| 2 — Application service: clock, audit log, driving port | | |
+| 1 — `reinstate` on the port + sealed outcome + CTE adapter | ✅ | `2ecb87b` |
+| 2 — Application service: clock, audit log, driving port | ✅ | `<phase-2>` |
 | 3 — Admin controller + `SecurityConfig` gate + `WebSliceStubs` | | |
 | 4 — Contract amendments (javadoc, ADR-0012, runbook, RESPONSIBILITIES, CONTEXT) + #367 note | | |
 
