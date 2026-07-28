@@ -76,17 +76,21 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	 * pathological plan — has no natural end. #368 gave the SMTP round-trip finite timeouts for exactly
 	 * this reason; this closes the other half, the half that arrived later with the suppression check.
 	 *
-	 * <p><strong>Two callers now, with different stakes.</strong> On the recovery vehicle
+	 * <p><strong>Three callers now, with different stakes.</strong> On the recovery vehicle
 	 * {@code isSuppressed} runs on {@code AsyncMailDispatcher}'s <strong>single</strong> drainer thread
 	 * behind a 100-slot queue, where a wedged read stalls the whole mail queue and then silently drops
 	 * every new send once the buffer fills. Since #390 it is <em>also</em> reached from
 	 * {@code SuppressedConfirmationMailDelivery} on a <strong>request</strong> thread, serving the
-	 * confirmed-booking read — so the same bound is now what stops a wedged read from holding a
-	 * user-facing response open, and it is the ceiling on that latency rather than a queue-drain
-	 * concern alone. That is why the default is <strong>2 s</strong> and not the 5 s a mail queue
-	 * alone would tolerate: the view caller degrades to "no notice" on timeout, so a shorter bound
-	 * costs an advisory line and saves the page carrying the guest's booking code. The mail path is
-	 * unharmed — there a timeout fails open (recovery) or propagates for retry (registry).
+	 * confirmed-booking read, and since #400 from {@code MailDeliverabilityService} on a request thread
+	 * too, serving the authenticated verification-resend — so the same bound is now what stops a wedged
+	 * read from holding a user-facing response open, and it is the ceiling on that latency rather than a
+	 * queue-drain concern alone. That is why the default is <strong>2 s</strong> and not the 5 s a mail
+	 * queue alone would tolerate: both request-thread callers degrade to "no notice" on timeout, so a
+	 * shorter bound costs an advisory line and saves the page carrying the guest's booking code. The mail
+	 * path is unharmed — there a timeout fails open (recovery) or propagates for retry (registry).
+	 *
+	 * <p>The count in this paragraph is load-bearing and has now gone stale twice: <strong>wiring a new
+	 * caller means editing it</strong>, because "different stakes" is the whole argument for the value.
 	 *
 	 * <p>Note what this does <em>not</em> bound: {@code queryTimeout} limits execution on a connection
 	 * already acquired, so a genuinely exhausted pool is still governed by the pool's own acquisition

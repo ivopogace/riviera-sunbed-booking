@@ -10,6 +10,10 @@ import { mockCustomerRecoveryApi } from './support/auth-mocks';
  * dead-end. The verification is a POST the page issues on load (the link itself is a plain GET — an
  * email scanner prefetching it never consumes the single-use token, R-6). The recovery API is mocked
  * statefully, so this runs in CI (`npm run test:e2e:a11y`).
+ *
+ * The two resend tests are AC-8 of #400: the account page must not tell an unverified customer a mail
+ * is on its way when the do-not-email list withheld it. Each asserts both halves — the right copy
+ * appears AND the other one is absent — because a caveat bolted onto "sent" would be the same lie.
  */
 
 const VALID_TOKEN = 'valid-verify-token';
@@ -28,11 +32,6 @@ test('following the verification link verifies the email', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'email verified page');
 });
 
-/**
- * AC-8 (#400): the account page must not tell an unverified customer a mail is on its way when the
- * do-not-email list withheld it. Both halves are asserted in one journey — the withheld copy appears
- * AND the old unconditional claim is gone — because a caveat bolted onto "sent" would be the same lie.
- */
 test('the resend says no email was sent when the address is suppressed', async ({ page }) => {
   await mockCustomerRecoveryApi(page, {
     email: EMAIL,

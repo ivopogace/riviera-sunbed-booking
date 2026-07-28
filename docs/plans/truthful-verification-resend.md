@@ -297,7 +297,8 @@ triage, so nothing re-entered the loop from this gate.
 | 2 — Angular: branch the resend copy | ✅ | `b77d8d0` |
 | 3 — Playwright e2e (mocked suite) | ✅ | `7c3b4c7` |
 | 4 — review round 1 (F-1..F-3) + CI (C-1) | ✅ | `b6dbe3a` |
-| 5 — review round 2 (H-1..H-4) | ✅ | *(this commit)* |
+| 5 — review round 2 (H-1..H-4) | ✅ | `5c0fbdd` |
+| 6 — review round 3 (I-1..I-3, `/code-review` 5-agent fan-out) | ✅ | *(this commit)* |
 
 > **Phase-0 deviations from the plan as written.**
 > 1. **No `Emails.normalize` in the service.** `JdbcEmailSuppressions` already normalizes on both
@@ -540,3 +541,16 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`.
 - [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+
+**Round 3** (`/code-review` proper — the skill became invocable again, so the gate's preferred engine
+ran over the full `origin/main...HEAD` diff as a 5-agent fan-out: CLAUDE.md compliance, shallow bug
+scan, git-history context, prior-PR-comment carry-over, and code-comment compliance). Three of the
+five returned clean — including the history pass, which independently re-verified that the F-1 and
+H-2 fixes are real rather than merely claimed. Three findings:
+
+| # | Finding | Status |
+|---|---|---|
+| I-1 | RV-STYLE-1: the 15-line block comment on `RESEND_NOTICES` is not on a component/service/directive/exported type, so the TSDoc exemption in `frontend/.claude/CLAUDE.md` does not cover it. | **fixed** — the two wording constraints moved into the `SetPassword` component's TSDoc, which *is* exempt. The knowledge two review rounds paid for is kept; only its location changed. |
+| I-2 | RV-STYLE-1: a 4-line JSDoc above a `test()` in `email-verification.e2e.ts` — the only per-test JSDoc in the whole e2e suite. | **fixed** — folded into the file's module header, matching every sibling spec. |
+| I-3 | **The #390 F-5 pattern, again.** `JdbcEmailSuppressions.boundedClient`'s javadoc opens *"Two callers now, with different stakes"* and enumerates them; this slice silently makes it **three**, and the new one holds open a customer-facing `POST` rather than a `GET`. The count is the argument for the 2 s default, so a stale count undermines the value it justifies. | **fixed** — the paragraph names all three callers and their stakes, and now carries an explicit note that the count is load-bearing and has gone stale twice, so wiring a fourth caller means editing it. |
+
