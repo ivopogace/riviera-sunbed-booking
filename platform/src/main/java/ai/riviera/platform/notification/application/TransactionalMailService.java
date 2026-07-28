@@ -97,7 +97,7 @@ public class TransactionalMailService implements MailSender {
 	 * <p>Until #386 this read shared the transport's catch, so a transient DB failure dropped the mail
 	 * behind a log line that read like an SMTP failure (recorded as accepted drift Info-5). Sending
 	 * anyway is the better trade on this vehicle: the suppression list is empty in production until
-	 * #370's bounce feed lands, a user-requested reset to a suppressed address is the most harmless
+	 * #372's bounce feed lands, a user-requested reset to a suppressed address is the most harmless
 	 * send available, and D-8 makes the HTTP response identical either way — so a dropped reset is a
 	 * dead end the user gets no signal about and cannot distinguish from success. Bounding this read
 	 * with a finite query timeout (same slice) makes the failure branch <em>more</em> reachable, since

@@ -250,7 +250,8 @@ right call on these two components.
 
 **Stage pointer:** `DONE — merged via PR #399`
 
-**Next action:** none. Residuals live on **#400**.
+**Next action:** none. Both residuals are disposed of — item 1 shipped as **#400** (PR #401); the
+G-3 probe residual is **deferred onto #372**, see *Residual G-3 — disposition* below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -298,7 +299,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|
 | G-1 | **Blocker.** The F-1 profile gate made the whole `/booking/confirmation` half dead by construction: only `StubPaymentGateway` returns `PaymentOutcome.Succeeded` (so only it produces the `201` body), and it is exactly the profile where the gate hard-codes `false`. Under `stripe` the `201` path never runs. | **fixed** — maintainer chose the capability gate: `payment.api.CollectionGuarantee` replaces the profile string, the gate moves into `booking` (which owns the lifecycle and already held `payment::api`), and `notification`'s adapter goes back to a pure suppression lookup with no profile knowledge. The `201` branch is now unreachable-but-correct rather than hard-coded off, and comes alive for any gateway that both collects and confirms in-process. |
 | G-2 | The substrate docs stated the capability unconditionally while it was in fact gated off everywhere. | **fixed** — `CLAUDE.md` and `RESPONSIBILITIES.md` now state the two-part gate and that the flag is inert outside `stripe`. |
-| G-3 | The gate's premise leaks anyway: under `stripe` an attacker pays, reads the flag, then cancels before the #4 cutoff for a **full** refund (invariant #10), so "they already paid" costs ≈0. | **accepted, recorded** — maintainer's call. Each probe still needs a real, traceable card payment (fee, identifiable payer, claimed inventory) for one bit about an address whose booking flow the prober already drove. The overstatement is corrected in R-1 and the javadoc; residual tracked in the follow-up issue. |
+| G-3 | The gate's premise leaks anyway: under `stripe` an attacker pays, reads the flag, then cancels before the #4 cutoff for a **full** refund (invariant #10), so "they already paid" costs ≈0. | **accepted, recorded** — maintainer's call. Each probe still needs a real, traceable card payment (fee, identifiable payer, claimed inventory) for one bit about an address whose booking flow the prober already drove. The overstatement is corrected in R-1 and the javadoc; residual tracked as **#400 item 2**, and disposed of below. |
 | G-4 | `BookingViewSuppressionIT` claimed to catch a normalization mismatch but used byte-identical canonical addresses on both sides. | **fixed** — the suppressed case now writes `"  Suppressed-View@Example.COM "` and reads `suppressed-view@example.com`, so dropping `Emails.normalize` on either side fails it. |
 | G-5 | RV-PROC-1: the *Skills consulted* `riviera-tailwind` entry still recorded the phase-2 SCSS decision the fix round reversed. | **fixed** — the entry records the reversal and why; `riviera-frontend` gains its re-consultation note. |
 | G-6 | RV-PROC-1: `riviera-stripe-payments` was absent although the fix's central decision is a payment-model judgement. | **fixed** — loaded, recorded, and it changed the design (role-split `payment::api` port instead of widening `PaymentGateway` or duplicating a profile string). |
@@ -311,6 +312,45 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-13 | The retained `.email-withheld` marker class was dead and its justification circular — no CSS used it and no pre-existing spec queried it. | **fixed** — class and its assertion dropped; every consumer queries `data-testid`. |
 | G-14 | The 5 s `queryTimeout` became a user-facing latency ceiling but kept its queue-drain value. | **fixed** — default lowered to 2 s, with the two callers' differing stakes documented. |
 | G-15 | Stray double blank line left by the contrast-test deletion. | **fixed** |
+
+### Residual G-3 — disposition (#400 item 2, deferred onto #372)
+
+> #400 item 2 asked whether to mitigate the G-3 probe now. Its intake grill answered **no, and not
+> with either of the two options the issue recorded.** Written down here rather than left on a
+> closed issue, because the slice that makes this residual *real* is **#372**, and its implementer
+> is the one who needs these facts.
+
+- **G-A — the probe returns zero bits today, not one.** `EmailSuppressions.suppress(…)` has **no
+  caller anywhere in `platform/src/main`**, and no migration seeds the table — so nothing writes
+  `email_suppression` at all. (#391's ADMIN reinstatement is not a counter-example: it `UPDATE`s a
+  row to lift it and cannot create one.) The list is therefore empty by construction in every
+  profile, `isWithheld` answers `false` for every address, and `emailWithheld` is a constant rather
+  than a per-address fact. The first writer will be **#372**'s bounce/complaint feed; that slice is
+  the residual's trigger, not the calendar. (#370 — provider/DNS setup — is the other precondition
+  for mail generally, but #372 is what populates the list.)
+- **G-B — the recorded option (a), a dedicated rate-limit budget, would not bind.**
+  `GET /api/bookings/{code}` is already throttled per-IP and per-code by `RateLimitFilter` (#56).
+  Per-code never bites (each probe mints a fresh code); per-IP is rotatable. Above all, the attack's
+  rate limiter is not HTTP — it is **one real Stripe payment plus one claimed `(set, date)` per
+  probe**. Any capacity generous enough to leave `booking-pay`'s legitimate ~20 GET/30 s poll alone
+  (ADR-0006) sits orders of magnitude above that floor, so the bucket would be a control that
+  constrains nothing. It also must not share a map with login or recovery (#111/#127) — which is
+  cost without benefit.
+- **G-C — the recorded option (b), "pass it only through the post-payment hand-off", does not exist
+  under `stripe`.** `StripePaymentGateway.initiate` returns `Pending`, so the `201 CONFIRMED` body
+  is unreachable outside the stub (this plan's own G-1). Under `stripe` the flag reaches the tourist
+  through `booking-pay`'s poll of `GET /api/bookings/{code}` — **the durable read *is* the
+  hand-off**. Option (b) therefore means inventing a new per-checkout channel for an anonymous,
+  code-gated guest flow, and it still would not close the leak: the prober *is* the payer, and one
+  read is all a probe needs.
+- **Two preconditions, not one.** Even once #372 populates the list, the flag stays inert wherever
+  `payment.api.CollectionGuarantee.provenBeforeConfirmation()` is `false` — every non-`stripe`
+  profile (F-1/G-1 above). The residual goes live only where **both** hold.
+- **What would actually close it**, if #372 ever makes the bit valuable: disclose `emailWithheld`
+  only to a **signed-in customer reading their own booking** (principal-scoped like
+  `GET /api/me/bookings`, D-6/BOLA-safe) instead of on the anonymous code-gated read. That gates the
+  notice off for guests — the majority of the audience this slice was built for — so it is a product
+  trade for the maintainer, not a refactor. Recorded as the option to weigh, not a recommendation.
 
 ---
 

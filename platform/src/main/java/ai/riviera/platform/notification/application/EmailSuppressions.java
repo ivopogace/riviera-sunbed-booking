@@ -38,6 +38,21 @@ public interface EmailSuppressions {
 	 * this one path. A value with no {@code local@domain} shape is rejected with
 	 * {@link IllegalArgumentException} — entries are never deleted, so a junk write would persist
 	 * forever.
+	 *
+	 * <p><strong>This method's first production caller carries a security consequence</strong>, so it
+	 * is worth knowing before adding one. While nothing writes the list, every {@link #isSuppressed}
+	 * answer is {@code false} and #390's {@code emailWithheld} on the code-gated booking read is a
+	 * constant rather than a per-address fact. Populating the list — the bounce/complaint feed (#372)
+	 * is the intended first writer — makes that flag a real, if expensive, suppression oracle: an
+	 * attacker books with a victim's address, pays, reads the flag, then cancels before the #4 cutoff
+	 * for a full refund (invariant #10). A second precondition also has to hold, so this alone does
+	 * not open it: the flag stays inert wherever {@code payment.api.CollectionGuarantee} reports that
+	 * the wired gateway does not collect before confirming.
+	 *
+	 * <p>#400 item 2 assessed that probe and deferred it. Read the disposition in
+	 * {@code docs/plans/suppressed-confirmation-mail-notice.md} (<em>Residual G-3</em>) before
+	 * shipping #372: it records why a dedicated rate-limit budget would not bind, and why the
+	 * "hand-off only" alternative does not exist under the {@code stripe} profile.
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 

@@ -284,7 +284,7 @@ deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-
 with the defining invariant **no send to a suppressed address**, enforced at the one send chokepoint
 (`TransactionalMailService`) on both vehicles — with **one deliberate carve-out** (#386): on the
 recovery vehicle a *transient* failure of the lookup itself sends the mail rather than dropping it,
-because the list is empty until #370's feed lands and D-8 makes a dropped reset indistinguishable
+because the list is empty until #372's feed lands and D-8 makes a dropped reset indistinguishable
 from success to the user. The registry vehicle still propagates, so at-least-once retries against a
 healthy DB. The lookup is bounded by a `queryTimeout` scoped to its own adapter — never the global
 property, which would also bound `availability`'s `SELECT … FOR UPDATE` (invariant #2). V34 tightened
