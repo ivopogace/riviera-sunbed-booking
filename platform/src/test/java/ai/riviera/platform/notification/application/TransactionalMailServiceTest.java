@@ -114,7 +114,7 @@ class TransactionalMailServiceTest {
 	 * the mail goes. This deliberately reverses accepted drift Info-5, under which the read shared the
 	 * transport's catch and a transient DB blip silently dropped a reset the user was waiting for,
 	 * behind a log line that read like an SMTP failure. Three reasons: the list is empty in production
-	 * until #370's bounce feed lands; a user-requested reset to a suppressed address is the most
+	 * until #372's bounce feed lands; a user-requested reset to a suppressed address is the most
 	 * harmless send there is; and D-8 makes the response identical either way, so a dropped reset is a
 	 * dead end with no signal to the user. Bounding the read with a query timeout (same slice) makes
 	 * this path <em>more</em> reachable, since a slow read now throws instead of hanging.
