@@ -300,21 +300,34 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-1 | **Blocker.** The F-1 profile gate made the whole `/booking/confirmation` half dead by construction: only `StubPaymentGateway` returns `PaymentOutcome.Succeeded` (so only it produces the `201` body), and it is exactly the profile where the gate hard-codes `false`. Under `stripe` the `201` path never runs. | **fixed** — maintainer chose the capability gate: `payment.api.CollectionGuarantee` replaces the profile string, the gate moves into `booking` (which owns the lifecycle and already held `payment::api`), and `notification`'s adapter goes back to a pure suppression lookup with no profile knowledge. The `201` branch is now unreachable-but-correct rather than hard-coded off, and comes alive for any gateway that both collects and confirms in-process. |
 | G-2 | The substrate docs stated the capability unconditionally while it was in fact gated off everywhere. | **fixed** — `CLAUDE.md` and `RESPONSIBILITIES.md` now state the two-part gate and that the flag is inert outside `stripe`. |
 | G-3 | The gate's premise leaks anyway: under `stripe` an attacker pays, reads the flag, then cancels before the #4 cutoff for a **full** refund (invariant #10), so "they already paid" costs ≈0. | **accepted, recorded** — maintainer's call. Each probe still needs a real, traceable card payment (fee, identifiable payer, claimed inventory) for one bit about an address whose booking flow the prober already drove. The overstatement is corrected in R-1 and the javadoc; residual tracked as **#400 item 2**, and disposed of below. |
+| G-4 | `BookingViewSuppressionIT` claimed to catch a normalization mismatch but used byte-identical canonical addresses on both sides. | **fixed** — the suppressed case now writes `"  Suppressed-View@Example.COM "` and reads `suppressed-view@example.com`, so dropping `Emails.normalize` on either side fails it. |
+| G-5 | RV-PROC-1: the *Skills consulted* `riviera-tailwind` entry still recorded the phase-2 SCSS decision the fix round reversed. | **fixed** — the entry records the reversal and why; `riviera-frontend` gains its re-consultation note. |
+| G-6 | RV-PROC-1: `riviera-stripe-payments` was absent although the fix's central decision is a payment-model judgement. | **fixed** — loaded, recorded, and it changed the design (role-split `payment::api` port instead of widening `PaymentGateway` or duplicating a profile string). |
+| G-7 | The widened `catch (RuntimeException)` logged only the class name, making the programming errors it newly swallows undiagnosable. | **fixed** — the exception is passed to SLF4J, so the stack trace survives. |
+| G-8 | F-10's fix corrected one e2e fixture and left its sibling `AWAITING_DETAIL` diverging the same way (`cancellable: true` and `payment: null` for `AWAITING_PAYMENT`, both impossible). | **fixed** — both fixtures now mirror what `ViewBookingService` actually returns per status. |
+| G-9 | Altitude: a security control encoded as another module's profile string, invisible to `ModularityTests`. | **fixed** — subsumed by G-1's capability port; no module outside `payment` names a profile. |
+| G-10 | The extracted notice was placed in `shared/` although both consumers are in the one `booking/` feature — not `riviera-frontend`'s promotion trigger. | **fixed** — colocated at `booking/withheld-email-notice.ts`. |
+| G-11 | The IT's `UNIQUE_DATE` comment attributed a collision risk to invariant #2 that the seed cannot trigger (no `set_availability` row; `booking`'s index is deliberately non-unique). | **fixed** — the comment states what the date is actually for. |
+| G-12 | The profile-wiring test bypassed component scanning, so it proved only that two `@Profile` expressions are complements. | **fixed** — deleted with the profile approach; the behavior is now pinned where it is real, in `ViewBookingServiceTest` + `CreateBookingServiceTest` + `BookingViewSuppressionIT`. |
+| G-13 | The retained `.email-withheld` marker class was dead and its justification circular — no CSS used it and no pre-existing spec queried it. | **fixed** — class and its assertion dropped; every consumer queries `data-testid`. |
+| G-14 | The 5 s `queryTimeout` became a user-facing latency ceiling but kept its queue-drain value. | **fixed** — default lowered to 2 s, with the two callers' differing stakes documented. |
+| G-15 | Stray double blank line left by the contrast-test deletion. | **fixed** |
 
 ### Residual G-3 — disposition (#400 item 2, deferred onto #372)
 
 > #400 item 2 asked whether to mitigate the G-3 probe now. Its intake grill answered **no, and not
 > with either of the two options the issue recorded.** Written down here rather than left on a
 > closed issue, because the slice that makes this residual *real* is **#372**, and its implementer
-> is the one who needs these three facts.
+> is the one who needs these facts.
 
-- **G-A — the probe currently returns zero bits, not one.** `EmailSuppressions.suppress(…)` has no
-  caller anywhere in `platform/src/main` — the only writers of `email_suppression` are still the
-  bounce/complaint feed that **#372** will add and the ADMIN reinstatement flag (#391, which only
-  lifts). So the list is empty by construction in every profile, `isWithheld` answers `false` for
-  every address, and `emailWithheld` is constant. There is nothing to probe until #372 ships; the
-  residual's trigger is that slice, not the calendar. (#370 — provider/DNS setup — is the *other*
-  precondition for mail generally, but it is #372 that populates the list.)
+- **G-A — the probe returns zero bits today, not one.** `EmailSuppressions.suppress(…)` has **no
+  caller anywhere in `platform/src/main`**, and no migration seeds the table — so nothing writes
+  `email_suppression` at all. (#391's ADMIN reinstatement is not a counter-example: it `UPDATE`s a
+  row to lift it and cannot create one.) The list is therefore empty by construction in every
+  profile, `isWithheld` answers `false` for every address, and `emailWithheld` is a constant rather
+  than a per-address fact. The first writer will be **#372**'s bounce/complaint feed; that slice is
+  the residual's trigger, not the calendar. (#370 — provider/DNS setup — is the other precondition
+  for mail generally, but #372 is what populates the list.)
 - **G-B — the recorded option (a), a dedicated rate-limit budget, would not bind.**
   `GET /api/bookings/{code}` is already throttled per-IP and per-code by `RateLimitFilter` (#56).
   Per-code never bites (each probe mints a fresh code); per-IP is rotatable. Above all, the attack's
@@ -330,23 +343,14 @@ Skill-routing gate for what the fix touches *before* editing).
   hand-off**. Option (b) therefore means inventing a new per-checkout channel for an anonymous,
   code-gated guest flow, and it still would not close the leak: the prober *is* the payer, and one
   read is all a probe needs.
+- **Two preconditions, not one.** Even once #372 populates the list, the flag stays inert wherever
+  `payment.api.CollectionGuarantee.provenBeforeConfirmation()` is `false` — every non-`stripe`
+  profile (F-1/G-1 above). The residual goes live only where **both** hold.
 - **What would actually close it**, if #372 ever makes the bit valuable: disclose `emailWithheld`
   only to a **signed-in customer reading their own booking** (principal-scoped like
   `GET /api/me/bookings`, D-6/BOLA-safe) instead of on the anonymous code-gated read. That gates the
   notice off for guests — the majority of the audience this slice was built for — so it is a product
   trade for the maintainer, not a refactor. Recorded as the option to weigh, not a recommendation.
-| G-4 | `BookingViewSuppressionIT` claimed to catch a normalization mismatch but used byte-identical canonical addresses on both sides. | **fixed** — the suppressed case now writes `"  Suppressed-View@Example.COM "` and reads `suppressed-view@example.com`, so dropping `Emails.normalize` on either side fails it. |
-| G-5 | RV-PROC-1: the *Skills consulted* `riviera-tailwind` entry still recorded the phase-2 SCSS decision the fix round reversed. | **fixed** — the entry records the reversal and why; `riviera-frontend` gains its re-consultation note. |
-| G-6 | RV-PROC-1: `riviera-stripe-payments` was absent although the fix's central decision is a payment-model judgement. | **fixed** — loaded, recorded, and it changed the design (role-split `payment::api` port instead of widening `PaymentGateway` or duplicating a profile string). |
-| G-7 | The widened `catch (RuntimeException)` logged only the class name, making the programming errors it newly swallows undiagnosable. | **fixed** — the exception is passed to SLF4J, so the stack trace survives. |
-| G-8 | F-10's fix corrected one e2e fixture and left its sibling `AWAITING_DETAIL` diverging the same way (`cancellable: true` and `payment: null` for `AWAITING_PAYMENT`, both impossible). | **fixed** — both fixtures now mirror what `ViewBookingService` actually returns per status. |
-| G-9 | Altitude: a security control encoded as another module's profile string, invisible to `ModularityTests`. | **fixed** — subsumed by G-1's capability port; no module outside `payment` names a profile. |
-| G-10 | The extracted notice was placed in `shared/` although both consumers are in the one `booking/` feature — not `riviera-frontend`'s promotion trigger. | **fixed** — colocated at `booking/withheld-email-notice.ts`. |
-| G-11 | The IT's `UNIQUE_DATE` comment attributed a collision risk to invariant #2 that the seed cannot trigger (no `set_availability` row; `booking`'s index is deliberately non-unique). | **fixed** — the comment states what the date is actually for. |
-| G-12 | The profile-wiring test bypassed component scanning, so it proved only that two `@Profile` expressions are complements. | **fixed** — deleted with the profile approach; the behavior is now pinned where it is real, in `ViewBookingServiceTest` + `CreateBookingServiceTest` + `BookingViewSuppressionIT`. |
-| G-13 | The retained `.email-withheld` marker class was dead and its justification circular — no CSS used it and no pre-existing spec queried it. | **fixed** — class and its assertion dropped; every consumer queries `data-testid`. |
-| G-14 | The 5 s `queryTimeout` became a user-facing latency ceiling but kept its queue-drain value. | **fixed** — default lowered to 2 s, with the two callers' differing stakes documented. |
-| G-15 | Stray double blank line left by the contrast-test deletion. | **fixed** |
 
 ---
 
