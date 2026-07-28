@@ -53,4 +53,12 @@ class MailDeliverabilityServiceTest {
 
 		assertThat(service.isWithheld(EMAIL)).isFalse();
 	}
+
+	/** The barrier is total, not data-access-shaped — the #390 F-2 lesson, applied here up front. */
+	@Test
+	void reportsDeliverableWhenTheLookupThrowsSomethingThatIsNotADataAccessFailure() {
+		when(suppressions.isSuppressed(any())).thenThrow(new IllegalStateException("programming error"));
+
+		assertThat(service.isWithheld(EMAIL)).isFalse();
+	}
 }

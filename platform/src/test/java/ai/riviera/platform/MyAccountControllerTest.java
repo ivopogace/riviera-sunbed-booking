@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -55,6 +56,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MyAccountControllerTest {
 
 	private static final String SET_PASSWORD = "/api/me/password";
+	private static final String REQUEST_VERIFICATION = "/api/me/verify-email/request";
 	private static final String EMAIL = "tourist@example.com";
 	private static final CustomerAccountId ACCOUNT_ID = new CustomerAccountId(7L);
 	private static final String CURRENT_PASSWORD = "current-pass1";
@@ -142,10 +144,42 @@ class MyAccountControllerTest {
 		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
 	}
 
+	/**
+	 * AC-1/AC-2 (#400): the resend answers {@code 200} carrying whether the mail was withheld, so the
+	 * account page can stop claiming one was sent when the suppression list silently withheld it. The
+	 * disclosure is safe on <em>this</em> endpoint alone — it is {@code ROLE_CUSTOMER}-gated and answers
+	 * about the caller's own session principal, never a supplied address, so there is no account to
+	 * enumerate (the anonymous {@code forgot-password} copy stays hedged, D-8).
+	 */
+	@Test
+	void reportsAWithheldVerificationMailForASuppressedAddress() throws Exception {
+		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
+		when(recovery.sendVerificationEmail(ACCOUNT_ID, EMAIL)).thenReturn(VerificationMailOutcome.WITHHELD);
+
+		mvc.perform(requestVerification())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.emailWithheld").value(true));
+	}
+
+	@Test
+	void reportsADeliverableVerificationMail() throws Exception {
+		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
+		when(recovery.sendVerificationEmail(ACCOUNT_ID, EMAIL)).thenReturn(VerificationMailOutcome.SENT);
+
+		mvc.perform(requestVerification())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.emailWithheld").value(false));
+	}
+
 	private void givenAccountWithPassword() {
 		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
 		when(accounts.findByEmail(EMAIL)).thenReturn(Optional.of(
 				new CustomerAccountCredential(EMAIL, passwordEncoder.encode(CURRENT_PASSWORD))));
+	}
+
+	private static MockHttpServletRequestBuilder requestVerification() {
+		return post(REQUEST_VERIFICATION).with(csrf()).with(user(EMAIL).roles("CUSTOMER"))
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp());
 	}
 
 	private static MockHttpServletRequestBuilder changePassword(String current, String next) {

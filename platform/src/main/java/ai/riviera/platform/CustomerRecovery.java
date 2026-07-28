@@ -11,6 +11,7 @@ import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 /**
@@ -36,26 +37,38 @@ class CustomerRecovery {
 
 	private final CustomerAccountRecovery recovery;
 	private final MailSender mails;
+	private final MailDeliverability deliverability;
 	private final RecoveryTokens tokens;
 	private final RecoveryProperties properties;
 	private final Clock clock;
 
-	CustomerRecovery(CustomerAccountRecovery recovery, MailSender mails, RecoveryTokens tokens,
-			RecoveryProperties properties, Clock clock) {
+	CustomerRecovery(CustomerAccountRecovery recovery, MailSender mails, MailDeliverability deliverability,
+			RecoveryTokens tokens, RecoveryProperties properties, Clock clock) {
 		this.recovery = recovery;
 		this.mails = mails;
+		this.deliverability = deliverability;
 		this.tokens = tokens;
 		this.properties = properties;
 		this.clock = clock;
 	}
 
-	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link. */
-	void sendVerificationEmail(CustomerAccountId accountId, String email) {
+	/**
+	 * Issue a fresh verification token for the account, (best-effort, off-thread) email its link, and
+	 * report whether the do-not-mail list will withhold it (#400).
+	 *
+	 * <p>The disclosure is a read <em>alongside</em> the send, never a gate on it: the token is issued and
+	 * the send dispatched exactly as before, and only then is the question asked — so nothing about this
+	 * answer can suppress a mail that would otherwise have gone out. Reporting it is safe only because
+	 * this flow is authenticated and {@code email} is the caller's own session principal; the anonymous
+	 * {@link #sendPasswordResetEmail} deliberately reports nothing (D-8, #369).
+	 */
+	VerificationMailOutcome sendVerificationEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()));
 		// The token store above is NOT best-effort and stays on this thread; only the send is (#369, R-3).
 		mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
+		return deliverability.isWithheld(email) ? VerificationMailOutcome.WITHHELD : VerificationMailOutcome.SENT;
 	}
 
 	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link. */

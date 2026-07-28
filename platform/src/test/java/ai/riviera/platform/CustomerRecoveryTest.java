@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * The edge orchestration around a recovery send (#369, reshaped by #382): {@code CustomerRecovery}
@@ -36,8 +38,10 @@ class CustomerRecoveryTest {
 
 	private final CustomerAccountRecovery accounts = mock(CustomerAccountRecovery.class);
 	private final MailSender mails = mock(MailSender.class);
+	private final MailDeliverability deliverability = mock(MailDeliverability.class);
 
-	private final CustomerRecovery recovery = new CustomerRecovery(accounts, mails, new RecoveryTokens(),
+	private final CustomerRecovery recovery = new CustomerRecovery(accounts, mails, deliverability,
+			new RecoveryTokens(),
 			new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), BASE_URL),
 			Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC));
 
@@ -66,5 +70,28 @@ class CustomerRecoveryTest {
 		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
 		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
 		assertThat(link.getValue()).asString().startsWith(BASE_URL + CustomerRecovery.VERIFY_PATH + "?token=");
+	}
+
+	/**
+	 * AC-3 (#400): the disclosure is a <em>read</em> bolted onto the answer, not a gate on the send. A
+	 * suppressed address still gets its token issued and its send dispatched exactly as before — whether
+	 * that send is then withheld stays {@code notification}'s decision at its own chokepoint, taken off
+	 * this thread.
+	 */
+	@Test
+	void issuesAndDispatchesRegardlessOfSuppression() {
+		when(deliverability.isWithheld(EMAIL)).thenReturn(true);
+
+		assertThat(recovery.sendVerificationEmail(ACCOUNT, EMAIL)).isEqualTo(VerificationMailOutcome.WITHHELD);
+
+		verify(accounts).issueEmailVerificationToken(eq(ACCOUNT), any(), any());
+		verify(mails).sendEmailVerification(eq(EMAIL), any());
+	}
+
+	@Test
+	void reportsSentForADeliverableAddress() {
+		when(deliverability.isWithheld(EMAIL)).thenReturn(false);
+
+		assertThat(recovery.sendVerificationEmail(ACCOUNT, EMAIL)).isEqualTo(VerificationMailOutcome.SENT);
 	}
 }

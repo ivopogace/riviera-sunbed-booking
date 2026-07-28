@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.net.URI;
+import java.time.Instant;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
+import ai.riviera.platform.notification.application.EmailSuppressions;
+import ai.riviera.platform.notification.application.SuppressionReason;
 
 import jakarta.servlet.http.Cookie;
 
@@ -49,6 +52,8 @@ class EmailVerificationIT {
 	JdbcClient jdbc;
 	@Autowired
 	MockMailer mailer;
+	@Autowired
+	EmailSuppressions suppressions;
 
 	@BeforeEach
 	void clean() {
@@ -90,6 +95,41 @@ class EmailVerificationIT {
 		verify("not-a-real-token")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_OR_EXPIRED_TOKEN"));
+	}
+
+	/**
+	 * AC-6 (#400): the withheld fact on the wire, through the <strong>real</strong> chain — bean wiring,
+	 * the peppered-HMAC {@code email_suppression} read, and the published field name. Every unit test on
+	 * this path mocks the seam it proves, so this is what catches a wiring break or a pepper mismatch.
+	 *
+	 * <p>The row is written in a differently-cased, space-padded form of the address the caller signs in
+	 * with, so dropping {@code Emails.normalize} on either side fails this test rather than passing on
+	 * byte-identical inputs (the #390 G-4 lesson).
+	 */
+	@Test
+	void reportsWithheldForASuppressedAddress() throws Exception {
+		String email = "verify-it-suppressed@example.com";
+		Cookie session = register(email).getResponse().getCookie(SESSION_COOKIE);
+		suppressions.suppress("  Verify-IT-Suppressed@Example.COM ", SuppressionReason.HARD_BOUNCE, Instant.now());
+
+		requestVerification(session)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.emailWithheld").value(true));
+	}
+
+	@Test
+	void reportsDeliverableForAnUnsuppressedAddress() throws Exception {
+		String email = "verify-it-deliverable@example.com";
+		Cookie session = register(email).getResponse().getCookie(SESSION_COOKIE);
+
+		requestVerification(session)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.emailWithheld").value(false));
+	}
+
+	private org.springframework.test.web.servlet.ResultActions requestVerification(Cookie session) throws Exception {
+		return mvc.perform(post("/api/me/verify-email/request").with(csrf()).cookie(session)
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()));
 	}
 
 	private org.springframework.test.web.servlet.MvcResult register(String email) throws Exception {

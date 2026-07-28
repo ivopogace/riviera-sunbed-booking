@@ -544,8 +544,8 @@ class RateLimitFilterTest {
 	@Test
 	void authenticatedVerificationResendsAreStillThrottled() throws Exception {
 		String ip = "10.33.0.2";
-		authenticatedResendFromIp(ip).andExpect(status().isNoContent());
-		authenticatedResendFromIp(ip).andExpect(status().isNoContent());
+		authenticatedResendFromIp(ip).andExpect(status().isOk());
+		authenticatedResendFromIp(ip).andExpect(status().isOk());
 		authenticatedResendFromIp(ip)
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));

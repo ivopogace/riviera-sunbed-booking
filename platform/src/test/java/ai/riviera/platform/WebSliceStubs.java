@@ -46,6 +46,7 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.ReinstateSuppression;
@@ -415,8 +416,16 @@ class WebSliceStubs {
 
 	@Bean
 	CustomerRecovery customerRecovery(CustomerAccountRecovery recovery, MailSender mailSender,
-			RecoveryTokens recoveryTokens, RecoveryProperties recoveryProperties, Clock clock) {
-		return new CustomerRecovery(recovery, mailSender, recoveryTokens, recoveryProperties, clock);
+			MailDeliverability mailDeliverability, RecoveryTokens recoveryTokens,
+			RecoveryProperties recoveryProperties, Clock clock) {
+		return new CustomerRecovery(recovery, mailSender, mailDeliverability, recoveryTokens, recoveryProperties,
+				clock);
+	}
+
+	/** Nothing is suppressed in a web slice — the withheld branch is pinned where it is real (#400). */
+	@Bean
+	MailDeliverability mailDeliverability() {
+		return toEmail -> false;
 	}
 
 	/** An empty session repository — the web slices never revoke a session. */
