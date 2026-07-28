@@ -280,8 +280,8 @@ bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bou
 (#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
 payment→booking and booking→payout listeners; the registry listener therefore spells out
 `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-`@ApplicationModuleListener`, and holds no transaction across the send — the `BookingConfirmed` confirmation mail
-(assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
+`@ApplicationModuleListener`, and holds no transaction across the send — the `BookingConfirmed`
+confirmation mail (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),

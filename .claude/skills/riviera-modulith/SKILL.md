@@ -145,7 +145,9 @@ an empty surface onto a module. Published surfaces stay **top-level and exposed*
 
 Up to four top-level named interfaces — each present only if the module publishes that kind, each
 holding **one kind only**, pinned by `PublishedSurfacePlacementArchitectureTests` (which also checks
-every cross-module `@ApplicationModuleListener` parameter lives in its owner's `events` surface):
+every cross-module transactional event listener's parameter lives in its owner's `events` surface —
+both the `@ApplicationModuleListener` composite and the `@Async` + `@TransactionalEventListener`
+expansion a listener needs to name its own executor, #383):
 
 - **`api/`** — **ports only**, plain interfaces others call (`venue.api.VenueCatalog`,
   `payment.api.CheckoutPort`). A wide port **splits by consumer role** (#94 — case history): don't
