@@ -57,36 +57,36 @@ own Javadoc (#369) and ADR-0011 decision 5.
 
 Mapped to the issue's four ACs; AC-5 is added by the intake grill (see Open questions).
 
-- [ ] **AC-1 (issue AC-1):** Given a mailer that blocks indefinitely and enough outstanding
+- [x] **AC-1 (issue AC-1):** Given a mailer that blocks indefinitely and enough outstanding
   `BookingConfirmed` publications to occupy every mail thread **and** more than Boot's
   `applicationTaskExecutor` core pool (8), when a further booking is confirmed via the payment path,
   then `PaymentConfirmed` → `CONFIRMED` and `BookingConfirmed` → payout accrual both complete within
   seconds while the mail sends are still wedged. *Pinned by:*
   `RegistryMailBulkheadIT.wedgedMailDoesNotDelayTheMoneyPath`
-- [ ] **AC-2 (issue AC-2):** Given the registry-mail executor, when more tasks are submitted than its
+- [x] **AC-2 (issue AC-2):** Given the registry-mail executor, when more tasks are submitted than its
   pool and queue can hold, then the surplus is **shed** — the submission neither throws to the caller
   nor runs on the caller's thread — and the pool is bounded at its configured core/max/queue.
   *Pinned by:* `RegistryMailExecutorConfigTest.isBoundedAndShedsOnSaturation`
-- [ ] **AC-3 (issue AC-3, durability half a):** Given a confirmation send that fails, when the
+- [x] **AC-3 (issue AC-3, durability half a):** Given a confirmation send that fails, when the
   publication set is resubmitted (what `republish-outstanding-events-on-restart` does at boot), then
   the mail is re-attempted — i.e. the decomposed listener still leaves an **outstanding** publication
   on failure. *Pinned by:* `RegistryMailBulkheadIT.aFailedSendLeavesThePublicationOutstandingAndIsRetried`
-- [ ] **AC-4 (issue AC-3, durability half b):** Given a confirmation that was delivered, when the
+- [x] **AC-4 (issue AC-3, durability half b):** Given a confirmation that was delivered, when the
   publication set is resubmitted, then no second mail is sent — the decomposed listener is still
   **completed** by the registry. *Pinned by:* the existing
   `BookingConfirmationMailIT.doesNotResendWhenACompletedPublicationIsResubmitted` and
   `EventRegistryDurabilityIT.boundsTheLivePublicationTableByArchivingCompletions`, re-run unchanged.
-- [ ] **AC-5 (added by the grill):** Given the decomposition, when a publication for the listener is
+- [x] **AC-5 (added by the grill):** Given the decomposition, when a publication for the listener is
   written, then its `listener_id` is exactly the FQCN+signature string V31 migrated to — so no live
   or archived row dead-letters on the post-deploy republish. *Pinned by:*
   `RegistryMailBulkheadIT.keepsTheListenerIdV31Migrated`
-- [ ] **AC-6 (issue AC-4):** Given any transactional event listener in the `notification` module, then
+- [x] **AC-6 (issue AC-4):** Given any transactional event listener in the `notification` module, then
   it declares the dedicated mail executor by name — a bare `@ApplicationModuleListener` (which would
   silently land back on the shared executor) fails the build. This is what makes
   `AsyncMailDispatcher`'s stated rule hold for *every* mail path, including the ones #373/#374 have
   not written yet. *Pinned by:*
-  `MailListenerExecutorArchitectureTests.everyNotificationEventListenerNamesTheMailExecutor`
-- [ ] **AC-7 (the transaction half of issue "what to build" bullet 3):** Given a confirmation send,
+  `MailListenerExecutorArchitectureTest.everyNotificationEventListenerNamesTheMailExecutor`
+- [x] **AC-7 (the transaction half of issue "what to build" bullet 3):** Given a confirmation send,
   when the transport is invoked, then no transaction (and therefore no pooled connection) is held open
   around it. *Pinned by:* `RegistryMailBulkheadIT.sendsWithNoTransactionHeldOpen`
 
@@ -130,22 +130,28 @@ The slice replaces the listener's *dispatch mechanics*, so the ledger covers wha
 |---|---|---|---|---|---|---|
 | R-1 | The decomposition silently loses registry tracking, converting at-least-once into fire-and-forget with no failing test — the issue's stated main reason this wasn't folded into #371 | low | **critical** | Bytecode-verified that `@ApplicationModuleListener` *is* exactly these three annotations, so tracking (which keys on `@TransactionalEventListener`) cannot change; then proven both directions — AC-3 (outstanding on failure) and AC-4 (completed on success), the latter by the **existing, unmodified** #371 ITs | agent | **closed** — AC-3 green, and `BookingConfirmationMailIT` + `EventRegistryDurabilityIT` + `ListenerMoveMigrationIT` pass unmodified after the swap |
 | R-2 | Dropping `@Transactional` breaks completion registration or archive atomicity | low | high | AC-4's existing ITs are the detector, and they run in phase 1. **Fallback if red:** restore `@Transactional(propagation = REQUIRES_NEW, readOnly = true)` and drop AC-7 — the executor bulkhead (the issue's primary fix) stands either way | agent | **closed** — not needed. Completion and archiving both survive; `EventRegistryDurabilityIT` still observes the publication leaving the live table |
-| R-3 | The two mail pools drift into looking like duplication, and a future slice "unifies" them — re-opening the #369 timing oracle or the #383 bulkhead | med | high | Documented on both classes as **deliberately different saturation semantics**: the recovery dispatcher must *drop* (its payload is a bearer credential the registry may not persist, ADR-0011 decision 5, so there is nothing to retry from), while this one *sheds to the registry*, which still holds the work. AC-6 makes the split structural, not advisory | agent | open |
-| R-4 | `riviera-java-conventions` §8 says "don't hand-roll thread pools in application code" — this slice hand-rolls one | n/a | n/a | Accepted with reason: §8's target is using threads as a *concurrency primitive* (the DB unique index owns that, invariant #2). This pool is a **bulkhead**, the opposite — it exists to *limit* concurrency and isolate a failure domain. The precedent (`AsyncMailDispatcher`, #369) was accepted on the same grounds, and the issue is that the precedent was not applied consistently | agent | open |
+| R-3 | The two mail pools drift into looking like duplication, and a future slice "unifies" them — re-opening the #369 timing oracle or the #383 bulkhead | med | high | Documented on both classes as **deliberately different saturation semantics**: the recovery dispatcher must *drop* (its payload is a bearer credential the registry may not persist, ADR-0011 decision 5, so there is nothing to retry from), while this one *sheds to the registry*, which still holds the work. AC-6 makes the split structural, not advisory | agent | **closed** — both Javadocs carry the contrast, and `AsyncMailDispatcher`'s now says its rule was module-wide all along |
+| R-4 | `riviera-java-conventions` §8 says "don't hand-roll thread pools in application code" — this slice hand-rolls one | n/a | n/a | **Closed — accepted with reason:** §8's target is using threads as a *concurrency primitive* (the DB unique index owns that, invariant #2). This pool is a **bulkhead**, the opposite — it exists to *limit* concurrency and isolate a failure domain. The precedent (`AsyncMailDispatcher`, #369) was accepted on the same grounds, and the issue is that the precedent was not applied consistently | agent | **closed** |
 | R-5 | The wedging IT leaves a blocked executor or a claimed `(set, date)` behind and poisons the shared Spring context for other ITs (invariant #2: a claim is never released) | med | med | The IT declares a nested `@TestConfiguration`, which gives it **its own context cache key** rather than the shared one; the latch is released in `@AfterEach` unconditionally; bookings are SQL-seeded on dates no other IT uses (the class-level unique-date discipline `BookingConfirmationMailIT` documents) | agent | **closed** — plus a lesson the build paid for: see Info-1 |
-| R-6 | Saturation shedding is *silent* — a shed send is invisible until the next restart republishes it | med | med | The rejection handler logs a WARN (no address, invariant #7 posture); the shed publication keeps `riviera.outbox.pending` non-zero, which `MoneyPathAlertCheck` already surfaces. Documented on the config class as the saturation contract AC-2 requires | agent | open |
-| R-7 | A full-suite-only failure (the `riviera-local-debug` shared-state class): a new bounded, long-lived pool accumulating wedged threads across cached contexts | med | med | The only test that wedges the pool owns its own context (R-5) and releases in `@AfterEach`; no `@Scheduled`, no filter, no rate-limit key involved. Verified by the push's CI run before the next phase, per the SDLC CI-gate rule |  agent | open |
+| R-6 | Saturation shedding is *silent* — a shed send is invisible until the next restart republishes it | med | med | The rejection handler logs a WARN (no address, invariant #7 posture); the shed publication keeps `riviera.outbox.pending` non-zero, which `MoneyPathAlertCheck` already surfaces. Documented on the config class as the saturation contract AC-2 requires | agent | **closed** — implemented as described |
+| R-7 | A full-suite-only failure (the `riviera-local-debug` shared-state class): a new bounded, long-lived pool accumulating wedged threads across cached contexts | med | med | The only test that wedges the pool owns its own context (R-5) and releases in `@AfterEach`; no `@Scheduled`, no filter, no rate-limit key involved | agent | open until this push's CI run — the failure class scoped runs cannot show |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Pool size **2** and queue **200** are right for one send per confirmed booking.
+### Open
+
+*(none — the assumption below resolved in phase 0.)*
+
+### Assumption, resolved
+
+- **Assumption (resolved, `aaddc71`):** Pool size **2** and queue **200** are right for one send per confirmed booking.
   Rationale: 2 rather than 1 so a single wedged address (up to ~30s of #368's connect+read+write
   timeouts) cannot serialize every subsequent confirmation behind it — the reason `AsyncMailDispatcher`
   could accept 1 ("a handful of sends a day") does not hold for a per-booking send; and small rather
   than large because the pool's *job* is to be smaller than the spine's. 200 queue slots is ≈50 minutes
   of worst-case backlog at 2×30s, well past the point where shedding to the durable registry beats
-  queueing. Constants, not properties, matching `AsyncMailDispatcher`'s precedent. — *Owner:* agent ·
-  *Resolves by:* phase 0 (the numbers are asserted, so changing them is a one-line, test-covered edit)
+  queueing. Constants, not properties, matching `AsyncMailDispatcher`'s precedent. Both numbers are asserted by
+  `RegistryMailExecutorConfigTest`, so revising them is a one-line, test-covered edit.
 
 ### Resolved
 
@@ -213,7 +219,7 @@ No event is added, moved, renamed or re-payloaded.
 | Capability (what the slice adds/changes) | Owner module | Justification |
 |---|---|---|
 | The bounded executor that registry-borne mail runs on | `notification` | `notification` **Job**: owns "the two delivery vehicles — the Event Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for bearer-credential payloads". The pool a vehicle drains on is part of the vehicle. It is on no other module's Not-My-Job list, and it is emphatically **not** the composition root's: the root is a pure composition root + auth edge since #382 and holds no module listeners (`CompositionRootDisciplineTests`) |
-| The structural rule "a mail listener must name its executor" | test scope (root `ai.riviera.platform`) | Sits with the other fitness functions, which all live at the root test package and share `ArchitectureTestSupport`'s single production classpath scan (#96). It asserts *about* `notification` but is not production code in it |
+| The structural rule "a mail listener must name its executor" | test scope, in `notification.adapter.in` | Planned for the root test package with the other fitness functions, but moved: the rule must assert on the **merged** `@Async` attribute against the very constant the production annotation uses, and that constant is package-private. `payment`'s `NoStripeConnectArchitectureTest` is the precedent for a module-local fitness function |
 
 Placement within the module: `adapter/in`, beside `BookingConfirmationMailListener`, the driving
 adapter it exists to serve — the same shape as `customer.adapter.in.CustomerRetentionConfig` (a
@@ -241,16 +247,16 @@ loaded for that reason.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — awaiting CI, then the review + Sonar gates`
 
-**Next action:** Phase 2 — add `MailListenerExecutorArchitectureTests` (AC-6), then the
-`AsyncMailDispatcher` Javadoc and substrate-doc reconciliation.
+**Next action:** Open the PR into `main`, then run `/code-review` + `riviera-review-overlay` and pull
+the SonarCloud new-issue list. R-7 closes only on this push's CI run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the bounded executor + its saturation contract | ✅ | `aaddc71` |
-| 1 — decompose the listener onto it; registry durability + listener_id proven | ✅ | see phase-1 commit |
-| 2 — the structural rule (AC-6) + substrate docs | ⏳ | |
+| 1 — decompose the listener onto it; registry durability + listener_id proven | ✅ | `431caf3` |
+| 2 — the structural rule (AC-6) + substrate docs | ✅ | see phase-2 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -281,8 +287,11 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
   — **new.** Plain unit test (no Spring): bounds + shed-on-saturation (AC-2).
 - `platform/src/test/java/ai/riviera/platform/notification/RegistryMailBulkheadIT.java`
   — **new.** Testcontainers IT with a controllable `Mailer`: AC-1, AC-3, AC-5, AC-7.
-- `platform/src/test/java/ai/riviera/platform/MailListenerExecutorArchitectureTests.java`
-  — **new.** The fitness function for AC-6.
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/in/MailListenerExecutorArchitectureTest.java`
+  — **new.** The fitness function for AC-6. Placed in the module rather than with the root arch tests,
+  following `payment`'s `NoStripeConnectArchitectureTest` precedent: it needs the package-private
+  `MAIL_EXECUTOR` constant, so the rule names the same constant production does instead of re-typing
+  the bean name and hoping the two stay in step.
 - `RESPONSIBILITIES.md`, `CLAUDE.md` — **modified.** The `notification` Job line and the module table
   gain the executor fact (merge close-out step 5, `riviera-docs-freshness`).
 
@@ -354,34 +363,35 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-28 | phase 2 (rule introduced) | listeners in `notification` that would silently land on the shared executor — including ones not yet written (#373, #374) | `MailListenerExecutorArchitectureTest` (a standing rule, not a one-off search) | 1 today; the rule covers every future one | **Fix all, by construction.** Proven non-vacuous by reverting the listener to `@ApplicationModuleListener` and watching it fail |
 | 2026-07-28 | phase 0 (new pattern: a dedicated bounded executor for a listener doing blocking external I/O) | every async event listener, to see which others put a blocking round-trip on the shared `applicationTaskExecutor` | `rg '^\s*@(ApplicationModuleListener\|Async\|EventListener\|TransactionalEventListener)' platform/src/main/java` | 6: `payout` ×2 (`BookingConfirmed`/`BookingCancelled` accrual+reversal), `booking.PaymentEventListener` ×2, `booking.BookingRefundListener`, `notification.BookingConfirmationMailListener` | **Subset.** Only the mail listener moves (this slice). The four `payout`/`PaymentEventListener` methods are DB-only and *are* the spine — giving the spine a smaller pool than it has today would shed money-path work, which is strictly worse (Non-goals). **One genuine sibling found:** `BookingRefundListener` drives `payment`'s `RefundPort` — a blocking **Stripe HTTP** round-trip on the shared spine executor, the same hazard class as this issue with a different transport. Out of scope here (it is payment work, needs `riviera-stripe-payments`, and shedding a refund is not obviously right) → **raised as a follow-up issue at close-out**, not silently dropped |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `wedgedMailDoesNotDelayTheMoneyPath` PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `aFailedSendLeavesThePublicationOutstandingAndIsRetried` PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `gradle test --tests "*BookingConfirmationMailIT*" --tests "*EventRegistryDurabilityIT*"` → PASS, unmodified. Verified at commit `<sha>`.
-- [ ] **AC-5:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `keepsTheListenerIdV31Migrated` PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `gradle test --tests "*MailListenerExecutorArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `sendsWithNoTransactionHeldOpen` PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `wedgedMailDoesNotDelayTheMoneyPath` PASS. Verified at `431caf3`. Pre-fix it failed with `CannotGetJdbcConnectionException` — ten wedged listeners had exhausted Hikari's default pool of ten, the issue's stated harm reproduced exactly.
+- [x] **AC-2:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at `aaddc71`.
+- [x] **AC-3:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `aFailedSendLeavesThePublicationOutstandingAndIsRetried` PASS. Verified at `431caf3`.
+- [x] **AC-4:** `gradle test --tests "*BookingConfirmationMailIT*" --tests "*EventRegistryDurabilityIT*" --tests "*ListenerMoveMigrationIT*" --tests "*PayoutAccrualIT*" --tests "*PayoutReversalIT*" --tests "*PaymentEventListenerIT*"` → PASS, all unmodified. Verified at `431caf3`.
+- [x] **AC-5:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `keepsTheListenerIdV31Migrated` PASS. Verified at `431caf3`.
+- [x] **AC-6:** `gradle test --tests "*MailListenerExecutorArchitectureTest*"` → PASS, and proven non-vacuous: reverting the listener to `@ApplicationModuleListener` fails it with *"runs on Boot's shared applicationTaskExecutor rather than 'registryMailExecutor'"*. Verified in phase 2.
+- [x] **AC-7:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `sendsWithNoTransactionHeldOpen` PASS. Verified at `431caf3`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A); no new write path to `set_availability` (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `allowedDependencies` unchanged (invariant #11).
-- [ ] **Payment/payout** section filled (justified N/A); the spine's behavior is asserted, not edited (invariants #5, #8, #9).
-- [ ] No booking code, address or token in any new log line (invariant #7).
-- [ ] No Flyway migration needed — and that claim is pinned by AC-5, not asserted (invariant #12).
-- [ ] **Frontend** N/A.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A); no new write path to `set_availability` (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `allowedDependencies` unchanged (invariant #11).
+- [x] **Payment/payout** section filled (justified N/A); the spine's behavior is asserted, not edited (invariants #5, #8, #9).
+- [x] No booking code, address or token in any new log line (invariant #7).
+- [x] No Flyway migration needed — and that claim is pinned by AC-5, not asserted (invariant #12).
+- [x] **Frontend** N/A.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.

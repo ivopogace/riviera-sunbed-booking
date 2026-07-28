@@ -276,7 +276,11 @@ Security type inside the module (`OperatorAuthPlacementTests` green). See
 **Job:** Own transactional-mail **delivery** (#382): the `Mailer` transports (recording mock
 vs real SMTP, profile-swapped, mock prod-guarded), the two delivery vehicles — the Event
 Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for
-bearer-credential payloads (ADR-0011 decision 5) — the `BookingConfirmed` confirmation mail
+bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bounded executor**
+(#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
+payment→booking and booking→payout listeners; the registry listener therefore spells out
+`@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
+`@ApplicationModuleListener`, and holds no transaction across the send — the `BookingConfirmed` confirmation mail
 (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
