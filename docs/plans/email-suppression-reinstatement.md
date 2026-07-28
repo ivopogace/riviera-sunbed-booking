@@ -34,7 +34,9 @@ migration **V35**; `JdbcEmailSuppressions` is the only writer.
 - `riviera-java-conventions` — sealed `ReinstateOutcome` + records over exceptions (§6), driving-port interface so `@WebMvcTest` can stub it, and §10 caught the **log-injection** risk in logging `domain` (see R-7).
 - `codebase-design` — the deletion test kept `reinstate` **on** `EmailSuppressions` (same purposeful conversation, Cockburn's "few ports") instead of minting a second repository port.
 - `domain-modeling` — flagged that `reinstate` is already taken by the operator lifecycle (#128, `ACTIVE⇄SUSPENDED`); glossary entries disambiguate the two.
-- `riviera-local-debug` — to load before the first `./gradlew` of the implement stage (not yet loaded at plan time).
+- `riviera-local-debug` — the scoped-test discipline for every run in this slice (loaded before the session's first `./gradlew`).
+- `code-review:code-review` + `riviera-review-overlay` — the review gate; found the F-1 concurrency defect.
+- `riviera-docs-freshness` — the pre-merge staleness sweep; its two patches ship in this PR rather than a second docs-only PR.
 
 **Branch:** `feature/email-suppression-reinstatement` ✅ exists
 
@@ -99,14 +101,14 @@ that the change reaches the send chokepoint; AC-2 pins the re-suppression round 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **V35 collision** with a parallel slice | low | high | Verified at plan time: `V34` is head on `main`; all 10 open PRs are frontend-only dependabot bumps (no `db/migration` diff). If a slice claims V35 first, **this branch renumbers** (it merges second by default) | claude | open |
+| R-1 | **V35 collision** with a parallel slice | low | high | Verified at plan time: `V34` is head on `main`; all 10 open PRs are frontend-only dependabot bumps (no `db/migration` diff). If a slice claims V35 first, **this branch renumbers** (it merges second by default) | claude | **closed** — re-verified at PR time: `origin/main` still heads at V34, no open PR touches `db/migration` |
 | R-2 | The `isSuppressed` predicate change silently breaks the module's **defining invariant** (*no send to a suppressed address*) — e.g. a typo makes every address unsuppressed | low | **critical** | The filter lands in the same phase as an IT that asserts both directions (suppressed → true, reinstated → false), plus AC-6 at the chokepoint. `EmailSuppressionIT`'s existing suppression assertions stay green unmodified | claude | **closed** `8d71339` — `EmailSuppressionIT` 9/0/0 unmodified; AC-6 proven end-to-end |
 | R-3 | New `@RestController` breaks every `@WebMvcTest` slice — the web slice registers all controllers but no services, so an unstubbed port fails context load | **high** | med | Add the driving-port bean to `WebSliceStubs` **in the same commit** as the controller. This is a recurring trap in this repo (recorded across #111/#114/#116) — hence the port is an *interface*, stubbable with a lambda like `CreateBooking`/`ViewBooking` | claude | **closed** `3ef1bb0` — stub added in the same commit; `AdminErasureControllerTest` re-run green as proof |
 | R-4 | Concurrent reinstate vs. suppress reports a state that never existed (read-then-write race) | low | low | The adapter does it in **one statement** via a data-modifying CTE — single snapshot, atomic by construction. Documented on the method; see the Modulith section | claude | **reopened by the review, then closed properly** — the CTE mitigation was *wrong* (see F-1); closed by `SELECT … FOR UPDATE` + `@Transactional`, pinned by a regression test proven red on the old code |
 | R-5 | The future feed's out-of-order upsert guard (#367 comment, finding 1: `WHERE excluded.last_event_at >= email_suppression.last_event_at`) would, if added naively, let a **stale** event skip the `reinstated_at = NULL` clear — leaving a bounced address deliverable | med | med | Not this slice's code, but this slice's obligation: the `suppress` SQL gets a comment stating the clear must survive any future guard, and a note goes on **#367** so the #372 slice inherits it | claude | **closed** — `suppress` javadoc + [#367 comment](https://github.com/ivopogace/riviera-sunbed-booking/issues/367#issuecomment-5100845967) spelling out the trap and the test to write |
 | R-6 | PII leak — `reinstate` takes a **raw address**; echoing it into a log line, an `ApiProblem` `detail`, or an error message re-opens what ADR-0012 closed | med | high | Log the **outcome + reason enum only** (the `AccountErasureService` precedent). No address, and deliberately **not** the `domain` either — see R-7. `ApiProblem` detail stays generic (`riviera-java-conventions` §6b) | claude | **closed** `6965244` — asserted by `SuppressionReinstatementServiceTest` |
 | R-7 | **Log injection** via `domain`. The tempting audit field is `domain` (ADR-0012 calls a bare domain non-PII), but V34's CHECK only bans *edge* whitespace — `user@bad\ndomain.com` normalizes to a domain containing a newline, so logging it raw forges log lines (`riviera-java-conventions` §10) | low | med | **Do not log `domain`.** The outcome + `SuppressionReason` enum are both closed sets and injection-proof. Recorded here because "log the domain, it's non-PII" is the obvious wrong turn | claude | **closed** `6965244` — the domain-absence assertion is explicit, with the reason in the test's javadoc |
-| R-8 | The contract change reads as **drift** rather than decision — three documents state "never deleted" | **high** | med | All four documented statements are amended in the same slice: `EmailSuppressions` javadoc, ADR-0012 *Consequences*, `docs/runbooks/suppression-list-ops.md` §"Manual suppression / un-suppression" (whose current advice is a hand-run `DELETE` — this slice replaces it), and `RESPONSIBILITIES.md`'s `notification` Job line | claude | **closed** `<phase-4>` — all four amended, plus `CONTEXT.md` glossary entries and `package-info.java` |
+| R-8 | The contract change reads as **drift** rather than decision — three documents state "never deleted" | **high** | med | All four documented statements are amended in the same slice: `EmailSuppressions` javadoc, ADR-0012 *Consequences*, `docs/runbooks/suppression-list-ops.md` §"Manual suppression / un-suppression" (whose current advice is a hand-run `DELETE` — this slice replaces it), and `RESPONSIBILITIES.md`'s `notification` Job line | claude | **closed** `8d4c8cd` — all four amended, plus `CONTEXT.md` glossary entries and `package-info.java`; the docs-freshness sweep then caught two more (`CLAUDE.md`'s module row, ADR-0012's Context sentence) |
 | R-9 | Missing rate-limit budget on a new admin endpoint | low | low | Deliberate parity: `/api/admin/erasure` and `/api/admin/operators/**` carry no dedicated budget either — ADMIN role + CSRF is the gate. Adding one for this endpoint alone would be inconsistent; if the admin surface ever gets a budget it should get one as a surface (noted, not built) | claude | **closed — accepted**, parity with the existing admin surfaces; no code |
 
 ## Open questions / Assumptions
@@ -219,15 +221,32 @@ New endpoint, **no existing contract changes** and no Angular client consumes it
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus `riviera-sdlc`'s reference file for the current stage) before acting.
 
-**Stage pointer:** `review gate — findings fixed; awaiting CI + the Sonar gate`
+**Stage pointer:** `DONE — all gates passed; merged via PR #398`
 
-**Next action:** Confirm the push's CI run is green, then pull the SonarCloud new-issue + duplication
-list for PR #398 and clear every entry before merge.
+**Next action:** Merge PR #398 (maintainer's call), then the two GitHub-only close-out items —
+confirm #391 closed, and note the outcome on epic #367 alongside the R-5 hand-forward already posted.
 
-**Review gate: RAN IN FULL.** `/code-review` (5 parallel angles + per-issue adversarial scoring)
-plus `riviera-review-overlay` — [comment](https://github.com/ivopogace/riviera-sunbed-booking/pull/398#issuecomment-5101006606).
-Five findings, all fixed below; F-1 was a genuine latent NPE that three angles found independently
-and one reproduced against postgres:17.
+**Gates**
+
+| Gate | Result |
+|---|---|
+| CI | ✅ green on `43ac2ff` — backend build+test, frontend lint+test+build, CodeQL (both analyses) |
+| **Review** | ✅ **RAN IN FULL** — `/code-review` (5 parallel angles + per-issue adversarial scoring) **plus** `riviera-review-overlay`: [comment](https://github.com/ivopogace/riviera-sunbed-booking/pull/398#issuecomment-5101006606). 5 findings, all fixed (F-1..F-5 below) |
+| **Sonar** | ✅ gate green **and its reported list cleared**: 0 new issues, 0 duplicated blocks, new-code coverage **96.63%** (bar ≥80%). Zero confirmed genuine — `new_lines` = 395, so an analysis really ran (not the #318 false-clean read) |
+| Docs freshness | ✅ run over `origin/main...HEAD` — 2 findings, both patched into this PR (below) |
+
+**`riviera-docs-freshness` run** (`origin/main...HEAD`, pre-merge smoke):
+
+- `docs/adr/ADR-0012…md:23` — *"the **only** operation the system ever performs against this table is
+  an equality lookup … plus the upsert"* — contradicted by the new reinstatement write path —
+  **patched** (an update note; the decision's rationale is unaffected, since reinstatement also
+  addresses the row by normalize-then-hash and reads no address back).
+- `CLAUDE.md` `notification` module row — enumerates V32/V33/V34 but not V35, so the row understated
+  the module's owned state — **patched** with the flag mechanism.
+- Checked and *not* stale: `CONTEXT.md`'s "entries are never deleted" (still literally true — a
+  reinstatement is not a deletion, and the adjacent new glossary entry says so),
+  `ADR-0011:122` ("the suppression list is empty in production until #370's feed"), and
+  `RESPONSIBILITIES.md` (already amended in phase 4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -235,7 +254,8 @@ and one reproduced against postgres:17.
 | 1 — `reinstate` on the port + sealed outcome + CTE adapter | ✅ | `2ecb87b` |
 | 2 — Application service: clock, audit log, driving port | ✅ | `6965244` |
 | 3 — Admin controller + `SecurityConfig` gate + `WebSliceStubs` | ✅ | `3ef1bb0` |
-| 4 — Contract amendments (javadoc, ADR-0012, runbook, RESPONSIBILITIES, CONTEXT) + #367 note | ✅ | `<phase-4>` |
+| 4 — Contract amendments (javadoc, ADR-0012, runbook, RESPONSIBILITIES, CONTEXT) + #367 note | ✅ | `8d4c8cd` |
+| 5 — Review-gate fixes (F-1..F-5) + docs-freshness patches + close-out | ✅ | `43ac2ff` + this commit |
 
 **Verified so far** (Docker 29.4.3 present, so nothing silently skipped):
 
@@ -370,27 +390,28 @@ the endpoint. A comment goes on **#367** recording R-5 so the #372 feed slice in
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..4, AC-8:** `./gradlew test --tests "*EmailSuppressionReinstatementIT*"` → PASS
-- [ ] **AC-5:** `./gradlew test --tests "*SuppressionReinstatementServiceTest*"` → PASS
-- [ ] **AC-6:** `./gradlew test --tests "*TransactionalMailServiceTest*"` → PASS
-- [ ] **AC-7:** `./gradlew test --tests "*AdminEmailSuppressionControllerTest*"` → PASS
-- [ ] **Structural net:** `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*CompositionRootDisciplineTests*"` → PASS
+- [x] **AC-1..4, AC-6, AC-8:** `./gradlew test --tests "*EmailSuppressionReinstatementIT*"` → **7 tests, 0 failed, 0 skipped** (AC-6 pinned by `aReinstatedAddressReceivesMailAgain`, end-to-end through the real chokepoint)
+- [x] **AC-5:** `./gradlew test --tests "*SuppressionReinstatementServiceTest*"` → **4 / 0 / 0**
+- [x] **AC-7:** `./gradlew test --tests "*AdminEmailSuppressionControllerTest*"` → **6 / 0 / 0**
+- [x] **Regression pin for F-1:** `aLiftThatLosesTheRaceReportsTheWinnersInstant` verified **red (NPE) against the pre-fix adapter, green against the fix** — the test was rewritten precisely because its first version passed on the broken code
+- [x] **No regression in the sibling suites:** `EmailSuppressionIT` 9/0/0, `SuppressionQueryTimeoutIT` 2/0/0, `TransactionalMailServiceTest` 11/0/0, `AdminErasureControllerTest` 4/0/0 — all **unmodified**
+- [x] **Structural net:** `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `CompositionRootDisciplineTests`, `ErrorContractArchitectureTests` → **22 / 0 / 0**
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified); the adapter-scoped `queryTimeout` was not globalized (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no new published surface; no cross-module `application.*`/`adapter.*` imports (invariant #11).
-- [ ] **Payment/payout** N/A justified.
-- [ ] Timezone correct: UTC `TIMESTAMPTZ` stored, `Clock`-supplied `Instant` (invariant #6).
-- [ ] No address, domain, or booking code in any log line or error body (invariant #7, R-6/R-7).
-- [ ] Flyway migration present (V35) and its number re-verified free against `main` at PR time (invariant #12).
-- [ ] **Frontend** N/A — backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` (never a merge SHA).
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — `JdbcOnlyArchitectureTests` green.
+- [x] **Availability** section filled (N/A justified); the adapter-scoped `queryTimeout` was **not** globalized (invariant #2) — the new `FOR UPDATE` rides the same bounded client.
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no new published surface; the one new dependency (`shared`) is declared in `allowedDependencies` (invariant #11) — `ModularityTests` green.
+- [x] **Payment/payout** N/A justified.
+- [x] Timezone correct: UTC `TIMESTAMPTZ` stored, `Clock`-supplied `Instant` (invariant #6).
+- [x] No address, domain, or booking code in any log line or error body (invariant #7, R-6/R-7) — asserted, not assumed.
+- [x] Flyway migration present (V35) and its number re-verified free against `main` at PR time (invariant #12).
+- [x] **Frontend** N/A — backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (both resolved with the maintainer).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #398` (never a merge SHA).
+- [x] **The review gate ran in full** — `/code-review` (5 angles + adversarial scoring) *plus* `riviera-review-overlay`.

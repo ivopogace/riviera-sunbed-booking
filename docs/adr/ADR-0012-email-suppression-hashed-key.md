@@ -23,6 +23,12 @@ The deciding constraint: the **only** operation the system ever performs against
 equality lookup on the normalized address (`isSuppressed`), plus the upsert that writes it.
 Nothing reads the raw address back out.
 
+> **Updated 2026-07-28 (#391).** There is now a third operation — an admin *reinstatement* that
+> locks the row by the same hashed key and sets `reinstated_at` (see the Decision amendment below).
+> It does not weaken the constraint this decision rests on: it too addresses the row by
+> normalize-then-hash, and it still reads no raw address back out. Recorded here so a future reader
+> does not take "only a lookup and an upsert" as a live inventory of the write paths.
+
 ## Decision
 
 **Store a peppered HMAC-SHA-256 of the normalized address (`email_key`) instead of cleartext,
