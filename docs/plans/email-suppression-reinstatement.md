@@ -102,7 +102,7 @@ that the change reaches the send chokepoint; AC-2 pins the re-suppression round 
 | R-1 | **V35 collision** with a parallel slice | low | high | Verified at plan time: `V34` is head on `main`; all 10 open PRs are frontend-only dependabot bumps (no `db/migration` diff). If a slice claims V35 first, **this branch renumbers** (it merges second by default) | claude | open |
 | R-2 | The `isSuppressed` predicate change silently breaks the module's **defining invariant** (*no send to a suppressed address*) — e.g. a typo makes every address unsuppressed | low | **critical** | The filter lands in the same phase as an IT that asserts both directions (suppressed → true, reinstated → false), plus AC-6 at the chokepoint. `EmailSuppressionIT`'s existing suppression assertions stay green unmodified | claude | **closed** `8d71339` — `EmailSuppressionIT` 9/0/0 unmodified; AC-6 proven end-to-end |
 | R-3 | New `@RestController` breaks every `@WebMvcTest` slice — the web slice registers all controllers but no services, so an unstubbed port fails context load | **high** | med | Add the driving-port bean to `WebSliceStubs` **in the same commit** as the controller. This is a recurring trap in this repo (recorded across #111/#114/#116) — hence the port is an *interface*, stubbable with a lambda like `CreateBooking`/`ViewBooking` | claude | **closed** `3ef1bb0` — stub added in the same commit; `AdminErasureControllerTest` re-run green as proof |
-| R-4 | Concurrent reinstate vs. suppress reports a state that never existed (read-then-write race) | low | low | The adapter does it in **one statement** via a data-modifying CTE — single snapshot, atomic by construction. Documented on the method; see the Modulith section | claude | **closed** `2ecb87b` — data-modifying CTE |
+| R-4 | Concurrent reinstate vs. suppress reports a state that never existed (read-then-write race) | low | low | The adapter does it in **one statement** via a data-modifying CTE — single snapshot, atomic by construction. Documented on the method; see the Modulith section | claude | **reopened by the review, then closed properly** — the CTE mitigation was *wrong* (see F-1); closed by `SELECT … FOR UPDATE` + `@Transactional`, pinned by a regression test proven red on the old code |
 | R-5 | The future feed's out-of-order upsert guard (#367 comment, finding 1: `WHERE excluded.last_event_at >= email_suppression.last_event_at`) would, if added naively, let a **stale** event skip the `reinstated_at = NULL` clear — leaving a bounced address deliverable | med | med | Not this slice's code, but this slice's obligation: the `suppress` SQL gets a comment stating the clear must survive any future guard, and a note goes on **#367** so the #372 slice inherits it | claude | **closed** — `suppress` javadoc + [#367 comment](https://github.com/ivopogace/riviera-sunbed-booking/issues/367#issuecomment-5100845967) spelling out the trap and the test to write |
 | R-6 | PII leak — `reinstate` takes a **raw address**; echoing it into a log line, an `ApiProblem` `detail`, or an error message re-opens what ADR-0012 closed | med | high | Log the **outcome + reason enum only** (the `AccountErasureService` precedent). No address, and deliberately **not** the `domain` either — see R-7. `ApiProblem` detail stays generic (`riviera-java-conventions` §6b) | claude | **closed** `6965244` — asserted by `SuppressionReinstatementServiceTest` |
 | R-7 | **Log injection** via `domain`. The tempting audit field is `domain` (ADR-0012 calls a bare domain non-PII), but V34's CHECK only bans *edge* whitespace — `user@bad\ndomain.com` normalizes to a domain containing a newline, so logging it raw forges log lines (`riviera-java-conventions` §10) | low | med | **Do not log `domain`.** The outcome + `SuppressionReason` enum are both closed sets and injection-proof. Recorded here because "log the domain, it's non-PII" is the obvious wrong turn | claude | **closed** `6965244` — the domain-absence assertion is explicit, with the reason in the test's javadoc |
@@ -219,10 +219,15 @@ New endpoint, **no existing contract changes** and no Angular client consumes it
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus `riviera-sdlc`'s reference file for the current stage) before acting.
 
-**Stage pointer:** `PR — opening, then the review + Sonar gates`
+**Stage pointer:** `review gate — findings fixed; awaiting CI + the Sonar gate`
 
-**Next action:** Push the branch, open the PR into `main`, then run `/code-review` (mandatory gate)
-and the Sonar issue-list check. Findings re-enter at Implement per the re-entry rule.
+**Next action:** Confirm the push's CI run is green, then pull the SonarCloud new-issue + duplication
+list for PR #398 and clear every entry before merge.
+
+**Review gate: RAN IN FULL.** `/code-review` (5 parallel angles + per-issue adversarial scoring)
+plus `riviera-review-overlay` — [comment](https://github.com/ivopogace/riviera-sunbed-booking/pull/398#issuecomment-5101006606).
+Five findings, all fixed below; F-1 was a genuine latent NPE that three angles found independently
+and one reproduced against postgres:17.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -256,7 +261,12 @@ the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review ([PR #398](https://github.com/ivopogace/riviera-sunbed-booking/pull/398#issuecomment-5101006606)) — 3 of 5 angles, reproduced on postgres:17 | **`reinstate` NPE'd under two concurrent lifts.** The data-modifying CTE's "same snapshot" claim holds only while nobody else touches the row: under READ COMMITTED a blocked `UPDATE` re-checks its `WHERE` against the newest committed version (EvalPlanQual) while the outer `SELECT` keeps the original snapshot, producing the combination the javadoc called unreachable — then the mapper dereferenced a null `Timestamp`. `ApiErrorHandler` has no `RuntimeException` catch-all, so it escaped as a raw 500, breaking AC-4 and the #97 error contract | **fixed** — replaced with `SELECT … FOR UPDATE` + `@Transactional` (the `JdbcAvailabilityClaim` shape): a waiting reader re-fetches the committed row, which is the property the CTE was assumed to have |
+| F-1a | self-caught while fixing F-1 | **The first regression test was not load-bearing.** Two barrier-synchronized threads *passed against the broken adapter* — under autocommit the window where one blocks the other is vanishingly small | **fixed** — replaced with a deterministic lock handoff (a held-open uncommitted `UPDATE`), verified **red (NPE) on the old adapter, green on the fix** |
+| F-2 | review | **Validation tested only for `@`**, so `"@"`, `"user@"` and `"@example.com"` reached the port and answered `200 NOT_SUPPRESSED` — the exact misleading answer the branch exists to prevent — contradicting both its own comment and this doc's FE↔BE contract | **fixed** — `isAddressShaped` requires a non-empty local *and* domain part; the test now covers all five shapeless inputs |
+| F-3 | review — `riviera-review-overlay` RV-STYLE-1 | Two multi-line inline `//` comments (`package-info.java`, `AdminEmailSuppressionControllerTest`) | **fixed** — moved into javadoc (exempt) and the test's method javadoc |
+| F-4 | review (scored 50, folded in) | Plan doc's *File structure → Modify* still listed `TransactionalMailServiceTest.java`, which this slice never touches — the AC-6 pin moved at phase 0 | **fixed** — entry removed |
+| F-5 | review (scored 25, folded in) | `WebSliceStubs` imports inserted out of alphabetical order | **fixed** — moved beside the existing `notification.api` import |
 
 ---
 
@@ -280,7 +290,6 @@ the fix touches *before* editing).
 - `…/notification/package-info.java` — one clause on the reinstatement path
 - `…/platform/SecurityConfig.java` — path constant + `ADMIN` rule
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stub the driving port (R-3)
-- `…/notification/application/TransactionalMailServiceTest.java` — AC-6
 - `docs/adr/ADR-0012-email-suppression-hashed-key.md` — amend the *Consequences* never-deleted line
 - `docs/runbooks/suppression-list-ops.md` — replace the hand-run `DELETE` advice with the endpoint
 - `RESPONSIBILITIES.md` — `notification` Job line

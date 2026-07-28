@@ -100,16 +100,21 @@ class AdminEmailSuppressionControllerTest {
 				.andExpect(jsonPath("$.reinstatedAt").isNotEmpty());
 	}
 
+	/**
+	 * Every value that cannot be an address is {@code 400}, not a misleading {@code NOT_SUPPRESSED}.
+	 *
+	 * <p>The half-shaped cases are here because the first implementation tested only for an {@code @}
+	 * and let them through (#398 review): {@code "user@"} and {@code "@example.com"} answered
+	 * {@code 200 NOT_SUPPRESSED}, which is technically true and reads to an admin as "nothing to do
+	 * here" — hiding the typo this branch exists to surface.
+	 */
 	@Test
 	void aBlankOrShapelessEmailIsRejectedWithProblemDetailAndNoLift() throws Exception {
-		mvc.perform(admin("{\"email\":\"   \"}"))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-		// Without this branch a typo'd address would answer the technically-true but misleading
-		// NOT_SUPPRESSED, which reads to an admin as "nothing to do here".
-		mvc.perform(admin("{\"email\":\"not-an-address\"}"))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		for (String shapeless : new String[] { "   ", "not-an-address", "@", "user@", "@example.com" }) {
+			mvc.perform(admin("{\"email\":\"" + shapeless + "\"}"))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		}
 
 		verify(reinstatement, never()).reinstate(any());
 	}

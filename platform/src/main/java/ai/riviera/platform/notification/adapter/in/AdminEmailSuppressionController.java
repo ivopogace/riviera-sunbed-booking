@@ -69,12 +69,33 @@ class AdminEmailSuppressionController {
 
 	@PostMapping("/reinstate")
 	ResponseEntity<?> reinstate(@RequestBody ReinstateRequest request) {
-		String email = request.email();
-		// An address always has both parts; saying so beats a technically-true "not suppressed".
-		if (email == null || email.isBlank() || !email.contains("@")) {
+		if (!isAddressShaped(request.email())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "An email address is required.");
 		}
-		return ResponseEntity.ok(view(reinstatement.reinstate(email)));
+		return ResponseEntity.ok(view(reinstatement.reinstate(request.email())));
+	}
+
+	/**
+	 * Whether the value could be an address at all — a non-empty local part, an {@code @}, and a
+	 * non-empty domain part.
+	 *
+	 * <p>Both halves are checked, not just the {@code @} (#398 review). A shapeless value is not on the
+	 * do-not-mail list and never could be, so letting it through answers {@code NOT_SUPPRESSED} — which
+	 * is technically true and reads to an admin as "nothing to do here", hiding their typo behind a
+	 * {@code 200}. That misdirection is the whole reason this branch exists, and half a check delivered
+	 * it for {@code "user@"} and {@code "@example.com"}.
+	 *
+	 * <p>Nothing downstream would catch it either, by design: the port's javadoc puts request
+	 * validation here, and {@code Emails.normalize} deliberately normalizes without validating. This is
+	 * still only a <em>shape</em> check — full address validity is the provider's verdict, not a regex's.
+	 */
+	private static boolean isAddressShaped(String email) {
+		if (email == null || email.isBlank()) {
+			return false;
+		}
+		String trimmed = email.trim();
+		int at = trimmed.lastIndexOf('@');
+		return at > 0 && at < trimmed.length() - 1;
 	}
 
 	private static ReinstateResponse view(ReinstateOutcome outcome) {

@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Optional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.notification.application.EmailSuppressions;
@@ -147,55 +149,65 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	}
 
 	/**
-	 * Lift a suppression and report what was there, in <strong>one statement</strong>.
+	 * Lift a suppression and report what was there, behind an explicit row lock.
 	 *
-	 * <p>The obvious shape — {@code UPDATE … RETURNING}, then a {@code SELECT} when it matched nothing
-	 * to tell "never listed" from "already lifted" — is two statements, and between them a concurrent
-	 * {@code suppress} can make the pair report a state that never existed. A data-modifying CTE
-	 * removes the window instead of documenting it: Postgres runs the {@code UPDATE} exactly once and
-	 * to completion, while the outer {@code SELECT} reads the <em>same snapshot</em> and therefore does
-	 * <strong>not</strong> see it. That is what makes the three cases readable off one row:
+	 * <p>{@code SELECT … FOR UPDATE} first, then a conditional {@code UPDATE} in the same transaction —
+	 * the {@code JdbcAvailabilityClaim} shape. The lock is what makes the three outcomes trustworthy
+	 * under concurrency: no row → {@link ReinstateOutcome.NotSuppressed} (and nothing is written); a
+	 * row already carrying {@code reinstated_at} → {@link ReinstateOutcome.AlreadyReinstated} with the
+	 * <em>original</em> instant, so repeats are idempotent; otherwise the lift happens and we report
+	 * {@link ReinstateOutcome.Reinstated}.
 	 *
-	 * <ul>
-	 * <li>no row → {@link ReinstateOutcome.NotSuppressed} (nothing was written either);</li>
-	 * <li>{@code just_lifted} → {@link ReinstateOutcome.Reinstated}, and the row's pre-update
-	 * {@code reinstated_at} is necessarily {@code NULL};</li>
-	 * <li>otherwise → {@link ReinstateOutcome.AlreadyReinstated}, carrying the <em>original</em>
-	 * lift instant, so repeat calls are idempotent.</li>
-	 * </ul>
-	 *
-	 * <p>The fourth combination — not lifted, yet {@code reinstated_at IS NULL} — is unreachable under
-	 * one snapshot: the {@code UPDATE}'s {@code WHERE} would have matched that very row.
+	 * <p><strong>This replaced a single-statement data-modifying CTE, which was wrong</strong> (found
+	 * by the #398 review, reproduced against postgres:17). That version claimed the combination
+	 * "didn't lift it, yet {@code reinstated_at IS NULL}" was unreachable because the CTE's
+	 * {@code UPDATE} and the outer {@code SELECT} share one snapshot. They do — but only while nobody
+	 * else touches the row. Under READ COMMITTED an {@code UPDATE} that blocks on a concurrent writer
+	 * re-checks its own {@code WHERE} against the <em>newest committed</em> version (EvalPlanQual),
+	 * while the outer {@code SELECT} keeps the original snapshot. Two simultaneous reinstates of one
+	 * address therefore produced exactly that "unreachable" row, and the mapper dereferenced a null
+	 * {@code Timestamp}. {@code FOR UPDATE} has the property the CTE was assumed to have: the waiting
+	 * reader re-fetches the committed row, so it observes the lift that actually won.
 	 */
 	@Override
+	@Transactional
 	public ReinstateOutcome reinstate(String email, Instant at) {
-		return jdbc.sql("""
-				WITH lifted AS (
-				  UPDATE email_suppression SET reinstated_at = :at
-				  WHERE email_key = :key AND reinstated_at IS NULL
-				  RETURNING id
-				)
-				SELECT s.reason, s.first_suppressed_at, s.last_event_at, s.reinstated_at,
-				       EXISTS (SELECT 1 FROM lifted) AS just_lifted
-				FROM email_suppression s
-				WHERE s.email_key = :key
+		String key = keyOf(Emails.normalize(email));
+		Optional<Suppression> locked = jdbc.sql("""
+				SELECT reason, first_suppressed_at, last_event_at, reinstated_at
+				FROM email_suppression
+				WHERE email_key = :key
+				FOR UPDATE
 				""")
-				.param("key", keyOf(Emails.normalize(email)))
+				.param("key", key)
+				.query(JdbcEmailSuppressions::readSuppression)
+				.optional();
+		if (locked.isEmpty()) {
+			return new ReinstateOutcome.NotSuppressed();
+		}
+		Suppression row = locked.get();
+		if (row.reinstatedAt() != null) {
+			return new ReinstateOutcome.AlreadyReinstated(row.reason(), row.firstSuppressedAt(),
+					row.lastEventAt(), row.reinstatedAt());
+		}
+		jdbc.sql("UPDATE email_suppression SET reinstated_at = :at WHERE email_key = :key")
 				.param("at", java.sql.Timestamp.from(at))
-				.query(JdbcEmailSuppressions::readOutcome)
-				.optional()
-				.orElseGet(ReinstateOutcome.NotSuppressed::new);
+				.param("key", key)
+				.update();
+		return new ReinstateOutcome.Reinstated(row.reason(), row.firstSuppressedAt(), row.lastEventAt());
 	}
 
-	private static ReinstateOutcome readOutcome(ResultSet row, int rowNumber) throws SQLException {
-		SuppressionReason reason = SuppressionReason.valueOf(row.getString("reason"));
-		Instant firstSuppressedAt = row.getTimestamp("first_suppressed_at").toInstant();
-		Instant lastEventAt = row.getTimestamp("last_event_at").toInstant();
-		if (row.getBoolean("just_lifted")) {
-			return new ReinstateOutcome.Reinstated(reason, firstSuppressedAt, lastEventAt);
-		}
-		return new ReinstateOutcome.AlreadyReinstated(reason, firstSuppressedAt, lastEventAt,
-				row.getTimestamp("reinstated_at").toInstant());
+	/** The locked row, as read. {@code reinstatedAt} is null while the suppression is active. */
+	private record Suppression(SuppressionReason reason, Instant firstSuppressedAt, Instant lastEventAt,
+			Instant reinstatedAt) {
+	}
+
+	private static Suppression readSuppression(ResultSet row, int rowNumber) throws SQLException {
+		java.sql.Timestamp reinstatedAt = row.getTimestamp("reinstated_at");
+		return new Suppression(SuppressionReason.valueOf(row.getString("reason")),
+				row.getTimestamp("first_suppressed_at").toInstant(),
+				row.getTimestamp("last_event_at").toInstant(),
+				reinstatedAt == null ? null : reinstatedAt.toInstant());
 	}
 
 	private String keyOf(String normalized) {

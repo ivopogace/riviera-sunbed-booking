@@ -20,12 +20,14 @@
  * <p>The edge keeps deciding <em>when</em> to send and keeps all credential-material machinery
  * (token minting/hashing, link building — RV-BE-11); this module is handed fully-formed links and
  * booking facts and owns only delivery. Nothing depends on {@code notification} except the root.
+ *
+ * <p>The grants below are the {@code BookingConfirmed} listener's reads, least-privilege (#95) — no
+ * command surface. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
+ * {@code ApiProblem} factory (#391); it publishes no named interfaces, so the whole (deliberately
+ * tiny) module root is the narrowest grant available, exactly as {@code payout} declares it.
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Notification",
-	// The BookingConfirmed listener's reads, least-privilege (#95) — no command surface granted.
-	// "shared" is the OPEN kernel, granted for the admin adapter's RFC-7807 ApiProblem factory (#391);
-	// it has no named interfaces, so the whole (deliberately tiny) module root is the narrowest grant.
 	allowedDependencies = { "booking::api", "booking::events", "booking::vocabulary",
 			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary", "shared" }
 )
