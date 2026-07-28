@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
+import { WithheldEmailNotice } from '../shared/withheld-email-notice';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
@@ -23,7 +24,7 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [RouterLink, CardGlass],
+  imports: [RouterLink, CardGlass, WithheldEmailNotice],
   template: `
     @if (confirmation(); as c) {
       <section class="confirmation" appCardGlass aria-labelledby="confirmation-title">
@@ -49,11 +50,7 @@ import { BookingService } from './booking.service';
             }
           </p>
           @if (c.emailWithheld) {
-            <p class="email-withheld" data-testid="email-withheld">
-              <strong>We couldn’t email you.</strong> We weren’t able to send a confirmation to
-              that address, so this code is your only record — save it or take a screenshot
-              before you leave this page.
-            </p>
+            <app-withheld-email-notice />
           }
         </div>
 

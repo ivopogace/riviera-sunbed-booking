@@ -41,13 +41,26 @@ class ViewBookingService implements ViewBooking {
 		return bookings.findByCode(code).map(this::toDetail);
 	}
 
+	/**
+	 * The D-8 gate on {@code emailWithheld} (#390): a short-circuit, not a filter on the answer — the
+	 * port must not be <em>consulted</em> before the booking is settled, because the {@code 202} create
+	 * hands the code out before the card is collected, and answering then would turn this code-gated
+	 * view into a suppression oracle for any address a checkout can be started with.
+	 *
+	 * <p>Deliberately its own predicate rather than reusing {@code cancellable}, which happens to test
+	 * the same status today: those are different rules, and letting a future "the guest may withdraw an
+	 * open request" change to the cancellation policy silently widen this one is exactly the accident
+	 * worth spending a method on. Pinned by {@code ViewBookingServiceTest}'s no-interaction cases.
+	 */
+	private static boolean mayDiscloseMailStatus(BookingRecord b) {
+		return b.status() == BookingStatus.CONFIRMED;
+	}
+
 	private BookingDetail toDetail(BookingRecord b) {
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
-		boolean confirmed = b.status() == BookingStatus.CONFIRMED;
-		// Short-circuit, not a filter on the answer: asking before confirmation would make this
-		// code-gated view a suppression oracle for any address a checkout can be started with (#390).
-		boolean emailWithheld = confirmed && confirmationMail.isWithheld(b.customerId());
+		boolean cancellable = b.status() == BookingStatus.CONFIRMED;
+		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
@@ -60,7 +73,7 @@ class ViewBookingService implements ViewBooking {
 						: null;
 		return new BookingDetail(b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(),
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
-				confirmed, quote.beforeCutoff(), new MoneyView(quote.refundMinor(), b.currency()),
+				cancellable, quote.beforeCutoff(), new MoneyView(quote.refundMinor(), b.currency()),
 				refunded, b.requestExpiresAt(), payment, emailWithheld);
 	}
 }

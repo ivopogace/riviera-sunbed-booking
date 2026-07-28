@@ -53,6 +53,8 @@ posture, ADR-0006 booking-code URL as the durable record).
   surface-dependent. It migrates with the rest of the file when `booking/` is ported.
 - `playwright-cli` — *(phase 3)* e2e spec authored to best practice, in the CI-safe mocked suite.
 - `riviera-local-debug` — scoped test recipes for this cloud session.
+- `riviera-docs-freshness` — *(review-fix round)* pre-merge smoke over `origin/main...HEAD`; found
+  four present-tense statements the new `booking::spi` surface falsified and patched all four.
 
 **Branch:** cloud session — the designated remote branch **`claude/sdlc-390-review-gate-1xccd5`**
 stands in for `feature/suppressed-confirmation-mail-notice` (`riviera-sdlc` remote addendum). The
@@ -239,10 +241,10 @@ right call on these two components.
 
 ## Execution status
 
-**Stage pointer:** `CI gate`
+**Stage pointer:** `review gate — 9 of 10 findings fixed, F-1 escalated`
 
-**Next action:** Push the branch, confirm that push's CI run is green, merge latest `origin/main`,
-then open the PR and run `/code-review`.
+**Next action:** Get the maintainer's call on **F-1** (the stub-gateway oracle), implement it, then
+re-run the review gate on the new diff and clear the Sonar list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -266,7 +268,16 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review (`/code-review`, high) | **Blocker.** With `STRIPE_API_KEY` unset the deployed service runs the in-process stub gateway, so `201 CONFIRMED` is reached with **no payment collected** — the `status == CONFIRMED` gate is not a post-payment gate there, and the flag becomes a free suppression oracle for any address. R-1's mitigation only holds under the `stripe` profile. | escalated to the maintainer |
+| F-2 | review | The port's javadoc promises it never throws operationally, but the impl catches only `DataAccessException`; a non-DAE runtime failure escapes into `CreateBookingService.collect` **after** the confirm committed and the card was charged — uncompensatable, and a 500 on the page carrying the code. | **fixed** — the impl is now an explicit fault barrier (`RuntimeException`, documented deviation from the catch-narrowly convention: the port's contract is total and the caller runs post-payment) |
+| F-3 | review | The flag is a live "would it be withheld *now*" answer rendered as the historical "your mail *was* withheld"; the javadoc's "stable and race-free" is falsified by a later bounce or a #391 reinstatement. | **fixed** — the port javadoc now reads as a present-tense question and names both drift directions (a later bounce, a #391 reinstatement) |
+| F-4 | review | The D-8 oracle gate and `cancellable` are the same boolean, so a future cancellation-policy change silently widens the oracle. | **fixed** — the gate is its own named predicate `mayDiscloseMailStatus`, documented as a security constraint distinct from `cancellable` |
+| F-5 | review | `JdbcEmailSuppressions.boundedClient`'s javadoc justifies its 5 s bound by "runs on the dispatcher's single drainer thread" — no longer true; the read is now on request threads. | **fixed** — `boundedClient`'s javadoc now states both callers and that the bound is the request-thread latency ceiling |
+| F-6 | review | The notice is duplicated six ways (markup ×2, SCSS ×2, contrast constants + assertion ×2); an edit to one surface leaves the other lying, and both duplicated tests stay green. | **fixed** — one `shared/withheld-email-notice.ts` (Tailwind, the go-forward) replaces markup ×2 + SCSS ×2 + contrast constants/assertion ×2, with its own spec + contrast spec |
+| F-7 | review | The new `booking::spi` surface is absent from `booking/package-info.java`'s layout line, `RESPONSIBILITIES.md`, and the `CLAUDE.md` module table. | **fixed** — `booking/package-info.java`, `riviera-modulith` SKILL.md, `RESPONSIBILITIES.md` and the `CLAUDE.md` module table all record the new `booking::spi` surface |
+| F-8 | review | The impl javadoc claims the surface claim and the send decision "cannot diverge", but they handle lookup failure oppositely (degrade vs propagate), so a DB blip diverges them exactly as documented-impossible. | **fixed** — the impl javadoc records the degrade-vs-propagate asymmetry as an accepted trade instead of denying divergence |
+| F-9 | review | No backend test exercises the real chain — every new test mocks the seam it proves, so bean wiring, the real HMAC/normalize path, and the `emailWithheld` wire name are unpinned. | **fixed** — three `BookingViewIT` cases drive the real chain (real HMAC + normalization + bean wiring) and assert the `emailWithheld` wire name, incl. the AWAITING_PAYMENT no-disclosure case; 6 tests, `skipped=0` |
+| F-10 | review | The e2e `202 AWAITING` fixture carries an `emailWithheld` the real `AwaitingPaymentView` does not have — the mock is a superset of the contract, masking the very boundary it stands in for. | **fixed** — the e2e `AWAITING` fixture mirrors `AwaitingPaymentView` exactly (no `emailWithheld`) |
 
 ---
 

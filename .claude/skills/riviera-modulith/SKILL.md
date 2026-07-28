@@ -116,7 +116,8 @@ ai.riviera.platform.<module>/
 ```
 All four published surfaces are **optional** — `payout` (publishes nothing, though it now consumes
 `booking::api` for the console takings read, #171) has none; `booking` publishes `api/`
-(`DailyTakings`, #171) + `events/` + `vocabulary/` but **no `spi/`**; `venue` and `customer` have `spi` today
+(`DailyTakings`, #171) + `events/` + `vocabulary/` + `spi/` (`ConfirmationMailDelivery`, implemented by
+`notification`, #390); `venue` and `customer` have `spi` too
 (`customer.spi.GuestBookingHistory`, implemented by `booking` for the #101 Slice 2 retention sweep;
 `venue.spi` holds `SetAvailabilityLookup` + `BookingPresence`, both implemented by siblings). Don't force
 an empty surface onto a module. Published surfaces stay **top-level and exposed** — nesting under

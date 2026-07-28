@@ -129,6 +129,11 @@ Orchestrate the reserve → pay → confirm flow across `availability` and `paym
   *fact* "does this guest have a booking on/after date D", via `customer.spi.GuestBookingHistory`
   — I hold no retention policy and never write a `customer` row
 - Authorizing which operator may view staff bookings → **`operator`**
+- Deciding whether a confirmation email will be sent, or knowing any address → **`notification`**
+  (suppression) and **`customer`** (the contact). Since #390 I *expose* the withheld fact on a
+  confirmed booking's read model, but I only ask it through `booking.spi.ConfirmationMailDelivery`,
+  by `CustomerId` — I never handle an address, and the gate that I only ask once the booking is
+  settled is mine, because the lifecycle is mine
 
 ---
 
@@ -290,7 +295,10 @@ through the ordinary upsert. A hard `DELETE` on this table remains a defect. Pub
 surface:
 `notification::api`'s fire-and-forget `MailSender` (never throws, runs off the caller's
 thread, suppression-enforced) — consumed by the composition root alone; **no module depends
-on `notification`**.
+on `notification`**. Since #390 it also *implements* one port it does not own —
+`booking.spi.ConfirmationMailDelivery`, answering "would this customer's confirmation mail be
+withheld?" so a confirmed booking's read model can tell the guest to save their code. That is the
+inverted direction and preserves the rule: the dependency edge is still `notification → booking`.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building the tokenized links →

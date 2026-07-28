@@ -71,12 +71,18 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	/**
 	 * A {@link JdbcClient} of this adapter's own, with a finite {@code queryTimeout} (#386).
 	 *
-	 * <p>{@code isSuppressed} runs on {@code AsyncMailDispatcher}'s <strong>single</strong> drainer
-	 * thread, behind a 100-slot queue. Postgres's default statement timeout is infinite, so one wedged
-	 * read — a lock wait, a pathological plan — stalls the whole recovery-mail queue and then silently
-	 * drops every new send once the buffer fills. #368 gave the SMTP round-trip finite timeouts for
-	 * exactly this reason; this closes the other half, the half that arrived later with the
-	 * suppression check.
+	 * <p>Postgres's default statement timeout is infinite, so one wedged read — a lock wait, a
+	 * pathological plan — has no natural end. #368 gave the SMTP round-trip finite timeouts for exactly
+	 * this reason; this closes the other half, the half that arrived later with the suppression check.
+	 *
+	 * <p><strong>Two callers now, with different stakes.</strong> On the recovery vehicle
+	 * {@code isSuppressed} runs on {@code AsyncMailDispatcher}'s <strong>single</strong> drainer thread
+	 * behind a 100-slot queue, where a wedged read stalls the whole mail queue and then silently drops
+	 * every new send once the buffer fills. Since #390 it is <em>also</em> reached from
+	 * {@code SuppressedConfirmationMailDelivery} on a <strong>request</strong> thread, serving the
+	 * confirmed-booking read — so the same bound is now what stops a wedged read from holding a
+	 * user-facing response open, and it is the ceiling on that latency rather than an
+	 * queue-drain concern alone.
 	 *
 	 * <p>Note what this does <em>not</em> bound: {@code queryTimeout} limits execution on a connection
 	 * already acquired, so a genuinely exhausted pool is still governed by the pool's own acquisition

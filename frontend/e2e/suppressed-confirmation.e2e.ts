@@ -42,10 +42,20 @@ const CONFIRMATION = {
   emailWithheld: false,
 };
 
+// Mirrors the real `AwaitingPaymentView` EXACTLY — in particular it has no `emailWithheld`, because
+// the backend deliberately does not answer that question before payment (D-8). Spreading CONFIRMED
+// here would make the mock a superset of the contract and hide a regression that read the flag off
+// the pre-payment hand-off.
 const AWAITING = {
-  ...CONFIRMATION,
   code: 'WXYZ345678',
   status: 'AWAITING_PAYMENT',
+  venueId: 1,
+  venueName: 'Miramar Beach Club',
+  setId: 2,
+  rowLabel: 'Front row · Sea view',
+  positionNo: 2,
+  bookingDate: '2026-12-01',
+  amount: { minorUnits: 4500, currency: 'EUR' },
   clientSecret: 'pi_123_secret_abc',
   paymentIntentId: 'pi_123',
 };
@@ -65,6 +75,8 @@ const AWAITING_DETAIL = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  // Present but false before payment: BookingDetailView always carries the field, and the backend
+  // never even consults the port unless the booking is CONFIRMED.
   emailWithheld: false,
 };
 

@@ -30,8 +30,6 @@ const ACCENT = '#085a6e'; // --riv-accent-ink (total, code, links)
 const ERROR_RED = '#a3160e'; // .form-error ink
 const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the Pay button's white text
-const WITHHELD_FILL = '#fcf0d9'; // .email-withheld solid amber box (#390; matches .done-badge.warn)
-const WITHHELD_INK = '#8a5410'; // .email-withheld ink
 
 interface Theme {
   readonly name: string;
@@ -64,11 +62,6 @@ describe('Payment page — theme-independent CTA (WCAG AA, issue #137)', () => {
     }
   });
 
-  it('the withheld-email notice meets AA on its solid amber fill (theme-independent, #390)', () => {
-    // Solid fill, not a translucent tint — so the pair is one fixed hex in both themes and static
-    // CSS analysis computes the real ratio (the .form-error / .done-badge.warn precedent).
-    expect(contrastRatio(WITHHELD_INK, WITHHELD_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
 
   it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
     // .form-error now sits on an opaque #f6e8e7 box (was a translucent red tint), so the pair is a

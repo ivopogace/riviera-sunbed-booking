@@ -16,6 +16,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { PanelGlass } from '../shared/panel-glass';
+import { WithheldEmailNotice } from '../shared/withheld-email-notice';
 import { BookingService } from './booking.service';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
@@ -47,7 +48,7 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
  */
 @Component({
   selector: 'app-booking-pay',
-  imports: [RouterLink, CardGlass, PanelGlass],
+  imports: [RouterLink, CardGlass, PanelGlass, WithheldEmailNotice],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
@@ -88,11 +89,7 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
         </p>
 
         @if (emailWithheld()) {
-          <p class="email-withheld" data-testid="email-withheld">
-            <strong>We couldn’t email you.</strong> We weren’t able to send a confirmation to
-            that address, so this code is your only record — save it or take a screenshot
-            before you leave this page.
-          </p>
+          <app-withheld-email-notice />
         }
 
         <a [routerLink]="['/booking', code]" class="btn-primary" data-testid="manage-link">

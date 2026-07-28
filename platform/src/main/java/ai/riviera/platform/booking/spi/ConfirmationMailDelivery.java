@@ -20,8 +20,14 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * <p>Answered <strong>live</strong>, never recorded from a send attempt. The {@code 201}
  * instant-confirm response body is built before the after-commit mail listener has run, so a
  * recorded outcome could not populate that surface at all, and would race the stripe profile's
- * confirmation poll. The question asked here — <em>would</em> a confirmation mail to this customer
- * be withheld — is stable and race-free.
+ * confirmation poll.
+ *
+ * <p><strong>Read it as a present-tense question</strong> — <em>would</em> a confirmation mail to
+ * this customer be withheld <em>now</em> — not as the historical fact that a particular send was
+ * skipped. The two coincide at confirmation time, which is the only moment #390's surfaces ask. They
+ * drift afterwards: a later hard bounce (#370's feed) makes a delivered mail read as withheld, and
+ * an ADMIN reinstatement (#391, V35) makes a genuinely skipped one read as delivered. Any consumer
+ * that needs the historical fact must record it at send time instead of calling this.
  *
  * <p>Callers must consult this <strong>only for a booking that is already confirmed</strong>:
  * answering it earlier would turn the code-gated booking view into a suppression oracle for any
