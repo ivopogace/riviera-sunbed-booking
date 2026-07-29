@@ -120,7 +120,9 @@ coverage corrections folded in here.
   checks on `main` (not Sonar, which is additive until wired).~~ **Resolved — and Sonar
   did end up required.** Read from the API (`GET /repos/{owner}/{repo}/rules/branches/main`)
   on 2026-07-29: enforcement is a **repository ruleset**, `Riviera Rule Set` (id `18207603`,
-  `~DEFAULT_BRANCH`), not a classic branch-protection rule, with
+  `~DEFAULT_BRANCH`), not a classic branch-protection rule (`GET /branches/main` reports
+  `protection.enabled: false`, `required_status_checks.enforcement_level: "off"`, empty
+  `contexts` — `protected: true` there reflects the ruleset, not a classic rule), with
   `strict_required_status_checks_policy: true` and **7** required contexts — `Backend (build
   + test)`, `Frontend (lint + test + build)`, `Analyze (java-kotlin)`,
   `Analyze (javascript-typescript)`, `CodeQL`, `SonarCloud scan`, `SonarCloud Code Analysis`.
@@ -348,7 +350,8 @@ tasks.named('test') {
 4. ~~**Enable branch protection on `main`** requiring: the `backend` + `frontend` CI
    checks and the CodeQL `java` + `javascript` checks (and Sonar once wired).~~ ✅ **Done —
    as a ruleset, not classic branch protection.** `Riviera Rule Set` (id `18207603`) targets
-   `~DEFAULT_BRANCH` and requires the 7 contexts listed under *Open questions / Assumptions*,
+   `~DEFAULT_BRANCH` and requires the 7 contexts listed under *Open questions / Assumptions*
+   (**6 once #419 drops the job-level `SonarCloud scan`**),
    `strict` (a branch behind `main` blocks the merge), plus `deletion`, `non_fast_forward`,
    `pull_request` (0 approvals), `code_scanning` (CodeQL, errors/high-or-higher) and
    `code_quality` (errors). This is what makes AC-8 ("`main` can't merge red") true.
@@ -377,9 +380,11 @@ tasks.named('test') {
 - [x] **AC-6:** `jacocoTestReport.xml` produced — verified via JDK-21 smoke + the green backend job (JDK 25).
 - [x] **AC-7:** SonarCloud analysis **runs and reports** — verified: on run `28297771351` the `sonar` job downloaded both coverage reports, normalized the lcov, and the scan step succeeded (single project `ivopogace_riviera-sunbed-booking`, org `swap-shop`). The secret-gate also holds (steps skip green when `SONAR_TOKEN` is absent).
 - [x] **AC-8:** `main` blocks merge on a red required check — **verified** once Ready-for-human #4
-  landed as the `Riviera Rule Set` ruleset. Live evidence: the Dependabot PRs (#332–#341) carry a
-  red `Frontend (lint + test + build)` and sit unmerged, while PR #418 merged only once all 7
-  required contexts were green.
+  landed as the `Riviera Rule Set` ruleset. Evidence is an actual rejected merge, recorded in #417:
+  `PUT .../pulls/413/merge` → `405 Repository rule violations found — 7 of 7 required status checks
+  are expected`. The ruleset refused the merge on a required check it did not consider satisfied,
+  which is exactly what this AC asserts. (#417's own bug was *which* check state won the race; that
+  it was enforced at all is the proof here.)
 
 ## Self-review checklist (before merge / PR)
 

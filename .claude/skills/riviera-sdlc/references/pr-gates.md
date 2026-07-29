@@ -130,8 +130,10 @@ Missing any one means the slice is still in flight — say so rather than report
    > that the `SonarCloud Code Analysis` check-run itself concluded `success`. The workflow's
    > own `SonarCloud scan` job is **not** the gate and never was: it `needs: [backend, frontend]`,
    > so a red build skips it, no analysis is uploaded, and the app check never appears at all —
-   > a `skipped` there means *unanalyzed*, not *clean*. (Pre-#418 it could also skip as the
-   > loser of two duplicate runs; that cause is gone, this one is not.) Compounding it:
+   > a `skipped` there means *unanalyzed*, not *clean*. (Pre-#418 it also skipped in the duplicate
+   > push run — its `if:` guard admits only `pull_request` and `main` — and that skipped check-run
+   > could land last and mask the real one. #418 removed the duplicate run; this cause remains.)
+   > Compounding it:
    > `WebFetch` caches responses for
    > **15 minutes**, so cache-bust when re-reading — one early read can persist as a stale
    > "clean" answer across the whole gate. (Case history: PR #318.)
