@@ -55,10 +55,10 @@ widen the swallow; §6c one-line comments, long prose to Javadoc), `riviera-loca
 - [ ] **AC-4:** Given a suppression lookup that fails **transiently**, when the dispatched task runs,
       then the mail is sent (the #386 carve-out is untouched) and **no** failure counter increments —
       nothing was lost. *Pinned by:*
-      `TransactionalMailServiceTest.aTransientSuppressionFailureIsNotAFailedMail`
+      `TransactionalMailServiceTest.aSuppressionReadFailureStillSendsTheRecoveryMail`
 - [ ] **AC-5:** Given a suppressed address, when the dispatched task runs, then the send is skipped and
       **no** failure counter increments — a withheld mail is a policy outcome, not a loss.
-      *Pinned by:* `TransactionalMailServiceTest.aSuppressedSkipIsNotCountedAsAFailure`
+      *Pinned by:* `TransactionalMailServiceTest.suppressedAddressIsNeverDispatchedToTheTransport`
 - [ ] **AC-6:** Given a booking-confirmation send whose transport throws, when it runs, then the
       exception still propagates (keeping the publication outstanding, #371) and **no**
       `riviera.mail.recovery.failed` series exists — the registry vehicle is accounted for by
@@ -88,8 +88,8 @@ widen the swallow; §6c one-line comments, long prose to Javadoc), `riviera-loca
   this is not one, same as its two siblings.
 - **No throttling or aggregation of the existing per-drop / per-failure lines.**
 - **Not the `BookingConfirmationMailListener` skip paths** (missing booking / set / contact). Those
-  are a *data* gap on the registry vehicle, not a transport loss; see the Generalization-audit log
-  for the decision and its follow-up.
+  are a *data* gap on the registry vehicle, not a transport loss — **filed as #428**; see the
+  Generalization-audit log for the decision.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -175,15 +175,16 @@ N/A — no contract change. No endpoint, DTO, or response shape is touched;
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — committing the plan doc, opening the draft PR`
+**Stage pointer:** `implement — phase 1 done, phase 2 (docs) next`
 
-**Next action:** Commit this doc, push the branch, open the draft PR (CI fires on
-`pull_request` only, #417), then start phase 1 test-first.
+**Next action:** Write the runbook entry for `riviera_mail_recovery_failed_total` (replacing the
+`#423` placeholder note), then update the `notification` clause in `CLAUDE.md` and
+`RESPONSIBILITIES.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ⏳ | |
-| 1 — The counter and its cause split | | |
+| 0 — Plan doc + draft PR | ✅ | `f859ae9` (PR #427) |
+| 1 — The counter and its cause split | ✅ | `32b6578` |
 | 2 — Runbook + substrate docs | | |
 | 3 — Gates (CI, review, Sonar) + close-out | | |
 
@@ -221,8 +222,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `docs/plans/recovery-mail-transport-failure-metric.md`
 
-- [ ] **Step 1: Commit the plan doc** — `git commit -m "docs(#423): plan the recovery-mail transport-failure metric (#423)"`
-- [ ] **Step 2: Push and open the draft PR** — CI fires on `pull_request` only (#417), so the draft
+- [x] **Step 1: Commit the plan doc** — `git commit -m "docs(#423): plan the recovery-mail transport-failure metric (#423)"`
+- [x] **Step 2: Push and open the draft PR** — CI fires on `pull_request` only (#417), so the draft
       is what makes every later push gated.
 
 ---
@@ -232,17 +233,17 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `ObservabilityMetrics.java` · Modify `TransactionalMailService.java:75-91` ·
 Test `TransactionalMailServiceTest.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1 … AC-7 (the service gains a `MeterRegistry`
+- [x] **Step 1: Write the failing tests** — AC-1 … AC-7 (the service gains a `MeterRegistry`
       constructor parameter; the spec reads counters off a `SimpleMeterRegistry`, exactly as
       `AsyncMailDispatcherTest` does).
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `gradle --no-daemon --console=plain test --tests "*TransactionalMailServiceTest*"` → FAIL
       (no such constructor / no such metric name).
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — declare `MAIL_RECOVERY_FAILED`; give the service a
+- [x] **Step 3: Minimal implementation** — declare `MAIL_RECOVERY_FAILED`; give the service a
       `MeterRegistry`; split the catch:
 
 ```java
@@ -270,17 +271,17 @@ private void dispatchQuietly(String kind, String toEmail, Runnable send) {
 }
 ```
 
-- [ ] **Step 4: Run them, verify they pass** — the same scoped command → PASS.
+- [x] **Step 4: Run them, verify they pass** — the same scoped command → PASS.
 
 > Scope (end-of-phase regression): broaden to the touched module's package plus the structural net
 > (`*ModularityTests*`, `*PackageShapeArchitectureTests*`, `*JdbcOnlyArchitectureTests*`).
 
-- [ ] **Step 5: Generalization-audit pass** — the audit that produced this issue, re-run one level
+- [x] **Step 5: Generalization-audit pass** — the audit that produced this issue, re-run one level
       down: which *other* sites lose a mail behind a swallow? Record below.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#423): count a recovery mail lost in transport, attributed by cause (#423)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#423): count a recovery mail lost in transport, attributed by cause (#423)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -307,7 +308,7 @@ private void dispatchQuietly(String kind, String toEmail, Runnable send) {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| _(phase 1)_ | | | | | |
+| 2026-07-29 | Phase 1 (the #415/#423 audit, re-run one level down) | A mail that will never arrive, behind a swallow or an early return — the same generalization that produced #415 and this issue | `grep -rn "catch (" platform/src/main/java/ai/riviera/platform/notification/` + every `log.warn`/`log.info`-then-`return` in the module + the edge's `MailSender` call sites | 7 candidates, 3 real losses. (1) `TransactionalMailService` transport catch. (2) the same task's non-transient suppression-lookup drop. (3) `BookingConfirmationMailListener`'s three missing-booking/set/contact skips. Not losses: `sendBookingConfirmation`'s suppressed skip and the recovery suppressed skip (policy outcomes), `MailDeliverabilityService` + `SuppressedConfirmationMailDelivery` (view reads, no mail in flight), `AsyncMailDispatcher` (already counted, #415), `JdbcEmailSuppressions` (rethrows) | (1)+(2) fixed here, as two `reason` values. (3) **filed as #428** and linked to epic #367 — and it is the sharper find: the method returns *normally*, so the registry marks the publication complete and `riviera.outbox.pending` never moves. #423's registry-asymmetry argument ("the outbox already covers it") holds only for failures that **throw**, so this is the one mail loss that gauge cannot show. Filed rather than absorbed for the same reason #415 and #423 were: its counter's meaning and log level are judgment calls that would have widened this slice's stated Non-goals mid-PR |
 
 
 ---
