@@ -213,9 +213,10 @@ exposed only via the already-authenticated `/actuator/prometheus`.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1 (substrate docs)`
+**Stage pointer:** `PR #424 — phases done, awaiting CI then the Review + Sonar gates`
 
-**Next action:** Phase 1 step 1 — add the counter and its two tag values to the observability runbook.
+**Next action:** Confirm CI green on PR #424, then run the Review gate per `pr-gates` §1's invocation
+ladder, then pull Sonar's reported new-issue list (a green gate is not the check).
 
 **Phase 0 test evidence:** `gradle test --tests "*AsyncMailDispatcherTest*"` → 9/9 green; the widened
 regression scope (`*Mail*`, `*Notification*` + the structural net `*ModularityTests*`,
@@ -226,7 +227,7 @@ ITs included (Docker present in this session).
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the drop counter, tagged, with the logging decision | ✅ | this commit |
-| 1 — substrate docs + close-out | | |
+| 1 — substrate docs + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -287,15 +288,15 @@ touches *before* editing).
 
 **Files:** Modify `docs/runbooks/observability.md`, `CLAUDE.md`, `RESPONSIBILITIES.md`, this plan doc
 
-- [ ] **Step 1:** Add the counter to the runbook's non-money-path table beside the shed counter —
+- [x] **Step 1:** Add the counter to the runbook's non-money-path table beside the shed counter —
       the two tag values, the alerting rule, and the user-facing meaning (a verify/reset mail that
       will never arrive unless re-requested).
-- [ ] **Step 2:** Run `riviera-docs-freshness` over `origin/main..HEAD` and patch whatever the diff
+- [x] **Step 2:** Run `riviera-docs-freshness` over `origin/main..HEAD` and patch whatever the diff
       contradicts — at minimum the `shared` Job's metric-name clause (which names only the shed
       counter) and the `notification` row's saturation contract.
 - [ ] **Step 3:** Finalize this plan doc **in this PR's last commit**, citing `merged via PR #NN`
       (never a merge SHA) — the three-slice tax (#326→#347, #346→#352, #351→#354) is the reason.
-- [ ] **Step 4:** Report the still-open #407/#410/#411 epic-attachment gap to the maintainer.
+- [x] **Step 4:** Report the still-open #407/#410/#411 epic-attachment gap to the maintainer.
 
 ---
 
@@ -309,6 +310,27 @@ touches *before* editing).
 
 ---
 
+## Docs-freshness run (merge close-out step 5)
+
+Range `origin/main..HEAD`, run at phase 1. **Three findings, all patched**, and the third is the same
+*class* #408's F-9 caught — an ownership **clause** contradicted, not a type list.
+
+| Doc | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `RESPONSIBILITIES.md:348` (`shared` **Job**) | "…the platform's metric names (`ObservabilityMetrics`: the money-path trio from #100, plus the registry-mail shed counter added by #408). **Nothing else.**" | a second mail counter now lives there | **patched** — the clause names both mail-loss counters; the "Nothing else" boundary is kept |
+| `RESPONSIBILITIES.md:353/357` (the metric-name blockquote) | "`notification` emits `MAIL_REGISTRY_SHED`" and "`MAIL_REGISTRY_SHED` has a single reader today" | `notification` now emits two names, and the tag vocabulary is new | **patched** — both sentences pluralized; added that the `reason` tag values are the emitter's vocabulary and stay with it, so the kernel's remit is not read as widening to tags |
+| `RESPONSIBILITIES.md:286` (`notification` **Job**) | carried the shed's counter + per-episode escalation, with no drop accounting | #415 | **patched** — one clause, stating the two deliberate inversions rather than implying symmetry |
+| `CLAUDE.md:157` (notification module row) | "…a rejection during shutdown is neither counted nor escalated" sat inside the #408 clause and, once a second counter existed, read as a statement about **both** vehicles — the opposite of what this slice ships | #415 | **patched** — the four registry-only clauses are now explicitly scoped as such, and the recovery pool's opposite answers are stated beside them, with #423 named as the remaining uncounted loss |
+
+Checked and **not** patched, deliberately: `ADR-0011` (decision 5 is about which vehicle carries which
+payload — unchanged, and it is the *premise* of this slice's argument rather than a casualty of it;
+its lines 117/145 concern the #386 fail-open carve-out, untouched); `CONTEXT.md` (no glossary term
+added — "drop" and "shed" were already the vocabulary); the `riviera-*` skills (none cites
+`AsyncMailDispatcher` or a metric name in an example table); `docs/deploy/cd-pipeline.md` (no new env
+var — this slice adds no tunable).
+
+Step 6 (graph refresh) **skipped**: `graphify-out/` is gitignored and absent in this cloud clone.
+
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1:** Run `gradle test --tests "*AsyncMailDispatcherTest*"` → PASS. Verified at commit `<sha>`.
@@ -321,21 +343,21 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified `N/A`); no availability write path in scope (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event payload changed (invariant #11).
-- [ ] **Payment/payout** section filled (justified `N/A`) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no time arithmetic in scope.
-- [ ] Booking codes unguessable (invariant #7) — AC-4 pins that the drop line carries no address and no link.
-- [ ] Flyway migration present for schema changes (invariant #12) — none needed; no `listener_id`/`event_type` rewrite implied.
-- [ ] **Frontend** standards met or deviation documented — `N/A`, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified `N/A`); no availability write path in scope (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event payload changed (invariant #11).
+- [x] **Payment/payout** section filled (justified `N/A`) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no time arithmetic in scope.
+- [x] Booking codes unguessable (invariant #7) — AC-4 pins that the drop line carries no address and no link.
+- [x] Flyway migration present for schema changes (invariant #12) — none needed; no `listener_id`/`event_type` rewrite implied.
+- [x] **Frontend** standards met or deviation documented — `N/A`, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — final state committed here citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
