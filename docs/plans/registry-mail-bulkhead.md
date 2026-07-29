@@ -47,6 +47,13 @@ own Javadoc (#369) and ADR-0011 decision 5.
   Spring bean-definition change in `adapter/in`, and test robustness).
 - `/code-review` (second pass, subagent fan-out, once authorized) — five independent reviewers over the
   final diff: **no further findings**.
+- **Close-out session (comparison review vs the competing branch on #406):** `riviera-sdlc` +
+  `references/pr-gates.md` §3 (the merge close-out procedure), `riviera-local-debug` (the JDK-25
+  toolchain + scoped-`--rerun` discipline used to re-reproduce the pre-fix red run), and, for the two
+  fixes it produced, `riviera-java-conventions` + `riviera-modulith` re-loaded per the re-entry rule —
+  the F-4 fix is a test-only change inside `notification`'s existing test package (a `DataSource`
+  injected into an existing nested `@TestConfiguration`; no class moved, no published surface or
+  `allowedDependencies` touched) and F-5 is Javadoc + plan-doc prose.
 - `riviera-local-debug` — the cloud recipe (system `gradle`, JDK-25 toolchain registration, daemon on
   21) and the scoped-test discipline used for every phase command below.
 - **Not loaded, deliberately:** `postgres` (no migration, no schema, no new query — the tests read
@@ -94,8 +101,9 @@ Mapped to the issue's four ACs; AC-5 is added by the intake grill (see Open ques
   not written yet. *Pinned by:*
   `MailListenerExecutorArchitectureTest.everyNotificationEventListenerNamesTheMailExecutor`
 - [x] **AC-7 (the transaction half of issue "what to build" bullet 3):** Given a confirmation send,
-  when the transport is invoked, then no transaction (and therefore no pooled connection) is held open
-  around it. *Pinned by:* `RegistryMailBulkheadIT.sendsWithNoTransactionHeldOpen`
+  when the transport is invoked, then no transaction **and no bound pooled connection** is held open
+  around it — asserted as two separate facts, because the connection does not follow from the
+  transaction (F-4). *Pinned by:* `RegistryMailBulkheadIT.sendsWithNoTransactionHeldOpen`
 
 ## Non-goals
 
@@ -256,8 +264,13 @@ loaded for that reason.
 
 **Stage pointer:** `merged via PR #403 — close-out complete`
 
-**Next action:** None — the slice is done. The deferred `BookingRefundListener` hazard is filed as
-**#404**. **Merged via PR #403.**
+**Next action:** None — the slice is done. **Merged via PR #403.** The deferred `BookingRefundListener`
+hazard is filed as **#404**. The comparison review against the competing branch (#406, closed as
+superseded) filed five more, so nothing that branch did better is lost: **#407** (prove a shed send
+leaves its publication outstanding, in a Spring context — the saturation coverage this class lacks),
+**#408** (externalise the pool sizing + an attributable shed metric), **#409** (the two escape hatches in
+`MailListenerExecutorArchitectureTest`), **#410** (MDC onto the mail workers), **#411** (the shutdown
+drain vs the SMTP socket budget). #410 and #411 predate both branches.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -267,6 +280,7 @@ loaded for that reason.
 | 3 — pre-merge docs-freshness + the coverage hole it found | ✅ | `884a8cd`, `b4c65cd` |
 | 4 — review-gate findings F-2, F-3 | ✅ | `b89cd1d` |
 | 5 — `/code-review` fan-out over the final diff | ✅ | no findings; docs-only close-out |
+| 6 — comparison-review close-out vs the competing branch on #406 (F-4, F-5) | ✅ | `ba9b955`, `0128685` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -279,6 +293,8 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 | F-2 | **review gate** (RV-BE-11 / RV-BE-12 walk over the new `@Configuration`) | **Blocker.** Boot declares `applicationTaskExecutor` `@ConditionalOnMissingBean(Executor.class)`, so simply *defining* the mail pool as an `Executor` bean made Boot skip the shared pool entirely — and unqualified `@Async`, i.e. **every money-path listener**, fell through to an unbounded `SimpleAsyncTaskExecutor`, one thread per event. The bulkhead would have shipped having *removed* a bound from the path it exists to protect. Invisible to every test, `RegistryMailBulkheadIT` included: unbounded threads always keep up, so AC-1 passed either way. Fixed with `defaultCandidate = false` (keeps the bean addressable by name, out of by-type resolution) and pinned by the new `RegistryMailExecutorWiringIT`, which asserts both that the shared pool exists **and** that unqualified `@Async` resolves to it | fixed-in-`b89cd1d` |
 | F-3 | review gate (test robustness) | `RegistryMailBulkheadIT`'s publication lookups matched a bare `"value":<bookingId>`, but a `BookingConfirmed` payload carries `bookingId`, `venueId` and `setId` as identically-shaped `{"value":n}` records — so a sibling IT's row whose venue or set shared the number would have made the counts flaky. This is the lesson `EventRegistryDurabilityIT` already documents; re-keyed onto an improbable `amountMinor`, as that class does | fixed-in-`b89cd1d` |
 | F-1 | self, `riviera-docs-freshness` pre-merge smoke | **A real coverage hole the decomposition opened, found by the audit rather than by a red build.** `PublishedSurfacePlacementArchitectureTests` keyed its cross-module-listener rule on `@ApplicationModuleListener` alone, so rewriting the listener as `@Async` + `@TransactionalEventListener` quietly removed it from that rule — the check stopped applying and nothing went red (the rule's own vacuity guard stayed satisfied by the five money-path listeners). Broadened to match either spelling, with a new `BadDecomposedListener` fixture as the negative proof; `docs/adr/ADR-0007` and `riviera-modulith`'s SKILL.md restated to match. Re-entered at Implement per the re-entry rule (`riviera-modulith` — its own contract) | fixed-in-`884a8cd` |
+| F-4 | **comparison review vs #406** (the competing branch for #383) | **AC-7's assertion was too weak to catch the thing it names.** `sendsWithNoTransactionHeldOpen` asserted only `isActualTransactionActive()`. That flag goes false under `@Transactional(NOT_SUPPORTED)` while the pooled connection is *still* held: with no transaction to suspend, `AbstractPlatformTransactionManager` takes its empty-transaction branch, `newSynchronization` follows the default `SYNCHRONIZATION_ALWAYS`, and `DataSourceUtils` binds the first port read's `ConnectionHolder` for the whole method scope. The connection is the resource #383 is about, so the check has to be `hasResource(dataSource)`. Ported from #406, which produced the sharper probe, plus an `isNotEmpty()` on each sample list so a send that never ran cannot clear the assertion vacuously. **Proven, not assumed:** adding `NOT_SUPPORTED` leaves the transaction assertion green and fails the connection one on its own message; reverting returns the class to 4/4 over three consecutive runs | fixed-in-`ba9b955` |
+| F-5 | **comparison review vs #406** (doc claim vs the branch's own test run) | **A stated failure mode the branch's own red run contradicts.** The AC-1 verification line and the listener Javadoc both said the pre-fix `RegistryMailBulkheadIT` failed with `CannotGetJdbcConnectionException` because ten `REQUIRES_NEW` listener transactions had exhausted Hikari's default pool of ten. Re-reproduced at close-out (`@ApplicationModuleListener` restored, `--rerun`): it fails with `ConditionTimeoutException` on the invariant-#8 assertion — **thread starvation** — with zero occurrences of `CannotGetJdbcConnection` or `Connection is not available` in the captured output. The claim was also arithmetically impossible: Boot's `applicationTaskExecutor` is 8 core threads behind an unbounded queue and nothing overrides it, so at most 8 listener transactions are ever concurrent against a pool of 10. Phase 2's own step already read "AC-1 times out"; only the final AC table and the Javadoc had drifted. Dropping the transaction remains right, now argued as a second independent hazard rather than as the reproduced failure | fixed-in-`0128685` |
 | Info-1 | self, phase 1 (red-stage verification) | The first draft of `RegistryMailBulkheadIT` went **green against the unfixed listener**: its wedging latch was a single `CountDownLatch` shared across tests, so once any `@AfterEach` released it the gate never blocked again — and the gate's own `await` timeout was shorter than the test's Awaitility budget, so even a fresh gate reopened mid-test. Both were fixed (a per-test gate + a backstop timeout that outlasts every wait) *before* the fix was written, which is the only reason the RED is trustworthy. Recorded because "the test failed" is not the same as "the test failed for the reason claimed" — the first run failed on the wrong assertion | fixed-in-phase-1 |
 
 ---
@@ -428,7 +444,7 @@ default for the five money-path listeners; #383 is a mail-only exception, not a 
 - [x] **AC-4:** `gradle test --tests "*BookingConfirmationMailIT*" --tests "*EventRegistryDurabilityIT*" --tests "*ListenerMoveMigrationIT*" --tests "*PayoutAccrualIT*" --tests "*PayoutReversalIT*" --tests "*PaymentEventListenerIT*"` → PASS, all unmodified. Verified at `431caf3`.
 - [x] **AC-5:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `keepsTheListenerIdV31Migrated` PASS. Verified at `431caf3`.
 - [x] **AC-6:** `gradle test --tests "*MailListenerExecutorArchitectureTest*"` → PASS, and proven non-vacuous: reverting the listener to `@ApplicationModuleListener` fails it with *"runs on Boot's shared applicationTaskExecutor rather than 'registryMailExecutor'"*. Verified in phase 2.
-- [x] **AC-7:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `sendsWithNoTransactionHeldOpen` PASS. Verified at `431caf3`.
+- [x] **AC-7:** `gradle test --tests "*RegistryMailBulkheadIT*"` → `sendsWithNoTransactionHeldOpen` PASS. Verified at `431caf3`, and **re-verified at `ba9b955` with the stronger `hasResource(dataSource)` assertion added (F-4)** — 4/4, `skipped=0`, over three consecutive `--rerun`s. Non-vacuity proven by adding `@Transactional(NOT_SUPPORTED)` to the listener: the transaction assertion stays green and the connection assertion fails on *"the SMTP round-trip must not pin a pooled connection"*.
 
 ## Self-review checklist (before merge / PR)
 
