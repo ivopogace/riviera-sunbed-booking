@@ -74,11 +74,11 @@ behaviour**; that class's four tests must stay green, which AC-4's repeat runs a
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Copy-pasting the sibling IT's fixtures (blocking mailer, booking seeding, registry query) trips the Sonar **0-duplicated-blocks** merge bar | high | med | Extract `ControllableMailer`, `ControllableMailerConfiguration` and `ConfirmationMailFixtures` as shared test types; both ITs consume them | Claude | open |
+| R-1 | Copy-pasting the sibling IT's fixtures (blocking mailer, booking seeding, registry query) trips the Sonar **0-duplicated-blocks** merge bar | high | med | Extract `ControllableMailer`, `ControllableMailerConfiguration` and `ConfirmationMailFixtures` as shared test types; both ITs consume them | Claude | closed — extracted in phase 1 |
 | R-2 | Saturation is timing-dependent and flakes (the #406 failure mode) | med | high | Sequence on **observable pool state**, not sleeps: await the wedge's transport entry, then `pool.getQueueSize() == 1`, only then publish the send that must be shed | Claude | open |
 | R-3 | A stray republished publication from an earlier IT occupies the shrunk pool and shifts which event is shed | low | high | The distinct `@TestPropertySource` yields a distinct context ⇒ a **fresh** container/database with no outstanding rows; additionally the class waits for a quiet pool before saturating | Claude | open |
 | R-4 | The narrowed resubmit re-delivers unrelated publications (#406's reproducible flake) | med | high | Predicate matches `BookingConfirmed.bookingId() == <this test's booking>`, mirroring `RegistryMailBulkheadIT`; asserted by delivery counts per address | Claude | open |
-| R-5 | Moving `ControllableMailer` out of `RegistryMailBulkheadIT` changes that class's context cache key or drops its `@TestConfiguration` pickup, silently un-wedging it | med | high | The extracted config is `@Import`ed explicitly by both classes; AC-4's repeat runs of `RegistryMailBulkheadIT` are the check | Claude | open |
+| R-5 | Moving `ControllableMailer` out of `RegistryMailBulkheadIT` changes that class's context cache key or drops its `@TestConfiguration` pickup, silently un-wedging it | med | high | The extracted config is `@Import`ed explicitly by both classes; AC-4's repeat runs of `RegistryMailBulkheadIT` are the check | Claude | phase 1: 4/4 green after the move; repeat runs pending phase 3 |
 | R-6 | A second Postgres container + context slows CI or pressures the sandbox | med | low | Already the norm here (every `@TestPropertySource` IT does it); locally run one IT class at a time per `riviera-local-debug` | Claude | open |
 | R-7 | The shrunk pool is a **shared-state bean** — the `riviera-local-debug` full-suite failure class | low | med | The bean is context-scoped and this context is not shared; the class leaves no publication outstanding and releases the transport in `@AfterEach` | Claude | open |
 
@@ -159,15 +159,14 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan → implement (phase 0: plan doc committed, draft PR next)`
+**Stage pointer:** `implement (phase 2 — the saturation IT)`
 
-**Next action:** push the plan-doc commit, open the draft PR (#417 — no PR means no CI), then start
-phase 1's fixture extraction.
+**Next action:** write `RegistryMailShedDurabilityIT` and run it scoped.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + branch | ⏳ | |
-| 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | | |
+| 0 — Plan doc + branch | ✅ | plan doc + draft PR #432 |
+| 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | ✅ | this commit |
 | 2 — `RegistryMailShedDurabilityIT` (red → green) | | |
 | 3 — Repeat-run verification (AC-4) + close-out | | |
 
@@ -199,21 +198,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — Plan doc + branch
 
-- [ ] **Step 1: Commit this plan doc on the designated branch**, then push and open the **draft PR**
-      immediately (a branch with no PR gets no CI at all, #417).
+- [x] **Step 1: Commit this plan doc on the designated branch**, then push and open the **draft PR**
+      immediately (a branch with no PR gets no CI at all, #417). Draft PR #432.
 
 ## Phase 1 — Extract the shared test fixtures
 
 **Files:** Create `ControllableMailer`, `ControllableMailerConfiguration`, `ConfirmationMailFixtures`
 · Modify `RegistryMailBulkheadIT`
 
-- [ ] **Step 1:** Move the nested `ControllableMailer` and `ControllableMailerConfiguration` out of
+- [x] **Step 1:** Move the nested `ControllableMailer` and `ControllableMailerConfiguration` out of
       `RegistryMailBulkheadIT` verbatim (public types, Javadoc carried across), and lift its seeding /
       publishing / registry-reading helpers into `ConfirmationMailFixtures`.
-- [ ] **Step 2: Run the moved class, verify it is still green** —
-      `gradle --no-daemon --console=plain test --tests "*RegistryMailBulkheadIT*"` → PASS (4 tests).
-      A pure move: if this is red, the move is wrong, not the design.
-- [ ] **Step 3: Commit** — `refactor(#407): share the registry-mail IT fixtures`.
+- [x] **Step 2: Run the moved class, verify it is still green** —
+      `gradle --no-daemon --console=plain test --tests "*RegistryMailBulkheadIT*"` → PASS (4 tests,
+      `BUILD SUCCESSFUL in 3m 54s`). A pure move: if this is red, the move is wrong, not the design.
+- [x] **Step 3: Commit** — `refactor(#407): share the registry-mail IT fixtures`.
 
 ## Phase 2 — The saturation IT (red → green)
 
@@ -243,7 +242,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| _(filled at phase 1)_ | | | | | |
+| 2026-07-29 | Phase 1 (fixture extraction) | Other tests hand-rolling a controllable `Mailer`, or duplicating the confirmation-seeding SQL | `grep -rln "implements Mailer" platform/src/test/java` | `RegistryMailBulkheadIT` (extracted), `MockMailer` (production double, serves the recording-only ITs) | Extracted only what the two registry-mail ITs share; left `MockMailer`-based ITs alone — they need recording, not a gate |
 
 ---
 
