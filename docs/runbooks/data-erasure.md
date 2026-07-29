@@ -110,13 +110,22 @@ with no bookings at all is swept once its own row ages out — that is the aband
 
 All under `customer.retention.*` in `application.properties`:
 
-| Property | Default | Meaning |
-|---|---|---|
-| `enabled` | **`false`** | While false **no scheduler bean exists**, so nothing can sweep |
-| `window` | `P10Y` | ISO-8601 **period** (years/months/days — *not* a duration). Deliberately inert: longer than any plausible statutory period |
-| `batch-size` | `500` | Most contacts one run may scrub; the remainder waits for the next run |
-| `sweep-interval` | `PT6H` | `fixedDelay` between runs — slack by design; a retention window is measured in years |
-| `initial-delay` | `PT5M` | Keeps the sweep off the startup hot path |
+| Property | Default | Accepted range | Meaning |
+|---|---|---|---|
+| `enabled` | **`false`** | — | While false **no scheduler bean exists**, so nothing can sweep |
+| `window` | `P10Y` | **any positive period** | ISO-8601 **period** (years/months/days — *not* a duration). Deliberately inert: longer than any plausible statutory period |
+| `batch-size` | `500` | **`1`–`10000`** | Most contacts one run may scrub; the remainder waits for the next run |
+| `sweep-interval` | `PT6H` | — | `fixedDelay` between runs — slack by design; a retention window is measured in years |
+| `initial-delay` | `PT5M` | — | Keeps the sweep off the startup hot path |
+
+> **The two ranges are enforced at boot** (#414) — a value outside them fails the context rather than
+> degrading quietly, so step 2 below cannot deploy a window the app will not honour. `P0D` is the one
+> to know about: it puts the cutoff at **today**, so the first sweep scrubs every guest contact with no
+> booking on or after today, irreversibly. A **mixed-sign** period is refused too (`P1M-40D` reads
+> positive by total months yet moves the cutoff *forward*), so express the window plainly — `P2Y`,
+> `P10Y`. There is deliberately **no upper** bound on `window`: a longer window scrubs *less*, which is
+> the safe direction. `batch-size=0` is the mirror — it reaches `LIMIT 0`, so the sweep finds no
+> candidates and returns **without logging anything**, scrubbing nothing for as long as it stays set.
 
 ### Enabling it (the procedure)
 
