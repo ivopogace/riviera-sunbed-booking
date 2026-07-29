@@ -189,16 +189,16 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed; entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — create `MailListenerRuleFixtures` and the
-`testScopeListenersAreNotCollected` assertion, then run the scoped test and confirm it goes
-RED with the hole-1 false failure.
+**Next action:** Phase 1 step 1 — add `plainEventListenerIsRejected` against the extracted
+collector, confirm it goes RED (empty violations), then widen discovery to merged
+`@EventListener` and add the durability rule.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Reproduce and close hole 1 (test-scope false failure) | | |
-| 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | | |
+| 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | pending commit |
+| 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ⏳ | |
 | 2 — PR, review gate, Sonar gate, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
