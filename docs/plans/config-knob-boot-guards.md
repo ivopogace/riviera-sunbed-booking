@@ -216,7 +216,7 @@ context startup, before any request is served.
 |-------|--------|---------|
 | 0 — Rate-limit key-cap bounds | ✅ | `6f1917b` |
 | 1 — Retention window + batch-size bounds | ✅ | `25241f6` |
-| 2 — Shipped-config comments + merge from main | ⏳ | `<p2sha>` |
+| 2 — Shipped-config comments + merge from main | ⏳ | `2b89436` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
