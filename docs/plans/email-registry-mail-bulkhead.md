@@ -374,7 +374,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | cross-check against **PR #403** (the earlier, independent implementation of #383) | **Blocker — the bulkhead removed a bound from the path it protects.** Declaring the mail pool as a plain `Executor` bean made Boot skip `applicationTaskExecutor` entirely, so every unqualified `@Async` — all four money-path listeners — fell back to an unbounded executor. **Every test still passed**, because unbounded threads always keep up: AC-1 asserts the money path *works*, not which executor it works on | fixed in `<sha>` — `defaultCandidate = false`, pinned by `ConfirmationMailBulkheadIT.declaringTheMailPoolLeavesBootsSharedExecutorInPlace` (verified RED before the fix: the bean was absent) |
+| F-1 | cross-check against **PR #403** (the earlier, independent implementation of #383) | **Blocker — the bulkhead removed a bound from the path it protects.** Declaring the mail pool as a plain `Executor` bean made Boot skip `applicationTaskExecutor` entirely, so every unqualified `@Async` — all four money-path listeners — fell back to an unbounded executor. **Every test still passed**, because unbounded threads always keep up: AC-1 asserts the money path *works*, not which executor it works on | fixed in `0f97bed` — `defaultCandidate = false`, pinned by `ConfirmationMailBulkheadIT.declaringTheMailPoolLeavesBootsSharedExecutorInPlace` (verified RED before the fix: the bean was absent) |
 
 ---
 
