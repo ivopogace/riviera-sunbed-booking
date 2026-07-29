@@ -208,14 +208,14 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2`
 
-**Next action:** Phase 1 step 1 — write the failing `CustomerRetentionPropertiesTest`.
+**Next action:** Phase 2 step 1 — extend the shipped `application.properties` comments and the `data-erasure.md` Knobs table with the accepted ranges.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Rate-limit key-cap bounds | ✅ | `6f1917b` |
-| 1 — Retention window + batch-size bounds | | |
+| 1 — Retention window + batch-size bounds | ✅ | `<p1sha>` |
 | 2 — Shipped-config comments + merge from main | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
