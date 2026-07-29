@@ -76,10 +76,13 @@ not be renamed. Already exists and is checked out.
   `ConfirmationMailBulkheadIT.theSendHoldsNoTransactionAndNoConnection`
 
 - [ ] **AC-3 (bounded, with documented saturation):** Given the mail executor's queue is
-  full, when a further `BookingConfirmed` is delivered, then the money path is unaffected
-  (no exception reaches the publishing/committing thread) and that event's publication row
-  is left **incomplete** — the send is shed, never silently marked done. *Pinned by:*
+  full, when a further `BookingConfirmed` is delivered, then the booking still reaches
+  `CONFIRMED` and accrues its payout entry, and that event's publication row is left
+  **incomplete** (`completion_date IS NULL`) — the send is shed, never silently marked done,
+  and the saturation is counted. *Pinned by:*
   `ConfirmationMailBulkheadIT.saturationShedsTheSendAndLeavesThePublicationOutstanding`
+  (fact 9 proves the money path is safe from framework sources; this AC is the regression test
+  that keeps it true across upgrades)
 
 - [ ] **AC-4 (registry durability intact — the reason this wasn't done in #371):** Given a
   `BookingConfirmed` whose listener failed, when outstanding publications are resubmitted
@@ -161,7 +164,7 @@ currently buys and what happens to it.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **Registry `listener_id` drift.** The registry stores the listener's FQ method signature; a rename/move orphans outstanding rows (the V18 + V31/#382 lesson) | low | high | Do not rename or move the class or method — the decomposition is annotation-only. `listener_id` is derived by `TransactionalApplicationListenerMethodAdapter#getListenerId()` from the method, not from which annotation declared it, so it must not change. Pinned by **AC-5**; if it ever does change, this slice grows a Flyway rewrite modelled on `V31` | implementer | open |
-| R-2 | **A rejected submission throws onto the money-path thread.** `@Async` submits on the caller's thread — here the `AFTER_COMMIT` synchronization of the *booking/payment* commit. A `TaskRejectedException` from a saturated pool could surface inside `commit()` | med | high | Choose a rejection policy that does not throw (see **OQ-1**), and prove it: **AC-3** asserts the money path is unaffected under saturation. `CallerRunsPolicy` is explicitly forbidden — it would run the SMTP call *on* the money-path thread, the exact failure this slice removes | implementer | open |
+| R-2 | **A rejected submission throws onto the money-path thread.** `@Async` submits on the caller's thread — here the `AFTER_COMMIT` synchronization of the *booking/payment* commit. A `TaskRejectedException` from a saturated pool could surface inside `commit()` | — | — | **Closed at plan time — the exception provably cannot escape** (fact 9): `AFTER_COMMIT` is dispatched from `afterCompletion`, and `TransactionSynchronizationUtils.invokeAfterCompletion` catches `Throwable` and logs it; the commit itself already completed, in a `finally` *before* that call. The chosen handler swallows anyway (OQ-1), so this is belt-and-braces. **AC-3 still asserts it** — a proof read from framework sources is not a regression test, and a framework upgrade could change it. `CallerRunsPolicy` remains forbidden: it would run the SMTP call *on* the money-path thread, the exact failure this slice removes | planner | closed — pinned by AC-3 |
 | R-3 | Removing the listener's transaction widens the at-least-once crash window | **closed at plan time** | — | Verified against Modulith 2.1.0 sources: `DefaultEventPublicationRegistry#markProcessing`/`markCompleted`/`markFailed` are each `@Transactional(REQUIRES_NEW)`, and `CompletionRegisteringMethodInterceptor` orders at `HIGHEST_PRECEDENCE + 10` vs the transaction advisor's default `LOWEST_PRECEDENCE`, so completion always ran *outside* the listener's transaction. The window is unchanged | planner | closed — no code change needed |
 | R-4 | A **permanently** failing send (550 to a mistyped address) never completes, is resubmitted every restart, and holds `riviera.outbox.pending` above `MoneyPathAlertCheck`'s threshold for a non-money reason | med | med | **Carried, not closed.** Absorbing it needs ADR-0011 decision 7's bounce feed (#372). This slice must not make it worse: AC-3's shed-and-leave-outstanding behaviour adds a *second* way to hold a publication open, so phase 3 records the interaction in the plan + `docs/runbooks/observability.md`, and OQ-1 weighs it. Noted on **#405** too — a manual retry button makes this easier to trip, not harder | implementer | open → defer to #372 |
 | R-5 | Under-sizing the new pool turns a healthy-relay burst into shed sends | med | low | Sizing is OQ-2 with a stated rule, not a guess: confirmations are one send per confirmed booking on a low-volume marketplace; queue depth is the buffer, thread count is the concurrency. Saturation is visible (logged + the publication stays outstanding), not silent | implementer | open |
@@ -173,32 +176,18 @@ currently buys and what happens to it.
 
 > **Mandatory. Work is NOT done while this has unresolved entries.**
 
-- **Open question OQ-1 — what exactly should saturation do?** Two candidates, and the
-  deciding evidence is *where a `TaskRejectedException` lands* (R-2):
-  - **(a) Discard-and-log** (`ThreadPoolExecutor.DiscardPolicy` or a logging variant):
-    `submit` returns normally, nothing runs on the pool, so neither `markProcessing` nor
-    `markCompleted` fires and the publication stays outstanding → resubmitted at the next
-    restart. Nothing can reach the committing thread. Cost: the retry horizon is a restart
-    (fact 8 — there is no scheduled retry and no operational trigger **today**), and it adds a
-    second contributor to R-4's outbox backlog. **#405 softens this cost materially**: once an
-    admin can resubmit on demand, "shed it, the registry still owes it" stops meaning "wait for
-    the next deploy". This slice does **not** depend on #405 and must not wait for it — but if
-    (a) is chosen, say so in the PR body, because the argument for (a) is weaker while #405 is
-    open than after it lands.
-  - **(b) Abort** (`AbortPolicy`, the `ThreadPoolTaskExecutor` default) **only if** the
-    throw provably cannot escape into `commit()`. Louder and more honest, but it is the
-    money-path risk in R-2.
-    *Leaning (a)* — this vehicle's saturation must never be able to touch the money path,
-    which is the whole premise of the slice. *Owner:* implementer · *Resolves by:* phase 1,
-    with a spike test that publishes a `BookingConfirmed` against a full queue and asserts
-    what the publishing thread observes.
-- **Open question OQ-2 — pool size and queue capacity.** `AsyncMailDispatcher` uses 1
-  thread / 100 queue with an argued rationale ("a serial drain behind a 100-deep buffer is
-  the whole requirement"). Confirmation mail has a different volume shape (one per confirmed
-  booking, not "a handful a day"), so the numbers should be re-argued rather than copied.
-  Core and max must stay equal for the same reason stated on the dispatcher: a
-  `ThreadPoolExecutor` only grows past core once the queue is full. *Owner:* implementer ·
-  *Resolves by:* phase 1.
+- **Open question OQ-2 — pool size and queue capacity. BLOCKS phase 1.** Promoted from a
+  phase-1 detail: now that OQ-1 is settled, this is the decision that actually determines
+  behaviour, because the rejection policy only ever executes in a state that queue depth
+  already determined. `AsyncMailDispatcher` uses 1 thread / 100 queue with a rationale argued
+  for "a handful of sends a day"; confirmation mail is one send per confirmed booking, so the
+  numbers must be re-argued rather than copied. Core and max must stay equal for the reason
+  stated on the dispatcher: a `ThreadPoolExecutor` only grows past core once the queue is
+  *full*. Two properties of the load shape belong in the argument: invariant #4 makes demand
+  **deadline-driven** (bookings for tomorrow close at 18:00 `Europe/Tirane`, so arrivals
+  cluster before the cutoff rather than spreading evenly), and a single pathological send can
+  occupy a thread far longer than 30s (fact 6). *Owner:* maintainer + implementer ·
+  *Resolves by:* before phase 1 starts.
 - **Open question OQ-3 — does ADR-0011 need an amendment?** Decision 5 (which vehicle a mail
   uses) is unchanged and stays correct. What changes is a property ADR-0011 did not state:
   *the registry vehicle also gets its own bounded pool and holds no transaction across the
@@ -215,6 +204,29 @@ currently buys and what happens to it.
   *Owner:* implementer · *Resolves by:* phase 0 review.
 
 ### Resolved
+
+- **Resolved (planning) — OQ-1, what should saturation do? → shed the send, log it once,
+  count it; never throw.** The deciding question was whether a `TaskRejectedException` could
+  reach the money path. **It cannot** (fact 9), so both candidate policies are safe and both
+  give *identical* durability — the publication is left untouched either way, because `@Async`
+  is outermost and the rejection happens before `proceed()`, so no completion advice runs.
+  With safety off the table the choice came down to evidence quality, and `AbortPolicy` loses:
+  its operator-visible artefact is Spring's generic
+  `"TransactionSynchronization.afterCompletion threw exception"` at ERROR, emitted immediately
+  after a payment confirm — a message that reads like the money path just broke, told loudly,
+  at exactly the moment someone is diagnosing an outage under pressure. So: a custom
+  `RejectedExecutionHandler` that logs one purposeful line and swallows.
+  Three riders, from the reasoning rather than the mechanism:
+  1. **A shed send is a symptom, not an independent loss.** For the handler to fire, the queue
+     is already full — so the mails ahead of it are *equally* undelivered and outstanding.
+     Shedding declines to reserve a slot; it does not lose a mail the queue would have saved.
+  2. **ERROR, not WARN** — someone paid and will not get their arrival code until a restart or
+     #405 — but **throttled to one per episode**, not one per shed: a relay outage during a
+     cutoff burst could otherwise emit hundreds and bury the logs that matter.
+  3. **Count it** (`ObservabilityMetrics`, already Prometheus-scraped) — the counter is worth
+     more than the log line, since it makes saturation visible before a user complains.
+  Never `CallerRunsPolicy`: it would run the SMTP call on the money-path thread. Closes R-2.
+  Reversible — a one-line swap on a bean behind an interface — so it is not worth relitigating.
 
 - **Resolved (planning) — does the registry's completion write ride inside the listener's
   transaction?** **No, and it structurally cannot.** Two independent mechanisms: the
@@ -305,8 +317,9 @@ altered.
 **Stage pointer:** `plan — draft under review with the maintainer` (not yet approved; no
 code written)
 
-**Next action:** Resolve **OQ-1** (saturation behaviour) with the maintainer, since it
-shapes phase 1's executor construction and AC-3's assertion. Then start phase 0.
+**Next action:** Resolve **OQ-2** (pool size + queue capacity) with the maintainer — it is now
+the only open input blocking phase 1. OQ-1 is resolved (shed / log once / count / never throw)
+and R-2 is closed. Phase 0 is unblocked and can start in parallel.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -381,6 +394,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
    `status` / `completion_attempts` / `last_resubmission_date` columns stay NULL on every row
    and nothing may be built on them; and `markResubmitted` likewise defaults to `return true`,
    so the framework's documented "another instance already claimed this" guard is inert here.
+9. **A rejected `@Async` submission cannot fail the money path.** `AFTER_COMMIT` is dispatched
+   from `TransactionalApplicationListenerSynchronization.PlatformSynchronization.afterCompletion(int)`
+   — *not* from `afterCommit()` — and `AbstractPlatformTransactionManager.processCommit` calls
+   `triggerAfterCompletion(status, STATUS_COMMITTED)` in a **`finally`**, after the commit has
+   already succeeded. `TransactionSynchronizationUtils.invokeAfterCompletion` wraps each
+   synchronization in `try { … } catch (Throwable ex) { logger.error(…) }`. Meanwhile
+   `AsyncExecutionAspectSupport.doSubmit` for a `void` method is
+   `executor.submit(task); return null;` with no catch, so a `TaskRejectedException` *does*
+   propagate out of the interceptor — and is then caught and logged by the transaction
+   infrastructure. It can reach neither the booking commit nor the payout listener (a separate
+   synchronization). This is what closes R-2 and settles OQ-1.
 
 ---
 
@@ -489,10 +513,9 @@ void theSendHoldsNoTransactionAndNoConnection() throws Exception {
 **Files:** Create `notification/application/ConfirmationMailExecutor.java` · Modify the
 listener · Extend `ConfirmationMailBulkheadIT`
 
-- [ ] **Step 0: Resolve OQ-1 with a spike** — publish a `BookingConfirmed` against a
-  deliberately full queue and record what the *publishing* thread observes (clean return vs
-  a `TaskRejectedException` escaping `commit()`). The answer selects the rejection policy.
-  Record the outcome in Open Questions → Resolved, with the observed behaviour.
+- [ ] **Step 0: confirm OQ-2 is resolved before writing the bean** — OQ-1 is settled (shed,
+  log once, count, never throw; see Resolved), and the spike it called for is no longer needed:
+  fact 9 answers it from the framework sources. Sizing is the remaining input.
 
 - [ ] **Step 1: Write the failing tests** (AC-1, AC-3, AC-6)
 
@@ -564,11 +587,23 @@ class ConfirmationMailExecutor {
 		pool.setMaxPoolSize(POOL_SIZE);
 		pool.setQueueCapacity(QUEUE_CAPACITY);
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
-		pool.setRejectedExecutionHandler(SHED_AND_LEAVE_OUTSTANDING);
+		pool.setRejectedExecutionHandler(shedAndLeaveOutstanding());
 		pool.setWaitForTasksToCompleteOnShutdown(true);
 		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
 		return pool;
 	}
+
+	/**
+	 * Saturation (OQ-1): shed the send and return normally. Because {@code @Async} is the
+	 * outermost advice, a task that never reaches the pool never reaches the completion advisor
+	 * either, so the publication keeps {@code completion_date} NULL and the registry still owes
+	 * the mail. Deliberately does <strong>not</strong> throw: a {@code TaskRejectedException}
+	 * cannot fail the money path (it is caught by the transaction infrastructure), but it
+	 * surfaces as "TransactionSynchronization.afterCompletion threw exception" beside a payment
+	 * confirm — an alarming message about the wrong subsystem. One purposeful line, throttled to
+	 * one per saturation episode, plus a counter, is the better artefact.
+	 */
+	private RejectedExecutionHandler shedAndLeaveOutstanding() { … }
 }
 ```
 
