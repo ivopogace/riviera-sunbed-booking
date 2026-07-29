@@ -38,7 +38,7 @@ style — plain JUnit 5 `assertTrue`/`assertEquals`, no new assertion library),
 `PublishedSurfacePlacementArchitectureTests` is the sibling whose fixture pattern this copies;
 no `allowedDependencies` change — test scope is outside `ApplicationModules.verify()`, which
 imports with `DO_NOT_INCLUDE_TESTS`), `tdd` (each phase reproduces the reported hole red
-first), `riviera-local-debug` (scoped `--tests` runs; system `gradle`, not the wrapper).
+first), `riviera-local-debug` (scoped `--tests` runs; system `gradle`, not the wrapper), `riviera-review-overlay` + `/review 412` (the review gate — `/code-review` is not registered in this session, so the gate ran in its documented degraded mode; said so on the PR rather than ticking a box over a half-run gate), `riviera-docs-freshness` (pre-merge smoke over `origin/main...HEAD`: **zero findings** — CLAUDE.md:157's "pinned … by `MailListenerExecutorArchitectureTest`" stays true, the rule got stronger and contradicted no stated fact; `graphify-out/` is absent in this cloud clone, so the graph refresh is moot).
 `postgres` / `riviera-stripe-payments` / `riviera-frontend` / `angular-developer` /
 `playwright-cli` deliberately **not** loaded — no DB, no money, no frontend surface in the diff.
 
@@ -193,16 +193,21 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed; awaiting CI + the Sonar gate`
+**Stage pointer:** `close-out written; awaiting CI + the Sonar gate on PR #412`
 
-**Next action:** Confirm PR #412's CI run is green on the review-fix commit, then pull the
-SonarCloud new-issue + duplication list for the PR and clear every entry before merge.
+**Next action:** Confirm PR #412's CI is green on the head commit, then pull the SonarCloud
+new-issue + duplication list (`pullRequest=412`) and clear every entry — confirming the
+analysis actually ran (non-empty `measures`, `SonarCloud Code Analysis` = success) rather
+than trusting a `"total": 0` from an unanalyzed PR. Then merge via PR #412.
+
+**Merged via PR #412.** (Recorded pre-merge on purpose — a squash SHA cannot exist before
+the merge, and citing one guarantees a second docs-only PR; `pr-gates.md` §3 step 4.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
 | 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | `d7ecbe8` |
-| 2 — PR #412, review gate, Sonar gate, close-out | ⏳ | `6055036` (F-1..F-3) |
+| 2 — PR #412, review gate, Sonar gate, close-out | ⏳ | `6055036` (F-1..F-3), `b77f627` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -418,20 +423,20 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — no write path in the diff).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (N/A — no money in scope).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A, untouched.
-- [ ] Timezone correct (invariant #6) — N/A, no time arithmetic.
-- [ ] Booking codes unguessable (invariant #7) — N/A; nothing here logs or handles a code.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — no write path in the diff).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (N/A — no money in scope).
+- [x] Refund policy enforced server-side (invariant #10) — N/A, untouched.
+- [x] Timezone correct (invariant #6) — N/A, no time arithmetic.
+- [x] Booking codes unguessable (invariant #7) — N/A; nothing here logs or handles a code.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [ ] **The review gate ran in full** — deliberately left unticked: `/code-review` is not registered in this session, so the gate ran as `/review 412` + `riviera-review-overlay` (the documented degraded mode). Stated on PR #412 rather than ticked silently (`pr-gates.md` §1; case history PR #353/#355).
