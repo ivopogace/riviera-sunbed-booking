@@ -167,7 +167,7 @@ currently buys and what happens to it.
 | R-2 | **A rejected submission throws onto the money-path thread.** `@Async` submits on the caller's thread — here the `AFTER_COMMIT` synchronization of the *booking/payment* commit. A `TaskRejectedException` from a saturated pool could surface inside `commit()` | — | — | **Closed at plan time — the exception provably cannot escape** (fact 9): `AFTER_COMMIT` is dispatched from `afterCompletion`, and `TransactionSynchronizationUtils.invokeAfterCompletion` catches `Throwable` and logs it; the commit itself already completed, in a `finally` *before* that call. The chosen handler swallows anyway (OQ-1), so this is belt-and-braces. **AC-3 still asserts it** — a proof read from framework sources is not a regression test, and a framework upgrade could change it. `CallerRunsPolicy` remains forbidden: it would run the SMTP call *on* the money-path thread, the exact failure this slice removes | planner | closed — pinned by AC-3 |
 | R-3 | Removing the listener's transaction widens the at-least-once crash window | **closed at plan time** | — | Verified against Modulith 2.1.0 sources: `DefaultEventPublicationRegistry#markProcessing`/`markCompleted`/`markFailed` are each `@Transactional(REQUIRES_NEW)`, and `CompletionRegisteringMethodInterceptor` orders at `HIGHEST_PRECEDENCE + 10` vs the transaction advisor's default `LOWEST_PRECEDENCE`, so completion always ran *outside* the listener's transaction. The window is unchanged | planner | closed — no code change needed |
 | R-4 | A **permanently** failing send (550 to a mistyped address) never completes, is resubmitted every restart, and holds `riviera.outbox.pending` above `MoneyPathAlertCheck`'s threshold for a non-money reason | med | med | **Carried, not closed.** Absorbing it needs ADR-0011 decision 7's bounce feed (#372). This slice must not make it worse: AC-3's shed-and-leave-outstanding behaviour adds a *second* way to hold a publication open, so phase 3 records the interaction in the plan + `docs/runbooks/observability.md`, and OQ-1 weighs it. Noted on **#405** too — a manual retry button makes this easier to trip, not harder | implementer | open → defer to #372 |
-| R-5 | Under-sizing the new pool turns a healthy-relay burst into shed sends | med | low | Sizing is OQ-2 with a stated rule, not a guess: confirmations are one send per confirmed booking on a low-volume marketplace; queue depth is the buffer, thread count is the concurrency. Saturation is visible (logged + the publication stays outstanding), not silent | implementer | open |
+| R-5 | Under-sizing the new pool turns a healthy-relay burst into shed sends | low | low | Sized by OQ-2 (2 threads / 100 queue, both env-tunable) against the actual context: the app is unreleased, zero venues and zero customers, so the queue cannot fill today. Saturation is visible — counted, logged once per episode, and the publications stay outstanding — never silent. Because both numbers are properties, a real-volume correction is an env change, not a redeploy | implementer | closed — sized, see OQ-2 |
 | R-6 | A wedged send delays graceful shutdown / redeploy | low | low | Mirror `AsyncMailDispatcher`: `setWaitForTasksToCompleteOnShutdown(true)` with a short `awaitTerminationSeconds`, so a redeploy drains briefly and then abandons — the abandoned publication stays outstanding and is resubmitted at boot | implementer | open |
 | R-7 | Module-boundary regression — the executor bean lands in the wrong package or pulls a new dependency | low | med | The bean is module-internal, in `notification/application/` beside `AsyncMailDispatcher`; no `allowedDependencies` change (no new module is referenced). Pinned by `ModularityTests` + `PackageShapeArchitectureTests` in the phase-2 regression scope | implementer | open |
 | R-8 | Two extra `REQUIRES_NEW` registry transactions (`markProcessing`, `markCompleted`) bracket every invocation on the new small pool, each taking a connection | low | low | Both already happen today and are unaffected by this slice. Precisely: `markCompleted` is one short single-row write; **`markProcessing` issues no SQL at all** — it is a no-op `default` on `EventPublicationRepository` that `JdbcEventPublicationRepository` does not override (fact 8) — but its `REQUIRES_NEW` still checks a connection out eagerly, so the checkout is real and the statement is not. Noted so a reviewer reading "the listener holds no connection" is not surprised to see three brief checkouts per mail | planner | closed — documented, no action |
@@ -176,18 +176,9 @@ currently buys and what happens to it.
 
 > **Mandatory. Work is NOT done while this has unresolved entries.**
 
-- **Open question OQ-2 — pool size and queue capacity. BLOCKS phase 1.** Promoted from a
-  phase-1 detail: now that OQ-1 is settled, this is the decision that actually determines
-  behaviour, because the rejection policy only ever executes in a state that queue depth
-  already determined. `AsyncMailDispatcher` uses 1 thread / 100 queue with a rationale argued
-  for "a handful of sends a day"; confirmation mail is one send per confirmed booking, so the
-  numbers must be re-argued rather than copied. Core and max must stay equal for the reason
-  stated on the dispatcher: a `ThreadPoolExecutor` only grows past core once the queue is
-  *full*. Two properties of the load shape belong in the argument: invariant #4 makes demand
-  **deadline-driven** (bookings for tomorrow close at 18:00 `Europe/Tirane`, so arrivals
-  cluster before the cutoff rather than spreading evenly), and a single pathological send can
-  occupy a thread far longer than 30s (fact 6). *Owner:* maintainer + implementer ·
-  *Resolves by:* before phase 1 starts.
+**OQ-1 and OQ-2 are both resolved** (below); **OQ-3 is open but does not block** — it resolves
+at phase 3, and nothing before it depends on the answer.
+
 - **Open question OQ-3 — does ADR-0011 need an amendment?** Decision 5 (which vehicle a mail
   uses) is unchanged and stays correct. What changes is a property ADR-0011 did not state:
   *the registry vehicle also gets its own bounded pool and holds no transaction across the
@@ -204,6 +195,40 @@ currently buys and what happens to it.
   *Owner:* implementer · *Resolves by:* phase 0 review.
 
 ### Resolved
+
+- **Resolved (planning) — OQ-2, pool size and queue capacity → `core = max = 2`,
+  `queue = 100`, both `${VAR:default}` properties.** Settled with the maintainer against the
+  actual context: **the app is unreleased — zero venues, zero customers.** So the queue will
+  not fill and the pool will not be contended; any value across a wide range is correct, and
+  the decision is not worth more investment than this paragraph.
+  - **Two threads, not one — the argument is structural, not volumetric,** so zero volume does
+    not weaken it. Throughput never selects the count: `JavaMailSenderImpl` opens a session per
+    `send()`, so even one thread at ~0.5s/send is ~7,200 mails/hour, far above anything this
+    business will produce. What selects it is head-of-line blocking.
+    `AsyncMailDispatcher`'s own Javadoc names the hazard of its single-drainer shape — *"one
+    serial drainer means one wedged task stalls the queue and then silently drops sends once
+    the 100 slots fill"* — and accepts it because everything on that thread is bounded. Here it
+    is **not**: fact 6 shows a degraded relay holding a thread far past any configured timeout.
+    Copying 1 would knowingly inherit that hazard in the one place its precondition fails.
+    Core and max stay equal (a `ThreadPoolExecutor` grows past core only once the queue is
+    full, so an unequal max would buy nothing until 100 sends were already backed up).
+  - **Queue 100** — deliberately the sibling's number. No better one is derivable from data
+    that does not exist, and one depth across both mail pools makes them legible together.
+    Depth matters less than instinct suggests anyway: a shed mail and a queued mail are in the
+    *same* state (undelivered, outstanding, retried together), and outage visibility does not
+    depend on it, since `riviera.outbox.pending` climbs from the **first** failed send, long
+    before the queue fills.
+  - **Configurable, and the decisive reason is the test, not ops tuning.** AC-3 must saturate
+    the queue; against a hard-coded 100 that means enqueuing 100+ blocked tasks — slow and
+    brittle. As a property the test sets capacity to 1 via `@TestPropertySource` and the setup
+    is two lines. Configurability therefore pays for itself immediately, at zero volume,
+    whether or not anyone ever tunes it. Precedent: `riviera.ratelimit.username.capacity`
+    carries `${VAR:default}` for exactly this "env-tunable without a rebuild" reason.
+    `AsyncMailDispatcher` hard-codes its constants — defensible there, where volume was known
+    and tiny; not here, where it is unknown and grows with the business.
+  - **Check against the provider at #370:** relays commonly cap concurrent connections (often
+    5–10). Two threads sits comfortably under any such limit, but confirm Scaleway TEM's actual
+    number when the account is created.
 
 - **Resolved (planning) — OQ-1, what should saturation do? → shed the send, log it once,
   count it; never throw.** The deciding question was whether a `TaskRejectedException` could
@@ -317,9 +342,9 @@ altered.
 **Stage pointer:** `plan — draft under review with the maintainer` (not yet approved; no
 code written)
 
-**Next action:** Resolve **OQ-2** (pool size + queue capacity) with the maintainer — it is now
-the only open input blocking phase 1. OQ-1 is resolved (shed / log once / count / never throw)
-and R-2 is closed. Phase 0 is unblocked and can start in parallel.
+**Next action:** Start **phase 0, step 1** — write the failing AC-2 test. Nothing blocks it:
+OQ-1 and OQ-2 are both resolved, R-2/R-3/R-5/R-8 are closed, and OQ-3 does not gate any phase
+before 3. Load `riviera-local-debug` before the session's first `./gradlew`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -513,9 +538,9 @@ void theSendHoldsNoTransactionAndNoConnection() throws Exception {
 **Files:** Create `notification/application/ConfirmationMailExecutor.java` · Modify the
 listener · Extend `ConfirmationMailBulkheadIT`
 
-- [ ] **Step 0: confirm OQ-2 is resolved before writing the bean** — OQ-1 is settled (shed,
-  log once, count, never throw; see Resolved), and the spike it called for is no longer needed:
-  fact 9 answers it from the framework sources. Sizing is the remaining input.
+> **Both inputs are decided** (Resolved): saturation sheds / logs once / counts / never throws
+> (OQ-1), and the pool is `core = max = 2` with a `100`-deep queue, both `${VAR:default}`
+> properties (OQ-2). No spike is needed — fact 9 answers what the spike was for.
 
 - [ ] **Step 1: Write the failing tests** (AC-1, AC-3, AC-6)
 
