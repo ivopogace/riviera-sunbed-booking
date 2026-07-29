@@ -350,7 +350,7 @@ else is green; see the AC checkboxes.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Take the transaction off the send (**+ decomposition, AC-5**) | ✅ | `eb442c4` |
-| 1 — Dedicated bounded executor (qualifier + bean only) | ✅ | `<phase-1 sha>` |
+| 1 — Dedicated bounded executor (qualifier + bean only) | ✅ | `e1545ab` |
 | 2 — Registry durability + saturation proof | | |
 | 3 — Substrate: ADR/RESPONSIBILITIES/Javadoc close-out | | |
 
