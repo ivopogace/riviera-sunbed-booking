@@ -287,14 +287,14 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `Implement — phase 0 done, draft PR open; entering phase 1`
+**Stage pointer:** `Implement — phases 0–1 done (draft PR #429); entering phase 2`
 
-**Next action:** phase 1 — `RequestProperties` expiry/pay-window bounds, test-first.
+**Next action:** phase 2 — `StripeProperties` connect/read-timeout bounds, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Abandoned-payment TTL bounds | ✅ | `<phase-0>` |
-| 1 — Request expiry/pay window bounds | | |
+| 1 — Request expiry/pay window bounds | ✅ | `<phase-1>` |
 | 2 — Stripe connect/read timeout bounds | | |
 | 3 — Recovery token TTL bounds | | |
 | 4 — Shipped-config comments, structural net, merge from main | | |
@@ -403,28 +403,29 @@ Create `platform/src/test/java/ai/riviera/platform/booking/adapter/in/AbandonedP
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RequestProperties.java` ·
 Create `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RequestPropertiesTest.java`
 
-- [ ] **Step 1: Write the failing test** — `bindsTheShippedWindows` (AC-11),
+- [x] **Step 1: Write the failing test** — `bindsTheShippedWindows` (AC-11),
   `aNonPositiveExpiryWindowFailsTheContext` (AC-3), `aNonPositivePayWindowFailsTheContext` (AC-4),
   `anOversizedPayWindowFailsTheContext` (AC-5), `aLongExpiryWindowIsAcceptedBecauseTheCutoffCapsIt`
   (AC-6 — asserts the context **starts** and binds `P30D`), `acceptsTheWholeWindowRangeButNotBeyondIt`
   (AC-12), `unsetWindowsStillDefault` (AC-13).
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*RequestPropertiesTest*"` → FAIL.
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*RequestPropertiesTest*"` → FAIL:
+  `cannot find symbol: variable MIN_WINDOW` / `MAX_PAY_WINDOW`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — `MIN_WINDOW = Duration.ofMinutes(1)`,
+- [x] **Step 3: Minimal implementation** — `MIN_WINDOW = Duration.ofMinutes(1)`,
   `MAX_PAY_WINDOW = Duration.ofHours(72)`; two guards below the null-defaulting. The `expiryWindow`
   guard checks the floor **only**, and the record Javadoc states the missing ceiling is deliberate,
   naming `min(now + expiryWindow, cutoff)` and invariant #4 (G-3).
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (7 tests).
 
 > Scope (end-of-phase regression): broaden to the touched area —
-> `gradle test --tests "*Request*" --tests "*ReserveSetServiceTest*"`.
+> `gradle test --tests "*Request*" --tests "*ReserveSetServiceTest*"` → PASS.
 
-- [ ] **Step 5: Generalization-audit pass** — ask the no-ceiling question of every other bound in the
+- [x] **Step 5: Generalization-audit pass** — ask the no-ceiling question of every other bound in the
   slice: is any other use site self-capping? Append the answer to the log.
-- [ ] **Step 6: Commit** — `fix(#426): bound the Request-mode windows at boot (#426)`.
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `fix(#426): bound the Request-mode windows at boot (#426)`.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -518,6 +519,7 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-29 | phase 0 | every `@ConfigurationProperties` record under `platform/src/main`, asked "what does a degenerate value do here?" — the sweep #414 started, run to exhaustion so the thread can be closed | `grep -rln "@ConfigurationProperties" --include=*.java platform/src/main` (10 records), then read each record's components and null-defaulting | Guarded already: `RegistryMailProperties` (#408), `RateLimitProperties` + `CustomerRetentionProperties` (#414). Unguarded and in this slice: the four `Duration` records. Genuinely not candidates: `MoneyPathAlertProperties` (no `Duration`/`Period` component; `0` is its documented "alert on any"), `RivieraOperatorProperties` (strings; blank is the documented no-login state) | fix the four; after phase 3 **no unguarded `Duration`/`Period` knob remains** — recorded as G-4 |
+| 2026-07-29 | phase 1 | the no-ceiling question, asked of the other five knobs: does any *other* use site already cap its value, the way `ReserveSetService`'s `min(now + expiryWindow, cutoff)` caps the expiry window? | read each remaining use site: `AbandonedBookingSweepService.sweep`, `StripeConfig.clientBuilder`, `CustomerRecovery` | **No — `expiry-window` is the only self-capping knob.** `now.minus(ttl)` / `now.minus(payWindow)` and `clock.instant().plus(tokenTtl)` are unbounded in both directions. `StripeConfig` has `Math.toIntExact(...toMillis())`, which *does* cap at ~24.8 days — but it throws rather than degrading, and it sits ~26 000× above the SDK default, so it bounds nothing an operator would plausibly type | keep the ceilings on the other five; keep `expiry-window` uncapped and pinned by AC-6 |
 | 2026-07-29 | plan (intake grill) | the inherited #414 audit's four families, re-verified at their use sites rather than taken from the issue | read `AbandonedBookingScheduler`/`AbandonedBookingSweepService`, `ReserveSetService`, `BookingRequestConfig`, `StripeConfig.clientBuilder`, `CustomerRecovery` | all four confirmed as written, plus one the issue did not state: `booking.request.expiry-window`'s use site **self-caps** at the invariant-#4 cutoff, so it warrants a floor but no ceiling | fix all seven knobs; give `expiry-window` no ceiling and pin the absence with AC-6 (G-3) |
 
 ---
