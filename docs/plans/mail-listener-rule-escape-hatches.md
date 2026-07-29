@@ -49,33 +49,33 @@ for `bugfix/mail-listener-rule-escape-hatches` (`riviera-sdlc` § Remote/cloud s
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (hole 1):** Given a test-scope `@TransactionalEventListener` declared under
+- [x] **AC-1 (hole 1):** Given a test-scope `@TransactionalEventListener` declared under
   `ai.riviera.platform.notification` and carrying no `@Async`, when the rule runs, then it
   reports no violation and the discovered listener set contains none of that fixture's methods.
   *Pinned by:* `MailListenerExecutorArchitectureTest.everyNotificationEventListenerNamesTheMailExecutor`
   + `MailListenerExecutorArchitectureTest.testScopeListenersAreNotCollected`
-- [ ] **AC-2 (hole 2):** Given a listener written as `@Async(MAIL_EXECUTOR)` + plain
+- [x] **AC-2 (hole 2):** Given a listener written as `@Async(MAIL_EXECUTOR)` + plain
   `@EventListener` on a platform event, when the violation collector runs over it, then it
   reports the durability violation (no registry publication, runs inside the publishing
   transaction). *Pinned by:* `MailListenerExecutorArchitectureTest.plainEventListenerIsRejected`
-- [ ] **AC-3 (non-vacuity):** Given a listener carrying `@ApplicationModuleListener` — the
+- [x] **AC-3 (non-vacuity):** Given a listener carrying `@ApplicationModuleListener` — the
   shape `BookingConfirmationMailListener` would revert to — when the violation collector runs
   over it, then it reports that the listener runs on Boot's shared `applicationTaskExecutor`.
   *Pinned by:* `MailListenerExecutorArchitectureTest.revertingToApplicationModuleListenerIsRejected`
-- [ ] **AC-4 (non-vacuity of discovery):** Given the production import, when the rule runs,
+- [x] **AC-4 (non-vacuity of discovery):** Given the production import, when the rule runs,
   then the discovered listener set contains `BookingConfirmationMailListener#on` by name —
   a stronger guard than "the set is non-empty".
   *Pinned by:* `MailListenerExecutorArchitectureTest.theRuleReachesTheProductionListener`
-- [ ] **AC-5 (no new false failures):** Given the two spellings Spring itself supports but the
+- [x] **AC-5 (no new false failures):** Given the two spellings Spring itself supports but the
   old rule would have mis-reported — a class-level `@Async(MAIL_EXECUTOR)` with the method
   carrying only `@TransactionalEventListener`, and a listener of a non-platform (Spring
   container-lifecycle) event — when the collector runs over each, then it reports nothing.
   *Pinned by:* `MailListenerExecutorArchitectureTest.classLevelAsyncIsHonoured`
   + `MailListenerExecutorArchitectureTest.containerLifecycleListenerIsOutOfScope`
-- [ ] **AC-6 (the durability rule means AFTER_COMMIT):** Given a listener at
+- [x] **AC-6 (the durability rule means AFTER_COMMIT):** Given a listener at
   `TransactionPhase.BEFORE_COMMIT`, when the collector runs over it, then it reports the phase
   violation. *Pinned by:* `MailListenerExecutorArchitectureTest.beforeCommitPhaseIsRejected`
-- [ ] **AC-7 (the compliant shape still passes):** Given `@Async(MAIL_EXECUTOR)` +
+- [x] **AC-7 (the compliant shape still passes):** Given `@Async(MAIL_EXECUTOR)` +
   `@TransactionalEventListener` on a platform event, when the collector runs over it, then it
   reports nothing — the collector rejects shapes, not everything.
   *Pinned by:* `MailListenerExecutorArchitectureTest.theCompliantShapePasses`
@@ -113,23 +113,26 @@ behaviors* — the check being replaced.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | ArchUnit's `DO_NOT_INCLUDE_TESTS` fails to exclude Gradle's `build/classes/java/test`, so hole 1 stays open behind a green test | low | high (the fix would be fictional) | Its `GRADLE_PATTERN` is `.*/build/classes/([^/]+/)?test/.*`, which matches `build/classes/java/test/`; and the mechanism is already load-bearing here — `PackageShapeArchitectureTests` runs on the same import and would explode on test packages. Proven directly by AC-1's `testScopeListenersAreNotCollected`, which only passes because a real test-scope listener exists and is excluded | claude | open |
-| R-2 | Excluding test scope makes the rule vacuously green if the production import ever misses `notification` | low | high | AC-4 asserts the discovered set contains `BookingConfirmationMailListener#on` by name, not merely that it is non-empty | claude | open |
-| R-3 | Widening to `@EventListener` creates a *new* false-failure class — a legitimate Spring container-lifecycle listener (`ContextRefreshedEvent`) in `notification` would be told to become `@TransactionalEventListener`, which is nonsense when there is no publishing transaction | med | med | Scope the rules to listeners of **platform** events (parameter types ∪ `@EventListener#classes` under `ai.riviera.platform`); document the carve-out as a named boundary in the Javadoc; pin it with AC-5 | claude | open |
-| R-4 | The fixtures are inert classes in a scanned package — a future reader "tidies" them away or Spring picks them up as beans | med | med | No `@Component`/stereotype, so component scanning never instantiates them; every method body calls a private `never(...)` that throws if ever dispatched; the fixtures' Javadoc states they are load-bearing for AC-1 and AC-3 | claude | open |
-| R-5 | Scope creep — the phase and class-level-`@Async` checks are not literally named in #409 | med | low | Both are in the issue's own frame: the phase check *is* the durability rule the issue asks us to decide on (`AFTER_COMMIT` is what makes the registry story at-least-once), and the class-level `@Async` fallback removes a false failure of exactly hole 1's family. Both are ≤3 lines, both are pinned (AC-5, AC-6), both are recorded here so review can judge rather than discover | claude | open |
-| R-6 | Making the shared production import reachable from another package widens a test utility's surface | low | low | Expose a `public static JavaClasses productionClasses()` accessor rather than the field (immutable type, no Sonar mutable-static exposure); the class already carries the same precedent for `bytecode(Path)`, whose Javadoc is updated to name the second sharer | claude | open |
+| R-1 | ArchUnit's `DO_NOT_INCLUDE_TESTS` fails to exclude Gradle's `build/classes/java/test`, so hole 1 stays open behind a green test | low | high (the fix would be fictional) | Its `GRADLE_PATTERN` is `.*/build/classes/([^/]+/)?test/.*`, which matches `build/classes/java/test/`; and the mechanism is already load-bearing here — `PackageShapeArchitectureTests` runs on the same import and would explode on test packages. Proven directly by AC-1's `testScopeListenersAreNotCollected`, which only passes because a real test-scope listener exists and is excluded | claude | closed — the fixtures failed the rule with 4 named violations before the fix (`2e817e2` parent) and are excluded after |
+| R-2 | Excluding test scope makes the rule vacuously green if the production import ever misses `notification` | low | high | AC-4 asserts the discovered set contains `BookingConfirmationMailListener#on` by declaring class **and** method name, not merely that the set is non-empty | claude | closed — `theRuleReachesTheProductionListener` |
+| R-3 | Widening to `@EventListener` creates a *new* false-failure class — a legitimate Spring container-lifecycle listener (`ContextRefreshedEvent`) in `notification` would be told to become `@TransactionalEventListener`, which is nonsense when there is no publishing transaction | med | med | Scope the rules to listeners of **platform** events (parameter types ∪ `@EventListener#classes` under `ai.riviera.platform`); document the carve-out as a named boundary in the Javadoc; pin it with AC-5 | claude | closed — `containerLifecycleListenerIsOutOfScope`; `listenersOf` asserts the fixture *is* a listener first, so an empty result means "carved out", not "not examined" |
+| R-4 | The fixtures are inert classes in a scanned package — a future reader "tidies" them away or Spring picks them up as beans | med | med | No `@Component`/stereotype, so component scanning never instantiates them; every method body calls a private `never(...)` that throws if ever dispatched; the fixtures' Javadoc states they are load-bearing for AC-1 and AC-3; `listenersOf` fails loudly if a fixture stops being a listener | claude | closed |
+| R-5 | Scope creep — the phase and class-level-`@Async` checks are not literally named in #409 | med | low | Both are in the issue's own frame: the phase check *is* the durability rule the issue asks us to decide on (`AFTER_COMMIT` is what makes the registry story at-least-once), and the class-level `@Async` fallback removes a false failure of exactly hole 1's family. Both are ≤3 lines, both are pinned (AC-5, AC-6), both are recorded here so review can judge rather than discover | claude | closed — both landed, both pinned (`beforeCommitPhaseIsRejected`, `classLevelAsyncIsHonoured`); the class-level `@Async` case was not hypothetical, it produced a real false failure in the phase-0 red run |
+| R-6 | Making the shared production import reachable from another package widens a test utility's surface | low | low | Expose a `public static JavaClasses productionClasses()` accessor rather than the field (immutable type, no Sonar mutable-static exposure); the class already carries the same precedent for `bytecode(Path)`, whose Javadoc is updated to name the second sharer | claude | closed — `productionClasses()` accessor, field stays package-private |
 | R-7 | Merge conflict with parallel work | low | low | The ten open PRs are all Dependabot frontend bumps; no backend file overlap. No Flyway migration in this slice, so no `V<n>` collision to arbitrate (#122/#127 class) | claude | open |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `notification` will never legitimately need a plain (non-transactional)
-  `@EventListener` on a *platform* event. Basis: the module's only inbound domain-event path is
-  mail, and ADR-0011 decision 5 puts every ids-only mail on the registry vehicle. If #373/#374
-  contradict this, the rule is the right place to have the argument. — *Owner:* claude ·
-  *Resolves by:* phase 1
+*(empty — every entry resolved below.)*
 
 ### Resolved
+
+- **Assumption:** `notification` will never legitimately need a plain (non-transactional)
+  `@EventListener` on a *platform* event. → **Held, and is now enforced rather than assumed.**
+  The module's only inbound domain-event path is mail, and ADR-0011 decision 5 puts every
+  ids-only mail on the registry vehicle; the rule now fails such a listener and the Javadoc says
+  why, so if #373/#374 ever need one the argument happens at the rule instead of silently.
+  *Resolved in:* phase 1 (`plainEventListenerIsRejected`).
 
 - **Open question (grill, #409's "then decide"):** should a non-transactional mail listener
   fail on the executor rule, the durability rule, or both? → **Both.** A plain `@EventListener`
@@ -189,17 +192,16 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — both phases done; entering PR`
 
-**Next action:** Phase 1 step 1 — add `plainEventListenerIsRejected` against the extracted
-collector, confirm it goes RED (empty violations), then widen discovery to merged
-`@EventListener` and add the durability rule.
+**Next action:** Merge latest `origin/main` into the branch, push, open the PR into `main`,
+then run the review gate (`/code-review` + `riviera-review-overlay`) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | pending commit |
-| 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ⏳ | |
-| 2 — PR, review gate, Sonar gate, close-out | | |
+| 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
+| 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | pending commit |
+| 2 — PR, review gate, Sonar gate, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -400,13 +402,13 @@ static List<String> executorIsolationViolations(List<Method> listeners) {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*MailListenerExecutorArchitectureTest*"` → `everyNotificationEventListenerNamesTheMailExecutor` and `testScopeListenersAreNotCollected` both PASS with the fixtures present.
-- [ ] **AC-2:** Same run → `plainEventListenerIsRejected` PASS.
-- [ ] **AC-3:** Same run → `revertingToApplicationModuleListenerIsRejected` PASS.
-- [ ] **AC-4:** Same run → `theRuleReachesTheProductionListener` PASS.
-- [ ] **AC-5:** Same run → `classLevelAsyncIsHonoured` and `containerLifecycleListenerIsOutOfScope` PASS.
-- [ ] **AC-6:** Same run → `beforeCommitPhaseIsRejected` PASS.
-- [ ] **AC-7:** Same run → `theCompliantShapePasses` PASS.
+- [x] **AC-1:** Run `gradle test --tests "*MailListenerExecutorArchitectureTest*"` → `everyNotificationEventListenerNamesTheMailExecutor` and `testScopeListenersAreNotCollected` both PASS with the fixtures present.
+- [x] **AC-2:** Same run → `plainEventListenerIsRejected` PASS.
+- [x] **AC-3:** Same run → `revertingToApplicationModuleListenerIsRejected` PASS.
+- [x] **AC-4:** Same run → `theRuleReachesTheProductionListener` PASS.
+- [x] **AC-5:** Same run → `classLevelAsyncIsHonoured` and `containerLifecycleListenerIsOutOfScope` PASS.
+- [x] **AC-6:** Same run → `beforeCommitPhaseIsRejected` PASS.
+- [x] **AC-7:** Same run → `theCompliantShapePasses` PASS.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
