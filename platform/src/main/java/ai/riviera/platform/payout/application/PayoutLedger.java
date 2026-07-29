@@ -24,9 +24,14 @@ public interface PayoutLedger {
 
 	/**
 	 * The {@code ACCRUAL} entry for a booking, or empty if none exists yet — read by the cancellation
-	 * reversal (U6) to mirror the accrual proportionally (ADR-0005). Empty means no reversal is posted
-	 * (the booking was never accrued); cancellation happens long after confirmation, so the accrual is
-	 * present in practice.
+	 * reversal (U6) to mirror the accrual proportionally (ADR-0005).
+	 *
+	 * <p><strong>Empty means "not yet", not "never"</strong> (corrected by #428's audit): a refund only
+	 * exists for a captured payment, so the accrual is always coming, and the two event publications are
+	 * independent enough that a cancellation can arrive first. The caller therefore <em>defers</em> —
+	 * {@code BookingCancelledPayoutListener} throws so its publication stays outstanding and the
+	 * reversal is retried — rather than treating empty as "nothing to reverse", which lost the reversal
+	 * and left the ledger overstating (invariant #9).
 	 */
 	Optional<PayoutLedgerEntry> findAccrual(long bookingId);
 

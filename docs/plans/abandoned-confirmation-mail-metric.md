@@ -77,6 +77,19 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
 - [x] **AC-8:** The log-level decision and its reasoning are stated on the listener class, so the
       next reader finds the argument where the code is, not only in a plan doc.
       *Verified by:* inspection at the AC-verification step.
+- [x] **AC-9:** Given a `BookingCancelled` with `refundMinor > 0` whose booking has no `ACCRUAL` yet,
+      when the payout listener runs, then it **throws** (so the publication stays outstanding and
+      `riviera.outbox.pending` carries it) and posts no reversal — rather than completing as
+      "nothing to reverse", which lost the reversal permanently.
+      *Pinned by:* `BookingCancelledPayoutListenerTest.aRefundedCancellationWithNoAccrualThrowsSoThePublicationIsRetried`
+- [x] **AC-10:** Given that deferral, when the line is logged, then it is an `ERROR` naming the
+      booking and venue ids and the ledger consequence, and carries no booking code (invariant #7).
+      *Pinned by:* `BookingCancelledPayoutListenerTest.theUnreversableCancellationLogsAnErrorNamingTheLedgerRisk`
+- [x] **AC-11:** Given an accrued booking, when the refunded cancellation runs, then the
+      proportional `REVERSAL` is still posted and nothing throws — the pre-existing behaviour is
+      unchanged, as is a zero-refund cancellation touching the ledger not at all (ADR-0005).
+      *Pinned by:* `BookingCancelledPayoutListenerTest.anAccruedBookingStillPostsTheProportionalReversal`
+      + `aCancellationWithNoRefundTouchesTheLedgerNotAtAll`
 
 ## Non-goals
 
@@ -90,8 +103,16 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
   the reasoning is untouched: a transport failure throws, so the publication stays outstanding and
   `riviera_outbox_pending` already carries it. This slice covers only the inverse — the loss that
   returns normally.
-- **No new alert wiring.** `MoneyPathAlertCheck` still reads exactly its three money-path signals;
-  this is not one, same as its three siblings.
+- **No new alert wiring, and no fourth money-path signal.** `MoneyPathAlertCheck` still reads
+  exactly its three signals: the mail counter is not one (same as its three siblings), and the
+  absorbed payout fix deliberately needs none — its deferral is carried by `riviera.outbox.pending`,
+  which that class *already* watches, so a counter of its own would count one deferral twice.
+- **No redesign of how a reversal derives its commission.** The reversal still mirrors the accrual
+  (rather than re-reading the venue's current rate), which is what keeps a rate change from breaking
+  the netting — so an accrual-less reversal cannot be *computed*, only deferred. Making the pair
+  order-independent by any other route (a pending-reversal row, a new `booking::api` read of the
+  cancellation state) would be a schema or published-surface change and is not needed for
+  correctness once the deferral is honest.
 - **Not the tombstoned-contact send.** A GDPR-erased or retention-swept guest keeps its row with an
   `erased+<id>@erased.invalid` address, so the listener resolves a contact and mails the reserved
   `.invalid` TLD — a wasted send, not an abandoned one, and a different question (recorded in the
@@ -117,6 +138,8 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
 | R-3 | Emitting from `adapter/in` is read as a boundary slip | low | low | It is the established shape on this vehicle: `RegistryMailExecutorConfig` (also `adapter/in`) emits `MAIL_REGISTRY_SHED`. `shared` holds the name only; `notification` already grants `shared`, so no `allowedDependencies` change | agent | closed — `ModularityTests`, `PackageShapeArchitectureTests`, `JdbcOnlyArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` and `MailListenerExecutorArchitectureTest` all green |
 | R-4 | Adding a `MeterRegistry` constructor parameter breaks the listener's registry `listener_id` (V31, #382), silently orphaning outstanding publications | low | high | The `listener_id` embeds the **class, method name and parameter type** — none of which a constructor parameter touches. `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` already pins it, so this is asserted rather than reasoned | agent | closed — the signature `on(BookingConfirmed)` is byte-for-byte unchanged; the IT needs Docker, so the assertion lands on the PR's CI run |
 | R-5 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #429 (#426) touches `booking/adapter/in/*Properties*` + its own plan doc — **no file overlap**. No Flyway migration in this slice, so no `V<n>` to contend. Both slices may touch `CLAUDE.md`/`RESPONSIBILITIES.md` at close-out; whichever merges second rebases | agent | open |
+| R-7 | The absorbed payout fix turns a silent branch into a thrown exception, so a condition that used to pass unnoticed now parks a publication in the outbox and holds `riviera_outbox_pending` non-zero | low | med | That is the intended trade and it is stated on the class, in `RESPONSIBILITIES.md` and in the runbook (with the "do not fix it by returning normally" warning): a visible backlog beats a ledger that quietly pays a venue for a refunded booking (invariant #9). The gauge is already alerted at threshold 10, so one parked publication does not page anyone | agent | closed — accepted and documented; the parking case needs the *accrual* to be permanently broken, which is its own alertable failure |
+| R-8 | Throwing from the cancelled listener rolls back something it should not | low | high | The listener's transaction contains only the reversal read/insert; the refund and the availability release are done **synchronously by `booking` before the event is published** (`BookingCancelled`'s Javadoc), so nothing downstream of the tourist's money is inside this transaction | agent | closed — verified against `BookingCancelled`'s contract; `reverse` is `INSERT … ON CONFLICT DO NOTHING`, so the retry is a no-op once posted |
 | R-6 | The new unit test duplicates what `BookingConfirmationMailIT` covers, or needs Docker to run | low | low | The IT covers the *happy* registry path end-to-end and needs Docker; the abandoned paths are pure listener logic with three stubbed ports, so they belong in a fast `adapter/in` unit test (`SimpleMeterRegistry` + Mockito + a logback `ListAppender`, the shape `TransactionalMailServiceTest` established for exactly this) | agent | closed — six specs in a 1s unit test; the IT is untouched |
 
 ## Open questions / Assumptions
@@ -202,17 +225,18 @@ gains one series and stays authenticated (#75 lockdown preserved).
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `phase 2 done — phase 3 (the absorbed payout sibling) next`
+**Stage pointer:** `phase 3 done — mark PR #430 ready for review, then the Review + Sonar gates`
 
-**Next action:** Fix the generalization-audit finding **in this PR** rather than as follow-up #431
-(maintainer's call, 2026-07-29), then mark PR #430 ready for review and run the Review + Sonar gates.
+**Next action:** Mark PR #430 ready for review, run `/code-review` per `references/pr-gates.md` §1
+with `riviera-review-overlay` layered on, then the Sonar issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `ce0ac30` (PR #430) |
 | 1 — The counter, the reason tag, the log level | ✅ | this commit |
 | 2 — Runbook + substrate docs | ✅ | this commit |
-| 3 — Gates (CI, review, Sonar) + close-out | | |
+| 3 — The absorbed payout sibling (#431's scope) | ✅ | this commit |
+| 4 — Gates (CI, review, Sonar) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,7 +263,14 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/runbooks/observability.md` — the counter's entry beside the other three, and the correction
   to the registry-asymmetry paragraph that currently ends "tracked as **#428**".
 - `RESPONSIBILITIES.md` / `CLAUDE.md` — the `notification` and `shared` clauses that today end with
-  the gap this slice closes (merge close-out step 5, `riviera-docs-freshness`).
+  the gap this slice closes, plus the `payout` clauses the absorbed fix changes (merge close-out
+  step 5, `riviera-docs-freshness`).
+- `platform/src/main/java/ai/riviera/platform/payout/adapter/in/BookingCancelledPayoutListener.java` —
+  the absorbed sibling: defer (throw) instead of completing, with the ordering argument on the class.
+- `platform/src/main/java/ai/riviera/platform/payout/application/PayoutLedger.java` — `findAccrual`'s
+  contract said empty meant "nothing to reverse"; it now says "not yet, defer".
+- `platform/src/test/java/ai/riviera/platform/payout/adapter/in/BookingCancelledPayoutListenerTest.java` —
+  new; AC-9 … AC-11.
 
 ---
 
@@ -312,13 +343,37 @@ private void abandon(String reason, BookingConfirmed event) {
 
 ---
 
+## Phase 3 — The absorbed payout sibling (#431's scope)
+
+**Files:** Modify `BookingCancelledPayoutListener.java` · Modify `PayoutLedger.java` ·
+Create `BookingCancelledPayoutListenerTest.java` · Modify `docs/runbooks/observability.md` ·
+Modify `RESPONSIBILITIES.md` · Modify `CLAUDE.md`
+
+> Scope note: absorbed on the maintainer's instruction rather than left as follow-up #431. The
+> routing gate was re-run for the new area first — **`riviera-stripe-payments` loaded** (payout
+> ledger / invariant #9) alongside the already-loaded `riviera-modulith` +
+> `riviera-java-conventions`; no `postgres`, since the fix needs no schema change.
+
+- [x] **Step 1: Write the failing tests** — AC-9 … AC-11 (four specs: the two new expectations plus
+      the two pre-existing behaviours, so the fix is pinned as a *change* to one branch only).
+- [x] **Step 2: Run them, verify they fail** — the two new specs FAIL, the two pre-existing PASS.
+- [x] **Step 3: Minimal implementation** — `findAccrual(...).orElseThrow(() -> deferReversal(event))`,
+      with the ordering argument and the accepted risk on the class Javadoc.
+- [x] **Step 4: Run them, verify they pass** — both listener test classes green.
+- [x] **Step 5: Substrate docs** — the port's `findAccrual` contract, the runbook's outbox-backlog
+      cause (with the "do not fix it by returning normally" warning), the `payout` clauses in
+      `CLAUDE.md` + `RESPONSIBILITIES.md`.
+- [x] **Step 6: Commit + update the execution status** in the same commit window.
+
+---
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-29 | Phase 1 | The #428 shape one level *out*: not "a mail that never arrives" but **any registry-vehicle listener that gives up behind a normal return**, completing the publication so no gauge moves | `grep -rln "TransactionalEventListener\|ApplicationModuleListener" platform/src/main/java/` (8 sites) then each one's `log.warn`/`log.info`-then-`return` and `ifPresentOrElse` branches; plus `grep -rn "ObservabilityMetrics\."` to confirm what is and is not counted today | 8 listeners, **1 real analogue**. `BookingCancelledPayoutListener:52` — a cancellation with `refundMinor > 0` that finds no accrual to reverse logs one `WARN`, returns normally, completes the publication, and moves nothing; if the accrual exists or later appears (the two publications are independent, so a crash can deliver `BookingCancelled` before a republished `BookingConfirmed`), the ledger permanently overstates what the venue is owed — invariant #9 failing unsignalled, on the money path. Not analogues: `BookingRefundListener:42` (non-refundable ⇒ nothing to refund, a policy outcome per ADR-0005), `BookingCancelledPayoutListener:43` (no refund ⇒ the accrual correctly stands), `PaymentEventListener` (no give-up branch), `BookingConfirmedPayoutListener` (no early return), `AsyncMailDispatcher` + `RegistryMailExecutorConfig` (already counted, #415/#408), `BookingConfirmationMailListener` (this slice) | **Filed as #431**, not absorbed — it is in another module, on the money path, and unlike its four mail siblings a counter may not be the whole fix (the ordering itself may be the defect, and whether it joins `MoneyPathAlertCheck`'s deliberately-three-signal read set is its own decision). Absorbing it would also have falsified this slice's stated Non-goals mid-PR, the same reason #415/#423/#428 were each filed rather than folded in |
+| 2026-07-29 | Phase 1 | The #428 shape one level *out*: not "a mail that never arrives" but **any registry-vehicle listener that gives up behind a normal return**, completing the publication so no gauge moves | `grep -rln "TransactionalEventListener\|ApplicationModuleListener" platform/src/main/java/` (8 sites) then each one's `log.warn`/`log.info`-then-`return` and `ifPresentOrElse` branches; plus `grep -rn "ObservabilityMetrics\."` to confirm what is and is not counted today | 8 listeners, **1 real analogue**. `BookingCancelledPayoutListener:52` — a cancellation with `refundMinor > 0` that finds no accrual to reverse logs one `WARN`, returns normally, completes the publication, and moves nothing; if the accrual exists or later appears (the two publications are independent, so a crash can deliver `BookingCancelled` before a republished `BookingConfirmed`), the ledger permanently overstates what the venue is owed — invariant #9 failing unsignalled, on the money path. Not analogues: `BookingRefundListener:42` (non-refundable ⇒ nothing to refund, a policy outcome per ADR-0005), `BookingCancelledPayoutListener:43` (no refund ⇒ the accrual correctly stands), `PaymentEventListener` (no give-up branch), `BookingConfirmedPayoutListener` (no early return), `AsyncMailDispatcher` + `RegistryMailExecutorConfig` (already counted, #415/#408), `BookingConfirmationMailListener` (this slice) | Filed as #431, then **absorbed into this PR at the maintainer's instruction** ("don't file a new issue, fix it here") and #431 closed as fixed here. The fix is *not* the counter the issue proposed: investigating it showed the accrual is always **coming** (a refund only exists for a captured payment), so the fact *can* appear later — the mirror image of #428's three, which never can. So the listener now **throws**, keeping its publication outstanding for the republish, and `riviera.outbox.pending` (already a money-path signal) carries it. That is #423's own asymmetry argument applied in the direction it actually points, and it needs no new metric name. Phase 3 |
 
 ---
 

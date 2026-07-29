@@ -40,6 +40,16 @@ metric-native alerting later.
 | **Failed refunds** | `riviera_refunds_failed_total` (counter) — incremented when the gateway returns `RefundResult.Failed` | A refund the platform owes a tourist could not be issued | any increase since the last check |
 | **Webhook 5xx** | `http_server_requests_seconds_count{uri="/api/payments/stripe/webhook", status=~"5.."}` (standard Boot timer) | The Stripe webhook — the payment source of truth (invariant #8) — is erroring; Stripe will retry and payment state may lag | new 5xx `> …webhook-server-error-threshold` (default 0) |
 
+**One backlog cause worth recognising by name: a payout reversal waiting for its accrual** (#428's
+audit). `BookingCancelledPayoutListener` throws when a refunded cancellation finds no `ACCRUAL` to
+mirror, so its publication stays outstanding and this gauge holds at ≥ 1 until the next restart's
+republish. Its `ERROR` line — *"refunded booking N (venue M) has no ACCRUAL to reverse"* — is the
+tell. **Do not "fix" it by making that listener return normally:** the branch did exactly that until
+#428, which completed the publication and left the venue's ledger permanently overstating the refund
+(invariant #9). If the gauge will not drain after a restart, check whether the *accrual* listener is
+the one failing (a venue with no commission rate makes it throw), because the reversal cannot post
+until the accrual does.
+
 ## Other platform metrics (not money-path)
 
 `ObservabilityMetrics` is the one place metric names are declared; not every name in it is a

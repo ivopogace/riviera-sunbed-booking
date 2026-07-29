@@ -159,7 +159,11 @@ client). Collection only.
 ## `payout`
 **Job:** Own the venue payout ledger (Σ booking amounts − commission) and the manual
 BKT batch reporting. Accrue **idempotently** — a booking contributes exactly once; a
-refund reverses it.
+refund reverses it. Since #428's audit that promise is **order-independent**: a refunded
+cancellation that finds no `ACCRUAL` to mirror *defers* (the listener throws, so its event
+publication stays outstanding and `riviera.outbox.pending` shows it) rather than treating
+the absence as "nothing to reverse", which completed the publication and left the ledger
+permanently overstating what the venue was owed.
 
 **Not My Job:**
 - Actually moving money to venues → settled **manually via BKT**; I only record what
