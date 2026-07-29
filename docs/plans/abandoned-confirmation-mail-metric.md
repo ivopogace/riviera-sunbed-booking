@@ -41,7 +41,10 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
 it is what confirms the reversal must keep mirroring the accrual rather than re-reading the venue's
 current rate, which is exactly why an accrual-less reversal can only be deferred (invariant #9,
 ADR-0005). No `postgres` (no SQL, no migration — the payout fix needs no schema change), no frontend
-skills (backend-only).
+skills (backend-only). **Phase 3b (the CI job timeouts) has no routed skill by design** — the routing
+table has no workflow-YAML row and `riviera-local-debug` explicitly disclaims CI configuration
+("that's `ci.yml` + issue #3 history, not this skill") — so only the always-on spine applies there;
+recorded rather than left blank so RV-PROC-1 reads as a deliberate absence, not an omission.
 
 **Branch:** `claude/sdlc-428-p5tav9` — the cloud session's designated branch, standing in for
 `feature/abandoned-confirmation-mail-metric` per the `riviera-sdlc` remote-session addendum.
@@ -94,6 +97,11 @@ skills (backend-only).
       unchanged, as is a zero-refund cancellation touching the ledger not at all (ADR-0005).
       *Pinned by:* `BookingCancelledPayoutListenerTest.anAccruedBookingStillPostsTheProportionalReversal`
       + `aCancellationWithNoRefundTouchesTheLedgerNotAtAll`
+- [x] **AC-12:** Every job in every workflow (`ci.yml`, `codeql.yml`, `deploy.yml`) declares
+      `timeout-minutes`, and the step that hung declares its own tighter cap — so a wedged
+      network fetch becomes a fast red instead of a six-hour pending check.
+      *Verified by:* a `yaml.safe_load` walk asserting a non-null `timeout-minutes` on every job
+      (command recorded at the AC-verification step); a docs/CI AC, deliberately not test-pinned.
 
 ## Non-goals
 
@@ -142,6 +150,7 @@ skills (backend-only).
 | R-3 | Emitting from `adapter/in` is read as a boundary slip | low | low | It is the established shape on this vehicle: `RegistryMailExecutorConfig` (also `adapter/in`) emits `MAIL_REGISTRY_SHED`. `shared` holds the name only; `notification` already grants `shared`, so no `allowedDependencies` change | agent | closed — `ModularityTests`, `PackageShapeArchitectureTests`, `JdbcOnlyArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` and `MailListenerExecutorArchitectureTest` all green |
 | R-4 | Adding a `MeterRegistry` constructor parameter breaks the listener's registry `listener_id` (V31, #382), silently orphaning outstanding publications | low | high | The `listener_id` embeds the **class, method name and parameter type** — none of which a constructor parameter touches. `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` already pins it, so this is asserted rather than reasoned | agent | closed — the signature `on(BookingConfirmed)` is byte-for-byte unchanged; the IT needs Docker, so the assertion lands on the PR's CI run |
 | R-5 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #429 (#426) touches `booking/adapter/in/*Properties*` + its own plan doc — **no file overlap**. No Flyway migration in this slice, so no `V<n>` to contend. Both slices may touch `CLAUDE.md`/`RESPONSIBILITIES.md` at close-out; whichever merges second rebases | agent | closed — no overlap materialised; PR #429 touched none of these files and this slice added no migration |
+| R-9 | A CI cap set too tight turns a slow-but-healthy run (cold cache, slow runner) into a spurious red — trading a silent hang for noisy failures | low | med | Every value is ~4-6x the observed green duration and each carries that duration in a comment beside it, so the next reader can tell a real growth from a flake; the tightest cap (6 min) is on a step whose green time is ~20-30s, and `deploy.yml`'s is deliberately the loosest because its health poll is *designed* to wait ~15 min for a Render cold start | agent | closed — validated by loading all three workflows and asserting a non-null cap per job; the values are documented, not guessed |
 | R-7 | The absorbed payout fix turns a silent branch into a thrown exception, so a condition that used to pass unnoticed now parks a publication in the outbox and holds `riviera_outbox_pending` non-zero | low | med | That is the intended trade and it is stated on the class, in `RESPONSIBILITIES.md` and in the runbook (with the "do not fix it by returning normally" warning): a visible backlog beats a ledger that quietly pays a venue for a refunded booking (invariant #9). The gauge is already alerted at threshold 10, so one parked publication does not page anyone | agent | closed — accepted and documented; the parking case needs the *accrual* to be permanently broken, which is its own alertable failure |
 | R-8 | Throwing from the cancelled listener rolls back something it should not | low | high | The listener's transaction contains only the reversal read/insert; the refund and the availability release are done **synchronously by `booking` before the event is published** (`BookingCancelled`'s Javadoc), so nothing downstream of the tourist's money is inside this transaction | agent | closed — verified against `BookingCancelled`'s contract; `reverse` is `INSERT … ON CONFLICT DO NOTHING`, so the retry is a no-op once posted |
 | R-6 | The new unit test duplicates what `BookingConfirmationMailIT` covers, or needs Docker to run | low | low | The IT covers the *happy* registry path end-to-end and needs Docker; the abandoned paths are pure listener logic with three stubbed ports, so they belong in a fast `adapter/in` unit test (`SimpleMeterRegistry` + Mockito + a logback `ListAppender`, the shape `TransactionalMailServiceTest` established for exactly this) | agent | closed — six specs in a 1s unit test; the IT is untouched |
@@ -242,7 +251,7 @@ gains one series and stays authenticated (#75 lockdown preserved).
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `merge close-out — plan doc final, merging via PR #430`
+**Stage pointer:** `merge close-out — plan doc final, merging via PR #430 (CI re-verifying after the workflow caps)`
 
 **Next action:** Merge PR #430, then the GitHub-only close-out remainder: confirm #428 and #431
 closed and that epic #367 records this slice.
@@ -253,7 +262,8 @@ closed and that epic #367 records this slice.
 | 1 — The counter, the reason tag, the log level | ✅ | this commit |
 | 2 — Runbook + substrate docs | ✅ | this commit |
 | 3 — The absorbed payout sibling (#431's scope) | ✅ | this commit |
-| 4 — Gates (CI, review, Sonar) + close-out | ✅ | this commit (5 review findings) |
+| 3b — CI job timeouts (F-9, absorbed) | ✅ | this commit |
+| 4 — Gates (CI, review, Sonar) + close-out | ✅ | `5fbcb6c` (5 review findings), `1532f06` (ADR amendment) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -269,6 +279,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-4 | review (agent 1, CLAUDE.md/code-claim) | `abandon(...)`'s new Javadoc claimed the line "carr[ies] in its MDC the correlation id" — phrasing lifted from `TransactionalMailService`, where it is true because that vehicle propagates MDC. The `registryMailExecutor` pool has no MDC-propagating `TaskDecorator` (#410 is the slice that would add one), so the claim was false in the file that asserts it. Reworded to say why the ids *are* the whole trail here | fixed |
 | F-5 | review (agent 3, git history) | No finding — but it surfaced the two precedents this change should cite and did not: U6's R-5 accepted the old branch on the "unreachable in practice" premise (the premise this corrects), and U5's R-7 already made the identical loud-over-silent trade for the accrual side. Both now cited on the listener | fixed |
 | F-6 | sonar (pre-fix commit `59630d7`) | Clean, verified against the false-clean read (PR #318): issue list `total: 0` **and** `measures` non-empty (`new_lines` 133) **and** the `SonarCloud Code Analysis` check-run concluded `success`. `new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0, `new_duplicated_blocks` 0, density 0.0%, **`new_coverage` 100.0%** (bar ≥80%). Re-pulled after the fix push, cache-busted | closed |
+| F-9 | CI (this PR's own run, `c995ef2`) | **The Frontend job hung ~11 min in `npx playwright install --with-deps chromium`** with lint, Vitest and the whole backend suite already green. No workflow declared `timeout-minutes`, so GitHub's six-hour default was the only ceiling — and because `sonar` `needs: [backend, frontend]`, the hang took the **Sonar gate** down with it: the PR could not reach a mergeable state and nothing went red to say why. Unrelated to this diff (backend-only), but a defect in the gate this slice has to pass, so fixed here on the maintainer's instruction rather than filed. Every job in all three workflows now carries a cap, the flaky step carries a tighter one, and the Render trigger `curl` gained `--max-time`. Operational note recorded: `gh` returns `403 Resource not accessible by integration` on run cancellation — the GitHub MCP tool has the permission | fixed |
 | F-8 | `riviera-docs-freshness` (pre-merge, `origin/main...HEAD`) | **ADR-0005 stated the behaviour this slice changes** as a present-tense consequence: *"a missing accrual posts no reversal rather than a wrong one (accepted edge, like U5's R-7)"* — and cited as precedent the very U5 risk row that chose the opposite (throw, "loud over silent under-pay"). Per this skill's rule an ADR consequence is **flagged and amended, never silently rewritten**: the bullet now points to a new *Amendment (2026-07-29, #428)* section that re-affirms the decision (the reversal still mirrors the accrual; recomputing from the current rate stays rejected) and amends only the edge-handling, with the wrong premise named. Flagged to the maintainer in the session reply as well, since it is a decision change | fixed |
 | F-7 | CI (`59630d7`) | All 7 checks green — Backend (build + test), Frontend, CodeQL ×2, both SonarCloud checks. This is the half scoped local runs cannot prove, and here it is load-bearing: it is what exercises `PayoutReversalIT` / `PayoutSpineScenarioIT` / `BookingConfirmationMailIT` / `RegistryMailBulkheadIT` (Docker-dependent) against the payout throw and the listener's new constructor | closed |
 
@@ -367,6 +378,28 @@ private void abandon(String reason, BookingConfirmed event) {
 
 ---
 
+## Phase 3b — CI job timeouts (F-9, absorbed)
+
+**Files:** Modify `.github/workflows/ci.yml` · `.github/workflows/codeql.yml` · `.github/workflows/deploy.yml`
+
+> Scope note: absorbed on the maintainer's instruction after this PR's own CI hung. **No routed skill
+> covers workflow YAML** — `riviera-local-debug` explicitly disclaims CI configuration ("that's
+> `ci.yml` + issue #3 history, not this skill") — so the routing gate has no row to satisfy here; the
+> always-on spine (`riviera-plan-doc`, the review overlay) applies and is recorded.
+
+- [x] **Step 1:** Cap every `ci.yml` job (backend 30, frontend 20, sonar 15) with the observed green
+      duration in a comment beside each, plus the rationale header naming the #430 incident.
+- [x] **Step 2:** Cap the step that actually hung (`playwright install`, 6 min) so the failure names
+      the culprit rather than killing the job at some later point.
+- [x] **Step 3:** Extend the same treatment to the two workflows with the identical gap —
+      `codeql.yml` (20) and `deploy.yml` (guard 5, backend-render 25, the last deliberately loosest
+      because its health poll is designed to wait out a Render cold start) — and give the Render
+      trigger `curl` a `--max-time`, since the hook returns immediately and anything slower is a hang.
+- [x] **Step 4:** Validate by parsing all three workflows and asserting a non-null `timeout-minutes`
+      on every job (AC-12).
+
+---
+
 ## Phase 3 — The absorbed payout sibling (#431's scope)
 
 **Files:** Modify `BookingCancelledPayoutListener.java` · Modify `PayoutLedger.java` ·
@@ -412,6 +445,10 @@ Modify `RESPONSIBILITIES.md` · Modify `CLAUDE.md`
       and `grep -n "riviera_mail_confirmation_abandoned_total" docs/runbooks/observability.md`.
 - [x] **AC-8:** `grep -n "ERROR" platform/src/main/java/ai/riviera/platform/notification/adapter/in/BookingConfirmationMailListener.java`
       → the level's justification on the class Javadoc.
+- [x] **AC-12:** `python3 -c "import yaml; [assert-per-job]"` over all three workflow files → every
+      job reports a non-null `timeout-minutes` (backend 30, frontend 20 + a 6-min step cap on the
+      Playwright install, sonar 15, codeql 20, deploy guard 5 / backend-render 25). Verified before
+      the push that carries them.
 - [x] **Structural net:** `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
       --tests "*JdbcOnlyArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"
       --tests "*MailListenerExecutorArchitectureTest*"` → PASS.

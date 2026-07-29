@@ -16,6 +16,9 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    # Observed green: ~1-3 min per language. Capped for the reason spelled out in ci.yml — GitHub's
+    # default is a six-hour non-timeout, and a wedged analysis on a required check reads as pending.
+    timeout-minutes: 20
     permissions:
       security-events: write
       packages: read

@@ -19,10 +19,20 @@ concurrency:
 permissions:
   contents: read
 
+# Every job carries an explicit `timeout-minutes`, and the network-bound steps carry their own.
+# GitHub's default job cap is SIX HOURS, which is not a timeout so much as an absence of one: a
+# wedged download reads as "still running" for a working day, and because `sonar` needs both build
+# jobs, it takes the Sonar gate down with it — the PR simply never reaches a mergeable state and
+# nothing goes red to say why (incident: PR #430, `playwright install` hung ~11 min into a 4-minute
+# job with lint and Vitest already green). The values below are ~4-6x the observed green durations:
+# loose enough that a slow runner or a cold cache never trips them, tight enough that a hang becomes
+# a fast, legible red. Raise a value if a job's real work grows into it; do not remove one.
 jobs:
   backend:
     name: Backend (build + test)
     runs-on: ubuntu-latest
+    # Observed green: ~3.5 min (Gradle build + full test suite incl. Testcontainers ITs).
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: platform
@@ -55,6 +65,8 @@ jobs:
   frontend:
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
+    # Observed green: ~4 min (npm ci + lint + Vitest + Playwright install + a11y e2e + prod build).
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
@@ -82,6 +94,11 @@ jobs:
         run: npm run test:coverage
 
       - name: Install Playwright Chromium (for the a11y e2e)
+        # Its own cap, well under the job's: this step is two network fetches (the browser from
+        # Playwright's CDN, apt deps from Ubuntu's mirrors) and is the one that hung in #430. A step
+        # timeout names the culprit in the failed step rather than killing the job at some later
+        # point, and leaves the job's remaining budget for the work that follows.
+        timeout-minutes: 6
         run: npx playwright install --with-deps chromium
 
       - name: A11y e2e (real-render axe over the booking flow)
@@ -113,6 +130,10 @@ jobs:
     # mask the PR run's successful one on the same SHA (#417, by the back door).
     if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    # Observed green: ~1 min (artifact downloads + the scanner). Its own cap matters as much as the
+    # build jobs': this is the job the merge gate reads, so a hang here is indistinguishable from
+    # "analysis pending" and blocks the Sonar gate silently.
+    timeout-minutes: 15
     # One combined scan for the single SonarCloud project. SONAR_TOKEN is configured,
     # so the scan runs and reports the quality gate on every PR. The `SONAR_TOKEN != ''`
     # guards on the steps below are a safety fallback that keeps the job green on
