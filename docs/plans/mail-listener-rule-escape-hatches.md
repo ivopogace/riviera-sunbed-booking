@@ -193,12 +193,10 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `close-out written; awaiting CI + the Sonar gate on PR #412`
+**Stage pointer:** `all gates passed — merging via PR #412`
 
-**Next action:** Confirm PR #412's CI is green on the head commit, then pull the SonarCloud
-new-issue + duplication list (`pullRequest=412`) and clear every entry — confirming the
-analysis actually ran (non-empty `measures`, `SonarCloud Code Analysis` = success) rather
-than trusting a `"total": 0` from an unanalyzed PR. Then merge via PR #412.
+**Next action:** Merge PR #412, then close-out steps 1-3 + 6-7 (verify #409 closed, note the
+slice on epic #367, confirm the PR-activity subscription ended, notify).
 
 **Merged via PR #412.** (Recorded pre-merge on purpose — a squash SHA cannot exist before
 the merge, and citing one guarantees a second docs-only PR; `pr-gates.md` §3 step 4.)
@@ -207,7 +205,7 @@ the merge, and citing one guarantees a second docs-only PR; `pr-gates.md` §3 st
 |-------|--------|---------|
 | 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
 | 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | `d7ecbe8` |
-| 2 — PR #412, review gate, Sonar gate, close-out | ⏳ | `6055036` (F-1..F-3), `b77f627` |
+| 2 — PR #412, review gate, Sonar gate, close-out | ✅ | `6055036` (F-1..F-3), `b77f627`, `0072e60` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -219,6 +217,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review (correctness) | AC-4's guard asserted only that the production listener was **discovered**. Two filters stand between a classpath class and an assertion — the production import *and* the platform-event carve-out — so the guard would have stayed green if the carve-out ever swallowed `BookingConfirmationMailListener#on`, which is exactly the vacuity it exists to prevent. Fix: named the carve-out `inScopeListeners(...)`, used by both the collector and the guard, and renamed the test `theRuleExaminesTheProductionListener` | fixed-in-`6055036` |
 | F-2 | review (test coverage) | The collector's `no @Async at all` branch had **no fixture** — and it is the branch that gives `containerLifecycleListenerIsOutOfScope` its meaning, since that fixture also carries no `@Async`: an empty result there could equally have meant the null-check had stopped working. Fix: added `MailListenerRuleFixtures.InlineListener` (the lifecycle fixture's annotations minus the platform event) + `listenerWithNoAsyncIsRejected`, making the carve-out test non-vacuous by construction | fixed-in-`6055036` |
+| F-4 | sonar | **The Sonar gate on this PR is structurally empty, and that is a finding about the repo, not about the diff.** `sonar-project.properties` sets `sonar.sources=platform/src/main/java,frontend/src` and declares no `sonar.tests` anywhere, so this PR's entire code diff — all test scope — sits outside SonarCloud's analysis. The gate passed with `0 New issues` and `new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_security_hotspots` = 0, but `new_lines`, `new_coverage` and both duplication metrics are **absent** from `api/measures/component`, which is the tell: `pr-gates.md`'s documented false-clean check catches an *unanalyzed* PR, not an analyzed one whose files are all out of scope. Nothing to fix in this diff; the configuration gap is real and would be a large, separate triage wave | deferred → issue #416 |
 | F-3 | review (accuracy) | `MailListenerRuleFixtures`' Javadoc claimed the old scanner "would have failed the build with six violations". The recorded phase-0 red run collected **four** fixtures and reported **two** violations, and the number moves whenever a fixture is added. Fix: stated the rule the run actually demonstrated instead of a brittle count | fixed-in-`6055036` |
 
 ---
