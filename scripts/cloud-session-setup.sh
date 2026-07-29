@@ -125,4 +125,19 @@ if [ -x "$DOCKERD_SCRIPT" ]; then
     || echo "cloud-session-setup: start-dockerd failed; backend ITs will skip (run 'bash scripts/start-dockerd.sh' to retry)" >&2
 fi
 
+# ── 5. Plugin payloads (the SDLC review gate) ─────────────────────────────
+# `.claude/settings.json` ENABLES code-review + frontend-design, but enabling only
+# records intent: the payload is fetched lazily while the skill registry is built
+# once at session start. Lose that race and `/code-review` is absent all session
+# while `claude plugin list` still reports it installed — which is how PR #420's
+# review gate silently ran on the degraded `/review` fallback. Runs last because
+# it is the cheapest step (a local copy out of the marketplace clone).
+# See scripts/ensure-plugins.sh for the full mechanism.
+PLUGINS_SCRIPT="$PROJECT_DIR/scripts/ensure-plugins.sh"
+if [ -x "$PLUGINS_SCRIPT" ]; then
+  echo "cloud-session-setup: ensuring enabled plugin payloads are on disk ..." >&2
+  "$PLUGINS_SCRIPT" \
+    || echo "cloud-session-setup: ensure-plugins failed; /code-review may be missing (run 'bash scripts/ensure-plugins.sh' to retry)" >&2
+fi
+
 exit 0
