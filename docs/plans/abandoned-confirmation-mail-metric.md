@@ -46,25 +46,25 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `BookingConfirmed` whose booking row does not resolve, when the listener
+- [x] **AC-1:** Given a `BookingConfirmed` whose booking row does not resolve, when the listener
       runs, then `riviera.mail.confirmation.abandoned{reason="no-booking"}` increments by one, no
       mail is sent, and the method returns normally (the publication still completes).
       *Pinned by:* `BookingConfirmationMailListenerTest.aMissingBookingIsCountedAndAbandoned`
-- [ ] **AC-2:** Given a booking that resolves but a set that does not, when the listener runs, then
+- [x] **AC-2:** Given a booking that resolves but a set that does not, when the listener runs, then
       the increment carries `reason="no-set"` and the contact is never read — the three reasons are
       distinguishable in one series.
       *Pinned by:* `BookingConfirmationMailListenerTest.aMissingSetIsCountedUnderItsOwnReason`
-- [ ] **AC-3:** Given a booking and set that resolve but no contact, when the listener runs, then
+- [x] **AC-3:** Given a booking and set that resolve but no contact, when the listener runs, then
       the increment carries `reason="no-contact"` and no mail is sent.
       *Pinned by:* `BookingConfirmationMailListenerTest.aMissingContactIsCountedUnderItsOwnReason`
-- [ ] **AC-4:** Given all three facts present, when the listener runs, then the confirmation is sent
+- [x] **AC-4:** Given all three facts present, when the listener runs, then the confirmation is sent
       and **no** abandoned counter exists — a healthy send must not register as a loss.
       *Pinned by:* `BookingConfirmationMailListenerTest.aCompleteConfirmationCountsNothing`
-- [ ] **AC-5:** Given any abandoned path, when the line is logged, then it is logged at **`ERROR`**
+- [x] **AC-5:** Given any abandoned path, when the line is logged, then it is logged at **`ERROR`**
       (one line per loss, no episode throttle) and carries neither the booking code nor the address
       (invariant #7) — only the ids, the reason, and what it means.
       *Pinned by:* `BookingConfirmationMailListenerTest.everyAbandonedPathLogsAnErrorCarryingNoCredential`
-- [ ] **AC-6:** Given a transport failure on a *complete* confirmation, when the listener runs, then
+- [x] **AC-6:** Given a transport failure on a *complete* confirmation, when the listener runs, then
       the exception still propagates (the publication stays outstanding, #371) and **no** abandoned
       counter increments — this counter measures the give-up, never the retryable failure.
       *Pinned by:* `BookingConfirmationMailListenerTest.aTransportFailureStillPropagatesAndCountsNothing`
@@ -114,10 +114,10 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
 |---|---|---|---|---|---|---|
 | R-1 | `ERROR` per loss floods the log during a systemic data fault, the exact failure mode #408's episode throttle exists to prevent | low | med | The three facts are FK-protected and never hard-deleted (see Open questions › Resolved), so a healthy system holds this at **zero** — unlike saturation, which fires once per send during an ordinary burst. If a systemic fault ever does raise it, one line per unrecoverable lost confirmation is the record we would want, since each is a distinct paying tourist and there is no durable copy to reconstruct from (the #415 argument, unchanged) | agent | open |
 | R-2 | The counter is read as "the mail system is broken" and sends on-call to the relay, when every increment is a data-integrity fault in `booking` / `venue` / `customer` | med | med | This is precisely what the `reason` tag and the runbook entry exist for: the runbook names this counter a **data-integrity** signal, explicitly *not* a relay signal, and maps each reason to its owning module | agent | open |
-| R-3 | Emitting from `adapter/in` is read as a boundary slip | low | low | It is the established shape on this vehicle: `RegistryMailExecutorConfig` (also `adapter/in`) emits `MAIL_REGISTRY_SHED`. `shared` holds the name only; `notification` already grants `shared`, so no `allowedDependencies` change. `ModularityTests` + `PackageShapeArchitectureTests` + `PublishedSurfacePlacementArchitectureTests` in the phase-1 test scope | agent | open |
-| R-4 | Adding a `MeterRegistry` constructor parameter breaks the listener's registry `listener_id` (V31, #382), silently orphaning outstanding publications | low | high | The `listener_id` embeds the **class, method name and parameter type** — none of which a constructor parameter touches. `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` already pins it and is in the phase-1 end-of-phase scope, so this is asserted rather than reasoned | agent | open |
+| R-3 | Emitting from `adapter/in` is read as a boundary slip | low | low | It is the established shape on this vehicle: `RegistryMailExecutorConfig` (also `adapter/in`) emits `MAIL_REGISTRY_SHED`. `shared` holds the name only; `notification` already grants `shared`, so no `allowedDependencies` change | agent | closed — `ModularityTests`, `PackageShapeArchitectureTests`, `JdbcOnlyArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` and `MailListenerExecutorArchitectureTest` all green |
+| R-4 | Adding a `MeterRegistry` constructor parameter breaks the listener's registry `listener_id` (V31, #382), silently orphaning outstanding publications | low | high | The `listener_id` embeds the **class, method name and parameter type** — none of which a constructor parameter touches. `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` already pins it, so this is asserted rather than reasoned | agent | closed — the signature `on(BookingConfirmed)` is byte-for-byte unchanged; the IT needs Docker, so the assertion lands on the PR's CI run |
 | R-5 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #429 (#426) touches `booking/adapter/in/*Properties*` + its own plan doc — **no file overlap**. No Flyway migration in this slice, so no `V<n>` to contend. Both slices may touch `CLAUDE.md`/`RESPONSIBILITIES.md` at close-out; whichever merges second rebases | agent | open |
-| R-6 | The new unit test duplicates what `BookingConfirmationMailIT` covers, or needs Docker to run | low | low | The IT covers the *happy* registry path end-to-end and needs Docker; the abandoned paths are pure listener logic with three stubbed ports, so they belong in a fast `adapter/in` unit test (`SimpleMeterRegistry` + Mockito + a logback `ListAppender`, the shape `TransactionalMailServiceTest` established for exactly this) | agent | open |
+| R-6 | The new unit test duplicates what `BookingConfirmationMailIT` covers, or needs Docker to run | low | low | The IT covers the *happy* registry path end-to-end and needs Docker; the abandoned paths are pure listener logic with three stubbed ports, so they belong in a fast `adapter/in` unit test (`SimpleMeterRegistry` + Mockito + a logback `ListAppender`, the shape `TransactionalMailServiceTest` established for exactly this) | agent | closed — six specs in a 1s unit test; the IT is untouched |
 
 ## Open questions / Assumptions
 
@@ -202,15 +202,15 @@ gains one series and stays authenticated (#75 lockdown preserved).
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `phase 0 — plan doc committed, draft PR next`
+**Stage pointer:** `phase 1 done — runbook + substrate docs next`
 
-**Next action:** Commit this plan doc, push, open the draft PR (CI fires on `pull_request` only,
-#417), then start phase 1.
+**Next action:** Phase 2 (runbook entry + the `CLAUDE.md` / `RESPONSIBILITIES.md` clauses), then
+mark PR #430 ready for review and run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | | |
-| 1 — The counter, the reason tag, the log level | | |
+| 0 — Plan doc + draft PR | ✅ | `ce0ac30` (PR #430) |
+| 1 — The counter, the reason tag, the log level | ✅ | this commit |
 | 2 — Runbook + substrate docs | | |
 | 3 — Gates (CI, review, Sonar) + close-out | | |
 
@@ -247,8 +247,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `docs/plans/abandoned-confirmation-mail-metric.md`
 
-- [ ] **Step 1: Commit the plan doc** — `git commit -m "docs(#428): plan the abandoned-confirmation-mail metric (#428)"`
-- [ ] **Step 2: Push and open the draft PR** — CI fires on `pull_request` only (#417), so the draft
+- [x] **Step 1: Commit the plan doc** — `git commit -m "docs(#428): plan the abandoned-confirmation-mail metric (#428)"`
+- [x] **Step 2: Push and open the draft PR** — CI fires on `pull_request` only (#417), so the draft
       is what makes every later push gated.
 
 ---
@@ -258,18 +258,18 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `ObservabilityMetrics.java` · Modify `BookingConfirmationMailListener.java:93-118` ·
 Create `BookingConfirmationMailListenerTest.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1 … AC-6 (the listener gains a `MeterRegistry`
+- [x] **Step 1: Write the failing tests** — AC-1 … AC-6 (the listener gains a `MeterRegistry`
       constructor parameter; the spec reads counters off a `SimpleMeterRegistry` and asserts the
       level + content of the line through a logback `ListAppender`, exactly as
       `TransactionalMailServiceTest` does).
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `gradle --no-daemon --console=plain test --tests "*BookingConfirmationMailListenerTest*"` →
       FAIL (no such constructor / no such metric name / still `WARN`).
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — declare `MAIL_CONFIRMATION_ABANDONED`; give the listener
+- [x] **Step 3: Minimal implementation** — declare `MAIL_CONFIRMATION_ABANDONED`; give the listener
       a `MeterRegistry`; route the three early returns through one helper:
 
 ```java
@@ -281,18 +281,18 @@ private void abandon(String reason, BookingConfirmed event) {
 }
 ```
 
-- [ ] **Step 4: Run them, verify they pass** — the same scoped command → PASS.
+- [x] **Step 4: Run them, verify they pass** — the same scoped command → PASS.
 
 > Scope (end-of-phase regression): broaden to the touched module's package plus the structural net
 > (`*ModularityTests*`, `*PackageShapeArchitectureTests*`, `*JdbcOnlyArchitectureTests*`,
 > `*PublishedSurfacePlacementArchitectureTests*`) and `*MailListenerExecutorArchitectureTest*`.
 
-- [ ] **Step 5: Generalization-audit pass** — re-run the audit that produced this issue one level
+- [x] **Step 5: Generalization-audit pass** — re-run the audit that produced this issue one level
       down: which other listeners abandon work behind a normal return? Record below.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#428): count an abandoned booking-confirmation mail, attributed by missing fact (#428)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#428): count an abandoned booking-confirmation mail, attributed by missing fact (#428)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -318,6 +318,7 @@ private void abandon(String reason, BookingConfirmed event) {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-29 | Phase 1 | The #428 shape one level *out*: not "a mail that never arrives" but **any registry-vehicle listener that gives up behind a normal return**, completing the publication so no gauge moves | `grep -rln "TransactionalEventListener\|ApplicationModuleListener" platform/src/main/java/` (8 sites) then each one's `log.warn`/`log.info`-then-`return` and `ifPresentOrElse` branches; plus `grep -rn "ObservabilityMetrics\."` to confirm what is and is not counted today | 8 listeners, **1 real analogue**. `BookingCancelledPayoutListener:52` — a cancellation with `refundMinor > 0` that finds no accrual to reverse logs one `WARN`, returns normally, completes the publication, and moves nothing; if the accrual exists or later appears (the two publications are independent, so a crash can deliver `BookingCancelled` before a republished `BookingConfirmed`), the ledger permanently overstates what the venue is owed — invariant #9 failing unsignalled, on the money path. Not analogues: `BookingRefundListener:42` (non-refundable ⇒ nothing to refund, a policy outcome per ADR-0005), `BookingCancelledPayoutListener:43` (no refund ⇒ the accrual correctly stands), `PaymentEventListener` (no give-up branch), `BookingConfirmedPayoutListener` (no early return), `AsyncMailDispatcher` + `RegistryMailExecutorConfig` (already counted, #415/#408), `BookingConfirmationMailListener` (this slice) | **Filed as #431**, not absorbed — it is in another module, on the money path, and unlike its four mail siblings a counter may not be the whole fix (the ordering itself may be the defect, and whether it joins `MoneyPathAlertCheck`'s deliberately-three-signal read set is its own decision). Absorbing it would also have falsified this slice's stated Non-goals mid-PR, the same reason #415/#423/#428 were each filed rather than folded in |
 
 ---
 
