@@ -208,15 +208,15 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2`
+**Stage pointer:** `implement — phase 2 done; merging main, then PR ready-for-review`
 
-**Next action:** Phase 2 step 1 — extend the shipped `application.properties` comments and the `data-erasure.md` Knobs table with the accepted ranges.
+**Next action:** merge `origin/main`, mark PR #425 ready for review, then run the Review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Rate-limit key-cap bounds | ✅ | `6f1917b` |
 | 1 — Retention window + batch-size bounds | ✅ | `25241f6` |
-| 2 — Shipped-config comments + merge from main | | |
+| 2 — Shipped-config comments + merge from main | ⏳ | `<p2sha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
