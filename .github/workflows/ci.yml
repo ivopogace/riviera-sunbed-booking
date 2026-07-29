@@ -1,29 +1,17 @@
 name: CI
 
 on:
-  # `push` is scoped to main ON PURPOSE (#417). An unscoped `push` made every commit on a
-  # PR branch fire TWO runs against the same SHA — one per event — and both published check
-  # runs under the SAME names. Branch protection keys required checks by name and honours
-  # only the most recent run per name, so the merge button was decided by which run finished
-  # last: the push run's `sonar` job is skipped by the guard below, and a skipped job still
-  # publishes a check run — instantly, the moment its `needs` clear. On #413 that zero-second
-  # skip landed 10s after the PR run's real success and blocked a fully green PR.
-  # Scoping push to main leaves a PR branch firing `pull_request` alone: one run per SHA, so
-  # no check name has a second producer to race. Do NOT re-broaden this to all branches — the
-  # duplicate-name exposure also covers the backend/frontend checks, where a transient failure
-  # in the unwatched push run would block the merge. `concurrency` cannot fix this: its group
-  # keys on `github.ref`, which differs between the two events (`refs/heads/*` vs
-  # `refs/pull/*/merge`), so the runs never shared a group and never cancelled each other.
-  # Consequence: a branch gets no CI until its PR exists — so open the PR (draft is fine) at
-  # the START of implementation, and every phase push is gated. codeql.yml is scoped the same
-  # way and has never had this bug.
+  # Do NOT re-broaden `push` to all branches: a PR branch would then fire two runs per SHA
+  # publishing the SAME check names, and branch protection honours only the last to finish —
+  # so a skipped duplicate masks a real success (#417). `concurrency` cannot dedupe them;
+  # the events carry different `github.ref`. Consequence: a branch has no CI until its PR
+  # exists, so open the PR (draft is fine) at the start of implementation.
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# Cancel superseded runs on the same ref: consecutive pushes to a PR supersede each other
-# (group `refs/pull/<n>/merge`), as do consecutive pushes to main.
+# Cancel superseded runs on the same ref (consecutive pushes to one PR, or to main).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -119,12 +107,10 @@ jobs:
     # SonarCloud's plan analyzes the main branch and pull requests only; a push to a
     # feature branch triggers a (disallowed) branch analysis that fails with "Organization
     # is not allowed to access data from non main branches", leaving a spurious red check.
-    # Since #417 the `on:` triggers above already admit only those two cases, so this guard
-    # is defence in depth — it keeps a spurious branch analysis impossible if a future trigger
-    # (a re-broadened `push`, a `workflow_dispatch`) reaches this job. Keep it. Note the trap
-    # if you ever DO add such a trigger: this job would then be skipped on those runs, and a
-    # skipped job publishes a `SonarCloud scan` check run that can mask the PR run's
-    # successful one on the same SHA — the #417 bug, re-entered by the back door.
+    # Since #417 the triggers above admit only those two cases, so this guard is defence in
+    # depth — keep it. Trap if you ever add a trigger that reaches this job: it would be
+    # SKIPPED there, and a skipped job still publishes a `SonarCloud scan` check run that can
+    # mask the PR run's successful one on the same SHA (#417, by the back door).
     if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     # One combined scan for the single SonarCloud project. SONAR_TOKEN is configured,
