@@ -39,7 +39,11 @@ import org.springframework.stereotype.Component;
  *
  * <p>The caller's logging context rides along so a failed send stays traceable to its request (the
  * correlation id from {@code CorrelationIdFilter}), and is cleared afterwards so it cannot leak onto the
- * next task sharing the pooled thread. Package-private (RV-BE-11); pinned by {@code AsyncMailDispatcherTest}.
+ * next task sharing the pooled thread. <strong>Since #410 that is {@link MdcTaskDecorator}'s job, not
+ * this class's</strong> — the hand-rolled capture/restore here was the only implementation of a rule the
+ * registry vehicle's pool needed too, and two implementations of one rule is how one of them ends up
+ * missing (it had been, for the whole of #383). Package-private (RV-BE-11); pinned by
+ * {@code AsyncMailDispatcherTest}.
  *
  * <p><strong>One drainer thread, deliberately</strong> — recovery mail is a handful of sends a day, and a
  * serial drain behind a 100-deep buffer is the whole requirement. Core and max are equal on purpose: a
@@ -126,6 +130,7 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 		pool.setMaxPoolSize(POOL_SIZE);
 		pool.setQueueCapacity(QUEUE_CAPACITY);
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
+		pool.setTaskDecorator(new MdcTaskDecorator());
 		// A redeploy must not silently swallow a reset link a user is already waiting for.
 		pool.setWaitForTasksToCompleteOnShutdown(true);
 		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
@@ -139,9 +144,8 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	@Override
 	public void dispatch(Runnable send) {
-		Map<String, String> callerContext = MDC.getCopyOfContextMap();
 		try {
-			executor.execute(() -> runWithin(callerContext, send));
+			executor.execute(send);
 		}
 		catch (TaskRejectedException e) {
 			recordDrop(e);
@@ -163,18 +167,6 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 		droppedWhenSaturated.increment();
 		log.error("Recovery email dispatcher saturated ({}); the send was dropped with nothing to retry from, so "
 				+ "the user must re-request", cause.getClass().getSimpleName());
-	}
-
-	private static void runWithin(Map<String, String> callerContext, Runnable send) {
-		if (callerContext != null) {
-			MDC.setContextMap(callerContext);
-		}
-		try {
-			send.run();
-		}
-		finally {
-			MDC.clear();
-		}
 	}
 
 	@Override

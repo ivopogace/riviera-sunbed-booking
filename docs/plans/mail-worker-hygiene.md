@@ -230,15 +230,15 @@ cannot occupy the shared `applicationTaskExecutor` that carries `booking`'s paym
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — write `MdcTaskDecoratorTest` + the two new MDC tests in
-`RegistryMailExecutorConfigTest`, run them red, then add `MdcTaskDecorator` and compose it onto the
-registry pool.
+**Next action:** Phase 1 step 1 — write `MailTransportBudgetTest` + `MailTransportPropertiesTest` +
+the two drain tests, run them red, then add the three main-source types and switch both pools to
+`setAwaitTerminationMillis(budget.shutdownDrain().toMillis())`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the shared MDC decorator, composed onto both pools + the corrected comments | | |
+| 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `040b254` |
 | 1 — the drain window derived from the socket budget, bound and validated | | |
 | 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | | |
 
@@ -751,6 +751,7 @@ this plan doc
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-29 | phase 0 (the shared MDC decorator) | any other explicitly-declared executor, `TaskDecorator`, or hand-rolled MDC carry in main | `grep -rn "ThreadPoolTaskExecutor\|setTaskDecorator\|TaskExecutor\|@EnableAsync" platform/src/main/java \| grep -v notification/` and `grep -rn "getCopyOfContextMap\|setContextMap" platform/src/main/java` | **none** outside `notification`; the only remaining copy/restore is `MdcTaskDecorator` itself | no further sites to fix. Boot's shared `applicationTaskExecutor` is auto-configured, not declared, and stays undecorated on purpose (Non-goals): adding one there changes behaviour on the invariant-#8/#9 spine listeners and is not what #410 asks for |
 
 ---
 
