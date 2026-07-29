@@ -125,7 +125,11 @@ not be renamed. Already exists and is checked out.
 - **Building the bounce feed / permanent-failure absorption** (#372, ADR-0011 decision 7).
   See R-4: this slice inherits, and does not close, the "permanently failing send keeps
   `riviera.outbox.pending` high" carryover (issue #383's *Related* note, F-10 from #371).
-- **An admin resend surface** (#380).
+- **An admin resend surface** (#380 — resending a mail whose publication is already
+  *complete*, which the registry will never retry).
+- **An admin trigger for resubmitting *incomplete* publications** (**#405**, filed from this
+  plan's findings). Different mechanism from #380, and out of scope here: today's only retry
+  is at restart (fact 8), and this slice does not change that either way.
 - **Touching the recovery vehicle** (`AsyncMailDispatcher`). Its pool, its
   drop-on-saturation semantics, and its callers are unchanged — only its Javadoc's claim
   is made true for the other vehicle too (AC in #383's list, phase 3).
@@ -159,11 +163,11 @@ currently buys and what happens to it.
 | R-1 | **Registry `listener_id` drift.** The registry stores the listener's FQ method signature; a rename/move orphans outstanding rows (the V18 + V31/#382 lesson) | low | high | Do not rename or move the class or method — the decomposition is annotation-only. `listener_id` is derived by `TransactionalApplicationListenerMethodAdapter#getListenerId()` from the method, not from which annotation declared it, so it must not change. Pinned by **AC-5**; if it ever does change, this slice grows a Flyway rewrite modelled on `V31` | implementer | open |
 | R-2 | **A rejected submission throws onto the money-path thread.** `@Async` submits on the caller's thread — here the `AFTER_COMMIT` synchronization of the *booking/payment* commit. A `TaskRejectedException` from a saturated pool could surface inside `commit()` | med | high | Choose a rejection policy that does not throw (see **OQ-1**), and prove it: **AC-3** asserts the money path is unaffected under saturation. `CallerRunsPolicy` is explicitly forbidden — it would run the SMTP call *on* the money-path thread, the exact failure this slice removes | implementer | open |
 | R-3 | Removing the listener's transaction widens the at-least-once crash window | **closed at plan time** | — | Verified against Modulith 2.1.0 sources: `DefaultEventPublicationRegistry#markProcessing`/`markCompleted`/`markFailed` are each `@Transactional(REQUIRES_NEW)`, and `CompletionRegisteringMethodInterceptor` orders at `HIGHEST_PRECEDENCE + 10` vs the transaction advisor's default `LOWEST_PRECEDENCE`, so completion always ran *outside* the listener's transaction. The window is unchanged | planner | closed — no code change needed |
-| R-4 | A **permanently** failing send (550 to a mistyped address) never completes, is resubmitted every restart, and holds `riviera.outbox.pending` above `MoneyPathAlertCheck`'s threshold for a non-money reason | med | med | **Carried, not closed.** Absorbing it needs ADR-0011 decision 7's bounce feed (#372). This slice must not make it worse: AC-3's shed-and-leave-outstanding behaviour adds a *second* way to hold a publication open, so phase 3 records the interaction in the plan + `docs/runbooks/observability.md`, and OQ-1 weighs it | implementer | open → defer to #372 |
+| R-4 | A **permanently** failing send (550 to a mistyped address) never completes, is resubmitted every restart, and holds `riviera.outbox.pending` above `MoneyPathAlertCheck`'s threshold for a non-money reason | med | med | **Carried, not closed.** Absorbing it needs ADR-0011 decision 7's bounce feed (#372). This slice must not make it worse: AC-3's shed-and-leave-outstanding behaviour adds a *second* way to hold a publication open, so phase 3 records the interaction in the plan + `docs/runbooks/observability.md`, and OQ-1 weighs it. Noted on **#405** too — a manual retry button makes this easier to trip, not harder | implementer | open → defer to #372 |
 | R-5 | Under-sizing the new pool turns a healthy-relay burst into shed sends | med | low | Sizing is OQ-2 with a stated rule, not a guess: confirmations are one send per confirmed booking on a low-volume marketplace; queue depth is the buffer, thread count is the concurrency. Saturation is visible (logged + the publication stays outstanding), not silent | implementer | open |
 | R-6 | A wedged send delays graceful shutdown / redeploy | low | low | Mirror `AsyncMailDispatcher`: `setWaitForTasksToCompleteOnShutdown(true)` with a short `awaitTerminationSeconds`, so a redeploy drains briefly and then abandons — the abandoned publication stays outstanding and is resubmitted at boot | implementer | open |
 | R-7 | Module-boundary regression — the executor bean lands in the wrong package or pulls a new dependency | low | med | The bean is module-internal, in `notification/application/` beside `AsyncMailDispatcher`; no `allowedDependencies` change (no new module is referenced). Pinned by `ModularityTests` + `PackageShapeArchitectureTests` in the phase-2 regression scope | implementer | open |
-| R-8 | Two extra `REQUIRES_NEW` registry transactions (`markProcessing`, `markCompleted`) bracket every invocation on the new small pool, each taking a connection | low | low | Both are short single-row writes and already happen today; they are unaffected by this slice. Noted so a reviewer reading "the listener holds no connection" is not surprised to see three brief checkouts per mail | planner | closed — documented, no action |
+| R-8 | Two extra `REQUIRES_NEW` registry transactions (`markProcessing`, `markCompleted`) bracket every invocation on the new small pool, each taking a connection | low | low | Both already happen today and are unaffected by this slice. Precisely: `markCompleted` is one short single-row write; **`markProcessing` issues no SQL at all** — it is a no-op `default` on `EventPublicationRepository` that `JdbcEventPublicationRepository` does not override (fact 8) — but its `REQUIRES_NEW` still checks a connection out eagerly, so the checkout is real and the statement is not. Noted so a reviewer reading "the listener holds no connection" is not surprised to see three brief checkouts per mail | planner | closed — documented, no action |
 
 ## Open questions / Assumptions
 
@@ -174,8 +178,13 @@ currently buys and what happens to it.
   - **(a) Discard-and-log** (`ThreadPoolExecutor.DiscardPolicy` or a logging variant):
     `submit` returns normally, nothing runs on the pool, so neither `markProcessing` nor
     `markCompleted` fires and the publication stays outstanding → resubmitted at the next
-    restart. Nothing can reach the committing thread. Cost: the retry horizon is a restart,
-    and it adds a second contributor to R-4's outbox backlog.
+    restart. Nothing can reach the committing thread. Cost: the retry horizon is a restart
+    (fact 8 — there is no scheduled retry and no operational trigger **today**), and it adds a
+    second contributor to R-4's outbox backlog. **#405 softens this cost materially**: once an
+    admin can resubmit on demand, "shed it, the registry still owes it" stops meaning "wait for
+    the next deploy". This slice does **not** depend on #405 and must not wait for it — but if
+    (a) is chosen, say so in the PR body, because the argument for (a) is weaker while #405 is
+    open than after it lands.
   - **(b) Abort** (`AbortPolicy`, the `ThreadPoolTaskExecutor` default) **only if** the
     throw provably cannot escape into `commit()`. Louder and more honest, but it is the
     money-path risk in R-2.
@@ -356,6 +365,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
    `@Async → CompletionRegistering → Transaction → method body`. Consequence for AC-3: if a
    submission never reaches the pool, no completion advice runs at all, so the publication is
    left untouched — which is the behaviour OQ-1 (a) relies on.
+8. **A failed or shed send is durable, but retried only at restart** — and only
+   `completion_date` records it. The publication row is INSERTed by
+   `PersistentApplicationEventMulticaster.multicastEvent` → `storePublications(...)` on the
+   *publishing* thread, inside the booking's own transaction, before any delivery attempt, so
+   it is atomic with the booking. On failure `markCompleted` is never reached and
+   `completion_date` stays NULL; with `completion-mode=archive` a *successful* publication is
+   moved to `event_publication_archive`, so the live `event_publication` table is effectively
+   the "not yet delivered" queue. Retry comes solely from
+   `afterSingletonsInstantiated` → `resubmitIncompletePublications(__ -> true)` under
+   `republish-outstanding-events-on-restart` — **there is no scheduled retry**, and the
+   `modulith` actuator endpoint is deliberately unexposed (#75), so there is no operational
+   trigger today. **#405** adds one. Two traps for anyone reading the schema: `markProcessing`
+   and `markFailed` are no-op `default` methods the JDBC repository does not override, so V8's
+   `status` / `completion_attempts` / `last_resubmission_date` columns stay NULL on every row
+   and nothing may be built on them; and `markResubmitted` likewise defaults to `return true`,
+   so the framework's documented "another instance already claimed this" guard is inert here.
 
 ---
 
