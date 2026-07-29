@@ -294,10 +294,10 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `Implement — phases 0–3 done (draft PR #429); entering phase 4`
+**Stage pointer:** `Review gate — PR #429 marked ready for review`
 
-**Next action:** phase 4 — shipped-config comments, structural net, docs-freshness, merge from main,
-then mark PR #429 ready for review (which makes the Review and Sonar gates due).
+**Next action:** run the review gate (`references/pr-gates.md` §1 invocation ladder) with
+`riviera-review-overlay` layered on, then the Sonar gate's issue list, then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -305,7 +305,7 @@ then mark PR #429 ready for review (which makes the Review and Sonar gates due).
 | 1 — Request expiry/pay window bounds | ✅ | `<phase-1>` |
 | 2 — Stripe connect/read timeout bounds | ✅ | `<phase-2>` |
 | 3 — Recovery token TTL bounds | ✅ | `<phase-3>` |
-| 4 — Shipped-config comments, structural net, merge from main | | |
+| 4 — Shipped-config comments, structural net, docs freshness, merge from main | ✅ | `<phase-4>`, base integrated at `<merge>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -516,11 +516,19 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 - [x] **Step 3:** Run `riviera-docs-freshness` over `origin/main...HEAD` and record the result in
   *Skills consulted* — ticking the line without running it is the miss #413/#318/#414 were each dinged for.
   Zero findings; the evidence is in the *Skills consulted* entry.
-- [ ] **Step 4:** Merge the latest `origin/main` into the branch with full phase discipline (routing gate
+- [x] **Step 4:** Merge the latest `origin/main` into the branch with full phase discipline (routing gate
   for whatever the integration touches, scoped tests, honest commit), then mark the PR **ready for
-  review** — that is what makes the Review and Sonar gates due.
-- [ ] **Step 5:** Commit the finalized Execution status **in this PR**, citing the PR number — never a
-  merge SHA, which cannot exist before the merge.
+  review** — that is what makes the Review and Sonar gates due. *Integrated **#423 / PR #427** (the
+  recovery-mail transport counter), which landed while phases 1–3 were building.* No conflict and no
+  rework: it touches `notification` + `shared/ObservabilityMetrics` and the `MailDispatcher` send path,
+  none of which this slice states or edits — the overlap predicted at intake (G-6) stayed hypothetical
+  because this slice's recovery work is the **token TTLs** in the root package, not the mail vehicle.
+  Re-verified post-merge with the structural net, all four property specs **and** the merged change's own
+  `TransactionalMailServiceTest`. No routing-gate re-entry was due: the integration changed no file in
+  this diff.
+- [x] **Step 5:** Commit the finalized Execution status **in this PR**, citing the PR number — never a
+  merge SHA, which cannot exist before the merge. *(Final close-out lands with the review/Sonar gate
+  results, before merge.)*
 
 ---
 
