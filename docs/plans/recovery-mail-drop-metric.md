@@ -221,10 +221,29 @@ exposed only via the already-authenticated `/actuator/prometheus`.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR #424 — phases done, awaiting CI then the Review + Sonar gates`
+**Stage pointer:** `merge close-out — all three gates run and green; ready to merge PR #424`
 
-**Next action:** Confirm CI green on PR #424, then run the Review gate per `pr-gates` §1's invocation
-ladder, then pull Sonar's reported new-issue list (a green gate is not the check).
+**Next action:** Merge PR #424. After the merge only GitHub-only items remain, no commit: #415 closes
+via `Closes #415`; #415 is already a sub-issue of epic #367, and the follow-up this slice filed
+(#423) is attached too.
+
+**Gate results (PR #424).** CI green on `ea3c697`: `Backend (build + test)`, `Frontend (lint + test +
+build)`, `CodeQL`, `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `SonarCloud scan`,
+`SonarCloud Code Analysis` all `success`. Sonar green **and its reported list pulled and empty**:
+`new_lines=93` (so an analysis genuinely exists — the false-clean read of `pr-gates` §2 is ruled
+out), `new_bugs=0`, `new_vulnerabilities=0`, `new_code_smells=0`, `new_duplicated_blocks=0`,
+`new_duplicated_lines_density=0.0`, `new_coverage=100.0`, `new_reliability_rating=1.0`,
+`new_security_rating=1.0`, `issues/search total=0`, `hotspots/search total=0`.
+
+**What the review gate cost and bought.** Run as the full `/code-review` subagent fan-out (five
+independent reviewers + the overlay), authorized by the maintainer mid-gate because the session
+carries a standing no-Agent-tool instruction — `pr-gates` §1 is explicit that such an instruction is
+not grounds to skip the gate. Two reviewers returned clean, three converged on the same two prose
+defects (F-1, F-2). **Neither was a logic bug, and that is the interesting part**: the slice's code
+was right and its *documentation* was wrong in a checkable way — a false citation of which rate-limit
+budget bounds the vehicle's arrivals, which was load-bearing for the whole per-drop logging argument.
+An overlay-only pass would very likely have shipped it, because the claim reads plausible and only
+falls to someone opening `RateLimitFilter` and following the call graph.
 
 **Phase 0 test evidence:** `gradle test --tests "*AsyncMailDispatcherTest*"` → 9/9 green; the widened
 regression scope (`*Mail*`, `*Notification*` + the structural net `*ModularityTests*`,
@@ -304,7 +323,7 @@ touches *before* editing).
 - [x] **Step 2:** Run `riviera-docs-freshness` over `origin/main..HEAD` and patch whatever the diff
       contradicts — at minimum the `shared` Job's metric-name clause (which names only the shed
       counter) and the `notification` row's saturation contract.
-- [ ] **Step 3:** Finalize this plan doc **in this PR's last commit**, citing `merged via PR #NN`
+- [x] **Step 3:** Finalize this plan doc **in this PR's last commit**, citing `merged via PR #424`
       (never a merge SHA) — the three-slice tax (#326→#347, #346→#352, #351→#354) is the reason.
 - [x] **Step 4:** Report the still-open #407/#410/#411 epic-attachment gap to the maintainer.
 
@@ -368,8 +387,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Frontend** standards met or deviation documented — `N/A`, backend-only.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state committed here citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+- [x] **Close-out written in THIS PR** — final state committed here citing **merged via PR #424**.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
