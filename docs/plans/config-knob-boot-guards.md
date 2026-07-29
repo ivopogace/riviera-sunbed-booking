@@ -135,7 +135,7 @@ range, including all three shipped defaults, binds exactly as it does today.
 | R-3 | A chosen bound is arbitrary, so a future operator hits it with a legitimate value | low | med | Every bound is justified in the record's Javadoc against a mechanism, not a feeling — the ten dimension maps for the key cap, the `@Transactional` sweep + the bind-parameter ceiling for the batch. Ranges are 100×–500× wide (see the bounds table). | claude | **closed** — every bound cites its mechanism in Javadoc; review finding F-1 tightened the `window` rule's stated rationale further |
 | R-4 | Scope creep: the slice's ACs cover the floor, and adding ceilings + a third knob widens it | med | low | Both widenings were escalated to the user via `AskUserQuestion` **before** the plan was committed, and both were approved. Recorded as G-1 / G-5 under Resolved, and stated in the PR body so the ACs and the diff agree. | claude | **closed** — both widenings approved pre-plan; a *third* widening (four more `Duration`/`Period` knobs) was declined and deferred to **#426** rather than absorbed |
 | R-5 | Module-boundary leak | low | high | None possible: no class is created, moved or renamed across packages; the two edited records stay in the packages that own them. `ModularityTests` is run anyway as part of the structural net. | claude | **closed** — structural net green (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`) |
-| R-6 | Flyway version collision | n/a | n/a | No migration in this slice. The only open PRs are ten Dependabot frontend bumps (#332–#341), none of which touch `platform/`. | claude | closed — no migration |
+| R-6 | Flyway version collision | n/a | n/a | No migration in this slice. At intake the only open PRs were ten Dependabot frontend bumps (#332–#341); **#415 / PR #424 landed on `main` during the gate run** and touches `notification` + `shared` with no migration either, so the number space was never contested. | claude | closed — no migration on either side |
 
 ## Open questions / Assumptions
 
@@ -231,7 +231,7 @@ context startup, before any request is served.
 |-------|--------|---------|
 | 0 — Rate-limit key-cap bounds | ✅ | `6f1917b` |
 | 1 — Retention window + batch-size bounds | ✅ | `25241f6` |
-| 2 — Shipped-config comments + merge from main | ✅ | `2b89436` |
+| 2 — Shipped-config comments + merge from main | ✅ | `2b89436`, base re-integrated at `d78c78f` |
 | 3 — Review-gate fixes (F-1, F-3, F-4, F-5) | ✅ | `0e8c0df` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -643,7 +643,13 @@ The record Javadoc gains a paragraph on both bounds and the no-JSR-303 reason.
   `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"`
   → PASS. (No structure changed; this is the standing check after any backend change.)
 - [x] **Step 3:** Merge the latest `origin/main` into the branch with full phase discipline, then mark
-  the PR **ready for review** — that is what makes the Review and Sonar gates due.
+  the PR **ready for review** — that is what makes the Review and Sonar gates due. *Done twice:*
+  `main` was unmoved when the PR was marked ready, but **#415 / PR #424** (the recovery-mail drop
+  counter) landed while the gates were running, and branch protection requires an up-to-date branch —
+  so the base was integrated again at `d78c78f`. No conflict and no rework: #424 touches
+  `notification`, `shared/ObservabilityMetrics` and the `notification` row of `CLAUDE.md`, none of
+  which this slice states or edits. Re-verified post-merge with the scoped tests **and** the
+  structural net.
 - [x] **Step 4:** Note the two approved widenings (G-1, G-5) on issue #414 so its ACs and the diff agree.
 - [x] **Step 5:** Commit the finalized Execution status **in this PR**, citing `merged via PR #425` —
   never a merge SHA, which cannot exist before the merge.
