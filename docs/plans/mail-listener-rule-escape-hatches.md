@@ -200,7 +200,7 @@ then run the review gate (`/code-review` + `riviera-review-overlay`) and the Son
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
-| 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | pending commit |
+| 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | `d7ecbe8` |
 | 2 — PR, review gate, Sonar gate, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
