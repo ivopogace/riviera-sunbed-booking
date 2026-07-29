@@ -40,6 +40,15 @@ own Javadoc (#369) and ADR-0011 decision 5.
   supplied the tension this plan has to argue rather than ignore: §8 says *"don't hand-roll thread
   pools in application code"* — see R-4.
 - `riviera-plan-doc` — this document's structure and the Execution-status discipline.
+- `riviera-docs-freshness` (**re-run at close-out** over `56f29a6..HEAD`, the F-4/F-5/F-6 diff —
+  **zero findings**. The only fact this diff changes is the *stated pre-fix failure mode*, and the
+  substrate never carried the wrong version of it: `CLAUDE.md`'s `notification` row, the
+  `RESPONSIBILITIES.md` **Job**, and ADR-0011 all describe the hazard as a degraded relay *occupying
+  the shared `applicationTaskExecutor`* that carries the money-path listeners — thread occupancy, not
+  connection-pool exhaustion. The drift was confined to this doc's own AC-1 line and the listener
+  Javadoc, both corrected here. A grep for `CannotGetJdbcConnection`, "pool of ten" and "exhausted
+  Hikari" across `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr`, `docs/agents` and
+  `.claude/skills` returns nothing.)
 - `riviera-docs-freshness` (phase 3) — the pre-merge substrate sweep; it is what surfaced F-1, a live
   test-coverage hole rather than mere stale prose.
 - `riviera-review-overlay` + `/review` (first review pass) — the RV-BE bank walk that surfaced F-2 and
