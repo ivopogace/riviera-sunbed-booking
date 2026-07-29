@@ -248,20 +248,27 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate pass 2 (/code-review fan-out) — 8 findings fixed; re-verifying CI + Sonar before merge`
+**Stage pointer:** `merge close-out — both review passes done, all gates GREEN; ready to merge PR #413`
 
-**Gate results (PR #413, head `d8b1239`):** CI green — `Backend (build + test)` ×2, `Frontend
+**Next action:** Merge PR #413 (authorized: "run the fan-out, then merge" — the fan-out ran and its
+findings are fixed). After the merge only GitHub-only items remain, no commit: #408 closes via
+`Closes #408`; #408, #414 and #415 are already attached to epic #367.
+
+**Gate results (PR #413, final head `e41e1f3`):** CI green — `Backend (build + test)` ×2, `Frontend
 (lint + test + build)` ×2, `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL` all
-`success`. Sonar green **and its reported list pulled and empty**, not merely a passing gate:
-`new_lines=154` (so an analysis genuinely exists — the false-clean read is ruled out), `new_bugs=0`,
-`new_vulnerabilities=0`, `new_code_smells=0`, `new_duplicated_blocks=0`,
+`success`. Sonar green **and its reported list pulled and empty**: `new_lines=232` (so an analysis
+genuinely exists — the false-clean read is ruled out), `new_reliability_rating=1.0` (A),
+`new_bugs=0`, `new_vulnerabilities=0`, `new_code_smells=0`, `new_duplicated_blocks=0`,
 `new_duplicated_lines_density=0.0`, `new_coverage=100.0`, `issues/search total=0`,
 `hotspots/search total=0`.
 
-**Next action:** Confirm CI + Sonar are green on the fan-out fix head, then the merge is the
-maintainer's call (already given, conditional on the fan-out running and its findings being fixed —
-both now done). After the merge the only remaining items are GitHub-only, no commit: #408 closes via
-`Closes #408`. #408, #414 and #415 are all already attached to epic #367.
+**What the two review passes cost and bought.** Pass 1 (overlay + `review`) found 3 process/quality
+issues. Pass 2 (the `/code-review` fan-out) found 9 more, including three that changed shipped
+behaviour: validation that guarded only one end of both knobs while the slice's own runbook pointed
+the on-call at the other, a redeploy misreported as a saturation incident, and a throttle whose
+documented guarantee the code did not deliver. It also introduced one bug of its own (F-12), which
+the Sonar gate then caught. The loop worked exactly as `pr-gates` §1 claims it does — and the
+overlay-only pass would have shipped all three.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
