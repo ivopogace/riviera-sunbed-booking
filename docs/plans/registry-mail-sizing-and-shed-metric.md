@@ -89,7 +89,7 @@ comparison review against the closed branch of PR #406.
   counter, and its drop is a genuine loss (bearer-credential payload, nothing to retry from —
   ADR-0011 decision 5), so it deserves its own name and its own justification. Out of scope; the
   name chosen here (`riviera.mail.registry.shed`) deliberately leaves room for a sibling
-  `riviera.mail.recovery.dropped`.
+  `riviera.mail.recovery.dropped`. **Filed as #415.**
 - **No `MoneyPathAlertCheck` integration.** That check is the *money-path* self-check (#100, D4) with
   three deliberately-chosen signals; a shed confirmation mail is not money-path work. The counter is
   documented in the observability runbook as an externally-alertable Prometheus series instead.
@@ -221,17 +221,19 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR — pushed, opening the PR; review gate next`
+**Stage pointer:** `merge close-out — gates run; awaiting the maintainer's merge decision on PR #413`
 
-**Next action:** Open the PR into `main`, check that push's CI run, then run the Review gate
-(`/code-review` + `riviera-review-overlay`) and the Sonar gate before any merge.
+**Next action:** None by the agent. **PR #413** carries the slice; CI, the Review gate and the Sonar
+gate have run and their findings are resolved. The merge itself is the maintainer's call. After the
+merge the only remaining items are GitHub-only (no commit): #408 closes via `Closes #408`, and it
+should be attached as a sub-issue of epic #367 — #414 and #415 already are.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — externalise + validate the two bounds | ✅ | `98c4796` |
 | 1 — the shed counter + the per-episode escalation | ✅ | `aa1065d` |
 | 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d506def` |
-| 3 — review + sonar gates, close-out | | |
+| 3 — review-gate findings F-1..F-3 + close-out | ✅ | `88ba19d`, `ba313d3` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -341,8 +343,8 @@ touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-29 | phase 0 (new pattern: guarding a numeric config knob whose non-positive value degrades *silently* rather than loudly) | every bound numeric property in the codebase, asking "what does `0` do here?" | `rg 'int \|long ' --include=*Properties.java src/main/java` then read each use site | 6 knobs; **2 are the same defect class, both verified by reading the use site, not assumed**: (a) `RateLimitProperties.maxTrackedKeys=0` → `RateLimitFilter:499` `buckets.size() >= 0` is true on *every* new key, so `buckets.clear()` (line 503) wipes every other key's spent tokens on each miss — the rate limiter degrades to near-useless while booting cleanly and saying so only at `DEBUG`; (b) `CustomerRetentionProperties.batchSize=0` → `expiredGuestCandidates(cutoff, 0)` → `LIMIT 0`, a sweep that silently scrubs nothing forever. The `MoneyPathAlert` thresholds are **not** candidates — `0` is their documented "alert on any" value | **Subset — fix neither here, file one follow-up issue.** Both are outside this slice's module and area: (a) is a security control owned by the #129/#286 arc and deserves its own review, and widening a mail-sizing PR into `RateLimitFilter` is exactly the "while I'm here" the Non-goals section guards against. **Filed at close-out** as its own issue rather than silently dropped (number recorded in Execution status once it exists) |
-| 2026-07-29 | phase 1 (new pattern: counting a discarded unit of work and escalating once per episode instead of once per event) | every site that handles a rejected/discarded task, asking "does this log per event, and is the discard counted?" | `rg 'RejectedExecutionHandler\|TaskRejectedException\|RejectedExecutionException' --include=*.java src/main/java` | 2 sites — this slice's `SaturationPolicy`, and `AsyncMailDispatcher:87`, which logs one `WARN` per dropped recovery mail and has **no counter at all** | **Skip here, file as a follow-up.** Same shape, different semantics: the recovery vehicle *drops* (bearer-credential payload, nothing durable to retry from — ADR-0011 decision 5), so unlike a shed each line describes an unrecoverable loss and may well deserve to stay per-event. Deciding that, and naming its counter, is exactly the judgment this slice's Non-goals reserved — folding it in would make the Non-goal untrue mid-PR |
+| 2026-07-29 | phase 0 (new pattern: guarding a numeric config knob whose non-positive value degrades *silently* rather than loudly) | every bound numeric property in the codebase, asking "what does `0` do here?" | `rg 'int \|long ' --include=*Properties.java src/main/java` then read each use site | 6 knobs; **2 are the same defect class, both verified by reading the use site, not assumed**: (a) `RateLimitProperties.maxTrackedKeys=0` → `RateLimitFilter:499` `buckets.size() >= 0` is true on *every* new key, so `buckets.clear()` (line 503) wipes every other key's spent tokens on each miss — the rate limiter degrades to near-useless while booting cleanly and saying so only at `DEBUG`; (b) `CustomerRetentionProperties.batchSize=0` → `expiredGuestCandidates(cutoff, 0)` → `LIMIT 0`, a sweep that silently scrubs nothing forever. The `MoneyPathAlert` thresholds are **not** candidates — `0` is their documented "alert on any" value | **Subset — fix neither here, file one follow-up issue.** Both are outside this slice's module and area: (a) is a security control owned by the #129/#286 arc and deserves its own review, and widening a mail-sizing PR into `RateLimitFilter` is exactly the "while I'm here" the Non-goals section guards against. **Filed as #414** rather than silently dropped |
+| 2026-07-29 | phase 1 (new pattern: counting a discarded unit of work and escalating once per episode instead of once per event) | every site that handles a rejected/discarded task, asking "does this log per event, and is the discard counted?" | `rg 'RejectedExecutionHandler\|TaskRejectedException\|RejectedExecutionException' --include=*.java src/main/java` | 2 sites — this slice's `SaturationPolicy`, and `AsyncMailDispatcher:87`, which logs one `WARN` per dropped recovery mail and has **no counter at all** | **Skip here, file as a follow-up.** Same shape, different semantics: the recovery vehicle *drops* (bearer-credential payload, nothing durable to retry from — ADR-0011 decision 5), so unlike a shed each line describes an unrecoverable loss and may well deserve to stay per-event. Deciding that, and naming its counter, is exactly the judgment this slice's Non-goals reserved — folding it in would make the Non-goal untrue mid-PR. **Filed as #415** |
 
 ---
 
@@ -396,7 +398,12 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Frontend** standards met or deviation documented — `N/A`, backend-only.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state committed here citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **Close-out written in THIS PR** — final state committed here citing **merged via PR #413**.
+- [x] **The review gate ran in full** — `riviera-review-overlay` layered onto the `review` engine over
+      the PR diff. **Degraded mode, stated plainly:** `/code-review`'s subagent fan-out was not used —
+      this session carries a standing "do not call the Agent tool unless the user requested it"
+      instruction, and `code-review` is not among the invocable skills here. Per `pr-gates` §1 that is
+      a legitimate blocker but an illegitimate secret, so it is recorded here and in the PR rather
+      than papered over. The overlay bank was walked in full and produced F-1..F-3.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
