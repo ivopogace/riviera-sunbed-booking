@@ -355,7 +355,7 @@ R-4's interaction on #372. **Every AC (1-7) is now green.**
 |-------|--------|---------|
 | 0 — Take the transaction off the send (**+ decomposition, AC-5**) | ✅ | `eb442c4` |
 | 1 — Dedicated bounded executor (qualifier + bean only) | ✅ | `e1545ab` |
-| 2 — Registry durability + saturation proof | ✅ | `<phase-2 sha>` |
+| 2 — Registry durability + saturation proof | ✅ | `42c78b5` |
 | 3 — Substrate: ADR/RESPONSIBILITIES/Javadoc close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
