@@ -97,6 +97,30 @@ class RegistryMailExecutorConfigTest {
 		};
 	}
 
+	/**
+	 * Drive a {@link #TINY} pool into saturation: wedge its single worker, fill its single queue slot
+	 * with {@code queued}, then submit {@code sheds} more sends, every one of which must be rejected.
+	 * Returns the gate that releases the worker — the caller opens it to end the episode.
+	 *
+	 * <p>Submissions go through {@code execute}, not {@code submit}, because that is the path
+	 * {@code @Async} takes for the {@code void} listener method this pool actually carries.
+	 */
+	private CountDownLatch saturate(ThreadPoolTaskExecutor pool, Runnable queued, int sheds)
+			throws InterruptedException {
+		CountDownLatch gate = new CountDownLatch(1);
+		CountDownLatch running = new CountDownLatch(1);
+
+		pool.execute(wedge(running, gate));
+		assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+				"the worker must be occupied before the pool is pushed past capacity");
+		pool.execute(queued);
+
+		for (int i = 0; i < sheds; i++) {
+			pool.execute(() -> { });
+		}
+		return gate;
+	}
+
 	@Test
 	void isBoundedOnEveryAxis() {
 		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED);
@@ -152,18 +176,9 @@ class RegistryMailExecutorConfigTest {
 	@Test
 	void everyShedSendIncrementsTheCounter() throws Exception {
 		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
-		CountDownLatch gate = new CountDownLatch(1);
-		CountDownLatch running = new CountDownLatch(1);
+		CountDownLatch gate = saturate(pool, () -> { }, SHED_SENDS);
 
 		try {
-			pool.execute(wedge(running, gate));
-			assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
-			pool.execute(() -> { });
-
-			for (int i = 0; i < SHED_SENDS; i++) {
-				pool.execute(() -> { });
-			}
-
 			assertEquals(SHED_SENDS, shedCount(),
 					"the shed path must be attributable: one increment per send that never reached the "
 							+ "relay, so 'how often did we shed?' is answerable without grepping logs");
@@ -177,18 +192,9 @@ class RegistryMailExecutorConfigTest {
 	@Test
 	void aSaturationEpisodeLogsOnceNotOncePerShedTask() throws Exception {
 		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
-		CountDownLatch gate = new CountDownLatch(1);
-		CountDownLatch running = new CountDownLatch(1);
+		CountDownLatch gate = saturate(pool, () -> { }, SHED_SENDS);
 
 		try {
-			pool.execute(wedge(running, gate));
-			assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
-			pool.execute(() -> { });
-
-			for (int i = 0; i < SHED_SENDS; i++) {
-				pool.execute(() -> { });
-			}
-
 			assertEquals(1, escalations(),
 					"a wedged relay must not turn one incident into one log line per rejected send; "
 							+ "the counter carries the volume, the log carries the event");
@@ -203,34 +209,28 @@ class RegistryMailExecutorConfigTest {
 	@Test
 	void aLaterEpisodeLogsAgain() throws Exception {
 		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
-		CountDownLatch firstGate = new CountDownLatch(1);
-		CountDownLatch firstRunning = new CountDownLatch(1);
-		CountDownLatch secondGate = new CountDownLatch(1);
-		CountDownLatch secondRunning = new CountDownLatch(1);
 		CountDownLatch queuedRan = new CountDownLatch(1);
+		CountDownLatch firstGate = saturate(pool, queuedRan::countDown, 1);
+		CountDownLatch secondGate = null;
 
 		try {
-			pool.execute(wedge(firstRunning, firstGate));
-			assertTrue(firstRunning.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
-			pool.execute(queuedRan::countDown);
-			pool.execute(() -> { });
 			assertEquals(1, escalations(), "the first episode opens with one escalated line");
 
 			// The pool makes progress, which is what ends an episode.
 			firstGate.countDown();
 			assertTrue(queuedRan.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
-			pool.execute(wedge(secondRunning, secondGate));
-			assertTrue(secondRunning.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
-			pool.execute(() -> { });
-			pool.execute(() -> { });
+			secondGate = saturate(pool, () -> { }, 1);
 
 			assertEquals(2, escalations(),
 					"a throttle that silences a genuinely new incident is worse than the flood it "
 							+ "replaced — the flag clears as soon as the pool drains a task");
 		}
 		finally {
-			secondGate.countDown();
+			firstGate.countDown();
+			if (secondGate != null) {
+				secondGate.countDown();
+			}
 			pool.shutdown();
 		}
 	}

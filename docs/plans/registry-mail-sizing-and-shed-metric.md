@@ -34,6 +34,11 @@ comparison review against the closed branch of PR #406.
 - `riviera-local-debug` — the cloud Gradle recipe (system `gradle`, JDK-25 toolchain registration,
   JDK 21 daemon) and the scoped-test discipline used for every phase run below.
 - `riviera-plan-doc` — this document's structure and the Execution-status state store.
+- `riviera-docs-freshness` — the phase-2 sweep over `origin/main..HEAD`; produced the four doc
+  patches (both notification rows, the observability runbook, the CD env-var list) and the finding
+  that nothing in the substrate was contradicted.
+- `riviera-review-overlay` + the `review` engine — the Review gate on PR #413; produced findings
+  F-1..F-3 below.
 - `postgres`, `riviera-frontend`, `angular-developer`, `playwright-cli`, `riviera-stripe-payments` —
   **not loaded, not triggered**: no migration, no SQL, no frontend surface, no money movement.
 
@@ -236,7 +241,10 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review (RV-PROC-1) | *Skills consulted* omitted `riviera-docs-freshness`, which had run and patched four docs, and the review overlay itself — exactly the "a touched area with no matching skill listed" the item exists to catch | fixed |
+| F-2 | review (quality / Sonar duplication risk) | `everyShedSendIncrementsTheCounter` and `aSaturationEpisodeLogsOnceNotOncePerShedTask` carried ~12 near-identical setup lines, and the Sonar bar is **0 duplicated blocks** — extracted a `saturate(pool, queued, sheds)` helper, which also let `aLaterEpisodeLogsAgain` drop its second wedge boilerplate | fixed |
+| F-3 | review (latent trap) | `SaturationPolicy` occupies the pool's **only** `TaskDecorator` slot; #410 (MDC onto the mail workers) would naturally call `setTaskDecorator` again and silently replace the episode reset, after which every saturation past the first is counted but never logged. Documented on the class so the next slice composes instead | fixed |
+| — | review (all other bank items) | RV-BE-1/4/5/6/7/8/9/10/14/15/16/17/18 ➖ not in scope; RV-BE-2/3/3b/3c/11/12/13 ✅; RV-STYLE-1 ✅ (every inline comment in the diff is one line) | closed |
 
 ---
 

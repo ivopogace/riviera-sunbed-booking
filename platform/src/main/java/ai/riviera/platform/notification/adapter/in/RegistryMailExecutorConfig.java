@@ -114,6 +114,13 @@ class RegistryMailExecutorConfig {
 	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both would defeat
 	 * the bulkhead. The line carries no recipient and no booking code (invariant #7); the correlation
 	 * id rides the MDC.
+	 *
+	 * <p><strong>This class owns the pool's only {@code TaskDecorator} slot.</strong> A later slice
+	 * that wants one too — #410, propagating the caller's MDC onto the mail workers, is the one in
+	 * flight — must <em>compose</em> with {@link #decorate} rather than call
+	 * {@code setTaskDecorator} again, which silently replaces it: the episode flag would then never
+	 * clear, and after the first saturation every later one would be counted but never logged. No
+	 * test would go red for the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
 	 */
 	private static final class SaturationPolicy implements RejectedExecutionHandler, TaskDecorator {
 
