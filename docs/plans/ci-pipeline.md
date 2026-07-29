@@ -10,9 +10,17 @@
 > files touched are build-tooling additions for coverage (`platform/build.gradle`
 > JaCoCo, `frontend/package.json` Vitest coverage provider) — no behavior changes.
 
-**Goal:** Every push (all branches) and every PR into `main` builds both apps, runs
+**Goal:** Every PR into `main` — and every push to `main` itself — builds both apps, runs
 their tests, and runs vulnerability + code-quality scans; a PR into `main` is only
 mergeable when the required checks are green.
+
+> **Amended by #417 (PR #418).** This originally read "every push (all branches)". An
+> unscoped `push:` trigger made a PR branch fire **two** runs per SHA publishing the same
+> check names, and branch protection honours only the last to finish — so a skipped
+> duplicate could mask a real success and block a fully green PR. `push:` is now scoped to
+> `main`, leaving PR branches to the `pull_request` event alone. A branch therefore has no
+> CI until its PR exists, which is why `riviera-sdlc` opens the PR as a draft as soon as
+> the first phase commit exists.
 
 **Architecture:** GitHub Actions with two build jobs (backend on JDK 25 via
 `setup-java`; frontend on Node 26 via `.nvmrc`), a CodeQL workflow (matrix `java` +
@@ -97,7 +105,7 @@ coverage corrections folded in here.
 | R-5 | FE coverage run errors — `@angular/build:unit-test` needs `@vitest/coverage-v8` (verified absent in dry-run). | high (if unhandled) | med | Add `@vitest/coverage-v8` devDependency; pin to the Vitest 4.x line. | agent | open until AC-5 green |
 | R-6 | Gradle/npm dependency download flakiness on the runner. | low | low | `gradle/actions/setup-gradle@v4` + `actions/setup-node` cache; default retries. | agent | open |
 | R-7 | A committed file leaks a secret/token. | low | high | No secrets in YAML — only `${{ secrets.* }}` refs; `riviera-review-overlay` secret check + `run_secret_scanning` before merge. | agent | open until pre-merge review |
-| R-8 | `push` on **all branches** double-runs CI for PR branches (push + pull_request). | low | low | Accept duplicate on PR branches (cheap, jobs cached); `concurrency` group cancels superseded runs per ref. | agent | open |
+| R-8 | `push` on **all branches** double-runs CI for PR branches (push + pull_request). | low | low | ~~Accept duplicate on PR branches (cheap, jobs cached); `concurrency` group cancels superseded runs per ref.~~ **Mitigation was wrong.** `concurrency` keys on `github.ref`, which differs between the two events (`refs/heads/*` vs `refs/pull/*/merge`), so the runs never shared a group and never cancelled each other. | agent | **closed — materialised as #417, fixed via PR #418** |
 
 ## Open questions / Assumptions
 

@@ -1,8 +1,15 @@
 # PR gates: Review → SonarCloud → Merge close-out
 
-Read this the moment a PR exists (or before calling a slice "done"). Three procedures, in
-order. Wherever a fix is required, the **re-entry rule** applies — the canonical statement
-lives in SKILL.md ("The loop"); this file cites it rather than restating it.
+Read this when the PR is **ready for review** (or before calling a slice "done"). Three
+procedures, in order. Wherever a fix is required, the **re-entry rule** applies — the
+canonical statement lives in SKILL.md ("The loop"); this file cites it rather than
+restating it.
+
+> **Not when the draft opens.** Since #417 the PR is opened as a **draft** as soon as the
+> first phase commit exists, purely so each phase push gets CI — at that point the slice
+> is barely started and there is nothing to review. Both gates below are due at
+> **ready-for-review**, not at PR creation. Running them against a draft mid-implementation
+> reviews an empty or half-built diff and burns the gate on work that is about to change.
 
 ## 1. Review gate (mandatory — between PR and merge)
 
@@ -14,8 +21,9 @@ lives in SKILL.md ("The loop"); this file cites it rather than restating it.
 
 **How the gate runs — every PR, before merge:**
 
-1. **Trigger.** The moment a PR exists (or before you would call a slice "done"/"ready to
-   merge"), the review gate is **due**. Do not wait to be asked.
+1. **Trigger.** The moment the PR is marked **ready for review** (or before you would call
+   a slice "done"/"ready to merge"), the review gate is **due**. Do not wait to be asked.
+   A **draft** PR does not trigger it — see the note at the top of this file.
 2. **Run the review — right-sized, never skipped.** Start a review over the **PR diff** —
    `/code-review` `origin/main...HEAD` (or `/review <PR>`) — and **load
    `riviera-review-overlay`** so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the
@@ -86,7 +94,8 @@ Missing any one means the slice is still in flight — say so rather than report
 > SonarCloud's quality gate is **not** a feature-branch check — by design (`ci.yml`) Sonar
 > analyzes **pull requests and `main` only**, because SonarCloud's plan cannot read
 > non-`main` branches and a branch-push Sonar job would go spuriously red. So the Sonar
-> gate is **due when the PR exists**, runs on the PR's check suite, and is a **distinct
+> gate is **due when the PR is ready for review** (not when the draft opens — see the note
+> at the top of this file), runs on the PR's check suite, and is a **distinct
 > gate from CI** (a green CI build does **not** mean Sonar passed — the SonarCloud check
 > is separate). A slice is **not** mergeable until this gate is green.
 >
