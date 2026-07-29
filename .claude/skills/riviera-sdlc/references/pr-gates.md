@@ -44,25 +44,33 @@ restating it.
    > use the Agent tool" session instruction is **not** a reason to skip it — ask the human
    > to authorize the subagent; that is a one-line answer.
    >
-   > **The invocation ladder — how to actually start `/code-review`** (the registered name
-   > and its model-invocability differ per harness version; a rejected name is NOT the gate
-   > being unavailable):
+   > **The invocation ladder — how to actually start `/code-review`** (a rejected name is
+   > NOT the gate being unavailable):
    >
-   > 1. `Skill("code-review:code-review")` (plugin-qualified — the #417-era registration).
-   > 2. `Skill("code-review")` (bare — some harnesses register the command under this name).
-   > 3. **Both rejected** (the current cloud behavior, observed 2026-07-29: qualified →
-   >    `Unknown skill`, bare → `disable-model-invocation` — the remote harness treats
-   >    plugin *commands* as user-typed-only, ignoring the command's own
-   >    `disable-model-invocation: false` frontmatter) → **execute the installed plugin's
-   >    command file directly; this IS the gate, not a fallback.** Resolve the payload:
-   >    read `~/.claude/plugins/installed_plugins.json`, key
+   > 1. **Probe `Skill("code-review")` once** — one cheap call. Since CLI v2.1.215,
+   >    Anthropic deliberately made `/code-review` human-invoke-only (docs: "`/verify` and
+   >    `/code-review` run only when you invoke them"; the Skill tool's built-in allowlist
+   >    admits `/init`, `/review`, `/security-review`), so **expect
+   >    `disable-model-invocation`** — the command's own `disable-model-invocation: false`
+   >    frontmatter cannot override the built-in policy. If the probe ever *succeeds*
+   >    (policy reversed upstream), just use it.
+   > 2. **Probe rejected → execute the installed plugin's command file directly; this IS
+   >    the gate, not a fallback.** Resolve the payload: read
+   >    `~/.claude/plugins/installed_plugins.json`, key
    >    `code-review@claude-plugins-official`, field `installPath`; then read
    >    `<installPath>/commands/code-review.md` and follow its steps exactly as if the
    >    command had been typed. Reading it from the installed payload at run time is what
    >    keeps Anthropic's upstream updates flowing (`scripts/ensure-plugins.sh` tracks the
    >    marketplace) — **never vendor a copy of the workflow into the repo.**
-   > 4. Only when the payload itself is absent and `bash scripts/ensure-plugins.sh` cannot
+   > 3. Only when the payload itself is absent and `bash scripts/ensure-plugins.sh` cannot
    >    repair it does the degraded `/review <PR>` fallback below apply.
+   >
+   > **Removed rung, do not re-add without a session where it demonstrably resolves:** the
+   > plugin-qualified `Skill("code-review:code-review")`. It genuinely worked pre-v2.1.216
+   > (PR #398's review ran through it and found the F-1 defect; the #417/#418-era guidance
+   > recorded it) but v2.1.216 changed qualified-name registration and v2.1.215 closed
+   > model invocation — on v2.1.220 it returns `Unknown skill` (verified 2026-07-29). CLI
+   > versions only move forward in cloud images, so the rung is dead weight.
    >
    > **`gh` in cloud sessions** — provisioned by `scripts/cloud-session-setup.sh` step 6
    > (GH_TOKEN is already in the session env). The repo-scope proxy serves REST plus a
