@@ -110,6 +110,24 @@ final class MailListenerRuleFixtures {
 		}
 	}
 
+	/**
+	 * The event type declared as an annotation attribute rather than a method parameter — the other
+	 * spelling Spring accepts, reached through the {@code @AliasFor} chain
+	 * ({@code @TransactionalEventListener#classes} aliases {@code @EventListener#classes}). The
+	 * carve-out has to read it, or a listener written this way would fall out of scope unexamined.
+	 *
+	 * <p>Deliberately missing its {@code @Async} so the rule must <em>reject</em> it. A compliant
+	 * fixture would prove nothing here: "no violations" is exactly what being silently carved out
+	 * looks like.
+	 */
+	static class DeclaredEventTypeListener {
+
+		@TransactionalEventListener(classes = FixtureEvent.class)
+		void on() {
+			never("declared-type fixture");
+		}
+	}
+
 	/** A container-lifecycle listener: no publishing transaction, so the rules do not apply. */
 	static class ContainerLifecycleListener {
 

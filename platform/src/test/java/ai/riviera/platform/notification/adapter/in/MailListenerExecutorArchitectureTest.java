@@ -197,6 +197,23 @@ class MailListenerExecutorArchitectureTest {
 	}
 
 	/**
+	 * The carve-out must read the event type from {@code @EventListener#classes} as well as from the
+	 * method parameter — Spring accepts both spellings, and a listener written the second way would
+	 * otherwise fall out of scope unexamined. Asserted through a <em>rejection</em>, because "no
+	 * violations" is indistinguishable from "silently skipped".
+	 */
+	@Test
+	void anEventTypeDeclaredOnTheAnnotationIsInScope() {
+		List<String> violations = executorIsolationViolations(
+				listenersOf(MailListenerRuleFixtures.DeclaredEventTypeListener.class));
+
+		assertTrue(violations.stream().anyMatch(v -> v.contains("no @Async at all")),
+				() -> "Expected a listener declaring its platform event via @TransactionalEventListener("
+						+ "classes = …) — no method parameter — to be examined and rejected, but got: "
+						+ violations);
+	}
+
+	/**
 	 * Non-vacuous by construction: {@code listenersOf} has asserted the fixture <em>is</em> a
 	 * listener, and {@link MailListenerRuleFixtures.InlineListener} — the same annotations minus the
 	 * platform event — is rejected by {@link #listenerWithNoAsyncIsRejected}. So an empty result here
