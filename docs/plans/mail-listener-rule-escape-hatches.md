@@ -193,11 +193,10 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `full /code-review fan-out run; F-5/F-6 fixed — merging via PR #412`
+**Stage pointer:** `DONE — merged via PR #412`
 
-**Next action:** Confirm CI green on the F-5/F-6 commit, then merge PR #412 and run close-out
-steps 1-3 + 6-7 (verify #409 closed, note the slice on epic #367, confirm the PR-activity
-subscription ended, notify).
+**Next action:** None. All gates passed on head `baa665a` (10/10 checks green, both review
+halves run, Sonar clear with its one finding deferred to #416).
 
 **Merged via PR #412.** (Recorded pre-merge on purpose — a squash SHA cannot exist before
 the merge, and citing one guarantees a second docs-only PR; `pr-gates.md` §3 step 4.)
@@ -206,7 +205,7 @@ the merge, and citing one guarantees a second docs-only PR; `pr-gates.md` §3 st
 |-------|--------|---------|
 | 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
 | 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | `d7ecbe8` |
-| 2 — PR #412, review gate, Sonar gate, close-out | ✅ | `6055036` (F-1..F-3), `b77f627`, `0072e60` |
+| 2 — PR #412, review gate, Sonar gate, close-out | ✅ | `6055036` (F-1..F-3), `b77f627`, `0072e60`, `0ead7ec` (F-4), `3044860` (F-5/F-6), `baa665a` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -419,6 +418,7 @@ static List<String> executorIsolationViolations(List<Method> listeners) {
 - [x] **AC-5:** Same run → `classLevelAsyncIsHonoured` and `containerLifecycleListenerIsOutOfScope` PASS.
 - [x] **AC-6:** Same run → `beforeCommitPhaseIsRejected` PASS.
 - [x] **Collector branch coverage (F-2):** Same run → `listenerWithNoAsyncIsRejected` PASS.
+- [x] **Carve-out branch coverage (F-5):** Same run → `anEventTypeDeclaredOnTheAnnotationIsInScope` PASS; mutation-verified (stubbing `listensToAPlatformEvent` to `false` fails this test and only this test). 11 tests, 0 failures.
 - [x] **AC-7:** Same run → `theCompliantShapePasses` PASS.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
@@ -441,4 +441,4 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — deliberately left unticked: `/code-review` is not registered in this session, so the gate ran as `/review 412` + `riviera-review-overlay` (the documented degraded mode). Stated on PR #412 rather than ticked silently (`pr-gates.md` §1; case history PR #353/#355).
+- [x] **The review gate ran in full** — both halves. `/review 412` + `riviera-review-overlay` ran first (3 findings, F-1..F-3) while `/code-review` was unregistered; the plugin skill then became available, the human authorised the subagents, and the full five-agent fan-out ran (2 further findings, F-5/F-6 — the #351 case history holding exactly). All fixed and re-verified.
