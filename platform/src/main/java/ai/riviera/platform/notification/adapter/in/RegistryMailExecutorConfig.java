@@ -1,10 +1,20 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import ai.riviera.platform.shared.ObservabilityMetrics;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -69,22 +79,67 @@ class RegistryMailExecutorConfig {
 	private static final Logger log = LoggerFactory.getLogger(RegistryMailExecutorConfig.class);
 
 	@Bean(name = MAIL_EXECUTOR, defaultCandidate = false)
-	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props) {
+	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props, MeterRegistry meters) {
+		SaturationPolicy saturation = new SaturationPolicy(meters);
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
 		pool.setCorePoolSize(props.poolSize());
 		pool.setMaxPoolSize(props.poolSize());
 		pool.setQueueCapacity(props.queueCapacity());
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
-		pool.setRejectedExecutionHandler((task, executor) -> shed());
+		pool.setRejectedExecutionHandler(saturation);
+		pool.setTaskDecorator(saturation);
 		// A short grace for sends already in flight; whatever does not finish stays outstanding.
 		pool.setWaitForTasksToCompleteOnShutdown(true);
 		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
 		return pool;
 	}
 
-	/** Never the recipient or the booking code (invariant #7); the correlation id rides the MDC. */
-	private static void shed() {
-		log.warn("Registry mail executor saturated; the send was shed and stays outstanding for the "
-				+ "next restart's republish");
+	/**
+	 * What saturation does: <strong>count every shed send, escalate once per episode</strong> (#408).
+	 *
+	 * <p>The <em>counter</em> is the signal to alert on. Before #408 the shed path logged and nothing
+	 * else, so "how often did we shed?" was answerable only by grepping logs and no alert could watch
+	 * it; {@link ObservabilityMetrics#MAIL_REGISTRY_SHED} makes it a Prometheus series. It increments
+	 * unconditionally and before the flag is consulted, so throttling the log can never cost a count.
+	 *
+	 * <p>The <em>log</em> is one escalated line per episode, not per rejected task. At saturation the
+	 * handler fires once per send, so a wedged relay during a booking burst would otherwise bury the
+	 * lines that matter under hundreds of identical ones. An episode ends when the pool makes
+	 * progress — the decorator clears the flag as a queued task actually starts — so a genuinely new
+	 * saturation escalates again rather than being silenced, and a sustained outage reads as a
+	 * heartbeat rather than a flood. {@code ERROR} rather than {@code WARN} because a shed send is
+	 * not merely delayed: nothing retries it until the next restart's republish (or #405's admin
+	 * resubmission), which can be days, and until then a paying tourist has no arrival code by mail.
+	 *
+	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both would defeat
+	 * the bulkhead. The line carries no recipient and no booking code (invariant #7); the correlation
+	 * id rides the MDC.
+	 */
+	private static final class SaturationPolicy implements RejectedExecutionHandler, TaskDecorator {
+
+		private final Counter shed;
+		private final AtomicBoolean episodeOpen = new AtomicBoolean();
+
+		SaturationPolicy(MeterRegistry meters) {
+			this.shed = meters.counter(ObservabilityMetrics.MAIL_REGISTRY_SHED);
+		}
+
+		@Override
+		public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
+			shed.increment();
+			if (episodeOpen.compareAndSet(false, true)) {
+				log.error("Registry mail executor saturated; sends are being shed and stay outstanding "
+						+ "for the next restart's republish. Further sheds in this episode are counted "
+						+ "under {} rather than logged", ObservabilityMetrics.MAIL_REGISTRY_SHED);
+			}
+		}
+
+		@Override
+		public Runnable decorate(Runnable task) {
+			return () -> {
+				episodeOpen.set(false);
+				task.run();
+			};
+		}
 	}
 }

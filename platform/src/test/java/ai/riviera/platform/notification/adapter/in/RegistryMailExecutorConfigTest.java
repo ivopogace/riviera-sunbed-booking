@@ -7,7 +7,19 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,10 +50,51 @@ class RegistryMailExecutorConfigTest {
 	/** The shipped defaults, spelled out — #408 made them properties, so nothing asserts them by identity. */
 	private static final RegistryMailProperties SHIPPED = new RegistryMailProperties(2, 200);
 
-	private static ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props) {
-		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig().registryMailExecutor(props);
+	/**
+	 * One thread, one queue slot — the smallest pool that can saturate, so an episode is reached in
+	 * three submissions rather than two hundred and every boundary in it stays deterministic.
+	 */
+	private static final RegistryMailProperties TINY = new RegistryMailProperties(1, 1);
+
+	private static final int SHED_SENDS = 5;
+
+	private final MeterRegistry meters = new SimpleMeterRegistry();
+	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+	private ch.qos.logback.classic.Logger configLogger;
+
+	@BeforeEach
+	void captureLogs() {
+		logs.start();
+		configLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RegistryMailExecutorConfig.class);
+		configLogger.addAppender(logs);
+	}
+
+	@AfterEach
+	void releaseLogs() {
+		configLogger.detachAppender(logs);
+		logs.stop();
+	}
+
+	private ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props) {
+		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig().registryMailExecutor(props, meters);
 		pool.afterPropertiesSet();
 		return pool;
+	}
+
+	private double shedCount() {
+		return meters.counter(ObservabilityMetrics.MAIL_REGISTRY_SHED).count();
+	}
+
+	private long escalations() {
+		return logs.list.stream().filter(event -> event.getLevel() == Level.ERROR).count();
+	}
+
+	/** Occupies a worker thread until {@code gate} opens, signalling {@code running} once it holds one. */
+	private static Runnable wedge(CountDownLatch running, CountDownLatch gate) {
+		return () -> {
+			running.countDown();
+			awaitQuietly(gate);
+		};
 	}
 
 	@Test
@@ -94,6 +147,92 @@ class RegistryMailExecutorConfigTest {
 		// …and the task is dropped rather than deferred: it stays unrun even after the pool drains.
 		assertFalse(shedTaskRan.get(),
 				"a shed send must not run on the caller's thread, now or later; the registry keeps the work");
+	}
+
+	@Test
+	void everyShedSendIncrementsTheCounter() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
+		CountDownLatch gate = new CountDownLatch(1);
+		CountDownLatch running = new CountDownLatch(1);
+
+		try {
+			pool.execute(wedge(running, gate));
+			assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			pool.execute(() -> { });
+
+			for (int i = 0; i < SHED_SENDS; i++) {
+				pool.execute(() -> { });
+			}
+
+			assertEquals(SHED_SENDS, shedCount(),
+					"the shed path must be attributable: one increment per send that never reached the "
+							+ "relay, so 'how often did we shed?' is answerable without grepping logs");
+		}
+		finally {
+			gate.countDown();
+			pool.shutdown();
+		}
+	}
+
+	@Test
+	void aSaturationEpisodeLogsOnceNotOncePerShedTask() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
+		CountDownLatch gate = new CountDownLatch(1);
+		CountDownLatch running = new CountDownLatch(1);
+
+		try {
+			pool.execute(wedge(running, gate));
+			assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			pool.execute(() -> { });
+
+			for (int i = 0; i < SHED_SENDS; i++) {
+				pool.execute(() -> { });
+			}
+
+			assertEquals(1, escalations(),
+					"a wedged relay must not turn one incident into one log line per rejected send; "
+							+ "the counter carries the volume, the log carries the event");
+			assertEquals(SHED_SENDS, shedCount(), "throttling the log must not throttle the counter");
+		}
+		finally {
+			gate.countDown();
+			pool.shutdown();
+		}
+	}
+
+	@Test
+	void aLaterEpisodeLogsAgain() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
+		CountDownLatch firstGate = new CountDownLatch(1);
+		CountDownLatch firstRunning = new CountDownLatch(1);
+		CountDownLatch secondGate = new CountDownLatch(1);
+		CountDownLatch secondRunning = new CountDownLatch(1);
+		CountDownLatch queuedRan = new CountDownLatch(1);
+
+		try {
+			pool.execute(wedge(firstRunning, firstGate));
+			assertTrue(firstRunning.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			pool.execute(queuedRan::countDown);
+			pool.execute(() -> { });
+			assertEquals(1, escalations(), "the first episode opens with one escalated line");
+
+			// The pool makes progress, which is what ends an episode.
+			firstGate.countDown();
+			assertTrue(queuedRan.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+			pool.execute(wedge(secondRunning, secondGate));
+			assertTrue(secondRunning.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			pool.execute(() -> { });
+			pool.execute(() -> { });
+
+			assertEquals(2, escalations(),
+					"a throttle that silences a genuinely new incident is worse than the flood it "
+							+ "replaced — the flag clears as soon as the pool drains a task");
+		}
+		finally {
+			secondGate.countDown();
+			pool.shutdown();
+		}
 	}
 
 	private static void awaitQuietly(CountDownLatch gate) {

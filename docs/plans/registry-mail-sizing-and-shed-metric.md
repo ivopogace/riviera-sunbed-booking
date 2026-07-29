@@ -216,15 +216,15 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2 (substrate docs + close-out)`
 
-**Next action:** Phase 1, step 1 — extend `RegistryMailExecutorConfigTest` red with the counter and
-the two episode-logging tests, driving submissions through `execute()` (R-3).
+**Next action:** Phase 2, step 1 — run `riviera-docs-freshness` over the branch range and patch the
+observability runbook + the CD env-var list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — externalise + validate the two bounds | ✅ | `<phase-0>` |
-| 1 — the shed counter + the per-episode escalation | | |
+| 0 — externalise + validate the two bounds | ✅ | `98c4796` |
+| 1 — the shed counter + the per-episode escalation | ✅ | `<phase-1>` |
 | 2 — substrate docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -332,7 +332,8 @@ touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-29 | phase 0 (new pattern: guarding a numeric config knob whose non-positive value degrades *silently* rather than loudly) | every bound numeric property in the codebase, asking "what does `0` do here?" | `rg 'int \|long ' --include=*Properties.java src/main/java` then read each use site | 6 knobs; **2 are the same defect class, both verified by reading the use site, not assumed**: (a) `RateLimitProperties.maxTrackedKeys=0` → `RateLimitFilter:499` `buckets.size() >= 0` is true on *every* new key, so `buckets.clear()` (line 503) wipes every other key's spent tokens on each miss — the rate limiter degrades to near-useless while booting cleanly and saying so only at `DEBUG`; (b) `CustomerRetentionProperties.batchSize=0` → `expiredGuestCandidates(cutoff, 0)` → `LIMIT 0`, a sweep that silently scrubs nothing forever. The `MoneyPathAlert` thresholds are **not** candidates — `0` is their documented "alert on any" value | **Subset — fix neither here, file one follow-up issue.** Both are outside this slice's module and area: (a) is a security control owned by the #129/#286 arc and deserves its own review, and widening a mail-sizing PR into `RateLimitFilter` is exactly the "while I'm here" the Non-goals section guards against. Filed at close-out as **#412** rather than silently dropped |
+| 2026-07-29 | phase 0 (new pattern: guarding a numeric config knob whose non-positive value degrades *silently* rather than loudly) | every bound numeric property in the codebase, asking "what does `0` do here?" | `rg 'int \|long ' --include=*Properties.java src/main/java` then read each use site | 6 knobs; **2 are the same defect class, both verified by reading the use site, not assumed**: (a) `RateLimitProperties.maxTrackedKeys=0` → `RateLimitFilter:499` `buckets.size() >= 0` is true on *every* new key, so `buckets.clear()` (line 503) wipes every other key's spent tokens on each miss — the rate limiter degrades to near-useless while booting cleanly and saying so only at `DEBUG`; (b) `CustomerRetentionProperties.batchSize=0` → `expiredGuestCandidates(cutoff, 0)` → `LIMIT 0`, a sweep that silently scrubs nothing forever. The `MoneyPathAlert` thresholds are **not** candidates — `0` is their documented "alert on any" value | **Subset — fix neither here, file one follow-up issue.** Both are outside this slice's module and area: (a) is a security control owned by the #129/#286 arc and deserves its own review, and widening a mail-sizing PR into `RateLimitFilter` is exactly the "while I'm here" the Non-goals section guards against. **Filed at close-out** as its own issue rather than silently dropped (number recorded in Execution status once it exists) |
+| 2026-07-29 | phase 1 (new pattern: counting a discarded unit of work and escalating once per episode instead of once per event) | every site that handles a rejected/discarded task, asking "does this log per event, and is the discard counted?" | `rg 'RejectedExecutionHandler\|TaskRejectedException\|RejectedExecutionException' --include=*.java src/main/java` | 2 sites — this slice's `SaturationPolicy`, and `AsyncMailDispatcher:87`, which logs one `WARN` per dropped recovery mail and has **no counter at all** | **Skip here, file as a follow-up.** Same shape, different semantics: the recovery vehicle *drops* (bearer-credential payload, nothing durable to retry from — ADR-0011 decision 5), so unlike a shed each line describes an unrecoverable loss and may well deserve to stay per-event. Deciding that, and naming its counter, is exactly the judgment this slice's Non-goals reserved — folding it in would make the Non-goal untrue mid-PR |
 
 ---
 
