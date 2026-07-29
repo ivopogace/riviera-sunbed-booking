@@ -359,18 +359,18 @@ The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #3
 **Job:** hold the handful of edge types that bounded contexts legitimately share — the
 RFC-7807 error-contract factory (#97), the accessors that resolve an authenticated
 principal to a typed id, and the **platform's metric names** (`ObservabilityMetrics`: the
-money-path trio from #100, plus the two mail-loss counters — the registry-mail shed added by
-#408 and the recovery-mail drop added by #415). Nothing else.
+money-path trio from #100, plus the three mail-loss counters — the registry-mail shed added by
+#408, the recovery-mail drop by #415, and the recovery-mail transport failure by #423). Nothing else.
 
 > The metric-name clause is deliberately about *names*, not about observability. A name is a
 > `String` constant, compile-time-inlined, with the emission staying in the module that owns
-> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits both
-> `MAIL_REGISTRY_SHED` and `MAIL_RECOVERY_DROPPED`, including the latter's `reason` tag values,
-> which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
+> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all three of
+> `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED` and `MAIL_RECOVERY_FAILED`, including the two
+> latter's `kind`/`reason` tag values, which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
 > down" and no way to check one against the other. Note this is the one admitted type whose
-> justification is *not* "more than one module needs it": both mail counters have a single
+> justification is *not* "more than one module needs it": all three mail counters have a single
 > reader today. They are admitted for consistency of the naming convention, which is a narrower
 > claim — hold new entries to it.
 

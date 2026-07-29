@@ -31,8 +31,11 @@ emitter belongs in `notification/application`, not `shared`: `shared` holds the 
 owns the *emission*; `notification` already grants `shared`), `riviera-java-conventions` (§6a name
 the tag literals instead of inlining `"verification"`; §6 catch the narrowest type and never
 widen the swallow; §6c one-line comments, long prose to Javadoc), `riviera-local-debug` (scoped
-`gradle --no-daemon` runs; CI owns the full suite). No `postgres` (no SQL), no frontend skills
-(backend-only), no `riviera-stripe-payments` (no money).
+`gradle --no-daemon` runs; CI owns the full suite), `riviera-review-overlay` (the RV-BE/RV-STYLE/
+RV-PROC bank layered onto `/code-review` at the review gate — it found F-1 below),
+`riviera-docs-freshness` (pre-merge smoke over `origin/main...HEAD`, since the slice rewrites facts
+`CLAUDE.md` and `RESPONSIBILITIES.md` state — it confirmed F-2). No `postgres` (no SQL), no frontend
+skills (backend-only), no `riviera-stripe-payments` (no money).
 
 **Branch:** `claude/sdlc-423-kxuuka` — the cloud session's designated branch, standing in for
 `feature/recovery-mail-transport-failure-metric` per the `riviera-sdlc` remote-session addendum.
@@ -105,22 +108,27 @@ widen the swallow; §6c one-line comments, long prose to Javadoc), `riviera-loca
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Splitting one catch into two accidentally lets an exception escape onto the pooled thread — the very thing the outer net exists to prevent | low | high | Both new catches are `RuntimeException` (unchanged breadth) and cover the same two operations with nothing between them; AC-1/AC-3 assert the dispatched task completes normally on both paths | agent | open |
-| R-2 | The counter is read as "the relay is broken" while a revoked DB grant is the real cause, sending on-call to the wrong system | med | med | The `reason` tag exists precisely for this; the runbook names `transport` as the relay signal and `suppression-lookup` as a database/grant signal | agent | open |
-| R-3 | Tag cardinality creep — two tag dimensions on one series | low | low | Bounded and closed: 2 kinds × 2 reasons = 4 series, every value a compile-time constant, none derived from input | agent | open |
-| R-4 | A future third mail kind on this vehicle (operator-approval, #375) silently widens the `kind` vocabulary | low | low | The kind strings become named constants on the service, so a new kind is a visible edit next to them, and the runbook lists the vocabulary | agent | open |
-| R-5 | Module-boundary slip: emitting from `shared` instead of `notification` | low | med | `shared` holds the name only (invariant #11, the #408/#415 convention); `ModularityTests` + `PackageShapeArchitectureTests` in the phase-0 test scope | agent | open |
-| R-6 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #425 (#414) touches `RateLimitProperties`, `CustomerRetentionProperties`, `application.properties` and `data-erasure.md` — **no overlap**. No Flyway migration in this slice, so no `V<n>` claim to contend | agent | open |
+| R-1 | Splitting one catch into two accidentally lets an exception escape onto the pooled thread — the very thing the outer net exists to prevent | low | high | Both new catches are `RuntimeException` (unchanged breadth) and cover the same two operations with nothing between them; AC-1/AC-3 assert the dispatched task completes normally on both paths | agent | **closed the hard way — the risk fired.** The first cut left the suppressed-address branch between the two catches (F-5); the mitigation text asserted the opposite and the tests, which exercise only the two failure paths, could not contradict it. Restructured so both catches together cover the whole task, and the suppressed path now asserts no-throw as well |
+| R-2 | The counter is read as "the relay is broken" while a revoked DB grant is the real cause, sending on-call to the wrong system | med | med | The `reason` tag exists precisely for this; the runbook names `transport` as the relay signal and `suppression-lookup` as a database/grant signal | agent | closed — and the review found the mitigation half-done (F-4): `transport` also absorbs a defect in the mail path, so the runbook and the constant's Javadoc now say so and name the exception class in the adjacent `WARN` line as the discriminator |
+| R-3 | Tag cardinality creep — two tag dimensions on one series | low | low | Bounded and closed: 2 kinds × 2 reasons = 4 series, every value a compile-time constant, none derived from input | agent | closed — 4 series, every tag value a compile-time constant; confirmed by the review's bug scan |
+| R-4 | A future third mail kind on this vehicle (operator-approval, #375) silently widens the `kind` vocabulary | low | low | The kind strings become named constants on the service, so a new kind is a visible edit next to them, and the runbook lists the vocabulary | agent | closed — the kind strings are named constants on the service and the runbook lists the vocabulary |
+| R-5 | Module-boundary slip: emitting from `shared` instead of `notification` | low | med | `shared` holds the name only (invariant #11, the #408/#415 convention); `ModularityTests` + `PackageShapeArchitectureTests` in the phase-0 test scope | agent | closed — `ModularityTests` + `PackageShapeArchitectureTests` + `JdbcOnlyArchitectureTests` green; RV-BE-11/12 walked clean at the review gate |
+| R-6 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #425 (#414) touches `RateLimitProperties`, `CustomerRetentionProperties`, `application.properties` and `data-erasure.md` — **no overlap**. No Flyway migration in this slice, so no `V<n>` claim to contend | agent | closed — no overlap materialised; PR #425 touched none of these files and this slice added no migration |
 
 ## Open questions / Assumptions
 
-- **Assumption:** counting the non-transient suppression-lookup drop under *this* counter (rather
-  than leaving it uncounted or minting a third name) is the right call — it is the same
-  consequence (a recovery mail that will never arrive) reached one step earlier, and leaving it
-  out would create a fourth silent loss site in the slice that closes the third. — *Owner:* agent ·
-  *Resolves by:* phase 0 (recorded as decided; revisit only if review disagrees)
-- **Assumption:** `WARN` remains the right level for both lines (see Non-goals). — *Owner:* agent ·
-  *Resolves by:* review gate
+_None open._
+
+### Resolved
+
+- **Counting the non-transient suppression-lookup drop under *this* counter** (rather than leaving it
+  uncounted or minting a third name): confirmed. It is the same consequence — a recovery mail that
+  will never arrive — reached one step earlier, and leaving it out would have opened a fourth silent
+  loss site in the slice that closes the third. The review did not dispute it; F-4 sharpened the
+  *sibling* tag's wording instead. Resolved at `44e8640`.
+- **`WARN` for both lines:** confirmed at the review gate — no finding challenged it, and the
+  reasoning (a relay outage fails every send, so per-loss `ERROR` would flood exactly when read) is
+  stated on `recordLoss` and in the runbook. Resolved at `50abc7f`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -175,17 +183,17 @@ N/A — no contract change. No endpoint, DTO, or response shape is touched;
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `PR — marking ready for review, then the Review + Sonar gates`
+**Stage pointer:** `review gate — findings fixed, re-verifying CI + Sonar before merge`
 
-**Next action:** Merge latest `origin/main`, mark PR #427 ready for review, then run the review gate
-per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** Confirm CI + Sonar green on the fix push, then merge close-out (tick the epic
+checklist, close #423).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `f859ae9` (PR #427) |
 | 1 — The counter and its cause split | ✅ | `44e8640` |
 | 2 — Runbook + substrate docs | ✅ | `50abc7f` |
-| 3 — Gates (CI, review, Sonar) + close-out | | |
+| 3 — Gates (CI, review, Sonar) + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -195,7 +203,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review` agent 1, RV-PROC-1, Major) | The *Skills consulted* line omitted `riviera-review-overlay` and `riviera-docs-freshness`, though the diff rewrites substrate docs and the slice goes through the review gate — the sibling #415 listed both | fixed |
+| F-2 | review (`/code-review` agent 5, CONFIRMED) | `RESPONSIBILITIES.md`'s `shared` section still said "the two mail-loss counters" and enumerated only `MAIL_REGISTRY_SHED` + `MAIL_RECOVERY_DROPPED`; the `notification` clause a few lines above *was* updated, so the doc contradicted itself. The identical miss #415 recorded patching in `CLAUDE.md` | fixed |
+| F-3 | review (`/code-review` agent 5, PLAUSIBLE) | `isSuppressedOrFailOpen`'s pre-existing #386 Javadoc said a non-transient failure falls through "where the mail is dropped as it always was" — true about the drop, now false about the accounting, in the very PR that adds it | fixed |
+| F-4 | review (`/code-review` agent 4, Major) | `reason="transport"` is applied to *any* exception escaping the send, so a defect in the mail path (template rendering, a malformed link) shares the bucket with a dead relay — while the runbook told on-call to read any increase as "the relay is broken right now". The same "wrong system paged" shape as #415's R-2, one layer up. Fixed by stating what the tag actually claims (runbook + the constant's Javadoc) and naming the adjacent `WARN` line's exception class as the discriminator; **not** by an exception-class tag, whose cardinality is unbounded | fixed |
+| F-5 | review (`/code-review` agent 3, CONFIRMED) | The catch split narrowed the "nothing escapes the dispatched task" guarantee: the suppressed-address `log.info`/`return` ended up *between* the two try blocks, covered by neither, so an exception there would reach the single drainer thread uncounted — a loss strictly less observable than the one this slice adds. **R-1 predicted this failure mode and its mitigation text was wrong** ("nothing between them" — there was). Fixed by moving the skip branch inside the first try, so the two catches cover the whole task | fixed |
+| F-6 | sonar | Green on the implementation push: 0 new issues, 0 accepted, 0 security hotspots, 0.0% duplication, **100.0% coverage on new code** (bar ≥80%). Re-pulled from the API after the fix push | closed |
 
 ---
 
@@ -246,28 +259,30 @@ Test `TransactionalMailServiceTest.java`
       `MeterRegistry`; split the catch:
 
 ```java
-private void dispatchQuietly(String kind, String toEmail, Runnable send) {
-    dispatcher.dispatch(() -> {
-        boolean suppressed;
-        try {
-            suppressed = isSuppressedOrFailOpen(kind, toEmail);
-        }
-        catch (RuntimeException e) {
-            recordLoss(kind, REASON_SUPPRESSION_LOOKUP, e);
-            return;
-        }
-        if (suppressed) {
+// Between them the two catches cover the whole task: nothing may escape onto the drainer.
+dispatcher.dispatch(() -> {
+    try {
+        if (isSuppressedOrFailOpen(kind, toEmail)) {
             log.info("Recovery {} mail skipped: the address is suppressed", kind);
             return;
         }
-        try {
-            send.run();
-        }
-        catch (RuntimeException e) {
-            recordLoss(kind, REASON_TRANSPORT, e);
-        }
-    });
-}
+    }
+    catch (RuntimeException e) {
+        recordLoss(kind, REASON_SUPPRESSION_LOOKUP, e);
+        return;
+    }
+    try {
+        send.run();
+    }
+    catch (RuntimeException e) {
+        recordLoss(kind, REASON_TRANSPORT, e);
+    }
+});
+```
+
+> Shape as merged, after review finding F-5. The first cut computed `suppressed` in its own try and
+> put the skip branch *after* it, leaving that branch covered by neither catch.
+
 ```
 
 - [x] **Step 4: Run them, verify they pass** — the same scoped command → PASS.

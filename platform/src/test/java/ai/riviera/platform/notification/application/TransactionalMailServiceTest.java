@@ -209,9 +209,10 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
 		service.sendPasswordReset(EMAIL, LINK);
-		dispatched.get().run();
+		// The skip branch lives inside a catch too — nothing may escape onto the single drainer thread.
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 		service.sendEmailVerification(EMAIL, LINK);
-		dispatched.get().run();
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer, never()).sendPasswordReset(any(), any());
 		verify(mailer, never()).sendEmailVerification(any(), any());

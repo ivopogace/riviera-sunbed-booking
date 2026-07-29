@@ -103,9 +103,17 @@ about the relay.
 
 | Tag | Meaning | Alert when |
 |---|---|---|
-| `reason="transport"` | The relay refused the message or could not be reached (down, DNS, auth, SMTP 5xx). **This is the relay signal** | **any increase.** A sustained rise = the relay is broken *right now*, and every recovery mail is being lost for its duration |
+| `reason="transport"` | The send attempt itself failed — the relay refused the message or could not be reached (down, DNS, auth, SMTP 5xx). **This is the relay signal**, with one caveat below | **any increase.** A sustained rise usually means the relay is broken *right now*, and every recovery mail is being lost for its duration |
 | `reason="suppression-lookup"` | The pre-send suppression read failed **non-transiently** — a revoked grant, schema drift, a column renamed under `JdbcEmailSuppressions`. The mail is lost before the relay is ever reached | **any increase — but go to the database, not the mail provider.** A *transient* read failure is not here: #386 fails open and sends anyway, so it counts nothing |
 | `kind="verification"` / `kind="password-reset"` | Which recovery flow the lost mail belonged to. They ride different rate-limit budgets (register vs recovery), so a rise in only one narrows where to look | — |
+
+> **`transport` is "the send failed", not "the relay failed" — read the exception class before
+> paging the provider.** The tag is applied to *any* exception escaping the send call, so a defect
+> in the mail path itself (a template-rendering `NullPointerException`, a bad `URI`) lands in the
+> same bucket as a dead relay. That is deliberate — the alternative is an exception-class tag, whose
+> cardinality is unbounded by construction — and the discrimination lives in the `WARN` line beside
+> each increment, which carries the exception's simple name. A mail/IO exception means the provider;
+> anything else means our code, and no amount of relay-poking will move the number.
 
 **Which of the three mail counters to read first, during a suspected relay outage:**
 

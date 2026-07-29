@@ -50,7 +50,10 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * suppression-lookup failure means the database, and one counter for both would page whoever reads
  * it toward the wrong one. That is why the task's single catch is two — the split exists to name the
  * cause, not to change the handling; both still swallow, and neither line carries the address or the
- * link (invariant #7).
+ * link (invariant #7). <strong>Between them the two catches still cover the whole task</strong>, which
+ * is why the suppressed-address branch sits inside the first rather than between them: the drainer is
+ * a single thread ({@code AsyncMailDispatcher}), and an exception escaping this lambda would be a loss
+ * less observable than the one this class exists to record.
  *
  * <p><strong>The registry vehicle deliberately gets no equivalent counter.</strong> Its transport
  * failure propagates (see {@link #sendBookingConfirmation}), so the publication stays outstanding and
@@ -74,7 +77,13 @@ public class TransactionalMailService implements MailSender {
 	/** Which system failed — the whole reason the counter is tagged rather than plain. */
 	static final String REASON_TAG = "reason";
 
-	/** The relay refused or could not be reached: a mail-side outage. Investigate the provider. */
+	/**
+	 * The send attempt itself failed. Usually the relay — refused, unreachable, an SMTP 5xx — but the
+	 * tag is applied to <em>any</em> exception escaping the send, so a defect in the mail path (a
+	 * template-rendering fault, a malformed link) shares the bucket. Deliberately so: the only tag that
+	 * would separate them is the exception class, whose cardinality is unbounded by construction. The
+	 * discrimination lives in the {@code WARN} line beside each increment, which carries the class name.
+	 */
 	static final String REASON_TRANSPORT = "transport";
 
 	/** The suppression read failed non-transiently: a database/grant fault, not a relay one. */
@@ -114,18 +123,16 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	private void dispatchQuietly(String kind, String toEmail, Runnable send) {
+		// Between them the two catches cover the whole task: nothing may escape onto the drainer.
 		dispatcher.dispatch(() -> {
-			boolean suppressed;
 			try {
-				suppressed = isSuppressedOrFailOpen(kind, toEmail);
+				if (isSuppressedOrFailOpen(kind, toEmail)) {
+					log.info("Recovery {} mail skipped: the address is suppressed", kind);
+					return;
+				}
 			}
 			catch (RuntimeException e) {
-				// Also the net for a read bug that is no DataAccessException — nothing may escape here.
 				recordLoss(kind, REASON_SUPPRESSION_LOOKUP, e);
-				return;
-			}
-			if (suppressed) {
-				log.info("Recovery {} mail skipped: the address is suppressed", kind);
 				return;
 			}
 			try {
@@ -177,7 +184,10 @@ public class TransactionalMailService implements MailSender {
 	 * The trade above is argued for a blip — a wedged, timed-out or briefly unavailable read. A
 	 * structurally broken lookup (a revoked grant, schema drift, a typo'd column after a refactor) is not
 	 * a blip: failing open on it would mail <em>every</em> suppressed address indefinitely, behind one log
-	 * line. Those fall through to the caller's outer catch, where the mail is dropped as it always was.
+	 * line. Those propagate to the caller, which still drops the mail — but no longer behind one log line:
+	 * since #423 that catch is the dedicated one, recording the loss under
+	 * {@link #REASON_SUPPRESSION_LOOKUP} so a broken lookup is legible as the database fault it is rather
+	 * than as the relay fault it is not.
 	 *
 	 * <p>Deliberately <strong>not</strong> shared with {@link #sendBookingConfirmation}: on the registry
 	 * vehicle the throw is load-bearing, keeping the publication outstanding so the at-least-once
