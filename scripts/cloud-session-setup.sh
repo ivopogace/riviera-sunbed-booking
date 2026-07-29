@@ -149,19 +149,21 @@ fi
 # set of PR-review GraphQL operations — verified 2026-07-29: `gh pr diff` and
 # REST work; `gh pr view`/`gh pr list`/`gh search` 403 with a proxy hint to use
 # the REST equivalent (pr-gates.md §1 carries the substitution table).
-# The version is PINNED because only direct release-asset URLs are served —
-# both api.github.com/repos/cli/cli and the /releases/latest redirect 403
-# behind the repo-scope proxy — so "resolve latest" cannot work here. Bump the
-# pin deliberately when a newer gh is wanted.
+# The version is PINNED because only direct release-asset URLs are served for
+# cli/cli, which sits outside the session's repo scope — api.github.com/repos/
+# cli/cli and the /releases/latest redirect both 403 (unlike step 2's adoptium
+# resolve-latest, which works only when the session's GitHub scope includes
+# that repo) — so "resolve latest" cannot work for gh. Bump the pin
+# deliberately when a newer gh is wanted.
 GH_VERSION=2.76.1
 if ! command -v gh >/dev/null 2>&1; then
   echo "cloud-session-setup: installing GitHub CLI v$GH_VERSION ..." >&2
   tmp=$(mktemp -d)
   if curl -fsSL --retry 2 \
       "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" \
-      | tar -xz -C "$tmp" --strip-components=1; then
-    mkdir -p "$HOME/.local/bin"
-    cp "$tmp/bin/gh" "$HOME/.local/bin/gh"
+      | tar -xz -C "$tmp" --strip-components=1 \
+      && mkdir -p "$HOME/.local/bin" \
+      && cp "$tmp/bin/gh" "$HOME/.local/bin/gh"; then
     echo "cloud-session-setup: $("$HOME/.local/bin/gh" --version 2>/dev/null | head -1) installed." >&2
   else
     echo "cloud-session-setup: gh install failed; the review gate falls back to the GitHub MCP tools." >&2

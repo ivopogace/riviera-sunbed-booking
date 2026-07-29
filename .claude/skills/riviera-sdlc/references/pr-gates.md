@@ -58,8 +58,9 @@ restating it.
    >    command had been typed. Reading it from the installed payload at run time is what
    >    keeps Anthropic's upstream updates flowing (`scripts/ensure-plugins.sh` tracks the
    >    marketplace) — **never vendor a copy of the workflow into the repo.**
-   > 3. Only when the payload itself is absent and `bash scripts/ensure-plugins.sh` cannot
-   >    repair it does the degraded `/review <PR>` fallback below apply.
+   > 3. The degraded `/review <PR>` fallback below applies only when this ladder cannot
+   >    run the workflow: the payload is absent and `bash scripts/ensure-plugins.sh`
+   >    cannot repair it, or the review subagents genuinely cannot run.
    >
    > **`gh` in cloud sessions** — provisioned by `scripts/cloud-session-setup.sh` step 6
    > (GH_TOKEN is already in the session env). The repo-scope proxy serves REST plus a
@@ -68,11 +69,12 @@ restating it.
    > `gh pr diff N` and `gh api repos/{owner}/{repo}/...` **work**;
    > `gh pr view` / `gh pr list` / `gh search` **403** → use
    > `gh api repos/O/R/pulls/N`, `gh api "repos/O/R/pulls?state=open"`, and
-   > `gh api search/issues -f q=...`; post the final review comment with
+   > `gh api -X GET search/issues -f q=...` (the `-X GET` is load-bearing — a bare `-f`
+   > flips `gh api` to POST); post the final review comment with
    > `gh api -X POST repos/O/R/issues/N/comments -f body='...'` (verified served). The
    > GitHub MCP tools remain the substitute if `gh` is missing.
    >
-   > **Fallback, only if the subagent genuinely cannot run: `/review <PR>`** — a plain skill
+   > **Fallback, only under the ladder's rung-3 conditions: `/review <PR>`** — a plain skill
    > that runs inline against the same banks. It is weaker than
    > `/code-review`, so treat it as a degraded mode and say so in the PR.
    >

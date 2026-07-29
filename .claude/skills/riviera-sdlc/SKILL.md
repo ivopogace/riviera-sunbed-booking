@@ -219,8 +219,8 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
 - **Toolset drift:** verify a tool can actually do what a skill assumes before promising
   it (recurring: Gmail is draft-only → push is the only notification channel; `gh` IS
   provisioned in cloud sessions by `scripts/cloud-session-setup.sh` step 6, but the
-  repo-scope proxy serves REST + `gh pr diff` only — most GraphQL subcommands 403; the
-  substitution table lives in `references/pr-gates.md` §1, and the GitHub MCP tools remain
+  repo-scope proxy serves REST plus only a pinned set of PR-review GraphQL operations —
+  most GraphQL subcommands 403; the substitution table lives in `references/pr-gates.md` §1, and the GitHub MCP tools remain
   the substitute when `gh` is missing). When an instruction is impossible in the current
   toolset, do the nearest honest thing and **say so in the reply** — don't silently
   half-do it.
