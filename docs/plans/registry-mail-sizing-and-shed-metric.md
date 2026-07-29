@@ -233,7 +233,7 @@ should be attached as a sub-issue of epic #367 — #414 and #415 already are.
 | 0 — externalise + validate the two bounds | ✅ | `98c4796` |
 | 1 — the shed counter + the per-episode escalation | ✅ | `aa1065d` |
 | 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d506def` |
-| 3 — review-gate findings F-1..F-3 + close-out | ✅ | `88ba19d`, `ba313d3` |
+| 3 — review-gate findings F-1..F-3 + close-out | ✅ | `88ba19d` + this close-out commit — which cannot cite its own SHA, the same reason step 4 says `merged via PR #413` and never a merge SHA |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
