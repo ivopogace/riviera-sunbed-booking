@@ -36,18 +36,18 @@ seeds `customer` / `booking` rows with `JdbcClient`, exactly as `RegistryMailBul
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the registry-mail bulkhead saturated (its worker wedged on an unresponsive
+- [x] **AC-1:** Given the registry-mail bulkhead saturated (its worker wedged on an unresponsive
   transport and its queue full), when a further `BookingConfirmed` is published after commit, then
   the send is **shed** — `riviera.mail.registry.shed` increments and the transport is never entered
   for that booking. *Pinned by:* `RegistryMailShedDurabilityIT.aShedSendStaysOwedAndIsDeliveredByAResubmit`
-- [ ] **AC-2:** Given that shed send, when the registry is read, then exactly one
+- [x] **AC-2:** Given that shed send, when the registry is read, then exactly one
   `event_publication` row for the confirmation listener's `listener_id` carries
   `completion_date IS NULL` — the shed mail is still **owed**, not lost. *Pinned by:* the same test.
-- [ ] **AC-3:** Given the transport recovers and the pool drains, when
+- [x] **AC-3:** Given the transport recovers and the pool drains, when
   `resubmitIncompletePublications` is called with a predicate **narrowed to the booking under test**,
   then the confirmation is delivered exactly once and the publication completes — the loop
   `republish-outstanding-events-on-restart` performs at boot. *Pinned by:* the same test.
-- [ ] **AC-4:** The saturating class cannot affect any other test's outstanding publications.
+- [x] **AC-4:** The saturating class cannot affect any other test's outstanding publications.
   *Pinned by:* structure (its own context ⇒ its own database) + `RegistryMailShedDurabilityIT.theBulkheadIsShrunkForThisContextOnly`,
   and verified by running `RegistryMailShedDurabilityIT` and `RegistryMailBulkheadIT` **repeatedly**
   (≥3 clean consecutive runs each, recorded in the AC-verification section), not once.
@@ -75,24 +75,23 @@ behaviour**; that class's four tests must stay green, which AC-4's repeat runs a
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Copy-pasting the sibling IT's fixtures (blocking mailer, booking seeding, registry query) trips the Sonar **0-duplicated-blocks** merge bar | high | med | Extract `ControllableMailer`, `ControllableMailerConfiguration` and `ConfirmationMailFixtures` as shared test types; both ITs consume them | Claude | closed — extracted in phase 1 |
-| R-2 | Saturation is timing-dependent and flakes (the #406 failure mode) | med | high | Sequence on **observable pool state**, not sleeps: await the wedge's transport entry, then `pool.getQueueSize() == 1`, only then publish the send that must be shed | Claude | open |
-| R-3 | A stray republished publication from an earlier IT occupies the shrunk pool and shifts which event is shed | low | high | The distinct `@TestPropertySource` yields a distinct context ⇒ a **fresh** container/database with no outstanding rows; additionally the class waits for a quiet pool before saturating | Claude | open |
-| R-4 | The narrowed resubmit re-delivers unrelated publications (#406's reproducible flake) | med | high | Predicate matches `BookingConfirmed.bookingId() == <this test's booking>`, mirroring `RegistryMailBulkheadIT`; asserted by delivery counts per address | Claude | open |
-| R-5 | Moving `ControllableMailer` out of `RegistryMailBulkheadIT` changes that class's context cache key or drops its `@TestConfiguration` pickup, silently un-wedging it | med | high | The extracted config is `@Import`ed explicitly by both classes; AC-4's repeat runs of `RegistryMailBulkheadIT` are the check | Claude | phase 1: 4/4 green after the move; repeat runs pending phase 3 |
-| R-6 | A second Postgres container + context slows CI or pressures the sandbox | med | low | Already the norm here (every `@TestPropertySource` IT does it); locally run one IT class at a time per `riviera-local-debug` | Claude | open |
-| R-7 | The shrunk pool is a **shared-state bean** — the `riviera-local-debug` full-suite failure class | low | med | The bean is context-scoped and this context is not shared; the class leaves no publication outstanding and releases the transport in `@AfterEach` | Claude | open |
+| R-2 | Saturation is timing-dependent and flakes (the #406 failure mode) | med | high | Sequence on **observable pool state**, not sleeps: await the wedge's transport entry, then `pool.getQueueSize() == 1`, only then publish the send that must be shed | Claude | closed — 3/3 + 3/3 + 3/3 combined, `3e783be` |
+| R-3 | A stray republished publication from an earlier IT occupies the shrunk pool and shifts which event is shed | low | high | The distinct `@TestPropertySource` yields a distinct context ⇒ a **fresh** container/database with no outstanding rows; additionally the class waits for a quiet pool before saturating | Claude | closed — `awaitQuietPool()` in `3e783be` |
+| R-4 | The narrowed resubmit re-delivers unrelated publications (#406's reproducible flake) | med | high | Predicate matches `BookingConfirmed.bookingId() == <this test's booking>`, mirroring `RegistryMailBulkheadIT`; asserted by delivery counts per address | Claude | closed — narrowed in `3e783be` |
+| R-5 | Moving `ControllableMailer` out of `RegistryMailBulkheadIT` changes that class's context cache key or drops its `@TestConfiguration` pickup, silently un-wedging it | med | high | The extracted config is `@Import`ed explicitly by both classes; AC-4's repeat runs of `RegistryMailBulkheadIT` are the check | Claude | closed — 4 tests × 3 clean runs, `fa519c8`/`3e783be` |
+| R-6 | A second Postgres container + context slows CI or pressures the sandbox | med | low | Already the norm here (every `@TestPropertySource` IT does it); locally run one IT class at a time per `riviera-local-debug` | Claude | closed — combined local run ~1m; CI timing watched on the PR |
+| R-7 | The shrunk pool is a **shared-state bean** — the `riviera-local-debug` full-suite failure class | low | med | The bean is context-scoped and this context is not shared; the class leaves no publication outstanding and releases the transport in `@AfterEach` | Claude | closed locally (`No publications outstanding!` at context shutdown); full-suite confirmation is the PR's CI run |
 
 ## Open questions / Assumptions
 
-- **Assumption:** with the async dispatch rejected, Spring Modulith never marks the publication
-  complete — completion is registered *inside* the listener invocation, which never happens.
-  Today's `RegistryMailBulkheadIT.aFailedSendLeavesThePublicationOutstandingAndIsRetried` implies it
-  for a *throwing* send; AC-2 is what proves it for a *never-invoked* one. — *Owner:* Claude ·
-  *Resolves by:* phase 1 (the test is the proof; if it is false, #407 has found a real defect and
-  the slice escalates to a bug).
+_(none open)_
 
 ### Resolved
 
+- **Assumption (phase 2, `3e783be`):** with the async dispatch rejected, Spring Modulith never marks
+  the publication complete — completion is registered *inside* the listener invocation, which never
+  happens. **Confirmed:** the shed booking's row reads `completion_date IS NULL` and the resubmit
+  then completes it. The shed contract's claim holds; #407 found a coverage gap, not a defect.
 - **Open question (from the issue text):** *"shrinking the pool via properties presumes the sizing
   is externalised, which it is not yet."* — **Stale.** #408 shipped `RegistryMailProperties`
   (`riviera.notification.registry-mail.pool-size` / `.queue-capacity`, validated on both ends), so
@@ -159,16 +158,17 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2 — the saturation IT)`
+**Stage pointer:** `PR ready-for-review → review gate`
 
-**Next action:** write `RegistryMailShedDurabilityIT` and run it scoped.
+**Next action:** run the Review gate (`references/pr-gates.md` §1 ladder + `riviera-review-overlay`),
+then the Sonar gate's issue list; record findings below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + branch | ✅ | plan doc + draft PR #432 |
-| 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | ✅ | this commit |
-| 2 — `RegistryMailShedDurabilityIT` (red → green) | | |
-| 3 — Repeat-run verification (AC-4) + close-out | | |
+| 0 — Plan doc + branch | ✅ | `9a2d38c` (draft PR #432) |
+| 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | ✅ | `fa519c8` |
+| 2 — `RegistryMailShedDurabilityIT` (red → green) | ✅ | `3e783be` |
+| 3 — Repeat-run verification (AC-4) + close-out | ⏳ | local runs done; gates pending |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -218,22 +218,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `RegistryMailShedDurabilityIT`
 
-- [ ] **Step 1: Write the test** — `@TestPropertySource` shrinking the bulkhead to `1/1`; wedge the
+- [x] **Step 1: Write the test** — `@TestPropertySource` shrinking the bulkhead to `1/1`; wedge the
       single worker with a real confirmation send, fill the single queue slot with a second, then
       publish a third whose dispatch must be shed. Assert (AC-1) the shed counter moved and the
       transport was never entered for that booking; (AC-2) its publication is outstanding under the
       listener's `listener_id`; (AC-3) after release + drain, a **narrowed** resubmit delivers it and
       completes the publication.
-- [ ] **Step 2: Run it** — `gradle --no-daemon --console=plain test --tests "*RegistryMailShedDurabilityIT*"`.
-- [ ] **Step 3: Commit** — `test(#407): prove a shed confirmation mail stays owed`.
+- [x] **Step 2: Run it** — `gradle --no-daemon --console=plain test --tests "*RegistryMailShedDurabilityIT*"`
+      → PASS. Then a falsification pass: with `queue-capacity=3` the third send is queued rather than
+      shed and both tests FAIL (`AssertionError` at the shed-counter assertion), so the assertion has
+      teeth. Property restored before the commit.
+- [x] **Step 3: Commit** — `test(#407): prove a shed confirmation mail stays owed` (`3e783be`).
 
 ## Phase 3 — Repeat-run verification (AC-4) + close-out
 
-- [ ] **Step 1:** Run `RegistryMailShedDurabilityIT` **3×** and `RegistryMailBulkheadIT` **3×**,
+- [x] **Step 1:** Run `RegistryMailShedDurabilityIT` **3×** and `RegistryMailBulkheadIT` **3×**,
       consecutively, and record the results in the AC-verification section. One clean run is not
-      evidence for a class whose predecessor flaked 1-in-7.
-- [ ] **Step 2:** Run the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`,
-      `*PackageShapeArchitectureTests*`) — cheap, and this slice adds files under `platform/`.
+      evidence for a class whose predecessor flaked 1-in-7. Also ran **both classes together in one
+      JVM 3×** — the arrangement in which #406's interference actually surfaced.
+- [x] **Step 2:** Run the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`,
+      `*PackageShapeArchitectureTests*`) plus the mail-executor neighbours
+      (`*MailListenerExecutorArchitectureTest*`, `*RegistryMailExecutorConfigTest*`,
+      `*RegistryMailExecutorWiringIT*`, `*RegistryMailPropertiesTest*`) — all green.
 - [ ] **Step 3:** Mark the PR ready for review; run the Review + Sonar gates; finalize this section.
 
 ---
@@ -248,18 +254,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-> The gate before claiming done. Filled with the real command output + commit SHA as each
-> AC is actually verified — never in advance.
+> Filled with the real command output + commit SHA as each AC is actually verified.
 
-- [ ] **AC-1:** Run `gradle --no-daemon --console=plain test --tests "*RegistryMailShedDurabilityIT*"`
-      → expect PASS on the shed-counter delta and zero transport entries for the shed booking.
-      Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run — one `event_publication` row, `completion_date IS NULL`, under the
-      confirmation listener's `listener_id`. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run — the narrowed resubmit delivers exactly one mail to that address and drives
-      the outstanding count to 0. Verified at commit `<sha>`.
-- [ ] **AC-4:** 3 consecutive clean runs of `RegistryMailShedDurabilityIT` **and** 3 of
-      `RegistryMailBulkheadIT`, results recorded here. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle --no-daemon --console=plain test --tests "*RegistryMailShedDurabilityIT*"`
+      → PASS. The test asserts the `riviera.mail.registry.shed` delta ≥ 1 immediately after the
+      commit that is shed, and zero transport entries for that booking once the pool is idle again.
+      Falsified deliberately at `queue-capacity=3` (third send queued, not shed) → `AssertionError`.
+      Verified at commit `3e783be`.
+- [x] **AC-2:** Same run — `outstandingMailPublications(407_000_703)` is exactly 1 under the
+      confirmation listener's `listener_id`, read from the real `event_publication` table.
+      Verified at commit `3e783be`.
+- [x] **AC-3:** Same run — the narrowed resubmit delivers exactly one mail to that address and drives
+      the outstanding count to 0; the context logs `No publications outstanding!` at shutdown, so the
+      class strands nothing. Verified at commit `3e783be`.
+- [x] **AC-4:** `RegistryMailShedDurabilityIT` **3/3** clean, `RegistryMailBulkheadIT` **3/3** clean,
+      and the two together in one JVM **3/3** clean (`--rerun` each time, so no cached results).
+      Structurally, the shrunk pool and the strandable publications live in this class's own context
+      and its own Testcontainers database. Verified at commit `3e783be`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
