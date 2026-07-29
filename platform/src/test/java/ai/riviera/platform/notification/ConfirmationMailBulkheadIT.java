@@ -4,6 +4,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -107,6 +109,9 @@ class ConfirmationMailBulkheadIT {
 
 	@Autowired
 	PlatformTransactionManager txManager;
+
+	@Autowired
+	IncompleteEventPublications incompletePublications;
 
 	@BeforeEach
 	void rearmProbe() {
@@ -195,6 +200,48 @@ class ConfirmationMailBulkheadIT {
 				.as("registry-borne mail must not share the money path's executor")
 				.startsWith(ConfirmationMailExecutorConfig.THREAD_NAME_PREFIX)
 				.doesNotStartWith("task-");
+	}
+
+	/**
+	 * AC-4 — registry durability after the decomposition, on the side the existing suite never covered.
+	 * {@code BookingConfirmationMailIT} proves a <em>completed</em> publication is not redelivered; this
+	 * proves the other half, which is the entire reason #383 could not be folded into #371: a listener
+	 * that threw must leave its publication outstanding, and resubmission — what
+	 * {@code republish-outstanding-events-on-restart} does at boot — must deliver it. Silently losing
+	 * that would turn at-least-once into fire-and-forget with no failing test.
+	 *
+	 * <p>The failure is injected through the probe rather than the recording {@code MockMailer}: a
+	 * fail-on-demand hook on the production mock would be test-only machinery in shipped code.
+	 */
+	@Test
+	void aFailedSendStaysOutstandingAndIsRedeliveredOnResubmission() {
+		SeededBooking succeeded = seed("CONFIRMED");
+		publishInTransaction(confirmedEvent(succeeded));
+		Awaitility.await().atMost(WAIT).until(() -> probe.deliveriesOf(codeOf(succeeded)) == 1L);
+
+		probe.failSends();
+		SeededBooking failed = seed("CONFIRMED");
+		publishInTransaction(confirmedEvent(failed));
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(outstandingFor(failed.id()))
+				.as("a transport failure must leave the publication outstanding").isEqualTo(1L));
+
+		probe.deliverSends();
+		incompletePublications.resubmitIncompletePublications(publication -> true);
+
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			assertThat(probe.deliveriesOf(codeOf(failed)))
+					.as("resubmission must redeliver the failed send").isEqualTo(1L);
+			assertThat(outstandingFor(failed.id()))
+					.as("a redelivered publication must then complete").isZero();
+		});
+		assertThat(probe.deliveriesOf(codeOf(succeeded)))
+				.as("resubmission must NOT redeliver a publication the registry already completed")
+				.isEqualTo(1L);
+	}
+
+	private String codeOf(SeededBooking booking) {
+		return jdbc.sql("SELECT code FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(String.class).single();
 	}
 
 	/** Fill both threads and the single configured queue slot, so the next submission is rejected. */
@@ -315,9 +362,11 @@ class ConfirmationMailBulkheadIT {
 
 		private final DataSource dataSource;
 		private final AtomicInteger blocked = new AtomicInteger();
+		private final List<String> delivered = new CopyOnWriteArrayList<>();
 
 		private volatile CountDownLatch sent = new CountDownLatch(1);
 		private volatile CountDownLatch gate;
+		private volatile boolean failing;
 		private volatile boolean transactionActive = true;
 		private volatile boolean connectionBound = true;
 		private volatile String sendThreadName = "";
@@ -332,6 +381,13 @@ class ConfirmationMailBulkheadIT {
 			connectionBound = TransactionSynchronizationManager.hasResource(dataSource);
 			sendThreadName = Thread.currentThread().getName();
 			sent.countDown();
+
+			if (failing) {
+				// What a relay outage looks like to the listener: the throw is load-bearing, since it is
+				// what keeps the publication outstanding for the registry to retry.
+				throw new IllegalStateException("probe: simulated transport failure");
+			}
+			delivered.add(confirmation.bookingCode());
 
 			CountDownLatch parked = gate;
 			if (parked != null) {
@@ -359,6 +415,8 @@ class ConfirmationMailBulkheadIT {
 		/** The bean is a context singleton, so each test re-arms the latch and the recorded state. */
 		void reset() {
 			releaseSends();
+			failing = false;
+			delivered.clear();
 			sent = new CountDownLatch(1);
 			transactionActive = true;
 			connectionBound = true;
@@ -367,6 +425,20 @@ class ConfirmationMailBulkheadIT {
 
 		void blockSends() {
 			gate = new CountDownLatch(1);
+		}
+
+		/** Model a relay outage: every send throws, as the real transport does (#371's propagation rule). */
+		void failSends() {
+			failing = true;
+		}
+
+		void deliverSends() {
+			failing = false;
+		}
+
+		/** How many times this booking code was actually handed to the transport. */
+		long deliveriesOf(String code) {
+			return delivered.stream().filter(code::equals).count();
 		}
 
 		void releaseSends() {

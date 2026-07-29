@@ -84,12 +84,15 @@ not be renamed. Already exists and is checked out.
   (fact 9 proves the money path is safe from framework sources; this AC is the regression test
   that keeps it true across upgrades)
 
-- [ ] **AC-4 (registry durability intact — the reason this wasn't done in #371):** Given a
+- [x] **AC-4 (registry durability intact — the reason this wasn't done in #371):** Given a
   `BookingConfirmed` whose listener failed, when outstanding publications are resubmitted
   (what `republish-outstanding-events-on-restart` does at boot), then the confirmation mail
   is delivered; and given one that succeeded, resubmission produces **no** second mail.
-  *Pinned by:* `BookingConfirmationMailIT.resubmittingOutstandingPublicationsRedeliversOnlyTheFailedOne`
-  (extends the existing AC-4 case, which today only covers the completed side)
+  *Pinned by:* `ConfirmationMailBulkheadIT.aFailedSendStaysOutstandingAndIsRedeliveredOnResubmission`
+  — **moved off `BookingConfirmationMailIT`**, which the plan originally named: proving the *failed*
+  side needs a transport that fails on demand, and adding a fail-next hook to the production
+  `MockMailer` would put test-only machinery in shipped code. The bulkhead IT's probe is test-only
+  and already exists. `BookingConfirmationMailIT` keeps the completed half, unchanged
 
 - [x] **AC-5 (no orphaned publications):** Given the decomposition in phase 1, when a
   `BookingConfirmed` publication is written, then its `listener_id` is byte-identical to
@@ -105,7 +108,7 @@ not be renamed. Already exists and is checked out.
   `applicationTaskExecutor` (`task-`). *Pinned by:*
   `ConfirmationMailBulkheadIT.theListenerRunsOnItsOwnPool`
 
-- [ ] **AC-7 (no regression to the shipped behaviour):** Given the existing #371/#382/#390
+- [x] **AC-7 (no regression to the shipped behaviour):** Given the existing #371/#382/#390
   suite, when the change lands, then `BookingConfirmationMailIT`, `MailSenderWiringIT`,
   `TransactionalMailServiceTest`, `SuppressedConfirmationMailDeliveryTest` and
   `ModularityTests` all still pass unchanged. *Pinned by:* those classes, run as the
@@ -341,17 +344,18 @@ altered.
 > stage's `riviera-sdlc` reference file) before acting. Update it in the SAME commit window
 > as the change it records.
 
-**Stage pointer:** `implement — phases 0 and 1 complete, phase 2 next`
+**Stage pointer:** `implement — phases 0-2 complete, phase 3 (substrate close-out) next`
 
-**Next action:** Start **phase 2** — the only AC still unpinned is **AC-4**, the *failed*-publication
-half of registry durability (`BookingConfirmationMailIT` covers the completed half today). Everything
-else is green; see the AC checkboxes.
+**Next action:** Start **phase 3** — the substrate close-out: resolve **OQ-3** (amend ADR-0011 vs
+Javadoc + `RESPONSIBILITIES.md` only), update `AsyncMailDispatcher`'s Javadoc so its stated rule
+reads as holding for both vehicles, correct `CLAUDE.md`'s "gated on #370 alone" line, and record
+R-4's interaction on #372. **Every AC (1-7) is now green.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Take the transaction off the send (**+ decomposition, AC-5**) | ✅ | `eb442c4` |
 | 1 — Dedicated bounded executor (qualifier + bean only) | ✅ | `e1545ab` |
-| 2 — Registry durability + saturation proof | | |
+| 2 — Registry durability + saturation proof | ✅ | `<phase-2 sha>` |
 | 3 — Substrate: ADR/RESPONSIBILITIES/Javadoc close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
