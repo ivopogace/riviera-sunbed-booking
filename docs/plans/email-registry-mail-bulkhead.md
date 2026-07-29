@@ -63,19 +63,19 @@ not be renamed. Already exists and is checked out.
 > test class. Prose is not an AC. **Write each AC against the application boundary —
 > the inner hexagon — not the outside technology.**
 
-- [ ] **AC-1 (the issue's headline):** Given a `Mailer` that blocks indefinitely on
+- [x] **AC-1 (the issue's headline):** Given a `Mailer` that blocks indefinitely on
   `sendBookingConfirmation`, when enough bookings are confirmed to occupy every mail
   thread and then one further `PaymentConfirmed` is published, then that booking still
   reaches `CONFIRMED` and its `BookingConfirmed` still accrues exactly one
   `payout_ledger_entry`, within a bounded wait. *Pinned by:*
   `ConfirmationMailBulkheadIT.aBlockedRelayDoesNotDelayTheMoneyPath`
 
-- [ ] **AC-2 (the connection half):** Given the same blocking mailer, when it is called,
+- [x] **AC-2 (the connection half):** Given the same blocking mailer, when it is called,
   then no transaction is active on that thread and no `DataSource` resource is bound to it
   — i.e. the SMTP call holds no pooled connection. *Pinned by:*
   `ConfirmationMailBulkheadIT.theSendHoldsNoTransactionAndNoConnection`
 
-- [ ] **AC-3 (bounded, with documented saturation):** Given the mail executor's queue is
+- [x] **AC-3 (bounded, with documented saturation):** Given the mail executor's queue is
   full, when a further `BookingConfirmed` is delivered, then the booking still reaches
   `CONFIRMED` and accrues its payout entry, and that event's publication row is left
   **incomplete** (`completion_date IS NULL`) — the send is shed, never silently marked done,
@@ -91,7 +91,7 @@ not be renamed. Already exists and is checked out.
   *Pinned by:* `BookingConfirmationMailIT.resubmittingOutstandingPublicationsRedeliversOnlyTheFailedOne`
   (extends the existing AC-4 case, which today only covers the completed side)
 
-- [ ] **AC-5 (no orphaned publications):** Given the decomposition in phase 1, when a
+- [x] **AC-5 (no orphaned publications):** Given the decomposition in phase 1, when a
   `BookingConfirmed` publication is written, then its `listener_id` is byte-identical to
   the pre-change value
   (`ai.riviera.platform.notification.adapter.in.BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)`),
@@ -100,7 +100,7 @@ not be renamed. Already exists and is checked out.
   with the decomposition (fact 10), and folded into the bulkhead IT rather than a class of its
   own so the two assertions share one Spring context
 
-- [ ] **AC-6 (its own pool):** Given a `BookingConfirmed`, when the listener runs, then it
+- [x] **AC-6 (its own pool):** Given a `BookingConfirmed`, when the listener runs, then it
   runs on a thread whose name carries the dedicated confirmation-mail prefix and **not** on
   `applicationTaskExecutor` (`task-`). *Pinned by:*
   `ConfirmationMailBulkheadIT.theListenerRunsOnItsOwnPool`
@@ -341,17 +341,16 @@ altered.
 > stage's `riviera-sdlc` reference file) before acting. Update it in the SAME commit window
 > as the change it records.
 
-**Stage pointer:** `implement — phase 0 complete, phase 1 next`
+**Stage pointer:** `implement — phases 0 and 1 complete, phase 2 next`
 
-**Next action:** Start **phase 1, step 1** — the failing AC-1/AC-3/AC-6 tests, then the
-`ConfirmationMailExecutor` bean and the `@Async("confirmationMailExecutor")` qualifier. Phase 1
-is now purely additive: the decomposition already landed in phase 0 (see its correction note),
-so the listener's annotations only gain a qualifier. Its `listener_id` is frozen and asserted.
+**Next action:** Start **phase 2** — the only AC still unpinned is **AC-4**, the *failed*-publication
+half of registry durability (`BookingConfirmationMailIT` covers the completed half today). Everything
+else is green; see the AC checkboxes.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Take the transaction off the send (**+ decomposition, AC-5**) | ✅ | `eb442c4` |
-| 1 — Dedicated bounded executor (qualifier + bean only) | | |
+| 1 — Dedicated bounded executor (qualifier + bean only) | ✅ | `<phase-1 sha>` |
 | 2 — Registry durability + saturation proof | | |
 | 3 — Substrate: ADR/RESPONSIBILITIES/Javadoc close-out | | |
 
@@ -457,11 +456,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   Phase 1: decompose into `@Async("<executor>")` + `@TransactionalEventListener`. Class name,
   package and method signature are **frozen** (R-1). Javadoc rewritten to carry the new
   posture and the `AsyncMailDispatcher` cross-reference.
-- `platform/src/main/java/ai/riviera/platform/notification/application/ConfirmationMailExecutor.java`
-  — **create.** The dedicated bounded `ThreadPoolTaskExecutor`, package-private
-  `@Configuration`/`@Bean` beside `AsyncMailDispatcher`. Permitted by
-  `PackageShapeArchitectureTests` (top-level `application` is in the allowed set; the class
-  depends on nothing under `adapter.*`).
+- `platform/src/main/java/ai/riviera/platform/notification/application/ConfirmationMailExecutorConfig.java`
+  — **create.** The dedicated bounded `ThreadPoolTaskExecutor` beside `AsyncMailDispatcher`, with
+  its `SaturationPolicy` (the shed handler + the per-episode-log `TaskDecorator`). Named
+  `…Config`, not `ConfirmationMailExecutor`: a `@Configuration` class registers under its own
+  decapitalized name, which collided with the `@Bean("confirmationMailExecutor")` it declares
+  (`BeanDefinitionOverrideException` at context load). Public only so `adapter/in` can name the
+  bean in `@Async`, whose value must be a compile-time constant.
+- `platform/src/main/resources/application.properties` — **modify.** The two pool knobs as
+  `${VAR:default}` placeholders (OQ-2).
 - `platform/src/test/java/ai/riviera/platform/notification/ConfirmationMailBulkheadIT.java`
   — **create.** AC-1, AC-2, AC-3, AC-6. Testcontainers + `@EnabledIfDockerAvailable`, matching
   `BookingConfirmationMailIT`'s harness.
@@ -771,7 +774,7 @@ void resubmittingOutstandingPublicationsRedeliversOnlyTheFailedOne() {
 |---|---|---|---|---|---|
 | 2026-07-29 | phase 0 | `@ApplicationModuleListener` holding a transaction across an outbound third-party call | `grep -rn "ApplicationModuleListener" --include=*.java platform/src/main/java` | 4 listener sites: `PaymentEventListener` (×2), `BookingConfirmedPayoutListener`, `BookingCancelledPayoutListener` — all DB-only; plus **`BookingRefundListener` → Stripe `RefundPort` inside `REQUIRES_NEW`** | **Deferred, not fixed.** Same shape, but bounded (Stripe timeouts `PT5S`/`PT20S` ≈ 25s vs mail's open-ended) and rarer, and it sits in `booking` + `payment`, outside this slice. Raise with the maintainer as its own issue |
 | 2026-07-29 | phase 0 | other sites relying on a non-actual-transaction propagation (which would inherit the fact-10 connection-hold trap) | `grep -rn "NOT_SUPPORTED\|Propagation.SUPPORTS\|Propagation.NEVER" --include=*.java platform/src/main/java` | none outside this listener's own Javadoc | No action — the trap is not replicated anywhere |
-| | phase 1 | outbound third-party call on the shared spine executor | | | |
+| 2026-07-29 | phase 1 | outbound third-party call still on the shared spine executor; any other unqualified `@Async` | `grep -rn "@Async" --include=*.java platform/src/main/java` + `grep -rln "ThreadPoolTaskExecutor" …` | The only `@Async` site is now this listener, qualified. Two executors exist, both in `notification` (`AsyncMailDispatcher`, `ConfirmationMailExecutorConfig`). `BookingRefundListener` → Stripe re-surfaces from phase 0 as the one remaining spine-executor outbound call | Unchanged decision: deferred to its own issue, not absorbed. No new sites |
 
 ---
 

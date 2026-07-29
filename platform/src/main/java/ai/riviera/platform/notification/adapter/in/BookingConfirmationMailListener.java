@@ -14,6 +14,7 @@ import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.ConfirmationMailExecutorConfig;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -87,7 +88,7 @@ class BookingConfirmationMailListener {
 		this.mails = mails;
 	}
 
-	@Async
+	@Async(ConfirmationMailExecutorConfig.BEAN_NAME)
 	@TransactionalEventListener
 	void on(BookingConfirmed event) {
 		long bookingId = event.bookingId().value();
