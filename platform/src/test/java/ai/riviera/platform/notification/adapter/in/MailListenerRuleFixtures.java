@@ -16,9 +16,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *   <li><strong>By existing here.</strong> They sit inside the very package the rule scans, so
  *       they are the standing proof that a test fixture no longer reads as a production
  *       violation. The old scanner resolved {@code classpath*:}, which under Gradle spans
- *       {@code build/classes/java/main} <em>and</em> {@code .../test}; this file would have
- *       failed the build with six violations that named no production code. Deleting them
- *       would leave that hole untested, not merely untidy.</li>
+ *       {@code build/classes/java/main} <em>and</em> {@code .../test}: it collected every one of
+ *       these carrying {@code @TransactionalEventListener} and failed the build over those with no
+ *       method-level {@code @Async(MAIL_EXECUTOR)} — messages naming no production code at all.
+ *       That was reproduced before the fix, not reasoned about. Deleting them would leave the hole
+ *       untested, not merely untidy.</li>
  *   <li><strong>By being fed to the collector.</strong> The rule's violation logic is a pure
  *       function of {@code List<Method>}, so every negative case — including "reverting
  *       {@code BookingConfirmationMailListener} to {@code @ApplicationModuleListener} still
@@ -79,6 +81,20 @@ final class MailListenerRuleFixtures {
 
 		@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 		@EventListener
+		void on(FixtureEvent event) {
+			never(event);
+		}
+	}
+
+	/**
+	 * In scope and registry-backed, but with no {@code @Async} anywhere — the send would run inline
+	 * on the committing thread. Also the control for {@link ContainerLifecycleListener}, which is
+	 * annotated the same way minus the platform event: this one is rejected, that one is not, so an
+	 * empty result there is the carve-out firing rather than a check that stopped working.
+	 */
+	static class InlineListener {
+
+		@TransactionalEventListener
 		void on(FixtureEvent event) {
 			never(event);
 		}

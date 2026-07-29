@@ -97,16 +97,21 @@ class MailListenerExecutorArchitectureTest {
 				+ String.join("\n - ", violations));
 	}
 
-	/** Guards against a vacuously-green rule: the import must actually reach the one listener today. */
+	/**
+	 * Guards against a vacuously-green rule. Two filters stand between a class on the classpath and
+	 * an actual assertion — the production import and the platform-event carve-out — so this asserts
+	 * the production listener survives <em>both</em>. Checking only that it was discovered would
+	 * leave the rule green if the carve-out ever swallowed it.
+	 */
 	@Test
-	void theRuleReachesTheProductionListener() {
-		boolean reached = notificationEventListeners().stream()
+	void theRuleExaminesTheProductionListener() {
+		boolean examined = inScopeListeners(notificationEventListeners()).stream()
 				.anyMatch(listener -> listener.getDeclaringClass() == BookingConfirmationMailListener.class
 						&& "on".equals(listener.getName()));
 
-		assertTrue(reached, "Expected the production import to reach BookingConfirmationMailListener#on "
-				+ "under " + NOTIFICATION_PACKAGE + " — without it the rule is vacuously green and "
-				+ "#373/#374 would inherit a check that checks nothing");
+		assertTrue(examined, "Expected the rule to examine BookingConfirmationMailListener#on under "
+				+ NOTIFICATION_PACKAGE + " — without it the rule is vacuously green and #373/#374 would "
+				+ "inherit a check that checks nothing");
 	}
 
 	// ---- the boundaries (#409) ---------------------------------------------------------------
@@ -181,9 +186,21 @@ class MailListenerExecutorArchitectureTest {
 				+ violations);
 	}
 
+	@Test
+	void listenerWithNoAsyncIsRejected() {
+		List<String> violations = executorIsolationViolations(
+				listenersOf(MailListenerRuleFixtures.InlineListener.class));
+
+		assertTrue(violations.stream().anyMatch(v -> v.contains("no @Async at all")),
+				() -> "Expected a listener with no @Async to be rejected — it would run the send inline on "
+						+ "the committing thread, but got: " + violations);
+	}
+
 	/**
-	 * {@code listenersOf} has already asserted the fixture <em>is</em> a listener, so an empty result
-	 * here means the carve-out skipped it — not that the collector stopped recognising listeners.
+	 * Non-vacuous by construction: {@code listenersOf} has asserted the fixture <em>is</em> a
+	 * listener, and {@link MailListenerRuleFixtures.InlineListener} — the same annotations minus the
+	 * platform event — is rejected by {@link #listenerWithNoAsyncIsRejected}. So an empty result here
+	 * is the carve-out firing, not a check that quietly stopped applying.
 	 */
 	@Test
 	void containerLifecycleListenerIsOutOfScope() {
@@ -199,14 +216,16 @@ class MailListenerExecutorArchitectureTest {
 
 	private static List<String> executorIsolationViolations(List<Method> listeners) {
 		List<String> violations = new ArrayList<>();
-		for (Method listener : listeners) {
-			if (!listensToAPlatformEvent(listener)) {
-				continue;
-			}
+		for (Method listener : inScopeListeners(listeners)) {
 			addDurabilityViolation(listener, violations);
 			addExecutorViolation(listener, violations);
 		}
 		return violations;
+	}
+
+	/** The carve-out, named so the non-vacuity guard can assert against the same filter the rule uses. */
+	private static List<Method> inScopeListeners(List<Method> listeners) {
+		return listeners.stream().filter(MailListenerExecutorArchitectureTest::listensToAPlatformEvent).toList();
 	}
 
 	private static void addDurabilityViolation(Method listener, List<String> violations) {

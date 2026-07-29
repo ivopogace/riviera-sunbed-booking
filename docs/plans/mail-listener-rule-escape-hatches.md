@@ -63,9 +63,10 @@ for `bugfix/mail-listener-rule-escape-hatches` (`riviera-sdlc` § Remote/cloud s
   over it, then it reports that the listener runs on Boot's shared `applicationTaskExecutor`.
   *Pinned by:* `MailListenerExecutorArchitectureTest.revertingToApplicationModuleListenerIsRejected`
 - [x] **AC-4 (non-vacuity of discovery):** Given the production import, when the rule runs,
-  then the discovered listener set contains `BookingConfirmationMailListener#on` by name —
-  a stronger guard than "the set is non-empty".
-  *Pinned by:* `MailListenerExecutorArchitectureTest.theRuleReachesTheProductionListener`
+  then the set of listeners the rule actually **examines** — after both the production import and
+  the platform-event carve-out — contains `BookingConfirmationMailListener#on` by declaring class
+  and method name; a stronger guard than "the set is non-empty" (tightened by review finding F-1).
+  *Pinned by:* `MailListenerExecutorArchitectureTest.theRuleExaminesTheProductionListener`
 - [x] **AC-5 (no new false failures):** Given the two spellings Spring itself supports but the
   old rule would have mis-reported — a class-level `@Async(MAIL_EXECUTOR)` with the method
   carrying only `@TransactionalEventListener`, and a listener of a non-platform (Spring
@@ -192,16 +193,16 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — both phases done; entering PR`
+**Stage pointer:** `review gate — findings fixed; awaiting CI + the Sonar gate`
 
-**Next action:** Merge latest `origin/main` into the branch, push, open the PR into `main`,
-then run the review gate (`/code-review` + `riviera-review-overlay`) and the Sonar gate.
+**Next action:** Confirm PR #412's CI run is green on the review-fix commit, then pull the
+SonarCloud new-issue + duplication list for the PR and clear every entry before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
 | 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | `d7ecbe8` |
-| 2 — PR, review gate, Sonar gate, close-out | ⏳ | |
+| 2 — PR #412, review gate, Sonar gate, close-out | ⏳ | `d94ff9b` (F-1..F-3) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -211,7 +212,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet — no gate has run | — |
+| F-1 | review (correctness) | AC-4's guard asserted only that the production listener was **discovered**. Two filters stand between a classpath class and an assertion — the production import *and* the platform-event carve-out — so the guard would have stayed green if the carve-out ever swallowed `BookingConfirmationMailListener#on`, which is exactly the vacuity it exists to prevent. Fix: named the carve-out `inScopeListeners(...)`, used by both the collector and the guard, and renamed the test `theRuleExaminesTheProductionListener` | fixed-in-`d94ff9b` |
+| F-2 | review (test coverage) | The collector's `no @Async at all` branch had **no fixture** — and it is the branch that gives `containerLifecycleListenerIsOutOfScope` its meaning, since that fixture also carries no `@Async`: an empty result there could equally have meant the null-check had stopped working. Fix: added `MailListenerRuleFixtures.InlineListener` (the lifecycle fixture's annotations minus the platform event) + `listenerWithNoAsyncIsRejected`, making the carve-out test non-vacuous by construction | fixed-in-`d94ff9b` |
+| F-3 | review (accuracy) | `MailListenerRuleFixtures`' Javadoc claimed the old scanner "would have failed the build with six violations". The recorded phase-0 red run collected **four** fixtures and reported **two** violations, and the number moves whenever a fixture is added. Fix: stated the rule the run actually demonstrated instead of a brittle count | fixed-in-`d94ff9b` |
 
 ---
 
@@ -405,9 +408,10 @@ static List<String> executorIsolationViolations(List<Method> listeners) {
 - [x] **AC-1:** Run `gradle test --tests "*MailListenerExecutorArchitectureTest*"` → `everyNotificationEventListenerNamesTheMailExecutor` and `testScopeListenersAreNotCollected` both PASS with the fixtures present.
 - [x] **AC-2:** Same run → `plainEventListenerIsRejected` PASS.
 - [x] **AC-3:** Same run → `revertingToApplicationModuleListenerIsRejected` PASS.
-- [x] **AC-4:** Same run → `theRuleReachesTheProductionListener` PASS.
+- [x] **AC-4:** Same run → `theRuleExaminesTheProductionListener` PASS (asserts the listener survives the carve-out too, per F-1).
 - [x] **AC-5:** Same run → `classLevelAsyncIsHonoured` and `containerLifecycleListenerIsOutOfScope` PASS.
 - [x] **AC-6:** Same run → `beforeCommitPhaseIsRejected` PASS.
+- [x] **Collector branch coverage (F-2):** Same run → `listenerWithNoAsyncIsRejected` PASS.
 - [x] **AC-7:** Same run → `theCompliantShapePasses` PASS.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
