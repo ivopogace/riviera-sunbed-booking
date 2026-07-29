@@ -41,6 +41,8 @@ jobs:
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
+    # Two `echo`s. Capped anyway, so the whole workflow is covered by the ci.yml rule.
+    timeout-minutes: 5
     if: >-
       ${{ (github.event_name == 'workflow_run'
             && github.event.workflow_run.conclusion == 'success'
@@ -61,6 +63,10 @@ jobs:
       ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
           || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    # Deliberately the loosest cap here: the health poll below is allowed ~15 min on purpose (Render's
+    # free tier cold-starts), so this must clear that plus the trigger and Render's own build. It is
+    # still a bound — before it, a deploy that never reported healthy could sit for six hours.
+    timeout-minutes: 25
     steps:
       - name: Trigger Render deploy (Render git-builds the Docker image — SPA + jar)
         env:
@@ -70,7 +76,8 @@ jobs:
             echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
             exit 1
           fi
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
+          curl -fsS --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
           echo "Render deploy triggered."
 
       - name: Wait for backend health (AC-1 / AC-2)

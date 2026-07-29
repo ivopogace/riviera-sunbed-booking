@@ -40,6 +40,16 @@ metric-native alerting later.
 | **Failed refunds** | `riviera_refunds_failed_total` (counter) — incremented when the gateway returns `RefundResult.Failed` | A refund the platform owes a tourist could not be issued | any increase since the last check |
 | **Webhook 5xx** | `http_server_requests_seconds_count{uri="/api/payments/stripe/webhook", status=~"5.."}` (standard Boot timer) | The Stripe webhook — the payment source of truth (invariant #8) — is erroring; Stripe will retry and payment state may lag | new 5xx `> …webhook-server-error-threshold` (default 0) |
 
+**One backlog cause worth recognising by name: a payout reversal waiting for its accrual** (#428's
+audit). `BookingCancelledPayoutListener` throws when a refunded cancellation finds no `ACCRUAL` to
+mirror, so its publication stays outstanding and this gauge holds at ≥ 1 until the next restart's
+republish. Its `ERROR` line — *"refunded booking N (venue M) has no ACCRUAL to reverse"* — is the
+tell. **Do not "fix" it by making that listener return normally:** the branch did exactly that until
+#428, which completed the publication and left the venue's ledger permanently overstating the refund
+(invariant #9). If the gauge will not drain after a restart, check whether the *accrual* listener is
+the one failing (a venue with no commission rate makes it throw), because the reversal cannot post
+until the accrual does.
+
 ## Other platform metrics (not money-path)
 
 `ObservabilityMetrics` is the one place metric names are declared; not every name in it is a
@@ -115,7 +125,44 @@ about the relay.
 > each increment, which carries the exception's simple name. A mail/IO exception means the provider;
 > anything else means our code, and no amount of relay-poking will move the number.
 
-**Which of the three mail counters to read first, during a suspected relay outage:**
+### `riviera_mail_confirmation_abandoned_total` (counter, #428)
+
+**The one mail loss `riviera_outbox_pending` cannot show** — and the only one of the four that is
+never retried by anything.
+
+A booking confirmation the registry listener **gave up on** because a fact it needs did not resolve:
+the booking row, the set, or the guest contact. The listener logs and returns *normally*, which is
+correct — none of the three can appear later, so a retry would park a permanently-failing publication
+in the outbox — but the normal return is exactly why nothing else sees it: the Event Publication
+Registry marks the publication **complete**, and the outbox gauge never moves.
+
+**Read one increment as: one tourist paid, holds a `CONFIRMED` booking, and will never receive their
+arrival code by mail.** The booking itself is fine; only the mail is gone. The operational remedy is
+the admin resend (#380/#405) *after* the underlying data fault is fixed — nothing will retry on its
+own.
+
+| Tag | Meaning | Which module to investigate | Alert when |
+|---|---|---|---|
+| `reason="no-booking"` | `BookingNotificationFacts.notificationInfo` found no booking for the confirmed booking id | `booking` | **any increase** |
+| `reason="no-set"` | `SetBookingFacts.setBookingInfo` found no set for the event's set id | `venue` | **any increase** |
+| `reason="no-contact"` | `CustomerLookup.findById` found no contact for the booking's customer id | `customer` | **any increase** |
+
+> **This is a data-integrity signal, not a relay signal — do not page the mail provider.** None of
+> the three is reachable through any application path: `booking.set_id` and `booking.customer_id` are
+> plain foreign keys with **no** `ON DELETE CASCADE` (so neither row can vanish under a live
+> booking), no code path deletes a booking, and GDPR erasure and the retention sweep are
+> tombstone-**in-place** `UPDATE`s, so an erased guest still resolves. A non-zero value means rows
+> that cannot legally be missing are missing — a restore, a manual `DELETE`, or a defect in one of
+> the three ports. Start at the module in the table, not at the relay.
+
+**Logging is one `ERROR` per loss, deliberately unthrottled.** The shed path throttles to one line
+per *episode* because saturation is transient, self-recovering and bursty; the recovery vehicle stays
+at `WARN` because a relay outage fails every send at once and would flood. Neither applies here: this
+is zero in a healthy system, so it cannot flood, and with the publication completed there is no
+durable copy — the line is the only per-loss artefact there is. Lines carry the booking and set ids,
+never the arrival code and never the address (invariant #7).
+
+**Which of the four mail counters to read first, during a suspected relay outage:**
 
 1. **`riviera_mail_recovery_failed_total{reason="transport"}`** — the fastest and least ambiguous
    signal. One failed send moves it; no queue has to fill first.
@@ -125,12 +172,18 @@ about the relay.
 3. **`riviera_mail_recovery_dropped_total`** — last. It needs 100 sends queued behind a wedged
    drainer, so at current volume it is a symptom of a *long* outage, not an early warning.
 
-**Why the registry vehicle has no failure counter of its own.** Its transport failure propagates
-rather than being swallowed, so the publication survives and step 2 above already accounts for it;
-a second series would count one failure twice and invite summing two numbers that mean different
-things. **That argument holds only for failures that throw** — a confirmation the listener
+`riviera_mail_confirmation_abandoned_total` is deliberately **not** in that order: it never rises
+because of a relay, so seeing it during an outage means you have found a *second*, unrelated fault.
+
+**Why the registry vehicle has no *transport* failure counter of its own.** Its transport failure
+propagates rather than being swallowed, so the publication survives and step 2 above already accounts
+for it; a second series would count one failure twice and invite summing two numbers that mean
+different things. **That argument holds only for failures that throw.** A confirmation the listener
 *abandons* (no booking, set, or contact row) returns normally, completes the publication, and moves
-no gauge at all. That is a genuine blind spot, tracked as **#428**.
+no gauge — which is why that loss gets its own counter,
+`riviera_mail_confirmation_abandoned_total` (#428), and why it is the one mail loss
+`riviera_outbox_pending` **cannot** show. The asymmetry is between *throwing* and *returning*, not
+between the two vehicles.
 
 **Logging is one line per loss at `WARN`, and stays `WARN` deliberately.** The shed path escalates
 saturation to `ERROR` because saturation is rare and always actionable; a relay outage fails *every*

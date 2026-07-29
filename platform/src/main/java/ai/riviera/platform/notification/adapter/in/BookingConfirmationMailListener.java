@@ -2,6 +2,8 @@ package ai.riviera.platform.notification.adapter.in;
 
 import java.util.Optional;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -15,6 +17,7 @@ import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.TransactionalMailService;
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
@@ -71,49 +74,91 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
  * appear later, so retrying would only park a permanently-failing publication in the outbox. A
  * transport failure, by contrast, propagates on purpose — that publication stays outstanding and is
  * retried. Nothing here logs the arrival code (invariant #7).
+ *
+ * <p><strong>Giving up is counted, and the line is an {@code ERROR} (#428).</strong> Skipping is
+ * right; skipping silently was not. Because this method returns <em>normally</em>, the registry
+ * completes the publication and {@code riviera.outbox.pending} never moves — so
+ * {@link ObservabilityMetrics#MAIL_CONFIRMATION_ABANDONED} is the only trace a lost confirmation
+ * leaves anywhere, which is why it is emitted here rather than left to the send chokepoint that
+ * never sees this mail.
+ *
+ * <p><strong>Why {@code ERROR}, one line per loss, with no episode throttle.</strong> Each of the
+ * three facts is FK-protected and never hard-deleted — {@code booking.set_id} and
+ * {@code booking.customer_id} are plain foreign keys with no {@code ON DELETE CASCADE}, no code
+ * deletes a booking, and erasure tombstones the guest row in place — so <em>none</em> of these
+ * returns is reachable through any application path. An increment is therefore two things at once: a
+ * referential-integrity defect, and a tourist who paid and will never receive their arrival code
+ * with nothing to retry from. The two arguments that hold the sibling counters down do not reach
+ * here: the registry pool's shed throttles because saturation is transient and self-recovering,
+ * while {@code TransactionalMailService} stays at {@code WARN} because a relay outage fails every
+ * send at once and would flood. This is zero in a healthy system, so it cannot flood — and with no
+ * durable copy of the mail, the line is the only per-loss artefact there is (the #415 rule).
  */
 @Component
 class BookingConfirmationMailListener {
 
 	private static final Logger log = LoggerFactory.getLogger(BookingConfirmationMailListener.class);
 
+	/** Which fact was missing — the tag exists because the three implicate three different modules. */
+	private static final String REASON_TAG = "reason";
+
+	private static final String REASON_NO_BOOKING = "no-booking";
+
+	private static final String REASON_NO_SET = "no-set";
+
+	private static final String REASON_NO_CONTACT = "no-contact";
+
 	private final BookingNotificationFacts bookings;
 	private final SetBookingFacts sets;
 	private final CustomerLookup customers;
 	private final TransactionalMailService mails;
+	private final MeterRegistry meters;
 
 	BookingConfirmationMailListener(BookingNotificationFacts bookings, SetBookingFacts sets,
-			CustomerLookup customers, TransactionalMailService mails) {
+			CustomerLookup customers, TransactionalMailService mails, MeterRegistry meters) {
 		this.bookings = bookings;
 		this.sets = sets;
 		this.customers = customers;
 		this.mails = mails;
+		this.meters = meters;
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 	@TransactionalEventListener
 	void on(BookingConfirmed event) {
-		long bookingId = event.bookingId().value();
-
 		Optional<BookingNotificationInfo> booking = bookings.notificationInfo(event.bookingId());
 		if (booking.isEmpty()) {
-			log.warn("no booking {} — skipping confirmation mail", bookingId);
+			abandon(REASON_NO_BOOKING, event);
 			return;
 		}
 		Optional<SetBookingInfo> set = sets.setBookingInfo(event.setId());
 		if (set.isEmpty()) {
-			log.warn("no set {} — skipping confirmation mail for booking {}",
-					event.setId().value(), bookingId);
+			abandon(REASON_NO_SET, event);
 			return;
 		}
 		Optional<GuestContact> contact = customers.findById(booking.get().customerId());
 		if (contact.isEmpty()) {
-			log.warn("no contact for booking {} — skipping confirmation mail", bookingId);
+			abandon(REASON_NO_CONTACT, event);
 			return;
 		}
 
 		mails.sendBookingConfirmation(contact.get().email(), new BookingConfirmationMail(
 				booking.get().code(), set.get().venueName(), event.bookingDate(),
 				set.get().rowLabel(), set.get().positionNo(), event.amountMinor(), event.currency()));
+	}
+
+	/**
+	 * Account for a confirmation mail this listener will never send. Both halves matter: the counter
+	 * is what an alert can watch (nothing else moves — see the class Javadoc), and the line is the
+	 * only per-loss record. It carries the booking and set ids for exactly that reason — this pool
+	 * propagates no MDC from the confirming request (#410 is the slice that would add it), so unlike
+	 * the recovery vehicle's lines there is no correlation id to lean on and the ids are the whole
+	 * trail. Ids and the reason only — never the arrival code (invariant #7), never the address.
+	 */
+	private void abandon(String reason, BookingConfirmed event) {
+		meters.counter(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED, REASON_TAG, reason).increment();
+		log.error("Booking-confirmation mail abandoned ({}) for booking {} on set {} — the fact cannot "
+				+ "appear later, so the publication completes and nothing retries it: a paying tourist "
+				+ "has no arrival code by mail", reason, event.bookingId().value(), event.setId().value());
 	}
 }

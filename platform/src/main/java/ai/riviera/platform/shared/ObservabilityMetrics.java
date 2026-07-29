@@ -32,7 +32,10 @@ public final class ObservabilityMetrics {
 	 * path's only attributable, alertable trace: each increment is a confirmation mail that never
 	 * reached the relay and now waits on the Event Publication Registry's republish. The recovery
 	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
-	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415); do not sum the two.
+	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415). Each later mail loss earned a name of its
+	 * own for the same reason ({@link #MAIL_RECOVERY_FAILED} #423, {@link #MAIL_CONFIRMATION_ABANDONED}
+	 * #428): <strong>do not sum them.</strong> This one is the only member of the set that is expected
+	 * to be re-delivered, which is precisely why summing would mislead.
 	 */
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
 
@@ -67,8 +70,8 @@ public final class ObservabilityMetrics {
 	 * <p><strong>Read this one first during a suspected relay outage.</strong> Saturating the recovery
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
-	 * <em>every</em> send and raises this one immediately. Do not sum the three mail counters — they
-	 * measure a deferral, a refusal and a failure respectively.
+	 * <em>every</em> send and raises this one immediately. Do not sum the four mail counters — they
+	 * measure a deferral, a refusal, a failure and an abandonment respectively.
 	 *
 	 * <p>Carries two tags. {@code kind} (verification / password-reset) separates the two recovery
 	 * flows, which have different urgency and different rate-limit budgets. {@code reason} separates
@@ -84,6 +87,34 @@ public final class ObservabilityMetrics {
 	 * accounts for it — a second series would double-count the same event.
 	 */
 	public static final String MAIL_RECOVERY_FAILED = "riviera.mail.recovery.failed";
+
+	/**
+	 * Counter: booking-confirmation mails the registry listener <em>gave up on</em> because a fact it
+	 * needs — the booking, the set, or the contact — did not resolve (#428). The fourth and last of
+	 * the mail-loss names, and the only one that measures a loss <strong>no gauge could otherwise
+	 * see</strong>.
+	 *
+	 * <p><strong>That invisibility is the whole reason it exists.</strong>
+	 * {@link #MAIL_RECOVERY_FAILED} explains why the registry vehicle needs no <em>transport</em>
+	 * counter: a transport failure propagates, so the publication stays outstanding and
+	 * {@link #OUTBOX_PENDING} carries it. This is that argument's exact inverse — the listener
+	 * returns <em>normally</em>, so the Event Publication Registry marks the publication complete and
+	 * the outbox gauge never moves. Completing it is correct (none of the three facts can appear
+	 * later, so a retry would park a permanently-failing publication in the outbox); giving up
+	 * <em>silently</em> was not.
+	 *
+	 * <p>Do not sum the four. A shed is deferred, a drop was refused, a failure was attempted — this
+	 * one was abandoned, and it is the only one that is <strong>never</strong> retried.
+	 *
+	 * <p>Carries a {@code reason} tag ({@code no-booking} / {@code no-set} / {@code no-contact})
+	 * because the three implicate three different modules — {@code booking}, {@code venue},
+	 * {@code customer} — and the module to investigate is what an operator acts on. <strong>Read any
+	 * increment as a data-integrity fault, not a relay fault:</strong> all three rows are
+	 * FK-protected and never hard-deleted (erasure tombstones in place), so none is reachable through
+	 * any application path. The emitter owns the vocabulary — see
+	 * {@code BookingConfirmationMailListener} and the observability runbook.
+	 */
+	public static final String MAIL_CONFIRMATION_ABANDONED = "riviera.mail.confirmation.abandoned";
 
 	private ObservabilityMetrics() {
 	}
