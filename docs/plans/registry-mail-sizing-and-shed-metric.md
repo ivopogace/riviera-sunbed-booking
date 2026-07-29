@@ -216,14 +216,14 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0, step 1 — write `RegistryMailPropertiesTest` red (the record does not exist
-yet).
+**Next action:** Phase 1, step 1 — extend `RegistryMailExecutorConfigTest` red with the counter and
+the two episode-logging tests, driving submissions through `execute()` (R-3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — externalise + validate the two bounds | | |
+| 0 — externalise + validate the two bounds | ✅ | `<phase-0>` |
 | 1 — the shed counter + the per-episode escalation | | |
 | 2 — substrate docs + close-out | | |
 
@@ -332,6 +332,7 @@ touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-29 | phase 0 (new pattern: guarding a numeric config knob whose non-positive value degrades *silently* rather than loudly) | every bound numeric property in the codebase, asking "what does `0` do here?" | `rg 'int \|long ' --include=*Properties.java src/main/java` then read each use site | 6 knobs; **2 are the same defect class, both verified by reading the use site, not assumed**: (a) `RateLimitProperties.maxTrackedKeys=0` → `RateLimitFilter:499` `buckets.size() >= 0` is true on *every* new key, so `buckets.clear()` (line 503) wipes every other key's spent tokens on each miss — the rate limiter degrades to near-useless while booting cleanly and saying so only at `DEBUG`; (b) `CustomerRetentionProperties.batchSize=0` → `expiredGuestCandidates(cutoff, 0)` → `LIMIT 0`, a sweep that silently scrubs nothing forever. The `MoneyPathAlert` thresholds are **not** candidates — `0` is their documented "alert on any" value | **Subset — fix neither here, file one follow-up issue.** Both are outside this slice's module and area: (a) is a security control owned by the #129/#286 arc and deserves its own review, and widening a mail-sizing PR into `RateLimitFilter` is exactly the "while I'm here" the Non-goals section guards against. Filed at close-out as **#412** rather than silently dropped |
 
 ---
 

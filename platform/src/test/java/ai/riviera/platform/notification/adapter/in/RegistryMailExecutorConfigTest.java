@@ -35,21 +35,24 @@ class RegistryMailExecutorConfigTest {
 
 	private static final long RELEASE_TIMEOUT_SECONDS = 10;
 
-	private static ThreadPoolTaskExecutor initializedExecutor() {
-		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig().registryMailExecutor();
+	/** The shipped defaults, spelled out — #408 made them properties, so nothing asserts them by identity. */
+	private static final RegistryMailProperties SHIPPED = new RegistryMailProperties(2, 200);
+
+	private static ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props) {
+		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig().registryMailExecutor(props);
 		pool.afterPropertiesSet();
 		return pool;
 	}
 
 	@Test
 	void isBoundedOnEveryAxis() {
-		ThreadPoolTaskExecutor pool = initializedExecutor();
+		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED);
 		try {
-			assertEquals(RegistryMailExecutorConfig.POOL_SIZE, pool.getCorePoolSize());
-			assertEquals(RegistryMailExecutorConfig.POOL_SIZE, pool.getMaxPoolSize(),
+			assertEquals(SHIPPED.poolSize(), pool.getCorePoolSize());
+			assertEquals(SHIPPED.poolSize(), pool.getMaxPoolSize(),
 					"max must equal core: a ThreadPoolExecutor grows past core only once the queue is "
 							+ "full, so a larger max would add no headroom until the queue already had");
-			assertEquals(RegistryMailExecutorConfig.QUEUE_CAPACITY, pool.getQueueCapacity(),
+			assertEquals(SHIPPED.queueCapacity(), pool.getQueueCapacity(),
 					"an unbounded queue is what makes a degraded relay a starvation source");
 		}
 		finally {
@@ -59,14 +62,14 @@ class RegistryMailExecutorConfigTest {
 
 	@Test
 	void shedsOnSaturationWithoutThrowingOrRunningOnTheCallerThread() throws Exception {
-		ThreadPoolTaskExecutor pool = initializedExecutor();
+		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED);
 		CountDownLatch gate = new CountDownLatch(1);
-		CountDownLatch wedged = new CountDownLatch(RegistryMailExecutorConfig.POOL_SIZE);
+		CountDownLatch wedged = new CountDownLatch(SHIPPED.poolSize());
 		AtomicBoolean shedTaskRan = new AtomicBoolean();
 		List<Future<?>> accepted = new ArrayList<>();
 
 		try {
-			int capacity = RegistryMailExecutorConfig.POOL_SIZE + RegistryMailExecutorConfig.QUEUE_CAPACITY;
+			int capacity = SHIPPED.poolSize() + SHIPPED.queueCapacity();
 			for (int i = 0; i < capacity; i++) {
 				accepted.add(pool.submit(() -> {
 					wedged.countDown();
