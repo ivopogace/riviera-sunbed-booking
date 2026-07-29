@@ -4,7 +4,19 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
+
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.dao.TransientDataAccessResourceException;
 
@@ -26,6 +38,14 @@ import static org.mockito.Mockito.when;
  * dies inside the dispatched task (D-8: the response may not reveal whether the address is
  * registered). The booking confirmation is the deliberate opposite: synchronous, failures
  * propagating, so the Event Publication Registry retries it.
+ *
+ * <p><strong>#423 added the accounting for the loss that swallow creates.</strong> The specs below
+ * assert not only <em>that</em> a lost recovery mail is counted but <em>how it is attributed</em>:
+ * the same catch site can lose a mail to a dead relay or to a structurally broken suppression
+ * lookup, and a counter that cannot tell those apart cannot be the signal the runbook says it is.
+ * Just as load-bearing are the specs that assert the counter stays at <em>zero</em> — a suppressed
+ * skip and a transient fail-open (#386) are not losses, and counting them would make a healthy
+ * relay read as a broken one.
  */
 class TransactionalMailServiceTest {
 
@@ -37,9 +57,41 @@ class TransactionalMailServiceTest {
 	private final Mailer mailer = mock(Mailer.class);
 	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);
 	private final AtomicReference<Runnable> dispatched = new AtomicReference<>();
+	private final MeterRegistry meters = new SimpleMeterRegistry();
+	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+	private ch.qos.logback.classic.Logger serviceLogger;
 
 	private final TransactionalMailService service =
-			new TransactionalMailService(mailer, dispatched::set, suppressions);
+			new TransactionalMailService(mailer, dispatched::set, suppressions, meters);
+
+	@BeforeEach
+	void captureLogs() {
+		logs.start();
+		serviceLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(TransactionalMailService.class);
+		serviceLogger.addAppender(logs);
+	}
+
+	@AfterEach
+	void releaseLogs() {
+		serviceLogger.detachAppender(logs);
+		logs.stop();
+	}
+
+	private double failedFor(String kind, String reason) {
+		Counter counter = meters.find(ObservabilityMetrics.MAIL_RECOVERY_FAILED)
+				.tag(TransactionalMailService.KIND_TAG, kind)
+				.tag(TransactionalMailService.REASON_TAG, reason)
+				.counter();
+		return counter == null ? 0 : counter.count();
+	}
+
+	private double failedTotal() {
+		return meters.find(ObservabilityMetrics.MAIL_RECOVERY_FAILED)
+				.counters()
+				.stream()
+				.mapToDouble(Counter::count)
+				.sum();
+	}
 
 	@Test
 	void doesNoMailWorkOnTheCallersThread() {
@@ -66,13 +118,79 @@ class TransactionalMailServiceTest {
 		verify(mailer).sendEmailVerification(EMAIL, LINK);
 	}
 
+	/**
+	 * The failure this slice exists for (#423): the dispatcher <em>accepted</em> the send and the relay
+	 * then refused it. Before this counter the entire record was one log line, so a relay outage — the
+	 * likelier of the vehicle's two losses by far, since saturating the pool takes 100 queued sends —
+	 * was un-alertable. The swallow itself is unchanged and still asserted here: wherever the task runs,
+	 * the failure dies there, because the response may not reveal whether the address is registered (D-8).
+	 */
 	@Test
-	void aSendFailureIsSwallowedInsideTheDispatchedTask() {
+	void aTransportFailureIsCountedAndStillSwallowed() {
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
+		service.sendPasswordReset(EMAIL, LINK);
+
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+				TransactionalMailService.REASON_TRANSPORT)).isEqualTo(1);
+		assertThat(failedTotal()).as("exactly one loss, counted once").isEqualTo(1);
+	}
+
+	@Test
+	void theFailureCounterCarriesTheMailKind() {
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendEmailVerification(any(), any());
 		service.sendEmailVerification(EMAIL, LINK);
+		dispatched.get().run();
 
-		// Wherever the task runs, the failure must die there — it may not change the response (D-8).
+		assertThat(failedFor(TransactionalMailService.KIND_VERIFICATION,
+				TransactionalMailService.REASON_TRANSPORT)).isEqualTo(1);
+		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+				TransactionalMailService.REASON_TRANSPORT)).isZero();
+	}
+
+	/**
+	 * The second cause the one catch swallows, and the reason this counter is tagged rather than plain.
+	 * A structurally broken suppression lookup (a revoked grant, schema drift) loses the mail just as
+	 * finally as a dead relay — so leaving it uncounted would open a fourth silent loss site in the very
+	 * slice that closes the third — but it is a <em>database</em> fault, and an operator paged to
+	 * "the relay is down" would be looking at the wrong system.
+	 */
+	@Test
+	void aBrokenSuppressionLookupIsCountedAsItsOwnCause() {
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
+
+		service.sendPasswordReset(EMAIL, LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+				TransactionalMailService.REASON_SUPPRESSION_LOOKUP)).isEqualTo(1);
+		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+				TransactionalMailService.REASON_TRANSPORT))
+				.as("the relay was never reached, so it must not be blamed").isZero();
+	}
+
+	/**
+	 * Invariant #7 on the accounting path: the two failure lines are the only per-loss artefact that
+	 * exists on this vehicle, and neither may carry the address or the tokenized link — the link is a
+	 * single-use bearer credential, which is the whole reason this payload stays out of the registry
+	 * (ADR-0011 decision 5). The exception's simple name and the mail kind are all they carry.
+	 */
+	@Test
+	void neitherFailureLineCarriesTheAddressOrTheLink() {
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
+		service.sendPasswordReset(EMAIL, LINK);
+		dispatched.get().run();
+
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
+		service.sendEmailVerification(EMAIL, LINK);
+		dispatched.get().run();
+
+		assertThat(logs.list).isNotEmpty().allSatisfy(event -> assertThat(event.getFormattedMessage())
+				.doesNotContain(EMAIL)
+				.doesNotContain(LINK.toString()));
 	}
 
 	@Test
@@ -91,12 +209,15 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
 		service.sendPasswordReset(EMAIL, LINK);
-		dispatched.get().run();
+		// The skip branch lives inside a catch too — nothing may escape onto the single drainer thread.
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 		service.sendEmailVerification(EMAIL, LINK);
-		dispatched.get().run();
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer, never()).sendPasswordReset(any(), any());
 		verify(mailer, never()).sendEmailVerification(any(), any());
+		// A withheld mail is the policy working, not a loss — counting it would fake a broken relay.
+		assertThat(failedTotal()).isZero();
 	}
 
 	@Test
@@ -127,6 +248,8 @@ class TransactionalMailServiceTest {
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer).sendPasswordReset(EMAIL, LINK);
+		// The mail went, so nothing was lost — the #386 carve-out must not raise the failure series.
+		assertThat(failedTotal()).isZero();
 	}
 
 	/**
@@ -170,5 +293,25 @@ class TransactionalMailServiceTest {
 		assertThatCode(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
 				.doesNotThrowAnyException();
 		verify(mailer, never()).sendBookingConfirmation(any(), any());
+	}
+
+	/**
+	 * The asymmetry #423 had to settle rather than leave implied: the registry vehicle gets no counter
+	 * of its own, and that is a decision, not an omission. Its transport failure <em>propagates</em>, so
+	 * the event publication stays outstanding and {@code riviera.outbox.pending} — already read by
+	 * {@code MoneyPathAlertCheck} — rises. Adding a second series for the same event would double-count
+	 * it and invite summing two numbers that mean different things. This test is what makes the decision
+	 * enforceable: a future "for symmetry" increment here turns it red.
+	 */
+	@Test
+	void theRegistryVehicleIsAccountedForByTheOutboxNotThisCounter() {
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any());
+
+		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+				.isInstanceOf(IllegalStateException.class);
+
+		assertThat(meters.find(ObservabilityMetrics.MAIL_RECOVERY_FAILED).counters())
+				.as("the outstanding publication is the registry vehicle's record, not this series")
+				.isEmpty();
 	}
 }
