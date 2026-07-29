@@ -287,15 +287,15 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `Implement — phases 0–1 done (draft PR #429); entering phase 2`
+**Stage pointer:** `Implement — phases 0–2 done (draft PR #429); entering phase 3`
 
-**Next action:** phase 2 — `StripeProperties` connect/read-timeout bounds, test-first.
+**Next action:** phase 3 — `RecoveryProperties` token-TTL bounds, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Abandoned-payment TTL bounds | ✅ | `<phase-0>` |
 | 1 — Request expiry/pay window bounds | ✅ | `<phase-1>` |
-| 2 — Stripe connect/read timeout bounds | | |
+| 2 — Stripe connect/read timeout bounds | ✅ | `<phase-2>` |
 | 3 — Recovery token TTL bounds | | |
 | 4 — Shipped-config comments, structural net, merge from main | | |
 
@@ -434,30 +434,31 @@ Create `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RequestPro
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripeProperties.java` ·
 Create `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripePropertiesTest.java`
 
-- [ ] **Step 1: Write the failing test** — `bindsTheShippedTimeouts` (AC-11), the two
+- [x] **Step 1: Write the failing test** — `bindsTheShippedTimeouts` (AC-11), the two
   `aNonPositive…FailsTheContext` (AC-7), the two `anOversized…FailsTheContext` (AC-8),
   `acceptsTheWholeTimeoutRangeButNotBeyondIt` (AC-12), `unsetTimeoutsStillDefault` (AC-13). The
   oversized cases assert the message names the SDK default being exceeded, so the *why* is in the boot
   log an operator reads at 3am.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*StripePropertiesTest*"` → FAIL.
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*StripePropertiesTest*"` → FAIL:
+  `cannot find symbol: variable MIN_TIMEOUT` / `MAX_CONNECT_TIMEOUT` / `MAX_READ_TIMEOUT`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — `MIN_TIMEOUT = Duration.ofSeconds(1)`,
+- [x] **Step 3: Minimal implementation** — `MIN_TIMEOUT = Duration.ofSeconds(1)`,
   `MAX_CONNECT_TIMEOUT = Duration.ofSeconds(30)`, `MAX_READ_TIMEOUT = Duration.ofSeconds(80)`; two
   guards below the four defaulting assignments. `apiKey` / `webhookSecret` defaulting is untouched
   (invariant #8: credentials stay env-supplied and uncommitted).
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (8 tests).
 
 > Scope (end-of-phase regression): the money path's own specs —
 > `gradle test --tests "*Stripe*"` (covers `StripeConfigTest`, `StripePaymentGatewayTest`,
-> `StripeWebhook*`).
+> `StripeWebhook*`) → PASS.
 
-- [ ] **Step 5: Generalization-audit pass** — the read-as-unbounded / means-degenerate inversion is now
+- [x] **Step 5: Generalization-audit pass** — the read-as-unbounded / means-degenerate inversion is now
   its own recognisable class (queue capacity #408, timeouts here); search for any other knob whose zero
   reads as "no limit". Append to the log.
-- [ ] **Step 6: Commit** — `fix(#426): bound the Stripe client timeouts at boot (#426)`.
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `fix(#426): bound the Stripe client timeouts at boot (#426)`.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -520,6 +521,7 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 |---|---|---|---|---|---|
 | 2026-07-29 | phase 0 | every `@ConfigurationProperties` record under `platform/src/main`, asked "what does a degenerate value do here?" — the sweep #414 started, run to exhaustion so the thread can be closed | `grep -rln "@ConfigurationProperties" --include=*.java platform/src/main` (10 records), then read each record's components and null-defaulting | Guarded already: `RegistryMailProperties` (#408), `RateLimitProperties` + `CustomerRetentionProperties` (#414). Unguarded and in this slice: the four `Duration` records. Genuinely not candidates: `MoneyPathAlertProperties` (no `Duration`/`Period` component; `0` is its documented "alert on any"), `RivieraOperatorProperties` (strings; blank is the documented no-login state) | fix the four; after phase 3 **no unguarded `Duration`/`Period` knob remains** — recorded as G-4 |
 | 2026-07-29 | phase 1 | the no-ceiling question, asked of the other five knobs: does any *other* use site already cap its value, the way `ReserveSetService`'s `min(now + expiryWindow, cutoff)` caps the expiry window? | read each remaining use site: `AbandonedBookingSweepService.sweep`, `StripeConfig.clientBuilder`, `CustomerRecovery` | **No — `expiry-window` is the only self-capping knob.** `now.minus(ttl)` / `now.minus(payWindow)` and `clock.instant().plus(tokenTtl)` are unbounded in both directions. `StripeConfig` has `Math.toIntExact(...toMillis())`, which *does* cap at ~24.8 days — but it throws rather than degrading, and it sits ~26 000× above the SDK default, so it bounds nothing an operator would plausibly type | keep the ceilings on the other five; keep `expiry-window` uncapped and pinned by AC-6 |
+| 2026-07-29 | phase 2 | the **read-as-unbounded / means-degenerate** inversion as its own class — a knob whose `0` reads to a human as "no limit" but means "degenerate" to the machine (#408's `queue-capacity` → `SynchronousQueue`; these timeouts → infinite wait) | re-read all ten records' components for a zero that a human would type meaning "off"/"unlimited" | Only these two families. The rest degrade *toward* zero in the direction the name implies (a `0` TTL is a zero-length TTL, not an infinite one) — so their guard messages explain the *consequence*, while these two must also correct the *reading*, which is why both messages say the word "infinite" and both tests assert it | no further sites; keep the wording distinction |
 | 2026-07-29 | plan (intake grill) | the inherited #414 audit's four families, re-verified at their use sites rather than taken from the issue | read `AbandonedBookingScheduler`/`AbandonedBookingSweepService`, `ReserveSetService`, `BookingRequestConfig`, `StripeConfig.clientBuilder`, `CustomerRecovery` | all four confirmed as written, plus one the issue did not state: `booking.request.expiry-window`'s use site **self-caps** at the invariant-#4 cutoff, so it warrants a floor but no ceiling | fix all seven knobs; give `expiry-window` no ceiling and pin the absence with AC-6 (G-3) |
 
 ---
