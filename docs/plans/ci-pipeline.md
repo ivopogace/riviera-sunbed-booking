@@ -123,10 +123,11 @@ coverage corrections folded in here.
   `~DEFAULT_BRANCH`), not a classic branch-protection rule (`GET /branches/main` reports
   `protection.enabled: false`, `required_status_checks.enforcement_level: "off"`, empty
   `contexts` — `protected: true` there reflects the ruleset, not a classic rule), with
-  `strict_required_status_checks_policy: true` and **7** required contexts — `Backend (build
-  + test)`, `Frontend (lint + test + build)`, `Analyze (java-kotlin)`,
-  `Analyze (javascript-typescript)`, `CodeQL`, `SonarCloud scan`, `SonarCloud Code Analysis`.
-  Two of those are Sonar and one is redundant; **#419** drops the job-level `SonarCloud scan`.
+  `strict_required_status_checks_policy: true`. It required **7** contexts, two of them Sonar:
+  the job-level `SonarCloud scan` said only that the Actions job ran, which the app-published
+  `SonarCloud Code Analysis` already implies — so **#419** dropped it. The current **6**, verified
+  by the same call after the change: `Backend (build + test)`, `Frontend (lint + test + build)`,
+  `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL`, `SonarCloud Code Analysis`.
   — *Owner:* maintainer · *Resolved by:* the ruleset read above.
 - **Open question:** none blocking. No material scope change surfaced in the audit.
 
@@ -350,8 +351,7 @@ tasks.named('test') {
 4. ~~**Enable branch protection on `main`** requiring: the `backend` + `frontend` CI
    checks and the CodeQL `java` + `javascript` checks (and Sonar once wired).~~ ✅ **Done —
    as a ruleset, not classic branch protection.** `Riviera Rule Set` (id `18207603`) targets
-   `~DEFAULT_BRANCH` and requires the 7 contexts listed under *Open questions / Assumptions*
-   (**6 once #419 drops the job-level `SonarCloud scan`**),
+   `~DEFAULT_BRANCH` and requires the 6 contexts listed under *Open questions / Assumptions*,
    `strict` (a branch behind `main` blocks the merge), plus `deletion`, `non_fast_forward`,
    `pull_request` (0 approvals), `code_scanning` (CodeQL, errors/high-or-higher) and
    `code_quality` (errors). This is what makes AC-8 ("`main` can't merge red") true.
