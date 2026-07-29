@@ -287,16 +287,17 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `Implement — phases 0–2 done (draft PR #429); entering phase 3`
+**Stage pointer:** `Implement — phases 0–3 done (draft PR #429); entering phase 4`
 
-**Next action:** phase 3 — `RecoveryProperties` token-TTL bounds, test-first.
+**Next action:** phase 4 — shipped-config comments, structural net, docs-freshness, merge from main,
+then mark PR #429 ready for review (which makes the Review and Sonar gates due).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Abandoned-payment TTL bounds | ✅ | `<phase-0>` |
 | 1 — Request expiry/pay window bounds | ✅ | `<phase-1>` |
 | 2 — Stripe connect/read timeout bounds | ✅ | `<phase-2>` |
-| 3 — Recovery token TTL bounds | | |
+| 3 — Recovery token TTL bounds | ✅ | `<phase-3>` |
 | 4 — Shipped-config comments, structural net, merge from main | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -467,29 +468,29 @@ Create `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripePro
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/RecoveryProperties.java` ·
 Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest.java`
 
-- [ ] **Step 1: Write the failing test** — append `bindsTheShippedTokenTtls` (AC-11), the two
+- [x] **Step 1: Write the failing test** — append `bindsTheShippedTokenTtls` (AC-11), the two
   `aNonPositive…FailsTheContext` (AC-9), the two `anOversized…FailsTheContext` (AC-10) and
   `acceptsTheWholeTokenTtlRangeButNotBeyondIt` (AC-12); widen the class Javadoc, which today scopes
   itself to the #368 link-base-url binding.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*RecoveryPropertiesBindingTest*"`
-  → FAIL.
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*RecoveryPropertiesBindingTest*"`
+  → FAIL: `cannot find symbol: variable MIN_TOKEN_TTL` / `MAX_VERIFICATION_TOKEN_TTL` / `MAX_RESET_TOKEN_TTL`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — `MIN_TOKEN_TTL = Duration.ofMinutes(1)`,
+- [x] **Step 3: Minimal implementation** — `MIN_TOKEN_TTL = Duration.ofMinutes(1)`,
   `MAX_VERIFICATION_TOKEN_TTL = Duration.ofDays(7)`, `MAX_RESET_TOKEN_TTL = Duration.ofHours(24)`, and a
   compact constructor holding both guards. **No null-defaulting is added**: `@DefaultValue` supplies
   both components at the binder, and a `null` passed by direct construction fails here exactly as it
   already fails at `clock.instant().plus(null)` in `CustomerRecovery` — the Javadoc says so.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (9 tests).
 
 > Scope (end-of-phase regression): the recovery flow's own specs —
-> `gradle test --tests "*Recovery*" --tests "*CustomerRecoveryTest*"`.
+> `gradle test --tests "*Recovery*" --tests "*CustomerRecoveryTest*"` → PASS.
 
-- [ ] **Step 5: Generalization-audit pass** — close the audit thread: assert in the log that no
+- [x] **Step 5: Generalization-audit pass** — close the audit thread: assert in the log that no
   unguarded `Duration`/`Period` knob remains anywhere under `platform/src/main` (G-4).
-- [ ] **Step 6: Commit** — `fix(#426): bound the recovery token TTLs at boot (#426)`.
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `fix(#426): bound the recovery token TTLs at boot (#426)`.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -522,6 +523,7 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 | 2026-07-29 | phase 0 | every `@ConfigurationProperties` record under `platform/src/main`, asked "what does a degenerate value do here?" — the sweep #414 started, run to exhaustion so the thread can be closed | `grep -rln "@ConfigurationProperties" --include=*.java platform/src/main` (10 records), then read each record's components and null-defaulting | Guarded already: `RegistryMailProperties` (#408), `RateLimitProperties` + `CustomerRetentionProperties` (#414). Unguarded and in this slice: the four `Duration` records. Genuinely not candidates: `MoneyPathAlertProperties` (no `Duration`/`Period` component; `0` is its documented "alert on any"), `RivieraOperatorProperties` (strings; blank is the documented no-login state) | fix the four; after phase 3 **no unguarded `Duration`/`Period` knob remains** — recorded as G-4 |
 | 2026-07-29 | phase 1 | the no-ceiling question, asked of the other five knobs: does any *other* use site already cap its value, the way `ReserveSetService`'s `min(now + expiryWindow, cutoff)` caps the expiry window? | read each remaining use site: `AbandonedBookingSweepService.sweep`, `StripeConfig.clientBuilder`, `CustomerRecovery` | **No — `expiry-window` is the only self-capping knob.** `now.minus(ttl)` / `now.minus(payWindow)` and `clock.instant().plus(tokenTtl)` are unbounded in both directions. `StripeConfig` has `Math.toIntExact(...toMillis())`, which *does* cap at ~24.8 days — but it throws rather than degrading, and it sits ~26 000× above the SDK default, so it bounds nothing an operator would plausibly type | keep the ceilings on the other five; keep `expiry-window` uncapped and pinned by AC-6 |
 | 2026-07-29 | phase 2 | the **read-as-unbounded / means-degenerate** inversion as its own class — a knob whose `0` reads to a human as "no limit" but means "degenerate" to the machine (#408's `queue-capacity` → `SynchronousQueue`; these timeouts → infinite wait) | re-read all ten records' components for a zero that a human would type meaning "off"/"unlimited" | Only these two families. The rest degrade *toward* zero in the direction the name implies (a `0` TTL is a zero-length TTL, not an infinite one) — so their guard messages explain the *consequence*, while these two must also correct the *reading*, which is why both messages say the word "infinite" and both tests assert it | no further sites; keep the wording distinction |
+| 2026-07-29 | phase 3 | the closing sweep: does any unguarded `Duration`/`Period` component remain anywhere under `platform/src/main`? | `grep -rn "Duration \|Period " --include=*.java platform/src/main/java/**/[A-Z]*Properties.java` over all ten records, then re-read each constructor | **None.** All seven `Duration` components in the four records of this slice now carry bounds; `CustomerRetentionProperties.window` (the only `Period`) was bounded in #414; the remaining three records hold no temporal component. The #408 → #414 → #426 audit thread is closed | nothing further to fix; recorded so a future audit starts from "all guarded" rather than re-deriving it |
 | 2026-07-29 | plan (intake grill) | the inherited #414 audit's four families, re-verified at their use sites rather than taken from the issue | read `AbandonedBookingScheduler`/`AbandonedBookingSweepService`, `ReserveSetService`, `BookingRequestConfig`, `StripeConfig.clientBuilder`, `CustomerRecovery` | all four confirmed as written, plus one the issue did not state: `booking.request.expiry-window`'s use site **self-caps** at the invariant-#4 cutoff, so it warrants a floor but no ceiling | fix all seven knobs; give `expiry-window` no ceiling and pin the absence with AC-6 (G-3) |
 
 ---
