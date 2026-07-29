@@ -251,7 +251,7 @@ API and clear every entry. Findings re-enter at Implement.
 |-------|--------|---------|
 | 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
 | 1 — the drain window derived from the socket budget, bound and validated | ✅ | `04e6f49` |
-| 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | ✅ | `<phase-2>` |
+| 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | ✅ | `68e6953` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
