@@ -202,7 +202,7 @@ SonarCloud new-issue + duplication list for the PR and clear every entry before 
 |-------|--------|---------|
 | 0 — Reproduce and close hole 1 (test-scope false failure) | ✅ | `2e817e2` |
 | 1 — Close hole 2 (plain `@EventListener`) + the durability rule + boundaries | ✅ | `d7ecbe8` |
-| 2 — PR #412, review gate, Sonar gate, close-out | ⏳ | `d94ff9b` (F-1..F-3) |
+| 2 — PR #412, review gate, Sonar gate, close-out | ⏳ | `6055036` (F-1..F-3) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -212,9 +212,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (correctness) | AC-4's guard asserted only that the production listener was **discovered**. Two filters stand between a classpath class and an assertion — the production import *and* the platform-event carve-out — so the guard would have stayed green if the carve-out ever swallowed `BookingConfirmationMailListener#on`, which is exactly the vacuity it exists to prevent. Fix: named the carve-out `inScopeListeners(...)`, used by both the collector and the guard, and renamed the test `theRuleExaminesTheProductionListener` | fixed-in-`d94ff9b` |
-| F-2 | review (test coverage) | The collector's `no @Async at all` branch had **no fixture** — and it is the branch that gives `containerLifecycleListenerIsOutOfScope` its meaning, since that fixture also carries no `@Async`: an empty result there could equally have meant the null-check had stopped working. Fix: added `MailListenerRuleFixtures.InlineListener` (the lifecycle fixture's annotations minus the platform event) + `listenerWithNoAsyncIsRejected`, making the carve-out test non-vacuous by construction | fixed-in-`d94ff9b` |
-| F-3 | review (accuracy) | `MailListenerRuleFixtures`' Javadoc claimed the old scanner "would have failed the build with six violations". The recorded phase-0 red run collected **four** fixtures and reported **two** violations, and the number moves whenever a fixture is added. Fix: stated the rule the run actually demonstrated instead of a brittle count | fixed-in-`d94ff9b` |
+| F-1 | review (correctness) | AC-4's guard asserted only that the production listener was **discovered**. Two filters stand between a classpath class and an assertion — the production import *and* the platform-event carve-out — so the guard would have stayed green if the carve-out ever swallowed `BookingConfirmationMailListener#on`, which is exactly the vacuity it exists to prevent. Fix: named the carve-out `inScopeListeners(...)`, used by both the collector and the guard, and renamed the test `theRuleExaminesTheProductionListener` | fixed-in-`6055036` |
+| F-2 | review (test coverage) | The collector's `no @Async at all` branch had **no fixture** — and it is the branch that gives `containerLifecycleListenerIsOutOfScope` its meaning, since that fixture also carries no `@Async`: an empty result there could equally have meant the null-check had stopped working. Fix: added `MailListenerRuleFixtures.InlineListener` (the lifecycle fixture's annotations minus the platform event) + `listenerWithNoAsyncIsRejected`, making the carve-out test non-vacuous by construction | fixed-in-`6055036` |
+| F-3 | review (accuracy) | `MailListenerRuleFixtures`' Javadoc claimed the old scanner "would have failed the build with six violations". The recorded phase-0 red run collected **four** fixtures and reported **two** violations, and the number moves whenever a fixture is added. Fix: stated the rule the run actually demonstrated instead of a brittle count | fixed-in-`6055036` |
 
 ---
 
