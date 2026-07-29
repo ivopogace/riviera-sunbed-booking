@@ -7,6 +7,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.notification.application.MailTransportBudget;
 import ai.riviera.platform.notification.application.MdcTaskDecorator;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -58,6 +59,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * pools stay separate on purpose: the recovery vehicle carries a bearer credential the registry may
  * not persist (ADR-0011 decision 5), so it has nothing to be retried from and <em>must</em> drop.
  *
+ * <p><strong>The shutdown drain is derived, and expiring it means giving up</strong> (#410 Part 2). The
+ * window is {@link MailTransportBudget#shutdownDrain()} — one of the relay's socket-operation budgets —
+ * rather than the 5-second literal #383 shipped, which was smaller than the budget a single degraded send
+ * can legitimately occupy and so gave up on work that was still running. When it expires,
+ * {@code ExecutorConfigurationSupport} returns and this configuration deliberately does <em>not</em>
+ * escalate to {@code shutdownNow()}: interrupting a send whose publication is still outstanding would be
+ * safe, but interrupting one that already handed the message to the relay is precisely how at-least-once
+ * becomes a <strong>duplicate mail</strong>, and an interrupt cannot tell the two apart. The abandoned
+ * send therefore never returns, its publication stays outstanding, and the next start republishes it —
+ * which is the whole reason the registry vehicle can afford to be cut off.
+ * {@code aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted} pins both halves.
+ *
  * <p><strong>{@code defaultCandidate = false} is load-bearing — do not "tidy" it away.</strong> Boot
  * declares {@code applicationTaskExecutor} {@code @ConditionalOnMissingBean(Executor.class)}, so
  * merely <em>defining</em> a second {@link java.util.concurrent.Executor} bean makes Boot skip the
@@ -78,15 +91,14 @@ class RegistryMailExecutorConfig {
 	 */
 	static final String MAIL_EXECUTOR = "registryMailExecutor";
 
-	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
-
 	/** Package-private so the spec can assert a send ran on <em>this</em> pool without restating it. */
 	static final String THREAD_NAME_PREFIX = "registry-mail-";
 
 	private static final Logger log = LoggerFactory.getLogger(RegistryMailExecutorConfig.class);
 
 	@Bean(name = MAIL_EXECUTOR, defaultCandidate = false)
-	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props, MeterRegistry meters) {
+	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props, MeterRegistry meters,
+			MailTransportBudget budget) {
 		SaturationPolicy saturation = new SaturationPolicy(meters);
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
 		pool.setCorePoolSize(props.poolSize());
@@ -96,9 +108,9 @@ class RegistryMailExecutorConfig {
 		pool.setRejectedExecutionHandler(saturation);
 		// Composed, never replaced: the pool has one decorator slot and two decorators need it (#410).
 		pool.setTaskDecorator(new CompositeTaskDecorator(List.of(saturation, new MdcTaskDecorator())));
-		// A short grace for sends already in flight; whatever does not finish stays outstanding.
+		// One socket operation's grace for sends already in flight; whatever does not finish stays outstanding.
 		pool.setWaitForTasksToCompleteOnShutdown(true);
-		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
+		pool.setAwaitTerminationMillis(budget.shutdownDrain().toMillis());
 		return pool;
 	}
 

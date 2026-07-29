@@ -44,8 +44,8 @@ superseded) and predate both branches.
   `playwright-cli` (backend-only, no user-observable surface).
 
 **Branch:** `claude/sdlc-410-akl3fg` — the cloud session's **designated remote branch stands in for
-`feature/mail-worker-hygiene`** (`riviera-sdlc` §Remote/cloud session addendum). Exists in git; no PR
-open on it yet.
+`feature/mail-worker-hygiene`** (`riviera-sdlc` §Remote/cloud session addendum). Draft **PR #433** opened on the
+plan commit, so CI gates every later push (`pull_request` only, #417).
 
 ---
 
@@ -86,6 +86,8 @@ open on it yet.
 - [ ] **AC-8:** Given the `mailer` profile, when the context resolves
       `spring.mail.properties.mail.smtp.{connectiontimeout,timeout,writetimeout}`, then all three
       equal the same knob's value — the properties file interpolates it rather than restating `10000`.
+      **Holds for `smtp4dev` too** (the phase-1 generalization audit found it restating the literal), so
+      the test is parameterized over both profiles that drive the real `SmtpMailer`.
       *Pinned by:* `MailTransportPropertiesTest.theRelayTimeoutsAreTheSameKnobTheDrainIsDerivedFrom`
 - [ ] **AC-9:** Given a socket timeout whose derived drain would exceed the named shutdown budget, or
       a non-positive one, when the context binds, then boot **fails** with a message naming the
@@ -95,7 +97,8 @@ open on it yet.
 - [ ] **AC-10:** Given a send still running when the drain window expires, when the pool shuts down,
       then the task is **abandoned without interruption** (no `shutdownNow()`), so it never returns and
       the registry never completes its publication. *Pinned by:*
-      `RegistryMailExecutorConfigTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted`;
+      `RegistryMailExecutorConfigTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` +
+      `AsyncMailDispatcherTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted`;
       composed with the already-shipped
       `RegistryMailBulkheadIT.leavesAFailedSendsPublicationOutstanding` (#383 AC-3), which proves the
       other half — a listener that does not return leaves `completion_date` NULL.
@@ -230,16 +233,16 @@ cannot occupy the shared `applicationTaskExecutor` that carries `booking`'s paym
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phases 0+1 done, entering phase 2`
 
-**Next action:** Phase 1 step 1 — write `MailTransportBudgetTest` + `MailTransportPropertiesTest` +
-the two drain tests, run them red, then add the three main-source types and switch both pools to
-`setAwaitTerminationMillis(budget.shutdownDrain().toMillis())`.
+**Next action:** Phase 2 step 1 — fold #411 into #410 in `docs/plans/registry-mail-bulkhead.md:281-282`,
+add the runbook row for `RIVIERA_SMTP_SOCKET_TIMEOUT_MS`, run `riviera-docs-freshness`, file OQ-1, then
+mark PR #433 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `040b254` |
-| 1 — the drain window derived from the socket budget, bound and validated | | |
+| 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
+| 1 — the drain window derived from the socket budget, bound and validated | ✅ | `3b79667` |
 | 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -751,6 +754,7 @@ this plan doc
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-29 | phase 1 (the derived drain window) | any other `awaitTermination*` window or restated relay-timeout literal | `grep -rn "awaitTermination\|WaitForTasksToComplete" platform/src/main/java` and `grep -rn "timeout" platform/src/main/resources/application*.properties` | **one real site**: `application-smtp4dev.properties` restated all three `10000`s — the local sink profile, which drives the *real* `SmtpMailer`, so a divergence there hides until it reproduces deployed. (`stripe.connect-timeout`/`read-timeout` also matched but feed no drain window and are already bounded by #426.) | fixed — all three now interpolate the knob, and `theRelayTimeoutsAreTheSameKnobTheDrainIsDerivedFrom` is parameterized over `mailer` **and** `smtp4dev` so the audit's finding is pinned, not just patched |
 | 2026-07-29 | phase 0 (the shared MDC decorator) | any other explicitly-declared executor, `TaskDecorator`, or hand-rolled MDC carry in main | `grep -rn "ThreadPoolTaskExecutor\|setTaskDecorator\|TaskExecutor\|@EnableAsync" platform/src/main/java \| grep -v notification/` and `grep -rn "getCopyOfContextMap\|setContextMap" platform/src/main/java` | **none** outside `notification`; the only remaining copy/restore is `MdcTaskDecorator` itself | no further sites to fix. Boot's shared `applicationTaskExecutor` is auto-configured, not declared, and stays undecorated on purpose (Non-goals): adding one there changes behaviour on the invariant-#8/#9 spine listeners and is not what #410 asks for |
 
 ---

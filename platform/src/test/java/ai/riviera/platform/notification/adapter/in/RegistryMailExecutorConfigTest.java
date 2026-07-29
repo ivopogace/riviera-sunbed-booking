@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -8,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.notification.application.MailTransportBudget;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import ch.qos.logback.classic.Level;
@@ -69,6 +71,12 @@ class RegistryMailExecutorConfigTest {
 
 	private static final String CORRELATION_KEY = "correlationId";
 
+	/** #368's shipped relay budget, from which the drain window is derived (#410). */
+	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
+
+	/** Short enough that a test can watch the window expire; the shipped one is ten seconds. */
+	private static final Duration TINY_DRAIN = Duration.ofMillis(200);
+
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 	private ch.qos.logback.classic.Logger configLogger;
@@ -88,7 +96,13 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	private ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props) {
-		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig().registryMailExecutor(props, meters);
+		return initializedExecutor(props, SHIPPED_BUDGET);
+	}
+
+	private ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props,
+			MailTransportBudget budget) {
+		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig()
+				.registryMailExecutor(props, meters, budget);
 		pool.afterPropertiesSet();
 		return pool;
 	}
@@ -434,6 +448,56 @@ class RegistryMailExecutorConfigTest {
 			gate.countDown();
 			pool.shutdown();
 		}
+	}
+
+	/**
+	 * AC-10 (#410 Part 2) — what happens when the drain window expires, asserted rather than left to a
+	 * reader of {@code ExecutorConfigurationSupport}.
+	 *
+	 * <p>Two assertions, and the second is the decision. Spring awaits the window and then <em>gives
+	 * up</em>: it does not escalate to {@code shutdownNow()}, so a send still on a thread is neither
+	 * interrupted nor waited for. That is deliberate here — interrupting a send whose publication is
+	 * still outstanding would be safe, but interrupting one that already handed the message to the relay
+	 * is precisely how at-least-once becomes a duplicate mail, and an interrupt cannot tell the two
+	 * apart. The unfinished send therefore never returns, which is what leaves the publication
+	 * outstanding for the next start's republish ({@code RegistryMailBulkheadIT} proves that half
+	 * against a real registry).
+	 *
+	 * <p>The tiny budget is the point of deriving the window from configuration: the shipped drain is
+	 * ten seconds, and no unit test should wait that long to observe it.
+	 */
+	@Test
+	void aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED, new MailTransportBudget(TINY_DRAIN));
+		CountDownLatch running = new CountDownLatch(1);
+		CountDownLatch gate = new CountDownLatch(1);
+		AtomicBoolean interrupted = new AtomicBoolean();
+		AtomicBoolean completed = new AtomicBoolean();
+
+		pool.execute(() -> {
+			running.countDown();
+			try {
+				gate.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+				completed.set(true);
+			}
+			catch (InterruptedException e) {
+				interrupted.set(true);
+				Thread.currentThread().interrupt();
+			}
+		});
+		assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+				"the send must be on a thread before the pool is shut down");
+
+		pool.shutdown();
+
+		assertFalse(completed.get(),
+				"the send must not have finished — an unfinished listener is what leaves the event "
+						+ "publication outstanding for the next start's republish");
+		assertFalse(interrupted.get(),
+				"and it must not be interrupted: an interrupt cannot tell a send that has already "
+						+ "reached the relay from one that has not, and the first is where the duplicate "
+						+ "mail comes from, so the window expiring means give up — never shutdownNow()");
+		gate.countDown();
 	}
 
 	private static void awaitQuietly(CountDownLatch gate) {
