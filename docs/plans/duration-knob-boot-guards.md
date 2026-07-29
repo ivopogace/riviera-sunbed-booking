@@ -287,13 +287,13 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `Plan — committed; entering Implement (phase 0)`
+**Stage pointer:** `Implement — phase 0 done, draft PR open; entering phase 1`
 
-**Next action:** phase 0 — `AbandonedPaymentProperties` bounds, test-first.
+**Next action:** phase 1 — `RequestProperties` expiry/pay-window bounds, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Abandoned-payment TTL bounds | | |
+| 0 — Abandoned-payment TTL bounds | ✅ | `<phase-0>` |
 | 1 — Request expiry/pay window bounds | | |
 | 2 — Stripe connect/read timeout bounds | | |
 | 3 — Recovery token TTL bounds | | |
@@ -369,29 +369,31 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/booking/adapter/in/AbandonedPaymentProperties.java` ·
 Create `platform/src/test/java/ai/riviera/platform/booking/adapter/in/AbandonedPaymentPropertiesTest.java`
 
-- [ ] **Step 1: Write the failing test** — new class on the prior-art harness, covering
-  `bindsTheShippedTtl` (AC-11), `aNonPositiveTtlFailsTheContext` (AC-1), `anOversizedTtlFailsTheContext`
-  (AC-2), `acceptsTheWholeTtlRangeButNotBeyondIt` (AC-12) and `unsetTtlStillDefaults` (AC-13). Each
-  context test asserts `.rootCause().isInstanceOf(IllegalArgumentException.class)` **and**
+- [x] **Step 1: Write the failing test** — new class on the prior-art harness, covering
+  `bindsTheShippedTtl` (AC-11), `aNonPositiveTtlFailsTheContext` (AC-1), `aTtlBelowTheFloorFailsTheContext`
+  (AC-1, floor arm), `anOversizedTtlFailsTheContext` (AC-2), `acceptsTheWholeTtlRangeButNotBeyondIt`
+  (AC-12) and `unsetTtlStillDefaults` (AC-13). Each context test asserts
+  `.rootCause().isInstanceOf(IllegalArgumentException.class)` **and**
   `.hasMessageContaining("booking.awaiting-payment.ttl")`.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*AbandonedPaymentPropertiesTest*"`
-  → FAIL (contexts start; the range test does not compile until the constants exist).
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*AbandonedPaymentPropertiesTest*"`
+  → FAIL: `cannot find symbol: variable MIN_TTL` (6 compile errors) — the range test cannot compile until
+  the constants exist.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — `MIN_TTL = Duration.ofMinutes(1)`,
+- [x] **Step 3: Minimal implementation** — `MIN_TTL = Duration.ofMinutes(1)`,
   `MAX_TTL = Duration.ofHours(24)`, each with the Javadoc argument from the bounds table, and a guard
   *below* the null-defaulting (R-2) whose message names the property, the range, the offending value and
   both failure modes.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (6 tests).
 
 > Scope (end-of-phase regression): broaden to the touched area —
-> `gradle test --tests "*AbandonedBooking*" --tests "*AbandonedPayment*"`.
+> `gradle test --tests "*AbandonedBooking*" --tests "*AbandonedPayment*"` → PASS.
 
-- [ ] **Step 5: Generalization-audit pass** — record the enumeration of all ten
+- [x] **Step 5: Generalization-audit pass** — record the enumeration of all ten
   `@ConfigurationProperties` records (G-4) in the log below.
-- [ ] **Step 6: Commit** — `fix(#426): reject a degenerate abandoned-payment TTL at boot (#426)`.
-- [ ] **Step 7: Push and open the DRAFT PR immediately** — CI fires on `pull_request` only (#417), so a
+- [x] **Step 6: Commit** — `fix(#426): reject a degenerate abandoned-payment TTL at boot (#426)`.
+- [x] **Step 7: Push and open the DRAFT PR immediately** — CI fires on `pull_request` only (#417), so a
   branch with no PR gets no CI at all. Then update this Execution status in the same commit window.
 
 ---
@@ -515,6 +517,7 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-29 | phase 0 | every `@ConfigurationProperties` record under `platform/src/main`, asked "what does a degenerate value do here?" — the sweep #414 started, run to exhaustion so the thread can be closed | `grep -rln "@ConfigurationProperties" --include=*.java platform/src/main` (10 records), then read each record's components and null-defaulting | Guarded already: `RegistryMailProperties` (#408), `RateLimitProperties` + `CustomerRetentionProperties` (#414). Unguarded and in this slice: the four `Duration` records. Genuinely not candidates: `MoneyPathAlertProperties` (no `Duration`/`Period` component; `0` is its documented "alert on any"), `RivieraOperatorProperties` (strings; blank is the documented no-login state) | fix the four; after phase 3 **no unguarded `Duration`/`Period` knob remains** — recorded as G-4 |
 | 2026-07-29 | plan (intake grill) | the inherited #414 audit's four families, re-verified at their use sites rather than taken from the issue | read `AbandonedBookingScheduler`/`AbandonedBookingSweepService`, `ReserveSetService`, `BookingRequestConfig`, `StripeConfig.clientBuilder`, `CustomerRecovery` | all four confirmed as written, plus one the issue did not state: `booking.request.expiry-window`'s use site **self-caps** at the invariant-#4 cutoff, so it warrants a floor but no ceiling | fix all seven knobs; give `expiry-window` no ceiling and pin the absence with AC-6 (G-3) |
 
 ---
