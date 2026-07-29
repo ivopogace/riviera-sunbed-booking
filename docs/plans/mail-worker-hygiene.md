@@ -242,7 +242,7 @@ mark PR #433 ready for review.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
-| 1 — the drain window derived from the socket budget, bound and validated | ✅ | `3b79667` |
+| 1 — the drain window derived from the socket budget, bound and validated | ✅ | `04e6f49` |
 | 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
