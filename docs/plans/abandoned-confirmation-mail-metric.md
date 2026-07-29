@@ -68,13 +68,13 @@ gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a se
       the exception still propagates (the publication stays outstanding, #371) and **no** abandoned
       counter increments — this counter measures the give-up, never the retryable failure.
       *Pinned by:* `BookingConfirmationMailListenerTest.aTransportFailureStillPropagatesAndCountsNothing`
-- [ ] **AC-7:** The name is declared in `ObservabilityMetrics` (not inlined at the emitter), and
+- [x] **AC-7:** The name is declared in `ObservabilityMetrics` (not inlined at the emitter), and
       `docs/runbooks/observability.md` documents it beside the other three mail counters, stating
       plainly that this is the one mail loss `riviera_outbox_pending` **cannot** show and correcting
       the implication left by #423's registry-asymmetry paragraph.
       *Verified by:* inspection at the AC-verification step (`grep` commands recorded there) — a
       docs AC, deliberately not test-pinned.
-- [ ] **AC-8:** The log-level decision and its reasoning are stated on the listener class, so the
+- [x] **AC-8:** The log-level decision and its reasoning are stated on the listener class, so the
       next reader finds the argument where the code is, not only in a plan doc.
       *Verified by:* inspection at the AC-verification step.
 
@@ -202,16 +202,16 @@ gains one series and stays authenticated (#75 lockdown preserved).
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `phase 1 done — runbook + substrate docs next`
+**Stage pointer:** `phase 2 done — phase 3 (the absorbed payout sibling) next`
 
-**Next action:** Phase 2 (runbook entry + the `CLAUDE.md` / `RESPONSIBILITIES.md` clauses), then
-mark PR #430 ready for review and run the Review + Sonar gates.
+**Next action:** Fix the generalization-audit finding **in this PR** rather than as follow-up #431
+(maintainer's call, 2026-07-29), then mark PR #430 ready for review and run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `ce0ac30` (PR #430) |
 | 1 — The counter, the reason tag, the log level | ✅ | this commit |
-| 2 — Runbook + substrate docs | | |
+| 2 — Runbook + substrate docs | ✅ | this commit |
 | 3 — Gates (CI, review, Sonar) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -300,15 +300,15 @@ private void abandon(String reason, BookingConfirmed event) {
 
 **Files:** Modify `docs/runbooks/observability.md` · Modify `RESPONSIBILITIES.md` · Modify `CLAUDE.md`
 
-- [ ] **Step 1:** Add the counter's own entry beside the other three: what one increment means for a
+- [x] **Step 1:** Add the counter's own entry beside the other three: what one increment means for a
       user, the `reason` vocabulary mapped to the module to investigate, and that it is a
       **data-integrity** signal rather than a relay one.
-- [ ] **Step 2:** Correct the registry-asymmetry paragraph — replace "That is a genuine blind spot,
+- [x] **Step 2:** Correct the registry-asymmetry paragraph — replace "That is a genuine blind spot,
       tracked as **#428**" with the counter that now covers it, and state plainly that this is the
       one mail loss `riviera_outbox_pending` cannot show (AC-7).
-- [ ] **Step 3:** Update the four-counters-now clauses in `CLAUDE.md` (the `notification` row) and
+- [x] **Step 3:** Update the four-counters-now clauses in `CLAUDE.md` (the `notification` row) and
       `RESPONSIBILITIES.md` (both the `notification` and `shared` sections).
-- [ ] **Step 4: Commit** — `git commit -m "docs(#428): document the abandoned-confirmation counter and close the outbox blind spot (#428)"`
+- [x] **Step 4: Commit** — `git commit -m "docs(#428): document the abandoned-confirmation counter and close the outbox blind spot (#428)"`
 
 ---
 
