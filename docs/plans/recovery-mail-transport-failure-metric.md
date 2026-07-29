@@ -184,7 +184,7 @@ per `riviera-sdlc` `references/pr-gates.md` §1.
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `f859ae9` (PR #427) |
 | 1 — The counter and its cause split | ✅ | `44e8640` |
-| 2 — Runbook + substrate docs | ✅ | |
+| 2 — Runbook + substrate docs | ✅ | `50abc7f` |
 | 3 — Gates (CI, review, Sonar) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
