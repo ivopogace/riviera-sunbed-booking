@@ -18,14 +18,26 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * placeholders consume them directly — matching {@code AbandonedPaymentProperties}' documented rule.
  *
  * <p><strong>Both knobs are validated here (#414), and both degenerate values boot cleanly.</strong> A
- * {@code batch-size} of {@code 0} reaches {@code LIMIT 0}: the sweep runs forever, logs its normal
- * "swept 0" outcome, and scrubs nothing — and since retention ships disabled, that surfaces only after
- * ops enables it in production, i.e. exactly when the obligation it implements has started counting. A
- * {@code window} of {@code P0D} fails the opposite way: it puts the cutoff at <em>today</em>, so the
- * first sweep scrubs every guest contact with no booking on or after today, and a negative period puts
- * the cutoff in the future and scrubs more still. That erasure is irreversible (ADR-0010,
- * pseudonymize-in-place) — no later config fix undoes it — which makes the window the highest-
- * consequence knob in this record and the one worth failing the boot over.
+ * {@code batch-size} of {@code 0} reaches {@code LIMIT 0}, so {@code ExpireGuestContactsService#sweep}
+ * finds no candidates and returns on its empty-list branch — <strong>silently</strong>: the one
+ * {@code log.info} is guarded by {@code scrubbed > 0}, and the scheduler discards the return value, so
+ * a sweep that scrubs nothing emits no line at all. Since retention ships disabled, that surfaces only
+ * after ops enables it in production — i.e. exactly when the obligation it implements has started
+ * counting, with nothing in the log to say the sweep was inert.
+ *
+ * <p>A {@code window} of {@code P0D} fails the opposite way: it puts the cutoff at <em>today</em>, so
+ * the first sweep scrubs every guest contact with no booking on or after today. That erasure is
+ * irreversible (ADR-0010, pseudonymize-in-place) — no later config fix undoes it — which makes the
+ * window the highest-consequence knob in this record and the one worth failing the boot over.
+ *
+ * <p><strong>Why the window check is {@code isNegative()} — any negative component — and not a
+ * net-duration comparison.</strong> A {@link Period} carries independent years/months/days and no
+ * reference date, so a mixed-sign period has no fixed sign: {@code P1M-40D} reports
+ * {@code toTotalMonths() == 1}, which reads positive, yet subtracting it moves the cutoff
+ * <em>forward</em> (from 2026-07-29 it yields 2026-08-08) — the future-dated cutoff this guard exists
+ * to stop. Any net-duration test would admit it. Rejecting every negative component is therefore the
+ * only check that cannot be fooled; the cost is that a chronologically-harmless oddity like
+ * {@code P2Y-1M} is refused too, which is the right trade for an irreversible operation.
  *
  * <p>The guards sit <strong>below</strong> the null-defaulting on purpose: unset config binds both
  * components as {@code null}, so a guard written above the defaults would reject the shipped
@@ -62,17 +74,20 @@ public record CustomerRetentionProperties(Period window, Integer batchSize) {
 		batchSize = batchSize == null ? DEFAULT_BATCH_SIZE : batchSize;
 		if (window.isZero() || window.isNegative()) {
 			throw new IllegalArgumentException(
-					"customer.retention.window must be a positive Period, but was " + window
-							+ "; a zero window puts the cutoff at today and a negative one puts it in the "
-							+ "future, so the first sweep scrubs every guest contact with no booking on or "
-							+ "after that date — irreversibly (ADR-0010), and no later config fix undoes it");
+					"customer.retention.window must be a positive Period with no negative component, but "
+							+ "was " + window + "; a zero window puts the cutoff at today, and any negative "
+							+ "component can put it in the future — P1M-40D reads positive by total months "
+							+ "yet moves the cutoff forward — so the first sweep would scrub every guest "
+							+ "contact with no booking on or after that date, irreversibly (ADR-0010), and "
+							+ "no later config fix undoes it");
 		}
 		if (batchSize <= 0 || batchSize > MAX_BATCH_SIZE) {
 			throw new IllegalArgumentException(
 					"customer.retention.batch-size must be between 1 and " + MAX_BATCH_SIZE + ", but was "
-							+ batchSize + "; a non-positive size reaches LIMIT 0, so the sweep runs forever, "
-							+ "logs its normal outcome and scrubs nothing, while an oversized one is the "
-							+ "unbounded transaction this bound exists to prevent");
+							+ batchSize + "; a non-positive size reaches LIMIT 0, so the sweep finds no "
+							+ "candidates and returns without logging anything, scrubbing nothing for as long "
+							+ "as it stays set, while an oversized one is the unbounded transaction this "
+							+ "bound exists to prevent");
 		}
 	}
 }

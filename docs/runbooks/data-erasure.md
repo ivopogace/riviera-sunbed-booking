@@ -121,9 +121,11 @@ All under `customer.retention.*` in `application.properties`:
 > **The two ranges are enforced at boot** (#414) — a value outside them fails the context rather than
 > degrading quietly, so step 2 below cannot deploy a window the app will not honour. `P0D` is the one
 > to know about: it puts the cutoff at **today**, so the first sweep scrubs every guest contact with no
-> booking on or after today, irreversibly. There is deliberately **no upper** bound on `window` — a
-> longer window scrubs *less*, which is the safe direction. `batch-size=0` is the mirror: it reaches
-> `LIMIT 0`, so the sweep runs forever, logs its normal "swept 0" line, and scrubs nothing.
+> booking on or after today, irreversibly. A **mixed-sign** period is refused too (`P1M-40D` reads
+> positive by total months yet moves the cutoff *forward*), so express the window plainly — `P2Y`,
+> `P10Y`. There is deliberately **no upper** bound on `window`: a longer window scrubs *less*, which is
+> the safe direction. `batch-size=0` is the mirror — it reaches `LIMIT 0`, so the sweep finds no
+> candidates and returns **without logging anything**, scrubbing nothing for as long as it stays set.
 
 ### Enabling it (the procedure)
 

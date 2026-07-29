@@ -35,7 +35,13 @@ generalization audit of #408 / PR #413.
   composition-root package (edge machinery, RV-BE-11) and `CustomerRetentionProperties` stays in
   `customer/adapter/in`; the new test class mirrors its subject's package.
 - `riviera-local-debug` — the cloud-session Gradle recipe and scoped-test discipline for the runs below.
-- `tdd` — red-green per phase. `riviera-review-overlay` — at the review gate.
+- `tdd` — red-green per phase. `riviera-review-overlay` — layered onto the review gate (RV-STYLE-1,
+  RV-PROC-1, RV-BE-11 walked against the diff).
+- `riviera-docs-freshness` — run pre-merge over `origin/main...HEAD` (the "pre-merge smoke" mode).
+  **Zero findings:** the diff renames and removes nothing and changes no mechanism a substrate doc
+  states present-tense; `RESPONSIBILITIES.md`'s "`customer` owns the configured retention window" and
+  ADR-0010's `data-erasure.md` citation both stay true. Added here because review finding **F-3**
+  caught its omission — the same RV-PROC-1 miss #413 (F-1) and #318 (F-1) were both dinged for.
 - **Not loaded, deliberately:** `postgres` — the diff contains no DDL, no migration and no SQL. The
   `batch-size` ceiling *reasons about* an existing query (PostgreSQL's 65 535 bind-parameter ceiling
   on the expanded `IN (:guests)` list in `JdbcGuestBookingHistory`), but changes no SQL, so the
@@ -82,6 +88,12 @@ git (local + `origin`) before phase 0.
   directly, then it is accepted — the bounds bound the typo, not the operator. *Pinned by:*
   `RateLimitPropertiesBindingTest.acceptsTheWholeKeyCapTuningRangeButNotBeyondIt` and
   `CustomerRetentionPropertiesTest.acceptsTheWholeBatchTuningRangeButNotBeyondIt`
+- [ ] **AC-9 (added at the review gate, finding F-1):** Given a mixed-sign window whose net duration
+  reads positive (`P1M-40D`, `toTotalMonths() == 1`) but which moves the cutoff *forward*, when the
+  record is constructed, then it is rejected — so the any-negative-component rule is pinned as
+  deliberate and a future "simplification" to a net-duration comparison reddens instead of silently
+  admitting a future-dated cutoff. *Pinned by:*
+  `CustomerRetentionPropertiesTest.rejectsAMixedSignWindowEvenWhenItsNetDurationLooksPositive`
 
 > **On AC-1…AC-6 asserting the *context*, not the record.** The issue's third AC is explicit: a test
 > that only asserts `new X(...)` throws would still pass if the guard were later replaced by a no-op
@@ -208,15 +220,16 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 done; merging main, then PR ready-for-review`
+**Stage pointer:** `review gate — run, 5 findings, 4 fixed + 1 closed-as-not-reproduced; sonar gate green`
 
-**Next action:** merge `origin/main`, mark PR #425 ready for review, then run the Review gate (`references/pr-gates.md` §1).
+**Next action:** push the fix round, confirm CI + the re-run Sonar analysis are green on the new SHA, then finalize this section and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Rate-limit key-cap bounds | ✅ | `6f1917b` |
 | 1 — Retention window + batch-size bounds | ✅ | `25241f6` |
-| 2 — Shipped-config comments + merge from main | ⏳ | `2b89436` |
+| 2 — Shipped-config comments + merge from main | ✅ | `2b89436` |
+| 3 — Review-gate fixes (F-1, F-3, F-4, F-5) | ✅ | `<fixsha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -226,7 +239,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review (bug scan) | `Period.isNegative()` is per-component, so the window guard also rejects a chronologically-positive mixed-sign period like `P2Y-1M`, which the "must be a positive Period" contract did not say | fixed-in-`<fixsha>` — **logic kept, contract sharpened**. Verified directly on JDK 25: `P1M-40D` reports `toTotalMonths() == 1` yet moves the cutoff *forward* (2026-07-29 → 2026-08-08), so the obvious "fix" (compare a net duration) would admit the exact future-dated cutoff the guard exists to stop. `Period` has no reference date and therefore no total ordering. Javadoc + message now state the any-negative-component rule and why; `rejectsAMixedSignWindowEvenWhenItsNetDurationLooksPositive` pins it as deliberate |
+| F-2 | review (prior-PR comments) | Near-identical `runner…hasFailed()…rootCause()` blocks in both test classes could trip the repo's 0-duplicated-blocks Sonar bar, per #413 F-2 | **not reproduced — closed.** Sonar analysed this exact SHA and reported `new_duplicated_blocks: 0` and `new_duplicated_lines_density: 0.0`. The concern was a prediction the tool has already disproved on the real diff; each block's property value and message *are* the test's content, so extracting a helper would hide what each case asserts. Revisit only if a future Sonar run flags it |
+| F-3 | review (prior-PR comments) | RV-PROC-1: *Skills consulted* omitted `riviera-docs-freshness` although the diff edits `docs/runbooks/data-erasure.md`, a substrate doc — the identical miss flagged on #413 and #318 | fixed-in-`<fixsha>` — skill loaded and **actually run** over `origin/main...HEAD` (zero findings), then recorded in *Skills consulted*. Ticking the line without running it would have been the lie the item exists to catch |
+| F-4 | review (comment compliance) | `RateLimitProperties`' `@param maxTrackedKeys` contradicted itself — "Bounded on both ends at bind time" alongside "a degenerate value here disables the limiter without failing anything visible", which describes the pre-fix world | fixed-in-`<fixsha>` — reworded so the invisible-degradation sentence is the *motivation* for the bounds, in the past tense, not a live claim |
+| F-5 | review (comment compliance) | The claim that a `LIMIT 0` sweep "logs its normal 'swept 0' outcome" is **false** in all four places it appeared: `sweep()` returns on its empty-candidates branch and its one `log.info` is guarded by `scrubbed > 0`, so it logs nothing at all | fixed-in-`<fixsha>` — corrected in the record Javadoc, the test Javadoc, the test's `.as()` description, `application.properties` and `data-erasure.md`. The true fact is *stronger*: total silence, not a reassuring zero |
 
 ---
 
@@ -651,6 +668,7 @@ The record Javadoc gains a paragraph on both bounds and the no-JSR-303 reason.
 - [ ] **AC-6:** Same run → `aNonPositiveWindowFailsTheContext` + `aNegativeWindowFailsTheContext` PASS. Verified at commit `<sha>`.
 - [ ] **AC-7:** Both runs → `bindsTheShippedKeyCapDefault` + `bindsTheShippedDefaults` PASS, and the pre-existing `GuestContactRetentionSchedulerConfigTest` stays green. Verified at commit `<sha>`.
 - [ ] **AC-8:** Both runs → `acceptsTheWholeKeyCapTuningRangeButNotBeyondIt` + `acceptsTheWholeBatchTuningRangeButNotBeyondIt` PASS. Verified at commit `<sha>`.
+- [ ] **AC-9:** Run `gradle test --tests "*CustomerRetentionPropertiesTest*"` → `rejectsAMixedSignWindowEvenWhenItsNetDurationLooksPositive` PASS. Verified at commit `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

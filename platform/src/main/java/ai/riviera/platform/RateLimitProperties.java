@@ -34,8 +34,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       own success
  * @param maxTrackedKeys soft cap on tracked keys per dimension; full (idle) buckets are pruned when
  *                       hit. Bounded on both ends at bind time (issue #414) — see
- *                       {@link #MIN_TRACKED_KEY_CAP} / {@link #MAX_TRACKED_KEY_CAP}; a degenerate
- *                       value here disables the limiter without failing anything visible
+ *                       {@link #MIN_TRACKED_KEY_CAP} / {@link #MAX_TRACKED_KEY_CAP}. Out of range it
+ *                       now fails the context at startup; the bounds exist precisely because, before
+ *                       them, a degenerate value disabled the limiter without failing anything visible
  * @param trustedProxies CIDR ranges whose peers may set {@code X-Forwarded-For} (issue #129); from any
  *                       other peer the header is ignored and the socket address is the key. The
  *                       shipped value lives in {@code application.properties} — deliberately the

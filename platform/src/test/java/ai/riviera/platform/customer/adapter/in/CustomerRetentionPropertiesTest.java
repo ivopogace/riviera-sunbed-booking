@@ -1,5 +1,6 @@
 package ai.riviera.platform.customer.adapter.in;
 
+import java.time.LocalDate;
 import java.time.Period;
 
 import org.junit.jupiter.api.Test;
@@ -15,12 +16,14 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * The retention sweep's two knobs as <em>bound, validated</em> configuration (#414).
  *
  * <p>Both degenerate values boot cleanly and are invisible, in opposite directions.
- * {@code batch-size=0} reaches {@code LIMIT 0}: the scheduled sweep runs forever, logs its normal
- * "swept 0" outcome, and scrubs nothing — and because retention ships disabled, that would most
- * likely be discovered only after enabling it in production, i.e. exactly when the GDPR obligation it
- * implements has started counting. {@code window=P0D} fails the other way: it puts the cutoff at
- * <em>today</em>, so the FIRST sweep scrubs every guest contact with no booking on or after today,
- * irreversibly (ADR-0010, pseudonymize-in-place) and unrecoverably — no later config fix undoes it.
+ * {@code batch-size=0} reaches {@code LIMIT 0}, so the scheduled sweep finds no candidates and returns
+ * on its empty-list branch <strong>without logging anything</strong> — the single {@code log.info} is
+ * guarded by {@code scrubbed > 0} and the scheduler discards the return value — scrubbing nothing for
+ * as long as it stays set. Because retention ships disabled, that would most likely be discovered only
+ * after enabling it in production, i.e. exactly when the GDPR obligation it implements has started
+ * counting, with no log line to say the sweep was inert. {@code window=P0D} fails the other way: it
+ * puts the cutoff at <em>today</em>, so the FIRST sweep scrubs every guest contact with no booking on
+ * or after today, irreversibly (ADR-0010, pseudonymize-in-place) — no later config fix undoes it.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is
  * no JSR-303 implementation on the runtime classpath — #97 declined
@@ -65,7 +68,7 @@ class CustomerRetentionPropertiesTest {
 	void aNonPositiveBatchSizeFailsTheContext() {
 		runner.withPropertyValues("customer.retention.batch-size=0")
 				.run(context -> assertThat(context)
-						.as("LIMIT 0 sweeps forever and scrubs nothing, logging its normal outcome")
+						.as("LIMIT 0 finds no candidates, so the sweep scrubs nothing and logs nothing")
 						.hasFailed()
 						.getFailure()
 						.rootCause()
@@ -136,6 +139,33 @@ class CustomerRetentionPropertiesTest {
 				.withMessageContaining("window");
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new CustomerRetentionProperties(Period.ofYears(-1), 500));
+	}
+
+	/**
+	 * A mixed-sign {@link Period} is rejected <em>deliberately</em>, not incidentally — pinned because
+	 * the obvious "improvement" is to compare a net duration instead, and that would be a real
+	 * regression. {@code Period} holds independent years/months/days with no reference date, so
+	 * {@code P1M-40D} reports {@code toTotalMonths() == 1} — positive by that measure — yet subtracting
+	 * it moves the cutoff FORWARD, which is precisely the future-dated cutoff the guard exists to stop.
+	 * Rejecting any negative component is the only check a net-duration test cannot slip past; refusing
+	 * the chronologically-harmless {@code P2Y-1M} alongside it is the accepted cost of that, for an
+	 * operation ADR-0010 makes irreversible.
+	 */
+	@Test
+	void rejectsAMixedSignWindowEvenWhenItsNetDurationLooksPositive() {
+		Period futureDatedCutoff = Period.parse("P1M-40D");
+		assertThat(futureDatedCutoff.toTotalMonths())
+				.as("reads positive by net duration, which is exactly why a net-duration guard would fail")
+				.isEqualTo(1);
+		assertThat(LocalDate.of(2026, 7, 29).minus(futureDatedCutoff))
+				.as("subtracting it moves the cutoff forward — every guest contact becomes a candidate")
+				.isAfter(LocalDate.of(2026, 7, 29));
+
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new CustomerRetentionProperties(futureDatedCutoff, 500))
+				.withMessageContaining("window");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new CustomerRetentionProperties(Period.parse("P2Y-1M"), 500));
 	}
 
 	/** Unset config is null on BOTH components — the guards must run AFTER the defaulting, never before. */
