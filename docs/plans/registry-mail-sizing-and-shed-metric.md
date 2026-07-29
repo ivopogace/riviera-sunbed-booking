@@ -254,7 +254,16 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 findings are fixed). After the merge only GitHub-only items remain, no commit: #408 closes via
 `Closes #408`; #408, #414 and #415 are already attached to epic #367.
 
-**Gate results (PR #413, final head `e41e1f3`):** CI green — `Backend (build + test)` ×2, `Frontend
+**Integration with `main` (PR stage):** `main` advanced while this slice was in review — **#412**
+(`fix(#409): close the mail-listener rule's two escape hatches`) landed, which rewrote
+`MailListenerExecutorArchitectureTest` and added `MailListenerRuleFixtures` **in the very package
+this slice changes**. Merged in cleanly (no conflicts) and re-verified rather than assumed: the
+rewritten rule now examines *every* `@EventListener` spelling in `notification` production code, so
+it was re-run against the changed `RegistryMailExecutorConfig` — 11/11 green, alongside the whole
+structural net and this slice's 24 tests. That merge is also what unblocked the branch protection,
+which requires the branch to be up to date.
+
+**Gate results (PR #413, pre-integration head `e41e1f3`):** CI green — `Backend (build + test)` ×2, `Frontend
 (lint + test + build)` ×2, `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL` all
 `success`. Sonar green **and its reported list pulled and empty**: `new_lines=232` (so an analysis
 genuinely exists — the false-clean read is ruled out), `new_reliability_rating=1.0` (A),
