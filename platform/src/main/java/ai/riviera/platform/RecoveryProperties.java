@@ -58,9 +58,13 @@ record RecoveryProperties(
 	static final Duration MAX_VERIFICATION_TOKEN_TTL = Duration.ofDays(7);
 
 	/**
-	 * 24× the shipped 1h, and deliberately far tighter than the verification ceiling: this record's own
-	 * contract is that the reset TTL is the shorter one because a reset link is the more sensitive
-	 * credential. Anything longer leaves an account-takeover credential sitting in a mailbox for a day.
+	 * 24× the shipped 1h, and deliberately far tighter than the verification ceiling, because a reset link
+	 * is the more sensitive credential: anything longer leaves an account-takeover credential sitting in a
+	 * mailbox for a day. Note what this does <em>not</em> do: the two TTLs are bounded independently, so
+	 * nothing rejects a pair that inverts the shipped ordering (say reset {@code PT20H} against
+	 * verification {@code PT2H}). A cross-field rule is deliberately absent — each bound answers its own
+	 * use site, and the ordering is a property of the shipped defaults, not an invariant either token's
+	 * mechanism depends on.
 	 */
 	static final Duration MAX_RESET_TOKEN_TTL = Duration.ofHours(24);
 

@@ -60,62 +60,62 @@ comments.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given `booking.awaiting-payment.ttl=PT0S` (or a negative duration), when the context
+- [x] **AC-1:** Given `booking.awaiting-payment.ttl=PT0S` (or a negative duration), when the context
   binds `AbandonedPaymentProperties`, then startup **fails** with an `IllegalArgumentException` naming
   `booking.awaiting-payment.ttl`, rather than a sweep that finds every `AWAITING_PAYMENT` booking
   expirable the instant it is inserted and releases the set under a tourist mid-checkout. *Pinned by:*
   `AbandonedPaymentPropertiesTest.aNonPositiveTtlFailsTheContext`
-- [ ] **AC-2:** Given `booking.awaiting-payment.ttl=PT48H` — past the point at which the sweep can
+- [x] **AC-2:** Given `booking.awaiting-payment.ttl=PT48H` — past the point at which the sweep can
   still return a set in time to be sold for the date it was claimed for (invariant #4 closes bookings
   the evening before) — when the context binds, then startup **fails**. *Pinned by:*
   `AbandonedPaymentPropertiesTest.anOversizedTtlFailsTheContext`
-- [ ] **AC-3:** Given `booking.request.expiry-window=PT0S`, when the context binds `RequestProperties`,
+- [x] **AC-3:** Given `booking.request.expiry-window=PT0S`, when the context binds `RequestProperties`,
   then startup **fails** naming `booking.request.expiry-window`, rather than a Request-mode venue whose
   every pending request is born expired and whose accept can never win the `request_expires_at > now`
   guard. *Pinned by:* `RequestPropertiesTest.aNonPositiveExpiryWindowFailsTheContext`
-- [ ] **AC-4:** Given `booking.request.pay-window=PT0S`, when the context binds, then startup **fails**
+- [x] **AC-4:** Given `booking.request.pay-window=PT0S`, when the context binds, then startup **fails**
   naming `booking.request.pay-window`, rather than an accepted request swept as abandoned in the same
   instant the venue accepted it. *Pinned by:* `RequestPropertiesTest.aNonPositivePayWindowFailsTheContext`
-- [ ] **AC-5:** Given `booking.request.pay-window=PT120H`, when the context binds, then startup
+- [x] **AC-5:** Given `booking.request.pay-window=PT120H`, when the context binds, then startup
   **fails**, because past the ceiling an unpaid accepted request holds its online-pool set across the
   whole span in which that date could still be sold. *Pinned by:*
   `RequestPropertiesTest.anOversizedPayWindowFailsTheContext`
-- [ ] **AC-6:** Given `booking.request.expiry-window=P30D` — far above every other bound in this slice —
+- [x] **AC-6:** Given `booking.request.expiry-window=P30D` — far above every other bound in this slice —
   when the context binds, then it **starts**, because the use site caps the deadline at the
   evening-before cutoff (`min(now + expiryWindow, cutoff)`), so a long window degrades to "expires at
   the cutoff", the safe direction. The absent ceiling is pinned as **deliberate**, not forgotten.
   *Pinned by:* `RequestPropertiesTest.aLongExpiryWindowIsAcceptedBecauseTheCutoffCapsIt`
-- [ ] **AC-7:** Given `stripe.connect-timeout=PT0S` (or `stripe.read-timeout=PT0S`), when the context
+- [x] **AC-7:** Given `stripe.connect-timeout=PT0S` (or `stripe.read-timeout=PT0S`), when the context
   binds `StripeProperties`, then startup **fails** naming the property, rather than handing the SDK the
   JDK HTTP stack's documented *infinite* timeout — the exact pinned-thread risk #52 (R-3) closed, reached
   by a value that reads as "no limit" to whoever set it. *Pinned by:*
   `StripePropertiesTest.aNonPositiveConnectTimeoutFailsTheContext` and
   `StripePropertiesTest.aNonPositiveReadTimeoutFailsTheContext`
-- [ ] **AC-8:** Given `stripe.connect-timeout=PT60S` or `stripe.read-timeout=PT120S`, when the context
+- [x] **AC-8:** Given `stripe.connect-timeout=PT60S` or `stripe.read-timeout=PT120S`, when the context
   binds, then startup **fails**, because an explicit timeout *beyond* the SDK default it exists to
   shorten (30s/80s) is worse than not configuring one — the default itself is the last accepted value,
   since setting exactly it is a no-op rather than a defect. *Pinned by:*
   `StripePropertiesTest.anOversizedConnectTimeoutFailsTheContext` and
   `StripePropertiesTest.anOversizedReadTimeoutFailsTheContext`
-- [ ] **AC-9:** Given `riviera.recovery.verification-token-ttl=PT0S` or
+- [x] **AC-9:** Given `riviera.recovery.verification-token-ttl=PT0S` or
   `riviera.recovery.reset-token-ttl=PT0S`, when the context binds `RecoveryProperties`, then startup
   **fails** naming the property, rather than issuing tokens whose `expiresAt` equals their issue instant
   — every emailed link dead on arrival, with nothing failing anywhere. *Pinned by:*
   `RecoveryPropertiesBindingTest.aNonPositiveVerificationTokenTtlFailsTheContext` and
   `…aNonPositiveResetTokenTtlFailsTheContext`
-- [ ] **AC-10:** Given `riviera.recovery.reset-token-ttl=P30D` (or `verification-token-ttl=P30D`), when
+- [x] **AC-10:** Given `riviera.recovery.reset-token-ttl=P30D` (or `verification-token-ttl=P30D`), when
   the context binds, then startup **fails**, because a reset token is a bearer credential whose leak *is*
   account takeover (invariant #7's posture) and a month-long one sits in a mailbox that long. *Pinned by:*
   `RecoveryPropertiesBindingTest.anOversizedResetTokenTtlFailsTheContext` and
   `…anOversizedVerificationTokenTtlFailsTheContext`
-- [ ] **AC-11:** Given the **shipped** `application.properties` and no overrides, when each of the four
+- [x] **AC-11:** Given the **shipped** `application.properties` and no overrides, when each of the four
   records binds, then `ttl=PT15M`, `expiryWindow=PT24H`, `payWindow=PT12H`, `connectTimeout=PT5S`,
   `readTimeout=PT20S`, `verificationTokenTtl=PT24H` and `resetTokenTtl=PT1H` — today's behaviour,
   byte-for-byte. *Pinned by:* the `bindsTheShipped…` test in each of the four classes.
-- [ ] **AC-12:** Given a value anywhere inside each documented range, when the record is constructed
+- [x] **AC-12:** Given a value anywhere inside each documented range, when the record is constructed
   directly, then it is accepted, and one step beyond either bound it is rejected — the bounds bound the
   typo, not the operator. *Pinned by:* the `acceptsTheWhole…RangeButNotBeyondIt` test in each class.
-- [ ] **AC-13:** Given unset config, when each record is constructed with `null` components (the shape
+- [x] **AC-13:** Given unset config, when each record is constructed with `null` components (the shape
   Boot's binder hands the three null-defaulting records), then the defaults still apply and no guard
   fires. *Pinned by:* `AbandonedPaymentPropertiesTest.unsetTtlStillDefaults`,
   `RequestPropertiesTest.unsetWindowsStillDefault`, `StripePropertiesTest.unsetTimeoutsStillDefault`.
@@ -149,6 +149,11 @@ comments.
   expires.** This slice adds boot-time rejection of values nobody should set, and nothing else.
 - **Converting other properties to `@Validated`** — see the Architecture note; the classpath makes it a
   no-op.
+- **A cross-field rule tying the two recovery TTLs together** (reset ≤ verification) — raised at the
+  review gate as F-4. Each bound answers its own use site, per the issue's "do not batch-apply one rule";
+  the reset-shorter-than-verification ordering is a property of the shipped *defaults*, not an invariant
+  either token's mechanism depends on, and a pair-wise rule would reject combinations that are unusual
+  but not degenerate. The Javadoc now says the ordering is unenforced rather than calling it a contract.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -161,10 +166,10 @@ accepted range, including all seven shipped defaults and the unset-config path, 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A guard rejects a value some **deployed** environment already sets, turning a boot into a crash-loop — and unlike #414's knobs, two of these (`stripe.*`) sit on the money path under the `stripe` profile | low | high | Grep-verified across `platform/src`, `docs/deploy/`, `docs/runbooks/`, `render.yaml`: the shipped `application.properties` values are the only values written anywhere in the repo, all mid-range, and **none of the seven carries a `${VAR:…}` placeholder**, so none has a readable-name env override path. The only deployed Stripe env vars are `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` (production-hardening.md §Secrets), neither in scope. | claude | **closed** — evidence in the phase-0 commit; residual risk is the relaxed-binding form (e.g. `STRIPE_CONNECTTIMEOUT`) in a Render dashboard nobody has set it in, and the failure mode is a loud boot failure naming the property and its range — the same trade #408/#414 accepted |
-| R-2 | A guard fires on **unset** config, because three of the four records null-default *inside* the compact constructor | med | high | Order the statements: null-default first, validate second — the same R-2 #414 carried. AC-11 + AC-13 are what catch an inversion. `RecoveryProperties` is the exception: it defaults via `@DefaultValue` at the binder, so its components are non-null by the time the constructor body runs. | claude | open |
-| R-3 | A chosen bound is arbitrary, so a future operator hits it with a legitimate value — the risk the issue calls out by name ("do not batch-apply one rule") | med | med | Every bound cites a mechanism at its own use site in the record's Javadoc, and no two families share an argument: the sweep ceilings rest on invariant #4's cutoff, the Stripe ceilings on the SDK defaults #52 replaced, the recovery ceilings on bearer-credential lifetime. Ranges are 6×–96× wide, and `expiry-window` gets no ceiling at all. | claude | open |
-| R-4 | The `stripe.*` guard changes behaviour on the money path | low | high | It cannot run after boot: the record is bound at context refresh and the guard is in its constructor. `StripeConfig.clientBuilder` is untouched, so the `toIntExact` overflow guard and the two `set*Timeout` calls are byte-identical; `StripeConfigTest` (which binds `PT2S`/`PT10S`, both in range) stays green unmodified. No PaymentIntent, webhook, refund or ledger path is in the diff (invariants #8/#9/#10 untouched). | claude | open |
-| R-5 | Module-boundary leak | low | high | None possible: no class is created, moved or renamed across packages; the four edited records stay in the packages that own them, and the three new files are tests in their subjects' packages. `ModularityTests` + the rest of the structural net run anyway. | claude | open |
+| R-2 | A guard fires on **unset** config, because three of the four records null-default *inside* the compact constructor | med | high | Order the statements: null-default first, validate second — the same R-2 #414 carried. AC-11 + AC-13 are what catch an inversion. `RecoveryProperties` is the exception: it defaults via `@DefaultValue` at the binder, so its components are non-null by the time the constructor body runs. | claude | **closed** — guards sit below every defaulting assignment in all three self-defaulting records; pinned by AC-11 (`bindsTheShipped…` ×4) and AC-13 (`unset…StillDefault` ×3). Independently re-verified at the review gate by reviewers #1 and #2 |
+| R-3 | A chosen bound is arbitrary, so a future operator hits it with a legitimate value — the risk the issue calls out by name ("do not batch-apply one rule") | med | med | Every bound cites a mechanism at its own use site in the record's Javadoc, and no two families share an argument: the sweep ceilings rest on invariant #4's cutoff, the Stripe ceilings on the SDK defaults #52 replaced, the recovery ceilings on bearer-credential lifetime. Ranges are 6×–96× wide, and `expiry-window` gets no ceiling at all. | claude | **closed** — reviewer #3 read every historical resolution behind these knobs (`abandoned-booking-ttl-sweep.md`, `request-to-book.md`, `s8-email-verification-password-reset.md`, #52's commit) and found **no** value any of them chose or recommended that the new ranges reject. Reviewer #5 verified all six multiplier claims arithmetically. The one bound the review did question was a *stated* rule, not a chosen number (F-1) |
+| R-4 | The `stripe.*` guard changes behaviour on the money path | low | high | It cannot run after boot: the record is bound at context refresh and the guard is in its constructor. `StripeConfig.clientBuilder` is untouched, so the `toIntExact` overflow guard and the two `set*Timeout` calls are byte-identical; `StripeConfigTest` (which binds `PT2S`/`PT10S`, both in range) stays green unmodified. No PaymentIntent, webhook, refund or ledger path is in the diff (invariants #8/#9/#10 untouched). | claude | **closed** — `gradle test --tests "*Stripe*"` green before and after the F-1 fix; reviewer #5 confirmed from the `stripe-java-33.1.1` jar itself (`javap`) that `DEFAULT_CONNECT_TIMEOUT=30000` / `DEFAULT_READ_TIMEOUT=80000`, so both ceilings sit exactly on the SDK defaults they cite |
+| R-5 | Module-boundary leak | low | high | None possible: no class is created, moved or renamed across packages; the four edited records stay in the packages that own them, and the three new files are tests in their subjects' packages. `ModularityTests` + the rest of the structural net run anyway. | claude | **closed** — structural net green (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`), re-run after the base merge; reviewer #1 confirmed no new file under `src/main`, no rename, no new package |
 | R-6 | Flyway version collision | n/a | n/a | No migration in this slice. At intake the open PRs were **#427** (`claude/sdlc-423-kxuuka`, #423 recovery-mail transport counter — `notification` + `shared`, no migration, no overlap with these four records) and ten Dependabot frontend bumps (#332–#341). | claude | closed — no migration on either side |
 
 ## Open questions / Assumptions
@@ -295,18 +300,20 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `Review gate — PR #429 marked ready for review`
+**Stage pointer:** `Merge — both gates run and cleared; awaiting the fix round's CI`
 
-**Next action:** run the review gate (`references/pr-gates.md` §1 invocation ladder) with
-`riviera-review-overlay` layered on, then the Sonar gate's issue list, then merge close-out.
+**Next action:** confirm CI + Sonar green on the fix-round SHA, then merge PR #429. Post-merge items are
+GitHub-only and need no commit: #426 closes via the PR's `Closes`, and no parent epic tracks this issue
+(it is a standalone follow-up of #414, itself closed under epic #367).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Abandoned-payment TTL bounds | ✅ | `<phase-0>` |
-| 1 — Request expiry/pay window bounds | ✅ | `<phase-1>` |
-| 2 — Stripe connect/read timeout bounds | ✅ | `<phase-2>` |
-| 3 — Recovery token TTL bounds | ✅ | `<phase-3>` |
-| 4 — Shipped-config comments, structural net, docs freshness, merge from main | ✅ | `<phase-4>`, base integrated at `<merge>` |
+| 0 — Abandoned-payment TTL bounds | ✅ | `eb3f766` |
+| 1 — Request expiry/pay window bounds | ✅ | `22f03d7` |
+| 2 — Stripe connect/read timeout bounds | ✅ | `54d6cef` |
+| 3 — Recovery token TTL bounds | ✅ | `e7a3c7b` |
+| 4 — Shipped-config comments, structural net, docs freshness, merge from main | ✅ | `4403c26`, base integrated at `0bd2ad7` |
+| 5 — Review-gate fixes (F-1, F-2, F-4) + close-out | ✅ | `56c85bd` + this doc's final state, both in PR #429 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -318,6 +325,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review (bug scan, reviewer #2) | `StripeProperties`' ceiling check rejects only values *strictly above* the SDK default, but the Javadoc, the exception message, the test Javadoc, the test's `.as()` description, the plan's AC-8 + bounds table and the `application.properties` comment all said "at or above" — and `acceptsTheWholeTimeoutRangeButNotBeyondIt` asserts `PT30S`/`PT80S` **bind**. Stated rule and implemented rule disagreed at the boundary | **fixed — prose corrected, logic kept.** The inclusive bound is the right behaviour: setting exactly the SDK default is a *no-op*, not a defect (it is what an unset knob already does), whereas *exceeding* it is the regression, and making `MAX_*` the first **rejected** value would also invert the meaning the constants carry in the three sibling records. Corrected in all **six** places so they cannot drift apart again (the same all-sites discipline #414's F-5 applied), and `MAX_CONNECT_TIMEOUT`'s Javadoc now says outright that it is the last accepted value |
 | F-2 | review (prior-PR comments, reviewer #4 **and** comment compliance, reviewer #5 — independently) | `RecoveryProperties`' class Javadoc claimed the reset TTL is "bounded **four** times more tightly than the verification one". The ceilings are `PT24H` and `P7D` (168h) — a **7×** ratio — and the same file's field Javadoc had it right twice ("7× the shipped 24h", "24× the shipped 1h") | **fixed** — now names both ceilings explicitly (`PT24H` vs `P7D`, "seven times tighter"), so the claim carries its own arithmetic instead of a number a reader has to trust. Same defect class as #414's F-4/F-5: a comment stating something the code does not do |
+| F-4 | review (git-history context, reviewer #3) | `MAX_RESET_TOKEN_TTL`'s Javadoc called the reset-shorter-than-verification ordering "this record's own **contract**", but the two TTLs are bounded independently, so a pair like reset `PT20H` / verification `PT2H` binds cleanly and inverts it. Calling an unenforced property a contract is the same overstatement class as F-2 | **fixed — claim corrected, guard deliberately not widened.** The reviewer itself scoped this as belt-and-suspenders and not a regression (cross-field ordering was never enforced pre-PR). Enforcing it would batch one rule across two knobs, which is what the issue tells this slice not to do, and would reject combinations that are unusual but not degenerate. The Javadoc now states outright what is *not* checked and why, so the next reader does not infer an invariant from prose. Recorded under Non-goals |
 | F-3 | review (prior-PR comments, reviewer #4) | The #413-F-2 concern re-raised: ~15 near-identical `runner.withPropertyValues(...).run(context -> …hasFailed().getFailure().rootCause()…)` blocks across four test classes — more surface than either #413 or #425 had — might trip the repo's 0-duplicated-blocks Sonar bar, and precedent alone shouldn't be trusted at this size | **not reproduced — closed on real evidence, not precedent.** Sonar analysed this exact SHA: `new_duplicated_blocks: 0`, `new_duplicated_lines_density: 0.0`, `new_lines: 208` (so the analysis genuinely ran — not the unanalyzed false-clean read). Extracting a helper would hide what each case asserts, since the property value and the expected message *are* each test's content |
 
 ---
@@ -551,33 +559,47 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1** … **AC-13:** each verified by the named test in its phase's scoped run, with the commit
+- [x] **AC-1** … **AC-13:** each verified by the named test in its phase's scoped run, with the commit
   recorded here as the phase lands.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled — *not* N/A here: two knobs decide when a `(set, date)` claim is
-  released, and the section states both failure directions.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched, and invariant #4 is the stated basis
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled — *not* N/A here: two knobs decide when a `(set, date)` claim is
+  released, and the section states both failure directions. Reviewer #1 traced both knobs to
+  `AbandonedBookingSweepService.sweep` and confirmed the guarded release path itself is untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched, and invariant #4 is the stated basis
   for two of the bounds.
-- [ ] **Modulith** section filled; no cross-module imports added; no class moved (invariant #11).
-- [ ] **Payment/payout** section filled — the Stripe timeouts are in scope; collect-only/no-Connect and
+- [x] **Modulith** section filled; no cross-module imports added; no class moved (invariant #11).
+- [x] **Payment/payout** section filled — the Stripe timeouts are in scope; collect-only/no-Connect and
   webhook-as-truth are unchanged.
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no timezone arithmetic in the diff.
-- [ ] Booking codes unguessable (invariant #7) — untouched; no code, token, email or PII enters a log or
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no timezone arithmetic in the diff.
+- [x] Booking codes unguessable (invariant #7) — untouched; no code, token, email or PII enters a log or
   an exception message (every message carries only the offending duration and the range).
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — this doc's final state committed here.
-- [ ] **The review gate ran in full** — per the `references/pr-gates.md` §1 invocation ladder.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows (all six closed with their outcome); Open Questions empty.
+- [x] **Close-out written in THIS PR** — this doc's final state committed here, citing `merged via PR #429`
+  rather than a squash SHA that cannot exist pre-merge.
+- [x] **The review gate ran in full** — the invocation ladder's **rung 2**: the `Skill("code-review")`
+      probe was refused by upstream `disable-model-invocation` (as the ladder predicts), so the installed
+      plugin's `commands/code-review.md` payload was executed directly — eligibility check, CLAUDE.md-path
+      resolution, change summary, the **five parallel reviewers**, then confidence scoring — with
+      `riviera-review-overlay` layered on, at **high** effort (the diff touches money and the booking
+      lifecycle). The session's standing "no Agent tool" rule was escalated to the user and the fan-out
+      **authorized** before it ran, per §1. Four findings; three fixed (F-1, F-2, F-4), one closed as not
+      reproduced against real Sonar output (F-3). Three reviewers died mid-run to transient 529s and were
+      relaunched rather than dropped — a half-run fan-out would have left the bank unrun.
+- [x] **The Sonar gate ran and its list is cleared, not just its gate green** — `SonarCloud Code Analysis`
+      concluded `success`, and the API list for this PR reports `new_bugs 0`, `new_vulnerabilities 0`,
+      `new_code_smells 0`, `new_duplicated_blocks 0`, `new_duplicated_lines_density 0.0`,
+      `new_coverage 100.0` on `new_lines 208` — non-empty measures, so not the unanalyzed false-clean read.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
