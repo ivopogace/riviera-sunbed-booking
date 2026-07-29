@@ -31,7 +31,8 @@ import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
  * republish — when {@code BookingCancelled} arrives here. Returning normally completed <em>this</em>
  * publication, so the accrual posted later was never reversed and the ledger overstated what the venue
  * was owed, permanently and silently (invariant #9). A refund only exists for a captured payment, so
- * the accrual is always <em>coming</em>; it is simply not here yet.
+ * the accrual is always <em>coming</em>; it is simply not here yet. U6's risk register accepted the old
+ * branch on that premise (R-5, "unreachable in practice"), which is the premise this corrects.
  *
  * <p>So this listener <strong>throws</strong>, and the choice is the #423/#428 asymmetry applied to a
  * fact that <em>can</em> appear later. #428 counts-and-completes for the confirmation mail's three
@@ -44,7 +45,9 @@ import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
  * own vehicle. <strong>The accepted risk:</strong> if the accrual is <em>permanently</em> broken (its
  * own listener throws on a venue with no commission rate), this publication parks in the outbox and
  * keeps the gauge non-zero until someone acts — which is the intended outcome, since the alternative
- * is a ledger that quietly pays a venue for a refunded booking.
+ * is a ledger that quietly pays a venue for a refunded booking. That trade is not new here: U5 made
+ * exactly it for the accrual side (R-7 — a missing commission rate throws and redelivers, "loud over
+ * silent under-pay"), and this listener was the asymmetric half.
  */
 @Component
 class BookingCancelledPayoutListener {

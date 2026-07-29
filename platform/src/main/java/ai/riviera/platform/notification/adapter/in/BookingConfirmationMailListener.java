@@ -150,8 +150,10 @@ class BookingConfirmationMailListener {
 	/**
 	 * Account for a confirmation mail this listener will never send. Both halves matter: the counter
 	 * is what an alert can watch (nothing else moves — see the class Javadoc), and the line is the
-	 * only per-loss record, carrying in its MDC the correlation id of the confirmation that produced
-	 * it. Ids and the reason only — never the arrival code (invariant #7), never the address.
+	 * only per-loss record. It carries the booking and set ids for exactly that reason — this pool
+	 * propagates no MDC from the confirming request (#410 is the slice that would add it), so unlike
+	 * the recovery vehicle's lines there is no correlation id to lean on and the ids are the whole
+	 * trail. Ids and the reason only — never the arrival code (invariant #7), never the address.
 	 */
 	private void abandon(String reason, BookingConfirmed event) {
 		meters.counter(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED, REASON_TAG, reason).increment();

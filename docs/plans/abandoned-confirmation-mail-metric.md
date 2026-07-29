@@ -36,8 +36,12 @@ line or none inline, the long argument to Javadoc; §10 parameterized logging wi
 PII), `riviera-local-debug` (scoped `gradle --no-daemon` runs; CI owns the full suite),
 `riviera-review-overlay` (the RV-BE/RV-STYLE/RV-PROC bank layered onto `/code-review` at the review
 gate), `riviera-docs-freshness` (pre-merge audit, since the slice falsifies a sentence `CLAUDE.md`,
-`RESPONSIBILITIES.md` and the runbook each state). No `postgres` (no SQL), no frontend skills
-(backend-only), no `riviera-stripe-payments` (no money).
+`RESPONSIBILITIES.md` and the runbook each state), and — once phase 3 absorbed the payout sibling
+(#431) — **`riviera-stripe-payments`**, re-entering the routing gate for the new area before editing:
+it is what confirms the reversal must keep mirroring the accrual rather than re-reading the venue's
+current rate, which is exactly why an accrual-less reversal can only be deferred (invariant #9,
+ADR-0005). No `postgres` (no SQL, no migration — the payout fix needs no schema change), no frontend
+skills (backend-only).
 
 **Branch:** `claude/sdlc-428-p5tav9` — the cloud session's designated branch, standing in for
 `feature/abandoned-confirmation-mail-metric` per the `riviera-sdlc` remote-session addendum.
@@ -225,10 +229,10 @@ gains one series and stays authenticated (#75 lockdown preserved).
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `phase 3 done — mark PR #430 ready for review, then the Review + Sonar gates`
+**Stage pointer:** `merge close-out — plan doc final, merging via PR #430`
 
-**Next action:** Mark PR #430 ready for review, run `/code-review` per `references/pr-gates.md` §1
-with `riviera-review-overlay` layered on, then the Sonar issue list.
+**Next action:** Merge PR #430, then the GitHub-only close-out remainder: confirm #428 and #431
+closed and that epic #367 records this slice.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -236,7 +240,7 @@ with `riviera-review-overlay` layered on, then the Sonar issue list.
 | 1 — The counter, the reason tag, the log level | ✅ | this commit |
 | 2 — Runbook + substrate docs | ✅ | this commit |
 | 3 — The absorbed payout sibling (#431's scope) | ✅ | this commit |
-| 4 — Gates (CI, review, Sonar) + close-out | | |
+| 4 — Gates (CI, review, Sonar) + close-out | ✅ | this commit (5 review findings) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -246,7 +250,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| _(none yet)_ | | | |
+| F-1 | review (agent 4, prior-PR comments) | `MAIL_REGISTRY_SHED`'s Javadoc still ended "do not sum **the two**" — written at #415 when there were two mail counters — in the very file this slice adds the fourth to, while `MAIL_RECOVERY_FAILED`'s block two entries down was updated to "the four". The class contradicted itself about its own counter set: **the identical miss #427 recorded fixing in `RESPONSIBILITIES.md`**, recurring one layer in | fixed |
+| F-2 | review (agent 2, bug scan) | `everyAbandonedPathLogsAnErrorCarryingNoCredential` asserted only the `no-contact` branch while its name claimed all three, so a level or PII regression on `no-booking`/`no-set` alone would have kept the suite green — the AC-5 guarantee was pinned for one path in three. Now a `@ParameterizedTest` over the three reasons, also asserting the set id | fixed |
+| F-3 | review (agent 1, RV-PROC-1) | The *Skills consulted* line still ended "no `riviera-stripe-payments` (no money)" after phase 3 absorbed the payout-ledger fix — self-contradicting the phase-3 section, which records loading it. The routing table maps any payout/ledger work to that skill regardless of whether Stripe's API is touched | fixed |
+| F-4 | review (agent 1, CLAUDE.md/code-claim) | `abandon(...)`'s new Javadoc claimed the line "carr[ies] in its MDC the correlation id" — phrasing lifted from `TransactionalMailService`, where it is true because that vehicle propagates MDC. The `registryMailExecutor` pool has no MDC-propagating `TaskDecorator` (#410 is the slice that would add one), so the claim was false in the file that asserts it. Reworded to say why the ids *are* the whole trail here | fixed |
+| F-5 | review (agent 3, git history) | No finding — but it surfaced the two precedents this change should cite and did not: U6's R-5 accepted the old branch on the "unreachable in practice" premise (the premise this corrects), and U5's R-7 already made the identical loud-over-silent trade for the accrual side. Both now cited on the listener | fixed |
+| F-6 | sonar (pre-fix commit `59630d7`) | Clean, verified against the false-clean read (PR #318): issue list `total: 0` **and** `measures` non-empty (`new_lines` 133) **and** the `SonarCloud Code Analysis` check-run concluded `success`. `new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0, `new_duplicated_blocks` 0, density 0.0%, **`new_coverage` 100.0%** (bar ≥80%). Re-pulled after the fix push, cache-busted | closed |
+| F-7 | CI (`59630d7`) | All 7 checks green — Backend (build + test), Frontend, CodeQL ×2, both SonarCloud checks. This is the half scoped local runs cannot prove, and here it is load-bearing: it is what exercises `PayoutReversalIT` / `PayoutSpineScenarioIT` / `BookingConfirmationMailIT` / `RegistryMailBulkheadIT` (Docker-dependent) against the payout throw and the listener's new constructor | closed |
 
 ---
 

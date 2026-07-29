@@ -32,7 +32,10 @@ public final class ObservabilityMetrics {
 	 * path's only attributable, alertable trace: each increment is a confirmation mail that never
 	 * reached the relay and now waits on the Event Publication Registry's republish. The recovery
 	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
-	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415); do not sum the two.
+	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415). Each later mail loss earned a name of its
+	 * own for the same reason ({@link #MAIL_RECOVERY_FAILED} #423, {@link #MAIL_CONFIRMATION_ABANDONED}
+	 * #428): <strong>do not sum them.</strong> This one is the only member of the set that is expected
+	 * to be re-delivered, which is precisely why summing would mislead.
 	 */
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
 

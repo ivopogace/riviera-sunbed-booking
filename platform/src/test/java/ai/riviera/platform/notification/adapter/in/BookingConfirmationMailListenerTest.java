@@ -31,6 +31,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -144,11 +146,15 @@ class BookingConfirmationMailListenerTest {
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED).counters()).isEmpty();
 	}
 
-	@Test
-	void everyAbandonedPathLogsAnErrorCarryingNoCredential() {
-		when(bookings.notificationInfo(BOOKING_ID)).thenReturn(Optional.of(BOOKING));
-		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
-		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
+	/**
+	 * All three paths, not one: a level or redaction regression on a single branch must not hide behind
+	 * a green spec for its siblings, and the three branches log through one helper precisely so this
+	 * can be asserted uniformly.
+	 */
+	@ParameterizedTest(name = "reason={0}")
+	@ValueSource(strings = { "no-booking", "no-set", "no-contact" })
+	void everyAbandonedPathLogsAnErrorCarryingNoCredential(String reason) {
+		givenTheFactsResolveUpTo(reason);
 
 		listener.on(EVENT);
 
@@ -156,10 +162,24 @@ class BookingConfirmationMailListenerTest {
 		assertThat(events).hasSize(1);
 		assertThat(events.getFirst().getLevel()).isEqualTo(Level.ERROR);
 		assertThat(events.getFirst().getFormattedMessage())
-				.contains("no-contact")
+				.contains(reason)
 				.contains(String.valueOf(BOOKING_ID.value()))
+				.contains(String.valueOf(SET_ID.value()))
 				.doesNotContain(CODE)
 				.doesNotContain(EMAIL);
+	}
+
+	/** Stub just enough for the listener to reach — and abandon at — the named branch. */
+	private void givenTheFactsResolveUpTo(String reason) {
+		when(bookings.notificationInfo(BOOKING_ID))
+				.thenReturn("no-booking".equals(reason) ? Optional.empty() : Optional.of(BOOKING));
+		if (!"no-booking".equals(reason)) {
+			when(sets.setBookingInfo(SET_ID))
+					.thenReturn("no-set".equals(reason) ? Optional.empty() : Optional.of(SET));
+		}
+		if ("no-contact".equals(reason)) {
+			when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
+		}
 	}
 
 	@Test
