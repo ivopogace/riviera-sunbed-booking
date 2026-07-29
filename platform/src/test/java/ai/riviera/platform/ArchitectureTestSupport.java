@@ -28,9 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code <base>.<module>.<surface>...}, and takes the base package as a parameter so the
  * same arithmetic runs against production and fixture trees.
  *
- * <p>Public (not package-private) only because {@code payment}'s
- * {@code NoStripeConnectArchitectureTest} shares {@link #bytecode(Path)} from its own
- * package; this is a test-scope utility, not a published surface.
+ * <p>Public (not package-private) only because two rules live in their own module's test
+ * package and share from there: {@code payment}'s {@code NoStripeConnectArchitectureTest}
+ * uses {@link #bytecode(Path)}, and {@code notification}'s
+ * {@code MailListenerExecutorArchitectureTest} uses {@link #productionClasses()} — it must
+ * sit in {@code notification.adapter.in} to name the package-private mail-executor bean
+ * constant, but its rule is only meaningful over main-source classes (#409). This is a
+ * test-scope utility, not a published surface.
  */
 public final class ArchitectureTestSupport {
 
@@ -47,6 +51,14 @@ public final class ArchitectureTestSupport {
 			.importPackages(PRODUCTION_BASE);
 
 	private ArchitectureTestSupport() {
+	}
+
+	/**
+	 * {@link #PRODUCTION_CLASSES}, for a rule that lives outside this package. Exposed as a method
+	 * rather than a public field so the shared import stays a read-only handle.
+	 */
+	public static JavaClasses productionClasses() {
+		return PRODUCTION_CLASSES;
 	}
 
 	/** Imports a negative-proof fixture tree. Fixtures are test classes, so tests are included. */
