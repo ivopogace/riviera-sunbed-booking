@@ -44,33 +44,33 @@ skills (backend-only), no `riviera-stripe-payments` (no money).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a recovery send whose transport throws, when the dispatched task runs, then
+- [x] **AC-1:** Given a recovery send whose transport throws, when the dispatched task runs, then
       `riviera.mail.recovery.failed{kind="password-reset", reason="transport"}` increments by one and
       the task still completes normally (D-8 — the failure may not reach the caller).
       *Pinned by:* `TransactionalMailServiceTest.aTransportFailureIsCountedAndStillSwallowed`
-- [ ] **AC-2:** Given a failing verification send, when the dispatched task runs, then the increment
+- [x] **AC-2:** Given a failing verification send, when the dispatched task runs, then the increment
       carries `kind="verification"` — the two mail kinds are distinguishable in one series.
       *Pinned by:* `TransactionalMailServiceTest.theFailureCounterCarriesTheMailKind`
-- [ ] **AC-3:** Given a suppression lookup that fails **non-transiently** (the #386 fail-open does not
+- [x] **AC-3:** Given a suppression lookup that fails **non-transiently** (the #386 fail-open does not
       apply, so the mail is dropped), when the dispatched task runs, then the counter increments with
       `reason="suppression-lookup"` and **not** `reason="transport"`, and the transport is never called.
       *Pinned by:* `TransactionalMailServiceTest.aBrokenSuppressionLookupIsCountedAsItsOwnCause`
-- [ ] **AC-4:** Given a suppression lookup that fails **transiently**, when the dispatched task runs,
+- [x] **AC-4:** Given a suppression lookup that fails **transiently**, when the dispatched task runs,
       then the mail is sent (the #386 carve-out is untouched) and **no** failure counter increments —
       nothing was lost. *Pinned by:*
       `TransactionalMailServiceTest.aSuppressionReadFailureStillSendsTheRecoveryMail`
-- [ ] **AC-5:** Given a suppressed address, when the dispatched task runs, then the send is skipped and
+- [x] **AC-5:** Given a suppressed address, when the dispatched task runs, then the send is skipped and
       **no** failure counter increments — a withheld mail is a policy outcome, not a loss.
       *Pinned by:* `TransactionalMailServiceTest.suppressedAddressIsNeverDispatchedToTheTransport`
-- [ ] **AC-6:** Given a booking-confirmation send whose transport throws, when it runs, then the
+- [x] **AC-6:** Given a booking-confirmation send whose transport throws, when it runs, then the
       exception still propagates (keeping the publication outstanding, #371) and **no**
       `riviera.mail.recovery.failed` series exists — the registry vehicle is accounted for by
       `riviera.outbox.pending`, not here. *Pinned by:*
       `TransactionalMailServiceTest.theRegistryVehicleIsAccountedForByTheOutboxNotThisCounter`
-- [ ] **AC-7:** Given any of the failure paths above, when the line is logged, then it carries neither
+- [x] **AC-7:** Given any of the failure paths above, when the line is logged, then it carries neither
       the address nor the link (invariant #7) — only the mail kind and the exception's simple name.
       *Pinned by:* `TransactionalMailServiceTest.neitherFailureLineCarriesTheAddressOrTheLink`
-- [ ] **AC-8:** The name is declared in `ObservabilityMetrics` (not inlined at the emitter) and
+- [x] **AC-8:** The name is declared in `ObservabilityMetrics` (not inlined at the emitter) and
       `docs/runbooks/observability.md` documents it beside the other two mail counters, stating which
       one to read first during a relay outage and why the registry vehicle has no twin.
       *Verified by:* inspection at the AC-verification step (`grep` commands recorded there) — a docs
@@ -183,17 +183,17 @@ N/A — no contract change. No endpoint, DTO, or response shape is touched;
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `review gate — findings fixed, re-verifying CI + Sonar before merge`
+**Stage pointer:** `merge close-out — plan doc final, merging via PR #427`
 
-**Next action:** Confirm CI + Sonar green on the fix push, then merge close-out (tick the epic
-checklist, close #423).
+**Next action:** Merge PR #427, then the GitHub-only close-out remainder: tick epic #367's
+checklist and confirm #423 closed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `f859ae9` (PR #427) |
 | 1 — The counter and its cause split | ✅ | `44e8640` |
 | 2 — Runbook + substrate docs | ✅ | `50abc7f` |
-| 3 — Gates (CI, review, Sonar) + close-out | ⏳ | |
+| 3 — Gates (CI, review, Sonar) + close-out | ✅ | `4f8b06f` (5 review findings), close-out in this PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -208,7 +208,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3 | review (`/code-review` agent 5, PLAUSIBLE) | `isSuppressedOrFailOpen`'s pre-existing #386 Javadoc said a non-transient failure falls through "where the mail is dropped as it always was" — true about the drop, now false about the accounting, in the very PR that adds it | fixed |
 | F-4 | review (`/code-review` agent 4, Major) | `reason="transport"` is applied to *any* exception escaping the send, so a defect in the mail path (template rendering, a malformed link) shares the bucket with a dead relay — while the runbook told on-call to read any increase as "the relay is broken right now". The same "wrong system paged" shape as #415's R-2, one layer up. Fixed by stating what the tag actually claims (runbook + the constant's Javadoc) and naming the adjacent `WARN` line's exception class as the discriminator; **not** by an exception-class tag, whose cardinality is unbounded | fixed |
 | F-5 | review (`/code-review` agent 3, CONFIRMED) | The catch split narrowed the "nothing escapes the dispatched task" guarantee: the suppressed-address `log.info`/`return` ended up *between* the two try blocks, covered by neither, so an exception there would reach the single drainer thread uncounted — a loss strictly less observable than the one this slice adds. **R-1 predicted this failure mode and its mitigation text was wrong** ("nothing between them" — there was). Fixed by moving the skip branch inside the first try, so the two catches cover the whole task | fixed |
-| F-6 | sonar | Green on the implementation push: 0 new issues, 0 accepted, 0 security hotspots, 0.0% duplication, **100.0% coverage on new code** (bar ≥80%). Re-pulled from the API after the fix push | closed |
+| F-6 | sonar | Clean, and verified against the false-clean read (PR #318): the issue list is genuinely empty (`total: 0`) **and** `measures` is non-empty (`new_lines` 116) **and** the `SonarCloud Code Analysis` check-run concluded `success`. `new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0, `new_duplicated_blocks` 0, `new_duplicated_lines_density` 0.0%, **`new_coverage` 100.0%** (bar ≥80%). Re-pulled after the fix push, cache-busted | closed |
 
 ---
 
@@ -329,39 +329,51 @@ dispatcher.dispatch(() -> {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-7:** `gradle --no-daemon --console=plain test --tests "*TransactionalMailServiceTest*"`
-      → all green. Verified at commit `<sha>`.
-- [ ] **AC-8:** `grep -n "MAIL_RECOVERY_FAILED" platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java`
-      → declared with its Javadoc; `grep -n "riviera_mail_recovery_failed_total" docs/runbooks/observability.md`
-      → the counter's own section, the read-first order, and the registry-asymmetry paragraph.
-      Verified at commit `<sha>`.
-- [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
+- [x] **AC-1 … AC-7:** `gradle --no-daemon --console=plain test --tests "*TransactionalMailServiceTest*"`
+      → 15 tests, 0 failures, 0 skipped. Verified at commit `4f8b06f`.
+- [x] **AC-8:** `grep -n "MAIL_RECOVERY_FAILED" platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java`
+      → declared with the Javadoc that gives it meaning;
+      `grep -n "riviera_mail_recovery_failed_total" docs/runbooks/observability.md`
+      → its own section, the three-counter read-first order, the `reason` vocabulary (including that a
+      *transient* suppression failure counts nothing), and the registry-asymmetry paragraph naming the
+      gap it leaves (#428). Verified at commit `4f8b06f`.
+- [x] **Structural net:** `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
       --tests "*JdbcOnlyArchitectureTests*"` → PASS (no boundary moved, asserted not assumed).
-- [ ] **Full suite:** green on the PR's CI run (the half scoped runs cannot prove —
-      `riviera-local-debug`'s full-suite-only failure class).
+- [x] **Full suite:** green on the PR's CI run for `4f8b06f` — Backend, Frontend, CodeQL (java-kotlin
+      + javascript-typescript) and both SonarCloud checks all `success`. This is the half scoped runs
+      cannot prove (`riviera-local-debug`'s full-suite-only failure class), and it is what verifies the
+      review-fix restructure of `dispatchQuietly`, not just the scoped class.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test (AC-8 is a docs AC, verified by the
+- [x] Every AC has an implementing task and a verifying test (AC-8 is a docs AC, verified by the
       recorded `grep`s).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled — justified `N/A`, no availability write path (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled — justified `N/A`, no availability write path (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event
       payload changed (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A`), and the money path is explicitly protected — the
+- [x] **Payment/payout** section filled (`N/A`), and the money path is explicitly protected — the
       emission stays off `applicationTaskExecutor` (#383).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no time arithmetic in scope.
-- [ ] Booking codes unguessable (invariant #7) — and the new log lines carry neither address nor
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no time arithmetic in scope.
+- [x] Booking codes unguessable (invariant #7) — and the new log lines carry neither address nor
       link, pinned by AC-7.
-- [ ] Flyway migration present for schema changes (invariant #12) — `N/A`, no schema change.
-- [ ] **Frontend** standards — `N/A`, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — this doc's final state is committed here, citing
-      `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` via the `references/pr-gates.md` §1
-      invocation ladder, plus `riviera-review-overlay`.
+- [x] Flyway migration present for schema changes (invariant #12) — `N/A`, no schema change.
+- [x] **Frontend** standards — `N/A`, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — this doc's final state is committed here, citing
+      `merged via PR #427`, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `/code-review` via the `references/pr-gates.md` §1
+      invocation ladder (rung 1 `Skill("code-review")` refused by upstream policy as expected; rung 2,
+      the installed plugin's `commands/code-review.md`, executed as a 5-agent fan-out), with
+      `riviera-review-overlay` layered on. Five findings, all fixed in `4f8b06f`; result posted on
+      PR #427.
+- [x] **`riviera-docs-freshness` ran** (close-out step 5) over `origin/main...HEAD`: one finding —
+      `RESPONSIBILITIES.md`'s `shared` clause enumerated two mail counters where there are now three
+      (F-2, patched in this PR, not a follow-up). `CONTEXT.md`, `docs/adr/`, `docs/agents/` and the
+      `riviera-*` skills state nothing this slice falsified. Graph refresh skipped — `graphify-out/` is
+      absent in this cloud clone.
