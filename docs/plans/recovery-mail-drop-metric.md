@@ -130,10 +130,18 @@ generalization audit (PR #413) as the second of the codebase's two rejection sit
   into a recovered relay would emit hundreds of lines") therefore *cannot occur here*: there is no
   backlog to replay. (b) **The arrival rate is bounded upstream** — the vehicle's only feed is
   `TransactionalMailService.dispatchQuietly`, reached from `sendEmailVerification` /
-  `sendPasswordReset`, whose four endpoints all ride their own per-IP token budget
-  (`RateLimitFilter.RECOVERY_PATHS`, D-8). The residual case a per-IP budget does not bound is a
-  *distributed* burst against a wedged relay; at this vehicle's volume ("a handful of sends a day")
-  that is not today's flood, and the Non-goal above states what to change if it ever becomes one.
+  `sendPasswordReset`, and **all three** endpoints that reach those are per-IP rate-limited: customer
+  register (`AuthController:220`), the authenticated verification resend
+  (`MyAccountController:137`), and forgot-password (`AccountRecoveryController:83`). **Corrected at
+  the review gate (F-2)** — the first draft of this bullet said "four endpoints, all on
+  `RateLimitFilter.RECOVERY_PATHS`", which is false twice over: `RECOVERY_PATHS` has four members but
+  two of them (`reset-password`, `verify-email`) only *redeem* tokens and send no mail, while
+  register — which does send — rides `customerAuthBuckets` instead, a separation `RateLimitFilter`
+  documents as deliberate so recovery spam cannot starve login. The conclusion survives unchanged
+  because `customerAuthBuckets` is also per-IP; only the citation was wrong. The residual case a
+  per-IP budget does not bound is a *distributed* burst against a wedged relay; at this vehicle's
+  volume ("a handful of sends a day") that is not today's flood, and the Non-goal above states what
+  to change if it ever becomes one.
 - **Does the shutdown rejection count?** → **yes, and this is a deliberate divergence from #408**,
   which the issue does not raise. #408 excluded it because a shed-at-shutdown loses nothing (the
   publication stays outstanding). Here the same event *is* a loss: `server.shutdown=graceful` is
@@ -237,7 +245,9 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | *(none yet)* | | |
+| F-1 | `/code-review` fan-out (bug scan) | **The drop's cause is read after the rejection.** `execute` throws before `recordDrop` can ask why, so a saturation rejection racing a concurrent `destroy()` is attributed to the shutdown. Verified independently before acting: the race is real but **one-directional** — `shutdown()` latches its flag permanently, so a shutdown rejection can never read as saturation, and a deploy therefore cannot manufacture a `REASON_SATURATED` increment (#408's F-5 failure mode is structurally unreachable). The only error is under-reporting saturation while a pod is going away | fixed — **documented, not restructured.** No JDK primitive makes reject-and-classify atomic, and reading the flag *before* `execute` costs a read on every send while remaining equally racy. The class now states the direction and warns against that non-fix, so the tag is not over-trusted during a deploy window |
+| F-2 | `/code-review` fan-out (comment/prose truthfulness) | **A confidently-worded false claim about the code**, in the plan doc's intake-grill bullet and echoed in the class Javadoc: "whose four endpoints all ride their own per-IP token budget (`RateLimitFilter.RECOVERY_PATHS`)". Wrong twice — `RECOVERY_PATHS` does hold four paths, but two only *redeem* tokens and send no mail; and customer register, which does send, rides `customerAuthBuckets`, a separation `RateLimitFilter` documents as deliberate so recovery spam cannot starve login. Three endpoints feed this vehicle, across two budgets | fixed — both places now name the three real call sites and both budgets. **The argument they support is unchanged**: `customerAuthBuckets` is per-IP too, so "arrivals are bounded upstream" still holds; only the citation was false |
+| — | `/code-review` fan-out (CLAUDE.md compliance, prior-PR lessons) | Reviewers #1 and #4 returned clean. #1 independently re-verified the diff's four falsifiable claims (ADR-0011 decision 5, `server.shutdown=graceful` unset, the `shared` grant in `notification`'s `package-info`, Micrometer availability) and walked RV-BE-*, RV-STYLE-1 (zero inline comments added — the removed one-liner became Javadoc, which is exempt) and RV-PROC-1. #4 checked this diff against #413/#408's F-4..F-9 and #379/#369's findings and found no repeated lesson | closed |
 
 ---
 

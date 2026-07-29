@@ -69,10 +69,13 @@ import org.springframework.stereotype.Component;
  * from and <em>the line is the only per-loss artefact that exists</em>, carrying in its MDC the correlation
  * id of the request whose user is still waiting. Throttling here would discard evidence, not noise. The
  * flood the registry's throttle exists to prevent has no analogue either: that flood is a restart
- * republishing a backlog, and this vehicle never republishes, so arrivals are live requests only — each
- * already bounded by {@code RateLimitFilter}'s per-IP recovery budget (D-8). Should aggregate volume ever
- * make these lines a genuine flood, add an escalated once-per-episode line <em>beside</em> the per-drop
- * record, never in place of it.
+ * republishing a backlog, and this vehicle never republishes, so arrivals are live requests only. All three
+ * endpoints that feed it — customer register, the authenticated verification resend, and forgot-password —
+ * are bounded by a <em>per-IP</em> token budget in {@code RateLimitFilter} (D-8), though not the same one:
+ * register rides {@code customerAuthBuckets} while the other two ride the recovery budget, a separation
+ * that is deliberate (recovery spam must not starve login) and does not weaken the bound. Should aggregate
+ * volume ever make these lines a genuine flood, add an escalated once-per-episode line <em>beside</em> the
+ * per-drop record, never in place of it.
  *
  * <p><strong>A rejection during shutdown is still a loss, so it is still counted</strong> — the second
  * divergence. #408 excludes the registry's equivalent because a shed-at-shutdown send loses nothing; here,
@@ -81,6 +84,15 @@ import org.springframework.stereotype.Component;
  * under-report the very thing the runbook says it means. The {@code reason} tag carries the distinction
  * instead, so a routine redeploy cannot read as a degraded relay: only {@link #REASON_SATURATED} escalates
  * to {@code ERROR} and warrants investigating the relay.
+ *
+ * <p><strong>The cause is read after the rejection, and that race is one-directional by construction.</strong>
+ * {@code execute} throws before {@link #recordDrop} can ask why, so a saturation rejection coinciding with a
+ * concurrent {@code destroy()} is attributed to the shutdown. The converse cannot happen: {@code shutdown()}
+ * latches its flag permanently, so a shutdown rejection always reads as one. The error is therefore always
+ * <em>under</em>-reporting saturation during the seconds a pod is going away, never the false alarm #408's
+ * F-5 was about — a deploy cannot manufacture a {@link #REASON_SATURATED} increment. Do not "fix" this by
+ * reading the flag before {@code execute}: that costs a read on every send and is equally racy, since no JDK
+ * primitive makes reject-and-classify atomic.
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
