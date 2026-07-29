@@ -26,9 +26,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * {@code Math.toIntExact} in {@code StripeConfig#clientBuilder} and is rejected only when a request is
  * actually made — i.e. the first PaymentIntent create of the deploy, mid-checkout.
  *
- * <p>The ceilings are the floors' argument run backwards: at or above the SDK default this knob exists
- * to <em>shorten</em>, configuring it explicitly is strictly worse than leaving it unset, so the value
- * that looks like extra tolerance is the one that gives back the pin.
+ * <p>The ceilings are the floors' argument run backwards: <em>beyond</em> the SDK default this knob
+ * exists to shorten, configuring it explicitly is worse than leaving it unset, so the value that looks
+ * like extra tolerance is the one that gives back the pin. The SDK default itself is the last accepted
+ * value — setting it is a no-op, not a defect — which is why
+ * {@link #acceptsTheWholeTimeoutRangeButNotBeyondIt} asserts both ceilings bind.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is no
  * JSR-303 implementation on the runtime classpath (#97 declined {@code spring-boot-starter-validation}),
@@ -108,8 +110,8 @@ class StripePropertiesTest {
 	void anOversizedConnectTimeoutFailsTheContext() {
 		runner.withPropertyValues("stripe.connect-timeout=PT60S")
 				.run(context -> assertThat(context)
-						.as("at or above the SDK's own 30s default, configuring the timeout explicitly is "
-								+ "strictly worse than not configuring it")
+						.as("beyond the SDK's own 30s default, configuring the timeout explicitly is worse "
+								+ "than not configuring it at all")
 						.hasFailed()
 						.getFailure()
 						.rootCause()

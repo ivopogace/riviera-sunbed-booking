@@ -55,9 +55,10 @@ public record StripeProperties(String apiKey, String webhookSecret, Duration con
 	static final Duration MIN_TIMEOUT = Duration.ofSeconds(1);
 
 	/**
-	 * The SDK's own default connect timeout — the value this knob exists to <em>shorten</em>. At or above
-	 * it, an explicitly-configured timeout is strictly worse than leaving it unset, so the number that
-	 * looks like extra tolerance is the one that hands back the thread pin of #52 R-3. 6× the shipped 5s.
+	 * The SDK's own default connect timeout — the value this knob exists to <em>shorten</em>. It is the
+	 * last accepted value, not the first rejected one: setting exactly the SDK default is merely a no-op,
+	 * whereas anything <em>beyond</em> it is worse than leaving the knob unset and hands back the thread
+	 * pin of #52 R-3. 6× the shipped 5s.
 	 */
 	static final Duration MAX_CONNECT_TIMEOUT = Duration.ofSeconds(30);
 
@@ -80,8 +81,8 @@ public record StripeProperties(String apiKey, String webhookSecret, Duration con
 							+ timeout + "; zero is an infinite timeout to the JDK HTTP stack the Stripe SDK "
 							+ "builds on, so it restores the pinned request thread these timeouts exist to "
 							+ "prevent, a shorter one fires on a normal sub-second PaymentIntent create, and "
-							+ "anything at or above the SDK's own default (" + sdkDefault + ") is strictly "
-							+ "worse than not configuring a timeout at all");
+							+ "anything beyond the SDK's own default (" + sdkDefault + ", which this knob "
+							+ "exists to shorten) is worse than not configuring a timeout at all");
 		}
 	}
 }

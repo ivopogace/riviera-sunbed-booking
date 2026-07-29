@@ -21,8 +21,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * and delivered — and the symptom is "the emails arrive and every link says expired", with the reset
  * flow, the only route back into an account, dead for everyone. The ceilings answer the opposite risk:
  * both tokens are unguessable bearer credentials living in a mailbox, and a leaked reset link <em>is</em>
- * account takeover — which is why the reset TTL is bounded four times more tightly than the
- * verification one, holding the ordering this record already documents.
+ * account takeover — which is why the reset ceiling ({@code PT24H}) is seven times tighter than the
+ * verification one ({@code P7D}), holding the ordering this record already documents.
  *
  * <p>No null-defaulting is needed or added: {@code @DefaultValue} supplies both TTLs at the binder, so
  * the guards run on values that are always present. Validated in a compact constructor rather than with
