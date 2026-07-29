@@ -125,7 +125,7 @@ behavior-by-behavior rather than asserted.
 | R-2 | The episode throttle silences a *second*, genuinely new incident | med | med | The flag clears the moment the pool makes progress (a task actually starts), so a later saturation logs again — AC-7 exists solely to pin this | agent | **closed** — `aLaterEpisodeLogsAgain` passes, which it cannot do unless the flag clears |
 | R-3 | `ThreadPoolTaskExecutor` may not apply a `TaskDecorator` on the `submit()` path in this Spring version, so the reset never fires under the existing test's submission style | med | med | Drive the episode tests through `execute()` — which is what `@Async` on the listener's `void` method actually uses — and keep the existing `submit()`-based shed test unchanged; verify empirically in phase 1 rather than trusting the framework doc | agent | **closed** — resolved empirically: `aLaterEpisodeLogsAgain` expects a *second* line and passes, which is only reachable if the decorator runs on the `execute()` path. Had it not, the test would have stayed at one line and gone red |
 | R-4 | Constructing the bean with a `MeterRegistry` parameter breaks the wiring the `defaultCandidate = false` trap depends on | low | high | `RegistryMailExecutorWiringIT` is untouched and re-run in phase 1; it asserts all three halves (Boot's shared pool survives, bare `@Async` resolves to it, the mail bean stays name-addressable) | agent | **closed** — `RegistryMailExecutorWiringIT` ran (Docker present) 3/3 green after the signature change, alongside `RegistryMailBulkheadIT` 4/4 |
-| R-5 | Full-suite-only failure (the `riviera-local-debug` shared-state class): a bounded long-lived pool plus a new meter accumulating across cached contexts | low | med | No new `@Scheduled`, filter, or rate-limit key; the meter is registered per-context; the only test that wedges the pool owns its executor and releases it in a `finally`. Verified by the push's CI run, per the CI-gate rule | agent | open — scoped runs green; **CI's full suite is the real verdict**, checked on the push before the PR is called ready |
+| R-5 | Full-suite-only failure (the `riviera-local-debug` shared-state class): a bounded long-lived pool plus a new meter accumulating across cached contexts | low | med | No new `@Scheduled`, filter, or rate-limit key; the meter is registered per-context; the only test that wedges the pool owns its executor and releases it in a `finally`. Verified by the push's CI run, per the CI-gate rule | agent | **closed** — PR #413's CI is green on head `d8b1239`: both `Backend (build + test)` jobs pass on the full suite, so the failure class scoped runs cannot show did not materialise |
 | R-6 | Property namespace drifts from the bean it configures, so a future reader cannot connect `riviera.notification.confirmation-mail.*` (PR #406's name) to `registryMailExecutor` | low | low | Namespace is `riviera.notification.registry-mail.*`, matching the bean name, the class name and the vehicle name used throughout #383's Javadoc | agent | **closed** — namespace is `riviera.notification.registry-mail.*` as designed |
 
 ## Open questions / Assumptions
@@ -221,7 +221,15 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `merge close-out — gates run; awaiting the maintainer's merge decision on PR #413`
+**Stage pointer:** `merge close-out — all three gates GREEN; awaiting the maintainer's merge decision on PR #413`
+
+**Gate results (PR #413, head `d8b1239`):** CI green — `Backend (build + test)` ×2, `Frontend
+(lint + test + build)` ×2, `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL` all
+`success`. Sonar green **and its reported list pulled and empty**, not merely a passing gate:
+`new_lines=154` (so an analysis genuinely exists — the false-clean read is ruled out), `new_bugs=0`,
+`new_vulnerabilities=0`, `new_code_smells=0`, `new_duplicated_blocks=0`,
+`new_duplicated_lines_density=0.0`, `new_coverage=100.0`, `issues/search total=0`,
+`hotspots/search total=0`.
 
 **Next action:** None by the agent. **PR #413** carries the slice; CI, the Review gate and the Sonar
 gate have run and their findings are resolved. The merge itself is the maintainer's call. After the
