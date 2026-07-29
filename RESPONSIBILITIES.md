@@ -286,7 +286,15 @@ payment→booking and booking→payout listeners; the registry listener therefor
 `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
 `@ApplicationModuleListener`, and holds no transaction across the send; that pool's size and queue
 depth are `riviera.notification.registry-mail.*` properties since #408 (defaults `2`/`200`, validated
-at boot, so #370 can retune them against a real relay without a deploy) and each shed send increments
+at boot, so #370 can retune them against a real relay without a deploy) — and since #410 both pools'
+shutdown drain window is **derived** from a third such property,
+`riviera.notification.mail.socket-timeout-ms`, which is also what every
+`spring.mail.properties.mail.smtp.*` timeout interpolates, so the relay budget and the drain cannot
+drift apart the way a flat 5s and a 10s socket timeout did; when that window expires both pools give
+up rather than interrupting, since an interrupt cannot tell a send that already reached the relay from
+one that has not. Both also carry the submitting request's MDC onto their workers through one shared
+`MdcTaskDecorator` (#410), composed onto the registry pool beside the shed policy that already owns
+its decorator slot. Each shed send increments
 `ObservabilityMetrics.MAIL_REGISTRY_SHED` while escalating one log line per saturation *episode*;
 the recovery dispatcher's mirror-image accounting is `MAIL_RECOVERY_DROPPED` (#415), and it is a
 mirror rather than a copy — **every** drop is logged, not one per episode, because a throttle trades

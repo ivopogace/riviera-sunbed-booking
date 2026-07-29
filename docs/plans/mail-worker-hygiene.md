@@ -142,12 +142,12 @@ applies to it:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `setTaskDecorator` is called twice on the registry pool, silently replacing `SaturationPolicy` — the episode flag then never clears, every later saturation is counted but never logged, and only `aLaterEpisodeLogsAgain` goes red | med | high | compose via `CompositeTaskDecorator`; AC-5 keeps both existing throttle tests in the same class as the new MDC ones, so the composition is asserted from both sides | claude | open |
-| R-2 | The decorator is applied on the **worker** thread instead of the submitting one (e.g. by wrapping inside the task), capturing an empty map and making AC-1 pass for the wrong reason | med | med | `MdcTaskDecoratorTest` asserts the captured value comes from the *submitting* thread's MDC after that thread has cleared it; AC-1 asserts the worker's thread name differs from the caller's | claude | open |
-| R-3 | A longer drain window delays context shutdown past the platform's SIGTERM→SIGKILL grace, so a redeploy is killed mid-shutdown — worse than giving up, because Hikari and the web layer never close cleanly | low | med | the derived window is bounded by a named `SHUTDOWN_BUDGET` constant well inside Render's default 30s grace, and the ceiling is *validated* (AC-9) so no env override can exceed it; **no `shutdownNow()`** — an interrupt during the relay handoff is exactly what turns at-least-once into a duplicate mail (issue #410 Part 2), and that reasoning is recorded in the config Javadoc | claude | open |
-| R-4 | `spring.mail.properties.mail.smtp.*` interpolation silently fails to resolve (typo in the placeholder), and Jakarta Mail falls back to **infinite** timeouts — the exact hazard #368 closed, reintroduced invisibly | low | high | AC-8 resolves all three keys through the `mailer`-profile environment and asserts they equal the knob; an unresolved placeholder fails the property resolution loudly | claude | open |
-| R-5 | Boundary leak: the `@ConfigurationProperties` record or the `TaskDecorator` lands in the wrong layer (e.g. a framework config type inside `application`, or a public adapter class) | low | med | `riviera-modulith` placement recorded in §Module ownership; `PackageShapeArchitectureTests` + `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` run in the phase-1 scoped batch | claude | open |
-| R-6 | Shared-state accumulation across the full suite (the `riviera-local-debug` blind spot): a new bean in every context, plus a longer drain, slows or destabilises unrelated ITs | low | med | the new bean is a pure value record; ITs that shut contexts down get the derived window from the **shipped** knob, and the fast unit tests pass a tiny knob so no test waits on a real 10s drain; verified by the PR's own CI run before phase 2 builds on it | claude | open |
+| R-1 | `setTaskDecorator` is called twice on the registry pool, silently replacing `SaturationPolicy` — the episode flag then never clears, every later saturation is counted but never logged, and only `aLaterEpisodeLogsAgain` goes red | med | high | compose via `CompositeTaskDecorator`; AC-5 keeps both existing throttle tests in the same class as the new MDC ones, so the composition is asserted from both sides | claude | closed — `CompositeTaskDecorator`, and `aSaturationEpisodeLogsOnceNotOncePerShedTask` + `aLaterEpisodeLogsAgain` stayed green unchanged (`ac9e095`) |
+| R-2 | The decorator is applied on the **worker** thread instead of the submitting one (e.g. by wrapping inside the task), capturing an empty map and making AC-1 pass for the wrong reason | med | med | `MdcTaskDecoratorTest` asserts the captured value comes from the *submitting* thread's MDC after that thread has cleared it; AC-1 asserts the worker's thread name differs from the caller's | claude | closed — `MdcTaskDecoratorTest.capturesOnTheSubmittingThreadAndRestoresOnTheRunningOne` clears the submitter's MDC after decorating and runs on a different thread, so a worker-side capture cannot pass (`ac9e095`) |
+| R-3 | A longer drain window delays context shutdown past the platform's SIGTERM→SIGKILL grace, so a redeploy is killed mid-shutdown — worse than giving up, because Hikari and the web layer never close cleanly | low | med | the derived window is bounded by a named `SHUTDOWN_BUDGET` constant well inside Render's default 30s grace, and the ceiling is *validated* (AC-9) so no env override can exceed it; **no `shutdownNow()`** — an interrupt during the relay handoff is exactly what turns at-least-once into a duplicate mail (issue #410 Part 2), and that reasoning is recorded in the config Javadoc | claude | closed — the ceiling `SHUTDOWN_BUDGET_MS` is validated (`anOversizedSocketTimeoutFailsTheContext`), and both pools' `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` pin the no-`shutdownNow()` decision (`04e6f49`) |
+| R-4 | `spring.mail.properties.mail.smtp.*` interpolation silently fails to resolve (typo in the placeholder), and Jakarta Mail falls back to **infinite** timeouts — the exact hazard #368 closed, reintroduced invisibly | low | high | AC-8 resolves all three keys through the `mailer`-profile environment and asserts they equal the knob; an unresolved placeholder fails the property resolution loudly | claude | closed — and it was a live hazard: the phase-1 audit found `application-smtp4dev.properties` still restating the literals. All three keys now interpolate under **both** real-transport profiles, parameterized in `theRelayTimeoutsAreTheSameKnobTheDrainIsDerivedFrom` (`04e6f49`) |
+| R-5 | Boundary leak: the `@ConfigurationProperties` record or the `TaskDecorator` lands in the wrong layer (e.g. a framework config type inside `application`, or a public adapter class) | low | med | `riviera-modulith` placement recorded in §Module ownership; `PackageShapeArchitectureTests` + `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` run in the phase-1 scoped batch | claude | closed — `ModularityTests` + `PackageShapeArchitectureTests` + `PublishedSurfacePlacementArchitectureTests` + `MailListenerExecutorArchitectureTest` green; no published surface changed |
+| R-6 | Shared-state accumulation across the full suite (the `riviera-local-debug` blind spot): a new bean in every context, plus a longer drain, slows or destabilises unrelated ITs | low | med | the new bean is a pure value record; ITs that shut contexts down get the derived window from the **shipped** knob, and the fast unit tests pass a tiny knob so no test waits on a real 10s drain; verified by the PR's own CI run before phase 2 builds on it | claude | closed — the new bean is a pure value record; unit tests pass a 200ms budget so none waits on the shipped 10s drain, and `RegistryMailExecutorWiringIT` + `MailSenderWiringIT` + `RegistryMailBulkheadIT` ran green locally against real Postgres. Full-suite behaviour is the PR's CI run |
 
 ## Open questions / Assumptions
 
@@ -156,13 +156,21 @@ applies to it:
   a `SHUTDOWN_BUDGET` comfortably inside it rather than claiming the platform number as fact.
   *Owner:* claude · *Resolves by:* phase 1 (the constant's Javadoc states the assumption and its
   source, so a future #370 session can correct one line).
-- **Open question (OQ-1):** recovery sends still **queued** when the drain window expires are lost
-  and no counter moves (`MAIL_RECOVERY_DROPPED` counts *rejections*, not abandonment). Out of scope
-  here (Non-goals). *Owner:* claude · *Resolves by:* phase 2 — file a follow-up issue and cite it
-  here, or record why it is not worth one.
+
 
 ### Resolved
 
+- **A-1 (resolved, phase 1):** the platform-grace assumption is now encoded rather than assumed away.
+  `MailTransportProperties.SHUTDOWN_BUDGET_MS` is the single constant that carries it, its Javadoc states
+  that Render's ~30s SIGTERM→SIGKILL default is the source and that nothing in `docs/deploy/` records it,
+  and it is the *validated ceiling* on the knob — so an env override cannot produce a drain that outlasts
+  the grace, and a platform change is one line to correct.
+- **OQ-1 (resolved, phase 2 → issue #434):** recovery sends still **queued** when the drain window
+  expires are lost and no counter moves (`MAIL_RECOVERY_DROPPED` counts *rejections*,
+  `MAIL_RECOVERY_FAILED` counts accepted-then-failed; abandonment is neither). Filed as **#434** with the
+  taxonomy question it shares with #423, deliberately not absorbed here — it needs a new metric name or
+  `reason` tag plus its own runbook row. #410 makes it strictly less likely, since the drain grew from a
+  flat 5s to the full socket budget.
 - **OQ-2 (resolved at plan time):** *Is the shed line really MDC-less, as #410 Part 1 states?* **No.**
   `ThreadPoolExecutor.execute` calls `reject(...)` on the **calling** thread, and for this pool the
   caller is the thread committing the booking transaction (`@Async` + `@TransactionalEventListener`
@@ -233,17 +241,17 @@ cannot occupy the shared `applicationTaskExecutor` that carries `booking`'s paym
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phases 0+1 done, entering phase 2`
+**Stage pointer:** `PR #433 ready for review — review gate + Sonar gate due`
 
-**Next action:** Phase 2 step 1 — fold #411 into #410 in `docs/plans/registry-mail-bulkhead.md:281-282`,
-add the runbook row for `RIVIERA_SMTP_SOCKET_TIMEOUT_MS`, run `riviera-docs-freshness`, file OQ-1, then
-mark PR #433 ready for review.
+**Next action:** Run the review gate over the full diff per `riviera-sdlc` `references/pr-gates.md` §1
+(the invocation ladder), layer `riviera-review-overlay`, then pull PR #433's Sonar new-issue list from the
+API and clear every entry. Findings re-enter at Implement.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
 | 1 — the drain window derived from the socket budget, bound and validated | ✅ | `04e6f49` |
-| 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | | |
+| 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | ✅ | `<phase-2>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -256,6 +264,25 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 | — | — | none yet | — |
 
 ---
+
+### Docs-freshness run (merge close-out step 5)
+
+Range `origin/main..HEAD`, run at phase 2. **One contradicted fact, patched:**
+
+- `docs/runbooks/mailer-profile-smoke-test.md:119` — stated *"a crash or redeploy past the **5s** drain
+  window loses it"* — contradicted by the derived window (phase 1) — **patched** to name the deriving
+  property instead of a literal, so it cannot go stale again when #370 retunes it.
+
+Two docs were **extended** rather than corrected, because the diff contradicted nothing there but added
+two facts a future session could plausibly undo (the composed decorator slot, and give-up-not-`shutdownNow`):
+`CLAUDE.md`'s `notification` module row and `RESPONSIBILITIES.md`'s notification section — the same
+treatment #408/#415/#423/#428 each got.
+
+Checked and **clean**: `CONTEXT.md` (no new domain term — these are technical knobs, not ubiquitous
+language), `docs/adr/ADR-0011` (its decision-5 text already says "a redeploy past the drain window"
+without a number, so it stays true), `docs/agents/*`, the `riviera-*` skills (none cites these classes or
+the literal), `docs/deploy/*`. Knowledge-graph refresh **skipped** — `graphify-out/` is absent in this
+cloud clone, as expected.
 
 ## File structure
 

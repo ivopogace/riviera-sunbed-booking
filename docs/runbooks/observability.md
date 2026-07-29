@@ -212,6 +212,30 @@ taking the money-path listeners with it. That is the unbounded queue the bulkhea
 restored by a well-meaning retune. A huge `pool-size` is the mirror image, surfacing as
 `OutOfMemoryError: unable to create native thread` on the transaction-commit thread.
 
+**The relay socket budget is a third knob, shared by both mail vehicles** (`#410`):
+
+| Env var | Property | Default | Accepted range |
+|---|---|---|---|
+| `RIVIERA_SMTP_SOCKET_TIMEOUT_MS` | `riviera.notification.mail.socket-timeout-ms` | `10000` | `1`–`10000` |
+
+**Retuning it moves three things at once, by design.** It is interpolated into all three
+`spring.mail.properties.mail.smtp.*` timeouts (connect / read / write) under both the `mailer` and
+`smtp4dev` profiles, **and** both mail pools derive their shutdown drain window from it. Before #410
+those were four copies of one decision and they disagreed — 5s of drain against a 10s socket budget —
+so a redeploy stopped waiting on sends that were still legitimately running and closed the data source
+underneath them. Do not "fix" a slow relay by raising this past the range: the ceiling *is* the
+shutdown drain budget, and a longer drain outlasts the platform's SIGTERM grace, so the process gets
+killed mid-close instead of shutting down in order. Milliseconds rather than a `Duration` because
+Jakarta Mail reads the interpolated value as a plain number.
+
+**When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
+vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so
+expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
+vehicle it is a lost mail the user must re-request, and note that it is **not** counted by
+`riviera.mail.recovery.dropped`, which counts *rejections*, not abandonment at shutdown. The
+non-interruption is deliberate: an interrupt cannot tell a send that already handed off to the relay
+from one that has not, and interrupting the first is how at-least-once becomes a duplicate mail.
+
 ## Alert route (today): in-app self-check → ERROR log
 
 `MoneyPathAlertCheck` (`@Profile("stripe")`, scheduled every

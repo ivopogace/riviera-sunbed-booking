@@ -278,8 +278,9 @@ hazard is filed as **#404**. The comparison review against the competing branch 
 superseded) filed five more, so nothing that branch did better is lost: **#407** (prove a shed send
 leaves its publication outstanding, in a Spring context — the saturation coverage this class lacks),
 **#408** (externalise the pool sizing + an attributable shed metric), **#409** (the two escape hatches in
-`MailListenerExecutorArchitectureTest`), **#410** (MDC onto the mail workers), **#411** (the shutdown
-drain vs the SMTP socket budget). #410 and #411 predate both branches.
+`MailListenerExecutorArchitectureTest`), and **#410** (MDC onto the mail workers **plus** the shutdown
+drain vs the SMTP socket budget — filed separately as #411, then folded into #410 and closed as a
+duplicate, since both parts touch the same two bean methods). #410's two parts predate both branches.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
