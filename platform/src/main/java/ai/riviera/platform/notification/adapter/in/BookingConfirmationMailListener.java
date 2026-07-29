@@ -43,11 +43,16 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
  * <p><strong>The third annotation, {@code @Transactional(REQUIRES_NEW)}, is deliberately not restored.</strong>
  * The three port reads below are independent read-only queries with nothing to keep consistent between
  * them — the event is delivered after the producer committed, so each already sees settled state. What
- * a transaction did add was a Hikari connection held for the whole method, SMTP round-trip included,
- * and ten of those exhaust the default pool of ten: the pre-fix {@code RegistryMailBulkheadIT} failed
- * with {@code CannotGetJdbcConnectionException} rather than merely slowly. Registry tracking is
- * unaffected either way — it keys on {@code @TransactionalEventListener}, not on the transaction — and
- * that is asserted, not assumed.
+ * a transaction did add was a Hikari connection held for the whole method, SMTP round-trip included.
+ * That is a second, independent hazard, not the one that reproduced: the pre-fix
+ * {@code RegistryMailBulkheadIT} failed by <strong>starving the shared pool of threads</strong> — the
+ * invariant-#8 confirmation timed out behind ten wedged sends — never by exhausting the connection
+ * pool, which stock sizing puts out of reach anyway (8 core executor threads against 10 connections).
+ * Dropping the transaction is worth doing on its own terms, and
+ * {@code RegistryMailBulkheadIT#sendsWithNoTransactionHeldOpen} asserts the connection is unbound and
+ * not merely the transaction inactive — {@code NOT_SUPPORTED} would satisfy the weaker check while
+ * still pinning the connection. Registry tracking is unaffected either way — it keys on
+ * {@code @TransactionalEventListener}, not on the transaction — and that too is asserted, not assumed.
  *
  * <p>The class, method name and parameter type are all unchanged, so the registry's {@code listener_id}
  * (which embeds exactly those, and which republication matches string-equal) still reads as V31 (#382)
