@@ -57,38 +57,38 @@ git (local + `origin`) before phase 0.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given `riviera.ratelimit.max-tracked-keys=0`, when the context binds
+- [x] **AC-1:** Given `riviera.ratelimit.max-tracked-keys=0`, when the context binds
   `RateLimitProperties`, then startup **fails** with an `IllegalArgumentException` naming
   `max-tracked-keys`, rather than yielding a limiter whose every new key clears every other key's
   spent tokens. *Pinned by:* `RateLimitPropertiesBindingTest.aNonPositiveKeyCapFailsTheContext`
-- [ ] **AC-2:** Given `riviera.ratelimit.max-tracked-keys=2` — positive, but far below the point at
+- [x] **AC-2:** Given `riviera.ratelimit.max-tracked-keys=2` — positive, but far below the point at
   which prune-then-reset is a backstop rather than the steady state — when the context binds, then
   startup **fails**. *Pinned by:* `RateLimitPropertiesBindingTest.aKeyCapBelowTheFloorFailsTheContext`
-- [ ] **AC-3:** Given `riviera.ratelimit.max-tracked-keys=1000000` (the shipped value with one extra
+- [x] **AC-3:** Given `riviera.ratelimit.max-tracked-keys=1000000` (the shipped value with one extra
   digit), when the context binds, then startup **fails**, because ten dimension maps at that cap are
   the memory outage the cap exists to prevent. *Pinned by:*
   `RateLimitPropertiesBindingTest.anOversizedKeyCapFailsTheContext`
-- [ ] **AC-4:** Given `customer.retention.batch-size=0`, when the context binds
+- [x] **AC-4:** Given `customer.retention.batch-size=0`, when the context binds
   `CustomerRetentionProperties`, then startup **fails** with an `IllegalArgumentException` naming
   `batch-size`, rather than a scheduled sweep that runs forever on `LIMIT 0` and scrubs nothing.
   *Pinned by:* `CustomerRetentionPropertiesTest.aNonPositiveBatchSizeFailsTheContext`
-- [ ] **AC-5:** Given `customer.retention.batch-size=100000`, when the context binds, then startup
+- [x] **AC-5:** Given `customer.retention.batch-size=100000`, when the context binds, then startup
   **fails**, because one `@Transactional` sweep of that size is the unbounded transaction the batch
   bound exists to prevent and exceeds PostgreSQL's 65 535 bind-parameter ceiling on the candidate
   `IN (:guests)` list. *Pinned by:* `CustomerRetentionPropertiesTest.anOversizedBatchSizeFailsTheContext`
-- [ ] **AC-6:** Given `customer.retention.window=P0D` (or any negative period), when the context
+- [x] **AC-6:** Given `customer.retention.window=P0D` (or any negative period), when the context
   binds, then startup **fails**, rather than setting the cutoff to today and scrubbing every guest
   contact with no booking on or after today — irreversibly (ADR-0010). *Pinned by:*
   `CustomerRetentionPropertiesTest.aNonPositiveWindowFailsTheContext`
-- [ ] **AC-7:** Given the **shipped** `application.properties` and no overrides, when each record
+- [x] **AC-7:** Given the **shipped** `application.properties` and no overrides, when each record
   binds, then `maxTrackedKeys` is `100000`, `window` is `P10Y` and `batchSize` is `500` — today's
   behaviour, byte-for-byte. *Pinned by:* `RateLimitPropertiesBindingTest.bindsTheShippedKeyCapDefault`
   and `CustomerRetentionPropertiesTest.bindsTheShippedDefaults`
-- [ ] **AC-8:** Given a value anywhere inside each documented range, when the record is constructed
+- [x] **AC-8:** Given a value anywhere inside each documented range, when the record is constructed
   directly, then it is accepted — the bounds bound the typo, not the operator. *Pinned by:*
   `RateLimitPropertiesBindingTest.acceptsTheWholeKeyCapTuningRangeButNotBeyondIt` and
   `CustomerRetentionPropertiesTest.acceptsTheWholeBatchTuningRangeButNotBeyondIt`
-- [ ] **AC-9 (added at the review gate, finding F-1):** Given a mixed-sign window whose net duration
+- [x] **AC-9 (added at the review gate, finding F-1):** Given a mixed-sign window whose net duration
   reads positive (`P1M-40D`, `toTotalMonths() == 1`) but which moves the cutoff *forward*, when the
   record is constructed, then it is rejected — so the any-negative-component rule is pinned as
   deliberate and a future "simplification" to a net-duration comparison reddens instead of silently
@@ -130,23 +130,26 @@ range, including all three shipped defaults, binds exactly as it does today.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A guard rejects a value some **deployed** environment already sets, turning a boot into a crash-loop | low | high | The shipped `application.properties` values (`100000` / `500` / `P10Y`) are the only values written anywhere in the repo and all sit mid-range; `max-tracked-keys` carries no `${VAR:…}` placeholder, so it has no env override path at all, and `customer.retention.*` ships disabled. Grep-verified across `platform/src`, `docs/deploy/`, `render.yaml`. | claude | open |
-| R-2 | The `batchSize` guard fires on **unset** config, because `CustomerRetentionProperties` takes an `Integer` and null-defaults *inside* the compact constructor | med | high | Order the statements: null-default first, validate second. AC-7 (shipped defaults bind) is what catches an inversion. This is grill finding **G-2**. | claude | open |
-| R-3 | A chosen bound is arbitrary, so a future operator hits it with a legitimate value | low | med | Every bound is justified in the record's Javadoc against a mechanism, not a feeling — the ten dimension maps for the key cap, the `@Transactional` sweep + the bind-parameter ceiling for the batch. Ranges are 100×–500× wide (see the bounds table). | claude | open |
-| R-4 | Scope creep: the slice's ACs cover the floor, and adding ceilings + a third knob widens it | med | low | Both widenings were escalated to the user via `AskUserQuestion` **before** the plan was committed, and both were approved. Recorded as G-1 / G-5 under Resolved, and to be noted on issue #414 so the ACs and the diff agree. | claude | open |
-| R-5 | Module-boundary leak | low | high | None possible: no class is created, moved or renamed across packages; the two edited records stay in the packages that own them. `ModularityTests` is run anyway as part of the structural net. | claude | open |
+| R-1 | A guard rejects a value some **deployed** environment already sets, turning a boot into a crash-loop | low | high | The shipped `application.properties` values (`100000` / `500` / `P10Y`) are the only values written anywhere in the repo and all sit mid-range; `max-tracked-keys` carries no `${VAR:…}` placeholder, so it has no env override path at all, and `customer.retention.*` ships disabled. Grep-verified across `platform/src`, `docs/deploy/`, `render.yaml`. | claude | **closed** — grep confirmed the three values are written in exactly one place each, all mid-range; no deployed override path exists for the key cap |
+| R-2 | The `batchSize` guard fires on **unset** config, because `CustomerRetentionProperties` takes an `Integer` and null-defaults *inside* the compact constructor | med | high | Order the statements: null-default first, validate second. AC-7 (shipped defaults bind) is what catches an inversion. This is grill finding **G-2**. | claude | **closed** — guards sit below both defaulting assignments; pinned by `unsetComponentsStillDefaultRatherThanTrippingTheGuards` and AC-7 |
+| R-3 | A chosen bound is arbitrary, so a future operator hits it with a legitimate value | low | med | Every bound is justified in the record's Javadoc against a mechanism, not a feeling — the ten dimension maps for the key cap, the `@Transactional` sweep + the bind-parameter ceiling for the batch. Ranges are 100×–500× wide (see the bounds table). | claude | **closed** — every bound cites its mechanism in Javadoc; review finding F-1 tightened the `window` rule's stated rationale further |
+| R-4 | Scope creep: the slice's ACs cover the floor, and adding ceilings + a third knob widens it | med | low | Both widenings were escalated to the user via `AskUserQuestion` **before** the plan was committed, and both were approved. Recorded as G-1 / G-5 under Resolved, and stated in the PR body so the ACs and the diff agree. | claude | **closed** — both widenings approved pre-plan; a *third* widening (four more `Duration`/`Period` knobs) was declined and deferred to **#426** rather than absorbed |
+| R-5 | Module-boundary leak | low | high | None possible: no class is created, moved or renamed across packages; the two edited records stay in the packages that own them. `ModularityTests` is run anyway as part of the structural net. | claude | **closed** — structural net green (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`) |
 | R-6 | Flyway version collision | n/a | n/a | No migration in this slice. The only open PRs are ten Dependabot frontend bumps (#332–#341), none of which touch `platform/`. | claude | closed — no migration |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `max-tracked-keys` has no deployed override anywhere outside the repo (Render
-  dashboard env vars are not in version control). Mitigated by it having no `${VAR:default}`
-  placeholder — unlike `riviera.ratelimit.username.*` and `trusted-proxies`, it cannot be overridden
-  by an env var under the readable name, only under the relaxed-binding form
-  `RIVIERA_RATELIMIT_MAXTRACKEDKEYS`. — *Owner:* claude · *Resolves by:* phase 0 (grep evidence in
-  the commit message)
+*(empty — every entry resolved below.)*
 
 ### Resolved
+
+- **Assumption (resolved, phase 0):** `max-tracked-keys` has no deployed override outside the repo
+  (Render dashboard env vars are not in version control). It carries no `${VAR:default}` placeholder —
+  unlike `riviera.ratelimit.username.*` and `trusted-proxies` — so it cannot be overridden under the
+  readable name, only under the relaxed-binding form `RIVIERA_RATELIMIT_MAXTRACKEDKEYS`, which nothing
+  in `docs/deploy/` or `render.yaml` sets. Grep evidence is in the phase-0 commit. Residual risk
+  accepted: it is one env var away in a dashboard nobody has set it in, and the failure mode is a
+  loud boot failure with a message naming the property and its range — the same trade #408 accepted.
 
 - **G-1 (widening — ceilings):** the issue's ACs guard only the floor, but #408 — which the issue
   names as the model ("Guard both the way #408 did") — guards both ends, and `RegistryMailProperties`'
@@ -220,9 +223,9 @@ context startup, before any request is served.
 
 ## Execution status
 
-**Stage pointer:** `review gate — run, 5 findings, 4 fixed + 1 closed-as-not-reproduced; sonar gate green`
+**Stage pointer:** `DONE — merged via PR #425`
 
-**Next action:** push the fix round, confirm CI + the re-run Sonar analysis are green on the new SHA, then finalize this section and merge.
+**Next action:** none — slice complete. Post-merge items are GitHub-only and need no commit: close #414 (the PR's `Closes` does it), and the deferred audit findings are already filed as **#426**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -293,7 +296,7 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/RateLimitProperties.java` ·
 Test `platform/src/test/java/ai/riviera/platform/RateLimitPropertiesBindingTest.java`
 
-- [ ] **Step 1: Write the failing test** — appended to `RateLimitPropertiesBindingTest`, with
+- [x] **Step 1: Write the failing test** — appended to `RateLimitPropertiesBindingTest`, with
   `assertThatIllegalArgumentException` added to the static imports.
 
 ```java
@@ -365,13 +368,13 @@ Test `platform/src/test/java/ai/riviera/platform/RateLimitPropertiesBindingTest.
 	}
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*RateLimitPropertiesBindingTest*"`
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*RateLimitPropertiesBindingTest*"`
   → FAIL: the three context tests report `Expecting context to have failed but it started`, and
   `acceptsTheWholeKeyCapTuningRangeButNotBeyondIt` fails to compile until the constants exist.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — in `RateLimitProperties`, below the record header:
+- [x] **Step 3: Minimal implementation** — in `RateLimitProperties`, below the record header:
 
 ```java
 	/**
@@ -405,17 +408,17 @@ Test `platform/src/test/java/ai/riviera/platform/RateLimitPropertiesBindingTest.
 
 The `@param maxTrackedKeys` Javadoc line gains the accepted range and a pointer to the two constants.
 
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*RateLimitPropertiesBindingTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*RateLimitPropertiesBindingTest*"` → PASS
 
 > Scope (end-of-phase regression): broaden to the touched area —
 > `gradle test --tests "*RateLimit*" --tests "*TokenBucket*"`.
 
-- [ ] **Step 5: Generalization-audit pass** — search every other bound numeric/`Period` property for
+- [x] **Step 5: Generalization-audit pass** — search every other bound numeric/`Period` property for
   the same "what does a degenerate value do here?" question. Append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "fix(#414): reject a degenerate rate-limit key cap at boot (#414)"`
+- [x] **Step 6: Commit** — `git commit -m "fix(#414): reject a degenerate rate-limit key cap at boot (#414)"`
 
-- [ ] **Step 7: Push and open the DRAFT PR immediately** — CI fires on `pull_request` only (#417), so
+- [x] **Step 7: Push and open the DRAFT PR immediately** — CI fires on `pull_request` only (#417), so
   a branch with no PR gets no CI at all. Then update this Execution status in the same commit window.
 
 ---
@@ -426,7 +429,7 @@ The `@param maxTrackedKeys` Javadoc line gains the accepted range and a pointer 
 `platform/src/main/java/ai/riviera/platform/customer/adapter/in/CustomerRetentionProperties.java` ·
 Create `platform/src/test/java/ai/riviera/platform/customer/adapter/in/CustomerRetentionPropertiesTest.java`
 
-- [ ] **Step 1: Write the failing test** — the new class, mirroring `RegistryMailPropertiesTest`.
+- [x] **Step 1: Write the failing test** — the new class, mirroring `RegistryMailPropertiesTest`.
 
 ```java
 package ai.riviera.platform.customer.adapter.in;
@@ -572,14 +575,14 @@ class CustomerRetentionPropertiesTest {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `gradle test --tests "*CustomerRetentionPropertiesTest*"` → FAIL: the five context tests report
   `Expecting context to have failed but it started`, and the range tests fail to compile until
   `MAX_BATCH_SIZE` exists.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — in `CustomerRetentionProperties`:
+- [x] **Step 3: Minimal implementation** — in `CustomerRetentionProperties`:
 
 ```java
 	/**
@@ -613,17 +616,17 @@ class CustomerRetentionPropertiesTest {
 The guards sit **below** the two defaulting assignments (R-2 / G-2) so unset config still defaults.
 The record Javadoc gains a paragraph on both bounds and the no-JSR-303 reason.
 
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*CustomerRetentionPropertiesTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*CustomerRetentionPropertiesTest*"` → PASS
 
 > Scope (end-of-phase regression): broaden to the touched module —
 > `gradle test --tests "*customer*" --tests "*Retention*"`.
 
-- [ ] **Step 5: Generalization-audit pass** — re-run the audit over `Period`/`Duration` properties
+- [x] **Step 5: Generalization-audit pass** — re-run the audit over `Period`/`Duration` properties
   specifically, the class the issue's numeric sweep structurally missed. Append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "fix(#414): reject a degenerate retention window and batch size at boot (#414)"`
+- [x] **Step 6: Commit** — `git commit -m "fix(#414): reject a degenerate retention window and batch size at boot (#414)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -632,17 +635,17 @@ The record Javadoc gains a paragraph on both bounds and the no-JSR-303 reason.
 **Files:** Modify `platform/src/main/resources/application.properties` ·
 `docs/runbooks/data-erasure.md` · this plan doc
 
-- [ ] **Step 1:** Extend the three shipped comments with the accepted range and its one-line reason, so
+- [x] **Step 1:** Extend the three shipped comments with the accepted range and its one-line reason, so
   an operator editing the file sees the bound before the boot does. Add an **Accepted range** column to
   the `data-erasure.md` Knobs table, since its enabling procedure hands the operator a window value to
   set and deploy.
-- [ ] **Step 2:** Run the structural net —
+- [x] **Step 2:** Run the structural net —
   `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"`
   → PASS. (No structure changed; this is the standing check after any backend change.)
-- [ ] **Step 3:** Merge the latest `origin/main` into the branch with full phase discipline, then mark
+- [x] **Step 3:** Merge the latest `origin/main` into the branch with full phase discipline, then mark
   the PR **ready for review** — that is what makes the Review and Sonar gates due.
-- [ ] **Step 4:** Note the two approved widenings (G-1, G-5) on issue #414 so its ACs and the diff agree.
-- [ ] **Step 5:** Commit the finalized Execution status **in this PR**, citing `merged via PR #NN` —
+- [x] **Step 4:** Note the two approved widenings (G-1, G-5) on issue #414 so its ACs and the diff agree.
+- [x] **Step 5:** Commit the finalized Execution status **in this PR**, citing `merged via PR #425` —
   never a merge SHA, which cannot exist before the merge.
 
 ---
@@ -660,37 +663,40 @@ The record Javadoc gains a paragraph on both bounds and the no-JSR-303 reason.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*RateLimitPropertiesBindingTest*"` → `aNonPositiveKeyCapFailsTheContext` PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run → `aKeyCapBelowTheFloorFailsTheContext` PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run → `anOversizedKeyCapFailsTheContext` PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `gradle test --tests "*CustomerRetentionPropertiesTest*"` → `aNonPositiveBatchSizeFailsTheContext` PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Same run → `anOversizedBatchSizeFailsTheContext` PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Same run → `aNonPositiveWindowFailsTheContext` + `aNegativeWindowFailsTheContext` PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Both runs → `bindsTheShippedKeyCapDefault` + `bindsTheShippedDefaults` PASS, and the pre-existing `GuestContactRetentionSchedulerConfigTest` stays green. Verified at commit `<sha>`.
-- [ ] **AC-8:** Both runs → `acceptsTheWholeKeyCapTuningRangeButNotBeyondIt` + `acceptsTheWholeBatchTuningRangeButNotBeyondIt` PASS. Verified at commit `<sha>`.
-- [ ] **AC-9:** Run `gradle test --tests "*CustomerRetentionPropertiesTest*"` → `rejectsAMixedSignWindowEvenWhenItsNetDurationLooksPositive` PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `gradle test --tests "*RateLimitPropertiesBindingTest*"` → `aNonPositiveKeyCapFailsTheContext` PASS. Verified at commit `6f1917b`.
+- [x] **AC-2:** Same run → `aKeyCapBelowTheFloorFailsTheContext` PASS. Verified at commit `6f1917b`.
+- [x] **AC-3:** Same run → `anOversizedKeyCapFailsTheContext` PASS. Verified at commit `6f1917b`.
+- [x] **AC-4:** Run `gradle test --tests "*CustomerRetentionPropertiesTest*"` → `aNonPositiveBatchSizeFailsTheContext` PASS. Verified at commit `25241f6`.
+- [x] **AC-5:** Same run → `anOversizedBatchSizeFailsTheContext` PASS. Verified at commit `25241f6`.
+- [x] **AC-6:** Same run → `aNonPositiveWindowFailsTheContext` + `aNegativeWindowFailsTheContext` PASS. Verified at commit `25241f6`.
+- [x] **AC-7:** Both runs → `bindsTheShippedKeyCapDefault` + `bindsTheShippedDefaults` PASS, and the pre-existing `GuestContactRetentionSchedulerConfigTest` stays green. Verified at commit `894fec9`.
+- [x] **AC-8:** Both runs → `acceptsTheWholeKeyCapTuningRangeButNotBeyondIt` + `acceptsTheWholeBatchTuningRangeButNotBeyondIt` PASS. Verified at commit `894fec9`.
+- [x] **AC-9:** Run `gradle test --tests "*CustomerRetentionPropertiesTest*"` → `rejectsAMixedSignWindowEvenWhenItsNetDurationLooksPositive` PASS. Verified at commit `894fec9`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — no availability write path in the diff).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module imports added; no class moved (invariant #11).
-- [ ] **Payment/payout** section N/A — no money in the diff.
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — the sweep's `Europe/Tirane` cutoff arithmetic is unchanged; only the *window* it subtracts is now range-checked.
-- [ ] Booking codes unguessable (invariant #7) — untouched; no code, email or PII enters a log or an exception message (the messages carry only the offending number/period).
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — this doc's final state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — no availability write path in the diff).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module imports added; no class moved (invariant #11).
+- [x] **Payment/payout** section N/A — no money in the diff.
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — the sweep's `Europe/Tirane` cutoff arithmetic is unchanged; only the *window* it subtracts is now range-checked.
+- [x] Booking codes unguessable (invariant #7) — untouched; no code, email or PII enters a log or an exception message (the messages carry only the offending number/period).
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — this doc's final state committed here, citing `merged via PR #425`.
+- [x] **The review gate ran in full** — the invocation ladder's **rung 2**: the `Skill("code-review")`
+      probe was refused by upstream `disable-model-invocation` (as the ladder predicts), so the
+      installed plugin's `commands/code-review.md` payload was executed directly — the five-reviewer
+      fan-out plus confidence scoring — with `riviera-review-overlay` layered on. Five findings; four
+      fixed (F-1, F-3, F-4, F-5), one closed as not reproduced against real Sonar output (F-2).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
