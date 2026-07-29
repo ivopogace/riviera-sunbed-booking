@@ -4,8 +4,10 @@
 
 The engineering skills (`to-issues`, `triage`, `implement`) read from and write to
 GitHub Issues. In this repo, agents reach GitHub through the **GitHub MCP tools**
-(`mcp__plugin_github_github__*`); a contributor running Claude Code locally may use the `gh` CLI
-instead — both target the same issues.
+(`mcp__plugin_github_github__*`) — the convention for tracker ops even though `gh` is
+now provisioned in cloud sessions too (as the review plugin's transport; the proxy
+403s most non-REST subcommands there). A contributor running Claude Code locally may
+use the `gh` CLI instead — both target the same issues.
 
 **External PRs as a triage surface:** No. Pull requests here are normal review
 (the two of us), not an inbound feature-request channel. `triage` therefore works

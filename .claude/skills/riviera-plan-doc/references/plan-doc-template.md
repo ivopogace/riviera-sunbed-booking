@@ -328,8 +328,9 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — `/code-review` (or `/review <PR>`) *plus*
-      `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is
-      stated in the PR and its checkbox is left unticked.
+- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+      If tooling blocked the review, that is stated in the PR and its checkbox is left
+      unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

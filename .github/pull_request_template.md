@@ -46,12 +46,14 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 
 - [ ] CI is green (build + tests + scans).
 - [ ] Tests run for real (Testcontainers ITs **not** skipped — `skipped=0`).
-- [ ] **SDLC review gate run** — `/code-review` (or `/review <PR>`) **actually invoked**, with
-  `riviera-review-overlay` layered on top; findings resolved or deferred with a follow-up issue.
+- [ ] **SDLC review gate run** — per the invocation ladder in riviera-sdlc
+  `references/pr-gates.md` §1 (the plugin's review workflow actually executed, or
+  `/review <PR>` as a declared degraded fallback), with `riviera-review-overlay` layered on
+  top; findings resolved or deferred with a follow-up issue.
   <!-- The overlay alone is NOT the review — it adds bank items to an active one, so running it
        by itself leaves the generic FE/BE/contract banks unrun. If tooling blocked the review
-       (e.g. the session cannot spawn the review subagent), LEAVE THIS UNTICKED and say so in
-       Scope notes. Never tick a box for a command that did not run. -->
+       (e.g. the session cannot spawn the review subagents), LEAVE THIS UNTICKED and say so in
+       Scope notes. Never tick a box for a review that did not run. -->
 - [ ] **Plan doc closed out in this PR** — execution status ✅, Open Questions empty, risk rows
   closed, citing `merged via PR #NN` (never a merge SHA), so no docs-only follow-up PR is needed.
 - [ ] **Skills consulted** line in the plan doc covers every area the diff touches
