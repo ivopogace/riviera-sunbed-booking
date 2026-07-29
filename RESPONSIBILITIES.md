@@ -288,7 +288,16 @@ the recovery dispatcher's mirror-image accounting is `MAIL_RECOVERY_DROPPED` (#4
 mirror rather than a copy — **every** drop is logged, not one per episode, because a throttle trades
 repeated lines for the durable record that makes them redundant and this vehicle has none, and a
 rejection during **shutdown is counted here** (a real loss, tagged `reason=shutdown` so a redeploy
-cannot read as a degraded relay) where the registry excludes it as a non-event —
+cannot read as a degraded relay) where the registry excludes it as a non-event; #423 completed that
+accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
+which is the likelier loss and the first of the three mail counters to move in a relay outage. It is
+tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
+can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
+operator acts on the cause, not the consequence. **The registry vehicle deliberately has no twin:**
+its transport failure propagates, so the publication stays outstanding and `riviera.outbox.pending`
+already accounts for it — an argument that holds only for failures that *throw*, which is why a
+confirmation this module **abandons** for a missing booking/set/contact (completing the publication,
+by design) is the one mail loss no gauge shows, tracked as #428 —
 the `BookingConfirmed`
 confirmation mail (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —

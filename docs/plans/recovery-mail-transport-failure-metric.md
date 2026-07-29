@@ -175,17 +175,16 @@ N/A — no contract change. No endpoint, DTO, or response shape is touched;
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 1 done, phase 2 (docs) next`
+**Stage pointer:** `PR — marking ready for review, then the Review + Sonar gates`
 
-**Next action:** Write the runbook entry for `riviera_mail_recovery_failed_total` (replacing the
-`#423` placeholder note), then update the `notification` clause in `CLAUDE.md` and
-`RESPONSIBILITIES.md`.
+**Next action:** Merge latest `origin/main`, mark PR #427 ready for review, then run the review gate
+per `riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `f859ae9` (PR #427) |
-| 1 — The counter and its cause split | ✅ | `32b6578` |
-| 2 — Runbook + substrate docs | | |
+| 1 — The counter and its cause split | ✅ | `44e8640` |
+| 2 — Runbook + substrate docs | ✅ | |
 | 3 — Gates (CI, review, Sonar) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -289,16 +288,16 @@ private void dispatchQuietly(String kind, String toEmail, Runnable send) {
 
 **Files:** Modify `docs/runbooks/observability.md` · Modify `RESPONSIBILITIES.md` · Modify `CLAUDE.md`
 
-- [ ] **Step 1:** Replace the runbook's `#423` placeholder note with the counter's own entry: what
+- [x] **Step 1:** Replace the runbook's `#423` placeholder note with the counter's own entry: what
       one increment means for a user, the `reason` vocabulary, and the read-first order during a
       relay outage (`riviera_mail_recovery_failed_total{reason="transport"}` first — it is the one
       that rises on the first failed send; `riviera_outbox_pending` next for the registry side;
       `riviera_mail_recovery_dropped_total` last, since saturating that pool needs 100 queued sends).
-- [ ] **Step 2:** State the registry asymmetry in both places a reader will look — the runbook and
+- [x] **Step 2:** State the registry asymmetry in both places a reader will look — the runbook and
       `TransactionalMailService`'s Javadoc (AC-6/AC-8).
-- [ ] **Step 3:** Update the `notification` clause in `CLAUDE.md` and `RESPONSIBILITIES.md` that
+- [x] **Step 3:** Update the `notification` clause in `CLAUDE.md` and `RESPONSIBILITIES.md` that
       currently ends "…is still uncounted, tracked as #423".
-- [ ] **Step 4: Commit** — `git commit -m "docs(#423): document the transport-failure counter and the registry asymmetry (#423)"`
+- [x] **Step 4: Commit** — `git commit -m "docs(#423): document the transport-failure counter and the registry asymmetry (#423)"`
 
 ---
 
