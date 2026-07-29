@@ -284,7 +284,8 @@ developer machine's.
 
 - `references/issue-intake-gate.md` — read at plan entry whenever work starts from an
   existing issue: grill checklist, in-flight/Flyway-number check, module-ownership check.
-- `references/pr-gates.md` — read the moment a PR exists: the Review gate, the
+- `references/pr-gates.md` — read when the PR is marked **ready for review** (not when the
+  draft opens, #417): the Review gate, the
   SonarCloud gate (API URLs, triage rules), and the Merge close-out checklist.
 - `references/case-history.md` — the incidents behind the rules (#122/#127, #158, #72,
   #93, epic #141's un-ticked checklist, O6/PR #219, PR #318, the three docs-only
