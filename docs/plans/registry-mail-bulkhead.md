@@ -42,9 +42,11 @@ own Javadoc (#369) and ADR-0011 decision 5.
 - `riviera-plan-doc` — this document's structure and the Execution-status discipline.
 - `riviera-docs-freshness` (phase 3) — the pre-merge substrate sweep; it is what surfaced F-1, a live
   test-coverage hole rather than mere stale prose.
-- `riviera-review-overlay` + the inline `/review` engine (review gate) — the RV-BE bank walk that
-  surfaced F-2 and F-3. Both fixes re-entered at Implement under `riviera-modulith` +
-  `riviera-java-conventions` (a Spring bean-definition change in `adapter/in`, and test robustness).
+- `riviera-review-overlay` + `/review` (first review pass) — the RV-BE bank walk that surfaced F-2 and
+  F-3. Both fixes re-entered at Implement under `riviera-modulith` + `riviera-java-conventions` (a
+  Spring bean-definition change in `adapter/in`, and test robustness).
+- `/code-review` (second pass, subagent fan-out, once authorized) — five independent reviewers over the
+  final diff: **no further findings**.
 - `riviera-local-debug` — the cloud recipe (system `gradle`, JDK-25 toolchain registration, daemon on
   21) and the scoped-test discipline used for every phase command below.
 - **Not loaded, deliberately:** `postgres` (no migration, no schema, no new query — the tests read
@@ -252,10 +254,10 @@ loaded for that reason.
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR #403 — CI green, Sonar gate cleared, review gate run; ready to merge`
+**Stage pointer:** `merged via PR #403 — close-out complete`
 
-**Next action:** Merge PR **#403**, then the GitHub-only close-out: close #383, and file the deferred
-`BookingRefundListener` follow-up (Scope notes). **Merged via PR #403.**
+**Next action:** None — the slice is done. The deferred `BookingRefundListener` hazard is filed as
+**#404**. **Merged via PR #403.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -264,6 +266,7 @@ loaded for that reason.
 | 2 — the structural rule (AC-6) + substrate docs | ✅ | `87c3bab` |
 | 3 — pre-merge docs-freshness + the coverage hole it found | ✅ | `884a8cd`, `b4c65cd` |
 | 4 — review-gate findings F-2, F-3 | ✅ | `b89cd1d` |
+| 5 — `/code-review` fan-out over the final diff | ✅ | no findings; docs-only close-out |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -445,8 +448,10 @@ default for the five money-path listeners; #383 is a mail-only exception, not a 
       run — it is the full-suite-only failure class scoped runs cannot show. Open Questions empty.
 - [x] **Close-out written in THIS PR** — this document's final state is committed here, citing
       `merged via PR #403`, so no docs-only follow-up PR is needed.
-- [x] **The review gate ran** — `riviera-review-overlay` layered onto the inline `/review` engine, walking
-      the full RV-BE bank. It found **two real defects (F-2 Blocker, F-3)**, both fixed and re-reviewed.
-      **Degraded mode, stated honestly:** the stronger `/code-review` subagent fan-out did not run — the
-      skill was unavailable for most of this session and the session's standing instruction bars launching
-      subagents unasked. Recorded in the PR rather than silently substituted (`pr-gates.md` §1).
+- [x] **The review gate ran in full — both halves.** `riviera-review-overlay` layered onto `/review`
+      walked the RV-BE bank and found **two real defects (F-2 Blocker, F-3)**, both fixed and re-reviewed.
+      `/code-review`'s five-agent fan-out then ran over the final diff on the maintainer's authorization
+      and returned **no further findings**; it independently re-derived the two mechanisms this slice
+      rests on (Modulith's `CompletionRegisteringAdvisor` pointcut ignores `@Transactional`; Boot's
+      `applicationTaskExecutor` is `@ConditionalOnMissingBean(Executor.class)`) rather than taking the
+      Javadoc's word, and re-ran all five test classes green.
