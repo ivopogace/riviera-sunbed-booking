@@ -280,7 +280,11 @@ bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bou
 (#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
 payment→booking and booking→payout listeners; the registry listener therefore spells out
 `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-`@ApplicationModuleListener`, and holds no transaction across the send — the `BookingConfirmed`
+`@ApplicationModuleListener`, and holds no transaction across the send; that pool's size and queue
+depth are `riviera.notification.registry-mail.*` properties since #408 (defaults `2`/`200`, validated
+at boot, so #370 can retune them against a real relay without a deploy) and each shed send increments
+`ObservabilityMetrics.MAIL_REGISTRY_SHED` while escalating one log line per saturation *episode* —
+the `BookingConfirmed`
 confirmation mail (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,

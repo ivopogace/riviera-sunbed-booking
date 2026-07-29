@@ -40,6 +40,28 @@ metric-native alerting later.
 | **Failed refunds** | `riviera_refunds_failed_total` (counter) — incremented when the gateway returns `RefundResult.Failed` | A refund the platform owes a tourist could not be issued | any increase since the last check |
 | **Webhook 5xx** | `http_server_requests_seconds_count{uri="/api/payments/stripe/webhook", status=~"5.."}` (standard Boot timer) | The Stripe webhook — the payment source of truth (invariant #8) — is erroring; Stripe will retry and payment state may lag | new 5xx `> …webhook-server-error-threshold` (default 0) |
 
+## Other platform metrics (not money-path)
+
+`ObservabilityMetrics` is the one place metric names are declared; not every name in it is a
+money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three above.
+
+| Metric | Meaning | Alert when |
+|---|---|---|
+| `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is not lost (its event publication stays outstanding and is republished on the next restart), but until then a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume; retune with the two env vars below before widening anything else |
+
+The shed path also logs **one `ERROR` per saturation episode** — not one per shed send, which would
+bury the lines that matter during a burst. The episode ends when the pool drains a task, so a
+sustained outage reads as a heartbeat and a genuinely new saturation escalates again. **Alert on the
+counter, not the log**: the log tells you an episode started, the counter tells you how big it was.
+
+**Tunables** (`riviera.notification.registry-mail.*`, both validated at boot — a non-positive value
+fails startup rather than silently yielding a `SynchronousQueue`):
+
+| Env var | Property | Default |
+|---|---|---|
+| `RIVIERA_REGISTRY_MAIL_POOL_SIZE` | `pool-size` (core = max threads) | `2` |
+| `RIVIERA_REGISTRY_MAIL_QUEUE_CAPACITY` | `queue-capacity` (sends queued before shedding) | `200` |
+
 ## Alert route (today): in-app self-check → ERROR log
 
 `MoneyPathAlertCheck` (`@Profile("stripe")`, scheduled every

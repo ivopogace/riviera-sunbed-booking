@@ -116,6 +116,15 @@ must include `frontend/`, so:
     credentials — **secrets, env-only**, the Stripe-key posture), `RIVIERA_MAIL_FROM`
     (`noreply@<platform sending domain>`, #370). Activation steps + smoke send:
     [`docs/runbooks/mailer-profile-smoke-test.md`](../runbooks/mailer-profile-smoke-test.md).
+  - `RIVIERA_REGISTRY_MAIL_POOL_SIZE` / `RIVIERA_REGISTRY_MAIL_QUEUE_CAPACITY` (#408) — **leave
+    unset** until there is a reason. They size the bulkhead the booking-confirmation listener
+    drains on (#383), and the shipped defaults `2` / `200` are the constants that slice pinned.
+    They exist because those numbers were chosen against *estimated* SMTP timeouts, and #370 is
+    the first moment a real relay's latency is measurable — retuning an estimate should not need a
+    deploy. **Both are validated at boot:** a non-positive value fails startup rather than silently
+    yielding a `SynchronousQueue` that sheds nearly every send. Watch
+    `riviera_mail_registry_shed_total` to know whether they need raising:
+    [`docs/runbooks/observability.md`](../runbooks/observability.md).
 - **Health Check Path:** `/actuator/health`.
 - **Instances / scaling: keep at exactly ONE.** Do **not** raise the instance count (Render
   *Scaling*). Two in-memory rate-limit buckets and two lockless scheduler sweeps assume a single

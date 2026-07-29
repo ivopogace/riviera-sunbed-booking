@@ -44,32 +44,32 @@ comparison review against the closed branch of PR #406.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given no environment overrides, when the context binds
+- [x] **AC-1:** Given no environment overrides, when the context binds
       `riviera.notification.registry-mail.*`, then `poolSize` is `2` and `queueCapacity` is `200` —
       byte-for-byte today's constants — and the executor is built from those values.
       *Pinned by:* `RegistryMailPropertiesTest.bindsTheShippedDefaults` +
       `RegistryMailExecutorConfigTest.isBoundedOnEveryAxis`
-- [ ] **AC-2:** Given `RIVIERA_REGISTRY_MAIL_POOL_SIZE=4` and
+- [x] **AC-2:** Given `RIVIERA_REGISTRY_MAIL_POOL_SIZE=4` and
       `RIVIERA_REGISTRY_MAIL_QUEUE_CAPACITY=50` in the environment, when the context binds, then the
       properties are `4`/`50` — i.e. #370 can retune without a code change.
       *Pinned by:* `RegistryMailPropertiesTest.theEnvironmentOverridesBothBounds`
-- [ ] **AC-3:** Given `riviera.notification.registry-mail.queue-capacity=0` (or any non-positive
+- [x] **AC-3:** Given `riviera.notification.registry-mail.queue-capacity=0` (or any non-positive
       value), when the context starts, then startup **fails** with a message naming the property and
       the `SynchronousQueue` consequence — never a booted app whose pool sheds every send it cannot
       hand straight to a free thread. *Pinned by:*
       `RegistryMailPropertiesTest.aNonPositiveQueueCapacityFailsTheContext` +
       `RegistryMailPropertiesTest.rejectsANonPositiveQueueCapacity`
-- [ ] **AC-4:** Given a non-positive `pool-size`, when the record is constructed, then it throws
+- [x] **AC-4:** Given a non-positive `pool-size`, when the record is constructed, then it throws
       rather than reaching `ThreadPoolExecutor`'s own opaque `IllegalArgumentException`.
       *Pinned by:* `RegistryMailPropertiesTest.rejectsANonPositivePoolSize`
-- [ ] **AC-5:** Given a saturated pool, when a send is shed, then the counter named by
+- [x] **AC-5:** Given a saturated pool, when a send is shed, then the counter named by
       `ObservabilityMetrics.MAIL_REGISTRY_SHED` (declared there, not module-locally) increments by
       exactly one per shed task. *Pinned by:*
       `RegistryMailExecutorConfigTest.everyShedSendIncrementsTheCounter`
-- [ ] **AC-6:** Given a saturation episode in which N sends are shed with no intervening progress,
+- [x] **AC-6:** Given a saturation episode in which N sends are shed with no intervening progress,
       when the episode is observed, then **exactly one** `ERROR` line is logged, not N.
       *Pinned by:* `RegistryMailExecutorConfigTest.aSaturationEpisodeLogsOnceNotOncePerShedTask`
-- [ ] **AC-7:** Given a saturation episode that ends (the pool drains a task) and a later one
+- [x] **AC-7:** Given a saturation episode that ends (the pool drains a task) and a later one
       begins, when the second episode's first send is shed, then a **new** `ERROR` line is logged —
       the throttle must not silence a genuinely new incident.
       *Pinned by:* `RegistryMailExecutorConfigTest.aLaterEpisodeLogsAgain`
@@ -116,12 +116,12 @@ behavior-by-behavior rather than asserted.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `@Validated`/`@Min` chosen out of habit, silently no-ops (no JSR-303 impl on the classpath) and ships the exact footgun #408 is closing | **was high** | high | Classpath verified empty of `valid*` before designing; compact-constructor guard chosen instead; AC-3 asserts the *context* fails, not just the record, so a regression to a silent annotation cannot pass | agent | open |
-| R-2 | The episode throttle silences a *second*, genuinely new incident | med | med | The flag clears the moment the pool makes progress (a task actually starts), so a later saturation logs again — AC-7 exists solely to pin this | agent | open |
-| R-3 | `ThreadPoolTaskExecutor` may not apply a `TaskDecorator` on the `submit()` path in this Spring version, so the reset never fires under the existing test's submission style | med | med | Drive the episode tests through `execute()` — which is what `@Async` on the listener's `void` method actually uses — and keep the existing `submit()`-based shed test unchanged; verify empirically in phase 1 rather than trusting the framework doc | agent | open |
-| R-4 | Constructing the bean with a `MeterRegistry` parameter breaks the wiring the `defaultCandidate = false` trap depends on | low | high | `RegistryMailExecutorWiringIT` is untouched and re-run in phase 1; it asserts all three halves (Boot's shared pool survives, bare `@Async` resolves to it, the mail bean stays name-addressable) | agent | open |
-| R-5 | Full-suite-only failure (the `riviera-local-debug` shared-state class): a bounded long-lived pool plus a new meter accumulating across cached contexts | low | med | No new `@Scheduled`, filter, or rate-limit key; the meter is registered per-context; the only test that wedges the pool owns its executor and releases it in a `finally`. Verified by the push's CI run, per the CI-gate rule | agent | open |
-| R-6 | Property namespace drifts from the bean it configures, so a future reader cannot connect `riviera.notification.confirmation-mail.*` (PR #406's name) to `registryMailExecutor` | low | low | Namespace is `riviera.notification.registry-mail.*`, matching the bean name, the class name and the vehicle name used throughout #383's Javadoc | agent | open |
+| R-1 | `@Validated`/`@Min` chosen out of habit, silently no-ops (no JSR-303 impl on the classpath) and ships the exact footgun #408 is closing | **was high** | high | Classpath verified empty of `valid*` before designing; compact-constructor guard chosen instead; AC-3 asserts the *context* fails, not just the record, so a regression to a silent annotation cannot pass | agent | **closed** — the guard is a compact constructor; `aNonPositiveQueueCapacityFailsTheContext` asserts the context fails, so a regression to a silent annotation goes red |
+| R-2 | The episode throttle silences a *second*, genuinely new incident | med | med | The flag clears the moment the pool makes progress (a task actually starts), so a later saturation logs again — AC-7 exists solely to pin this | agent | **closed** — `aLaterEpisodeLogsAgain` passes, which it cannot do unless the flag clears |
+| R-3 | `ThreadPoolTaskExecutor` may not apply a `TaskDecorator` on the `submit()` path in this Spring version, so the reset never fires under the existing test's submission style | med | med | Drive the episode tests through `execute()` — which is what `@Async` on the listener's `void` method actually uses — and keep the existing `submit()`-based shed test unchanged; verify empirically in phase 1 rather than trusting the framework doc | agent | **closed** — resolved empirically: `aLaterEpisodeLogsAgain` expects a *second* line and passes, which is only reachable if the decorator runs on the `execute()` path. Had it not, the test would have stayed at one line and gone red |
+| R-4 | Constructing the bean with a `MeterRegistry` parameter breaks the wiring the `defaultCandidate = false` trap depends on | low | high | `RegistryMailExecutorWiringIT` is untouched and re-run in phase 1; it asserts all three halves (Boot's shared pool survives, bare `@Async` resolves to it, the mail bean stays name-addressable) | agent | **closed** — `RegistryMailExecutorWiringIT` ran (Docker present) 3/3 green after the signature change, alongside `RegistryMailBulkheadIT` 4/4 |
+| R-5 | Full-suite-only failure (the `riviera-local-debug` shared-state class): a bounded long-lived pool plus a new meter accumulating across cached contexts | low | med | No new `@Scheduled`, filter, or rate-limit key; the meter is registered per-context; the only test that wedges the pool owns its executor and releases it in a `finally`. Verified by the push's CI run, per the CI-gate rule | agent | open — scoped runs green; **CI's full suite is the real verdict**, checked on the push before the PR is called ready |
+| R-6 | Property namespace drifts from the bean it configures, so a future reader cannot connect `riviera.notification.confirmation-mail.*` (PR #406's name) to `registryMailExecutor` | low | low | Namespace is `riviera.notification.registry-mail.*`, matching the bean name, the class name and the vehicle name used throughout #383's Javadoc | agent | **closed** — namespace is `riviera.notification.registry-mail.*` as designed |
 
 ## Open questions / Assumptions
 
@@ -216,16 +216,17 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2 (substrate docs + close-out)`
+**Stage pointer:** `PR — pushed, opening the PR; review gate next`
 
-**Next action:** Phase 2, step 1 — run `riviera-docs-freshness` over the branch range and patch the
-observability runbook + the CD env-var list.
+**Next action:** Open the PR into `main`, check that push's CI run, then run the Review gate
+(`/code-review` + `riviera-review-overlay`) and the Sonar gate before any merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — externalise + validate the two bounds | ✅ | `98c4796` |
-| 1 — the shed counter + the per-episode escalation | ✅ | `<phase-1>` |
-| 2 — substrate docs + close-out | | |
+| 1 — the shed counter + the per-episode escalation | ✅ | `aa1065d` |
+| 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d5cf5b7` |
+| 3 — review + sonar gates, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -337,34 +338,55 @@ touches *before* editing).
 
 ---
 
+## Docs-freshness run (merge close-out step 5)
+
+Range `origin/main..HEAD`, run at phase 2. **Zero contradictions** — no substrate doc states a fact
+this slice makes false. The `shared`-kernel membership lists (`CLAUDE.md:136`,
+`RESPONSIBILITIES.md:337`, `ADR-0007:273`) name `ObservabilityMetrics` as a *type* and are unaffected
+by a constant being added to it; `CLAUDE.md:157` and `RESPONSIBILITIES.md:279`'s "recovery *drops*,
+registry *sheds*" and "each draining on its own bounded executor" both remain true; the runbook's
+"three money-path signals" heading stays accurate, since `MoneyPathAlertCheck` still reads exactly
+those three (a Non-goal here, and now stated in the runbook).
+
+Two **omissions** patched, both in rows the repo maintains at per-slice mechanism granularity:
+
+| Doc | Stated fact | Action |
+|---|---|---|
+| `CLAUDE.md:157` (notification module row) | carried #383's saturation contract but not #408's validated bounds or the shed counter | **patched** — one clause |
+| `RESPONSIBILITIES.md:279` (notification **Job**) | same gap | **patched** — one clause |
+| `docs/runbooks/observability.md` | had no entry for the new counter | **patched** — a non-money-path metric section + the two tunables |
+| `docs/deploy/cd-pipeline.md` | env-var list had no entry for the two new knobs | **patched** — a leave-unset entry pointing at the runbook |
+
+Step 6 (graph refresh) **skipped**: `graphify-out/` is gitignored and absent in this cloud clone.
+
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*RegistryMailPropertiesTest*" --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `gradle test --tests "*RegistryMailPropertiesTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `gradle test --tests "*RegistryMailPropertiesTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `gradle test --tests "*RegistryMailPropertiesTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*RegistryMailPropertiesTest*" --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `98c4796`.
+- [x] **AC-2:** `gradle test --tests "*RegistryMailPropertiesTest*"` → PASS. Verified at commit `98c4796`.
+- [x] **AC-3:** `gradle test --tests "*RegistryMailPropertiesTest*"` → PASS. Verified at commit `98c4796`.
+- [x] **AC-4:** `gradle test --tests "*RegistryMailPropertiesTest*"` → PASS. Verified at commit `98c4796`.
+- [x] **AC-5:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `aa1065d`.
+- [x] **AC-6:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `aa1065d`.
+- [x] **AC-7:** `gradle test --tests "*RegistryMailExecutorConfigTest*"` → PASS. Verified at commit `aa1065d`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified `N/A`); no availability write path in scope (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event payload changed (invariant #11).
-- [ ] **Payment/payout** section filled (justified `N/A`) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no time arithmetic in scope.
-- [ ] Booking codes unguessable (invariant #7) — the shed log still carries no address and no code.
-- [ ] Flyway migration present for schema changes (invariant #12) — none needed, and re-verified that no `listener_id`/`event_type` rewrite is implied.
-- [ ] **Frontend** standards met or deviation documented — `N/A`, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified `N/A`); no availability write path in scope (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event payload changed (invariant #11).
+- [x] **Payment/payout** section filled (justified `N/A`) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no time arithmetic in scope.
+- [x] Booking codes unguessable (invariant #7) — the shed log still carries no address and no code.
+- [x] Flyway migration present for schema changes (invariant #12) — none needed, and re-verified that no `listener_id`/`event_type` rewrite is implied.
+- [x] **Frontend** standards met or deviation documented — `N/A`, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — final state committed here citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — `/code-review` *plus* `riviera-review-overlay`, not the overlay alone.
