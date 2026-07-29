@@ -87,12 +87,56 @@ carrying in its MDC the correlation id of the request whose user is still waitin
 `reason="saturated"` escalates to `ERROR`; the shutdown race stays `WARN`. Neither line carries the
 address or the link (invariant #7).
 
-> **A relay outage shows up here first and hardest.** Saturating this pool needs 100 sends queued at
-> a volume of "a handful a day", so `reason="saturated"` is rare — but a *transport* failure (relay
-> down, DNS blip, SMTP 5xx) is not rare, and today it increments **nothing**: it is logged once at
-> `WARN` by `TransactionalMailService` and that is the whole record. Tracked as **#423**. Until it
-> lands, a relay outage is diagnosed from `riviera_outbox_pending` (the registry side) plus those
-> `WARN` lines, not from this counter.
+> **A relay outage does *not* show up here first.** Saturating this pool needs 100 sends queued at
+> a volume of "a handful a day", so `reason="saturated"` is rare by construction. The counter that
+> moves on the first failed send is `riviera_mail_recovery_failed_total` below — read that one first.
+
+### `riviera_mail_recovery_failed_total` (counter, #423)
+
+The same vehicle's *other* loss, and the one that moves first in a real outage. A **verification or
+password-reset** mail the dispatcher **accepted** and then could not deliver.
+
+**Read one increment as: the same thing a `dropped` increment means to the user** — they asked for a
+link, got a `200`, and no mail is coming — **but a different thing to you.** `dropped` says the
+dispatcher refused the work. This says the work was taken and then failed. Only one of those is
+about the relay.
+
+| Tag | Meaning | Alert when |
+|---|---|---|
+| `reason="transport"` | The send attempt itself failed — the relay refused the message or could not be reached (down, DNS, auth, SMTP 5xx). **This is the relay signal**, with one caveat below | **any increase.** A sustained rise usually means the relay is broken *right now*, and every recovery mail is being lost for its duration |
+| `reason="suppression-lookup"` | The pre-send suppression read failed **non-transiently** — a revoked grant, schema drift, a column renamed under `JdbcEmailSuppressions`. The mail is lost before the relay is ever reached | **any increase — but go to the database, not the mail provider.** A *transient* read failure is not here: #386 fails open and sends anyway, so it counts nothing |
+| `kind="verification"` / `kind="password-reset"` | Which recovery flow the lost mail belonged to. They ride different rate-limit budgets (register vs recovery), so a rise in only one narrows where to look | — |
+
+> **`transport` is "the send failed", not "the relay failed" — read the exception class before
+> paging the provider.** The tag is applied to *any* exception escaping the send call, so a defect
+> in the mail path itself (a template-rendering `NullPointerException`, a bad `URI`) lands in the
+> same bucket as a dead relay. That is deliberate — the alternative is an exception-class tag, whose
+> cardinality is unbounded by construction — and the discrimination lives in the `WARN` line beside
+> each increment, which carries the exception's simple name. A mail/IO exception means the provider;
+> anything else means our code, and no amount of relay-poking will move the number.
+
+**Which of the three mail counters to read first, during a suspected relay outage:**
+
+1. **`riviera_mail_recovery_failed_total{reason="transport"}`** — the fastest and least ambiguous
+   signal. One failed send moves it; no queue has to fill first.
+2. **`riviera_outbox_pending`** — the registry vehicle's equivalent. A confirmation mail whose
+   transport fails *propagates*, so its event publication stays outstanding and this gauge rises.
+   Booking confirmations and recovery mails share a relay, so these two move together.
+3. **`riviera_mail_recovery_dropped_total`** — last. It needs 100 sends queued behind a wedged
+   drainer, so at current volume it is a symptom of a *long* outage, not an early warning.
+
+**Why the registry vehicle has no failure counter of its own.** Its transport failure propagates
+rather than being swallowed, so the publication survives and step 2 above already accounts for it;
+a second series would count one failure twice and invite summing two numbers that mean different
+things. **That argument holds only for failures that throw** — a confirmation the listener
+*abandons* (no booking, set, or contact row) returns normally, completes the publication, and moves
+no gauge at all. That is a genuine blind spot, tracked as **#428**.
+
+**Logging is one line per loss at `WARN`, and stays `WARN` deliberately.** The shed path escalates
+saturation to `ERROR` because saturation is rare and always actionable; a relay outage fails *every*
+send for its duration, so escalating each one would flood `ERROR` exactly when someone is reading
+it. Same standing rule as everywhere else here: **alert on the counter, read the log for detail.**
+Neither line carries the address or the link (invariant #7).
 
 The shed path also logs **one `ERROR` per saturation episode** — not one per shed send, which would
 bury the lines that matter during a burst. The episode ends when the pool's **queue empties**, not

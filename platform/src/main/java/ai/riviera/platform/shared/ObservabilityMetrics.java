@@ -57,6 +57,34 @@ public final class ObservabilityMetrics {
 	 */
 	public static final String MAIL_RECOVERY_DROPPED = "riviera.mail.recovery.dropped";
 
+	/**
+	 * Counter: recovery mails the dispatcher <em>accepted</em> and then failed to deliver (#423) — the
+	 * third silent loss site, and the one that fires first in a real outage. Its sibling
+	 * {@link #MAIL_RECOVERY_DROPPED} covers the mail the dispatcher <em>refused</em>; the user cannot
+	 * tell the two apart (they asked for a link, got a {@code 200}, and nothing is coming), but an
+	 * operator very much can, and only one of them was alertable before this name existed.
+	 *
+	 * <p><strong>Read this one first during a suspected relay outage.</strong> Saturating the recovery
+	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
+	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
+	 * <em>every</em> send and raises this one immediately. Do not sum the three mail counters — they
+	 * measure a deferral, a refusal and a failure respectively.
+	 *
+	 * <p>Carries two tags. {@code kind} (verification / password-reset) separates the two recovery
+	 * flows, which have different urgency and different rate-limit budgets. {@code reason} separates
+	 * the two causes the one swallowing catch can produce: a dead relay, and a structurally broken
+	 * suppression lookup that loses the mail before the relay is ever reached (#386's fail-open is
+	 * scoped to <em>transient</em> failures, so a broken grant or schema drift still drops the send).
+	 * Without that split a database fault would read as a mail fault and page the wrong system. The
+	 * emitter owns both vocabularies — see {@code TransactionalMailService} and the observability
+	 * runbook.
+	 *
+	 * <p><strong>The registry vehicle has no equivalent, deliberately.</strong> Its transport failure
+	 * propagates, leaving the event publication outstanding, so {@link #OUTBOX_PENDING} already
+	 * accounts for it — a second series would double-count the same event.
+	 */
+	public static final String MAIL_RECOVERY_FAILED = "riviera.mail.recovery.failed";
+
 	private ObservabilityMetrics() {
 	}
 }
