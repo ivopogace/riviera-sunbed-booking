@@ -9,6 +9,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.sql.DataSource;
+
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,8 +61,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li><strong>AC-5</strong> — the registry's {@code listener_id} still reads exactly as V31 (#382)
  *       migrated it. The id embeds the listener FQCN and signature, and republication matches it
  *       string-equal, so a drift here dead-letters every outstanding row.</li>
- *   <li><strong>AC-7</strong> — the send holds no transaction, and therefore no pooled connection,
- *       for the duration of the SMTP round-trip.</li>
+ *   <li><strong>AC-7</strong> — the send holds no transaction <em>and</em> no bound pooled connection
+ *       for the duration of the SMTP round-trip. The two are asserted separately on purpose: the
+ *       connection does not follow from the transaction, and it is the resource #383 is about.</li>
  * </ul>
  *
  * <p>The nested {@link ControllableMailerConfiguration} gives this class its <strong>own</strong>
@@ -107,15 +110,25 @@ class RegistryMailBulkheadIT {
 
 		@Bean
 		@Primary
-		ControllableMailer controllableMailer() {
-			return new ControllableMailer();
+		ControllableMailer controllableMailer(DataSource dataSource) {
+			return new ControllableMailer(dataSource);
 		}
 	}
 
 	/**
 	 * A transport whose latency and failure are the test's to choose — the "deliberately blocking
-	 * mailer" #383's AC-1 asks for. It also records whether a transaction was active on the sending
-	 * thread, which is AC-7's whole assertion.
+	 * mailer" #383's AC-1 asks for. It also records the sending thread's transactional context, which
+	 * is AC-7's whole assertion.
+	 *
+	 * <p><strong>Two flags, not one, because the weaker one alone can be satisfied while the harm
+	 * remains.</strong> {@code isActualTransactionActive()} goes false under
+	 * {@code @Transactional(NOT_SUPPORTED)} — but with no transaction to suspend,
+	 * {@code AbstractPlatformTransactionManager} takes its "empty transaction" branch,
+	 * {@code newSynchronization} follows the default {@code SYNCHRONIZATION_ALWAYS}, and
+	 * {@code DataSourceUtils} then binds the first read's {@code ConnectionHolder} for the whole method
+	 * scope. The connection — the resource #383 is actually about — stays pinned across the SMTP
+	 * round-trip. Only {@code hasResource(dataSource)} sees that, and only dropping {@code @Transactional}
+	 * outright makes it false.
 	 */
 	static final class ControllableMailer implements Mailer {
 
@@ -126,11 +139,17 @@ class RegistryMailBulkheadIT {
 		 */
 		private volatile CountDownLatch gate = new CountDownLatch(1);
 
+		private final DataSource dataSource;
 		private final AtomicBoolean blocking = new AtomicBoolean();
 		private final AtomicBoolean failing = new AtomicBoolean();
 		private final List<String> entered = new CopyOnWriteArrayList<>();
 		private final List<String> delivered = new CopyOnWriteArrayList<>();
 		private final List<Boolean> transactionActive = new CopyOnWriteArrayList<>();
+		private final List<Boolean> connectionBound = new CopyOnWriteArrayList<>();
+
+		ControllableMailer(DataSource dataSource) {
+			this.dataSource = dataSource;
+		}
 
 		@Override
 		public void sendEmailVerification(String toEmail, URI verificationLink) {
@@ -146,6 +165,7 @@ class RegistryMailBulkheadIT {
 		public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
 			entered.add(toEmail);
 			transactionActive.add(TransactionSynchronizationManager.isActualTransactionActive());
+			connectionBound.add(TransactionSynchronizationManager.hasResource(dataSource));
 			if (blocking.get()) {
 				awaitGate();
 			}
@@ -181,6 +201,7 @@ class RegistryMailBulkheadIT {
 			entered.clear();
 			delivered.clear();
 			transactionActive.clear();
+			connectionBound.clear();
 			blocking.set(false);
 			failing.set(false);
 			gate = new CountDownLatch(1);
@@ -196,6 +217,10 @@ class RegistryMailBulkheadIT {
 
 		List<Boolean> transactionActive() {
 			return List.copyOf(transactionActive);
+		}
+
+		List<Boolean> connectionBound() {
+			return List.copyOf(connectionBound);
 		}
 	}
 
@@ -384,10 +409,15 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-7 — no transaction (and so no Hikari connection) is held around the transport call. The
-	 * listener's three port reads are independent read-only queries with nothing to keep consistent
-	 * between them, so the transaction {@code @ApplicationModuleListener} supplied bought only the risk
-	 * #383 names: a connection pinned for the length of an SMTP round-trip.
+	 * AC-7 — no transaction, and no bound Hikari connection, around the transport call. The listener's
+	 * three port reads are independent read-only queries with nothing to keep consistent between them,
+	 * so the transaction {@code @ApplicationModuleListener} supplied bought only the risk #383 names: a
+	 * connection pinned for the length of an SMTP round-trip.
+	 *
+	 * <p>Both flags are asserted, and the second is the load-bearing one — see
+	 * {@link ControllableMailer} for why {@code NOT_SUPPORTED} satisfies the first while still pinning
+	 * the connection. Each sample list must be non-empty: a send that never ran would otherwise clear
+	 * both assertions by having nothing to contradict them, which is how a bulkhead test ships vacuous.
 	 */
 	@Test
 	void sendsWithNoTransactionHeldOpen() {
@@ -400,7 +430,12 @@ class RegistryMailBulkheadIT {
 
 		Awaitility.await("delivered").atMost(WAIT).until(() -> transport.deliveriesMatching(contact) == 1L);
 		assertThat(transport.transactionActive())
+				.as("the SMTP round-trip must not run inside a transaction")
+				.isNotEmpty()
+				.containsOnly(false);
+		assertThat(transport.connectionBound())
 				.as("the SMTP round-trip must not pin a pooled connection")
+				.isNotEmpty()
 				.containsOnly(false);
 	}
 }
