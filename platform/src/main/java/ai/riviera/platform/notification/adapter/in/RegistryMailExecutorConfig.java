@@ -1,8 +1,10 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -142,8 +144,18 @@ class RegistryMailExecutorConfig {
 		private final Counter shed;
 		private final AtomicBoolean episodeOpen = new AtomicBoolean();
 
-		/** Captured at the first rejection — the decorator needs the queue to know when an episode ended. */
-		private volatile ThreadPoolExecutor saturated;
+		/**
+		 * The backlog the decorator watches to know when an episode ended, captured at the first
+		 * rejection because the queue does not exist when this policy is constructed — Spring
+		 * initializes the pool after the {@code @Bean} method returns.
+		 *
+		 * <p>An {@link AtomicReference} rather than a {@code volatile} field: {@code volatile} publishes
+		 * the reference safely but says nothing about the referent, which is the distinction
+		 * {@code java:S3077} exists to flag. Here the referent happens to be thread-safe and fully
+		 * constructed before publication, so the field would have been correct — but the type now says
+		 * that rather than relying on a reader to work it out.
+		 */
+		private final AtomicReference<BlockingQueue<Runnable>> backlog = new AtomicReference<>();
 
 		SaturationPolicy(MeterRegistry meters) {
 			this.shed = meters.counter(ObservabilityMetrics.MAIL_REGISTRY_SHED);
@@ -156,7 +168,7 @@ class RegistryMailExecutorConfig {
 						+ "outstanding for the next start's republish");
 				return;
 			}
-			saturated = executor;
+			backlog.set(executor.getQueue());
 			shed.increment();
 			if (episodeOpen.compareAndSet(false, true)) {
 				log.error("Registry mail executor saturated; sends are being shed and stay outstanding "
@@ -174,8 +186,8 @@ class RegistryMailExecutorConfig {
 		}
 
 		private void endEpisodeIfDrained() {
-			ThreadPoolExecutor pool = saturated;
-			if (pool == null || pool.getQueue().isEmpty()) {
+			BlockingQueue<Runnable> queue = backlog.get();
+			if (queue == null || queue.isEmpty()) {
 				episodeOpen.set(false);
 			}
 		}

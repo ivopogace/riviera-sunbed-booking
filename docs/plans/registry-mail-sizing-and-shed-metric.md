@@ -270,7 +270,7 @@ both now done). After the merge the only remaining items are GitHub-only, no com
 | 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d506def` |
 | 3 — review-gate pass 1 (F-1..F-3) + close-out | ✅ | `88ba19d` + this close-out commit — which cannot cite its own SHA, the same reason step 4 says `merged via PR #413` and never a merge SHA |
 
-| 4 — `/code-review` fan-out (F-4..F-11): both ends validated, shutdown vs saturation, queue-drain episodes | ✅ | this round |
+| 4 — `/code-review` fan-out (F-4..F-11) + the sonar bug it introduced (F-12) | ✅ | `7811410` + this round |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -292,6 +292,7 @@ touches *before* editing).
 | F-9 | `/code-review` fan-out (conventions, Major) | `RESPONSIBILITIES.md`'s `shared` **Job** ended "Nothing else" while this slice's Javadoc announced a widened remit — a real contradiction in the document that declares itself the boundary tie-breaker, missed by the freshness sweep and papered over by its "zero contradictions" verdict | fixed — Job clause widened with the narrower justification stated; the sweep's miss recorded above |
 | F-10 | `/code-review` fan-out (concurrency + conventions) | Two false claims in prose: the test helper's "`@Async` takes `execute` for a `void` method" (it uses `submit(Callable)`; both funnel to the same overridden `execute`, so the behaviour was right and the reasoning wrong), and the properties test's "the record test alone would still pass if the guard were replaced by a no-op annotation" (it would go red first) | fixed |
 | F-11 | `/code-review` fan-out (conventions) | The runbook asserted "the work is not lost … republished on the next restart" as operator-facing fact — the exact proposition #407 exists to prove, with no test behind it; and the plan's own risk-register checkbox was left unticked while every row read closed | fixed — claim softened with the #407 pointer, checkbox corrected |
+| F-12 | **sonar** (`java:S3077`, BUG, reliability rating B) | The executor captured for the queue-drain check (F-6's fix) was a `volatile ThreadPoolExecutor` field. `volatile` publishes the *reference* safely and says nothing about the referent — benign here, since the referent is thread-safe and fully constructed before publication, but the rule is right that the type should say so. Replaced with `AtomicReference<BlockingQueue<Runnable>>`, which also narrows what the policy holds to the one thing it reads | fixed |
 | — | `/code-review` fan-out (verified clean) | The `AtomicBoolean`/`TaskDecorator` machinery survived an exhaustive interleaving analysis: no lost counter increment, no stuck flag, no lost task, and the handler cannot throw onto the commit thread. The two load-bearing technical claims were independently verified from Spring 7.0.8 bytecode (`createQueue` → `SynchronousQueue` for `<= 0`) and the classpath (no JSR-303). Test determinism was checked empirically — 1,750 executions including single-core contention, 0 failures | closed |
 
 ---
