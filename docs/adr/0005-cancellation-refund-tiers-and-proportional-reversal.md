@@ -49,6 +49,7 @@ partial)". Two points were left open and decided here:
 - The reversal listener reads the prior ACCRUAL to mirror it. Cancellation is a human action long
   after confirmation, so the accrual (async, posted right after confirm-commit) is durably present;
   a missing accrual posts no reversal rather than a wrong one (accepted edge, like U5's R-7).
+  **Amended by #428 — see the amendment below.**
 - This **extends** issue #11's "posts a REVERSAL" to "posts a REVERSAL sized to the refund, or
   none". Recorded so a future session does not revert to a blanket reversal.
 
@@ -62,3 +63,39 @@ partial)". Two points were left open and decided here:
   fail to net the accrual out.
 - **Fixed (non-configurable) partial %.** Rejected: venues differ; a per-venue bps column is one
   column and mirrors `commission_bps`.
+
+## Amendment (2026-07-29, #428) — a missing accrual defers, it does not decline
+
+One consequence above said *"a missing accrual posts no reversal rather than a wrong one (accepted
+edge, like U5's R-7)"*. The **decision** it supports is unchanged and re-affirmed: the reversal is
+still sized to the refund and still **mirrors the stored accrual** rather than recomputing from the
+venue's current rate (that alternative stays rejected, for the reason given above — a rate change
+between confirm and cancel would stop the reversal netting out). What is amended is only the handling
+of the edge, because the premise underneath it was wrong.
+
+**The premise.** "Cancellation is a human action long after confirmation, so the accrual is durably
+present" reasons about *when the events happen*, but what matters is *when they are delivered*. The
+accrual and the reversal are **independent Event Publication Registry publications**: a crash, or a
+shed send, can leave `BookingConfirmed`'s payout listener outstanding until the next restart's
+republish, while `BookingCancelled` is delivered and completed in between. The accrual then posts
+*after* the only event that would have reversed it was consumed.
+
+**Why "no reversal" was the wrong edge-handling.** Returning normally completed the reversal's
+publication, so the outcome was permanent and invisible: the ledger kept an accrual for a refunded
+booking, overstating what the venue is owed (invariant #9), with one `WARN` as the entire record. The
+cited precedent also pointed the other way — U5's R-7 chose to **throw** on a missing commission rate
+("loud over silent under-pay"), so the two halves of the same pair had opposite postures.
+
+**The amendment.** A refunded cancellation that finds no ACCRUAL now **throws**, so its publication
+stays outstanding, `riviera.outbox.pending` (a money-path signal `MoneyPathAlertCheck` already
+watches) shows it, and the restart republish retries the reversal against a ledger that has the
+accrual by then. `UNIQUE(booking_id, REVERSAL)` + `ON CONFLICT DO NOTHING` keeps that retry
+exactly-once, so nothing about the arithmetic or the exactly-once guarantee changes. A refund only
+exists for a captured payment, so the accrual is always *coming* — "empty" means **not yet**, never
+**never**. Accepted cost: if the accrual is *permanently* broken, this publication parks in the
+outbox and holds the gauge non-zero until someone acts — deliberately preferred to a ledger that
+quietly pays out on a refunded booking.
+
+Recorded so a future session does not "simplify" the throw back into a silent return. Rationale in
+full on `BookingCancelledPayoutListener`; found by #428's generalization audit, filed as #431 and
+fixed in PR #430.
