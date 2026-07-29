@@ -256,8 +256,10 @@ event FQCNs, the move shipped with `V18__event_publication_event_type_moves.sql`
 
 **Enforcement added (C1):** `PublishedSurfacePlacementArchitectureTests` — api/spi hold only
 non-sealed interfaces; events surfaces hold only records; vocabulary surfaces hold no plain
-interfaces; every cross-module `@ApplicationModuleListener` parameter type lives in its owner's
-`events` surface. Proven against fixtures in `ai.riviera.placementfixture`.
+interfaces; every cross-module transactional event listener's parameter type lives in its owner's
+`events` surface — **either spelling**: the `@ApplicationModuleListener` composite or its
+`@Async` + `@TransactionalEventListener` expansion, which a listener needs when it must name its own
+executor (#383; keying on the composite alone silently exempted a decomposed listener). Proven against fixtures in `ai.riviera.placementfixture`.
 `PackageShapeArchitectureTests`' allowed sets were widened accordingly.
 
 ## Amendment 2 — a third, non-context template: the OPEN shared kernel (issue #371, 2026-07-27)

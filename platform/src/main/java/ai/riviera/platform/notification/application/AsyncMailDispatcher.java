@@ -22,6 +22,16 @@ import org.springframework.stereotype.Component;
  * rather than queueing without limit or, worse, falling back to running the send on the caller's thread,
  * which would re-open the very oracle this class exists to close.
  *
+ * <p><strong>That rule is the module's, not this class's</strong> (#383). It was stated here and then
+ * broken next door: #371's registry-borne booking confirmation went onto the shared executor, because
+ * {@code @ApplicationModuleListener} accepts no executor qualifier — and with a per-confirmed-booking
+ * volume this pool never had. The registry vehicle now has its own bounded sibling,
+ * {@code RegistryMailExecutorConfig}, and {@code MailListenerExecutorArchitectureTest} fails the build
+ * if a future mail listener forgets it. The two pools stay separate, with deliberately different
+ * saturation behaviour: this one <em>drops</em>, because a recovery payload is a bearer credential the
+ * Event Publication Registry may not persist (ADR-0011 decision 5) so there is nothing to retry from;
+ * the registry one <em>sheds</em>, because its publication survives and is republished on restart.
+ *
  * <p>The caller's logging context rides along so a failed send stays traceable to its request (the
  * correlation id from {@code CorrelationIdFilter}), and is cleared afterwards so it cannot leak onto the
  * next task sharing the pooled thread. Package-private (RV-BE-11); pinned by {@code AsyncMailDispatcherTest}.

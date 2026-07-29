@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -31,9 +32,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       hierarchies (+ their nested implementations) and published exceptions — but never a
  *       plain interface (a port hiding in the vocabulary surface).</li>
  * </ul>
- * Additionally, every {@code @ApplicationModuleListener} parameter type owned by <em>another</em>
- * module must reside in that module's {@code events} surface — the semantic check that a
- * published event cannot creep back into {@code api}/{@code vocabulary}.
+ * Additionally, every <strong>transactional event listener</strong>'s parameter type owned by
+ * <em>another</em> module must reside in that module's {@code events} surface — the semantic check
+ * that a published event cannot creep back into {@code api}/{@code vocabulary}. "Transactional event
+ * listener" means either spelling: the {@code @ApplicationModuleListener} composite, or the
+ * {@code @Async} + {@code @TransactionalEventListener} expansion a listener must use when it needs to
+ * name its own executor (#383). Keying on the composite alone left a hole — decomposing a listener
+ * removed it from this rule with nothing going red.
  *
  * <p>There is no annotation taxonomy to match on, so the rules key off the package convention
  * (ADR-0007 + issue #95) and the class <em>kind</em>. Like its siblings
@@ -101,12 +106,13 @@ class PublishedSurfacePlacementArchitectureTests {
 			sawEvents |= EVENTS_SURFACE.equals(surface);
 			sawVocabulary |= VOCABULARY_SURFACE.equals(surface);
 			for (JavaMethod method : type.getMethods()) {
-				sawListener |= method.isAnnotatedWith(ApplicationModuleListener.class);
+				sawListener |= isTransactionalEventListener(method);
 			}
 		}
 		assertTrue(sawPorts && sawEvents && sawVocabulary && sawListener,
 				"Expected the production import to contain api/spi, events and vocabulary surfaces and at "
-						+ "least one @ApplicationModuleListener — otherwise these rules are vacuously green.");
+						+ "least one transactional event listener (either spelling) — otherwise these rules "
+						+ "are vacuously green.");
 	}
 
 	// ---- the negative proof (AC-4/AC-5), against fixtures ---------------------------------
@@ -148,9 +154,24 @@ class PublishedSurfacePlacementArchitectureTests {
 	@Test
 	void eventListenedFromOutsideEventsSurfaceIsRejected() {
 		List<String> violations = listenerPlacementViolations(FIXTURE_CLASSES, FIXTURE_BASE);
-		assertTrue(violations.stream().anyMatch(v -> v.contains("MisplacedEvent")),
+		assertTrue(violations.stream().anyMatch(v -> v.contains("BadListener")),
 				"Expected the listener rule to reject a cross-module event living outside events/, but got: "
 						+ violations);
+	}
+
+	/**
+	 * The same rejection for a listener written as {@code @Async} + {@code @TransactionalEventListener}
+	 * rather than the {@code @ApplicationModuleListener} composite. A listener takes that form when it
+	 * must name its own executor — the composite accepts no qualifier — which is how #383 kept mail off
+	 * the money-path pool. Until then this rule matched the composite alone, so decomposing a listener
+	 * silently removed it from the rule's reach: nothing went red, the check simply stopped applying.
+	 */
+	@Test
+	void eventListenedFromOutsideEventsSurfaceIsRejectedForADecomposedListenerToo() {
+		List<String> violations = listenerPlacementViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("BadDecomposedListener")),
+				"Expected the listener rule to reach a decomposed @Async + @TransactionalEventListener "
+						+ "listener, not just the @ApplicationModuleListener composite, but got: " + violations);
 	}
 
 	// ---- violation collectors (pure functions of the imported classes) --------------------
@@ -203,11 +224,22 @@ class PublishedSurfacePlacementArchitectureTests {
 		return violations;
 	}
 
+	/**
+	 * Both spellings of the same thing: the {@code @ApplicationModuleListener} composite and its
+	 * {@code @TransactionalEventListener} expansion. ArchUnit's meta-annotation lookup does not include
+	 * directly-declared annotations, so both checks are needed.
+	 */
+	private static boolean isTransactionalEventListener(JavaMethod method) {
+		return method.isAnnotatedWith(ApplicationModuleListener.class)
+				|| method.isAnnotatedWith(TransactionalEventListener.class)
+				|| method.isMetaAnnotatedWith(TransactionalEventListener.class);
+	}
+
 	private static List<String> listenerPlacementViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();
 		for (JavaClass type : classes) {
 			for (JavaMethod method : type.getMethods()) {
-				if (!method.isAnnotatedWith(ApplicationModuleListener.class)) {
+				if (!isTransactionalEventListener(method)) {
 					continue;
 				}
 				for (JavaClass parameter : method.getRawParameterTypes()) {
