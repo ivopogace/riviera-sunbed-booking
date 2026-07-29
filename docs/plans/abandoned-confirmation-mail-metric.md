@@ -137,11 +137,11 @@ skills (backend-only).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `ERROR` per loss floods the log during a systemic data fault, the exact failure mode #408's episode throttle exists to prevent | low | med | The three facts are FK-protected and never hard-deleted (see Open questions › Resolved), so a healthy system holds this at **zero** — unlike saturation, which fires once per send during an ordinary burst. If a systemic fault ever does raise it, one line per unrecoverable lost confirmation is the record we would want, since each is a distinct paying tourist and there is no durable copy to reconstruct from (the #415 argument, unchanged) | agent | open |
-| R-2 | The counter is read as "the mail system is broken" and sends on-call to the relay, when every increment is a data-integrity fault in `booking` / `venue` / `customer` | med | med | This is precisely what the `reason` tag and the runbook entry exist for: the runbook names this counter a **data-integrity** signal, explicitly *not* a relay signal, and maps each reason to its owning module | agent | open |
+| R-1 | `ERROR` per loss floods the log during a systemic data fault, the exact failure mode #408's episode throttle exists to prevent | low | med | The three facts are FK-protected and never hard-deleted (see Open questions › Resolved), so a healthy system holds this at **zero** — unlike saturation, which fires once per send during an ordinary burst. If a systemic fault ever does raise it, one line per unrecoverable lost confirmation is the record we would want, since each is a distinct paying tourist and there is no durable copy to reconstruct from (the #415 argument, unchanged) | agent | closed — accepted; the reasoning is stated on the class and in the runbook, and the review gate did not dispute it |
+| R-2 | The counter is read as "the mail system is broken" and sends on-call to the relay, when every increment is a data-integrity fault in `booking` / `venue` / `customer` | med | med | This is precisely what the `reason` tag and the runbook entry exist for: the runbook names this counter a **data-integrity** signal, explicitly *not* a relay signal, and maps each reason to its owning module | agent | closed — the runbook's entry leads with "data-integrity signal, not a relay signal — do not page the mail provider" and tables each reason to its module |
 | R-3 | Emitting from `adapter/in` is read as a boundary slip | low | low | It is the established shape on this vehicle: `RegistryMailExecutorConfig` (also `adapter/in`) emits `MAIL_REGISTRY_SHED`. `shared` holds the name only; `notification` already grants `shared`, so no `allowedDependencies` change | agent | closed — `ModularityTests`, `PackageShapeArchitectureTests`, `JdbcOnlyArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` and `MailListenerExecutorArchitectureTest` all green |
 | R-4 | Adding a `MeterRegistry` constructor parameter breaks the listener's registry `listener_id` (V31, #382), silently orphaning outstanding publications | low | high | The `listener_id` embeds the **class, method name and parameter type** — none of which a constructor parameter touches. `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` already pins it, so this is asserted rather than reasoned | agent | closed — the signature `on(BookingConfirmed)` is byte-for-byte unchanged; the IT needs Docker, so the assertion lands on the PR's CI run |
-| R-5 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #429 (#426) touches `booking/adapter/in/*Properties*` + its own plan doc — **no file overlap**. No Flyway migration in this slice, so no `V<n>` to contend. Both slices may touch `CLAUDE.md`/`RESPONSIBILITIES.md` at close-out; whichever merges second rebases | agent | open |
+| R-5 | Merge collision with the other in-flight slice | low | low | Checked at the intake gate: open PR #429 (#426) touches `booking/adapter/in/*Properties*` + its own plan doc — **no file overlap**. No Flyway migration in this slice, so no `V<n>` to contend. Both slices may touch `CLAUDE.md`/`RESPONSIBILITIES.md` at close-out; whichever merges second rebases | agent | closed — no overlap materialised; PR #429 touched none of these files and this slice added no migration |
 | R-7 | The absorbed payout fix turns a silent branch into a thrown exception, so a condition that used to pass unnoticed now parks a publication in the outbox and holds `riviera_outbox_pending` non-zero | low | med | That is the intended trade and it is stated on the class, in `RESPONSIBILITIES.md` and in the runbook (with the "do not fix it by returning normally" warning): a visible backlog beats a ledger that quietly pays a venue for a refunded booking (invariant #9). The gauge is already alerted at threshold 10, so one parked publication does not page anyone | agent | closed — accepted and documented; the parking case needs the *accrual* to be permanently broken, which is its own alertable failure |
 | R-8 | Throwing from the cancelled listener rolls back something it should not | low | high | The listener's transaction contains only the reversal read/insert; the refund and the availability release are done **synchronously by `booking` before the event is published** (`BookingCancelled`'s Javadoc), so nothing downstream of the tourist's money is inside this transaction | agent | closed — verified against `BookingCancelled`'s contract; `reverse` is `INSERT … ON CONFLICT DO NOTHING`, so the retry is a no-op once posted |
 | R-6 | The new unit test duplicates what `BookingConfirmationMailIT` covers, or needs Docker to run | low | low | The IT covers the *happy* registry path end-to-end and needs Docker; the abandoned paths are pure listener logic with three stubbed ports, so they belong in a fast `adapter/in` unit test (`SimpleMeterRegistry` + Mockito + a logback `ListAppender`, the shape `TransactionalMailServiceTest` established for exactly this) | agent | closed — six specs in a 1s unit test; the IT is untouched |
@@ -210,10 +210,23 @@ reads as V31 migrated it — no `event_type` Flyway rewrite (R-4).
 
 ## Payment & payout (invariants #5, #8, #9, #10)
 
-N/A — no payment in scope. No money moves, no ledger entry, no Stripe call. The one adjacency is
-that this slice must *not* disturb the money path: the emission stays on the dedicated
-`registryMailExecutor` (#383), never Boot's shared `applicationTaskExecutor`, and
-`MoneyPathAlertCheck` continues to read exactly its three signals.
+**In scope since phase 3** (it was `N/A` while the slice was the mail counter alone; the absorbed
+payout fix put invariant #9 squarely in it — `riviera-stripe-payments` loaded before that edit).
+
+- **Model unchanged (ADR-0002):** collect-only, no Stripe Connect, manual BKT settlement. No Stripe
+  call, no gateway change, no new endpoint.
+- **Invariant #9 is *strengthened*, not relaxed:** "a booking contributes exactly once; a refund
+  reverses it" now holds regardless of the two publications' delivery order. Exactly-once is
+  untouched — the retry rides the same `UNIQUE(booking_id, REVERSAL)` + `ON CONFLICT DO NOTHING`.
+- **Invariant #5 (money) untouched:** no arithmetic changed. The reversal still mirrors the stored
+  accrual rather than re-reading the venue's current rate (ADR-0005's rejected alternative stays
+  rejected), which is exactly *why* an accrual-less reversal can only be deferred.
+- **Invariant #10 untouched:** the refund decision and amount stay server-side in `booking`; this
+  listener never decides a refund, it only records the venue-side consequence.
+- **The mail half still must not disturb the money path:** its emission stays on the dedicated
+  `registryMailExecutor` (#383), never Boot's shared `applicationTaskExecutor`, and
+  `MoneyPathAlertCheck` continues to read exactly its three signals — the payout fix deliberately
+  adds no fourth, since `riviera.outbox.pending` is already one of the three.
 
 ## Angular — frontend surfaces touched
 
@@ -390,40 +403,59 @@ Modify `RESPONSIBILITIES.md` · Modify `CLAUDE.md`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-6:** `gradle --no-daemon --console=plain test --tests "*BookingConfirmationMailListenerTest*"`
-- [ ] **AC-7:** `grep -n "MAIL_CONFIRMATION_ABANDONED" platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java`
+- [x] **AC-1 … AC-6:** `gradle --no-daemon --console=plain -p platform test --tests "*BookingConfirmationMailListenerTest*"`
+      → PASS (8 tests after F-2 parameterized AC-5 over the three reasons). Verified at `5fbcb6c`.
+- [x] **AC-9 … AC-11:** `--tests "*BookingCancelledPayoutListenerTest*"` → PASS (4 tests: the
+      deferral throws and posts nothing, its `ERROR` names the ledger consequence, and both
+      pre-existing behaviours stay pinned). Verified at `5fbcb6c`.
+- [x] **AC-7:** `grep -n "MAIL_CONFIRMATION_ABANDONED" platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java`
       and `grep -n "riviera_mail_confirmation_abandoned_total" docs/runbooks/observability.md`.
-- [ ] **AC-8:** `grep -n "ERROR" platform/src/main/java/ai/riviera/platform/notification/adapter/in/BookingConfirmationMailListener.java`
+- [x] **AC-8:** `grep -n "ERROR" platform/src/main/java/ai/riviera/platform/notification/adapter/in/BookingConfirmationMailListener.java`
       → the level's justification on the class Javadoc.
-- [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
+- [x] **Structural net:** `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*"
       --tests "*JdbcOnlyArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"
       --tests "*MailListenerExecutorArchitectureTest*"` → PASS.
-- [ ] **Full suite:** green on the PR's CI run (the half scoped runs cannot prove —
-      `riviera-local-debug`'s full-suite-only failure class).
+- [x] **Full suite:** green on the PR's CI run — all 7 checks (Backend, Frontend, CodeQL ×2, both
+      SonarCloud checks) on `59630d7`, re-verified on the final commit. This is the half scoped runs
+      cannot prove (`riviera-local-debug`'s full-suite-only failure class), and here it is
+      load-bearing: it is what exercises the Docker-dependent `PayoutReversalIT`,
+      `PayoutSpineScenarioIT`, `BookingConfirmationMailIT` and `RegistryMailBulkheadIT` — the last of
+      which pins that the listener's registry `listener_id` survived its new constructor parameter.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test (AC-7/AC-8 are docs ACs, verified by
+- [x] Every AC has an implementing task and a verifying test (AC-7/AC-8 are docs ACs, verified by
       the recorded `grep`s).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled — justified `N/A`, no availability write path (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event
-      payload changed (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A`), and the money path is explicitly protected — the
-      emission stays off `applicationTaskExecutor` (#383).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no time arithmetic in scope.
-- [ ] Booking codes unguessable (invariant #7) — and the new `ERROR` lines carry neither the code
-      nor the address, pinned by AC-5.
-- [ ] Flyway migration present for schema changes (invariant #12) — `N/A`, no schema change.
-- [ ] **Frontend** standards — `N/A`, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — this doc's final state committed here, citing the merging
-      PR, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — `/code-review` via the `references/pr-gates.md` §1
-      invocation ladder, with `riviera-review-overlay` layered on.
-- [ ] **`riviera-docs-freshness` ran** (close-out step 5) over `origin/main...HEAD`.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled — justified `N/A`, no availability write path (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event
+      payload changed (invariant #11) — and the listener's class/method/parameter type are unchanged,
+      so the registry `listener_id` needs no Flyway `event_type` rewrite.
+- [x] **Payment/payout** section filled — **no longer `N/A`** since phase 3 absorbed the payout fix:
+      invariant #9 strengthened, #5/#10 untouched, ADR-0005 amended rather than silently contradicted,
+      and the mail emission still off `applicationTaskExecutor` (#383).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no time arithmetic in scope.
+- [x] Booking codes unguessable (invariant #7) — and both new `ERROR` lines carry neither the code
+      nor the address, pinned by AC-5 (now over all three reasons) and AC-10.
+- [x] Flyway migration present for schema changes (invariant #12) — `N/A`, no schema change.
+- [x] **Frontend** standards — `N/A`, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — this doc's final state is committed here, citing
+      `merged via PR #430`, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `/code-review` via the `references/pr-gates.md` §1
+      invocation ladder (rung 1, `Skill("code-review")`, was accepted this session), executed as the
+      5-agent fan-out at **high** effort because the diff touches money, with
+      `riviera-review-overlay` layered on. Five findings, all fixed in `5fbcb6c`; result posted on
+      PR #430.
+- [x] **`riviera-docs-freshness` ran** (close-out step 5) over `origin/main...HEAD`: one finding —
+      ADR-0005's stated consequence contradicted the absorbed payout fix (F-8), amended in this PR
+      rather than as a follow-up. `CLAUDE.md`, `RESPONSIBILITIES.md` and the runbook were patched in
+      phases 2–3; `CONTEXT.md`, `docs/agents/` and the `riviera-*` skills state nothing this slice
+      falsified (`riviera-stripe-payments`' "a refund reverses it" stays true — the reversal still
+      happens, it is only deferred when it cannot yet be mirrored). Graph refresh skipped —
+      `graphify-out/` is absent in this cloud clone.
