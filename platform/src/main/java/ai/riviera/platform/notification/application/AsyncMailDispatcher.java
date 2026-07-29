@@ -2,6 +2,11 @@ package ai.riviera.platform.notification.application;
 
 import java.util.Map;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -50,6 +55,44 @@ import org.springframework.stereotype.Component;
  * timeout; {@code JdbcEmailSuppressions} now gives it a finite {@code queryTimeout} of its own (#386),
  * deliberately scoped to that one lookup rather than set globally, where it would also bound
  * {@code availability}'s {@code SELECT … FOR UPDATE} (invariant #2).
+ *
+ * <p><strong>Every drop is counted, and every drop is logged — one line each, deliberately</strong> (#415).
+ * The counter ({@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED}) is the alertable signal; before it, "how
+ * often did the recovery vehicle drop?" was answerable only by grepping logs.
+ *
+ * <p>The per-line half is where this class parts company with {@code RegistryMailExecutorConfig}, which
+ * throttles to one escalated line per saturation episode — and the divergence is deliberate on both sides.
+ * <strong>A throttle trades repeated lines for the durable record that makes them redundant.</strong> The
+ * registry vehicle has that record: a shed send's event publication is still outstanding, payload and all,
+ * so the ninth line tells an operator nothing the row does not. This vehicle has none, by construction —
+ * ADR-0011 decision 5 keeps the bearer-credential payload out of the registry — so there is nothing to retry
+ * from and <em>the line is the only per-loss artefact that exists</em>, carrying in its MDC the correlation
+ * id of the request whose user is still waiting. Throttling here would discard evidence, not noise. The
+ * flood the registry's throttle exists to prevent has no analogue either: that flood is a restart
+ * republishing a backlog, and this vehicle never republishes, so arrivals are live requests only. All three
+ * endpoints that feed it — customer register, the authenticated verification resend, and forgot-password —
+ * are bounded by a <em>per-IP</em> token budget in {@code RateLimitFilter} (D-8), though not the same one:
+ * register rides {@code customerAuthBuckets} while the other two ride the recovery budget, a separation
+ * that is deliberate (recovery spam must not starve login) and does not weaken the bound. Should aggregate
+ * volume ever make these lines a genuine flood, add an escalated once-per-episode line <em>beside</em> the
+ * per-drop record, never in place of it.
+ *
+ * <p><strong>A rejection during shutdown is still a loss, so it is still counted</strong> — the second
+ * divergence. #408 excludes the registry's equivalent because a shed-at-shutdown send loses nothing; here,
+ * with {@code server.shutdown=graceful} unset, an in-flight request can reach {@code dispatch} after the pool
+ * has stopped accepting, and that user's mail is simply gone. Excluding it would make the counter
+ * under-report the very thing the runbook says it means. The {@code reason} tag carries the distinction
+ * instead, so a routine redeploy cannot read as a degraded relay: only {@link #REASON_SATURATED} escalates
+ * to {@code ERROR} and warrants investigating the relay.
+ *
+ * <p><strong>The cause is read after the rejection, and that race is one-directional by construction.</strong>
+ * {@code execute} throws before {@link #recordDrop} can ask why, so a saturation rejection coinciding with a
+ * concurrent {@code destroy()} is attributed to the shutdown. The converse cannot happen: {@code shutdown()}
+ * latches its flag permanently, so a shutdown rejection always reads as one. The error is therefore always
+ * <em>under</em>-reporting saturation during the seconds a pod is going away, never the false alarm #408's
+ * F-5 was about — a deploy cannot manufacture a {@link #REASON_SATURATED} increment. Do not "fix" this by
+ * reading the flag before {@code execute}: that costs a read on every send and is equally racy, since no JDK
+ * primitive makes reject-and-classify atomic.
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
@@ -57,13 +100,27 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	private static final Logger log = LoggerFactory.getLogger(AsyncMailDispatcher.class);
 
 	private static final int POOL_SIZE = 1;
-	private static final int QUEUE_CAPACITY = 100;
+
+	/** Package-private so the spec can fill the queue exactly rather than hard-code a number that drifts. */
+	static final int QUEUE_CAPACITY = 100;
+
 	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
 	private static final String THREAD_NAME_PREFIX = "recovery-mail-";
 
-	private final ThreadPoolTaskExecutor executor;
+	/** The drop's cause, as a metric tag — one series, two operationally different meanings. */
+	static final String REASON_TAG = "reason";
 
-	AsyncMailDispatcher() {
+	/** The pool was full: the relay is degraded or too slow for current volume. Investigate. */
+	static final String REASON_SATURATED = "saturated";
+
+	/** A redeploy outran an in-flight request. Still a lost mail, but no relay is at fault. */
+	static final String REASON_SHUTDOWN = "shutdown";
+
+	private final ThreadPoolTaskExecutor executor;
+	private final Counter droppedWhenSaturated;
+	private final Counter droppedWhenShuttingDown;
+
+	AsyncMailDispatcher(MeterRegistry meters) {
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
 		pool.setCorePoolSize(POOL_SIZE);
 		pool.setMaxPoolSize(POOL_SIZE);
@@ -74,6 +131,10 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
 		pool.initialize();
 		this.executor = pool;
+		this.droppedWhenSaturated = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
+				REASON_SATURATED);
+		this.droppedWhenShuttingDown = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
+				REASON_SHUTDOWN);
 	}
 
 	@Override
@@ -83,9 +144,25 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 			executor.execute(() -> runWithin(callerContext, send));
 		}
 		catch (TaskRejectedException e) {
-			// Never the address or the link (invariant #7); the token is issued, so the user can re-request.
-			log.warn("Recovery email dispatch rejected ({}); the send was dropped", e.getClass().getSimpleName());
+			recordDrop(e);
 		}
+	}
+
+	/**
+	 * Account for a send that will never be delivered. Nothing here may throw or run the task: this runs on
+	 * the caller's request thread, whose response the send may not influence (D-8). Neither line carries the
+	 * address or the link (invariant #7); the correlation id rides the MDC.
+	 */
+	private void recordDrop(TaskRejectedException cause) {
+		if (executor.getThreadPoolExecutor().isShutdown()) {
+			droppedWhenShuttingDown.increment();
+			log.warn("Recovery email dispatch rejected during shutdown ({}); the send was dropped and the user "
+					+ "must re-request", cause.getClass().getSimpleName());
+			return;
+		}
+		droppedWhenSaturated.increment();
+		log.error("Recovery email dispatcher saturated ({}); the send was dropped with nothing to retry from, so "
+				+ "the user must re-request", cause.getClass().getSimpleName());
 	}
 
 	private static void runWithin(Map<String, String> callerContext, Runnable send) {

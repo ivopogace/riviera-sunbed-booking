@@ -31,10 +31,31 @@ public final class ObservabilityMetrics {
 	 * money-path signal — {@code MoneyPathAlertCheck} deliberately does not read it — but the shed
 	 * path's only attributable, alertable trace: each increment is a confirmation mail that never
 	 * reached the relay and now waits on the Event Publication Registry's republish. The recovery
-	 * vehicle's drop is a different event with a different meaning (nothing to retry from) and would
-	 * earn its own name.
+	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
+	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415); do not sum the two.
 	 */
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
+
+	/**
+	 * Counter: recovery mails (email verification, password reset) the bounded in-memory dispatcher
+	 * could not accept and therefore dropped (#415). The sibling {@link #MAIL_REGISTRY_SHED} reserved
+	 * this name and declined to declare it, on the rule that a name ships with the emitter that gives
+	 * it meaning.
+	 *
+	 * <p><strong>It measures a strictly worse event than the shed does.</strong> A shed registry mail
+	 * is deferred — its event publication stays outstanding and a restart republishes it. A dropped
+	 * recovery mail is <em>gone</em>: the payload is a single-use bearer credential the registry may
+	 * not persist (ADR-0011 decision 5), so nothing retries it and the user recovers only by
+	 * re-requesting. Read an increment as exactly that: one person who asked for a reset or
+	 * verification link and will wait for a mail that is never coming.
+	 *
+	 * <p>Carries a {@code reason} tag distinguishing a saturated pool (a degraded relay — act) from a
+	 * shutdown race (a redeploy outran an in-flight request — expected in ones and twos). Both are
+	 * real losses, so both are counted; the tag is what keeps a deploy from reading as an outage. The
+	 * emitter owns the tag's vocabulary — see {@code AsyncMailDispatcher} and the observability
+	 * runbook.
+	 */
+	public static final String MAIL_RECOVERY_DROPPED = "riviera.mail.recovery.dropped";
 
 	private ObservabilityMetrics() {
 	}

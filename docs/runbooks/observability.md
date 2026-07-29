@@ -51,7 +51,48 @@ money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three a
 
 **A rejection during shutdown is not a shed** and does not touch this counter: a redeploy can reject an
 in-flight send from an otherwise idle pool, which logs one `INFO` and is not saturation. Without that
-distinction the "any increase" rule above would fire on every routine deploy.
+distinction the "any increase" rule above would fire on every routine deploy. **The recovery counter
+below makes the opposite call, for a reason** — see its note.
+
+### `riviera_mail_recovery_dropped_total` (counter, #415)
+
+The other vehicle's loss. A **verification or password-reset** mail the bounded in-memory dispatcher
+(#369) could not accept, and therefore never sent.
+
+**Read one increment as: one person asked for a reset or verification link, got a `200`, and no mail
+is coming.** They recover only by requesting again — and nothing will tell them to. This is the
+counter's whole meaning, and it is why the series exists.
+
+**It is not the shed counter's twin, and the two must never be summed.** A shed registry mail is
+*deferred*: its event publication is still outstanding and a restart republishes it. A dropped
+recovery mail is *gone*: the payload is a single-use bearer credential the Event Publication Registry
+may not persist (ADR-0011 decision 5), so there is nothing to retry from, by design.
+
+| Tag | Meaning | Alert when |
+|---|---|---|
+| `reason="saturated"` | The dispatcher's single drainer was busy and all 100 queue slots were full. The relay is degraded or too slow for current volume | **any increase.** Diagnose the relay — this is the actionable one |
+| `reason="shutdown"` | A redeploy outran an in-flight request: the pool stopped accepting before the request reached it. The mail is still lost, but no relay is at fault | not on its own. Expect ones and twos around a deploy; a *sustained* rise means requests are arriving long after shutdown begins |
+
+**Why a shutdown rejection is counted here but not for the registry vehicle.** The registry excludes
+it because a shed-at-shutdown send loses nothing. Here it is a genuine loss — `server.shutdown` is
+not `graceful`, so an in-flight request can reach the dispatcher after the pool has closed, and that
+mail is gone with nothing to retry from. Excluding it would make this counter under-report exactly
+what the paragraph above says it means. The tag, not the omission, is what keeps a routine deploy
+from reading as an outage: **alert on `reason="saturated"`, track the total.**
+
+**Logging is one line per drop — deliberately, and the inverse of the shed counter's throttle.** A
+throttle trades repeated lines for the durable record that makes them redundant; the registry has
+that record and this vehicle has none, so each line here is the only per-loss artefact that exists,
+carrying in its MDC the correlation id of the request whose user is still waiting. Only
+`reason="saturated"` escalates to `ERROR`; the shutdown race stays `WARN`. Neither line carries the
+address or the link (invariant #7).
+
+> **A relay outage shows up here first and hardest.** Saturating this pool needs 100 sends queued at
+> a volume of "a handful a day", so `reason="saturated"` is rare — but a *transport* failure (relay
+> down, DNS blip, SMTP 5xx) is not rare, and today it increments **nothing**: it is logged once at
+> `WARN` by `TransactionalMailService` and that is the whole record. Tracked as **#423**. Until it
+> lands, a relay outage is diagnosed from `riviera_outbox_pending` (the registry side) plus those
+> `WARN` lines, not from this counter.
 
 The shed path also logs **one `ERROR` per saturation episode** — not one per shed send, which would
 bury the lines that matter during a burst. The episode ends when the pool's **queue empties**, not
