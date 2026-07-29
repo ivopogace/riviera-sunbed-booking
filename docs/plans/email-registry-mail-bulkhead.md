@@ -96,7 +96,9 @@ not be renamed. Already exists and is checked out.
   the pre-change value
   (`ai.riviera.platform.notification.adapter.in.BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)`),
   so no Flyway `listener_id` rewrite is needed. *Pinned by:*
-  `ConfirmationMailListenerIdIT.decompositionKeepsTheRegistryListenerId`
+  `ConfirmationMailBulkheadIT.decompositionKeepsTheRegistryListenerId` — **moved into phase 0**
+  with the decomposition (fact 10), and folded into the bulkhead IT rather than a class of its
+  own so the two assertions share one Spring context
 
 - [ ] **AC-6 (its own pool):** Given a `BookingConfirmed`, when the listener runs, then it
   runs on a thread whose name carries the dedicated confirmation-mail prefix and **not** on
@@ -163,7 +165,7 @@ currently buys and what happens to it.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Registry `listener_id` drift.** The registry stores the listener's FQ method signature; a rename/move orphans outstanding rows (the V18 + V31/#382 lesson) | low | high | Do not rename or move the class or method — the decomposition is annotation-only. `listener_id` is derived by `TransactionalApplicationListenerMethodAdapter#getListenerId()` from the method, not from which annotation declared it, so it must not change. Pinned by **AC-5**; if it ever does change, this slice grows a Flyway rewrite modelled on `V31` | implementer | open |
+| R-1 | **Registry `listener_id` drift.** The registry stores the listener's FQ method signature; a rename/move orphans outstanding rows (the V18 + V31/#382 lesson) | low | high | Class, package and method signature left untouched — the decomposition is annotation-only. `listener_id` is derived by `TransactionalApplicationListenerMethodAdapter#getListenerId()` from the *method*, not from which annotation declared it. **Verified green in phase 0**, and the frozen string is asserted in-repo so a future move fails loudly rather than silently orphaning rows; no Flyway rewrite needed | implementer | closed in `<phase-0 sha>` — pinned by AC-5 |
 | R-2 | **A rejected submission throws onto the money-path thread.** `@Async` submits on the caller's thread — here the `AFTER_COMMIT` synchronization of the *booking/payment* commit. A `TaskRejectedException` from a saturated pool could surface inside `commit()` | — | — | **Closed at plan time — the exception provably cannot escape** (fact 9): `AFTER_COMMIT` is dispatched from `afterCompletion`, and `TransactionSynchronizationUtils.invokeAfterCompletion` catches `Throwable` and logs it; the commit itself already completed, in a `finally` *before* that call. The chosen handler swallows anyway (OQ-1), so this is belt-and-braces. **AC-3 still asserts it** — a proof read from framework sources is not a regression test, and a framework upgrade could change it. `CallerRunsPolicy` remains forbidden: it would run the SMTP call *on* the money-path thread, the exact failure this slice removes | planner | closed — pinned by AC-3 |
 | R-3 | Removing the listener's transaction widens the at-least-once crash window | **closed at plan time** | — | Verified against Modulith 2.1.0 sources: `DefaultEventPublicationRegistry#markProcessing`/`markCompleted`/`markFailed` are each `@Transactional(REQUIRES_NEW)`, and `CompletionRegisteringMethodInterceptor` orders at `HIGHEST_PRECEDENCE + 10` vs the transaction advisor's default `LOWEST_PRECEDENCE`, so completion always ran *outside* the listener's transaction. The window is unchanged | planner | closed — no code change needed |
 | R-4 | A **permanently** failing send (550 to a mistyped address) never completes, is resubmitted every restart, and holds `riviera.outbox.pending` above `MoneyPathAlertCheck`'s threshold for a non-money reason | med | med | **Carried, not closed.** Absorbing it needs ADR-0011 decision 7's bounce feed (#372). This slice must not make it worse: AC-3's shed-and-leave-outstanding behaviour adds a *second* way to hold a publication open, so phase 3 records the interaction in the plan + `docs/runbooks/observability.md`, and OQ-1 weighs it. Noted on **#405** too — a manual retry button makes this easier to trip, not harder | implementer | open → defer to #372 |
@@ -339,17 +341,17 @@ altered.
 > stage's `riviera-sdlc` reference file) before acting. Update it in the SAME commit window
 > as the change it records.
 
-**Stage pointer:** `plan — draft under review with the maintainer` (not yet approved; no
-code written)
+**Stage pointer:** `implement — phase 0 complete, phase 1 next`
 
-**Next action:** Start **phase 0, step 1** — write the failing AC-2 test. Nothing blocks it:
-OQ-1 and OQ-2 are both resolved, R-2/R-3/R-5/R-8 are closed, and OQ-3 does not gate any phase
-before 3. Load `riviera-local-debug` before the session's first `./gradlew`.
+**Next action:** Start **phase 1, step 1** — the failing AC-1/AC-3/AC-6 tests, then the
+`ConfirmationMailExecutor` bean and the `@Async("confirmationMailExecutor")` qualifier. Phase 1
+is now purely additive: the decomposition already landed in phase 0 (see its correction note),
+so the listener's annotations only gain a qualifier. Its `listener_id` is frozen and asserted.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Take the transaction off the send | | |
-| 1 — Dedicated bounded executor (decomposition) | | |
+| 0 — Take the transaction off the send (**+ decomposition, AC-5**) | ✅ | see phase-0 commit |
+| 1 — Dedicated bounded executor (qualifier + bean only) | | |
 | 2 — Registry durability + saturation proof | | |
 | 3 — Substrate: ADR/RESPONSIBILITIES/Javadoc close-out | | |
 
@@ -419,6 +421,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
    `status` / `completion_attempts` / `last_resubmission_date` columns stay NULL on every row
    and nothing may be built on them; and `markResubmitted` likewise defaults to `return true`,
    so the framework's documented "another instance already claimed this" guard is inert here.
+10. **`propagation = NOT_SUPPORTED` removes the transaction but NOT the connection hold** —
+   discovered by AC-2 going red on the "one-line fix" in phase 0, and the reason the
+   decomposition moved from phase 1 into phase 0. With nothing to suspend,
+   `AbstractPlatformTransactionManager.getTransaction` takes the *"Create "empty" transaction:
+   no actual transaction, but potentially synchronization"* branch and sets
+   `newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS)` — which is
+   the default. Synchronization is therefore **active** for the method's scope, so
+   `DataSourceUtils.doGetConnection` takes its `isSynchronizationActive()` branch, binds the
+   first read's `ConnectionHolder` to the thread and registers a `ConnectionSynchronization` to
+   release it at scope completion. Net effect: `isActualTransactionActive()` goes false while
+   `hasResource(dataSource)` stays true — the connection is still pinned across the SMTP call.
+   The same reasoning rules out `SUPPORTS` and `NEVER`; every non-actual-transaction propagation
+   goes through that one branch. **Only removing `@Transactional` outright releases the
+   connection.** This is why AC-2 asserts `hasResource`, not just `isActualTransactionActive`:
+   the weaker assertion would have passed on a fix that did not work.
 9. **A rejected `@Async` submission cannot fail the money path.** `AFTER_COMMIT` is dispatched
    from `TransactionalApplicationListenerSynchronization.PlatformSynchronization.afterCompletion(int)`
    — *not* from `afterCommit()` — and `AbstractPlatformTransactionManager.processCommit` calls
@@ -462,13 +479,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
-## Phase 0 — Take the transaction off the send
+## Phase 0 — Take the transaction off the send ✅
 
 **Goal:** the SMTP call holds no pooled connection. Independently valuable, independently
 mergeable, and — per the Resolved entry — provably neutral to registry durability.
 
+> **What actually happened (plan correction).** Step 3's one-line
+> `propagation = NOT_SUPPORTED` **did not work**: AC-2 stayed red on the connection assertion
+> while the transaction assertion went green (fact 10 — an "empty transaction" still activates
+> synchronization, and `DataSourceUtils` then binds the connection for the scope). Removing
+> `@Transactional` outright is the only fix, which means **the decomposition into `@Async` +
+> `@TransactionalEventListener` landed here, not in phase 1**. Consequences: **AC-5 moved into
+> this phase** (the registry `listener_id` had to be pinned the moment the annotation changed)
+> and **R-1 closed here**. Phase 1 is now purely additive — the executor bean plus the
+> `@Async` qualifier. This is the fix arriving one phase earlier than planned, not extra scope.
+
 **Files:** Modify `notification/adapter/in/BookingConfirmationMailListener.java` · Create
-`notification/ConfirmationMailBulkheadIT.java` (AC-2 case only; the rest lands in phase 1)
+`notification/ConfirmationMailBulkheadIT.java` (AC-2 + AC-5)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -503,30 +530,38 @@ void theSendHoldsNoTransactionAndNoConnection() throws Exception {
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite. Load
 > `riviera-local-debug` first — the wrapper cannot self-provision behind the repo proxy.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation** — attempted `@ApplicationModuleListener(propagation =
+  Propagation.NOT_SUPPORTED)` first; it left `hasResource(dataSource)` true (fact 10), so the
+  landed fix drops `@Transactional` entirely:
 
 ```java
-	@ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
+	@Async
+	@TransactionalEventListener
 	void on(BookingConfirmed event) {
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*ConfirmationMailBulkheadIT*"`
+  → PASS, `tests="2" skipped="0" failures="0"`. Regression scope also green: the structural net
+  (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
+  `PublishedSurfacePlacementArchitectureTests`, `CompositionRootDisciplineTests`) and the
+  durability suite (`BookingConfirmationMailIT` 5/5 — including the AC-4 resubmission case —
+  `ListenerMoveMigrationIT`, `MailSenderWiringIT`), none skipped.
 
 > Scope (end-of-phase regression): `--tests "*notification*"` plus
 > `--tests "*BookingConfirmationMailIT*"` — the durability suite must be untouched.
 
-- [ ] **Step 5: Generalization-audit pass** — search for other listeners that hold a
-  transaction across an outbound network call:
-  `grep -rn "ApplicationModuleListener" --include=*.java platform/src/main/java` →
-  candidates: `PaymentEventListener`, `BookingRefundListener` (calls `payment`'s
-  `RefundPort` → **Stripe**, a third-party network call, inside `REQUIRES_NEW`),
-  `BookingConfirmedPayoutListener`, `BookingCancelledPayoutListener`,
-  `CancelBookingService`. **`BookingRefundListener` is the same shape as this bug** — decide
-  fix-here vs new issue and record it. Append to the Generalization-audit log.
+- [x] **Step 5: Generalization-audit pass** — two searches, both recorded in the log below.
+  Four `@ApplicationModuleListener` sites remain; only **`BookingRefundListener`** shares the
+  shape (calls `payment`'s `RefundPort` → **Stripe** inside `REQUIRES_NEW`). Deferred, not
+  absorbed: it lives in `booking` + `payment`, outside this `notification` slice, and it is
+  **bounded** where mail is not — Stripe's timeouts are explicit and finite (`PT5S` connect /
+  `PT20S` read, `application.properties`), so the hold is ~25s rather than open-ended, and
+  refunds are far rarer than confirmations. Same class of defect, materially smaller. No other
+  site uses a non-actual-transaction propagation, so nothing else inherited the fact-10 trap.
 
-- [ ] **Step 6: Commit** — `git commit -m "fix(#383): stop the confirmation mail holding a DB connection across the SMTP call (#383)"`
+- [x] **Step 6: Commit**
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -734,7 +769,8 @@ void resubmittingOutstandingPublicationsRedeliversOnlyTheFailedOne() {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | phase 0 | `@ApplicationModuleListener` holding a transaction across an outbound third-party call | `grep -rn "ApplicationModuleListener" --include=*.java platform/src/main/java` | | |
+| 2026-07-29 | phase 0 | `@ApplicationModuleListener` holding a transaction across an outbound third-party call | `grep -rn "ApplicationModuleListener" --include=*.java platform/src/main/java` | 4 listener sites: `PaymentEventListener` (×2), `BookingConfirmedPayoutListener`, `BookingCancelledPayoutListener` — all DB-only; plus **`BookingRefundListener` → Stripe `RefundPort` inside `REQUIRES_NEW`** | **Deferred, not fixed.** Same shape, but bounded (Stripe timeouts `PT5S`/`PT20S` ≈ 25s vs mail's open-ended) and rarer, and it sits in `booking` + `payment`, outside this slice. Raise with the maintainer as its own issue |
+| 2026-07-29 | phase 0 | other sites relying on a non-actual-transaction propagation (which would inherit the fact-10 connection-hold trap) | `grep -rn "NOT_SUPPORTED\|Propagation.SUPPORTS\|Propagation.NEVER" --include=*.java platform/src/main/java` | none outside this listener's own Javadoc | No action — the trap is not replicated anywhere |
 | | phase 1 | outbound third-party call on the shared spine executor | | | |
 
 ---
