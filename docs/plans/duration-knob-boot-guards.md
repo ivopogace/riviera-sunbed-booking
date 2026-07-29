@@ -43,7 +43,14 @@ comments.
   guard runs at boot, before any PaymentIntent exists. It supplied the #52 R-3 framing the ceilings use.
 - `riviera-local-debug` — the cloud-session Gradle recipe and scoped-test discipline for the runs below.
 - `tdd` — red-green per phase. `riviera-review-overlay` — layered onto the review gate.
-- `riviera-docs-freshness` — run pre-merge over `origin/main...HEAD` (phase 4).
+- `riviera-docs-freshness` — **run** pre-merge over `origin/main...HEAD` (phase 4), not merely listed.
+  **Zero findings:** the diff renames and removes nothing and swaps no mechanism — it adds boot-time
+  rejection, Javadoc and config comments. The two substrate hits are both still true: `CONTEXT.md:60-61`
+  and `riviera-stripe-payments` SKILL.md:66-67 state the request windows' *semantics*
+  (`min(request + expiry-window, cutoff)`), which this slice does not change, and `CLAUDE.md`'s
+  `notification` row + `RESPONSIBILITIES.md:284` state #408's registry-mail validation, which is
+  untouched. No doc claims an inventory of validated knobs that this slice would leave incomplete.
+  (`graphify-out/` is absent in this cloud clone, so there is no graph to refresh.)
 
 **Branch:** `claude/sdlc-426-kpon0v` — the **cloud-session designated branch stands in for
 `bugfix/duration-knob-boot-guards`** per `riviera-sdlc` §Remote/cloud session addendum. It exists in git
@@ -498,14 +505,17 @@ Modify `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest
 
 **Files:** Modify `platform/src/main/resources/application.properties` · this plan doc
 
-- [ ] **Step 1:** Extend the three shipped comment blocks (`stripe.*`, `booking.awaiting-payment.*` +
+- [x] **Step 1:** Extend the three shipped comment blocks (`stripe.*`, `booking.awaiting-payment.*` +
   `booking.request.*`, `riviera.recovery.*`) with each accepted range and its one-line reason, so an
   operator editing the file sees the bound before the boot does.
-- [ ] **Step 2:** Run the structural net —
+- [x] **Step 2:** Run the structural net —
   `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"`
-  → expect PASS (no structure changed; this is the standing check after any backend change).
-- [ ] **Step 3:** Run `riviera-docs-freshness` over `origin/main...HEAD` and record the result in
+  → PASS, together with `PublishedSurfacePlacementArchitectureTests` and all four property specs re-run
+  against the edited shipped config (no structure changed; this is the standing check after any backend
+  change).
+- [x] **Step 3:** Run `riviera-docs-freshness` over `origin/main...HEAD` and record the result in
   *Skills consulted* — ticking the line without running it is the miss #413/#318/#414 were each dinged for.
+  Zero findings; the evidence is in the *Skills consulted* entry.
 - [ ] **Step 4:** Merge the latest `origin/main` into the branch with full phase discipline (routing gate
   for whatever the integration touches, scoped tests, honest commit), then mark the PR **ready for
   review** — that is what makes the Review and Sonar gates due.
