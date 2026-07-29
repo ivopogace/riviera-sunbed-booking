@@ -10,7 +10,7 @@
 # checked out, so it cannot do repo-dependent provisioning. This hook runs
 # AFTER checkout (with $CLAUDE_PROJECT_DIR available), the supported place for it.
 #
-# Four idempotent, cloud-only steps:
+# Six idempotent, cloud-only steps:
 #   1. Frontend deps — `npm ci` so the Angular CLI MCP build/test targets
 #      (@angular/build:application, @angular/build:unit-test via run_target)
 #      resolve their builder packages.
@@ -19,6 +19,8 @@
 #      ./gradlew can't otherwise provision the toolchain.
 #   3. JDK trusts the agent-proxy CA so ./gradlew's HTTPS works.
 #   4. Docker daemon for the backend Testcontainers ITs.
+#   5. Plugin payloads — so the code-review plugin's skills exist at registry build.
+#   6. GitHub CLI — the transport the code-review plugin's workflow speaks.
 #
 # Local sessions are skipped (CLAUDE_CODE_REMOTE != true) — developers manage
 # their own toolchain.
@@ -138,6 +140,33 @@ if [ -x "$PLUGINS_SCRIPT" ]; then
   echo "cloud-session-setup: ensuring enabled plugin payloads are on disk ..." >&2
   "$PLUGINS_SCRIPT" \
     || echo "cloud-session-setup: ensure-plugins failed; /code-review may be missing (run 'bash scripts/ensure-plugins.sh' to retry)" >&2
+fi
+
+# ── 6. GitHub CLI (the code-review plugin's transport) ────────────────────
+# The code-review plugin's workflow is written against `gh`, which the cloud
+# image does not ship. The session provides GH_TOKEN, and the repo-scope proxy
+# serves the GitHub REST API (`gh api repos/{owner}/{repo}/...`) plus a pinned
+# set of PR-review GraphQL operations — verified 2026-07-29: `gh pr diff` and
+# REST work; `gh pr view`/`gh pr list`/`gh search` 403 with a proxy hint to use
+# the REST equivalent (pr-gates.md §1 carries the substitution table).
+# The version is PINNED because only direct release-asset URLs are served —
+# both api.github.com/repos/cli/cli and the /releases/latest redirect 403
+# behind the repo-scope proxy — so "resolve latest" cannot work here. Bump the
+# pin deliberately when a newer gh is wanted.
+GH_VERSION=2.76.1
+if ! command -v gh >/dev/null 2>&1; then
+  echo "cloud-session-setup: installing GitHub CLI v$GH_VERSION ..." >&2
+  tmp=$(mktemp -d)
+  if curl -fsSL --retry 2 \
+      "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" \
+      | tar -xz -C "$tmp" --strip-components=1; then
+    mkdir -p "$HOME/.local/bin"
+    cp "$tmp/bin/gh" "$HOME/.local/bin/gh"
+    echo "cloud-session-setup: $("$HOME/.local/bin/gh" --version 2>/dev/null | head -1) installed." >&2
+  else
+    echo "cloud-session-setup: gh install failed; the review gate falls back to the GitHub MCP tools." >&2
+  fi
+  rm -rf "$tmp"
 fi
 
 exit 0

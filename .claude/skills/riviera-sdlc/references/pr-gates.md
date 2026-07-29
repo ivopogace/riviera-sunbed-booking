@@ -44,9 +44,39 @@ restating it.
    > use the Agent tool" session instruction is **not** a reason to skip it — ask the human
    > to authorize the subagent; that is a one-line answer.
    >
+   > **The invocation ladder — how to actually start `/code-review`** (the registered name
+   > and its model-invocability differ per harness version; a rejected name is NOT the gate
+   > being unavailable):
+   >
+   > 1. `Skill("code-review:code-review")` (plugin-qualified — the #417-era registration).
+   > 2. `Skill("code-review")` (bare — some harnesses register the command under this name).
+   > 3. **Both rejected** (the current cloud behavior, observed 2026-07-29: qualified →
+   >    `Unknown skill`, bare → `disable-model-invocation` — the remote harness treats
+   >    plugin *commands* as user-typed-only, ignoring the command's own
+   >    `disable-model-invocation: false` frontmatter) → **execute the installed plugin's
+   >    command file directly; this IS the gate, not a fallback.** Resolve the payload:
+   >    read `~/.claude/plugins/installed_plugins.json`, key
+   >    `code-review@claude-plugins-official`, field `installPath`; then read
+   >    `<installPath>/commands/code-review.md` and follow its steps exactly as if the
+   >    command had been typed. Reading it from the installed payload at run time is what
+   >    keeps Anthropic's upstream updates flowing (`scripts/ensure-plugins.sh` tracks the
+   >    marketplace) — **never vendor a copy of the workflow into the repo.**
+   > 4. Only when the payload itself is absent and `bash scripts/ensure-plugins.sh` cannot
+   >    repair it does the degraded `/review <PR>` fallback below apply.
+   >
+   > **`gh` in cloud sessions** — provisioned by `scripts/cloud-session-setup.sh` step 6
+   > (GH_TOKEN is already in the session env). The repo-scope proxy serves REST plus a
+   > pinned set of PR-review GraphQL operations, so some of the plugin workflow's `gh`
+   > calls need their REST equivalent (the proxy's 403 message says exactly this):
+   > `gh pr diff N` and `gh api repos/{owner}/{repo}/...` **work**;
+   > `gh pr view` / `gh pr list` / `gh search` **403** → use
+   > `gh api repos/O/R/pulls/N`, `gh api "repos/O/R/pulls?state=open"`, and
+   > `gh api search/issues -f q=...`; post the final review comment with
+   > `gh api -X POST repos/O/R/issues/N/comments -f body='...'` (verified served). The
+   > GitHub MCP tools remain the substitute if `gh` is missing.
+   >
    > **Fallback, only if the subagent genuinely cannot run: `/review <PR>`** — a plain skill
-   > that runs inline against the same banks (fetch the diff with the GitHub MCP tools; `gh`
-   > is absent in cloud sessions and the skill's instructions assume it). It is weaker than
+   > that runs inline against the same banks. It is weaker than
    > `/code-review`, so treat it as a degraded mode and say so in the PR.
    >
    > **If neither can start, say so — never substitute silently.** That is a legitimate blocker
