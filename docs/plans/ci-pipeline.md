@@ -116,9 +116,16 @@ coverage corrections folded in here.
   maintainer · *Resolves by:* SonarCloud setup.
 - **Assumption:** Temurin **JDK 25 GA** is available to `setup-java@v4` (Java 25 is the
   Sept-2025 LTS; Adoptium publishes it). — *Owner:* agent · *Resolves by:* AC-1 green.
-- **Assumption:** the maintainer wants CodeQL + both CI jobs as the **required**
-  checks on `main` (not Sonar, which is additive until wired). — *Owner:* maintainer ·
-  *Resolves by:* branch-protection setup.
+- ~~**Assumption:** the maintainer wants CodeQL + both CI jobs as the **required**
+  checks on `main` (not Sonar, which is additive until wired).~~ **Resolved — and Sonar
+  did end up required.** Read from the API (`GET /repos/{owner}/{repo}/rules/branches/main`)
+  on 2026-07-29: enforcement is a **repository ruleset**, `Riviera Rule Set` (id `18207603`,
+  `~DEFAULT_BRANCH`), not a classic branch-protection rule, with
+  `strict_required_status_checks_policy: true` and **7** required contexts — `Backend (build
+  + test)`, `Frontend (lint + test + build)`, `Analyze (java-kotlin)`,
+  `Analyze (javascript-typescript)`, `CodeQL`, `SonarCloud scan`, `SonarCloud Code Analysis`.
+  Two of those are Sonar and one is redundant; **#419** drops the job-level `SonarCloud scan`.
+  — *Owner:* maintainer · *Resolved by:* the ruleset read above.
 - **Open question:** none blocking. No material scope change surfaced in the audit.
 
 ## Availability & concurrency (invariant #2)
@@ -338,9 +345,16 @@ tasks.named('test') {
 3. **Add the `SONAR_TOKEN` repo secret** (Settings → Secrets and variables → Actions →
    New repository secret). **This is the remaining step** — until it exists the `sonar`
    job skips its scan (green); once added, the combined FE+BE scan runs and reports.
-4. **Enable branch protection on `main`** requiring: the `backend` + `frontend` CI
-   checks and the CodeQL `java` + `javascript` checks (and Sonar once wired). This is
-   what makes AC-8 ("`main` can't merge red") true. (CodeQL becomes green after item 1.)
+4. ~~**Enable branch protection on `main`** requiring: the `backend` + `frontend` CI
+   checks and the CodeQL `java` + `javascript` checks (and Sonar once wired).~~ ✅ **Done —
+   as a ruleset, not classic branch protection.** `Riviera Rule Set` (id `18207603`) targets
+   `~DEFAULT_BRANCH` and requires the 7 contexts listed under *Open questions / Assumptions*,
+   `strict` (a branch behind `main` blocks the merge), plus `deletion`, `non_fast_forward`,
+   `pull_request` (0 approvals), `code_scanning` (CodeQL, errors/high-or-higher) and
+   `code_quality` (errors). This is what makes AC-8 ("`main` can't merge red") true.
+   **Editing it:** Settings → Rules → Rulesets → *Riviera Rule Set*. A second ruleset,
+   *Pull Request Merge* (id `18199939`), is `active` but its `ref_name` condition includes
+   **no** refs, so it governs nothing — edit the wrong one and the change has no effect.
 
 ---
 
@@ -362,7 +376,10 @@ tasks.named('test') {
 - [x] **AC-5:** `frontend/coverage/frontend/lcov.info` produced — verified locally (Node 26) + in the green frontend job.
 - [x] **AC-6:** `jacocoTestReport.xml` produced — verified via JDK-21 smoke + the green backend job (JDK 25).
 - [x] **AC-7:** SonarCloud analysis **runs and reports** — verified: on run `28297771351` the `sonar` job downloaded both coverage reports, normalized the lcov, and the scan step succeeded (single project `ivopogace_riviera-sunbed-booking`, org `swap-shop`). The secret-gate also holds (steps skip green when `SONAR_TOKEN` is absent).
-- [ ] **AC-8:** `main` blocks merge on a red required check. Verified post-branch-protection (Ready-for-human #4).
+- [x] **AC-8:** `main` blocks merge on a red required check — **verified** once Ready-for-human #4
+  landed as the `Riviera Rule Set` ruleset. Live evidence: the Dependabot PRs (#332–#341) carry a
+  red `Frontend (lint + test + build)` and sit unmerged, while PR #418 merged only once all 7
+  required contexts were green.
 
 ## Self-review checklist (before merge / PR)
 
