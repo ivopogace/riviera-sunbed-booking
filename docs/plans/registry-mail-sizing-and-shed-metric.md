@@ -225,7 +225,7 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 |-------|--------|---------|
 | 0 — externalise + validate the two bounds | ✅ | `98c4796` |
 | 1 — the shed counter + the per-episode escalation | ✅ | `aa1065d` |
-| 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d5cf5b7` |
+| 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d506def` |
 | 3 — review + sonar gates, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
