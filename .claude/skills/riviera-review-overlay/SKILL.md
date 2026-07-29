@@ -21,8 +21,9 @@ riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera invariants /
 `.claude/skills/riviera-*`, or an `AGENTS.md`/`CLAUDE.md` referencing
 `ai.riviera.platform.*` modules). This overlay **never runs alone** — it layers
 onto an active review; honor an explicit user invoke by starting the review first.
-In the `riviera-sdlc` flow, starting the review is your duty (`/code-review
-origin/main...HEAD` or `/review <PR>`) — see riviera-sdlc's **Review gate**.
+In the `riviera-sdlc` flow, starting the review is your duty — via the invocation
+ladder in riviera-sdlc's `references/pr-gates.md` §1 (`/review <PR>` only as the
+degraded fallback); see riviera-sdlc's **Review gate**.
 `/security-review` doesn't auto-load this overlay; consult the reference files directly.
 
 When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific bank items."*
