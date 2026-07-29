@@ -18,12 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.modulith.events.IncompleteEventPublications;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -113,6 +115,9 @@ class ConfirmationMailBulkheadIT {
 	@Autowired
 	IncompleteEventPublications incompletePublications;
 
+	@Autowired
+	ApplicationContext context;
+
 	@BeforeEach
 	void rearmProbe() {
 		probe.reset();
@@ -188,6 +193,25 @@ class ConfirmationMailBulkheadIT {
 				.as("a rejected send must be counted, not silently dropped").isGreaterThan(shedBefore));
 		assertThat(outstandingFor(shed.id()))
 				.as("a shed send must leave its publication outstanding, never completed").isEqualTo(1L);
+	}
+
+	/**
+	 * Declaring the mail pool must not cost the spine its own executor. Boot gates the whole of
+	 * {@code TaskExecutorConfiguration} — which declares {@code applicationTaskExecutor} — behind
+	 * {@code OnExecutorCondition}, an {@code AnyNestedCondition} whose first branch is
+	 * {@code @ConditionalOnMissingBean(Executor.class)}. So an unguarded second `Executor` bean makes
+	 * Boot skip it entirely and every unqualified {@code @Async} — all four money-path listeners —
+	 * silently falls back to an unbounded executor. The bulkhead would then have removed a bound from
+	 * the very path it exists to protect, and no other test would notice: unbounded threads always keep
+	 * up, so AC-1 still passes.
+	 */
+	@Test
+	void declaringTheMailPoolLeavesBootsSharedExecutorInPlace() {
+		assertThat(context.containsBean("applicationTaskExecutor"))
+				.as("the spine's own executor must still exist alongside the mail pool").isTrue();
+		assertThat(context.getBean("applicationTaskExecutor"))
+				.as("the spine must still be on Boot's BOUNDED pool, not an unbounded fallback")
+				.isInstanceOf(ThreadPoolTaskExecutor.class);
 	}
 
 	/** AC-6 — the listener runs on its own pool, never Boot's shared applicationTaskExecutor. */

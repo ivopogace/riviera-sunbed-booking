@@ -33,6 +33,16 @@ or read differently. The Event Publication Registry tables (`event_publication`,
 review gate by two independent reviewers. Blocks **#370** activating the `mailer` profile
 in production.
 
+**Relationship to PR #403.** An earlier, independent implementation of #383 exists — open,
+CI-green, branch `claude/sdlc-383-iy57l3`, plan `docs/plans/registry-mail-bulkhead.md`. This
+branch is a **deliberate re-implementation at the maintainer's direction**, not an accidental
+duplicate. Two consequences worth carrying: (a) #403 found the F-1 Blocker below, which this
+branch also had until it was cross-checked — the finding is a fact about Boot, not a matter of
+taste; (b) #403 ships a `MailListenerExecutorArchitectureTest` making the "name the mail
+executor" rule structural, which this branch does **not** yet have and should port, because
+#373 and #374 will each reach for `@ApplicationModuleListener` — the documented, obvious way to
+write a registry listener, and the one that lands on the shared pool.
+
 **Skills consulted:**
 - `riviera-sdlc` — ran the Skill-routing gate; matched the "writing/refactoring any backend
   Java" row (annotations + one new bean, no new module, port, event, adapter or class move).
@@ -364,7 +374,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | cross-check against **PR #403** (the earlier, independent implementation of #383) | **Blocker — the bulkhead removed a bound from the path it protects.** Declaring the mail pool as a plain `Executor` bean made Boot skip `applicationTaskExecutor` entirely, so every unqualified `@Async` — all four money-path listeners — fell back to an unbounded executor. **Every test still passed**, because unbounded threads always keep up: AC-1 asserts the money path *works*, not which executor it works on | fixed in `<sha>` — `defaultCandidate = false`, pinned by `ConfirmationMailBulkheadIT.declaringTheMailPoolLeavesBootsSharedExecutorInPlace` (verified RED before the fix: the bean was absent) |
 
 ---
 
@@ -424,6 +434,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
    `status` / `completion_attempts` / `last_resubmission_date` columns stay NULL on every row
    and nothing may be built on them; and `markResubmitted` likewise defaults to `return true`,
    so the framework's documented "another instance already claimed this" guard is inert here.
+11. **Declaring any `Executor` bean suppresses Boot's `applicationTaskExecutor`.**
+   `TaskExecutorConfigurations.TaskExecutorConfiguration` — which declares the
+   `applicationTaskExecutor` bean — is annotated `@Conditional(OnExecutorCondition.class)`, an
+   `AnyNestedCondition` whose first branch is `@ConditionalOnMissingBean(Executor.class)` (the
+   second is `spring.task.execution.mode=force`). So a second, unguarded `Executor` bean makes
+   Boot skip the whole configuration, and every unqualified `@Async` falls back to an unbounded
+   executor — silently, since no test asserts *which* executor the spine runs on.
+   `@Bean(defaultCandidate = false)` keeps the bean out of by-type resolution, satisfying the
+   condition, while `@Async(BEAN_NAME)` still resolves by name. See F-1.
 10. **`propagation = NOT_SUPPORTED` removes the transaction but NOT the connection hold** —
    discovered by AC-2 going red on the "one-line fix" in phase 0, and the reason the
    decomposition moved from phase 1 into phase 0. With nothing to suspend,

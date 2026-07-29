@@ -55,7 +55,19 @@ public class ConfirmationMailExecutorConfig {
 
 	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
 
-	@Bean(BEAN_NAME)
+	/**
+	 * <strong>{@code defaultCandidate = false} is load-bearing, not tidiness.</strong> Boot gates the
+	 * whole of {@code TaskExecutorConfiguration} — which declares {@code applicationTaskExecutor} —
+	 * behind {@code OnExecutorCondition}, an {@code AnyNestedCondition} whose first branch is
+	 * {@code @ConditionalOnMissingBean(Executor.class)}. A plain second {@code Executor} bean therefore
+	 * makes Boot skip it entirely, and every unqualified {@code @Async} — all four money-path listeners
+	 * — falls back to an unbounded executor: this class would have removed a bound from the very path it
+	 * exists to protect. Nothing else goes red when that happens, because unbounded threads always keep
+	 * up. Excluding the bean from by-type resolution satisfies the condition while leaving
+	 * {@code @Async(BEAN_NAME)}, which resolves by name, working.
+	 * {@code ConfirmationMailBulkheadIT#declaringTheMailPoolLeavesBootsSharedExecutorInPlace} pins it.
+	 */
+	@Bean(name = BEAN_NAME, defaultCandidate = false)
 	ThreadPoolTaskExecutor confirmationMailExecutor(MeterRegistry meters,
 			@Value("${riviera.notification.confirmation-mail.pool-size}") int poolSize,
 			@Value("${riviera.notification.confirmation-mail.queue-capacity}") int queueCapacity) {
