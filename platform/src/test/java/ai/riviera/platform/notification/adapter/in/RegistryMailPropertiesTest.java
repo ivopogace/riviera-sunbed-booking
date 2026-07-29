@@ -25,9 +25,15 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * {@code spring-boot-starter-validation} deliberately, in favour of explicit checks in records — and
  * Boot only validates {@code @ConfigurationProperties} when an implementation is present. An
  * annotation here would therefore bind and validate <em>nothing</em>: the same silent degradation,
- * arrived at from the other side. Hence {@link #aNonPositiveQueueCapacityFailsTheContext}, which
- * asserts the <em>context</em> refuses to start rather than merely that the record throws — the
- * record test alone would still pass if the guard were later replaced by a no-op annotation.
+ * arrived at from the other side.
+ *
+ * <p>The context-level tests earn their place alongside the direct-construction ones for a different
+ * reason than "the record test would still pass" — it would not; dropping the guard reddens
+ * {@link #rejectsANonPositiveQueueCapacity} first. What only a context test can show is that Boot's
+ * binder <em>propagates</em> the record's exception into a startup failure instead of swallowing it
+ * and falling back to a default, which is the half the guard's usefulness actually rests on. Each one
+ * asserts the root cause and message, not merely {@code hasFailed()}: any bind or bean-creation error
+ * satisfies the weaker assertion, so it would stay green with the guard gone.
  */
 class RegistryMailPropertiesTest {
 
@@ -72,7 +78,47 @@ class RegistryMailPropertiesTest {
 		runner.withPropertyValues("riviera.notification.registry-mail.queue-capacity=0")
 				.run(context -> assertThat(context)
 						.as("a typo must fail the boot, not silently yield a SynchronousQueue")
-						.hasFailed());
+						.hasFailed()
+						.getFailure()
+						.rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("queue-capacity")
+						.hasMessageContaining("SynchronousQueue"));
+	}
+
+	@Test
+	void aNonPositivePoolSizeFailsTheContext() {
+		runner.withPropertyValues("riviera.notification.registry-mail.pool-size=0")
+				.run(context -> assertThat(context)
+						.hasFailed()
+						.getFailure()
+						.rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("pool-size"));
+	}
+
+	@Test
+	void anOversizedQueueCapacityFailsTheContext() {
+		runner.withPropertyValues("riviera.notification.registry-mail.queue-capacity=1000000")
+				.run(context -> assertThat(context)
+						.as("an oversized queue boots clean and sheds nothing — it is the unbounded queue "
+								+ "the bulkhead removed, restored by configuration")
+						.hasFailed()
+						.getFailure()
+						.rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("queue-capacity"));
+	}
+
+	@Test
+	void anOversizedPoolSizeFailsTheContext() {
+		runner.withPropertyValues("riviera.notification.registry-mail.pool-size=200")
+				.run(context -> assertThat(context)
+						.hasFailed()
+						.getFailure()
+						.rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("pool-size"));
 	}
 
 	@Test
@@ -81,6 +127,7 @@ class RegistryMailPropertiesTest {
 				.isThrownBy(() -> new RegistryMailProperties(2, 0))
 				.withMessageContaining("queue-capacity")
 				.withMessageContaining("SynchronousQueue");
+		assertThatIllegalArgumentException().isThrownBy(() -> new RegistryMailProperties(2, -1));
 	}
 
 	@Test
@@ -88,13 +135,20 @@ class RegistryMailPropertiesTest {
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new RegistryMailProperties(0, 200))
 				.withMessageContaining("pool-size");
+		assertThatIllegalArgumentException().isThrownBy(() -> new RegistryMailProperties(-1, 200));
 	}
 
 	@Test
-	void acceptsTheSmallestUsefulPool() {
-		RegistryMailProperties props = new RegistryMailProperties(1, 1);
+	void acceptsTheWholeTuningRangeButNotBeyondIt() {
+		assertThat(new RegistryMailProperties(1, 1).poolSize()).isEqualTo(1);
+		assertThat(new RegistryMailProperties(RegistryMailProperties.MAX_POOL_SIZE,
+				RegistryMailProperties.MAX_QUEUE_CAPACITY).queueCapacity())
+				.as("the ceilings bound the typo, not the operator — both are reachable")
+				.isEqualTo(RegistryMailProperties.MAX_QUEUE_CAPACITY);
 
-		assertThat(props.poolSize()).isEqualTo(1);
-		assertThat(props.queueCapacity()).isEqualTo(1);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RegistryMailProperties(RegistryMailProperties.MAX_POOL_SIZE + 1, 200));
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RegistryMailProperties(2, RegistryMailProperties.MAX_QUEUE_CAPACITY + 1));
 	}
 }

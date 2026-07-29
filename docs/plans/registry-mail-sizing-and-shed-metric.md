@@ -34,11 +34,15 @@ comparison review against the closed branch of PR #406.
 - `riviera-local-debug` — the cloud Gradle recipe (system `gradle`, JDK-25 toolchain registration,
   JDK 21 daemon) and the scoped-test discipline used for every phase run below.
 - `riviera-plan-doc` — this document's structure and the Execution-status state store.
-- `riviera-docs-freshness` — the phase-2 sweep over `origin/main..HEAD`; produced the four doc
-  patches (both notification rows, the observability runbook, the CD env-var list) and the finding
-  that nothing in the substrate was contradicted.
-- `riviera-review-overlay` + the `review` engine — the Review gate on PR #413; produced findings
-  F-1..F-3 below.
+- `riviera-docs-freshness` — the phase-2 sweep over `origin/main..HEAD`; produced four doc patches
+  (both notification rows, the observability runbook, the CD env-var list). Its "zero contradictions"
+  verdict was **wrong and is corrected below** — it read the kernel membership lists but not the
+  ownership clauses.
+- `riviera-review-overlay` + the `review` engine — the first Review-gate pass on PR #413 (F-1..F-3).
+- **`/code-review` subagent fan-out** — the second pass, authorized by the maintainer mid-review;
+  four independent reviewers over concurrency, config binding, test determinism and
+  conventions/doc-truthfulness. It produced **F-4..F-11**, including the two defects that changed
+  production behaviour, and is the reason this slice did not ship its own Non-goal as a footgun.
 - `postgres`, `riviera-frontend`, `angular-developer`, `playwright-cli`, `riviera-stripe-payments` —
   **not loaded, not triggered**: no migration, no SQL, no frontend surface, no money movement.
 
@@ -72,19 +76,42 @@ comparison review against the closed branch of PR #406.
       exactly one per shed task. *Pinned by:*
       `RegistryMailExecutorConfigTest.everyShedSendIncrementsTheCounter`
 - [x] **AC-6:** Given a saturation episode in which N sends are shed with no intervening progress,
-      when the episode is observed, then **exactly one** `ERROR` line is logged, not N.
+      when the episode is observed, then **exactly one** log line is emitted at any level, not N.
       *Pinned by:* `RegistryMailExecutorConfigTest.aSaturationEpisodeLogsOnceNotOncePerShedTask`
-- [x] **AC-7:** Given a saturation episode that ends (the pool drains a task) and a later one
-      begins, when the second episode's first send is shed, then a **new** `ERROR` line is logged —
-      the throttle must not silence a genuinely new incident.
+- [x] **AC-7:** Given a saturation episode that ends and a later one begins, when the second
+      episode's first send is shed, then a **new** `ERROR` line is logged — the throttle must not
+      silence a genuinely new incident.
       *Pinned by:* `RegistryMailExecutorConfigTest.aLaterEpisodeLogsAgain`
+- [x] **AC-8** *(added by the fan-out, F-6)*: Given a pool that drains a task while its queue is
+      **still backed up**, when the next send is shed, then **no new** `ERROR` is logged — an episode
+      ends when the queue empties, not when a worker picks something up, so the log rate is tied to
+      the incident rather than to the drain rate.
+      *Pinned by:* `RegistryMailExecutorConfigTest.drainingATaskWhileTheQueueIsStillBackedUpDoesNotEndTheEpisode`
+- [x] **AC-9** *(added by the fan-out, F-4)*: Given `queue-capacity` above `10000` or `pool-size`
+      above `32`, when the context starts, then startup **fails** — an oversized bound boots clean and
+      silently restores the unbounded queue the bulkhead exists to remove.
+      *Pinned by:* `RegistryMailPropertiesTest.anOversizedQueueCapacityFailsTheContext` +
+      `.anOversizedPoolSizeFailsTheContext` + `.acceptsTheWholeTuningRangeButNotBeyondIt`
+- [x] **AC-10** *(added by the fan-out, F-5)*: Given the executor has been shut down, when a send is
+      rejected, then the shed counter does **not** increment and no `ERROR` is logged — a redeploy is
+      not a saturation incident, and the runbook's "alert on any increase" must not fire on one.
+      *Pinned by:* `RegistryMailExecutorConfigTest.aRejectionDuringShutdownIsNotCountedOrEscalatedAsSaturation`
+- [x] **AC-11** *(added by the fan-out, F-7)*: Given the real container, when the mail executor bean
+      is resolved, then it carries the bound `2`/`200` — AC-1's second clause was previously joined to
+      the first only by the same literals appearing in two files.
+      *Pinned by:* `RegistryMailExecutorWiringIT.theMailExecutorIsBuiltFromTheShippedBounds`
 
 ## Non-goals
 
-- **No upper bound on either knob.** Rejecting non-positive values is the AC; capping `pool-size` at
-  some invented ceiling would defeat the point of making it tunable at #370, when a real relay's
-  latency is known for the first time. An absurd value fails loudly (OOM / thread exhaustion), not
-  silently, which is the distinction that matters here.
+- ~~**No upper bound on either knob.**~~ **Reversed at the review gate (F-4).** The original
+  reasoning — "an absurd value fails loudly (OOM / thread exhaustion), not silently" — is simply
+  false, and two independent reviewers showed why: `createQueue` returns a `LinkedBlockingQueue` for
+  any positive capacity and it allocates lazily, so `queue-capacity=1000000` boots clean, sheds
+  nothing, holds the new counter at zero, and fills the heap until the JVM dies — the unbounded queue
+  #383 removed, restored by configuration. Core threads are created lazily too, so an oversized
+  `pool-size` surfaces as `OutOfMemoryError: unable to create native thread` on the commit thread.
+  Worse, the runbook *this slice adds* tells the on-call to raise these knobs when sheds appear. Both
+  now have ceilings (32 / 10000 — 16× and 50× the defaults, so they bound the typo, not the operator).
 - **No counter for the recovery vehicle's drop.** `AsyncMailDispatcher` drops with a WARN and no
   counter, and its drop is a genuine loss (bearer-credential payload, nothing to retry from —
   ADR-0011 decision 5), so it deserves its own name and its own justification. Out of scope; the
@@ -221,7 +248,7 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `merge close-out — all three gates GREEN; awaiting the maintainer's merge decision on PR #413`
+**Stage pointer:** `review gate pass 2 (/code-review fan-out) — 8 findings fixed; re-verifying CI + Sonar before merge`
 
 **Gate results (PR #413, head `d8b1239`):** CI green — `Backend (build + test)` ×2, `Frontend
 (lint + test + build)` ×2, `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL` all
@@ -231,17 +258,19 @@ narrows that separation — `RegistryMailExecutorWiringIT` re-runs unchanged to 
 `new_duplicated_lines_density=0.0`, `new_coverage=100.0`, `issues/search total=0`,
 `hotspots/search total=0`.
 
-**Next action:** None by the agent. **PR #413** carries the slice; CI, the Review gate and the Sonar
-gate have run and their findings are resolved. The merge itself is the maintainer's call. After the
-merge the only remaining items are GitHub-only (no commit): #408 closes via `Closes #408`, and it
-should be attached as a sub-issue of epic #367 — #414 and #415 already are.
+**Next action:** Confirm CI + Sonar are green on the fan-out fix head, then the merge is the
+maintainer's call (already given, conditional on the fan-out running and its findings being fixed —
+both now done). After the merge the only remaining items are GitHub-only, no commit: #408 closes via
+`Closes #408`. #408, #414 and #415 are all already attached to epic #367.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — externalise + validate the two bounds | ✅ | `98c4796` |
 | 1 — the shed counter + the per-episode escalation | ✅ | `aa1065d` |
 | 2 — substrate docs (freshness run: 0 contradictions, 4 patches) | ✅ | `d506def` |
-| 3 — review-gate findings F-1..F-3 + close-out | ✅ | `88ba19d` + this close-out commit — which cannot cite its own SHA, the same reason step 4 says `merged via PR #413` and never a merge SHA |
+| 3 — review-gate pass 1 (F-1..F-3) + close-out | ✅ | `88ba19d` + this close-out commit — which cannot cite its own SHA, the same reason step 4 says `merged via PR #413` and never a merge SHA |
+
+| 4 — `/code-review` fan-out (F-4..F-11): both ends validated, shutdown vs saturation, queue-drain episodes | ✅ | this round |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -254,7 +283,16 @@ touches *before* editing).
 | F-1 | review (RV-PROC-1) | *Skills consulted* omitted `riviera-docs-freshness`, which had run and patched four docs, and the review overlay itself — exactly the "a touched area with no matching skill listed" the item exists to catch | fixed |
 | F-2 | review (quality / Sonar duplication risk) | `everyShedSendIncrementsTheCounter` and `aSaturationEpisodeLogsOnceNotOncePerShedTask` carried ~12 near-identical setup lines, and the Sonar bar is **0 duplicated blocks** — extracted a `saturate(pool, queued, sheds)` helper, which also let `aLaterEpisodeLogsAgain` drop its second wedge boilerplate | fixed |
 | F-3 | review (latent trap) | `SaturationPolicy` occupies the pool's **only** `TaskDecorator` slot; #410 (MDC onto the mail workers) would naturally call `setTaskDecorator` again and silently replace the episode reset, after which every saturation past the first is counted but never logged. Documented on the class so the next slice composes instead | fixed |
-| — | review (all other bank items) | RV-BE-1/4/5/6/7/8/9/10/14/15/16/17/18 ➖ not in scope; RV-BE-2/3/3b/3c/11/12/13 ✅; RV-STYLE-1 ✅ (every inline comment in the diff is one line) | closed |
+| — | review, pass 1 (all other bank items) | RV-BE-1/4/5/6/7/8/9/10/14/15/16/17/18 ➖ not in scope; RV-BE-2/3/3b/3c/11/12/13 ✅; RV-STYLE-1 ✅ (every inline comment in the diff is one line) | closed |
+| F-4 | `/code-review` fan-out (config + concurrency, independently) | **The validation was one-sided.** `createQueue` returns a lazily-allocating `LinkedBlockingQueue` for any positive capacity, so an oversized `queue-capacity` boots clean, sheds nothing, pins the new counter at zero and fills the heap — the unbounded queue #383 removed, restored by config; an oversized `pool-size` surfaces as `OutOfMemoryError: unable to create native thread` on the commit thread. The slice's own runbook told the on-call to raise exactly these knobs. Both ends now bounded (AC-9); the Non-goal that argued against it is struck through with its false premise quoted | fixed |
+| F-5 | `/code-review` fan-out (concurrency) | **A redeploy was reported as saturation.** The pool is `shutdown()` at context close while `server.shutdown=graceful` is unset, so an in-flight webhook's `AFTER_COMMIT` dispatch reaches the handler from an *idle* pool — counted and ERROR-logged as a degraded relay, tripping the runbook's "any increase" rule on every routine deploy (AC-10) | fixed |
+| F-6 | `/code-review` fan-out (concurrency + conventions) | **"One line per episode" was over-claimed.** Clearing the flag on any task start ties the log rate to the pool's *drain* rate; a restart republishing an hour of backlog would emit hundreds of lines. The episode now ends when the queue empties, which makes the documented guarantee true rather than the docs false (AC-8) | fixed |
+| F-7 | `/code-review` fan-out (test + config) | Assertion strength: `hasFailed()` alone passes for *any* startup error (verified — a non-numeric value satisfies it too), the ERROR-level filter would miss a re-added per-shed line at another level, `pool-size` had no context-level guard test, negatives were never exercised, and nothing pinned that the *container's* executor carries the bound values | fixed — root-cause + message assertions, a total-log-count assertion, and four new tests |
+| F-8 | `/code-review` fan-out (test) | Pool creation sat outside the `try`, so a failure inside `saturate()` skipped `shutdown()` and leaked a non-daemon worker for the rest of the JVM — the repo's documented full-suite-only failure class | fixed |
+| F-9 | `/code-review` fan-out (conventions, Major) | `RESPONSIBILITIES.md`'s `shared` **Job** ended "Nothing else" while this slice's Javadoc announced a widened remit — a real contradiction in the document that declares itself the boundary tie-breaker, missed by the freshness sweep and papered over by its "zero contradictions" verdict | fixed — Job clause widened with the narrower justification stated; the sweep's miss recorded above |
+| F-10 | `/code-review` fan-out (concurrency + conventions) | Two false claims in prose: the test helper's "`@Async` takes `execute` for a `void` method" (it uses `submit(Callable)`; both funnel to the same overridden `execute`, so the behaviour was right and the reasoning wrong), and the properties test's "the record test alone would still pass if the guard were replaced by a no-op annotation" (it would go red first) | fixed |
+| F-11 | `/code-review` fan-out (conventions) | The runbook asserted "the work is not lost … republished on the next restart" as operator-facing fact — the exact proposition #407 exists to prove, with no test behind it; and the plan's own risk-register checkbox was left unticked while every row read closed | fixed — claim softened with the #407 pointer, checkbox corrected |
+| — | `/code-review` fan-out (verified clean) | The `AtomicBoolean`/`TaskDecorator` machinery survived an exhaustive interleaving analysis: no lost counter increment, no stuck flag, no lost task, and the handler cannot throw onto the commit thread. The two load-bearing technical claims were independently verified from Spring 7.0.8 bytecode (`createQueue` → `SynchronousQueue` for `<= 0`) and the classpath (no JSR-303). Test determinism was checked empirically — 1,750 executions including single-core contention, 0 failures | closed |
 
 ---
 
@@ -283,24 +321,24 @@ touches *before* editing).
 **Files:** Create `RegistryMailProperties.java`, `RegistryMailPropertiesTest.java` · Modify
 `RegistryMailExecutorConfig.java`, `application.properties`, `docs/deploy/cd-pipeline.md`
 
-- [ ] **Step 1: Write the failing test** — `RegistryMailPropertiesTest` covering the four record
+- [x] **Step 1: Write the failing test** — `RegistryMailPropertiesTest` covering the four record
       guards (AC-3 record half, AC-4), the shipped defaults (AC-1), the env override (AC-2), and the
       context-fails-to-start case (AC-3 boot half), using `ApplicationContextRunner` +
       `ConfigDataApplicationContextInitializer` per `RateLimitPropertiesBindingTest`.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
       `gradle --no-daemon --console=plain test --tests "*RegistryMailPropertiesTest*"` → FAIL
       (cannot resolve `RegistryMailProperties`).
-- [ ] **Step 3: Minimal implementation** — the record with `@DefaultValue("2")` /
+- [x] **Step 3: Minimal implementation** — the record with `@DefaultValue("2")` /
       `@DefaultValue("200")` and a compact constructor rejecting non-positive values with a message
       that names the property and the `SynchronousQueue` consequence; the two placeholders in
       `application.properties`; `@EnableConfigurationProperties` + the bean reading the record.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS, then the touched module's tests:
+- [x] **Step 4: Run it, verify it passes** — same command → PASS, then the touched module's tests:
       `--tests "*RegistryMail*"`.
-- [ ] **Step 5: Generalization-audit pass** — search for other unchecked numeric `@Value`/
+- [x] **Step 5: Generalization-audit pass** — search for other unchecked numeric `@Value`/
       `@ConfigurationProperties` knobs whose non-positive value degrades silently rather than
       loudly; record the search and the decision in the log below.
-- [ ] **Step 6: Commit** — `feat(#408): bind the registry-mail pool bounds as validated properties`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `feat(#408): bind the registry-mail pool bounds as validated properties`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -309,25 +347,25 @@ touches *before* editing).
 **Files:** Modify `ObservabilityMetrics.java`, `RegistryMailExecutorConfig.java`,
 `RegistryMailExecutorConfigTest.java`, `docs/runbooks/observability.md`
 
-- [ ] **Step 1: Write the failing test** — in `RegistryMailExecutorConfigTest`:
+- [x] **Step 1: Write the failing test** — in `RegistryMailExecutorConfigTest`:
       `everyShedSendIncrementsTheCounter` (AC-5),
       `aSaturationEpisodeLogsOnceNotOncePerShedTask` (AC-6), `aLaterEpisodeLogsAgain` (AC-7), using
       `SimpleMeterRegistry` + a Logback `ListAppender` per `MoneyPathAlertCheckTest`, and driving
       submissions through `execute()` (R-3).
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
       `gradle --no-daemon --console=plain test --tests "*RegistryMailExecutorConfigTest*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — `MAIL_REGISTRY_SHED` in `ObservabilityMetrics` (+ the
+- [x] **Step 3: Minimal implementation** — `MAIL_REGISTRY_SHED` in `ObservabilityMetrics` (+ the
       widened remit Javadoc); a `SaturationPolicy` implementing `RejectedExecutionHandler` +
       `TaskDecorator` that increments unconditionally and logs `ERROR` only on the flag's
       false→true transition, the flag clearing when a task actually starts.
-- [ ] **Step 4: Run it, verify it passes** — same command, then the structural net and the wiring IT
+- [x] **Step 4: Run it, verify it passes** — same command, then the structural net and the wiring IT
       (R-4): `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*"
       --tests "*PackageShapeArchitectureTests*" --tests "*RegistryMailExecutorWiringIT*"`.
-- [ ] **Step 5: Generalization-audit pass** — search every `RejectedExecutionHandler` /
+- [x] **Step 5: Generalization-audit pass** — search every `RejectedExecutionHandler` /
       rejection log site for the same log-per-event flood (`AsyncMailDispatcher` is the known
       sibling); record the decision.
-- [ ] **Step 6: Commit** — `feat(#408): count shed registry mail and escalate once per episode`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `feat(#408): count shed registry mail and escalate once per episode`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -335,12 +373,12 @@ touches *before* editing).
 
 **Files:** Modify `docs/runbooks/observability.md`, `docs/deploy/cd-pipeline.md`, this plan doc
 
-- [ ] **Step 1:** Run `riviera-docs-freshness` over the branch's range (merge close-out step 5) and
+- [x] **Step 1:** Run `riviera-docs-freshness` over the branch's range (merge close-out step 5) and
       patch whatever the diff contradicts — at minimum the observability runbook's metric inventory
       and the CD env-var list.
-- [ ] **Step 2:** Finalize this plan doc **in this PR's last commit**, citing `merged via PR #NN`
+- [x] **Step 2:** Finalize this plan doc **in this PR's last commit**, citing `merged via PR #NN`
       (never a merge SHA) — the three-slice tax (#326→#347, #346→#352, #351→#354) is the reason.
-- [ ] **Step 3:** Attach **#408** as a sub-issue of epic **#367**, and report the #407/#409/#410/#411
+- [x] **Step 3:** Attach **#408** as a sub-issue of epic **#367**, and report the #407/#409/#410/#411
       gap to the maintainer.
 
 ---
@@ -358,8 +396,16 @@ touches *before* editing).
 
 ## Docs-freshness run (merge close-out step 5)
 
-Range `origin/main..HEAD`, run at phase 2. **Zero contradictions** — no substrate doc states a fact
-this slice makes false. The `shared`-kernel membership lists (`CLAUDE.md:136`,
+Range `origin/main..HEAD`, run at phase 2, and **it missed one** — corrected at the review gate
+(F-1). The sweep checked the substrate's *kernel membership lists* (`CLAUDE.md:136`,
+`RESPONSIBILITIES.md:337`, `ADR-0007:273`) and correctly concluded that adding a constant to an
+already-listed type does not change them. It never read the **Job / Not-My-Job** clauses, which are
+what a *remit* widening actually contradicts: `RESPONSIBILITIES.md`'s `shared` Job ended "…the
+accessors that resolve an authenticated principal to a typed id. **Nothing else.**" while this slice's
+own `ObservabilityMetrics` Javadoc announced the remit had been widened. Since `RESPONSIBILITIES.md`
+declares itself the tie-breaker for boundary questions, that is precisely the contradiction the sweep
+exists to catch. **Lesson for the skill: grep the ownership *clauses*, not only the type lists.**
+Everything else below stood. The `shared`-kernel membership lists (`CLAUDE.md:136`,
 `RESPONSIBILITIES.md:337`, `ADR-0007:273`) name `ObservabilityMetrics` as a *type* and are unaffected
 by a constant being added to it; `CLAUDE.md:157` and `RESPONSIBILITIES.md:279`'s "recovery *drops*,
 registry *sheds*" and "each draining on its own bounded executor" both remain true; the runbook's
@@ -405,13 +451,13 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Flyway migration present for schema changes (invariant #12) — none needed, and re-verified that no `listener_id`/`event_type` rewrite is implied.
 - [x] **Frontend** standards met or deviation documented — `N/A`, backend-only.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — final state committed here citing **merged via PR #413**.
-- [x] **The review gate ran in full** — `riviera-review-overlay` layered onto the `review` engine over
-      the PR diff. **Degraded mode, stated plainly:** `/code-review`'s subagent fan-out was not used —
-      this session carries a standing "do not call the Agent tool unless the user requested it"
-      instruction, and `code-review` is not among the invocable skills here. Per `pr-gates` §1 that is
-      a legitimate blocker but an illegitimate secret, so it is recorded here and in the PR rather
-      than papered over. The overlay bank was walked in full and produced F-1..F-3.
+- [x] **The review gate ran in full, in both halves.** Pass 1: `riviera-review-overlay` layered onto
+      the `review` engine over the PR diff (F-1..F-3). Pass 2: the **`/code-review` subagent fan-out**,
+      four independent reviewers, run after the maintainer authorized the Agent tool mid-review
+      (F-4..F-11). The degraded-mode note this line used to carry is obsolete — and the fan-out
+      justified `pr-gates` §1's insistence on it: it found the one-sided validation, the redeploy
+      false-alarm and the over-claimed throttle, none of which the overlay pass surfaced.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

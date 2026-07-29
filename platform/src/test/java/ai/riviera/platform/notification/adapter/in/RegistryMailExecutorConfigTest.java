@@ -89,6 +89,15 @@ class RegistryMailExecutorConfigTest {
 		return logs.list.stream().filter(event -> event.getLevel() == Level.ERROR).count();
 	}
 
+	/**
+	 * Every line the config logged, at any level. AC-6 is about <em>volume</em>, so asserting only the
+	 * ERROR count would stay green if a future change re-added a per-shed line at WARN or INFO beside
+	 * the throttled one — the flood would be back with the throttle's test none the wiser.
+	 */
+	private int logLines() {
+		return logs.list.size();
+	}
+
 	/** Occupies a worker thread until {@code gate} opens, signalling {@code running} once it holds one. */
 	private static Runnable wedge(CountDownLatch running, CountDownLatch gate) {
 		return () -> {
@@ -102,8 +111,12 @@ class RegistryMailExecutorConfigTest {
 	 * with {@code queued}, then submit {@code sheds} more sends, every one of which must be rejected.
 	 * Returns the gate that releases the worker — the caller opens it to end the episode.
 	 *
-	 * <p>Submissions go through {@code execute}, not {@code submit}, because that is the path
-	 * {@code @Async} takes for the {@code void} listener method this pool actually carries.
+	 * <p>Submissions go through {@code execute}. Production actually reaches the pool via
+	 * {@code submit(Callable)} — {@code AsyncExecutionAspectSupport#doSubmit} uses it even for a
+	 * {@code void} listener — but both funnel into the same overridden {@code execute} where Spring
+	 * applies the {@code TaskDecorator} and {@code ThreadPoolExecutor} consults the rejection handler,
+	 * so the counter and episode flag see an identical path. {@code execute} is used here only because
+	 * it keeps the tests free of {@code Future}s nothing waits on.
 	 */
 	private CountDownLatch saturate(ThreadPoolTaskExecutor pool, Runnable queued, int sheds)
 			throws InterruptedException {
@@ -176,9 +189,11 @@ class RegistryMailExecutorConfigTest {
 	@Test
 	void everyShedSendIncrementsTheCounter() throws Exception {
 		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
-		CountDownLatch gate = saturate(pool, () -> { }, SHED_SENDS);
+		CountDownLatch gate = new CountDownLatch(1);
 
 		try {
+			gate = saturate(pool, () -> { }, SHED_SENDS);
+
 			assertEquals(SHED_SENDS, shedCount(),
 					"the shed path must be attributable: one increment per send that never reached the "
 							+ "relay, so 'how often did we shed?' is answerable without grepping logs");
@@ -192,12 +207,15 @@ class RegistryMailExecutorConfigTest {
 	@Test
 	void aSaturationEpisodeLogsOnceNotOncePerShedTask() throws Exception {
 		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
-		CountDownLatch gate = saturate(pool, () -> { }, SHED_SENDS);
+		CountDownLatch gate = new CountDownLatch(1);
 
 		try {
+			gate = saturate(pool, () -> { }, SHED_SENDS);
+
 			assertEquals(1, escalations(),
 					"a wedged relay must not turn one incident into one log line per rejected send; "
 							+ "the counter carries the volume, the log carries the event");
+			assertEquals(1, logLines(), "and not at some other level either — AC-6 is about volume");
 			assertEquals(SHED_SENDS, shedCount(), "throttling the log must not throttle the counter");
 		}
 		finally {
@@ -206,17 +224,60 @@ class RegistryMailExecutorConfigTest {
 		}
 	}
 
+	/**
+	 * The guarantee the docs actually claim, and the one the first cut of #408 did not deliver:
+	 * draining a task does <strong>not</strong> end an episode while the queue is still backed up.
+	 * Clearing the flag on every task start ties the log rate to the pool's drain rate — a restart
+	 * republishing an hour of outstanding sends would emit hundreds of lines, which is the flood the
+	 * throttle exists to prevent. A capacity of 2 is what makes the distinction observable: one slot
+	 * frees while the other stays occupied.
+	 */
+	@Test
+	void drainingATaskWhileTheQueueIsStillBackedUpDoesNotEndTheEpisode() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(new RegistryMailProperties(1, 2));
+		CountDownLatch workerGate = new CountDownLatch(1);
+		CountDownLatch workerRunning = new CountDownLatch(1);
+		CountDownLatch queuedGate = new CountDownLatch(1);
+		CountDownLatch queuedRunning = new CountDownLatch(1);
+
+		try {
+			pool.execute(wedge(workerRunning, workerGate));
+			assertTrue(workerRunning.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			pool.execute(wedge(queuedRunning, queuedGate));
+			pool.execute(() -> { });
+			pool.execute(() -> { });
+			assertEquals(1, escalations(), "the episode opens with one escalated line");
+
+			// The pool makes progress — one task starts — but its queue still holds the other.
+			workerGate.countDown();
+			assertTrue(queuedRunning.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			pool.execute(() -> { });   // refills the slot the drained task freed
+			pool.execute(() -> { });   // shed again, still inside the same episode
+
+			assertEquals(1, escalations(),
+					"a drained task is not the end of an incident while the backlog persists — the "
+							+ "episode ends when the queue empties, not when a worker picks something up");
+			assertEquals(2, shedCount(), "every shed still counts, throttled log or not");
+		}
+		finally {
+			workerGate.countDown();
+			queuedGate.countDown();
+			pool.shutdown();
+		}
+	}
+
 	@Test
 	void aLaterEpisodeLogsAgain() throws Exception {
 		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
 		CountDownLatch queuedRan = new CountDownLatch(1);
-		CountDownLatch firstGate = saturate(pool, queuedRan::countDown, 1);
-		CountDownLatch secondGate = null;
+		CountDownLatch firstGate = new CountDownLatch(1);
+		CountDownLatch secondGate = new CountDownLatch(1);
 
 		try {
+			firstGate = saturate(pool, queuedRan::countDown, 1);
 			assertEquals(1, escalations(), "the first episode opens with one escalated line");
 
-			// The pool makes progress, which is what ends an episode.
+			// The queue empties, which is what ends an episode.
 			firstGate.countDown();
 			assertTrue(queuedRan.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
@@ -224,15 +285,27 @@ class RegistryMailExecutorConfigTest {
 
 			assertEquals(2, escalations(),
 					"a throttle that silences a genuinely new incident is worse than the flood it "
-							+ "replaced — the flag clears as soon as the pool drains a task");
+							+ "replaced — the flag clears once the backlog is gone");
+			assertEquals(2, shedCount(), "the counter keeps counting across episodes; it is what alerts");
 		}
 		finally {
 			firstGate.countDown();
-			if (secondGate != null) {
-				secondGate.countDown();
-			}
+			secondGate.countDown();
 			pool.shutdown();
 		}
+	}
+
+	@Test
+	void aRejectionDuringShutdownIsNotCountedOrEscalatedAsSaturation() {
+		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
+		pool.shutdown();
+
+		pool.execute(() -> { });
+
+		assertEquals(0, shedCount(),
+				"a redeploy rejects in-flight sends from an IDLE pool; counting them would make the "
+						+ "runbook's 'alert on any increase' fire on every routine deploy");
+		assertEquals(0, escalations(), "and would print a relay-degradation message for a non-event");
 	}
 
 	private static void awaitQuietly(CountDownLatch gate) {

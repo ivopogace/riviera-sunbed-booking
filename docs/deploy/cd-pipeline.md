@@ -121,8 +121,10 @@ must include `frontend/`, so:
     drains on (#383), and the shipped defaults `2` / `200` are the constants that slice pinned.
     They exist because those numbers were chosen against *estimated* SMTP timeouts, and #370 is
     the first moment a real relay's latency is measurable — retuning an estimate should not need a
-    deploy. **Both are validated at boot:** a non-positive value fails startup rather than silently
-    yielding a `SynchronousQueue` that sheds nearly every send. Watch
+    deploy. **Both are validated at boot on both ends** (`pool-size` 1–32, `queue-capacity`
+    1–10000): a non-positive value would silently yield a `SynchronousQueue`, and an oversized one
+    would silently restore the unbounded queue the bulkhead exists to remove — neither fails loudly
+    on its own, which is why the range is enforced rather than documented. Watch
     `riviera_mail_registry_shed_total` to know whether they need raising:
     [`docs/runbooks/observability.md`](../runbooks/observability.md).
 - **Health Check Path:** `/actuator/health`.

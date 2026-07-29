@@ -104,12 +104,27 @@ class RegistryMailExecutorConfig {
 	 *
 	 * <p>The <em>log</em> is one escalated line per episode, not per rejected task. At saturation the
 	 * handler fires once per send, so a wedged relay during a booking burst would otherwise bury the
-	 * lines that matter under hundreds of identical ones. An episode ends when the pool makes
-	 * progress — the decorator clears the flag as a queued task actually starts — so a genuinely new
-	 * saturation escalates again rather than being silenced, and a sustained outage reads as a
-	 * heartbeat rather than a flood. {@code ERROR} rather than {@code WARN} because a shed send is
-	 * not merely delayed: nothing retries it until the next restart's republish (or #405's admin
-	 * resubmission), which can be days, and until then a paying tourist has no arrival code by mail.
+	 * lines that matter under hundreds of identical ones. {@code ERROR} rather than {@code WARN}
+	 * because a shed send is not merely delayed: nothing retries it until the next restart's republish
+	 * (or #405's admin resubmission), which can be days, and until then a paying tourist has no
+	 * arrival code by mail.
+	 *
+	 * <p><strong>An episode ends when the queue drains, not when a task starts.</strong> The
+	 * difference is the whole guarantee, and the first cut of #408 got it wrong: clearing the flag on
+	 * every task start ties the log rate to the pool's <em>drain</em> rate rather than to the
+	 * incident, because under saturation each completed send frees exactly one slot and the next
+	 * arrival refills-then-rejects. A restart that republishes an hour of outstanding sends into a
+	 * recovered relay would emit hundreds of lines — the flood the throttle was added to prevent.
+	 * Gating the reset on an empty queue makes "episode" mean what the docs say: one line while the
+	 * backlog persists, and a new line for a genuinely new saturation.
+	 *
+	 * <p><strong>A rejection during shutdown is not saturation and is not counted as one.</strong>
+	 * The pool is bounded but also {@code shutdown()} at context close, and Boot does not run a
+	 * graceful web shutdown here, so an in-flight webhook can still reach its {@code AFTER_COMMIT}
+	 * dispatch after the executor stops accepting. That rejection arrives at this same handler from
+	 * an <em>idle</em> pool; counting it would make every routine redeploy raise the runbook's
+	 * "any increase" alert, and escalating it would print a relay-degradation message describing a
+	 * condition that never happened.
 	 *
 	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both would defeat
 	 * the bulkhead. The line carries no recipient and no booking code (invariant #7); the correlation
@@ -127,12 +142,21 @@ class RegistryMailExecutorConfig {
 		private final Counter shed;
 		private final AtomicBoolean episodeOpen = new AtomicBoolean();
 
+		/** Captured at the first rejection — the decorator needs the queue to know when an episode ended. */
+		private volatile ThreadPoolExecutor saturated;
+
 		SaturationPolicy(MeterRegistry meters) {
 			this.shed = meters.counter(ObservabilityMetrics.MAIL_REGISTRY_SHED);
 		}
 
 		@Override
 		public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
+			if (executor.isShutdown()) {
+				log.info("Registry mail executor is shutting down; the send was not attempted and stays "
+						+ "outstanding for the next start's republish");
+				return;
+			}
+			saturated = executor;
 			shed.increment();
 			if (episodeOpen.compareAndSet(false, true)) {
 				log.error("Registry mail executor saturated; sends are being shed and stay outstanding "
@@ -144,9 +168,16 @@ class RegistryMailExecutorConfig {
 		@Override
 		public Runnable decorate(Runnable task) {
 			return () -> {
-				episodeOpen.set(false);
+				endEpisodeIfDrained();
 				task.run();
 			};
+		}
+
+		private void endEpisodeIfDrained() {
+			ThreadPoolExecutor pool = saturated;
+			if (pool == null || pool.getQueue().isEmpty()) {
+				episodeOpen.set(false);
+			}
 		}
 	}
 }
