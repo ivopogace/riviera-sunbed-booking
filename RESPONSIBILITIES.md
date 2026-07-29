@@ -280,7 +280,11 @@ bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bou
 (#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
 payment→booking and booking→payout listeners; the registry listener therefore spells out
 `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-`@ApplicationModuleListener`, and holds no transaction across the send — the `BookingConfirmed`
+`@ApplicationModuleListener`, and holds no transaction across the send; that pool's size and queue
+depth are `riviera.notification.registry-mail.*` properties since #408 (defaults `2`/`200`, validated
+at boot, so #370 can retune them against a real relay without a deploy) and each shed send increments
+`ObservabilityMetrics.MAIL_REGISTRY_SHED` while escalating one log line per saturation *episode* —
+the `BookingConfirmed`
 confirmation mail (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
@@ -339,8 +343,20 @@ The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #3
 `api`/`vocabulary` surface and consumers use its types directly.
 
 **Job:** hold the handful of edge types that bounded contexts legitimately share — the
-RFC-7807 error-contract factory (#97) and the accessors that resolve an authenticated
-principal to a typed id. Nothing else.
+RFC-7807 error-contract factory (#97), the accessors that resolve an authenticated
+principal to a typed id, and the **platform's metric names** (`ObservabilityMetrics`: the
+money-path trio from #100, plus the registry-mail shed counter added by #408). Nothing else.
+
+> The metric-name clause is deliberately about *names*, not about observability. A name is a
+> `String` constant, compile-time-inlined, with the emission staying in the module that owns
+> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits
+> `MAIL_REGISTRY_SHED`. #408 widened the remit from "money-path metrics" to "metric names"
+> explicitly rather than let a second convention grow, because the alternative — each module
+> declaring its own — leaves the codebase with two answers to "where is a metric name written
+> down" and no way to check one against the other. Note this is the one admitted type whose
+> justification is *not* "more than one module needs it": `MAIL_REGISTRY_SHED` has a single
+> reader today. It is admitted for consistency of the naming convention, which is a narrower
+> claim — hold new entries to it.
 
 **Not my job:**
 - **Any business logic or module-owned state** → the owning bounded context. This package

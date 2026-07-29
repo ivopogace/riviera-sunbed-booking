@@ -40,6 +40,40 @@ metric-native alerting later.
 | **Failed refunds** | `riviera_refunds_failed_total` (counter) — incremented when the gateway returns `RefundResult.Failed` | A refund the platform owes a tourist could not be issued | any increase since the last check |
 | **Webhook 5xx** | `http_server_requests_seconds_count{uri="/api/payments/stripe/webhook", status=~"5.."}` (standard Boot timer) | The Stripe webhook — the payment source of truth (invariant #8) — is erroring; Stripe will retry and payment state may lag | new 5xx `> …webhook-server-error-threshold` (default 0) |
 
+## Other platform metrics (not money-path)
+
+`ObservabilityMetrics` is the one place metric names are declared; not every name in it is a
+money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three above.
+
+| Metric | Meaning | Alert when |
+|---|---|---|
+| `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (**not yet covered by a test — #407**), but until then a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
+
+**A rejection during shutdown is not a shed** and does not touch this counter: a redeploy can reject an
+in-flight send from an otherwise idle pool, which logs one `INFO` and is not saturation. Without that
+distinction the "any increase" rule above would fire on every routine deploy.
+
+The shed path also logs **one `ERROR` per saturation episode** — not one per shed send, which would
+bury the lines that matter during a burst. The episode ends when the pool's **queue empties**, not
+merely when a worker picks something up: under saturation each completed send frees exactly one slot
+that the next arrival refills, so ending the episode on task-start would peg the log rate to the
+drain rate and turn a restart's republish of a backlog into hundreds of lines. **Alert on the
+counter, not the log**: the log tells you an episode started, the counter tells you how big it was.
+
+**Tunables** (`riviera.notification.registry-mail.*`, both validated at boot on **both** ends):
+
+| Env var | Property | Default | Accepted range |
+|---|---|---|---|
+| `RIVIERA_REGISTRY_MAIL_POOL_SIZE` | `pool-size` (core = max threads) | `2` | `1`–`32` |
+| `RIVIERA_REGISTRY_MAIL_QUEUE_CAPACITY` | `queue-capacity` (sends queued before shedding) | `200` | `1`–`10000` |
+
+**Both ends of each range are enforced at boot, and the upper end is not bureaucracy.** A huge
+`queue-capacity` does *not* fail loudly: the queue allocates lazily, so the app boots clean, sheds
+nothing, holds this counter at zero, and fills the heap with retained sends until the JVM dies —
+taking the money-path listeners with it. That is the unbounded queue the bulkhead exists to remove,
+restored by a well-meaning retune. A huge `pool-size` is the mirror image, surfacing as
+`OutOfMemoryError: unable to create native thread` on the transaction-commit thread.
+
 ## Alert route (today): in-app self-check → ERROR log
 
 `MoneyPathAlertCheck` (`@Profile("stripe")`, scheduled every

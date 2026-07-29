@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
@@ -68,5 +69,25 @@ class RegistryMailExecutorWiringIT {
 		assertThat(context.getBean(RegistryMailExecutorConfig.MAIL_EXECUTOR, Executor.class))
 				.as("defaultCandidate=false must not cost the bean its name — @Async(MAIL_EXECUTOR) needs it")
 				.isNotSameAs(context.getBean(APPLICATION_TASK_EXECUTOR));
+	}
+
+	/**
+	 * The half of #408's AC-1 the unit tests cannot reach: that the pool the <em>container</em> builds
+	 * carries the shipped bounds. {@code RegistryMailExecutorConfigTest} feeds the factory a
+	 * hand-written record and {@code RegistryMailPropertiesTest} binds the properties without touching
+	 * a pool, so before this test the two halves were joined only by the same literals appearing in
+	 * two files.
+	 */
+	@Test
+	void theMailExecutorIsBuiltFromTheShippedBounds() {
+		ThreadPoolTaskExecutor pool =
+				context.getBean(RegistryMailExecutorConfig.MAIL_EXECUTOR, ThreadPoolTaskExecutor.class);
+
+		assertThat(pool.getCorePoolSize()).isEqualTo(2);
+		assertThat(pool.getMaxPoolSize()).isEqualTo(2);
+		assertThat(pool.getQueueCapacity())
+				.as("unset config must reproduce #383's constants through the real binder, not just "
+						+ "through a record a unit test wrote by hand")
+				.isEqualTo(200);
 	}
 }

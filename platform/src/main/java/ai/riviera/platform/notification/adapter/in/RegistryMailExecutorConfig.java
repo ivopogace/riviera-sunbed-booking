@@ -1,9 +1,22 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import ai.riviera.platform.shared.ObservabilityMetrics;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -23,11 +36,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  *
  * <p><strong>Bounded on every axis, and the saturation behaviour is a contract, not an accident.</strong>
  * Core equals max deliberately: a {@code ThreadPoolExecutor} grows past its core size only once the
- * queue is <em>full</em>, so a larger max would add no headroom until {@link #QUEUE_CAPACITY} sends
- * were already backed up. Two threads rather than one — unlike the recovery dispatcher, whose serial
+ * queue is <em>full</em>, so a larger max would add no headroom until the whole queue were already
+ * backed up. Two threads rather than one — unlike the recovery dispatcher, whose serial
  * drain suits "a handful of sends a day" — because this is a per-confirmed-booking send and a single
  * wedged address would otherwise serialize every later confirmation behind its full timeout budget.
- * At {@code POOL_SIZE + QUEUE_CAPACITY} the pool <strong>sheds</strong>: the rejection handler logs
+ * Both bounds are {@link RegistryMailProperties}, defaulting to the constants #383 shipped, so #370
+ * can retune them against a real relay's latency without a code change.
+ * At {@code poolSize + queueCapacity} the pool <strong>sheds</strong>: the rejection handler counts
  * and discards instead of throwing (an {@code AFTER_COMMIT} listener is dispatched from inside
  * {@code commit()}, so a throw would surface on the very thread this pool protects) and instead of
  * running on the caller's thread (which would be the original defect, reached from the other side).
@@ -51,6 +66,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * {@code RegistryMailExecutorWiringIT} pins both halves.
  */
 @Configuration
+@EnableConfigurationProperties(RegistryMailProperties.class)
 class RegistryMailExecutorConfig {
 
 	/**
@@ -59,33 +75,121 @@ class RegistryMailExecutorConfig {
 	 */
 	static final String MAIL_EXECUTOR = "registryMailExecutor";
 
-	static final int POOL_SIZE = 2;
-
-	/** ≈50 minutes of worst-case backlog at two threads × ~30s — past that, the registry is the better queue. */
-	static final int QUEUE_CAPACITY = 200;
-
 	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
 	private static final String THREAD_NAME_PREFIX = "registry-mail-";
 
 	private static final Logger log = LoggerFactory.getLogger(RegistryMailExecutorConfig.class);
 
 	@Bean(name = MAIL_EXECUTOR, defaultCandidate = false)
-	ThreadPoolTaskExecutor registryMailExecutor() {
+	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props, MeterRegistry meters) {
+		SaturationPolicy saturation = new SaturationPolicy(meters);
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
-		pool.setCorePoolSize(POOL_SIZE);
-		pool.setMaxPoolSize(POOL_SIZE);
-		pool.setQueueCapacity(QUEUE_CAPACITY);
+		pool.setCorePoolSize(props.poolSize());
+		pool.setMaxPoolSize(props.poolSize());
+		pool.setQueueCapacity(props.queueCapacity());
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
-		pool.setRejectedExecutionHandler((task, executor) -> shed());
+		pool.setRejectedExecutionHandler(saturation);
+		pool.setTaskDecorator(saturation);
 		// A short grace for sends already in flight; whatever does not finish stays outstanding.
 		pool.setWaitForTasksToCompleteOnShutdown(true);
 		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
 		return pool;
 	}
 
-	/** Never the recipient or the booking code (invariant #7); the correlation id rides the MDC. */
-	private static void shed() {
-		log.warn("Registry mail executor saturated; the send was shed and stays outstanding for the "
-				+ "next restart's republish");
+	/**
+	 * What saturation does: <strong>count every shed send, escalate once per episode</strong> (#408).
+	 *
+	 * <p>The <em>counter</em> is the signal to alert on. Before #408 the shed path logged and nothing
+	 * else, so "how often did we shed?" was answerable only by grepping logs and no alert could watch
+	 * it; {@link ObservabilityMetrics#MAIL_REGISTRY_SHED} makes it a Prometheus series. It increments
+	 * unconditionally and before the flag is consulted, so throttling the log can never cost a count.
+	 *
+	 * <p>The <em>log</em> is one escalated line per episode, not per rejected task. At saturation the
+	 * handler fires once per send, so a wedged relay during a booking burst would otherwise bury the
+	 * lines that matter under hundreds of identical ones. {@code ERROR} rather than {@code WARN}
+	 * because a shed send is not merely delayed: nothing retries it until the next restart's republish
+	 * (or #405's admin resubmission), which can be days, and until then a paying tourist has no
+	 * arrival code by mail.
+	 *
+	 * <p><strong>An episode ends when the queue drains, not when a task starts.</strong> The
+	 * difference is the whole guarantee, and the first cut of #408 got it wrong: clearing the flag on
+	 * every task start ties the log rate to the pool's <em>drain</em> rate rather than to the
+	 * incident, because under saturation each completed send frees exactly one slot and the next
+	 * arrival refills-then-rejects. A restart that republishes an hour of outstanding sends into a
+	 * recovered relay would emit hundreds of lines — the flood the throttle was added to prevent.
+	 * Gating the reset on an empty queue makes "episode" mean what the docs say: one line while the
+	 * backlog persists, and a new line for a genuinely new saturation.
+	 *
+	 * <p><strong>A rejection during shutdown is not saturation and is not counted as one.</strong>
+	 * The pool is bounded but also {@code shutdown()} at context close, and Boot does not run a
+	 * graceful web shutdown here, so an in-flight webhook can still reach its {@code AFTER_COMMIT}
+	 * dispatch after the executor stops accepting. That rejection arrives at this same handler from
+	 * an <em>idle</em> pool; counting it would make every routine redeploy raise the runbook's
+	 * "any increase" alert, and escalating it would print a relay-degradation message describing a
+	 * condition that never happened.
+	 *
+	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both would defeat
+	 * the bulkhead. The line carries no recipient and no booking code (invariant #7); the correlation
+	 * id rides the MDC.
+	 *
+	 * <p><strong>This class owns the pool's only {@code TaskDecorator} slot.</strong> A later slice
+	 * that wants one too — #410, propagating the caller's MDC onto the mail workers, is the one in
+	 * flight — must <em>compose</em> with {@link #decorate} rather than call
+	 * {@code setTaskDecorator} again, which silently replaces it: the episode flag would then never
+	 * clear, and after the first saturation every later one would be counted but never logged. No
+	 * test would go red for the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
+	 */
+	private static final class SaturationPolicy implements RejectedExecutionHandler, TaskDecorator {
+
+		private final Counter shed;
+		private final AtomicBoolean episodeOpen = new AtomicBoolean();
+
+		/**
+		 * The backlog the decorator watches to know when an episode ended, captured at the first
+		 * rejection because the queue does not exist when this policy is constructed — Spring
+		 * initializes the pool after the {@code @Bean} method returns.
+		 *
+		 * <p>An {@link AtomicReference} rather than a {@code volatile} field: {@code volatile} publishes
+		 * the reference safely but says nothing about the referent, which is the distinction
+		 * {@code java:S3077} exists to flag. Here the referent happens to be thread-safe and fully
+		 * constructed before publication, so the field would have been correct — but the type now says
+		 * that rather than relying on a reader to work it out.
+		 */
+		private final AtomicReference<BlockingQueue<Runnable>> backlog = new AtomicReference<>();
+
+		SaturationPolicy(MeterRegistry meters) {
+			this.shed = meters.counter(ObservabilityMetrics.MAIL_REGISTRY_SHED);
+		}
+
+		@Override
+		public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
+			if (executor.isShutdown()) {
+				log.info("Registry mail executor is shutting down; the send was not attempted and stays "
+						+ "outstanding for the next start's republish");
+				return;
+			}
+			backlog.set(executor.getQueue());
+			shed.increment();
+			if (episodeOpen.compareAndSet(false, true)) {
+				log.error("Registry mail executor saturated; sends are being shed and stay outstanding "
+						+ "for the next restart's republish. Further sheds in this episode are counted "
+						+ "under {} rather than logged", ObservabilityMetrics.MAIL_REGISTRY_SHED);
+			}
+		}
+
+		@Override
+		public Runnable decorate(Runnable task) {
+			return () -> {
+				endEpisodeIfDrained();
+				task.run();
+			};
+		}
+
+		private void endEpisodeIfDrained() {
+			BlockingQueue<Runnable> queue = backlog.get();
+			if (queue == null || queue.isEmpty()) {
+				episodeOpen.set(false);
+			}
+		}
 	}
 }
