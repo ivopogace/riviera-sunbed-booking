@@ -24,7 +24,9 @@ cannot answer it — it only raises the number of simultaneous wedges required. 
 number of `@Scheduled` methods (pinned by a fitness function, so a fifth job cannot silently
 re-share), plus one opt-in `queryTimeout` property applied to each scheduled job's **entry query**
 via an adapter-scoped `JdbcClient` — the #386 idiom, deliberately *not* the global
-`spring.jdbc.template.query-timeout`.
+`spring.jdbc.template.query-timeout`. (The entry queries turned out to be **five**, not the four the
+issue's per-job count implied — phase 1's generalization audit found the retention sweep asks two
+questions before it writes.)
 
 **Persistence:** JDBC only (invariant #1). **No migration, no schema change** — the slice changes
 how existing statements *execute*, never their text. Tables read by the bounded queries: `booking`
@@ -71,9 +73,11 @@ user-observable surface`)
   executed, then it **aborts with a `DataAccessException` within its configured bound** rather than
   blocking for as long as the lock is held. *Pinned by:*
   `ScheduledQueryTimeoutIT.aWedgedOutboxGaugeReadAbortsInsteadOfPinningTheSchedulerThread`
-- [ ] **AC-2:** Given the `booking` table is held under an `ACCESS EXCLUSIVE` lock, when the
-  abandoned-payment sweep's candidate read runs, then it aborts within its bound; and the same holds
-  for the request-expiry sweep's candidate read and the retention sweep's candidate read.
+- [ ] **AC-2:** Given the table a scheduled job reads is held under an `ACCESS EXCLUSIVE` lock, when
+  that job's entry query runs, then it aborts within its bound and surfaces the driver's cancel —
+  for **all four** such queries: the abandoned-payment sweep's candidate read, the request-expiry
+  sweep's candidate read, and **both** of the retention sweep's (its `customer` candidate read *and*
+  its `booking` retention-basis read, the fifth query the issue's four-job count missed).
   *Pinned by:* `ScheduledQueryTimeoutIT.everyScheduledEntryQueryIsBounded`
 - [ ] **AC-3:** Given one scheduled job is wedged on a locked table and is **still stuck** (its bound
   set far above the test's patience, so the wedge does not self-clear), when the abandoned-payment
@@ -253,15 +257,15 @@ already has its own explicit timeouts (#52/#426) and deliberately runs outside a
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phases 0-1 done, entering phase 2`
 
-**Next action:** Phase 1 — write `ScheduledQueryTimeoutIT` red against the four unbounded
-scheduled entry queries, then give each adapter its own bounded `JdbcClient`.
+**Next action:** Phase 2 — write `AbandonedSweepSurvivesWedgedJobIT` (both instruments together on
+the real `TaskScheduler`), then correct `MoneyPathAlertCheck`'s Javadoc and the deploy runbook.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Isolate the scheduler's lane (pool size + fitness function) | ✅ | |
-| 1 — Bound every scheduled entry query | | |
+| 0 — Isolate the scheduler's lane (pool size + fitness function) | ✅ | `0d636c6` |
+| 1 — Bound every scheduled entry query | ✅ | |
 | 2 — Prove it end-to-end + correct the stale docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -289,6 +293,10 @@ Skill-routing gate for what the fix touches *before* editing).
   a second, bounded `JdbcClient` used by `findExpirableAwaitingPayment` + `findOverduePendingRequests`.
 - `platform/src/main/java/ai/riviera/platform/customer/adapter/out/JdbcAccountErasure.java` —
   **modify**: same, for `expiredGuestCandidates`.
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcGuestBookingHistory.java` —
+  **modify**: bounded **outright** (no second client), because every call reaching this SPI is
+  scheduled work — `ExpireGuestContactsService.sweep()` is its sole consumer. Found by phase 1's
+  generalization audit, not by the issue.
 - `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — **create**:
   AC-4 + AC-5 fitness functions. Named for *scheduled work*, not for the pool, because it carries
   one rule per instrument.
@@ -335,25 +343,25 @@ Modify `platform/src/main/resources/application.properties`
 **Files:** Create `platform/src/test/java/ai/riviera/platform/ScheduledQueryTimeoutIT.java` ·
 Modify `ObservabilityConfig.java`, `JdbcBookings.java`, `JdbcAccountErasure.java`
 
-- [ ] **Step 1: Write the failing test** — `@EnabledIfDockerAvailable` + `TestcontainersConfiguration`
+- [x] **Step 1: Write the failing test** — `@EnabledIfDockerAvailable` + `TestcontainersConfiguration`
   + `@SpringBootTest(properties = "riviera.scheduled.query-timeout-seconds=1")`. Per query: hold an
   `ACCESS EXCLUSIVE` lock on its table from a second connection, assert the read throws
   `DataAccessException` within 15 s, then roll back. Exactly `SuppressionQueryTimeoutIT`'s shape.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*ScheduledQueryTimeoutIT*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*ScheduledQueryTimeoutIT*"` → FAIL
   (the unbounded reads block until the test's own timeout).
-- [ ] **Step 3: Minimal implementation** — one property,
+- [x] **Step 3: Minimal implementation** — one property,
   `riviera.scheduled.query-timeout-seconds` (default 10), read by each of the three adapters, each
   building its own `JdbcTemplate`-backed bounded `JdbcClient` exactly as
   `JdbcEmailSuppressions#boundedClient` does. The canonical rationale javadoc lives on
   `ObservabilityConfig`; `JdbcBookings` and `JdbcAccountErasure` state the local stakes and point at
   it. Every javadoc repeats the one non-negotiable: **scoped here on purpose, never global**.
-- [ ] **Step 4: Run it, verify it passes** → PASS. Then the regression scope:
+- [x] **Step 4: Run it, verify it passes** → PASS. Then the regression scope:
   `gradle test --tests "*JdbcBookings*" --tests "*ConcurrentReservationIT*" --tests "*ConcurrentClaimIT*"`.
-- [ ] **Step 5: Generalization-audit pass** — walk each `@Scheduled` method's call graph down to its
+- [x] **Step 5: Generalization-audit pass** — walk each `@Scheduled` method's call graph down to its
   first write and confirm no *fifth* entry read was missed; record the walk and the decision to leave
   the per-item writes unbounded (Behavior-parity ledger row 4).
-- [ ] **Step 6: Commit** — `git commit -m "bound every scheduled job's entry query (#395)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "bound every scheduled job's entry query (#395)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -390,6 +398,7 @@ Modify `MoneyPathAlertCheck.java` (javadoc), `docs/deploy/production-hardening.m
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 1 (new pattern: a bounded entry query) | every `@Scheduled` method's call graph down to its **first write** — is there another entry read? | read each of `AbandonedBookingSweepService`, `ExpireRequestsService`, `ExpireGuestContactsService`, `MoneyPathAlertCheck.check` | **5 entry reads, not 4.** `ExpireGuestContactsService.sweep()` asks `customer` for candidates *and then* asks `booking` for the retention basis (`GuestBookingHistory#withBookingOnOrAfter`), both before any write. The alert check's other two signals are meter reads, no DB | **fixed all.** Bounded `JdbcGuestBookingHistory` outright (its sole consumer is the sweep, so it has no request path to protect) and extended `ScheduledQueryTimeoutIT` to cover it. Left the per-item **writes** unbounded on purpose — Behavior-parity ledger row 4 |
 | 2026-07-30 | phase 0 (new pattern: a shared executor with no isolation rule) | other shared/bounded executors that could starve the same way | `grep -rn "ThreadPoolTaskExecutor\|setCorePoolSize\|setQueueCapacity\|applicationTaskExecutor\|@Async" platform/src/main/java` | 2 pools (`RegistryMailExecutorConfig`, `AsyncMailDispatcher`) + 3 `@Async` mail listeners | **skip — already closed.** Both pools are deliberately isolated and bounded (#369/#383/#408) and all three `@Async` sites name their executor explicitly, pinned by `MailListenerExecutorArchitectureTest`. Nothing runs on Boot's shared `applicationTaskExecutor`. The scheduler pool was the last shared executor with no rule |
 
 ---

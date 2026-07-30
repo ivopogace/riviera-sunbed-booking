@@ -6,7 +6,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import javax.sql.DataSource;
+
 import ai.riviera.platform.booking.application.request.RequestSnapshot;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -52,8 +56,43 @@ class JdbcBookings implements Bookings {
 
 	private final JdbcClient jdbc;
 
-	JdbcBookings(JdbcClient jdbc) {
+	/**
+	 * The two sweep candidate reads run on the scheduler, never on a request thread, and they alone
+	 * use this bounded client (#395). See {@link #boundedClient}.
+	 */
+	private final JdbcClient sweepJdbc;
+
+	JdbcBookings(JdbcClient jdbc, DataSource dataSource,
+			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
 		this.jdbc = jdbc;
+		this.sweepJdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
+	}
+
+	/**
+	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by the
+	 * abandoned-payment and request-expiry sweeps' candidate reads and by nothing else (#395) — the
+	 * #386 idiom ({@code JdbcEmailSuppressions#boundedClient}) applied to scheduled work.
+	 *
+	 * <p>Postgres's default statement timeout is infinite, so a wedged candidate read — a migration
+	 * holding {@code ACCESS EXCLUSIVE} on {@code booking} during a rolling deploy is the realistic
+	 * one — has no natural end. An unbounded sweep that never returns keeps its thread and its pooled
+	 * connection forever, and the abandoned-payment sweep going silent means expired bookings keep
+	 * their {@code (set, date)} claims: sets that stay unsellable, in the safe direction, with no
+	 * alarm. Bounded, the run fails, is logged, and the next tick five minutes later retries — every
+	 * sweep is idempotent and its per-row transitions are guarded, so a lost run costs nothing.
+	 *
+	 * <p><strong>Why the sweeps and not this whole adapter.</strong> The rest of {@code Bookings} is
+	 * the request path, including the guarded {@code UPDATE … RETURNING} that releases a claim. Those
+	 * writes take row locks on {@code set_availability}, invariant #2's table, and bounding them would
+	 * be the reach #395 exists to avoid — the timeout stops at the reads that open a scheduled run.
+	 * For the same reason this is not {@code spring.jdbc.template.query-timeout}, which would bound
+	 * every statement in the application including the claim itself; {@code ScheduledWorkArchitectureTest}
+	 * fails the build if that global is ever set.
+	 */
+	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
+		JdbcTemplate bounded = new JdbcTemplate(dataSource);
+		bounded.setQueryTimeout(queryTimeoutSeconds);
+		return JdbcClient.create(bounded);
 	}
 
 	/**
@@ -385,7 +424,8 @@ class JdbcBookings implements Bookings {
 		// booking_awaiting_created_idx (V13); an accepted request expires on the accept clock —
 		// served by booking_awaiting_accepted_idx (V19). Never the other way around: an accepted
 		// request judged by created_at would be swept the moment it was accepted.
-		return jdbc.sql("""
+		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded (#395).
+		return sweepJdbc.sql("""
 				SELECT id
 				FROM booking
 				WHERE status = :awaiting
@@ -404,7 +444,8 @@ class JdbcBookings implements Bookings {
 	public List<BookingId> findOverduePendingRequests(Instant now) {
 		// Request-expiry sweep candidates (issue #98), served by booking_pending_expires_idx
 		// (V19, partial). Ids only — each is then expired via the guarded per-row transition.
-		return jdbc.sql("""
+		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded (#395).
+		return sweepJdbc.sql("""
 				SELECT id
 				FROM booking
 				WHERE status = :pending AND request_expires_at <= :now
