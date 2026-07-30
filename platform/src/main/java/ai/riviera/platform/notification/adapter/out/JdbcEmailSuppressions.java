@@ -98,10 +98,13 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	 *
 	 * <p><strong>Scoped here on purpose, not set globally.</strong> The obvious instrument,
 	 * {@code spring.jdbc.template.query-timeout}, bounds <em>every</em> statement in the application —
-	 * including {@code availability}'s {@code SELECT … FOR UPDATE}, the serialization point of
-	 * invariant #2. Under set contention a legitimate lock wait could then abort as a timeout rather
-	 * than serialize, turning the platform's single most important correctness guarantee into a flaky
-	 * one to fix a mail-queue concern. A dedicated client keeps the blast radius at this one lookup.
+	 * including {@code availability}'s {@code INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING}
+	 * claim, the serialization point of invariant #2, whose loser waits on the winner's index tuple
+	 * lock until it commits. Under set contention that legitimate wait could then abort as a timeout
+	 * rather than serialize, turning the platform's single most important correctness guarantee into a
+	 * flaky one to fix a mail-queue concern. A dedicated client keeps the blast radius at this one
+	 * lookup. (Corrected by #451: this paragraph said {@code SELECT … FOR UPDATE}, which that claim
+	 * path does not use — the conclusion holds by the lock-wait route instead.)
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);
