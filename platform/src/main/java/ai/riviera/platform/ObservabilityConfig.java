@@ -28,6 +28,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 @EnableConfigurationProperties(MoneyPathAlertProperties.class)
 class ObservabilityConfig {
 
+	/** Below 1 the bound is not a bound; above the 5-minute sweep cadence it no longer bounds. */
+	private static final int MIN_QUERY_TIMEOUT_SECONDS = 1;
+	private static final int MAX_QUERY_TIMEOUT_SECONDS = 300;
+
 	@Bean
 	FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter() {
 		FilterRegistrationBean<CorrelationIdFilter> registration = new FilterRegistrationBean<>(new CorrelationIdFilter());
@@ -68,6 +72,24 @@ class ObservabilityConfig {
 	}
 
 	/**
+	 * The floor is 1, not 0: {@code setQueryTimeout(0)} means <strong>no limit</strong> to JDBC, and
+	 * {@code JdbcTemplate} reads a negative as "use the driver default" — both silently restore the
+	 * unbounded behaviour #395 removed, on a clean boot. The ceiling is the sweep cadence: a bound
+	 * longer than the interval between runs is still holding when the next run is due, so it no longer
+	 * bounds anything operationally. Guarded here because there is no JSR-303 validator on the
+	 * classpath, so {@code @Min} would validate nothing (the #414/#426 house pattern).
+	 */
+	private static int validated(int queryTimeoutSeconds) {
+		if (queryTimeoutSeconds < MIN_QUERY_TIMEOUT_SECONDS || queryTimeoutSeconds > MAX_QUERY_TIMEOUT_SECONDS) {
+			throw new IllegalArgumentException("riviera.scheduled.query-timeout-seconds must be between "
+					+ MIN_QUERY_TIMEOUT_SECONDS + " and " + MAX_QUERY_TIMEOUT_SECONDS + " seconds, but was "
+					+ queryTimeoutSeconds + " — 0 and negatives mean NO limit, which is the unbounded"
+					+ " scheduled query #395 exists to prevent");
+		}
+		return queryTimeoutSeconds;
+	}
+
+	/**
 	 * A {@link JdbcClient} with a finite {@code queryTimeout}, scoped to this one gauge — the #386
 	 * idiom ({@code JdbcEmailSuppressions#boundedClient}), applied to scheduled work by #395. Scoped
 	 * rather than global on purpose: {@code spring.jdbc.template.query-timeout} would bound every
@@ -78,7 +100,7 @@ class ObservabilityConfig {
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);
-		bounded.setQueryTimeout(queryTimeoutSeconds);
+		bounded.setQueryTimeout(validated(queryTimeoutSeconds));
 		return JdbcClient.create(bounded);
 	}
 

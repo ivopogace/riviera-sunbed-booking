@@ -37,6 +37,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @Repository
 class JdbcBookings implements Bookings {
 
+	/** Below 1 the bound is not a bound; above the 5-minute sweep cadence it no longer bounds. */
+	private static final int MIN_QUERY_TIMEOUT_SECONDS = 1;
+	private static final int MAX_QUERY_TIMEOUT_SECONDS = 300;
+
 	// Named-parameter keys reused across the lifecycle SQL (keep them in lockstep, no typos).
 	private static final String PARAM_STATUS = "status";
 	private static final String PARAM_AWAITING = "awaiting";
@@ -69,6 +73,24 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
+	 * The floor is 1, not 0: {@code setQueryTimeout(0)} means <strong>no limit</strong> to JDBC, and
+	 * {@code JdbcTemplate} reads a negative as "use the driver default" — both silently restore the
+	 * unbounded behaviour #395 removed, on a clean boot. The ceiling is the sweep cadence: a bound
+	 * longer than the interval between runs is still holding when the next run is due, so it no longer
+	 * bounds anything operationally. Guarded here because there is no JSR-303 validator on the
+	 * classpath, so {@code @Min} would validate nothing (the #414/#426 house pattern).
+	 */
+	private static int validated(int queryTimeoutSeconds) {
+		if (queryTimeoutSeconds < MIN_QUERY_TIMEOUT_SECONDS || queryTimeoutSeconds > MAX_QUERY_TIMEOUT_SECONDS) {
+			throw new IllegalArgumentException("riviera.scheduled.query-timeout-seconds must be between "
+					+ MIN_QUERY_TIMEOUT_SECONDS + " and " + MAX_QUERY_TIMEOUT_SECONDS + " seconds, but was "
+					+ queryTimeoutSeconds + " — 0 and negatives mean NO limit, which is the unbounded"
+					+ " scheduled query #395 exists to prevent");
+		}
+		return queryTimeoutSeconds;
+	}
+
+	/**
 	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by the
 	 * abandoned-payment and request-expiry sweeps' candidate reads and by nothing else (#395) — the
 	 * #386 idiom ({@code JdbcEmailSuppressions#boundedClient}) applied to scheduled work.
@@ -91,7 +113,7 @@ class JdbcBookings implements Bookings {
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);
-		bounded.setQueryTimeout(queryTimeoutSeconds);
+		bounded.setQueryTimeout(validated(queryTimeoutSeconds));
 		return JdbcClient.create(bounded);
 	}
 
