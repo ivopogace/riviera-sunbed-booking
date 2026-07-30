@@ -102,8 +102,10 @@ plan commit, so CI gates every later push (`pull_request` only, #417).
       `RegistryMailExecutorConfigTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` +
       `AsyncMailDispatcherTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted`;
       composed with the already-shipped
-      `RegistryMailBulkheadIT.leavesAFailedSendsPublicationOutstanding` (#383 AC-3), which proves the
-      other half — a listener that does not return leaves `completion_date` NULL.
+      `RegistryMailBulkheadIT.aFailedSendLeavesThePublicationOutstandingAndIsRetried` (#383 AC-3), which
+      proves the other half — a listener that does not return leaves `completion_date` NULL. Since #407
+      merged into this branch, `RegistryMailShedDurabilityIT` proves the same durability property for a
+      *shed* send in a real Spring context, so the composition now rests on two ITs rather than one.
 - [x] **AC-11:** Given `docs/plans/registry-mail-bulkhead.md`, when the follow-up sentence is read,
       then **#411** is described as folded into #410 rather than as a separate open issue.
       *Pinned by:* review of the diff (prose; no test).
@@ -245,8 +247,11 @@ cannot occupy the shared `applicationTaskExecutor` that carries `booking`'s paym
 
 **Stage pointer:** `both gates run in full (review fan-out + Sonar) — awaiting merge of PR #433`
 
-**Next action:** Merge PR #433 — all seven checks green on `fa38754`, Sonar's reported list empty, review
-gate run in full with its one finding fixed. Everything the close-out can do pre-merge is done; what
+**Next action:** Merge PR #433 once CI is green on the integration commit. `origin/main` had moved (#407,
+PR #432 — the shed-durability IT), so `main` was merged in with full phase discipline: the tree compiles,
+my unit + structural batch is green, and **both** of #407's ITs (`RegistryMailShedDurabilityIT`,
+the refactored `RegistryMailBulkheadIT`) pass against this slice's changed executor signature. That
+integration also surfaced finding F-6. Everything the close-out can do pre-merge is done; what
 remains is GitHub-only and needs no commit — the `#367` epic checkbox tick and closing #410 (its
 `Closes #410` should do it). #434 is already filed.
 
@@ -279,6 +284,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 | F-2 | review (plan-doc discipline / close-out step 4) | **Three AC pin-names named tests that never shipped** — AC-7 cited `RegistryMailExecutorConfigTest.drainsForTheDerivedWindow` and `AsyncMailDispatcherTest.drainsForTheDerivedWindow` (neither exists; the drain is proven behaviourally instead) and AC-9 cited `rejectsValuesOutsideTheTuningRange` (shipped as `acceptsTheWholeTuningRangeButNotBeyondIt`). Exactly the "verify, don't assume" failure the close-out warns about. | fixed-in-`a8369b8` |
 | F-3 | review (plan-doc accuracy) | The phase-1 code sketch still showed the abandoned `drainWindowOf` reflection approach and its phantom test, describing an implementation that was deliberately not taken. | fixed-in-`a8369b8` — sketch replaced with what shipped, and the rejected approach recorded as a resolved decision |
 | F-4 | review (runbook completeness) | `RIVIERA_SMTP_SOCKET_TIMEOUT_MS` ships **at** its ceiling, so it can only be tuned *downward* — an operator reading the range `1`–`10000` would not notice, and #370's whole purpose is retuning. The runbook stated the range without stating the asymmetry or what to do when a relay needs more. | fixed-in-`a8369b8` — the runbook now names the trade-off and the correct escalation (raise the platform grace, then `SHUTDOWN_BUDGET_MS`) |
+| F-6 | integration (merge-from-main before merge) | **AC-10 cited `RegistryMailBulkheadIT.leavesAFailedSendsPublicationOutstanding`, a test that never existed** — the real method is `aFailedSendLeavesThePublicationOutstandingAndIsRetried`, unchanged since #383. F-2 caught three phantom pin-names but missed this one, because it pointed at an *existing* test in *another* class rather than at one of this slice's own, so re-listing this slice's test methods did not surface it. The lesson generalizes: verify pin-names that cite other classes too, not just your own. | fixed-in-`<phase-5>` — corrected, and #407 (merged in from `main` at the same time) now supplies `RegistryMailShedDurabilityIT` as a second, closer companion for the composition |
 | F-5 | review (`/code-review` fan-out, git-history agent; confidence **85**/100) | **The derived drain doubled the combined mail-shutdown delay, and the constant's justification had silently become false.** Both pools now read one derived window, but they are separate beans whose `destroy()` methods Spring runs sequentially, so the windows **add**: 5+5=10s before the slice, 10+10=20s after — while `SHUTDOWN_BUDGET_MS`'s Javadoc still said "the mail drain is only one phase of context close, so 10s leaves the rest of the shutdown room to finish". True when each pool carried its own literal; false the moment both derived from one value. R-3 had been closed against that arithmetic. | fixed-in-`279fad4` — ceiling now derived as `MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS` (same shipped 10s, correct reasoning), the stacking pinned by a new test, and the runbook + R-3 corrected |
 | — | review (`/code-review` fan-out) | **Ran in full** after the human authorized the subagents mid-session: eligibility + CLAUDE.md-scope + 5 parallel reviewers (CLAUDE.md adherence, shallow bug scan, git-history context, prior-PR comments, code-comment compliance) + per-finding confidence scoring. Two candidates surfaced; one scored 85 (F-5, fixed), one scored 0 and was filtered — the `notification` CLAUDE.md row's growth, which 12 prior merged slices had each done, i.e. a pre-existing house pattern rather than this PR's defect. | complete |
 | — | sonar | 0 new issues, 0 security hotspots, 0 duplicated blocks, 100% coverage on new code (`new_lines=287`, analysis confirmed present — not a false-clean zero) | clear |
