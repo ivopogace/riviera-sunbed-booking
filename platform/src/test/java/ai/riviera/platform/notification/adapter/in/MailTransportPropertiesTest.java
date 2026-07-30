@@ -125,6 +125,32 @@ class MailTransportPropertiesTest {
 						.hasMessageContaining("SIGTERM"));
 	}
 
+	/**
+	 * The stacking the review caught (#410 F-5): the two mail pools are separate beans, and Spring's
+	 * {@code destroySingletons()} runs their {@code destroy()} methods sequentially on one thread, so
+	 * their drain windows <strong>add</strong>. The first cut of this slice set the per-pool ceiling to
+	 * the whole budget on the reasoning that "the mail drain is only one phase of context close" — true
+	 * while each pool carried its own 5s literal, false the moment both read one derived value.
+	 *
+	 * <p>What this pins is the relationship, not the numbers: raising the per-pool ceiling without
+	 * raising the combined budget goes red here, and so does adding a third draining pool without
+	 * incrementing {@link MailTransportProperties#DRAINING_POOLS}. Either would silently push shutdown
+	 * past the platform's SIGTERM grace, where the process is killed mid-close instead of shutting down
+	 * in order — and nothing else in the suite would notice.
+	 */
+	@Test
+	void theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget() {
+		int worstCase = MailTransportProperties.SHUTDOWN_BUDGET_MS * MailTransportProperties.DRAINING_POOLS;
+
+		assertThat(worstCase)
+				.as("the pools drain sequentially, so a per-pool ceiling that fits alone can still "
+						+ "overrun the budget together")
+				.isLessThanOrEqualTo(MailTransportProperties.MAIL_SHUTDOWN_BUDGET_MS);
+		assertThat(MailTransportProperties.DRAINING_POOLS)
+				.as("the registry executor and the recovery dispatcher — increment when a third lands")
+				.isEqualTo(2);
+	}
+
 	@Test
 	void acceptsTheWholeTuningRangeButNotBeyondIt() {
 		assertThat(new MailTransportProperties(1).socketTimeoutMs()).isEqualTo(1);

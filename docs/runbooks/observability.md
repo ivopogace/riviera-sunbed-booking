@@ -223,18 +223,27 @@ restored by a well-meaning retune. A huge `pool-size` is the mirror image, surfa
 `smtp4dev` profiles, **and** both mail pools derive their shutdown drain window from it. Before #410
 those were four copies of one decision and they disagreed — 5s of drain against a 10s socket budget —
 so a redeploy stopped waiting on sends that were still legitimately running and closed the data source
-underneath them. Do not "fix" a slow relay by raising this past the range: the ceiling *is* the
-shutdown drain budget, and a longer drain outlasts the platform's SIGTERM grace, so the process gets
-killed mid-close instead of shutting down in order. Milliseconds rather than a `Duration` because
-Jakarta Mail reads the interpolated value as a plain number.
+underneath them. Milliseconds rather than a `Duration` because Jakarta Mail reads the interpolated value
+as a plain number.
 
-**Note the shipped default sits AT the ceiling, so this knob only tunes downward.** That is not an
-oversight: you cannot simultaneously have a relay budget larger than the platform's shutdown grace and
-a drain window that covers it, and the ceiling forces that trade-off to fail at boot rather than hide.
-If a real relay genuinely needs more than 10s per socket operation (#370 is the first point that is
-knowable), the fix is **not** to raise this past its range — it is to raise the platform's shutdown
-grace first, then raise `SHUTDOWN_BUDGET_MS` in `MailTransportProperties` to match. Lowering the knob
-is always safe and shortens both the relay budget and the drain together.
+**The ceiling is a per-pool share, not the whole shutdown budget — the two drains add.** The registry
+executor and the recovery dispatcher are separate beans, and Spring runs their `destroy()` methods
+sequentially on one thread, so at the shipped 10s the pair can hold shutdown for **20s**, not 10.
+That is why `MailTransportProperties` derives the ceiling as
+`MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS` rather than stating it directly: the combined figure is the
+one that has to fit Render's ~30s SIGTERM→SIGKILL window, and it leaves the rest for the web layer and
+Hikari to close in order — affordable here only because `server.shutdown` is *not* graceful, so no
+request-draining phase competes for the same window.
+
+**Note the shipped default sits AT the per-pool ceiling, so this knob only tunes downward.** That is not
+an oversight: you cannot simultaneously have a relay budget larger than the grace and a drain that
+covers it, and the ceiling forces that trade-off to fail at boot rather than hide. If a real relay
+genuinely needs more than 10s per socket operation (#370 is the first point that is knowable), the fix
+is **not** to raise this past its range — raise the platform's shutdown grace first, then
+`MAIL_SHUTDOWN_BUDGET_MS`, and the per-pool ceiling follows. Lowering the knob is always safe and
+shortens both the relay budget and the drain together. And if a **third** mail pool is ever added,
+increment `DRAINING_POOLS` — `theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget` is what catches the
+combined overrun, since nothing else would.
 
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
 vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so

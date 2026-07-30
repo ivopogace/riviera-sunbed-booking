@@ -46,23 +46,49 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 record MailTransportProperties(@DefaultValue("10000") int socketTimeoutMs) {
 
 	/**
-	 * The most the shutdown drain may spend, and therefore this knob's ceiling — the drain is derived
-	 * from it one-to-one. Render sends SIGTERM and kills the process about 30 seconds later, and the mail
-	 * drain is only one phase of context close, so 10s leaves the rest of the shutdown room to finish.
-	 * (The 30s is Render's documented default rather than a repo-recorded fact; if the platform or its
-	 * grace changes, this constant is the one line to correct.)
+	 * The whole shutdown budget mail may spend, across <strong>both</strong> pools — the drain is derived
+	 * from it one-to-one — but the ceiling is a <strong>division</strong>, because two pools drain it,
+	 * not one.
 	 */
-	static final int SHUTDOWN_BUDGET_MS = 10_000;
+	static final int MAIL_SHUTDOWN_BUDGET_MS = 20_000;
+
+	/**
+	 * The pools that spend {@link #MAIL_SHUTDOWN_BUDGET_MS}: the registry executor and the recovery
+	 * dispatcher. They are <strong>separate beans</strong>, and Spring's {@code destroySingletons()} runs
+	 * their {@code destroy()} methods sequentially on one thread, so their drain windows <strong>add
+	 * rather than overlap</strong> — the combined worst case is this many times the per-pool ceiling.
+	 *
+	 * <p>Getting this wrong is what the review caught: #410's first cut set the per-pool ceiling to the
+	 * whole 10s on the reasoning that "the mail drain is only one phase of context close", which was true
+	 * when each pool carried its own 5s literal (5 + 5 = 10s) and false the moment both read one derived
+	 * value (10 + 10 = 20s). The number did not change; the sentence justifying it had quietly stopped
+	 * being true. Spelling the stacking out as a constant is what keeps a <em>third</em> mail pool from
+	 * silently pushing the combined drain past the platform's grace — increment this when one lands, and
+	 * the per-pool ceiling falls out.
+	 */
+	static final int DRAINING_POOLS = 2;
+
+	/**
+	 * The per-pool ceiling, and therefore this knob's: each pool may spend at most its share of the
+	 * combined budget. At the shipped 10s the two pools together may hold shutdown for 20s of Render's
+	 * ~30s SIGTERM→SIGKILL window, leaving the rest for the web layer and Hikari to close in order —
+	 * which is affordable precisely because {@code server.shutdown} is <em>not</em> graceful here, so no
+	 * request-draining phase competes for it. (The 30s is Render's documented default rather than a
+	 * repo-recorded fact; if the platform or its grace changes,
+	 * {@link #MAIL_SHUTDOWN_BUDGET_MS} is the one line to correct.)
+	 */
+	static final int SHUTDOWN_BUDGET_MS = MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS;
 
 	MailTransportProperties {
 		if (socketTimeoutMs <= 0 || socketTimeoutMs > SHUTDOWN_BUDGET_MS) {
 			throw new IllegalArgumentException(
 					"riviera.notification.mail.socket-timeout-ms must be between 1 and "
 							+ SHUTDOWN_BUDGET_MS + ", but was " + socketTimeoutMs
-							+ "; it is both the relay's per-operation budget and the pools' shutdown drain "
+							+ "; it is both the relay's per-operation budget and EACH pool's shutdown drain "
 							+ "window, so a non-positive value would restore Jakarta Mail's infinite "
-							+ "timeouts (#368) while an oversized one would make the drain outlast the "
-							+ "platform's SIGTERM grace and get the process killed mid-shutdown");
+							+ "timeouts (#368) while an oversized one would make the " + DRAINING_POOLS
+							+ " pools' drains, which add rather than overlap, outlast the platform's "
+							+ "SIGTERM grace and get the process killed mid-shutdown");
 		}
 	}
 }
