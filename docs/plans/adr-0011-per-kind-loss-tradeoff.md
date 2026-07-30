@@ -107,11 +107,11 @@ the wording of three `WARN`/`ERROR` log lines whose metric increments beside the
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The amendment reads as reopening the **vehicle choice**, inviting a future session to "finish" the move to the registry | med | med | The note states in its own sentence that the choice is pre-authorised by this bullet and epic #367 and was **not** reconsidered, and records option 2 as considered-and-rejected with the reason | Claude | open |
-| R-2 | Editing a log-message string silently breaks something that greps for it (an alert rule, a test, a runbook) | low | med | Swept first: `grep -rn "must re-request" platform/src/test docs frontend` → the only hits are one stale test *comment* and one runbook sentence, both in scope. No alert rule or assertion matches | Claude | open |
-| R-3 | The scope grows from the four sites the maintainer approved to every prose repetition, turning a docs fix into a sprawling diff | high | low | Bounded by one test — *does this sentence carry the **justification** for accepting the loss, or an on-call instruction?* If yes it is fixed; if it merely describes the vehicle's mechanism, the fix is a clause, not a rewrite. Site list frozen in the File-structure section below (10 sites) and reported in the PR | Claude | open |
+| R-1 | The amendment reads as reopening the **vehicle choice**, inviting a future session to "finish" the move to the registry | med | med | The note states in its own sentence that the choice is pre-authorised by this bullet and epic #367 and was **not** reconsidered, and records option 2 as considered-and-rejected with the reason | Claude | **closed** — mitigation shipped in `4da3967`; the review gate read the amendment and did not take it as reopening the choice |
+| R-2 | Editing a log-message string silently breaks something that greps for it (an alert rule, a test, a runbook) | low | med | Swept first: `grep -rn "must re-request" platform/src/test docs frontend` → the only hits are one stale test *comment* and one runbook sentence, both in scope. No alert rule or assertion matches | Claude | **closed** — no assertion or alert rule matched; the one test hit was a comment, patched with the rest |
+| R-3 | The scope grows from the four sites the maintainer approved to every prose repetition, turning a docs fix into a sprawling diff | high | low | Bounded by one test — *does this sentence carry the **justification** for accepting the loss, or an on-call instruction?* If yes it is fixed; if it merely describes the vehicle's mechanism, the fix is a clause, not a rewrite. Site list frozen in the File-structure section below (10 sites) and reported in the PR | Claude | **closed** — held: the final site list is the 10 the audit found plus the 2 pre-existing ones F-4 added, each fixed with a clause rather than a rewrite, and every widening is disclosed in the PR body and the review comment |
 | R-4 | The `kind`-tag mitigation the amendment leans on is itself unreliable, making the "accepted" risk worse than recorded | low | high | **The risk fired.** The plan asserted both counters were tagged `kind`; only `MAIL_RECOVERY_FAILED` is. `MAIL_RECOVERY_DROPPED` carries `reason` alone and structurally cannot carry more, being raised by a dispatcher whose interface is `dispatch(Runnable)`. Caught by the review gate (F-3) after this row had *claimed the check was already done* — the row was written from the runbook's `failed` table and never traced to the `meters.counter(...)` call sites | Claude | **closed** — every affected sentence now states the attribution gap; the design question is issue #442. Lesson recorded in the Generalization-audit log: a claim about what a counter *carries* is verified at its construction site, never from prose about it |
-| R-5 | A reader takes "accepted as the weaker case" as *nobody noticed*, when it is a deliberate, dated call | low | low | The note names the trade explicitly (unrecoverable in the product, mitigated operationally) and names the human in the loop — the admin who approved, who can be told to tell them | Claude | open |
+| R-5 | A reader takes "accepted as the weaker case" as *nobody noticed*, when it is a deliberate, dated call | low | low | The note names the trade explicitly (unrecoverable in the product, mitigated operationally) and names the human in the loop — the admin who approved, who can be told to tell them | Claude | **closed** — the amendment states the trade as a dated decision and, after F-3, states its limits too |
 
 ## Open questions / Assumptions
 
@@ -195,18 +195,22 @@ N/A — no contract change. No endpoint, DTO, status code, or wire shape is touc
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement done → PR #440 (draft) → phase 4 close-out`
+**Stage pointer:** `merge close-out — all gates green, merged via PR #440`
+(`https://github.com/ivopogace/riviera-sunbed-booking/pull/440`; the squash SHA is one
+`git log --grep "(#440)"` away — recording the PR number is what let this section be written
+before the merge instead of in a second docs-only PR)
 
-**Next action:** Phase 4 — merge latest `origin/main`, mark PR #440 ready for review, then the
-review gate (`pr-gates.md` §1 ladder + `riviera-review-overlay`) and the Sonar gate.
+**Next action:** Nothing in the repo. Post-merge, GitHub-only: confirm #439 closed by the PR, file
+#439 and #442 under epic #367, and confirm the PR-activity subscription ended with the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan (grill, maintainer decision, this doc) | ✅ | `7ae0ad7` |
 | 1 — the ADR amendment | ✅ | `4da3967` |
 | 2 — the code sites (`notification` + `shared`) | ✅ | `4cc87a1` |
-| 3 — the runbook sites (+ two stale interim bullets) | ✅ | *(this commit)* |
-| 4 — close-out (AC verification, this section) | ⏳ | |
+| 3 — the runbook sites (+ two stale interim bullets) | ✅ | `6e34699` |
+| 4 — review-gate fixes (F-1, F-3, F-4) | ✅ | `d00abc3` |
+| 5 — close-out (AC verification, this section) | ✅ | *(this commit)* |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -324,12 +328,22 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 4 — Close-out
 
-- [ ] **Step 1:** Merge latest `origin/main`; mark the PR ready for review.
-- [ ] **Step 2:** Review gate (`/code-review` per the `pr-gates.md` §1 ladder + `riviera-review-overlay`).
-- [ ] **Step 3:** Sonar gate — pull the new-issue + duplication list, not just the gate verdict.
-- [ ] **Step 4:** Finalize this section **in this PR's last commit**, citing `merged via PR #NN`,
+- [x] **Step 1:** `origin/main` had not moved from `15e15ad`, so no integration merge was needed; PR
+      #440 marked ready for review.
+- [x] **Step 2:** Review gate — `Skill("code-review")` was accepted at rung 1 of the `pr-gates.md` §1
+      ladder, so the plugin's own 5-pass subagent fan-out ran (medium effort: prose-only diff, green
+      structural net), with `riviera-review-overlay`'s backend bank walked on top. **3 findings**
+      (F-1, F-3, F-4) — the F-3/F-4 pair is the gate earning its keep, since the slice had committed
+      a version of the very defect it exists to remove. All fixed in `d00abc3`, which re-entered at
+      Implement per the re-entry rule; outcome posted on the PR.
+- [x] **Step 3:** Sonar gate — pulled the list, not just the verdict: **0 issues**, 0 hotspots,
+      `new_duplicated_blocks` 0, `new_coverage` 100.0%, against a **non-empty** measures payload
+      (`new_lines = 60`) and a `success` conclusion on the `SonarCloud Code Analysis` check-run, so
+      the zero is a real analysis and not the PR #318 false-clean read.
+- [x] **Step 4:** This section, finalized in this PR's last commit, citing **`merged via PR #440`** —
       never a merge SHA (#326/#346/#351 case history).
-- [ ] **Step 5:** Merge; close #439; tick epic #367; `riviera-docs-freshness` over the merge span.
+- [ ] **Step 5:** Merge; confirm #439 closed; file #439 + #442 under epic #367;
+      `riviera-docs-freshness` already run pre-merge (zero findings) per its own guidance.
 
 ---
 
@@ -347,37 +361,38 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `grep -n "user-retryable" docs/adr/ADR-0011-transactional-email-scaleway-tem.md` →
-      the phrase appears only in the amendment note (as the removed claim) and in the recovery-pair
-      bullet. Verified at commit `<sha>`.
-- [ ] **AC-2:** `grep -c "Amended" docs/adr/ADR-0011-transactional-email-scaleway-tem.md` → `3`.
-      Verified at commit `<sha>`.
-- [ ] **AC-3:** Read `notification/api/MailSender.java` → no blanket retryability claim; the
-      operator-approval method states what it does **not** inherit. Verified at commit `<sha>`.
-- [ ] **AC-4:** `grep -rn "must re-request" platform/src/main` → no hits. Verified at commit `<sha>`.
-- [ ] **AC-5:** `gradle test --tests "*AsyncMailDispatcher*" --tests "*TransactionalMailService*" --tests "*MailTransportBudget*"`
+- [x] **AC-1:** `grep -n "user-retryable" docs/adr/ADR-0011-transactional-email-scaleway-tem.md` →
+      2 hits: the amendment note quoting the removed claim, and the recovery-pair bullet where it is
+      true. Verified at commit `4da3967`, unchanged through `d00abc3`.
+- [x] **AC-2:** `grep -c "Amended" docs/adr/ADR-0011-transactional-email-scaleway-tem.md` → `3`
+      (#371, #386, #439). Verified at commit `4da3967`.
+- [x] **AC-3:** Read `notification/api/MailSender.java` → the blanket "The flows are user-retryable by
+      design." is gone; `sendOperatorApproved` states what it does **not** inherit. Verified at
+      `4cc87a1`, sharpened by review finding F-3 at `d00abc3`.
+- [x] **AC-4:** `grep -rn "must re-request" platform/src/main` → no hits. Verified at `4cc87a1`.
+- [x] **AC-5:** `gradle test --tests "*AsyncMailDispatcher*" --tests "*TransactionalMailService*" --tests "*MailTransportBudget*"`
       → **34 tests, 0 failures, 0 skipped** (AsyncMailDispatcherTest 13, TransactionalMailServiceTest 18,
       MailTransportBudgetTest 3); `git diff --stat origin/main...HEAD -- platform/src/test` → one file,
-      the stale comment. Verified at commit `<sha>`.
+      the stale comment. Verified at `4cc87a1` and re-run green after the F-3 fix at `d00abc3`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying command (no test class — see the ACs' preamble).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases — **nothing** signature-level changes.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (no availability write path in scope) (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no import changes; no event added or re-routed (invariant #11).
-- [ ] **Payment/payout** N/A; the mail pools stay off the money-path executor (invariants #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] **Booking codes / bearer credentials** (invariant #7): no edited log line gains an address or
+- [x] Every AC has an implementing task and a verifying command (no test class — see the ACs' preamble).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases — **nothing** signature-level changes.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (no availability write path in scope) (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no import changes; no event added or re-routed (invariant #11).
+- [x] **Payment/payout** N/A; the mail pools stay off the money-path executor (invariants #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] **Booking codes / bearer credentials** (invariant #7): no edited log line gains an address or
       a link, and the bearer-credential argument for the vehicle split is preserved verbatim.
-- [ ] No schema change, so no Flyway migration (invariant #12) — and no `V<n>` claimed, so no
+- [x] No schema change, so no Flyway migration (invariant #12) — and no `V<n>` claimed, so no
       collision with the open PR #438.
-- [ ] **Frontend** N/A — no file under `frontend/`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`, so no docs-only follow-up PR.
-- [ ] **The review gate ran in full** — the `pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] **Frontend** N/A — no file under `frontend/`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`, so no docs-only follow-up PR.
+- [x] **The review gate ran in full** — the `pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
