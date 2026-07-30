@@ -296,10 +296,10 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `implement — phase 0 done; phase 1 next`
+**Stage pointer:** `implement — phases 0–1 done; phase 2 next`
 
-**Next action:** Phase 1 — make `sendBookingConfirmation` return a typed outcome and have the
-confirmation listener record every branch.
+**Next action:** Phase 2 — the three new reads (`booking::api` confirmation facts + customer
+bookings, `customer::api` by-email).
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -310,7 +310,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V36 attempt table + `ConfirmationMailAttempts` port/adapter | ✅ | `1c03dee` |
-| 1 — Record the automatic path (typed send outcome + listener recording) | | |
+| 1 — Record the automatic path (typed send outcome + listener recording) | ✅ | `5d26e5a` |
 | 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | | |
 | 3 — Resend service + ADMIN lookup/resend endpoints | | |
 | 4 — Frontend card, service, unit + a11y specs | | |

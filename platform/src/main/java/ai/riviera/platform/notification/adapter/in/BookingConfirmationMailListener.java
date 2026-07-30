@@ -12,6 +12,10 @@ import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
+import ai.riviera.platform.notification.application.ConfirmationAttemptRecorder;
+import ai.riviera.platform.notification.application.ConfirmationSendOutcome;
+import ai.riviera.platform.notification.application.MailAttemptOutcome;
+import ai.riviera.platform.notification.application.MailAttemptSource;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
@@ -98,12 +102,14 @@ class BookingConfirmationMailListener {
 
 	private final BookingMailFactsService facts;
 	private final TransactionalMailService mails;
+	private final ConfirmationAttemptRecorder attempts;
 	private final MeterRegistry meters;
 
 	BookingConfirmationMailListener(BookingMailFactsService facts, TransactionalMailService mails,
-			MeterRegistry meters) {
+			ConfirmationAttemptRecorder attempts, MeterRegistry meters) {
 		this.facts = facts;
 		this.mails = mails;
+		this.attempts = attempts;
 		this.meters = meters;
 	}
 
@@ -112,11 +118,33 @@ class BookingConfirmationMailListener {
 	void on(BookingConfirmed event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case BookingMailFacts.Resolved booking -> mails.sendBookingConfirmation(booking.toEmail(),
+			case BookingMailFacts.Resolved booking -> send(booking, event);
+		}
+	}
+
+	/**
+	 * Send, then record what became of it (#380) — the delivery history a support agent reads.
+	 *
+	 * <p>The transport failure is recorded and <strong>rethrown</strong>: the throw is load-bearing (it
+	 * keeps the publication outstanding for the at-least-once retry), and the row survives it because
+	 * the attempt log runs outside any transaction — this listener deliberately holds none, so the
+	 * insert has already committed by the time the exception leaves. Recording before the rethrow, not
+	 * after, is the only ordering that gets both.
+	 */
+	private void send(BookingMailFacts.Resolved booking, BookingConfirmed event) {
+		ConfirmationSendOutcome outcome;
+		try {
+			outcome = mails.sendBookingConfirmation(booking.toEmail(),
 					new BookingConfirmationMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), booking.rowLabel(), booking.positionNo(),
 							event.amountMinor(), event.currency()));
 		}
+		catch (RuntimeException e) {
+			attempts.record(event.bookingId(), MailAttemptSource.AUTOMATIC,
+					MailAttemptOutcome.TRANSPORT_FAILED);
+			throw e;
+		}
+		attempts.record(event.bookingId(), MailAttemptSource.AUTOMATIC, outcome.recorded());
 	}
 
 	/**
@@ -129,6 +157,8 @@ class BookingConfirmationMailListener {
 	 * by it. Ids and the reason only — never the arrival code (invariant #7), never the address.
 	 */
 	private void abandon(MissingBookingFact fact, BookingConfirmed event) {
+		attempts.record(event.bookingId(), MailAttemptSource.AUTOMATIC,
+				MailAttemptOutcome.ABANDONED_MISSING_FACTS);
 		meters.counter(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED,
 				MissingBookingFact.TAG, fact.tagValue()).increment();
 		log.error("Booking-confirmation mail abandoned ({}) for booking {} on set {} — the fact cannot "
