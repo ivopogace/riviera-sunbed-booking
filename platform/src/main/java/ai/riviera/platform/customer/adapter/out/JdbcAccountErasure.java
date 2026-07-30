@@ -5,6 +5,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -51,8 +55,40 @@ class JdbcAccountErasure implements AccountErasureStore {
 
 	private final JdbcClient jdbc;
 
-	JdbcAccountErasure(JdbcClient jdbc) {
+	/**
+	 * Used by the retention sweep's candidate read alone (#395). See {@link #boundedClient}.
+	 */
+	private final JdbcClient sweepJdbc;
+
+	JdbcAccountErasure(JdbcClient jdbc, DataSource dataSource,
+			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
 		this.jdbc = jdbc;
+		this.sweepJdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
+	}
+
+	/**
+	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by
+	 * {@link #expiredGuestCandidates} and nothing else (#395) — the #386 idiom
+	 * ({@code JdbcEmailSuppressions#boundedClient}) applied to scheduled work.
+	 *
+	 * <p>This read opens the retention sweep, and it is the widest of the three scheduled candidate
+	 * queries: it scans {@code customer} with a correlated {@code NOT EXISTS} against
+	 * {@code customer_account}, so it has two tables' worth of ways to wait. Postgres's default
+	 * statement timeout is infinite, so without this an unbounded wait would hold the sweep's thread
+	 * and its pooled connection for the life of the process.
+	 *
+	 * <p>The scrub itself stays on the shared unbounded client, deliberately: erasure writes are the
+	 * same guarded {@code UPDATE … WHERE erased_at IS NULL} the request-thread right-to-erasure path
+	 * uses (ADR-0010), and a half-applied retention batch is worth less than a slow one. A bound here
+	 * costs the run, which the next tick repeats — the sweep is batch-limited and idempotent by
+	 * construction. And it is scoped rather than global for the reason
+	 * {@code ScheduledWorkArchitectureTest} now enforces: {@code spring.jdbc.template.query-timeout}
+	 * would also bound {@code availability}'s claim (invariant #2).
+	 */
+	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
+		JdbcTemplate bounded = new JdbcTemplate(dataSource);
+		bounded.setQueryTimeout(queryTimeoutSeconds);
+		return JdbcClient.create(bounded);
 	}
 
 	@Override
@@ -98,7 +134,8 @@ class JdbcAccountErasure implements AccountErasureStore {
 
 	@Override
 	public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
-		return jdbc.sql("""
+		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded (#395).
+		return sweepJdbc.sql("""
 				SELECT c.id FROM customer c
 				WHERE c.erased_at IS NULL
 				  AND c.updated_at < :olderThan

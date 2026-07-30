@@ -4,6 +4,10 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Set;
 
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -34,8 +38,33 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 
 	private final JdbcClient jdbc;
 
-	JdbcGuestBookingHistory(JdbcClient jdbc) {
-		this.jdbc = jdbc;
+	JdbcGuestBookingHistory(DataSource dataSource,
+			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
+		this.jdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
+	}
+
+	/**
+	 * This adapter's <em>only</em> client, bounded outright (#395) — unlike its sibling bounded
+	 * clients, which sit beside an unbounded one, because every call that reaches this port is
+	 * scheduled work: {@code ExpireGuestContactsService.sweep()} is {@code GuestBookingHistory}'s
+	 * sole consumer, and it is driven by {@code GuestContactRetentionScheduler}. There is no request
+	 * path here to leave unbounded.
+	 *
+	 * <p>It is the retention sweep's <strong>second</strong> entry read, and the one that is easy to
+	 * miss: the sweep asks {@code customer} for candidates and then asks {@code booking} whether each
+	 * still has a retention basis, both before it writes anything. Bounding only the first would have
+	 * left the sweep able to wedge on the second — and this one reads {@code booking}, the table the
+	 * other two sweeps also read, so a lock that stalls them stalls this too. Found by #395's
+	 * phase-1 generalization audit rather than by the issue, which named four jobs and four queries.
+	 *
+	 * <p>Scoped, never {@code spring.jdbc.template.query-timeout}: that global would also bound
+	 * {@code availability}'s claim (invariant #2), which {@code ScheduledWorkArchitectureTest} now
+	 * fails the build over.
+	 */
+	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
+		JdbcTemplate bounded = new JdbcTemplate(dataSource);
+		bounded.setQueryTimeout(queryTimeoutSeconds);
+		return JdbcClient.create(bounded);
 	}
 
 	@Override
