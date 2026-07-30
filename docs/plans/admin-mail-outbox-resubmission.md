@@ -486,5 +486,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
 - [x] **Close-out written in THIS PR** — this section is final; the slice merges via **PR #438**.
-- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1. *(Due now that
-      the PR is ready for review; left unticked until it has actually run.)*
+- [x] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 — `/code-review`'s
+      five-agent fan-out plus `riviera-review-overlay`, findings scored and resolved (F-4..F-9), result
+      posted to PR #438.
