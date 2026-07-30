@@ -223,13 +223,22 @@ read or written.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**Gate record**
+
+| Gate | Result |
+|---|---|
+| **CI** | 7/7 green on `12c9c3b` (backend, frontend, both CodeQL analyses, SonarCloud scan + app check) |
+| **Sonar** | Quality gate green **and the reported list confirmed empty via API** — 0 issues, 0 hotspots, `new_bugs`/`new_vulnerabilities`/`new_code_smells` all 0, 0.0% duplication, **90.6%** new-code coverage. Not a false-clean read: `new_lines`=198 (measures non-empty) and the `SonarCloud Code Analysis` check concluded `success` |
+| **Review** | `/code-review` plugin workflow (rung 2 of the `pr-gates.md` §1 ladder — `Skill("code-review")` refused by upstream policy as documented), **high** effort, 5 parallel reviewers + `riviera-review-overlay` |
+| **Docs freshness** | Run pre-merge over `origin/main...HEAD`: **zero findings.** Every removed identifier (`KIND_*`, `dispatch(Runnable)`) survives in the substrate only as past-tense narrative or inside a dated amendment blockquote. CONTEXT.md needs no term — `MailKind` is module-internal and crosses no context boundary. Graph refresh skipped: `graphify-out/` is absent in this cloud clone |
+
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix re-enters
 at Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for what the fix
 touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| — | sonar | none — reported list empty | — |
 
 ---
 
