@@ -140,11 +140,11 @@ class BookingConfirmationMailListener {
 							event.amountMinor(), event.currency()));
 		}
 		catch (RuntimeException e) {
-			attempts.record(event.bookingId(), MailAttemptSource.AUTOMATIC,
+			attempts.recordAttempt(event.bookingId(), MailAttemptSource.AUTOMATIC,
 					MailAttemptOutcome.TRANSPORT_FAILED);
 			throw e;
 		}
-		attempts.record(event.bookingId(), MailAttemptSource.AUTOMATIC, outcome.recorded());
+		attempts.recordAttempt(event.bookingId(), MailAttemptSource.AUTOMATIC, outcome.recorded());
 	}
 
 	/**
@@ -157,7 +157,7 @@ class BookingConfirmationMailListener {
 	 * by it. Ids and the reason only — never the arrival code (invariant #7), never the address.
 	 */
 	private void abandon(MissingBookingFact fact, BookingConfirmed event) {
-		attempts.record(event.bookingId(), MailAttemptSource.AUTOMATIC,
+		attempts.recordAttempt(event.bookingId(), MailAttemptSource.AUTOMATIC,
 				MailAttemptOutcome.ABANDONED_MISSING_FACTS);
 		meters.counter(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED,
 				MissingBookingFact.TAG, fact.tagValue()).increment();

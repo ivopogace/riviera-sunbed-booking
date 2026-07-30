@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.api;
 
 import java.util.Optional;
 
+import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 
@@ -30,4 +31,20 @@ public interface BookingNotificationFacts {
 	 * still resolve rather than vanish.
 	 */
 	Optional<BookingNotificationInfo> notificationInfo(BookingId bookingId);
+
+	/**
+	 * Everything needed to rebuild this booking's confirmation mail without an event to read it from
+	 * (#380) — the admin resend's read. Empty if no booking has this id.
+	 *
+	 * <p>The same conversation as {@link #notificationInfo}, for the trigger that has no payload:
+	 * where the registry listener is handed the date, amount and currency by {@code BookingConfirmed},
+	 * a resend must ask the module that owns them. It does <strong>not</strong> supersede the narrower
+	 * read — the listener keeps taking those three off the event on purpose, so a later edit can never
+	 * rewrite the mail for a confirmation that already happened.
+	 *
+	 * <p>Also unfiltered by status, and for a sharper reason than above: whether a confirmation was
+	 * ever due is reported as {@link BookingConfirmationFacts#everConfirmed()} rather than by returning
+	 * empty, so the caller can refuse a never-confirmed booking with a reason instead of an absence.
+	 */
+	Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId);
 }

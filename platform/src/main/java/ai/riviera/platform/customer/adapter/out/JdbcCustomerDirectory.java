@@ -49,6 +49,15 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 	}
 
 	@Override
+	public java.util.Optional<CustomerId> findByEmail(String email) {
+		// Read-only by design: findOrCreate above would answer the same question by creating a row.
+		return jdbc.sql("SELECT id FROM customer WHERE email = :email")
+				.param("email", Emails.normalize(email))
+				.query((rs, rowNum) -> new CustomerId(rs.getLong("id")))
+				.optional();
+	}
+
+	@Override
 	public java.util.Optional<GuestContact> findById(CustomerId id) {
 		return jdbc.sql("SELECT email, full_name, phone FROM customer WHERE id = :id")
 				.param("id", id.value())

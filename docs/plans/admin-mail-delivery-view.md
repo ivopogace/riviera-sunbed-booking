@@ -130,8 +130,8 @@ is a parity signal to record here.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Recording the attempt **after** a successful send: if the insert fails, rethrowing would leave the publication outstanding and duplicate the mail on retry | med | med | The record is best-effort *relative to the send it describes*: `ConfirmationMailAttempts` failures are caught, logged at `WARN` and swallowed **at the recording call site only** — never around the send. The view then reads "no attempts recorded", which is honest. Pinned by `BookingConfirmationMailListenerTest.doesNotFailTheSendWhenRecordingFails` | agent | open |
-| R-2 | The attempt insert runs on the registry-mail worker, which holds **no transaction** (#371 deliberately dropped `REQUIRES_NEW`) | high | low | That is the property that makes a `TRANSPORT_FAILED` row survive the rethrow: the insert auto-commits before the exception propagates. Asserted, not assumed, by `BookingConfirmationMailListenerTest.recordsTheFailedAttemptEvenThoughItRethrows` | agent | open |
+| R-1 | Recording the attempt **after** a successful send: if the insert fails, rethrowing would leave the publication outstanding and duplicate the mail on retry | med | med | The record is best-effort *relative to the send it describes*: `ConfirmationMailAttempts` failures are caught, logged at `WARN` and swallowed **at the recording call site only** — never around the send. The view then reads "no attempts recorded", which is honest. Pinned by `ConfirmationAttemptRecorderTest.absorbsAFailedWriteRatherThanFailingTheSendThatAlreadyHappened` | agent | open |
+| R-2 | The attempt insert runs on the registry-mail worker, which holds **no transaction** (#371 deliberately dropped `REQUIRES_NEW`) | high | low | That is the property that makes a `TRANSPORT_FAILED` row survive the rethrow: the insert auto-commits before the exception propagates. Asserted, not assumed, by `BookingConfirmationMailListenerTest.recordsTheFailedAttemptAndStillRethrows` | agent | open |
 | R-3 | A resend re-drives `payout` (invariant #9) or Stripe (invariant #8) | low | high | The resend publishes **nothing** — it calls the send chokepoint directly, so there is no `BookingConfirmed` for `payout`'s accrual or `booking`'s refund listener to consume. AC-4 pins it at integration level (ledger row count unchanged + `PublishedEvents` empty) | agent | open |
 | R-4 | Synchronous SMTP on an admin request thread wedges a Tomcat thread | low | med | Bounded by `riviera.notification.mail.socket-timeout-ms` (#410), which every `spring.mail.properties.mail.smtp.*` timeout interpolates. One admin, one press; the money-path bulkhead (#383) is untouched because this never runs on `applicationTaskExecutor` | agent | open |
 | R-5 | Flyway **V36** collides with a parallel slice | low | high | V36 verified free on `main` and unclaimed by every open PR (only dependabot PRs are open, none touching `db/migration`). If a parallel slice merges first, **this branch renumbers** (default: whoever merges second) and re-runs `--tests "*Migration*"` | agent | open |
@@ -296,10 +296,9 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `implement — phases 0–1 done; phase 2 next`
+**Stage pointer:** `implement — phases 0–2 done; phase 3 next`
 
-**Next action:** Phase 2 — the three new reads (`booking::api` confirmation facts + customer
-bookings, `customer::api` by-email).
+**Next action:** Phase 3 — the resend service and the two ADMIN endpoints.
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -311,7 +310,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 |-------|--------|---------|
 | 0 — V36 attempt table + `ConfirmationMailAttempts` port/adapter | ✅ | `1c03dee` |
 | 1 — Record the automatic path (typed send outcome + listener recording) | ✅ | `5d26e5a` |
-| 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | | |
+| 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | ✅ | `1cc8392` |
 | 3 — Resend service + ADMIN lookup/resend endpoints | | |
 | 4 — Frontend card, service, unit + a11y specs | | |
 | 5 — Playwright mocked e2e | | |
@@ -325,6 +324,7 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | sonar (phase-1 push, PR #449) | `java:S6213` MAJOR — `ConfirmationAttemptRecorder.record(...)` matches a restricted identifier (`record`). | fixed-in-`1cc8392` — renamed to `recordAttempt`. The push also revealed the recorder's swallow branch was the slice's only uncovered new code, so `ConfirmationAttemptRecorderTest` (4 tests) now pins R-1's policy — including that the catch stays `DataAccessException` and does **not** absorb a programming error. |
 | F-1 | sonar (phase-0 push, PR #449) | `java:S2479` CRITICAL — a literal tab inside V36's `INSERT` text block (the column-list line was indented one tab past the block's common prefix, so the tab survived incidental-whitespace stripping into the SQL string). The gate passed with it; the repo's 0-new-issues bar does not. | fixed-in-`1a64291` — re-indented past the prefix with **spaces**, the convention `JdbcAccountErasure`/`JdbcCustomerDirectory` already follow. Same latent tab fixed in the IT's text block. No behaviour change (SQL is whitespace-insensitive); IT re-run 13/0/0. |
 
 ---

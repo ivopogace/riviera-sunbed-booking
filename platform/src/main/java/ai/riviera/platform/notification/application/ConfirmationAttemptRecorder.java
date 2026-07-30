@@ -44,7 +44,7 @@ public class ConfirmationAttemptRecorder {
 	 * Record what became of one attempt. Never throws: see the class Javadoc for why the evidence is
 	 * the thing that gives way.
 	 */
-	public void record(BookingId bookingId, MailAttemptSource source, MailAttemptOutcome outcome) {
+	public void recordAttempt(BookingId bookingId, MailAttemptSource source, MailAttemptOutcome outcome) {
 		try {
 			attempts.append(new MailAttempt(bookingId, source, outcome, clock.instant()));
 		}

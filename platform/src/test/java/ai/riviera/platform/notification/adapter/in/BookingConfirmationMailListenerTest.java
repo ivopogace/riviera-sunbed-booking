@@ -185,7 +185,7 @@ class BookingConfirmationMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(attempts).record(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.SENT);
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.SENT);
 	}
 
 	/**
@@ -200,7 +200,7 @@ class BookingConfirmationMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(attempts).record(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.WITHHELD_SUPPRESSED);
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.WITHHELD_SUPPRESSED);
 	}
 
 	/**
@@ -215,7 +215,7 @@ class BookingConfirmationMailListenerTest {
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 
-		verify(attempts).record(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.TRANSPORT_FAILED);
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.TRANSPORT_FAILED);
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -225,7 +225,7 @@ class BookingConfirmationMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(attempts).record(BOOKING_ID, MailAttemptSource.AUTOMATIC,
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC,
 				MailAttemptOutcome.ABANDONED_MISSING_FACTS);
 	}
 
