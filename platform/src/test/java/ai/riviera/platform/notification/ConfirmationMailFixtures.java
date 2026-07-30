@@ -67,7 +67,7 @@ public final class ConfirmationMailFixtures {
 	public long seedBooking(SetRef set, String code, LocalDate date, String contactEmail, long amountMinor,
 			String status) {
 		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES (:e, 'Bulkhead Guest', '+355781') RETURNING id")
+						+ "VALUES (:e, 'Registry Mail Guest', '+355781') RETURNING id")
 				.param("e", contactEmail).query(Long.class).single();
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,

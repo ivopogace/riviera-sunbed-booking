@@ -26,7 +26,8 @@ seeds `customer` / `booking` rows with `JdbcClient`, exactly as `RegistryMailBul
 - `riviera-plan-doc` — this doc's structure and the Execution-status state store.
 - `riviera-java-conventions` — §9 tests (Testcontainers for DB behaviour, AssertJ matching the surrounding class), §6a named literals, §6c one-line-or-none comments with the prose in Javadoc.
 - `riviera-modulith` (`references/testing.md`) — full `@SpringBootTest` + `@Import(TestcontainersConfiguration)` + `@EnabledIfDockerAvailable` is the right harness here (not `@ApplicationModuleTest`): the subject spans the listener, the executor bean and the framework-owned registry.
-- `riviera-local-debug` — scoped-test recipe (system `gradle`, JDK-25 toolchain, one IT class at a time); CI owns the full suite.
+- `riviera-local-debug` — scoped-test recipe (system `gradle`, JDK-25 toolchain, one IT class at a time); CI owns the full suite. Also the mid-session `dockerd` restart (`scripts/start-dockerd.sh`) after the daemon dropped and a run skipped clean.
+- `riviera-review-overlay` + the inline `/review` engine — the review gate (degraded: no subagent fan-out, see F-3); produced F-1 and F-2.
 - `postgres` — **not loaded**: no migration, no schema change, no new query shape beyond the `event_publication` read the sibling IT already performs.
 
 **Branch:** `claude/sdlc-407-d73ev9` — the cloud session's designated remote branch, standing in for
@@ -158,17 +159,17 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `PR ready-for-review → review gate`
+**Stage pointer:** `review gate run (degraded) → Sonar gate → merge`
 
-**Next action:** run the Review gate (`references/pr-gates.md` §1 ladder + `riviera-review-overlay`),
-then the Sonar gate's issue list; record findings below.
+**Next action:** confirm the Sonar reported-issue list is empty on the final head, then merge; the
+review checkbox stays unticked until the `/code-review` subagent fan-out is authorised.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | `9a2d38c` (draft PR #432) |
 | 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | ✅ | `fa519c8` |
 | 2 — `RegistryMailShedDurabilityIT` (red → green) | ✅ | `3e783be` |
-| 3 — Repeat-run verification (AC-4) + close-out | ⏳ | local runs done; gates pending |
+| 3 — Repeat-run verification (AC-4) + close-out | ⏳ | `596c5f0`; review-round fix pending |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -176,7 +177,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (inline `/review` + overlay) | The shared `ConfirmationMailFixtures` still seeded its guest as `'Bulkhead Guest'` — the name of only one of its two consumers | fixed (this commit) |
+| F-2 | review (self, AC-4 evidence) | The plan and PR asserted "own context ⇒ own container/database" as the isolation mechanism without ever observing it | fixed (this commit) — two concurrent `postgres:17` containers observed during a combined run; recorded under AC-4 |
+| F-3 | review (process) | The `/code-review` subagent fan-out — the gate's strongest rung — could not run: this session is instructed not to launch agents unasked, and the authorisation request went unanswered | open — declared on the PR, its checkbox left unticked |
 
 ---
 
@@ -268,33 +271,39 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       the outstanding count to 0; the context logs `No publications outstanding!` at shutdown, so the
       class strands nothing. Verified at commit `3e783be`.
 - [x] **AC-4:** `RegistryMailShedDurabilityIT` **3/3** clean, `RegistryMailBulkheadIT` **3/3** clean,
-      and the two together in one JVM **3/3** clean (`--rerun` each time, so no cached results).
-      Structurally, the shrunk pool and the strandable publications live in this class's own context
-      and its own Testcontainers database. Verified at commit `3e783be`.
+      and the two together in one JVM **3/3** clean (`--rerun` each time, so no cached results), with
+      the JUnit XML confirming `skipped=0` (4 + 2 tests) rather than a clean Docker-absent skip.
+      The isolation mechanism was then **observed, not assumed**: polling `docker ps` through a
+      combined run shows **two concurrent `postgres:17` containers**, so the shrunk-pool context
+      really does carry its own database. Verified at commit `3e783be` (evidence re-gathered at the
+      review round).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified: no `availability` write path).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking is created through the
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (N/A justified: no `availability` write path).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking is created through the
       application; rows are seeded directly, as the sibling IT does.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports beyond the
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports beyond the
       module's own test packages; event payload id-based (invariant #11).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — booking dates
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — booking dates
       are `LocalDate`, seeded on dates no other IT uses.
-- [ ] Booking codes unguessable (invariant #7) — the test's seeded codes are fixtures, never logged.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards — N/A.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Booking codes unguessable (invariant #7) — the test's seeded codes are fixtures, never logged.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards — N/A.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — `/code-review` via the `references/pr-gates.md` §1 ladder
-      *plus* `riviera-review-overlay`.
+- [ ] **The review gate ran in full** — **left unticked deliberately.** The overlay ran and the
+      inline `/review` engine walked the diff, but `/code-review`'s subagent fan-out did not: this
+      session is instructed not to launch agents without the human's say-so, and the authorisation
+      request went unanswered. Declared on the PR (finding F-3); ticking it would make the PR record
+      lie about the process that ran.
