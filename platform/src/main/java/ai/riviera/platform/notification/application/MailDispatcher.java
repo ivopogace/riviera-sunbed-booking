@@ -21,10 +21,17 @@ package ai.riviera.platform.notification.application;
  * whose outcome may influence neither the response's status code (the D-8 non-enumeration contract) nor
  * its latency (the timing oracle this seam exists to close). A dispatch that cannot be accepted is dropped
  * and logged. Package-private application-internal machinery (RV-BE-11).
+ *
+ * <p><strong>The kind rides along because the implementation accounts for what it loses</strong> (#442).
+ * This seam was {@code dispatch(Runnable)} until then, which left {@code AsyncMailDispatcher} holding the
+ * whole drop-accounting responsibility — three counters and a log line per loss — with no vocabulary to
+ * account <em>with</em>: every dropped mail was an unattributed increment, and a lost approval notice was
+ * indistinguishable from a lost password reset. The kind is already in the caller's hand at every call
+ * site, so carrying it is not extra coupling; it is the parameter the accounting always needed.
  */
 @FunctionalInterface
 interface MailDispatcher {
 
-	/** Run the send away from the caller's thread. Never throws. */
-	void dispatch(Runnable send);
+	/** Run the send away from the caller's thread, attributed to {@code kind} if it is lost. Never throws. */
+	void dispatch(MailKind kind, Runnable send);
 }

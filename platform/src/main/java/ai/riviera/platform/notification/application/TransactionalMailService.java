@@ -75,20 +75,6 @@ public class TransactionalMailService implements MailSender {
 
 	private static final Logger log = LoggerFactory.getLogger(TransactionalMailService.class);
 
-	/** Which flow a lost mail belonged to — one series, three audiences with different urgency. */
-	static final String KIND_TAG = "kind";
-
-	static final String KIND_VERIFICATION = "verification";
-
-	static final String KIND_PASSWORD_RESET = "password-reset";
-
-	/**
-	 * The first kind on this vehicle that is not a recovery flow (#375). The series keeps its
-	 * {@code riviera.mail.recovery.*} names because they were always the <em>vehicle's</em> names —
-	 * renaming a shipped metric breaks whatever reads it, and this tag is what tells the two apart.
-	 */
-	static final String KIND_OPERATOR_APPROVED = "operator-approved";
-
 	/** Which system failed — the whole reason the counter is tagged rather than plain. */
 	static final String REASON_TAG = "reason";
 
@@ -119,17 +105,17 @@ public class TransactionalMailService implements MailSender {
 
 	@Override
 	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		dispatchQuietly(KIND_VERIFICATION, toEmail, () -> mailer.sendEmailVerification(toEmail, verificationLink));
+		dispatchQuietly(MailKind.VERIFICATION, toEmail, () -> mailer.sendEmailVerification(toEmail, verificationLink));
 	}
 
 	@Override
 	public void sendPasswordReset(String toEmail, URI resetLink) {
-		dispatchQuietly(KIND_PASSWORD_RESET, toEmail, () -> mailer.sendPasswordReset(toEmail, resetLink));
+		dispatchQuietly(MailKind.PASSWORD_RESET, toEmail, () -> mailer.sendPasswordReset(toEmail, resetLink));
 	}
 
 	@Override
 	public void sendOperatorApproved(String toEmail, URI signInLink) {
-		dispatchQuietly(KIND_OPERATOR_APPROVED, toEmail,
+		dispatchQuietly(MailKind.OPERATOR_APPROVED, toEmail,
 				() -> mailer.sendOperatorApproved(toEmail, signInLink));
 	}
 
@@ -143,12 +129,12 @@ public class TransactionalMailService implements MailSender {
 		mailer.sendBookingConfirmation(toEmail, confirmation);
 	}
 
-	private void dispatchQuietly(String kind, String toEmail, Runnable send) {
+	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {
 		// Between them the two catches cover the whole task: nothing may escape onto the drainer.
-		dispatcher.dispatch(() -> {
+		dispatcher.dispatch(kind, () -> {
 			try {
 				if (isSuppressedOrFailOpen(kind, toEmail)) {
-					log.info("The {} mail was skipped: the address is suppressed", kind);
+					log.info("The {} mail was skipped: the address is suppressed", kind.tagValue());
 					return;
 				}
 			}
@@ -182,10 +168,11 @@ public class TransactionalMailService implements MailSender {
 	 * <p>The line carries the mail kind, the cause and the exception's simple name — never the address
 	 * and never the link, which is a single-use bearer credential (invariant #7).
 	 */
-	private void recordLoss(String kind, String reason, RuntimeException cause) {
-		meters.counter(ObservabilityMetrics.MAIL_RECOVERY_FAILED, KIND_TAG, kind, REASON_TAG, reason).increment();
+	private void recordLoss(MailKind kind, String reason, RuntimeException cause) {
+		meters.counter(ObservabilityMetrics.MAIL_RECOVERY_FAILED, MailKind.TAG, kind.tagValue(), REASON_TAG, reason)
+				.increment();
 		log.warn("The {} mail was not delivered — {} failure ({}); this vehicle keeps no durable copy, so "
-				+ "the send is not retried", kind, reason, cause.getClass().getSimpleName());
+				+ "the send is not retried", kind.tagValue(), reason, cause.getClass().getSimpleName());
 	}
 
 	/**
@@ -214,13 +201,13 @@ public class TransactionalMailService implements MailSender {
 	 * vehicle the throw is load-bearing, keeping the publication outstanding so the at-least-once
 	 * contract (#371) retries against a healthy database instead of burning the delivery on a blip.
 	 */
-	private boolean isSuppressedOrFailOpen(String kind, String toEmail) {
+	private boolean isSuppressedOrFailOpen(MailKind kind, String toEmail) {
 		try {
 			return suppressions.isSuppressed(toEmail);
 		}
 		catch (TransientDataAccessException e) {
 			log.warn("Suppression lookup failed transiently for the {} mail ({}); sending anyway rather than "
-					+ "dropping it", kind, e.getClass().getSimpleName());
+					+ "dropping it", kind.tagValue(), e.getClass().getSimpleName());
 			return false;
 		}
 	}

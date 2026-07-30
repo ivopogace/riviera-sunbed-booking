@@ -110,17 +110,16 @@ Provider landscape (condensed; full table in the research doc):
      half already committed; and nothing re-sends it — the operator is not sitting on a page offering
      a retry, and learns its account is live only by trying to sign in, which is the exact experience
      #375 was written to remove. This kind is accepted as the **knowingly weaker case**: the loss is
-     unrecoverable *in the product* and is mitigated only *operationally* — and, as #440's review
-     established, only **in part**. Every loss is counted, but only one of the two is *attributable*: a
-     send the transport ran and lost raises `MAIL_RECOVERY_FAILED` under `kind="operator-approved"`,
-     naming one identifiable person at a volume of one per approval; a send the pool never ran raises
-     `MAIL_RECOVERY_DROPPED`, which carries `reason` alone and cannot carry the kind, because it is
-     raised by the dispatcher, whose interface is `dispatch(Runnable)`. So a **dropped** approval notice
-     surfaces only as an unattributed increment, to be reconciled by hand against that window's
-     approvals. `docs/runbooks/observability.md` carries both readings and the remedy — tell them —
-     which is a real remedy rather than a shrug because a human is already in the loop: the admin who
-     approved. **Whether the drop path should carry the kind at all is [#442](https://github.com/ivopogace/riviera-sunbed-booking/issues/442);**
-     if it ever does, the "only in part" above stops being true and this note needs amending again.
+     unrecoverable *in the product* and is mitigated only *operationally* — but, since
+     [#442](https://github.com/ivopogace/riviera-sunbed-booking/issues/442), mitigated **in full rather
+     than in part**. Every loss on this vehicle is now both counted *and* attributable: a send the
+     transport ran and lost raises `MAIL_RECOVERY_FAILED` under `kind="operator-approved"`, and a send
+     the pool never ran raises `MAIL_RECOVERY_DROPPED` under the same tag, on all three of its
+     `reason`s. Either way an increment names one identifiable person at a volume of one per approval,
+     and `docs/runbooks/observability.md` carries the remedy — tell them — which is a real remedy
+     rather than a shrug because a human is already in the loop: the admin who approved. What the tag
+     does **not** do is name the person: invariant #7 keeps the address out of metrics and logs, so the
+     operator is still identified from the approval log. The tag is what says to go and look.
 
    The pool is deliberately **not** Boot's shared
    `applicationTaskExecutor`, which carries the Modulith money-path listeners; and it drops on
@@ -152,6 +151,27 @@ Provider landscape (condensed; full table in the research doc):
    > approval) and **remediable** (the approving admin can be told to tell them), and would buy that
    > durability by minting a domain event whose only consumer is the edge that raised the request.
    > Re-open it if a real lost approval ever shows the operational remedy failing in practice.
+
+   > **Amended 2026-07-30 (#442).** The amendment directly above shipped with a caveat that has now
+   > been retired. It recorded the operator-approval notice's loss as mitigated *"only **in part**"*,
+   > because "only one of the two is *attributable*: … a send the pool never ran raises
+   > `MAIL_RECOVERY_DROPPED`, which carries `reason` alone and **cannot carry the kind**, because it is
+   > raised by the dispatcher, whose interface is `dispatch(Runnable)`" — so a dropped approval notice
+   > "surfaces only as an unattributed increment, to be reconciled by hand against that window's
+   > approvals." That was an accurate reading of the code and, per the same note, the open question
+   > #442 was filed to settle.
+   >
+   > It was settled by **widening the seam** (maintainer, #442): `dispatch` now takes the kind
+   > alongside the send, and all three of the drop counter's `reason`s carry it. The "cannot" was never
+   > a property of the event — a drop is exactly as attributable as a failure — only of an interface
+   > that had not been given what its own accounting needed. **Leaving the gap and recording it as
+   > accepted was the considered alternative, and was rejected:** drop volume is near-zero by
+   > construction, but that argues *for* attribution rather than against it, since a rare signal is
+   > read one increment at a time during an incident and has to be self-describing.
+   >
+   > **What did not change:** the vehicle choice, the metric names, and the limit invariant #7 sets on
+   > all of this — the tag names the flow, never the person, so the approval log is still what
+   > identifies the operator.
 6. **One platform sending domain.** SPF + DKIM (2048-bit) + DMARC (`p=none` → tighten) on the
    platform domain; shared IP pool (our volume never keeps a dedicated IP warm). Mail "from" an
    operator's own domain (per-tenant DKIM delegation) is explicitly out until an operator

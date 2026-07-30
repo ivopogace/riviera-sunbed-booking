@@ -321,7 +321,14 @@ ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAIL
 which is the likelier loss and the first of the four mail counters to move in a relay outage. It is
 tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
 can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
-operator acts on the cause, not the consequence. **The registry vehicle deliberately has no twin:**
+operator acts on the cause, not the consequence. **Since #442 the drop counter carries `kind` too**, on
+all three of its reasons: the dimension had been missing not because a drop is less attributable than a
+failure but because `MailDispatcher.dispatch(Runnable)` never told the pool what it was carrying, so a
+lost approval notice read the same as a lost password reset. Widening that seam to
+`dispatch(MailKind, Runnable)` closed it — the drain path included, which needed the kind to travel
+into the queue — and made ADR-0011 decision 5's "mitigated only in part" clause false. The vocabulary
+is one enum (`MailKind`) shared by both counters, so the two cannot drift into two spellings of a kind;
+neither names the *person*, invariant #7 keeping the address off the tag. **The registry vehicle deliberately has no twin:**
 its transport failure propagates, so the publication stays outstanding and `riviera.outbox.pending`
 already accounts for it — an argument that holds only for failures that *throw*, which is why a
 confirmation this module **abandons** for a missing booking/set/contact (completing the publication,

@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,7 +46,20 @@ class AsyncMailDispatcherTest {
 	private static final String CORRELATION_KEY = "correlationId";
 	private static final int AWAIT_SECONDS = 5;
 	private static final int DROPS = 5;
-	private static final int QUEUED_AT_SHUTDOWN = 3;
+	/**
+	 * The sends left in the queue at shutdown, <strong>deliberately not all the same flow</strong> (#442).
+	 * The drain path is the one that has to read the kind back off a task queued earlier rather than learn
+	 * it from the call happening right now, so a single-kind fixture would pass while attributing every
+	 * abandonment to whichever kind happened to be hard-coded.
+	 */
+	private static final List<MailKind> QUEUED_AT_SHUTDOWN =
+			List.of(MailKind.PASSWORD_RESET, MailKind.OPERATOR_APPROVED, MailKind.PASSWORD_RESET);
+
+	/** The send that occupies the single drainer while a fixture fills the queue behind it. */
+	private static final MailKind WEDGE_KIND = MailKind.VERIFICATION;
+
+	/** The flow the saturation fixtures lose; a second kind is named wherever isolation is the point. */
+	private static final MailKind SATURATION_KIND = MailKind.PASSWORD_RESET;
 
 	/** #368's shipped relay budget, from which this pool's drain window is derived (#410). */
 	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
@@ -77,11 +91,21 @@ class AsyncMailDispatcherTest {
 		return new AsyncMailDispatcher(meters, SHIPPED_BUDGET);
 	}
 
-	private double droppedFor(String reason) {
+	private double droppedFor(MailKind kind, String reason) {
 		Counter counter = meters.find(ObservabilityMetrics.MAIL_RECOVERY_DROPPED)
+				.tag(MailKind.TAG, kind.tagValue())
 				.tag(AsyncMailDispatcher.REASON_TAG, reason)
 				.counter();
 		return counter == null ? 0 : counter.count();
+	}
+
+	private double droppedFor(String reason) {
+		return meters.find(ObservabilityMetrics.MAIL_RECOVERY_DROPPED)
+				.tag(AsyncMailDispatcher.REASON_TAG, reason)
+				.counters()
+				.stream()
+				.mapToDouble(Counter::count)
+				.sum();
 	}
 
 	private double droppedTotal() {
@@ -98,11 +122,12 @@ class AsyncMailDispatcherTest {
 	 * sitting in the queue and occupy one of the slots this method is counting. Returns the gate the caller
 	 * opens to let the pool drain.
 	 */
-	private CountDownLatch saturate(AsyncMailDispatcher dispatcher, int drops) throws InterruptedException {
+	private CountDownLatch saturate(AsyncMailDispatcher dispatcher, MailKind kind, int drops)
+			throws InterruptedException {
 		CountDownLatch gate = new CountDownLatch(1);
 		CountDownLatch running = new CountDownLatch(1);
 
-		dispatcher.dispatch(() -> {
+		dispatcher.dispatch(kind, () -> {
 			running.countDown();
 			awaitQuietly(gate);
 		});
@@ -111,23 +136,23 @@ class AsyncMailDispatcherTest {
 				.isTrue();
 
 		for (int i = 0; i < AsyncMailDispatcher.QUEUE_CAPACITY + drops; i++) {
-			dispatcher.dispatch(() -> {
+			dispatcher.dispatch(kind, () -> {
 			});
 		}
 		return gate;
 	}
 
 	/**
-	 * Wedge the single drainer and queue {@code count} sends behind it, each counting {@code ran} down if it
+	 * Wedge the single drainer and queue one send per element of {@code queued}, each counting {@code ran} down if it
 	 * ever executes. The wedge is confirmed <em>running</em> first, or it would still be occupying one of the
 	 * queue slots the caller is counting. Returns the gate that releases it.
 	 */
-	private CountDownLatch wedgeWithQueuedSends(AsyncMailDispatcher dispatcher, int count, CountDownLatch ran)
-			throws InterruptedException {
+	private CountDownLatch wedgeWithQueuedSends(AsyncMailDispatcher dispatcher, List<MailKind> queued,
+			CountDownLatch ran) throws InterruptedException {
 		CountDownLatch gate = new CountDownLatch(1);
 		CountDownLatch running = new CountDownLatch(1);
 
-		dispatcher.dispatch(() -> {
+		dispatcher.dispatch(WEDGE_KIND, () -> {
 			running.countDown();
 			awaitQuietly(gate);
 		});
@@ -135,9 +160,7 @@ class AsyncMailDispatcherTest {
 				.as("the single drainer must be occupied before the queue is filled")
 				.isTrue();
 
-		for (int i = 0; i < count; i++) {
-			dispatcher.dispatch(ran::countDown);
-		}
+		queued.forEach(kind -> dispatcher.dispatch(kind, ran::countDown));
 		return gate;
 	}
 
@@ -157,7 +180,7 @@ class AsyncMailDispatcherTest {
 		CountDownLatch sent = new CountDownLatch(1);
 
 		try {
-			dispatcher.dispatch(() -> {
+			dispatcher.dispatch(SATURATION_KIND, () -> {
 				sendThread.set(Thread.currentThread().getName());
 				sent.countDown();
 			});
@@ -179,7 +202,7 @@ class AsyncMailDispatcherTest {
 		dispatcher.destroy(); // the executor can no longer accept work
 		AtomicBoolean ran = new AtomicBoolean();
 
-		assertThatCode(() -> dispatcher.dispatch(() -> ran.set(true))).doesNotThrowAnyException();
+		assertThatCode(() -> dispatcher.dispatch(SATURATION_KIND, () -> ran.set(true))).doesNotThrowAnyException();
 
 		assertThat(ran).as("a rejected task must not run — least of all on the caller's thread").isFalse();
 	}
@@ -189,12 +212,38 @@ class AsyncMailDispatcherTest {
 		AsyncMailDispatcher dispatcher = dispatcher();
 
 		try {
-			CountDownLatch gate = saturate(dispatcher, DROPS);
+			CountDownLatch gate = saturate(dispatcher, SATURATION_KIND, DROPS);
 			gate.countDown();
 
 			assertThat(droppedFor(AsyncMailDispatcher.REASON_SATURATED))
 					.as("each send the saturated pool refused is one recovery mail that will never arrive")
 					.isEqualTo(DROPS);
+		}
+		finally {
+			dispatcher.destroy();
+		}
+	}
+
+	/**
+	 * #442. Until this slice the drop series carried {@code reason} alone, so a lost approval notice — the
+	 * one kind on this vehicle that nobody re-sends (ADR-0011 decision 5, amended #439) — was
+	 * indistinguishable from a lost password reset, and the runbook's remedy ("tell them") depended on
+	 * reconciling an unattributed increment against the window's approvals by hand.
+	 */
+	@Test
+	void aSaturatedDropNamesTheFlowItLost() throws Exception {
+		AsyncMailDispatcher dispatcher = dispatcher();
+
+		try {
+			CountDownLatch gate = saturate(dispatcher, MailKind.OPERATOR_APPROVED, DROPS);
+			gate.countDown();
+
+			assertThat(droppedFor(MailKind.OPERATOR_APPROVED, AsyncMailDispatcher.REASON_SATURATED))
+					.as("an approval notice nobody re-sends must be tellable from a reset the user re-requests")
+					.isEqualTo(DROPS);
+			assertThat(droppedFor(MailKind.PASSWORD_RESET, AsyncMailDispatcher.REASON_SATURATED))
+					.as("a flow that lost nothing must not read as having lost something")
+					.isZero();
 		}
 		finally {
 			dispatcher.destroy();
@@ -211,7 +260,7 @@ class AsyncMailDispatcherTest {
 		AsyncMailDispatcher dispatcher = dispatcher();
 
 		try {
-			CountDownLatch gate = saturate(dispatcher, DROPS);
+			CountDownLatch gate = saturate(dispatcher, SATURATION_KIND, DROPS);
 			gate.countDown();
 
 			assertThat(logs.list)
@@ -235,12 +284,16 @@ class AsyncMailDispatcherTest {
 		AsyncMailDispatcher dispatcher = dispatcher();
 		dispatcher.destroy();
 
-		dispatcher.dispatch(() -> {
+		dispatcher.dispatch(MailKind.OPERATOR_APPROVED, () -> {
 		});
 
-		assertThat(droppedFor(AsyncMailDispatcher.REASON_SHUTDOWN))
-				.as("a mail lost to a redeploy is still a mail the user will never receive")
+		assertThat(droppedFor(MailKind.OPERATOR_APPROVED, AsyncMailDispatcher.REASON_SHUTDOWN))
+				.as("a mail lost to a redeploy is still a mail the user will never receive, and the one nobody "
+						+ "re-sends has to be tellable from the one the user can re-request")
 				.isEqualTo(1);
+		assertThat(droppedFor(MailKind.PASSWORD_RESET, AsyncMailDispatcher.REASON_SHUTDOWN))
+				.as("a flow that lost nothing must not read as having lost something")
+				.isZero();
 		assertThat(droppedFor(AsyncMailDispatcher.REASON_SATURATED))
 				.as("a redeploy is not a saturated relay; alerting on saturation must not fire on a deploy")
 				.isZero();
@@ -255,7 +308,7 @@ class AsyncMailDispatcherTest {
 		AsyncMailDispatcher dispatcher = dispatcher();
 
 		try {
-			CountDownLatch gate = saturate(dispatcher, DROPS);
+			CountDownLatch gate = saturate(dispatcher, SATURATION_KIND, DROPS);
 			gate.countDown();
 
 			assertThat(logs.list)
@@ -275,14 +328,15 @@ class AsyncMailDispatcherTest {
 		AsyncMailDispatcher dispatcher = dispatcher();
 
 		try {
-			CountDownLatch gate = saturate(dispatcher, DROPS);
+			CountDownLatch gate = saturate(dispatcher, SATURATION_KIND, DROPS);
 			gate.countDown();
 			dispatcher.destroy();
-			dispatcher.dispatch(() -> {
+			dispatcher.dispatch(MailKind.OPERATOR_APPROVED, () -> {
 			});
 
 			assertThat(droppedTotal())
-					.as("both causes are drops and belong to one series, so a total can be alerted on")
+					.as("both causes are drops and belong to one series, so a total can be alerted on — and "
+							+ "#442 partitioned that series by kind, it did not double-count it")
 					.isEqualTo(DROPS + 1D);
 		}
 		finally {
@@ -312,7 +366,7 @@ class AsyncMailDispatcherTest {
 		AtomicBoolean interrupted = new AtomicBoolean();
 		AtomicBoolean completed = new AtomicBoolean();
 
-		dispatcher.dispatch(() -> {
+		dispatcher.dispatch(SATURATION_KIND, () -> {
 			running.countDown();
 			try {
 				gate.await(AWAIT_SECONDS, TimeUnit.SECONDS);
@@ -340,6 +394,35 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
+	 * #442's hard half. The two rejection paths learn the kind from the {@code dispatch} call happening
+	 * right then; this one has to read it back off a task queued earlier and wrapped by the pool's
+	 * {@link MdcTaskDecorator} — which is why a half-tagged series was the risk worth a test of its own.
+	 * A {@code kind}-filtered query that silently under-counts is strictly worse than the honest absence
+	 * this slice replaced, so the fixture queues <strong>two different flows</strong>: attributing every
+	 * abandonment to one hard-coded kind would pass a single-kind spec.
+	 */
+	@Test
+	void anAbandonedSendNamesTheFlowItLost() throws Exception {
+		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters, TINY_BUDGET);
+		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN.size());
+		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN, ran);
+
+		dispatcher.destroy();
+
+		assertThat(droppedFor(MailKind.PASSWORD_RESET, AsyncMailDispatcher.REASON_ABANDONED))
+				.as("each queued send is charged to its own flow, not to whichever one drained first")
+				.isEqualTo(QUEUED_AT_SHUTDOWN.stream().filter(MailKind.PASSWORD_RESET::equals).count());
+		assertThat(droppedFor(MailKind.OPERATOR_APPROVED, AsyncMailDispatcher.REASON_ABANDONED))
+				.as("the notice nobody re-sends is the one an operator most needs this series to name")
+				.isEqualTo(QUEUED_AT_SHUTDOWN.stream().filter(MailKind.OPERATOR_APPROVED::equals).count());
+		assertThat(droppedFor(WEDGE_KIND, AsyncMailDispatcher.REASON_ABANDONED))
+				.as("the send caught running is excluded from this series, so its flow must stay at zero")
+				.isZero();
+
+		gate.countDown();
+	}
+
+	/**
 	 * The fourth loss shape (#434), and the one that moved nothing before this test existed. A send still
 	 * <em>queued</em> when the drain window expires is discarded with the pool: {@code execute} returned
 	 * normally so neither rejection reason fires, the task never ran so {@code MAIL_RECOVERY_FAILED} cannot,
@@ -350,14 +433,14 @@ class AsyncMailDispatcherTest {
 	@Test
 	void aSendStillQueuedWhenTheDrainWindowExpiresIsCountedAsAbandoned() throws Exception {
 		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters, TINY_BUDGET);
-		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN);
+		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN.size());
 		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN, ran);
 
 		dispatcher.destroy();
 
 		assertThat(droppedFor(AsyncMailDispatcher.REASON_ABANDONED))
 				.as("a send discarded with the pool is as lost as one the pool refused")
-				.isEqualTo(QUEUED_AT_SHUTDOWN);
+				.isEqualTo(QUEUED_AT_SHUTDOWN.size());
 		assertThat(droppedFor(AsyncMailDispatcher.REASON_SATURATED))
 				.as("a redeploy is not a degraded relay; the alerting reason must not move")
 				.isZero();
@@ -369,7 +452,7 @@ class AsyncMailDispatcherTest {
 		assertThat(ran.await(DISCARD_GRACE_MILLIS, TimeUnit.MILLISECONDS)).isFalse();
 		assertThat(ran.getCount())
 				.as("the count is only honest if the send was discarded, not counted and then run anyway")
-				.isEqualTo(QUEUED_AT_SHUTDOWN);
+				.isEqualTo(QUEUED_AT_SHUTDOWN.size());
 	}
 
 	/**
@@ -380,7 +463,7 @@ class AsyncMailDispatcherTest {
 	@Test
 	void aSendThatDrainsInsideTheWindowIsNotCountedAsAbandoned() throws Exception {
 		AsyncMailDispatcher dispatcher = dispatcher();
-		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN);
+		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN.size());
 		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN, ran);
 
 		gate.countDown();
@@ -405,7 +488,7 @@ class AsyncMailDispatcherTest {
 		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters, TINY_BUDGET);
 		MDC.put(CORRELATION_KEY, "corr-1");
 		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN,
-				new CountDownLatch(QUEUED_AT_SHUTDOWN));
+				new CountDownLatch(QUEUED_AT_SHUTDOWN.size()));
 		MDC.put(CORRELATION_KEY, "shutdown-thread");
 
 		try {
@@ -413,7 +496,7 @@ class AsyncMailDispatcherTest {
 
 			assertThat(logs.list)
 					.as("one line per loss: there is no durable copy to make a repeat redundant")
-					.hasSize(QUEUED_AT_SHUTDOWN)
+					.hasSize(QUEUED_AT_SHUTDOWN.size())
 					.allSatisfy(event -> {
 						assertThat(event.getLevel())
 								.as("a redeploy outrunning the drain is a real loss, but no relay is at fault")
@@ -441,7 +524,7 @@ class AsyncMailDispatcherTest {
 		MDC.put(CORRELATION_KEY, "corr-1");
 
 		try {
-			dispatcher.dispatch(() -> {
+			dispatcher.dispatch(SATURATION_KIND, () -> {
 				seen.set(MDC.get(CORRELATION_KEY));
 				sent.countDown();
 			});
@@ -464,11 +547,11 @@ class AsyncMailDispatcherTest {
 
 		try {
 			MDC.put(CORRELATION_KEY, "corr-1");
-			dispatcher.dispatch(first::countDown);
+			dispatcher.dispatch(SATURATION_KIND, first::countDown);
 			MDC.clear();
 			assertThat(first.await(AWAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
 
-			dispatcher.dispatch(() -> {
+			dispatcher.dispatch(SATURATION_KIND, () -> {
 				leaked.set(MDC.get(CORRELATION_KEY));
 				second.countDown();
 			});

@@ -59,12 +59,16 @@ class TransactionalMailServiceTest {
 	private final Mailer mailer = mock(Mailer.class);
 	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);
 	private final AtomicReference<Runnable> dispatched = new AtomicReference<>();
+	private final AtomicReference<MailKind> dispatchedKind = new AtomicReference<>();
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 	private ch.qos.logback.classic.Logger serviceLogger;
 
 	private final TransactionalMailService service =
-			new TransactionalMailService(mailer, dispatched::set, suppressions, meters);
+			new TransactionalMailService(mailer, (kind, send) -> {
+				dispatchedKind.set(kind);
+				dispatched.set(send);
+			}, suppressions, meters);
 
 	@BeforeEach
 	void captureLogs() {
@@ -81,7 +85,7 @@ class TransactionalMailServiceTest {
 
 	private double failedFor(String kind, String reason) {
 		Counter counter = meters.find(ObservabilityMetrics.MAIL_RECOVERY_FAILED)
-				.tag(TransactionalMailService.KIND_TAG, kind)
+				.tag(MailKind.TAG, kind)
 				.tag(TransactionalMailService.REASON_TAG, reason)
 				.counter();
 		return counter == null ? 0 : counter.count();
@@ -121,6 +125,26 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
+	 * #442. The dispatcher accounts for the sends it never runs, so it has to be told what it is carrying —
+	 * before this slice its whole interface was {@code dispatch(Runnable)}, and a mail it dropped could not
+	 * be attributed to any flow. This service is the one production caller, and the kind is already in its
+	 * hand at every call site; passing it is what makes the drop counter's {@code kind} tag possible at all.
+	 */
+	@Test
+	void everyDispatchedSendCarriesItsKind() {
+		service.sendEmailVerification(EMAIL, LINK);
+		assertThat(dispatchedKind.get()).isEqualTo(MailKind.VERIFICATION);
+
+		service.sendPasswordReset(EMAIL, LINK);
+		assertThat(dispatchedKind.get()).isEqualTo(MailKind.PASSWORD_RESET);
+
+		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		assertThat(dispatchedKind.get())
+				.as("the kind whose loss nobody re-sends is the one that most needs naming")
+				.isEqualTo(MailKind.OPERATOR_APPROVED);
+	}
+
+	/**
 	 * The failure this slice exists for (#423): the dispatcher <em>accepted</em> the send and the relay
 	 * then refused it. Before this counter the entire record was one log line, so a relay outage — the
 	 * likelier of the vehicle's two losses by far, since saturating the pool takes 100 queued sends —
@@ -134,7 +158,7 @@ class TransactionalMailServiceTest {
 
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
 				TransactionalMailService.REASON_TRANSPORT)).isEqualTo(1);
 		assertThat(failedTotal()).as("exactly one loss, counted once").isEqualTo(1);
 	}
@@ -145,9 +169,9 @@ class TransactionalMailServiceTest {
 		service.sendEmailVerification(EMAIL, LINK);
 		dispatched.get().run();
 
-		assertThat(failedFor(TransactionalMailService.KIND_VERIFICATION,
+		assertThat(failedFor(MailKind.VERIFICATION.tagValue(),
 				TransactionalMailService.REASON_TRANSPORT)).isEqualTo(1);
-		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
 				TransactionalMailService.REASON_TRANSPORT)).isZero();
 	}
 
@@ -166,9 +190,9 @@ class TransactionalMailServiceTest {
 		service.sendPasswordReset(EMAIL, LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
 				TransactionalMailService.REASON_SUPPRESSION_LOOKUP)).isEqualTo(1);
-		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
 				TransactionalMailService.REASON_TRANSPORT))
 				.as("the relay was never reached, so it must not be blamed").isZero();
 	}
@@ -226,9 +250,9 @@ class TransactionalMailServiceTest {
 
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		assertThat(failedFor(TransactionalMailService.KIND_OPERATOR_APPROVED,
+		assertThat(failedFor(MailKind.OPERATOR_APPROVED.tagValue(),
 				TransactionalMailService.REASON_TRANSPORT)).isEqualTo(1);
-		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
 				TransactionalMailService.REASON_TRANSPORT))
 				.as("a non-recovery loss must not read as a recovery one").isZero();
 		assertThat(failedTotal()).as("exactly one loss, counted once").isEqualTo(1);

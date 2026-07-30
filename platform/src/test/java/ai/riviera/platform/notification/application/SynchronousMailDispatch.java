@@ -21,6 +21,6 @@ public class SynchronousMailDispatch {
 	@Bean
 	@Primary
 	MailDispatcher synchronousMailDispatcher() {
-		return Runnable::run;
+		return (kind, send) -> send.run();
 	}
 }

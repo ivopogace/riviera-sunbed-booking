@@ -1,7 +1,9 @@
 package ai.riviera.platform.notification.application;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -26,10 +28,13 @@ import org.springframework.stereotype.Component;
  * bounded for the complementary reason: a saturated dispatcher drops the send rather than queueing
  * without limit or, worse, falling back to running the send on the caller's thread, which would re-open
  * the very oracle this class exists to close. A dropped recovery mail the person re-requests; a dropped
- * operator-approval notice (#375) nobody re-sends (ADR-0011 decision 5, amended #439) — and this class
- * cannot tell you which it lost, because it dispatches an opaque {@link Runnable} and never learns the
- * kind, which is why {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} carries {@code reason} alone
- * while the send-side {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} carries {@code kind} too (#442).
+ * operator-approval notice (#375) nobody re-sends (ADR-0011 decision 5, amended #439) — and since #442
+ * this class can tell you which it lost, because {@link MailDispatcher#dispatch} takes the
+ * {@link MailKind} alongside the send. {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} therefore
+ * carries {@code kind} on every {@code reason}, as the send-side
+ * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} always did. It had carried {@code reason} alone for
+ * two slices, not because a drop is less attributable than a failure but because the seam was one
+ * parameter narrower than the accounting this class already owed.
  *
  * <p><strong>That rule is the module's, not this class's</strong> (#383). It was stated here and then
  * broken next door: #371's registry-borne booking confirmation went onto the shared executor, because
@@ -67,6 +72,13 @@ import org.springframework.stereotype.Component;
  * <p><strong>Every drop is counted, and every drop is logged — one line each, deliberately</strong> (#415).
  * The counter ({@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED}) is the alertable signal; before it, "how
  * often did the recovery vehicle drop?" was answerable only by grepping logs.
+ *
+ * <p><strong>One branch logs without counting, and it is the one that can never run</strong> (#442): the
+ * unmatched payload in {@link #recordAbandonment}. Counting it would mean inventing a {@code kind} tag
+ * value meaning "we lost track", which pollutes a documented vocabulary for a state {@link #dispatch} makes
+ * unreachable — so it escalates to {@code ERROR} instead, naming the future edit that broke the assumption.
+ * Stated here rather than left as a silent exception to the sentence above, because a claim about this
+ * class's accounting that its code does not honour is the exact defect #442 was filed to correct.
  *
  * <p>The per-line half is where this class parts company with {@code RegistryMailExecutorConfig}, which
  * throttles to one escalated line per saturation episode — and the divergence is deliberate on both sides.
@@ -150,9 +162,9 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	static final String REASON_ABANDONED = "abandoned";
 
 	private final ThreadPoolTaskExecutor executor;
-	private final Counter droppedWhenSaturated;
-	private final Counter droppedWhenShuttingDown;
-	private final Counter droppedWhenAbandoned;
+	private final Map<MailKind, Counter> droppedWhenSaturated;
+	private final Map<MailKind, Counter> droppedWhenShuttingDown;
+	private final Map<MailKind, Counter> droppedWhenAbandoned;
 
 	AsyncMailDispatcher(MeterRegistry meters, MailTransportBudget budget) {
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
@@ -166,21 +178,49 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 		pool.setAwaitTerminationMillis(budget.shutdownDrain().toMillis());
 		pool.initialize();
 		this.executor = pool;
-		this.droppedWhenSaturated = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
-				REASON_SATURATED);
-		this.droppedWhenShuttingDown = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
-				REASON_SHUTDOWN);
-		this.droppedWhenAbandoned = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
-				REASON_ABANDONED);
+		this.droppedWhenSaturated = countersFor(meters, REASON_SATURATED);
+		this.droppedWhenShuttingDown = countersFor(meters, REASON_SHUTDOWN);
+		this.droppedWhenAbandoned = countersFor(meters, REASON_ABANDONED);
+	}
+
+	/**
+	 * Register one counter per kind for {@code reason}, up front. Resolving them lazily at the drop would
+	 * read the same, but a series that springs into existence on its first loss is a series no dashboard
+	 * can show at zero — and the whole point of these is to be watched while they are zero.
+	 */
+	private static Map<MailKind, Counter> countersFor(MeterRegistry meters, String reason) {
+		Map<MailKind, Counter> counters = new EnumMap<>(MailKind.class);
+		for (MailKind kind : MailKind.values()) {
+			counters.put(kind, meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, MailKind.TAG,
+					kind.tagValue(), REASON_TAG, reason));
+		}
+		return counters;
 	}
 
 	@Override
-	public void dispatch(Runnable send) {
+	public void dispatch(MailKind kind, Runnable send) {
 		try {
-			executor.execute(send);
+			executor.execute(new KindedSend(kind, send));
 		}
 		catch (TaskRejectedException e) {
-			recordDrop(e);
+			recordDrop(kind, e);
+		}
+	}
+
+	/**
+	 * A queued send paired with the flow it belongs to, so a loss can still be attributed after the fact.
+	 *
+	 * <p>It exists for {@link #accountForAbandonedSends()} alone: the two rejection paths learn the kind
+	 * from the {@code dispatch} call they are failing, but the drain reaches a task submitted long before,
+	 * by then wrapped in {@link MdcTaskDecorator}'s own carrier. Without this the {@code abandoned} reason
+	 * would be the one un-attributable third of the series — and a {@code kind} query that silently
+	 * under-counts is worse than the honest absence #442 replaced.
+	 */
+	private record KindedSend(MailKind kind, Runnable send) implements Runnable {
+
+		@Override
+		public void run() {
+			send.run();
 		}
 	}
 
@@ -189,24 +229,23 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	 * the caller's request thread, whose response the send may not influence (D-8). Neither line carries the
 	 * address or the link (invariant #7); the correlation id rides the MDC.
 	 *
-	 * <p>Neither line says who must act, because this class cannot know: it dispatches an opaque
-	 * {@code Runnable} and never sees the kind. The mechanism is the same for all of them — nothing
-	 * retries the send — but the <em>cost</em> is not: a recovery mail the person re-requests, an
-	 * approval notice nobody re-sends (ADR-0011 decision 5, amended #439). So the lines state the
-	 * mechanism and claim no more. <strong>Nothing else here supplies the attribution either</strong> —
-	 * the counter these increments feed carries {@code reason} only — so a lost approval notice is
-	 * reconstructed from the approval log, not from this signal (#442).
+	 * <p>Both lines name the flow, and so does the counter they accompany (#442). The mechanism is the
+	 * same for every kind — nothing retries the send — but the <em>cost</em> is not: a recovery mail the
+	 * person re-requests, an approval notice nobody re-sends (ADR-0011 decision 5, amended #439), and the
+	 * remedy differs accordingly. The kind is the most the platform can say without breaking invariant #7:
+	 * it names which flow was lost, never whose mail, so a dropped approval notice still points at the
+	 * approval log rather than naming the operator itself.
 	 */
-	private void recordDrop(TaskRejectedException cause) {
+	private void recordDrop(MailKind kind, TaskRejectedException cause) {
 		if (executor.getThreadPoolExecutor().isShutdown()) {
-			droppedWhenShuttingDown.increment();
-			log.warn("Recovery email dispatch rejected during shutdown ({}); the send was dropped with nothing "
-					+ "to retry from", cause.getClass().getSimpleName());
+			droppedWhenShuttingDown.get(kind).increment();
+			log.warn("The {} mail's dispatch was rejected during shutdown ({}); the send was dropped with "
+					+ "nothing to retry from", kind.tagValue(), cause.getClass().getSimpleName());
 			return;
 		}
-		droppedWhenSaturated.increment();
-		log.error("Recovery email dispatcher saturated ({}); the send was dropped with nothing to retry from",
-				cause.getClass().getSimpleName());
+		droppedWhenSaturated.get(kind).increment();
+		log.error("Recovery email dispatcher saturated ({}); the {} mail was dropped with nothing to retry from",
+				cause.getClass().getSimpleName(), kind.tagValue());
 	}
 
 	@Override
@@ -247,15 +286,29 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	 * the application context, which in production is a shutdown thread with no request of its own to name
 	 * (and whatever context it does carry is restored afterwards, not cleared — see {@link MdcTaskDecorator}).
 	 * Invariant #7 keeps the address and the link out of the line, so the borrowed correlation id is the
-	 * only thing left that says whose mail this was.
+	 * only thing left that says whose mail this was — and, since #442, the kind, which says which flow.
+	 *
+	 * <p>The kind is read back through two wrappers: {@link MdcTaskDecorator}'s carrier, applied by the pool
+	 * inside {@code execute}, around the {@link KindedSend} this class queued. Nothing else can be on this
+	 * queue — {@link #dispatch} is the only path onto it, and the executor is private to this class — so the
+	 * unmatched branch is a defect in a future edit rather than a state the running system reaches. It is
+	 * reported as one instead of being swallowed: a silent loss here is precisely what this counter exists
+	 * to end. It deliberately invents <strong>no</strong> tag value for the case, because a documented
+	 * vocabulary gaining a member that means "we lost track" is how the next runbook sentence becomes false.
 	 */
-	private void recordAbandonment(Runnable send) {
-		droppedWhenAbandoned.increment();
-		MdcTaskDecorator.inContextOf(send, AsyncMailDispatcher::logAbandonment);
+	private void recordAbandonment(Runnable queued) {
+		if (!(MdcTaskDecorator.payloadOf(queued) instanceof KindedSend(MailKind kind, Runnable ignored))) {
+			log.error("A queued mail was discarded at shutdown but is not one this dispatcher submitted, so "
+					+ "the loss cannot be attributed; {} must be reachable only through dispatch(...)",
+					queued.getClass().getSimpleName());
+			return;
+		}
+		droppedWhenAbandoned.get(kind).increment();
+		MdcTaskDecorator.inContextOf(queued, () -> logAbandonment(kind));
 	}
 
-	private static void logAbandonment() {
-		log.warn("Recovery email still queued when the shutdown drain window expired; the send was discarded "
-				+ "with the pool and nothing retries it");
+	private static void logAbandonment(MailKind kind) {
+		log.warn("The {} mail was still queued when the shutdown drain window expired; the send was discarded "
+				+ "with the pool and nothing retries it", kind.tagValue());
 	}
 }
