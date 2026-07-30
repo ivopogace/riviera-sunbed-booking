@@ -40,8 +40,12 @@ public final class ObservabilityMetrics {
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
 
 	/**
-	 * Counter: recovery mails (email verification, password reset) the bounded in-memory dispatcher
-	 * <strong>never ran</strong>, and therefore never sent (#415, widened by #434). The sibling
+	 * Counter: mails the bounded in-memory dispatcher <strong>never ran</strong>, and therefore never
+	 * sent (#415, widened by #434). <strong>"Recovery" in this name is the vehicle, not the flow</strong>
+	 * — it was coined when that dispatcher carried only email verification and password reset; since
+	 * #375 it also carries the operator-approval notice, which is no recovery flow at all. The name
+	 * stays because renaming a shipped metric breaks whatever reads it, so the {@code kind} tag is what
+	 * separates the flows. The sibling
 	 * {@link #MAIL_REGISTRY_SHED} reserved this name and declined to declare it, on the rule that a name
 	 * ships with the emitter that gives it meaning.
 	 *
@@ -83,8 +87,10 @@ public final class ObservabilityMetrics {
 	 * up on, respectively. ("Never ran" rather than "refused" since #434 widened the first of those —
 	 * see {@link #MAIL_RECOVERY_DROPPED}.)
 	 *
-	 * <p>Carries two tags. {@code kind} (verification / password-reset) separates the two recovery
-	 * flows, which have different urgency and different rate-limit budgets. {@code reason} separates
+	 * <p>Carries two tags. {@code kind} (verification / password-reset / operator-approved) separates
+	 * the flows, which differ in urgency, in rate-limit budget, and — since #375 — in whether the loss
+	 * is self-healing at all: a lost recovery mail is re-requestable, a lost approval notice is not.
+	 * As on {@link #MAIL_RECOVERY_DROPPED}, "recovery" here names the vehicle. {@code reason} separates
 	 * the two causes the one swallowing catch can produce: a dead relay, and a structurally broken
 	 * suppression lookup that loses the mail before the relay is ever reached (#386's fail-open is
 	 * scoped to <em>transient</em> failures, so a broken grant or schema drift still drops the send).

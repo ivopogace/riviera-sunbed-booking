@@ -36,4 +36,11 @@ public interface Mailer {
 	 * details structured rather than pre-rendered, so presentation stays the implementation's business.
 	 */
 	void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation);
+
+	/**
+	 * Send the "your operator account is approved" message with the sign-in link (#375). The only kind
+	 * on this port carrying no bearer credential at all, so the mock's dev-only link echo needs no
+	 * invariant-#7 argument here.
+	 */
+	void sendOperatorApproved(String toEmail, URI signInLink);
 }

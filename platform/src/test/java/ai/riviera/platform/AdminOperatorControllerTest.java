@@ -12,13 +12,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -55,6 +58,8 @@ class AdminOperatorControllerTest {
 
 	private static final String SUSPEND = "/api/admin/operators/{id}/suspend";
 	private static final String REINSTATE = "/api/admin/operators/{id}/reinstate";
+	private static final String APPROVE = "/api/admin/operators/{id}/approve";
+	private static final String REJECT = "/api/admin/operators/{id}/reject";
 	private static final String ADMIN_USERNAME = "operator";
 	private static final String TARGET_USERNAME = "adriatica";
 	/** {@code WebSliceStubs#operatorDirectory} resolves every principal to id 1 — so the admin is 1. */
@@ -69,6 +74,10 @@ class AdminOperatorControllerTest {
 
 	@MockitoBean
 	PrincipalSessionRevoker sessionRevoker;
+
+	/** Overrides {@link WebSliceStubs}' inert no-op so the approval mail is observable (#375). */
+	@MockitoBean
+	MailSender mails;
 
 	/**
 	 * #357: the revoke must run <strong>before</strong> the status transition commits. Ordered the other
@@ -165,6 +174,57 @@ class AdminOperatorControllerTest {
 		verify(lifecycle, never()).activeUsername(any());
 		verify(lifecycle, never()).suspend(any());
 		verify(sessionRevoker, never()).revokeAll(anyString());
+	}
+
+	/**
+	 * AC-4's edge half (#375): the mail is issued <strong>after</strong> the transition, so it cannot
+	 * influence what the admin is told. The complementary half — that a dead relay is swallowed and
+	 * counted rather than raised — is pinned at the chokepoint by {@code TransactionalMailServiceTest},
+	 * which is where the swallow actually lives; asserting it again here by forcing
+	 * {@link MailSender} to throw would only test a contract violation that cannot occur.
+	 */
+	@Test
+	void approveMailsTheOperatorAfterTheTransition() throws Exception {
+		when(lifecycle.approve(TARGET)).thenReturn(new ApprovalOutcome.Approved("owner@vala-beach.example"));
+
+		mvc.perform(isolated(post(APPROVE, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isNoContent());
+
+		InOrder ordered = inOrder(lifecycle, mails);
+		ordered.verify(lifecycle).approve(TARGET);
+		ordered.verify(mails).sendOperatorApproved(eq("owner@vala-beach.example"), any());
+	}
+
+	/** An approval that did not happen mails nothing — the address only rides the winning transition. */
+	@Test
+	void aRefusedApprovalMailsNothing() throws Exception {
+		when(lifecycle.approve(TARGET)).thenReturn(new ApprovalOutcome.NotPending());
+
+		mvc.perform(isolated(post(APPROVE, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isConflict());
+
+		verify(mails, never()).sendOperatorApproved(anyString(), any());
+	}
+
+	/** The three wire answers are unchanged by the sealed rewrite — the parity claim, asserted. */
+	@Test
+	void theApprovalStatusMappingIsUnchanged() throws Exception {
+		when(lifecycle.approve(TARGET)).thenReturn(new ApprovalOutcome.NotPending());
+		mvc.perform(isolated(post(APPROVE, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("NOT_PENDING"));
+
+		when(lifecycle.approve(TARGET)).thenReturn(new ApprovalOutcome.NoSuchOperator());
+		mvc.perform(isolated(post(APPROVE, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_OPERATOR"));
+
+		when(lifecycle.reject(TARGET)).thenReturn(new ApprovalOutcome.Rejected());
+		mvc.perform(isolated(post(REJECT, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isNoContent());
+
+		// Rejection mails nothing — the one lifecycle transition that could plausibly have grown a mail.
+		verify(mails, never()).sendOperatorApproved(anyString(), any());
 	}
 
 	private void givenTheTargetIsActive() {

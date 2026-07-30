@@ -14,6 +14,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.domain.OperatorStatus;
+import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
@@ -142,14 +143,70 @@ class OperatorLifecycleIT {
 		assertInstanceOf(OperatorLifecycleOutcome.Changed.class, lifecycle.suspend(id));
 	}
 
+	/**
+	 * #375: the approval outcome reports the address the operator registered with, so the edge can mail
+	 * it the "you can sign in now" notice without a second read — the same reasoning that put the
+	 * username on {@link OperatorLifecycleOutcome.Changed} (#128/#357). The address comes from the
+	 * {@code RETURNING} clause of the PENDING-guarded {@code UPDATE}, which is what ties it to the call
+	 * that actually flipped the row rather than to the id that was asked about.
+	 */
+	@Test
+	void approveActivatesAPendingOperatorAndReportsItsContactEmail() {
+		OperatorId id = insertOperator("lifecycle-approve", OperatorStatus.PENDING);
+
+		assertEquals(new ApprovalOutcome.Approved("lifecycle-approve@example.com"), lifecycle.approve(id));
+		assertEquals(OperatorStatus.ACTIVE.name(), statusOf(id));
+	}
+
+	/**
+	 * The exactly-once guarantee behind AC-2, stated where it is actually enforced: a second approval
+	 * loses the {@code WHERE status = PENDING} guard, so it returns no row and therefore no address —
+	 * there is nothing for the edge to mail twice, and no ordering at the edge has to arrange that.
+	 */
+	@Test
+	void aSecondApproveIsNotPendingAndCarriesNoAddress() {
+		OperatorId id = insertOperator("lifecycle-approve-twice", OperatorStatus.PENDING);
+		lifecycle.approve(id);
+
+		assertEquals(new ApprovalOutcome.NotPending(), lifecycle.approve(id));
+		assertEquals(new ApprovalOutcome.NoSuchOperator(), lifecycle.approve(new OperatorId(-1L)));
+		assertEquals(OperatorStatus.ACTIVE.name(), statusOf(id));
+	}
+
+	@Test
+	void rejectMovesAPendingOperatorToRejectedAndCarriesNoAddress() {
+		OperatorId id = insertOperator("lifecycle-reject", OperatorStatus.PENDING);
+
+		assertEquals(new ApprovalOutcome.Rejected(), lifecycle.reject(id));
+		assertEquals(new ApprovalOutcome.NotPending(), lifecycle.reject(id));
+		assertEquals(OperatorStatus.REJECTED.name(), statusOf(id));
+	}
+
+	/**
+	 * {@code contact_email} is nullable (V29 — the env-managed bootstrap admin has none), so the outcome
+	 * has to survive a row that carries no address. Reaching this state through self-registration is not
+	 * possible today (the edge requires a non-blank one), which is exactly why it is pinned here: the
+	 * schema still permits the row, so the edge's guard must have something to guard against.
+	 */
+	@Test
+	void approveReportsANullAddressWhenTheRowCarriesNone() {
+		OperatorId id = insertOperator("lifecycle-approve-no-email", OperatorStatus.PENDING, null);
+
+		assertEquals(new ApprovalOutcome.Approved(null), lifecycle.approve(id));
+	}
+
 	private OperatorId insertOperator(String username, OperatorStatus status) {
+		return insertOperator(username, status, username + "@example.com");
+	}
+
+	private OperatorId insertOperator(String username, OperatorStatus status, String contactEmail) {
 		long id = jdbc.sql("""
 				INSERT INTO operator (username, status, contact_email)
 				VALUES (:username, :status, :email) RETURNING id
 				""")
 				.param("username", username)
 				.param("status", status.name())
-				.param("email", username + "@example.com")
+				.param("email", contactEmail)
 				.query(Long.class)
 				.single();
 		return new OperatorId(id);

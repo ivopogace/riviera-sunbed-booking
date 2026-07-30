@@ -115,6 +115,11 @@ class MailSenderWiringIT {
 			record();
 		}
 
+		@Override
+		public void sendOperatorApproved(String toEmail, URI signInLink) {
+			record();
+		}
+
 		private void record() {
 			sendThread.set(Thread.currentThread().getName());
 			sent.countDown();

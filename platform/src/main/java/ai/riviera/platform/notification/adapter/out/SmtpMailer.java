@@ -35,6 +35,7 @@ class SmtpMailer implements Mailer {
 	private static final String VERIFICATION_SUBJECT = "Verify your email";
 	private static final String RESET_SUBJECT = "Reset your password";
 	private static final String CONFIRMATION_SUBJECT = "Your booking at %s is confirmed";
+	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
 	private static final DateTimeFormatter DATE_FORMAT =
@@ -89,6 +90,16 @@ class SmtpMailer implements Mailer {
 						DATE_FORMAT.format(confirmation.bookingDate()), confirmation.rowLabel(),
 						confirmation.positionNo(),
 						formatAmount(confirmation.amountMinor(), confirmation.currency())));
+	}
+
+	@Override
+	public void sendOperatorApproved(String toEmail, URI signInLink) {
+		send(toEmail, OPERATOR_APPROVED_SUBJECT, """
+				Your operator account has been approved — you can sign in now:
+
+				%s
+
+				Signing in for the first time takes you to venue onboarding.""".formatted(signInLink));
 	}
 
 	/**

@@ -50,7 +50,9 @@ import static org.mockito.Mockito.when;
 class TransactionalMailServiceTest {
 
 	private static final String EMAIL = "tourist@example.com";
+	private static final String OPERATOR_EMAIL = "owner@vala-beach.example";
 	private static final URI LINK = URI.create("https://riviera.example/account/reset?token=t");
+	private static final URI SIGN_IN_LINK = URI.create("https://riviera.example/account/sign-in");
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
 
@@ -191,6 +193,57 @@ class TransactionalMailServiceTest {
 		assertThat(logs.list).isNotEmpty().allSatisfy(event -> assertThat(event.getFormattedMessage())
 				.doesNotContain(EMAIL)
 				.doesNotContain(LINK.toString()));
+	}
+
+	/**
+	 * The vehicle's first <strong>non-recovery</strong> kind (#375). It carries no bearer credential —
+	 * a plain sign-in link — and yet it rides this dispatcher rather than the registry, because the
+	 * payload is not the only thing ADR-0011 decision 5 reads: it is edge-orchestrated from an admin
+	 * request, not driven by a domain fact, so a registry publication would be ceremony carrying a
+	 * message back to the very edge that issued it (epic #367). What matters is that it inherits the
+	 * vehicle's whole contract unchanged, starting here — off the caller's thread, so the mail can
+	 * neither slow nor fail the approval request that triggered it.
+	 */
+	@Test
+	void dispatchesTheOperatorApprovedSendToo() {
+		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+
+		verify(mailer, never()).sendOperatorApproved(any(), any());
+		dispatched.get().run();
+		verify(mailer).sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+	}
+
+	/**
+	 * The counter's {@code kind} tag is what keeps this addition honest: the series is named
+	 * {@code riviera.mail.recovery.failed} after the <em>vehicle</em>, not the flow, so an
+	 * operator-approval loss must be legible as its own kind rather than inflating a tourist
+	 * recovery flow's numbers.
+	 */
+	@Test
+	void anOperatorApprovedTransportFailureIsSwallowedAndCounted() {
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendOperatorApproved(any(), any());
+		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		assertThat(failedFor(TransactionalMailService.KIND_OPERATOR_APPROVED,
+				TransactionalMailService.REASON_TRANSPORT)).isEqualTo(1);
+		assertThat(failedFor(TransactionalMailService.KIND_PASSWORD_RESET,
+				TransactionalMailService.REASON_TRANSPORT))
+				.as("a non-recovery loss must not read as a recovery one").isZero();
+		assertThat(failedTotal()).as("exactly one loss, counted once").isEqualTo(1);
+	}
+
+	/** The module's defining invariant reaches the new kind for free — it goes through the chokepoint. */
+	@Test
+	void anOperatorApprovedMailToASuppressedAddressIsSkipped() {
+		when(suppressions.isSuppressed(OPERATOR_EMAIL)).thenReturn(true);
+
+		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendOperatorApproved(any(), any());
+		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
 	}
 
 	@Test
