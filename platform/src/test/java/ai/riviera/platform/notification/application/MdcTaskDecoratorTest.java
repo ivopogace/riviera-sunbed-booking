@@ -91,6 +91,53 @@ class MdcTaskDecoratorTest {
 				.isNull();
 	}
 
+	/**
+	 * #434's addition: a thread that is <em>not</em> the worker — the one closing the context and accounting
+	 * for the sends it is discarding — has to be able to speak for a task it will never run. Without this the
+	 * abandonment lines would carry the closing thread's own context, which in production names no request
+	 * at all, and the #415 per-loss rule would be N identical lines saying nothing.
+	 */
+	@Test
+	void runsAnActionUnderTheContextADecoratedTaskWasSubmittedWith() {
+		AtomicReference<String> seen = new AtomicReference<>();
+		MDC.put(CORRELATION_KEY, "corr-1");
+		Runnable decorated = decorator.decorate(() -> { });
+		MDC.clear();
+
+		MdcTaskDecorator.inContextOf(decorated, () -> seen.set(MDC.get(CORRELATION_KEY)));
+
+		assertThat(seen.get())
+				.as("the task never runs, so its context is the only thing left that says whose mail it was")
+				.isEqualTo("corr-1");
+	}
+
+	@Test
+	void runsTheActionPlainlyForATaskItDidNotDecorate() {
+		AtomicBoolean ran = new AtomicBoolean();
+
+		MdcTaskDecorator.inContextOf(() -> { }, () -> ran.set(true));
+
+		assertThat(ran).as("an undecorated task carries no context, but the accounting must still happen")
+				.isTrue();
+	}
+
+	/**
+	 * Restoring rather than clearing matters only off the pool: a worker's context is empty when the task
+	 * starts, so the two are identical there, while the shutdown thread has its own and must keep it.
+	 */
+	@Test
+	void restoresWhateverContextTheRunningThreadAlreadyHad() {
+		MDC.put(CORRELATION_KEY, "corr-1");
+		Runnable decorated = decorator.decorate(() -> { });
+		MDC.put(CORRELATION_KEY, "the-running-thread");
+
+		MdcTaskDecorator.inContextOf(decorated, () -> { });
+
+		assertThat(MDC.get(CORRELATION_KEY))
+				.as("borrowing a lost send's context must not relabel the borrower's own lines")
+				.isEqualTo("the-running-thread");
+	}
+
 	@Test
 	void toleratesAnAbsentCallerContext() throws Exception {
 		AtomicBoolean ran = new AtomicBoolean();

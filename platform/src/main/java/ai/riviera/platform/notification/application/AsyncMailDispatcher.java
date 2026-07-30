@@ -1,5 +1,8 @@
 package ai.riviera.platform.notification.application;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import io.micrometer.core.instrument.Counter;
@@ -86,6 +89,16 @@ import org.springframework.stereotype.Component;
  * instead, so a routine redeploy cannot read as a degraded relay: only {@link #REASON_SATURATED} escalates
  * to {@code ERROR} and warrants investigating the relay.
  *
+ * <p><strong>A redeploy loses mail two ways, and both are this counter's</strong> (#434). The rejection
+ * above is the send that arrived too late; {@link #REASON_ABANDONED} — see {@link #accountForAbandonedSends()}
+ * — is the send that arrived in time and was still queued when the drain window expired. They differ only in
+ * whether {@code execute} had already returned, which is invisible to the user and irrelevant to the remedy,
+ * so they are two reasons on one series rather than two series. That also keeps the taxonomy consistent with
+ * #423's split, which is not refusal-versus-acceptance but <em>attempted versus never attempted</em>:
+ * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} is the send the transport ran and lost, and every reason
+ * here is a send this pool never ran. Read {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} as
+ * "never ran", then, never as "refused".
+ *
  * <p><strong>The shutdown drain is derived from the relay budget, and expiring it means giving up</strong>
  * (#410). The window is {@link MailTransportBudget#shutdownDrain()} rather than the 5-second literal #369
  * shipped, which was smaller than the budget one degraded send can legitimately occupy — so a redeploy
@@ -94,7 +107,9 @@ import org.springframework.stereotype.Component;
  * a send that already handed the message to the relay from one that has not, and interrupting the first is
  * how at-least-once becomes a duplicate. The cost lands differently here than for the registry vehicle,
  * though, and that asymmetry is the same one as everywhere else in this class — an abandoned recovery send
- * has no publication to be republished from, so it is simply a mail the user must re-request.
+ * has no publication to be republished from, so it is simply a mail the user must re-request. Which is why
+ * #434 made it visible: the registry's equivalent shows up in {@code riviera.outbox.pending}, and this one
+ * showed up nowhere until {@link #accountForAbandonedSends()} counted it.
  *
  * <p><strong>The cause is read after the rejection, and that race is one-directional by construction.</strong>
  * {@code execute} throws before {@link #recordDrop} can ask why, so a saturation rejection coinciding with a
@@ -126,9 +141,13 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	/** A redeploy outran an in-flight request. Still a lost mail, but no relay is at fault. */
 	static final String REASON_SHUTDOWN = "shutdown";
 
+	/** A redeploy outran the queue: accepted, never started, discarded when the drain window expired. */
+	static final String REASON_ABANDONED = "abandoned";
+
 	private final ThreadPoolTaskExecutor executor;
 	private final Counter droppedWhenSaturated;
 	private final Counter droppedWhenShuttingDown;
+	private final Counter droppedWhenAbandoned;
 
 	AsyncMailDispatcher(MeterRegistry meters, MailTransportBudget budget) {
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
@@ -146,6 +165,8 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 				REASON_SATURATED);
 		this.droppedWhenShuttingDown = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
 				REASON_SHUTDOWN);
+		this.droppedWhenAbandoned = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
+				REASON_ABANDONED);
 	}
 
 	@Override
@@ -178,5 +199,50 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	@Override
 	public void destroy() {
 		executor.shutdown();
+		accountForAbandonedSends();
+	}
+
+	/**
+	 * Account for every send the drain window did not reach (#434). {@code shutdown()} above has already
+	 * awaited that window and given up, so anything still queued is a mail nobody will ever send and
+	 * nothing else will ever see: {@code execute} returned normally (neither rejection reason fires), the
+	 * task never ran ({@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} cannot), and this vehicle keeps no
+	 * durable copy, so {@code riviera.outbox.pending} has nothing to carry either.
+	 *
+	 * <p><strong>Draining is what makes the count true, and it is not an interrupt.</strong> The pool is
+	 * still <em>running</em> here — awaiting termination timed out, it did not stop the threads — so a send
+	 * merely counted and left in place could still execute, and the counter would then report a loss that
+	 * did not happen. {@code drainTo} makes the count and the loss the same event while touching only the
+	 * queue, which is exactly the part {@code shutdownNow()} would have returned anyway; the decision not
+	 * to call it (#410, above) is untouched. Racing the drainer for an element is harmless in both
+	 * directions: a {@code BlockingQueue} hands each task to exactly one of {@code poll} and
+	 * {@code drainTo}, so it is run <em>xor</em> counted, never both and never neither.
+	 *
+	 * <p><strong>The send caught <em>running</em> is deliberately not counted.</strong> It may already have
+	 * handed the message to the relay — the ambiguity that made give-up the right call — so charging it
+	 * here would over-report a mail that arrived. The runbook states that exclusion rather than leaving the
+	 * series to read as "every mail lost at shutdown".
+	 */
+	private void accountForAbandonedSends() {
+		List<Runnable> abandoned = new ArrayList<>();
+		executor.getThreadPoolExecutor().getQueue().drainTo(abandoned);
+		abandoned.forEach(this::recordAbandonment);
+	}
+
+	/**
+	 * One line per loss, under the abandoned send's <em>own</em> context: this runs on the thread closing
+	 * the application context, which in production is a shutdown thread with no request of its own to name
+	 * (and whatever context it does carry is restored afterwards, not cleared — see {@link MdcTaskDecorator}).
+	 * Invariant #7 keeps the address and the link out of the line, so the borrowed correlation id is the
+	 * only thing left that says whose mail this was.
+	 */
+	private void recordAbandonment(Runnable send) {
+		droppedWhenAbandoned.increment();
+		MdcTaskDecorator.inContextOf(send, AsyncMailDispatcher::logAbandonment);
+	}
+
+	private static void logAbandonment() {
+		log.warn("Recovery email still queued when the shutdown drain window expired; the send was discarded "
+				+ "with the pool and the user must re-request");
 	}
 }

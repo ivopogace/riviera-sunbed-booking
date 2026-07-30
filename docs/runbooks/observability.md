@@ -67,7 +67,7 @@ below makes the opposite call, for a reason** — see its note.
 ### `riviera_mail_recovery_dropped_total` (counter, #415)
 
 The other vehicle's loss. A **verification or password-reset** mail the bounded in-memory dispatcher
-(#369) could not accept, and therefore never sent.
+(#369) **never ran**, and therefore never sent.
 
 **Read one increment as: one person asked for a reset or verification link, got a `200`, and no mail
 is coming.** They recover only by requesting again — and nothing will tell them to. This is the
@@ -82,6 +82,22 @@ may not persist (ADR-0011 decision 5), so there is nothing to retry from, by des
 |---|---|---|
 | `reason="saturated"` | The dispatcher's single drainer was busy and all 100 queue slots were full. The relay is degraded or too slow for current volume | **any increase.** Diagnose the relay — this is the actionable one |
 | `reason="shutdown"` | A redeploy outran an in-flight request: the pool stopped accepting before the request reached it. The mail is still lost, but no relay is at fault | not on its own. Expect ones and twos around a deploy; a *sustained* rise means requests are arriving long after shutdown begins |
+| `reason="abandoned"` (#434) | A redeploy outran the **queue**: the send was accepted, never started, and was discarded when the drain window expired. Same deploy, the other side of `execute()` — and bounded by how deep the queue was at SIGTERM, so normally zero or one | not on its own. A *sustained* rise means recovery volume has outgrown a single drainer thread, which nothing else makes visible |
+
+**"Never ran" is the line, not "refused" — which is why `abandoned` belongs here.** It was *accepted*,
+unlike its two siblings, and it still sits in this counter because the split #423 drew between this
+name and `riviera_mail_recovery_failed_total` is **attempted versus never attempted**: `failed` is the
+send the transport ran and lost. Every reason above is a send this pool never ran, so the total is
+answerable as one question — "how many recovery mails did the dispatcher never send?" — and the tag
+says which of the three ways. **Do not** read a rise in `abandoned` as a relay problem; read it as a
+deploy that arrived mid-queue.
+
+**One shutdown loss is deliberately in no counter: the send caught *running* when the window expires.**
+The pool gives up rather than interrupting it (#410) precisely because an interrupt cannot tell a send
+that already handed the message to the relay from one that has not — and for the same reason the
+platform cannot say whether it was lost. Counting it would over-report a mail that arrived. So this
+counter means *every recovery mail the pool never started*, and at most one send per redeploy sits
+outside it.
 
 **Why a shutdown rejection is counted here but not for the registry vehicle.** The registry excludes
 it because a shed-at-shutdown send loses nothing. Here it is a genuine loss — `server.shutdown` is
@@ -93,8 +109,10 @@ from reading as an outage: **alert on `reason="saturated"`, track the total.**
 **Logging is one line per drop — deliberately, and the inverse of the shed counter's throttle.** A
 throttle trades repeated lines for the durable record that makes them redundant; the registry has
 that record and this vehicle has none, so each line here is the only per-loss artefact that exists,
-carrying in its MDC the correlation id of the request whose user is still waiting. Only
-`reason="saturated"` escalates to `ERROR`; the shutdown race stays `WARN`. Neither line carries the
+carrying in its MDC the correlation id of the request whose user is still waiting. That holds for
+`abandoned` too, though it takes machinery: those lines are emitted on the thread closing the context,
+so each borrows the context of the send it is discarding rather than having one of its own. Only
+`reason="saturated"` escalates to `ERROR`; both redeploy reasons stay `WARN`. No line carries the
 address or the link (invariant #7).
 
 > **A relay outage does *not* show up here first.** Saturating this pool needs 100 sends queued at
@@ -108,8 +126,8 @@ password-reset** mail the dispatcher **accepted** and then could not deliver.
 
 **Read one increment as: the same thing a `dropped` increment means to the user** — they asked for a
 link, got a `200`, and no mail is coming — **but a different thing to you.** `dropped` says the
-dispatcher refused the work. This says the work was taken and then failed. Only one of those is
-about the relay.
+dispatcher never ran the work — it refused it at submit, or discarded it unrun at shutdown. This says
+the work was taken, ran, and failed. Only one of those is about the relay.
 
 | Tag | Meaning | Alert when |
 |---|---|---|
@@ -248,10 +266,12 @@ combined overrun, since nothing else would.
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
 vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so
 expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
-vehicle it is a lost mail the user must re-request, and note that it is **not** counted by
-`riviera.mail.recovery.dropped`, which counts *rejections*, not abandonment at shutdown. The
-non-interruption is deliberate: an interrupt cannot tell a send that already handed off to the relay
-from one that has not, and interrupting the first is how at-least-once becomes a duplicate mail.
+vehicle it is a lost mail the user must re-request. Since #434 the sends still **queued** at that
+moment are counted — `riviera.mail.recovery.dropped{reason="abandoned"}`, one `WARN` line each,
+carrying the submitting request's correlation id — and the one caught **running** deliberately is not,
+because it may already have reached the relay. The non-interruption is deliberate for that same
+reason: an interrupt cannot tell a send that already handed off to the relay from one that has not, and
+interrupting the first is how at-least-once becomes a duplicate mail.
 
 ## Alert route (today): in-app self-check → ERROR log
 

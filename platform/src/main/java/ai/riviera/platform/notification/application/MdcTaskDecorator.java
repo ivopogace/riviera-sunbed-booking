@@ -34,6 +34,12 @@ import org.springframework.core.task.TaskDecorator;
  * <em>worker's</em> own (empty) context, which is a change that keeps every naive propagation test green
  * whenever submitter and worker happen to be the same thread.
  *
+ * <p><strong>The decorated task is a named type, not a lambda</strong> (#434), because one caller needs
+ * the captured context <em>without</em> running the task: {@link AsyncMailDispatcher}, accounting on the
+ * closing thread for the sends it is discarding at shutdown. Those lines are emitted where no request
+ * context exists, so {@link #inContextOf} lends them the one the abandoned send still carries — otherwise
+ * the per-loss rule they follow would produce identical lines that name nobody.
+ *
  * <p>Public because both vehicles use it from different packages and {@code adapter/in → application}
  * is the permitted direction (invariant #11). Stateless, so an instance per pool is as good as a shared
  * one. A pool that already has a decorator must <strong>compose</strong> rather than replace — see
@@ -43,17 +49,57 @@ public final class MdcTaskDecorator implements TaskDecorator {
 
 	@Override
 	public Runnable decorate(Runnable task) {
-		Map<String, String> callerContext = MDC.getCopyOfContextMap();
-		return () -> {
+		return new ContextCarryingTask(task, MDC.getCopyOfContextMap());
+	}
+
+	/**
+	 * Run {@code action} under the logging context {@code task} was submitted with, restoring the running
+	 * thread's own afterwards. A task this decorator did not produce simply carries none, so the action
+	 * runs as it would have anyway — accounting for a loss must never depend on it.
+	 */
+	public static void inContextOf(Runnable task, Runnable action) {
+		if (task instanceof ContextCarryingTask carried) {
+			carried.inCallerContext(action);
+			return;
+		}
+		action.run();
+	}
+
+	/**
+	 * A submitted task paired with its submitter's logging context. Private: the context is reachable only
+	 * through {@link #inContextOf}, so no caller can read it out and log it somewhere unbounded.
+	 *
+	 * <p>The context is <strong>restored</strong> rather than cleared afterwards. On a pooled worker the
+	 * two are the same — the thread's context is empty when a task starts, because the previous task
+	 * restored it — and the difference exists for the one caller that is not a worker: the shutdown thread,
+	 * whose own context must survive the lines it emits for other people's mail.
+	 */
+	private record ContextCarryingTask(Runnable task, Map<String, String> callerContext) implements Runnable {
+
+		@Override
+		public void run() {
+			inCallerContext(task);
+		}
+
+		private void inCallerContext(Runnable action) {
+			Map<String, String> ownContext = MDC.getCopyOfContextMap();
 			if (callerContext != null) {
 				MDC.setContextMap(callerContext);
 			}
 			try {
-				task.run();
+				action.run();
 			}
 			finally {
-				MDC.clear();
+				restore(ownContext);
 			}
-		};
+		}
+
+		private static void restore(Map<String, String> context) {
+			if (context == null) {
+				MDC.clear();
+				return;
+			}
+			MDC.setContextMap(context);
+		}
 	}
 }

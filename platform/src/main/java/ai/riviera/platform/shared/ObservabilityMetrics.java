@@ -41,9 +41,9 @@ public final class ObservabilityMetrics {
 
 	/**
 	 * Counter: recovery mails (email verification, password reset) the bounded in-memory dispatcher
-	 * could not accept and therefore dropped (#415). The sibling {@link #MAIL_REGISTRY_SHED} reserved
-	 * this name and declined to declare it, on the rule that a name ships with the emitter that gives
-	 * it meaning.
+	 * <strong>never ran</strong>, and therefore never sent (#415, widened by #434). The sibling
+	 * {@link #MAIL_REGISTRY_SHED} reserved this name and declined to declare it, on the rule that a name
+	 * ships with the emitter that gives it meaning.
 	 *
 	 * <p><strong>It measures a strictly worse event than the shed does.</strong> A shed registry mail
 	 * is deferred — its event publication stays outstanding and a restart republishes it. A dropped
@@ -52,18 +52,26 @@ public final class ObservabilityMetrics {
 	 * re-requesting. Read an increment as exactly that: one person who asked for a reset or
 	 * verification link and will wait for a mail that is never coming.
 	 *
-	 * <p>Carries a {@code reason} tag distinguishing a saturated pool (a degraded relay — act) from a
-	 * shutdown race (a redeploy outran an in-flight request — expected in ones and twos). Both are
-	 * real losses, so both are counted; the tag is what keeps a deploy from reading as an outage. The
-	 * emitter owns the tag's vocabulary — see {@code AsyncMailDispatcher} and the observability
-	 * runbook.
+	 * <p>Carries a {@code reason} tag distinguishing a saturated pool (a degraded relay — act) from the
+	 * two ways a redeploy loses a mail: the request that reached a closed pool ({@code shutdown}), and
+	 * the send that was accepted but still queued when the drain window expired ({@code abandoned},
+	 * #434). All three are real losses, so all three are counted; the tag is what keeps a deploy from
+	 * reading as an outage.
+	 *
+	 * <p><strong>"Never ran" is the line between this counter and {@link #MAIL_RECOVERY_FAILED}, not
+	 * "refused"</strong> — {@code abandoned} was accepted and still belongs here, because the split
+	 * #423 drew is <em>attempted versus never attempted</em>. One loss at shutdown is deliberately in
+	 * neither: the send caught <em>running</em> when the window expires may already have reached the
+	 * relay, so counting it would over-report a mail that arrived. The emitter owns the tag's
+	 * vocabulary and that exclusion — see {@code AsyncMailDispatcher} and the observability runbook.
 	 */
 	public static final String MAIL_RECOVERY_DROPPED = "riviera.mail.recovery.dropped";
 
 	/**
 	 * Counter: recovery mails the dispatcher <em>accepted</em> and then failed to deliver (#423) — the
 	 * third silent loss site, and the one that fires first in a real outage. Its sibling
-	 * {@link #MAIL_RECOVERY_DROPPED} covers the mail the dispatcher <em>refused</em>; the user cannot
+	 * {@link #MAIL_RECOVERY_DROPPED} covers the mail the dispatcher <em>never ran</em> — refused at
+	 * submit, or accepted and discarded unrun at shutdown (#434); the user cannot
 	 * tell the two apart (they asked for a link, got a {@code 200}, and nothing is coming), but an
 	 * operator very much can, and only one of them was alertable before this name existed.
 	 *
@@ -71,7 +79,9 @@ public final class ObservabilityMetrics {
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
 	 * <em>every</em> send and raises this one immediately. Do not sum the four mail counters — they
-	 * measure a deferral, a refusal, a failure and an abandonment respectively.
+	 * measure a deferral, a send the pool never ran, an attempt that failed, and a confirmation given
+	 * up on, respectively. ("Never ran" rather than "refused" since #434 widened the first of those —
+	 * see {@link #MAIL_RECOVERY_DROPPED}.)
 	 *
 	 * <p>Carries two tags. {@code kind} (verification / password-reset) separates the two recovery
 	 * flows, which have different urgency and different rate-limit budgets. {@code reason} separates
