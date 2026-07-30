@@ -86,7 +86,7 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the shipped payment-gateway client configuration, when the worst-case duration
+- [x] **AC-1:** Given the shipped payment-gateway client configuration, when the worst-case duration
       one refund can occupy a worker is derived, then the derivation is
       `(connectTimeout + readTimeout) × (1 + maxNetworkRetries)` and **each factor is pinned by an
       assertion**, not prose — today's Stripe instantiation being `(5s + 20s) × 1 = 25s`, with the
@@ -297,14 +297,14 @@ server-side and env-supplied.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1 (the bounded executor)`
 
-**Next action:** Phase 0 step 1 — write `StripeConfigTest.theRefundBudgetIsOneRoundTripWithNoSdkRetries`
-and watch it fail before asserting the budget.
+**Next action:** Phase 1 step 1 — write the three failing tests (`RefundExecutorConfigTest`,
+`RefundExecutorPropertiesTest`, `RefundExecutorWiringIT`) before the bean exists.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Establish and pin the refund budget (AC-1) | | |
+| 0 — Establish and pin the refund budget (AC-1) | ✅ | `c57b0b3` |
 | 1 — The bounded executor, its bounds, and its shed policy (AC-6, AC-7, AC-8) | | |
 | 2 — Move the listener onto it and drop the transaction (AC-2, AC-3, AC-4, AC-5) | | |
 | 3 — Make the rule structural; reconcile the substrate (AC-9) | | |
@@ -367,23 +367,23 @@ check. It is also the one artefact ADR-0009's P1 slice will delete — deliberat
 then fail to compile against the removed `StripeConfig`, which forces the re-derivation rather than
 letting a stale number ride into the Paysera era.
 
-- [ ] **Step 1: Write the failing test** — `theRefundBudgetIsOneRoundTripWithNoSdkRetries`, asserting
+- [x] **Step 1: Write the failing test** — `theRefundBudgetIsOneRoundTripWithNoSdkRetries`, asserting
       on `StripeConfig.clientBuilder(properties)` that `getConnectTimeout()` is 5 000 ms,
       `getReadTimeout()` is 20 000 ms, and `getMaxNetworkRetries()` is **0**, with the failure message
       spelling out the derivation and why a non-zero retry count multiplies the worker-occupancy
       budget the refund pool is sized against.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
       `gradle --no-daemon --console=plain test --tests "*StripeConfigTest*"` → FAIL (the method does
       not exist yet; then, once written against a deliberately wrong expectation, FAIL on the value).
-- [ ] **Step 3: Minimal implementation** — none required in `main`: the assertions describe the
+- [x] **Step 3: Minimal implementation** — none required in `main`: the assertions describe the
       shipped configuration. This phase's deliverable is the pin plus the derivation recorded in the
       test's Javadoc.
-- [ ] **Step 4: Run it, verify it passes** — the same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search for other blocking gateway calls whose duration
+- [x] **Step 4: Run it, verify it passes** — the same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — search for other blocking gateway calls whose duration
       is assumed rather than pinned (`initiate`, `cancel`): they share the same client and therefore
       the same budget; decide whether one pin covers them.
-- [ ] **Step 6: Commit** — `git commit -m "test(#404): pin the refund round-trip budget the bulkhead is sized against"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window, then **push and open
+- [x] **Step 6: Commit** — `git commit -m "test(#404): pin the refund round-trip budget the bulkhead is sized against"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window, then **push and open
       the draft PR** — the first commit exists, and CI fires on `pull_request` only (#417).
 
 ---
@@ -484,12 +484,13 @@ unbound the money path — is caught by a test that exists before the listener m
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 0 (new pattern: pinning a gateway call's occupancy budget instead of assuming it) | every blocking `StripeClient` call, to see which others have a duration the codebase reasons about but never asserts | `grep -n "stripe.v1()" platform/src/main/java` | 4 calls in `StripePaymentGateway`: `refund`, `initiate` (×2, via `createWithRecovery`), `cancel` (retrieve + cancel) | **Subset — one pin, deliberately.** The three *client-level* facts (connect timeout, read timeout, retry count) are shared by every call, so `theRefundBudgetIsOneRoundTripWithNoSdkRetries` protects all of them; a per-call pin would restate the same builder. The **per-call multiplier** differs and is worth recording rather than pinning here: `initiate` deliberately replays once on `ApiConnectionException` (#66 orphan recovery), so its worst case is **2 × 25s = 50s**, and `cancel` makes two sequential calls. Neither is in scope — `initiate` runs on a request thread (its own hazard class, already bounded by #52's timeouts) and `cancel` runs on the abandoned-payment sweep, which #395 gave a thread of its own. Only `refund` runs on the money-path spine, which is why only `refund` gets a bulkhead |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*StripeConfigTest*"` → `theRefundBudgetIsOneRoundTripWithNoSdkRetries` PASS.
+- [x] **AC-1:** Run `gradle test --tests "*StripeConfigTest*"` → `theRefundBudgetIsOneRoundTripWithNoSdkRetries` PASS. Proven non-vacuous first: asserting `1` retry failed with `expected: <1> but was: <0>`, which verified the source-reading against the real stripe-java 33.1.1 jar rather than trusting it.
 - [ ] **AC-2:** Run `gradle test --tests "*RefundBulkheadIT*"` → `wedgedRefundDoesNotDelayTheMoneyPath` PASS; pre-fix failure mode recorded.
 - [ ] **AC-3:** Run `gradle test --tests "*RefundBulkheadIT*"` → `refundsWithNoTransactionOrConnectionHeldOpen` PASS; non-vacuity proven.
 - [ ] **AC-4:** Run `gradle test --tests "*RefundBulkheadIT*"` → `aFailedRefundLeavesThePublicationOutstandingAndIsRetried` PASS.

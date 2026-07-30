@@ -73,4 +73,45 @@ class StripeConfigTest {
 		assertEquals(5000, builder.getConnectTimeout(), "connect timeout wired in milliseconds");
 		assertEquals(20000, builder.getReadTimeout(), "read timeout wired in milliseconds");
 	}
+
+	/**
+	 * The worst case one refund may occupy a worker, pinned rather than asserted in prose (#404 AC-1).
+	 *
+	 * <p>The bounds of {@code booking}'s refund executor are sized against a budget, and that budget is
+	 * a derivation over three facts this method fixes:
+	 * {@code (connectTimeout + readTimeout) × (1 + maxNetworkRetries)}. Today that is
+	 * {@code (5s + 20s) × 1 = 25s}, and {@link StripeProperties}' ceilings put the absolute worst case
+	 * at {@code (30s + 80s) × 1 = 110s}. A number written only in a Javadoc rots the first time someone
+	 * tunes a timeout; a failing test is what makes the executor's sizing argument re-examined instead.
+	 *
+	 * <p><strong>The retry factor is the one that surprises</strong>, which is why it is asserted rather
+	 * than assumed. {@code Stripe.maxNetworkRetries} is {@code 2}, and reading that constant is the easy
+	 * way to conclude a refund can take three round-trips — but it belongs to the SDK's <em>legacy
+	 * static</em> API and never reaches a {@link StripeClient}. The builder's own field is a bare
+	 * {@code int} defaulting to {@code 0}, {@link StripeConfig} never sets it, and
+	 * {@code RequestOptions.merge} falls back to the client value because
+	 * {@code StripePaymentGateway#refund} sets only an idempotency key. So a refund is exactly one
+	 * round-trip. Raising this would multiply the occupancy budget <em>and</em> add the SDK's
+	 * exponential backoff sleeps (500ms doubling, capped at 5s) on top — invisible to the pool, which
+	 * only sees a worker that will not come back.
+	 *
+	 * <p><strong>This test is deliberately gateway-specific and deliberately fragile to ADR-0009.</strong>
+	 * Epic #284 removes {@link StripeConfig} outright, so this method stops compiling on the P1 slice.
+	 * That is the intended failure: the bulkhead's sizing must be re-derived from Paysera's client
+	 * timeouts and retry policy rather than inheriting a stale 25s.
+	 */
+	@Test
+	void theRefundBudgetIsOneRoundTripWithNoSdkRetries() {
+		StripeClient.StripeClientBuilder builder = StripeConfig.clientBuilder(new StripeProperties(
+				"sk_test_123", "whsec_abc", null, null));
+
+		assertEquals(0, builder.getMaxNetworkRetries(),
+				"a refund must be ONE round-trip: the client's retry count multiplies the worst-case "
+						+ "occupancy the booking refund executor's bounds are sized against, and adds the "
+						+ "SDK's backoff sleeps on top. Stripe.maxNetworkRetries=2 is the legacy static "
+						+ "API's default and does not reach a StripeClient");
+		assertEquals(25_000, builder.getConnectTimeout() + builder.getReadTimeout(),
+				"the shipped refund budget is (5s connect + 20s read) x 1 attempt = 25s; if this moves, "
+						+ "re-derive riviera.booking.refund.queue-capacity against the new number");
+	}
 }
