@@ -293,18 +293,18 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 4)` — draft PR **#445** open, so every push is CI-gated.
+**Stage pointer:** `implement (phase 5 — docs)` — draft PR **#445** open, so every push is CI-gated.
 
-**Next action:** Phase 4 — `BookingCancellationMailIT`, the end-to-end registry path against
-Postgres (both channels, idempotency under republication, suppression).
+**Next action:** Phase 5 — the observability runbook's new counter section, `RESPONSIBILITIES.md`
+and `CLAUDE.md`; then merge `origin/main` and mark PR #445 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | `8acf653` · draft PR #445 |
 | 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | ✅ | `5cd3f37` |
 | 2 — Transport: the cancellation message kind | ✅ | `5155745` |
-| 3 — Chokepoint + the cancellation listener | ✅ | `PHASE3SHA` |
-| 4 — End-to-end registry IT | | |
+| 3 — Chokepoint + the cancellation listener | ✅ | `9f2c42a` |
+| 4 — End-to-end registry IT | ✅ | `PHASE4SHA` |
 | 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -502,6 +502,10 @@ Modify `TransactionalMailService.java`, `ObservabilityMetrics.java`,
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | Phase 1 — extracting the three-port assembly | Other multi-port assembly inside `notification` that a second caller would copy | `grep -rn "BookingNotificationFacts\|SetBookingFacts\|CustomerLookup" platform/src/main/java/ai/riviera/platform/notification` | Only `BookingConfirmationMailListener` (now the resolver) | Fixed all — one site existed, and the extraction is what stops the second from being written |
+| 2026-07-30 | Phase 2 — a new `Mailer` kind | Every implementation of the transport seam, production **and** test | `grep -rln "implements Mailer" platform/src` | `MockMailer`, `SmtpMailer`, `ControllableMailer`, `MailSenderWiringIT.RecordingMailer` | Fixed all. The two test doubles are the interesting half: `ControllableMailer` records the cancellation identically rather than no-op'ing, because a no-op would drop half the registry traffic out of every bulkhead assertion |
+| 2026-07-30 | Phase 3 — a second abandon counter | Loss counters whose `reason`/`kind` vocabulary is spelled inline per emitter | `grep -rn "\"no-booking\"\|\"no-set\"\|\"no-contact\"" platform/src/main` | Was 3 literals in one listener; now one enum read by two | Fixed at the source — `MissingBookingFact`, the #442 pattern applied before the second speller existed |
+| 2026-07-30 | Phase 4 — archive-mode read | ITs asserting on `event_publication` for a **completed** publication (archive mode moves the row) | `grep -rn "FROM event_publication\b" platform/src/test` | `BookingMailFixtures`, `BookingConfirmationMailIT`, `RegistryMailBulkheadIT` — all read it for *outstanding* rows, which is correct | Skipped: no other site makes the mistake this phase hit. Only the new completed-row assertion needed `event_publication_archive` |
 
 ---
 
