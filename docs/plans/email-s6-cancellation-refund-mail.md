@@ -315,13 +315,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `review gate — fixing findings`. All five phases built; PR **#445** ready for
+**Stage pointer:** `merge-ready — awaiting human go-ahead`. **merged via PR #445.** All five phases built; PR **#445** ready for
 review. CI 7/7 green on `1ea511b`; the **Sonar gate is green *and its reported list pulled and
 empty*** (`api/issues/search` total 0, `new_duplicated_blocks` 0, `new_coverage` 100.0 over
 `new_lines` 496 — the non-empty `new_lines` is what rules out the procedure's false-clean read).
 
-**Next action:** Finish the review-fix round in the findings register below, then the merge
-close-out (`references/pr-gates.md` §3), whose step 5 runs `riviera-docs-freshness`.
+**Next action:** Merge is the human's call — `deploy.yml` ships `main` straight to Render, so
+merging here is a production deploy. On the go-ahead: merge, then run the `references/pr-gates.md`
+§3 close-out (tick epic #367's S6 entry, close #374). Step 5's `riviera-docs-freshness` already ran
+pre-merge; its findings are F-5…F-13 below, all fixed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -414,9 +416,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `docs/plans/email-s6-cancellation-refund-mail.md`
 
-- [ ] **Step 1:** Confirm `claude/sdlc-374-whbejt` exists and is level with `origin/main`.
-- [ ] **Step 2:** Commit this plan doc — `git commit -m "docs(#374): plan the cancellation/refund confirmation email"`.
-- [ ] **Step 3:** Push, then open the **draft PR immediately** (CI fires on `pull_request` only —
+- [x] **Step 1:** Confirm `claude/sdlc-374-whbejt` exists and is level with `origin/main`.
+- [x] **Step 2:** Commit this plan doc — `git commit -m "docs(#374): plan the cancellation/refund confirmation email"`.
+- [x] **Step 3:** Push, then open the **draft PR immediately** (CI fires on `pull_request` only —
       a branch with no PR gets no CI at all, #417).
 
 ---
@@ -427,22 +429,22 @@ Skill-routing gate for what the fix touches *before* editing).
 `BookingMailFactsServiceTest.java` · Modify `BookingConfirmationMailListener.java`,
 `BookingConfirmationMailListenerTest.java`
 
-- [ ] **Step 1: Write the failing test** — `BookingMailFactsServiceTest`: resolves all five fields
+- [x] **Step 1: Write the failing test** — `BookingMailFactsServiceTest`: resolves all five fields
       from the three ports; returns `Missing(NO_BOOKING)` / `(NO_SET)` / `(NO_CONTACT)`; **and**
       asserts the short-circuit order (a missing booking leaves `sets`/`customers` untouched —
       `verifyNoInteractions`), which is the behavior-parity row that would otherwise be lost silently.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BookingMailFactsServiceTest*"` → FAIL (class absent).
-- [ ] **Step 3: Minimal implementation** — the sealed outcome, the enum, and the service (constructor
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BookingMailFactsServiceTest*"` → FAIL (class absent).
+- [x] **Step 3: Minimal implementation** — the sealed outcome, the enum, and the service (constructor
       injection into `final` fields; `public` because `adapter/in` calls it).
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Refactor the confirmation listener onto it**, rewrite its unit test to stub the
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Refactor the confirmation listener onto it**, rewrite its unit test to stub the
       resolver, and keep `abandon(...)` (wording is confirmation-specific) sourcing its tag from
       `MissingBookingFact`. Re-run `--tests "*BookingConfirmationMailListenerTest*"` → PASS with the
       same three counter assertions.
-- [ ] **Step 6: Generalization-audit pass** — search for other multi-port assembly in
+- [x] **Step 6: Generalization-audit pass** — search for other multi-port assembly in
       `notification`; record the decision.
-- [ ] **Step 7: Commit** — `refactor(#374): extract the booking-mail fact resolver both listeners need`.
-- [ ] **Step 8: Update the plan-doc execution status** in the same commit window; verify that push's CI.
+- [x] **Step 7: Commit** — `refactor(#374): extract the booking-mail fact resolver both listeners need`.
+- [x] **Step 8: Update the plan-doc execution status** in the same commit window; verify that push's CI.
 
 ---
 
@@ -451,18 +453,18 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Create `BookingCancellationMail.java` · Modify `Mailer.java`, `MockMailer.java`,
 `SentEmail.java`, `SmtpMailer.java`, `MockMailerTest.java`, `SmtpMailerIT.java`
 
-- [ ] **Step 1: Write the failing tests** — `MockMailerTest.recordsTheCancellation` (fields verbatim,
+- [x] **Step 1: Write the failing tests** — `MockMailerTest.recordsTheCancellation` (fields verbatim,
       **no arrival code in the logged line**); `SmtpMailerIT` for the subject, the reason-branched
       opening line (AC-3), the minor-units amount (AC-4), the no-refund wording (AC-2), and no
       tracking markup (AC-10).
-- [ ] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*MockMailerTest*" --tests "*SmtpMailerIT*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the record; the `Mailer` method; `SentEmail`'s new kind +
+- [x] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*MockMailerTest*" --tests "*SmtpMailerIT*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — the record; the `Mailer` method; `SentEmail`'s new kind +
       factory; `SmtpMailer`'s subject + body with an **exhaustive** `switch` over `RefundReason` (no
       `default`, so R-8 is a compile error) reusing `formatAmount` and `headerSafe`.
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `feat(#374): render the cancellation/refund mail on both transports`.
-- [ ] **Step 7: Update the plan-doc execution status;** verify that push's CI.
+- [x] **Step 4: Run them, verify they pass** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `feat(#374): render the cancellation/refund mail on both transports`.
+- [x] **Step 7: Update the plan-doc execution status;** verify that push's CI.
 
 ---
 
@@ -473,23 +475,23 @@ Modify `TransactionalMailService.java`, `ObservabilityMetrics.java`,
 `TransactionalMailServiceTest.java`, `MailListenerExecutorArchitectureTest.java`,
 `MailOutboxScopeTest.java`
 
-- [ ] **Step 1: Write the failing tests** — `TransactionalMailServiceTest`: a suppressed address skips
+- [x] **Step 1: Write the failing tests** — `TransactionalMailServiceTest`: a suppressed address skips
       and returns normally (AC-7), a healthy address reaches the transport, a transport failure
       **propagates** (AC-6). `BookingCancellationMailListenerTest`: the happy path builds the right
       record; each missing fact counts `riviera.mail.cancellation.abandoned` under its own `reason`
       and logs one `ERROR` with ids only (AC-8); a transport failure propagates.
       `MailListenerExecutorArchitectureTest.theRuleExaminesBothProductionListeners` (AC-9);
       `MailOutboxScopeTest.scopesTheCancellationListener` (AC-9).
-- [ ] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*BookingCancellationMailListenerTest*" --tests "*TransactionalMailServiceTest*" --tests "*MailListenerExecutorArchitectureTest*" --tests "*MailOutboxScopeTest*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the metric constant with its Javadoc (why a sibling name,
+- [x] **Step 2: Run them, verify they fail** — `./gradlew test --tests "*BookingCancellationMailListenerTest*" --tests "*TransactionalMailServiceTest*" --tests "*MailListenerExecutorArchitectureTest*" --tests "*MailOutboxScopeTest*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — the metric constant with its Javadoc (why a sibling name,
       per Resolved Q-4); `TransactionalMailService.sendBookingCancellation` mirroring
       `sendBookingConfirmation`; the listener with `@Async(MAIL_EXECUTOR)` +
       `@TransactionalEventListener` and a record-deconstruction `switch` over the resolver outcome.
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS.
-- [ ] **Step 5: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS.
-- [ ] **Step 6: Generalization-audit pass.**
-- [ ] **Step 7: Commit** — `feat(#374): mail the tourist a cancellation/refund record`.
-- [ ] **Step 8: Update the plan-doc execution status;** verify that push's CI.
+- [x] **Step 4: Run them, verify they pass** — same command → PASS.
+- [x] **Step 5: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS.
+- [x] **Step 6: Generalization-audit pass.**
+- [x] **Step 7: Commit** — `feat(#374): mail the tourist a cancellation/refund record`.
+- [x] **Step 8: Update the plan-doc execution status;** verify that push's CI.
 
 ---
 
@@ -497,21 +499,21 @@ Modify `TransactionalMailService.java`, `ObservabilityMetrics.java`,
 
 **Files:** Create `BookingCancellationMailIT.java` · Modify `BookingMailFixtures.java`
 
-- [ ] **Step 1: Write the failing test** — Testcontainers + `@EnabledIfDockerAvailable`, mirroring
+- [x] **Step 1: Write the failing test** — Testcontainers + `@EnabledIfDockerAvailable`, mirroring
       `BookingConfirmationMailIT`: one mail per cancellation to the guest contact (AC-1); both
       channels (AC-3); resubmitting outstanding publications yields no second mail (AC-5); a
       suppressed address yields none (AC-7). Seed with a **deliberately improbable refund amount per
       test** and dates no other IT uses — the `BookingMailFixtures` disciplines, which exist
       because matching a bare id also matches another test's venue or set id.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BookingCancellationMailIT*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the fixtures' `cancellationOf(...)` factory + cancellation
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BookingCancellationMailIT*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — the fixtures' `cancellationOf(...)` factory + cancellation
       `LISTENER_ID`; no production change expected (if one *is* needed, phases 1–3 missed something —
       record it in the findings register).
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Module regression** — `./gradlew test --tests "ai.riviera.platform.notification.*"` → PASS.
-- [ ] **Step 6: Generalization-audit pass.**
-- [ ] **Step 7: Commit** — `test(#374): pin the cancellation mail end-to-end through the registry`.
-- [ ] **Step 8: Update the plan-doc execution status;** verify that push's CI.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Module regression** — `./gradlew test --tests "ai.riviera.platform.notification.*"` → PASS.
+- [x] **Step 6: Generalization-audit pass.**
+- [x] **Step 7: Commit** — `test(#374): pin the cancellation mail end-to-end through the registry`.
+- [x] **Step 8: Update the plan-doc execution status;** verify that push's CI.
 
 ---
 
@@ -519,17 +521,17 @@ Modify `TransactionalMailService.java`, `ObservabilityMetrics.java`,
 
 **Files:** Modify `docs/runbooks/observability.md`, `RESPONSIBILITIES.md`, `CLAUDE.md`, this plan doc
 
-- [ ] **Step 1:** Runbook — a `riviera_mail_cancellation_abandoned_total` section: what one increment
+- [x] **Step 1:** Runbook — a `riviera_mail_cancellation_abandoned_total` section: what one increment
       means (a tourist has no written record of their refund), the three-row tag table pointing at
       `booking`/`venue`/`customer`, why it is a data-integrity and not a relay signal, why it is a
       sibling series rather than a `kind` tag on the confirmation counter (Resolved Q-4), and its
       place in the read-first ordering during a suspected relay outage.
-- [ ] **Step 2:** `RESPONSIBILITIES.md` + `CLAUDE.md` — the `notification` Job/module row gains the
+- [x] **Step 2:** `RESPONSIBILITIES.md` + `CLAUDE.md` — the `notification` Job/module row gains the
       cancellation mail alongside the confirmation.
-- [ ] **Step 3:** Merge the latest `origin/main` into the branch, mark the PR **ready for review**
+- [x] **Step 3:** Merge the latest `origin/main` into the branch, mark the PR **ready for review**
       (this is what makes the Review and Sonar gates due).
-- [ ] **Step 4: Commit** — `docs(#374): document the cancellation-mail loss counter`.
-- [ ] **Step 5:** Update the plan-doc execution status; verify that push's CI.
+- [x] **Step 4: Commit** — `docs(#374): document the cancellation-mail loss counter`.
+- [x] **Step 5:** Update the plan-doc execution status; verify that push's CI.
 
 ---
 
@@ -563,23 +565,27 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; no availability write in scope, stated with why (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — applied upstream, not recomputed here.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled; no money moves; amounts in minor units (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — rendered, never recomputed.
-- [ ] Timezone correct: the booking date rides the event as a `Europe/Tirane` `LocalDate` (invariant #6).
-- [ ] Booking codes unguessable and **never logged** (invariant #7).
-- [ ] Flyway: no migration in scope; no `event_type` rewrite needed (invariant #12).
-- [ ] **Frontend** N/A — backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — no persistence code at all; `JdbcOnlyArchitectureTests` green.
+- [x] **Availability** section filled; no availability write in scope, stated with why (invariant #2) — the release already happened inside the cancelling transaction; this runs `AFTER_COMMIT`.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — applied upstream, not recomputed here.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11) — `allowedDependencies` unchanged; `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` green.
+- [x] **Payment/payout** section filled; no money moves; amounts in minor units (invariants #5, #8, #9) — no gateway call, no ledger write; `payout`'s reversal is a sibling subscriber, untouched.
+- [x] Refund policy enforced server-side (invariant #10) — rendered, never recomputed.
+- [x] Timezone correct: the booking date rides the event as a `Europe/Tirane` `LocalDate` (invariant #6).
+- [x] Booking codes unguessable and **never logged** (invariant #7) — mailed as the booking's reference (maintainer decision Q-2), absent from every log line and from the subject; asserted on the mock, on SMTP, and on both abandon paths.
+- [x] Flyway: no migration in scope; no `event_type` rewrite needed (invariant #12).
+- [x] **Frontend** N/A — backend-only; no file under `frontend/`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (13 rows, none left open).
+- [x] Risk register has no stale `open` rows (R-3 stands as **accepted**, argued); Open Questions empty — all four moved under Resolved.
+- [x] **Close-out written in THIS PR** — this final state is committed on the branch, citing **merged via PR #445**; no docs-only follow-up needed.
+- [x] **The review gate ran in full** — the invocation ladder's **rung 1** succeeded
+      (`Skill("code-review:code-review")` loaded), and its subagent fan-out ran after the human
+      authorised it: this session carries a standing "no Agent tool" instruction, which riviera-sdlc
+      explicitly makes a question to ask rather than grounds to skip. Five reviewers +
+      `riviera-review-overlay` + a `riviera-docs-freshness` sweep; 13 findings, all fixed in
+      `1988067`/`fa3f1f2`; result posted to PR #445.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
