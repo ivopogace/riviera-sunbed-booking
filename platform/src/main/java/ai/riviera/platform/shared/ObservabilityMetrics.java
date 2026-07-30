@@ -27,6 +27,27 @@ public final class ObservabilityMetrics {
 	public static final String HTTP_SERVER_REQUESTS = "http.server.requests";
 
 	/**
+	 * Counter: cancellation refunds shed because the refund bulkhead's pool was saturated (#404). Sits
+	 * beside {@link #REFUNDS_FAILED} and means something different: <em>failed</em> is a refund the
+	 * gateway refused, <em>shed</em> is one it was never asked for. <strong>Do not sum them</strong> —
+	 * a failure has been observed by the gateway and may need investigating there; a shed has not left
+	 * the process.
+	 *
+	 * <p><strong>Why it needs a name of its own rather than leaning on {@link #OUTBOX_PENDING}.</strong>
+	 * A shed refund does leave its event publication outstanding, so the backlog gauge does rise — but
+	 * {@code MoneyPathAlertCheck}'s default backlog threshold is 10, and the case worth paging on is the
+	 * first one, not the tenth. The deeper reason is that a shed is the one loss mode that does not
+	 * trigger its own recovery: a crash restarts by definition and the restart republishes, whereas a
+	 * shed happens while the process is healthy and nothing restarts it. Until someone acts, a tourist
+	 * owed money under invariant #10 has not been paid.
+	 *
+	 * <p>Deliberately <strong>not</strong> a money-path signal in {@code MoneyPathAlertCheck}'s sense —
+	 * that job reads exactly three series and this is not one of them; the shed path escalates its own
+	 * {@code ERROR} once per saturation episode instead.
+	 */
+	public static final String REFUNDS_SHED = "riviera.refunds.shed";
+
+	/**
 	 * Counter: registry-borne mails shed because the bulkhead pool was saturated (#408). Not a
 	 * money-path signal — {@code MoneyPathAlertCheck} deliberately does not read it — but the shed
 	 * path's only attributable, alertable trace: each increment is a confirmation mail that never

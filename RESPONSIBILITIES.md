@@ -130,7 +130,10 @@ what a consumer actually needs and keeps `BookingStatus` internal.
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to
   claim; it owns the row and the atomic guarantee)
 - Talking to Stripe or moving money → **`payment`** (I *ask* it to collect; I never
-  hold a PaymentIntent or a webhook)
+  hold a PaymentIntent or a webhook). Since #404 I do own the **bounded executor** my post-commit
+  refund listener drains on — that is wiring for *my* driving adapter, not gateway knowledge: I still
+  only call `payment.api.RefundPort` and never learn which gateway is behind it. `payment` must not
+  host it; it does not know it is being called asynchronously, and must not have to
 - Computing the payout or commission → **`payout`** (my `BookingConfirmed` event
   *triggers* accrual; I don't do the math)
 - The venue map, pricing, or pool rules → **`venue`**

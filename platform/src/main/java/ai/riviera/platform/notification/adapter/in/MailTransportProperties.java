@@ -65,6 +65,17 @@ record MailTransportProperties(@DefaultValue("10000") int socketTimeoutMs) {
 	 * being true. Spelling the stacking out as a constant is what keeps a <em>third</em> mail pool from
 	 * silently pushing the combined drain past the platform's grace — increment this when one lands, and
 	 * the per-pool ceiling falls out.
+	 *
+	 * <p><strong>A non-mail pool now shares the same grace, and this constant cannot see it</strong>
+	 * (#404). {@code booking}'s refund bulkhead is a third sequentially-destroyed
+	 * {@code ThreadPoolTaskExecutor}, so the combined drain is this budget <em>plus</em> whatever
+	 * {@code riviera.booking.refund.shutdown-drain} is set to. It is capped at 5s against exactly this
+	 * arithmetic (20s here + 5s there, inside Render's ~30s), but the cap lives in that module's own
+	 * properties: this name says <em>mail</em>, and {@code notification} must not reach into
+	 * {@code booking} to count it (invariant #11). What that leaves is a real gap —
+	 * {@code theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget} is mail-scoped and would not notice a
+	 * fourth pool landing outside this module. Closing it needs a platform-wide budget rather than a
+	 * per-module one; that is #456.
 	 */
 	static final int DRAINING_POOLS = 2;
 
