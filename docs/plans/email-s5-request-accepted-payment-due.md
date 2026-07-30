@@ -263,18 +263,18 @@ and stays hermetic.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `implement — phase 3 (substrate docs), then ready-for-review`
 
-**Next action:** Phase 2 — add `RequestPaymentDueMailListener`, the
-`MAIL_PAYMENT_DUE_ABANDONED` counter, the arch-rule non-vacuity guard rename, and
-`RequestPaymentDueMailIT`.
+**Next action:** Phase 3 — record the third registry-borne booking mail and the sixth
+mail counter in `CLAUDE.md` / `RESPONSIBILITIES.md` / the observability runbook, then mark
+PR #446 ready for review and run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `booking`: the event, the widened accept facts, the `Pending`-only publish | ✅ | `<phase-0>` |
 | 1 — `notification`: the mail kind, the transport, the pay link | ✅ | `<phase-1>` |
-| 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | ⏳ | |
-| 3 — substrate docs + close-out | | |
+| 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | ✅ | `<phase-2>` |
+| 3 — substrate docs + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

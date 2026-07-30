@@ -33,8 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * still had registry-borne mails to write, each of which would reach for the same annotation. A rule
  * is the only thing that makes the second one fail loudly instead of shipping the same defect twice —
  * and #374 (cancellation/refund) has since shipped as exactly that second listener, arriving compliant
- * rather than being caught, which is the outcome a fitness function is for. #373 (request-accepted) is
- * still to write.
+ * rather than being caught, which is the outcome a fitness function is for. #373 (request-accepted)
+ * has since landed the same way, which closes the set the epic named.
  *
  * <p><strong>What a {@code notification} listener of a platform event must be:</strong>
  * {@code @Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)} + {@code @TransactionalEventListener} at
@@ -63,7 +63,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * closed nor written down:
  * <ul>
  *   <li><strong>Test scope is excluded</strong> (above) — deliberately, so #373's and #374's own
- *       recording listeners are free to exist. The cost is that this rule cannot police a listener
+ *       recording listeners were free to exist. The cost is that this rule cannot police a listener
  *       that only exists in tests, which is the right trade: such a listener ships to nobody.</li>
  *   <li><strong>Every {@code @EventListener} spelling is examined</strong>, not just
  *       {@code @TransactionalEventListener}. The latter is itself meta-annotated with the former, so
@@ -109,23 +109,27 @@ class MailListenerExecutorArchitectureTest {
 	 * for — it is the second listener the class Javadoc predicted — and it is also when the guard had
 	 * to stop naming only the first: a rule that examines one of two listeners is half vacuous, and a
 	 * bare count would go green again the moment a listener was added <em>and</em> another silently
-	 * fell out of scope.
+	 * fell out of scope. #373 is the third and the last one the class Javadoc predicted, so the names
+	 * moved into a list rather than accreting a third near-identical assertion — the property being
+	 * asserted is per listener either way, and a list is what a fourth one extends without inviting a
+	 * copy-paste that forgets to change the class it names.
 	 */
 	@Test
-	void theRuleExaminesBothProductionListeners() {
+	void theRuleExaminesEveryProductionListener() {
+		List<Class<?>> expected = List.of(BookingConfirmationMailListener.class,
+				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class);
 		List<Class<?>> examined = inScopeListeners(notificationEventListeners()).stream()
 				.filter(listener -> "on".equals(listener.getName()))
 				.map(Method::getDeclaringClass)
 				.toList();
 
-		assertTrue(examined.contains(BookingConfirmationMailListener.class),
-				"Expected the rule to examine BookingConfirmationMailListener#on under "
-						+ NOTIFICATION_PACKAGE + " — without it the rule is vacuously green; examined: "
-						+ examined);
-		assertTrue(examined.contains(BookingCancellationMailListener.class),
-				"Expected the rule to examine BookingCancellationMailListener#on under "
-						+ NOTIFICATION_PACKAGE + " — a listener the carve-out swallows is a listener free "
-						+ "to land its send on the money-path pool; examined: " + examined);
+		for (Class<?> listener : expected) {
+			assertTrue(examined.contains(listener),
+					"Expected the rule to examine " + listener.getSimpleName() + "#on under "
+							+ NOTIFICATION_PACKAGE + " — a listener the carve-out swallows is a listener free "
+							+ "to land its send on the money-path pool, and one it never reaches at all makes "
+							+ "the rule that much closer to vacuously green; examined: " + examined);
+		}
 	}
 
 	// ---- the boundaries (#409) ---------------------------------------------------------------
