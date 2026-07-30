@@ -156,6 +156,14 @@ export const routes: Routes = [
     title: 'Operators — Riviera',
   },
   {
+    // Admin console Email tab (#405): what the Event Publication Registry still owes the
+    // notification module, and the ADMIN-gated lever that re-drives it without a deploy. Self-gates
+    // like /admin; the backend /api/admin/mail-outbox role gate is the real authority.
+    path: 'admin/email',
+    loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),
+    title: 'Email — Riviera',
+  },
+  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
     // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
     // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the

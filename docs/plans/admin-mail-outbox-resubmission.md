@@ -260,6 +260,7 @@ predicate unit test alone, precisely because the failure mode is a real re-drive
 | FE-4 | `admin/admin.model.ts` | modify | types | — | — |
 | FE-5 | `admin/admin-operators.ts` | modify | standalone component | unchanged behavior; renders FE-1 above its heading | — |
 | FE-6 | `app.routes.ts` | modify | routing | new lazy `admin/email` route with a `title` | — |
+| FE-7 | `app.spec.ts` | modify | routing test | the new route joins `RESTYLED_PATHS` — a porcelain surface, born un-legacied, like `/admin` | — |
 
 **Standards:** standalone components (no explicit `standalone`/`OnPush` — both are the v22
 default), `inject()`, `@if`/`@for`, `input()`/`output()` signal APIs, `@Service` for the singleton
@@ -285,9 +286,9 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Phase 4 — the admin console tab strip + Email tab (service, component, specs), then phase 5's mocked e2e.
+**Next action:** Phase 5 — the CI-safe mocked Playwright spec for the Email tab, then the substrate-doc updates and close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -295,8 +296,8 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 | 1 — Resubmission service: single-flight, cooldown, typed outcome | ✅ | `1515f8e` |
 | 2 — ADMIN endpoints + security matchers | ✅ | (this commit) |
 | 3 — Money-path scoping IT (+ the G-2/G-3 correction) | ✅ | (this commit) |
-| 4 — Admin console: tab strip + Email tab | | |
-| 5 — Mocked e2e + substrate docs + close-out | | |
+| 4 — Admin console: tab strip + Email tab | ✅ | (this commit) |
+| 5 — Mocked e2e + substrate docs + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -340,7 +341,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Frontend** (`frontend/src/app/admin/`)
 
-- `admin-console-tabs.ts` (+ `.spec.ts`) — the design canvas's tab strip.
+- `admin-console-tabs.ts` (+ `.spec.ts`) — the design canvas's tab strip, as **routed** tabs.
 - `admin-mail-outbox.ts` (+ `.spec.ts`, `.a11y.spec.ts`) — the Email tab.
 - `admin-mail-outbox.service.ts` (+ `.spec.ts`) — the HTTP client.
 - `admin.model.ts` — `MailOutboxStatusView`, `MailResubmissionResultView`.
