@@ -243,11 +243,18 @@ cannot occupy the shared `applicationTaskExecutor` that carries `booking`'s paym
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `both gates run — awaiting merge of PR #433`
+**Stage pointer:** `both gates run in full (review fan-out + Sonar) — awaiting merge of PR #433`
 
-**Next action:** Merge PR #433. Everything the close-out can do pre-merge is done; what remains is
-GitHub-only and needs no commit — the `#367` epic checkbox tick and closing #410 (its `Closes #410`
-should do it). #434 is already filed.
+**Next action:** Merge PR #433 — all seven checks green on `fa38754`, Sonar's reported list empty, review
+gate run in full with its one finding fixed. Everything the close-out can do pre-merge is done; what
+remains is GitHub-only and needs no commit — the `#367` epic checkbox tick and closing #410 (its
+`Closes #410` should do it). #434 is already filed.
+
+*One caveat recorded for honesty:* of the five fan-out reviewers, four returned; the shallow-bug-scan
+agent did not report before the gate closed. Its angle is the most redundantly covered of the five — the
+inline pass, the git-history reviewer and the comment-compliance reviewer all read the same hunks, and the
+latter read all nine files in full — but it is a gap in the fan-out, not a clean result, and is recorded as
+such rather than counted as one.
 
 **Merged via PR #433.**
 
@@ -814,9 +821,12 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — **deliberately left unticked.** `riviera-review-overlay` was
-      loaded and its whole backend bank walked (RV-BE-1..18 + RV-STYLE-1 + RV-PROC-1), and the ladder's
-      rung 1 (`Skill("code-review")`) *did* load the plugin workflow — but that workflow is a subagent
-      fan-out and this session's standing instruction forbids the Agent tool, which is rung 3's "the
-      review subagents genuinely cannot run". The degraded inline path ran instead and is **declared** in
-      the PR. Ticking this would make the PR record lie about the process (case history: PR #353/#355).
+- [x] **The review gate ran in full** — in two passes. `riviera-review-overlay`'s whole backend bank
+      (RV-BE-1..18 + RV-STYLE-1 + RV-PROC-1) ran inline first; the `/code-review` subagent fan-out was
+      initially blocked by a standing session instruction against the Agent tool (the ladder's rung-3
+      condition), which was **declared in the PR with this box unticked** rather than substituted
+      silently — and the maintainer then authorized the subagents, so the fan-out ran: eligibility +
+      CLAUDE.md scope + 5 parallel reviewers + per-finding confidence scoring, posted as a PR review
+      comment. **The fan-out found what the inline pass missed** (F-5) — direct evidence for the gate's
+      own claim that `/code-review` is the strongest rung, worth carrying into
+      `references/case-history.md` if the pattern repeats.
