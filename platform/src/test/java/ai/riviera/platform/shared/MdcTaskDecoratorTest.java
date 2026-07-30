@@ -1,4 +1,4 @@
-package ai.riviera.platform.notification.application;
+package ai.riviera.platform.shared;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,8 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
- * The module's one MDC-propagation mechanism (#410), specified once here rather than twice in the two
- * vehicles that use it.
+ * The platform's one MDC-propagation mechanism (#410, promoted to the kernel in #455), specified once
+ * here rather than once per pool in each of the three that use it.
  *
  * <p><strong>The capture point is the whole contract.</strong> {@link MdcTaskDecorator#decorate} must
  * read the context on the <em>submitting</em> thread — which is where Spring's

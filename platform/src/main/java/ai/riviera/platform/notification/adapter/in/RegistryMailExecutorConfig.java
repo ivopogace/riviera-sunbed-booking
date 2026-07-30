@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ai.riviera.platform.notification.application.MailTransportBudget;
-import ai.riviera.platform.notification.application.MdcTaskDecorator;
+import ai.riviera.platform.shared.MdcTaskDecorator;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import io.micrometer.core.instrument.Counter;
