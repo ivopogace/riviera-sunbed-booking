@@ -35,7 +35,9 @@ precedent — *not* at the composition root), `riviera-java-conventions` (sealed
 over exceptions, package-private adapter, boot-validated property record instead of `@Validated`,
 one-line-or-no inline comments), `riviera-frontend` (the Email tab is a file in the existing
 `admin/` feature folder; the tab strip is a sibling component there, not a `shared/` promotion —
-only one feature uses it), `angular-developer` + **angular-cli MCP** (`list_projects` →
+only one feature uses it), `riviera-tailwind` (utilities on the components themselves — the tab
+pills and the card are used once each, so neither earns a shared directive; `text-[13.5px]` over a
+named size), `angular-developer` + **angular-cli MCP** (`list_projects` →
 Angular 22 + Vitest; `get_best_practices` → no explicit `standalone`/`OnPush`, `input()`/`output()`,
 `@Service`, native control flow, AXE/WCAG-AA as a hard requirement), `playwright-cli` (mocked
 CI-safe spec authoring). **Not loaded, deliberately:** `postgres` (no migration, no SQL authored —
@@ -288,9 +290,16 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `PR ready for review — review gate + Sonar gate due`
+**Stage pointer:** `PR ready for review — Sonar gate PASSED; review gate BLOCKED on subagent authorization`
 
-**Next action:** Run the review gate on PR #438 per `riviera-sdlc` `references/pr-gates.md` §1, then re-pull the Sonar new-issue list now that the frontend has landed.
+**Next action:** The `/code-review` fan-out needs the human to lift this session's standing
+"don't use the Agent tool" rule (`riviera-sdlc` `references/pr-gates.md` §1 — a one-line answer).
+The project overlay bank was walked by hand in the meantime (findings F-2/F-3, both fixed); that is
+**half the gate**, so the PR's review-gate box stays unticked until the generic banks have run.
+
+**Sonar gate (passed, checked — not merely the badge):** 0 new issues, 0 accepted issues,
+0 security hotspots, 0.0% duplication on new code, 94.3% coverage on new code — above the
+project's stricter-than-default 80% bar.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -308,6 +317,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (backend, run on `c4e3bd7`) | 113 tests failed: `@WebMvcTest` loads **every** controller, so the new `AdminMailOutboxController` broke every web-slice test that did not stub its port. A scoped local run could not show it — the only class with a `@MockitoBean` for that port was the new one | fixed — `WebSliceStubs` gained an inert `MailResubmission`, the file that exists for exactly this |
+| F-2 | Review overlay (RV-STYLE-1) | Two multi-line inline comments introduced by the diff — the new route entry and the new `SecurityConfig` matcher block. Both matched their neighbours, which is why they were written that way; the rule is explicit that consistency is not its goal | fixed — each cut to one line; the full reasoning already lives in the component/controller javadoc |
+| F-3 | Review overlay (RV-PROC-1) | `riviera-tailwind` was loaded before styling the tab strip and the outbox card, but never recorded in *Skills consulted* | fixed — line updated with what it changed |
 
 ---
 

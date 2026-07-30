@@ -324,10 +324,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						// Lifting an email suppression (#391) — same ADMIN gate, never self-service.
 						.requestMatchers(HttpMethod.POST, ADMIN_SUPPRESSION_REINSTATE_PATH).hasRole(ADMIN_ROLE)
-						// The mail outbox (#405) — same ADMIN gate. The POST re-drives what the Event
-						// Publication Registry still owes the notification module; the GET is the count
-						// the console shows before anyone presses it. Both stay stricter than OPERATOR:
-						// this is platform-wide delivery state, not a venue's.
+						// The mail outbox (#405) — same ADMIN gate; platform-wide state, no venue owns it.
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()

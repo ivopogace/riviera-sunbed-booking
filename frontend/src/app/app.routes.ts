@@ -156,9 +156,7 @@ export const routes: Routes = [
     title: 'Operators — Riviera',
   },
   {
-    // Admin console Email tab (#405): what the Event Publication Registry still owes the
-    // notification module, and the ADMIN-gated lever that re-drives it without a deploy. Self-gates
-    // like /admin; the backend /api/admin/mail-outbox role gate is the real authority.
+    // Admin console Email tab (#405) — the outstanding-mail lever; ADMIN-gated server-side.
     path: 'admin/email',
     loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),
     title: 'Email — Riviera',
