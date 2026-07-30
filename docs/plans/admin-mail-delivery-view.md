@@ -89,7 +89,7 @@ with `origin/main`.
 - [ ] **AC-8:** Given any lookup or resend response, when it is serialised, then it carries no
   booking code and no arrival credential anywhere (invariant #7), and the attempt table holds no
   email address (ADR-0010 erasure reach). *Pinned by:*
-  `AdminMailDeliveryIT.neverRendersTheArrivalCode` + `V36MigrationIT.storesNoRecipientAddress`
+  `AdminMailDeliveryIT.neverRendersTheArrivalCode` + `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode`
 - [ ] **AC-9:** Given an admin on `/admin/email`, when they enter an address and press Look up, then
   the page lists each booking with its attempt history and a Resend button, and reports the resend
   outcome in an `aria-live` region. *Pinned by:* `admin-mail-delivery.spec.ts` +
@@ -138,7 +138,7 @@ is a parity signal to record here.
 | R-6 | A `mail_kind` column populated with one value reads as "no cancellation mail was sent" when the truth is "cancellation mail was never recorded" | med | med | Table named `booking_confirmation_mail_attempt`; **no** kind column. A later slice that records another kind generalises the table *in the same slice as its write site*, so absence never lies. Recorded in Non-goals | agent | open |
 | R-7 | The lookup becomes an address-enumeration oracle | low | med | ADMIN-gated (a role that can already read the operator list), and the response is identical in shape and status for "unknown address" and "known address, no bookings" — AC-7. The address is the *input*, so nothing is disclosed that the caller did not supply | agent | open |
 | R-8 | PII in URLs: an address in a query string or path lands in access, proxy and browser-history logs | high | med | Both endpoints are `POST` with a JSON body; the address never appears in a path or query. The resend path segment carries the numeric `bookingId`, not the code | agent | open |
-| R-9 | Erasure interaction: a scrubbed (tombstoned) guest contact must not resurrect an address | low | med | The lookup resolves an address to a `CustomerId` through `customer::api` only; ADR-0010 pseudonymises in place, so a scrubbed address simply stops matching and the lookup returns empty. The attempt table stores **no** address, so it needs no erasure reach — pinned by `V36MigrationIT.storesNoRecipientAddress` | agent | open |
+| R-9 | Erasure interaction: a scrubbed (tombstoned) guest contact must not resurrect an address | low | med | The lookup resolves an address to a `CustomerId` through `customer::api` only; ADR-0010 pseudonymises in place, so a scrubbed address simply stops matching and the lookup returns empty. The attempt table stores **no** address, so it needs no erasure reach — pinned by `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode` | agent | open |
 | R-10 | The new `customer` by-email read is confused with `CustomerDirectory.findOrCreate`, which **writes** — a support search would create guest-contact rows | med | high | The new method lands on `CustomerLookup` (the read-only conversation) and is `Optional`-returning; `findOrCreate` is not called anywhere in this slice. Pinned by `JdbcCustomerLookupIT.doesNotCreateAContactForAnUnknownAddress` | agent | open |
 | R-11 | Error-contract drift: a per-controller `{"error": …}` body instead of RFC-7807 | low | low | Both endpoints return `200` with a typed outcome token for every expected flow (the #405 controller's precedent); anything genuinely thrown becomes `ProblemDetail` via the single `ApiErrorHandler`. No `@ExceptionHandler` is added (`ErrorContractArchitectureTests`) | agent | open |
 
@@ -296,10 +296,10 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `plan — committing the plan doc; phase 0 not started`
+**Stage pointer:** `implement — phase 0 done; phase 1 next`
 
-**Next action:** Commit this plan doc, then start phase 0 (V36 migration + attempt port/adapter,
-test-first) — and load `riviera-local-debug` before the session's first `gradle` invocation.
+**Next action:** Phase 1 — make `sendBookingConfirmation` return a typed outcome and have the
+confirmation listener record every branch.
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -309,7 +309,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V36 attempt table + `ConfirmationMailAttempts` port/adapter | | |
+| 0 — V36 attempt table + `ConfirmationMailAttempts` port/adapter | ✅ | `1c03dee` |
 | 1 — Record the automatic path (typed send outcome + listener recording) | | |
 | 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | | |
 | 3 — Resend service + ADMIN lookup/resend endpoints | | |
@@ -766,6 +766,7 @@ void deniesANonAdminOperator() {                                             // 
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 0 (V36 + attempt log) | state tokens whose Java enum and SQL `CHECK` must stay in lockstep | `grep -rln "CHECK (.* IN (" src/main/resources/db/migration` | 14 migrations | **Matched the house pattern, added no new one**: V36's tokens are the enum constants' `name()`, and the lockstep is pinned by inserting every constant (`ConfirmationMailAttemptsIT.storesEvery*TheEnumSpells`). No existing table needs a change — several already carry an equivalent pin, and retrofitting the rest is out of this slice. |
 
 ---
 
@@ -779,7 +780,7 @@ void deniesANonAdminOperator() {                                             // 
 - [ ] **AC-5:** `./gradlew test --tests "*BookingConfirmationResendServiceTest*"` → PASS. Commit `<sha>`.
 - [ ] **AC-6:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → 403/401. Commit `<sha>`.
 - [ ] **AC-7:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → `200` + empty list. Commit `<sha>`.
-- [ ] **AC-8:** `./gradlew test --tests "*AdminMailDeliveryIT*" --tests "*V36MigrationIT*"` → PASS. Commit `<sha>`.
+- [ ] **AC-8:** `./gradlew test --tests "*AdminMailDeliveryIT*" --tests "*ConfirmationMailAttemptsIT*"` → PASS. Commit `<sha>`.
 - [ ] **AC-9:** `npx vitest run src/app/admin && npm run test:e2e:a11y` → PASS. Commit `<sha>`.
 - [ ] **AC-10:** `npm run test:a11y && npm run test:e2e:a11y` → no serious violations. Commit `<sha>`.
 
