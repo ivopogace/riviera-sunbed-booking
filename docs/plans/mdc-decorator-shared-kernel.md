@@ -199,16 +199,16 @@ idempotency key are untouched.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2)` — draft PR **#458** open, so every later push is CI-gated.
+**Stage pointer:** `implement (phase 3)` — draft PR **#458** open, so every later push is CI-gated.
 
-**Next action:** Phase 2 — the `WorkerContextArchitectureTest` guard plus its non-vacuity fixture, so
-a fourth self-configured pool cannot ship undecorated the way the third did.
+**Next action:** Phase 3 — run `riviera-docs-freshness` over this PR's range, patch `CLAUDE.md` and
+`RESPONSIBILITIES.md`, then finalize this section and mark the PR ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Promote the decorator to `shared` | ✅ | `68335b6` |
 | 1 — Compose it onto the refund pool | ✅ | `a452627` |
-| 2 — Structural guard against a fourth undecorated pool | | |
+| 2 — Structural guard against a fourth undecorated pool | ✅ | `b09d672` |
 | 3 — Substrate docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -400,6 +400,7 @@ pool.setTaskDecorator(new CompositeTaskDecorator(List.of(saturation, new MdcTask
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 2 (the structural guard) | any other self-configured executor, `TaskDecorator` slot, or hand-rolled MDC carry in main | `grep -rn "new ThreadPoolTaskExecutor\|new ThreadPoolTaskScheduler\|setTaskDecorator\|SimpleAsyncTaskExecutor\|newFixedThreadPool\|newSingleThreadExecutor\|Executors\." src/main/java` and `grep -rn "getCopyOfContextMap\|setContextMap" src/main/java` | **exactly the three known pools**, all now decorated; the only MDC copy/restore left in main is `MdcTaskDecorator` itself | No further sites to fix. Two deliberate exclusions confirmed: **no `ThreadPoolTaskScheduler` is instantiated in main at all** (#395's sweeps are property-configured), so the rule's `ThreadPoolTaskExecutor` scoping costs nothing today while still stating why; and Boot's `applicationTaskExecutor` is auto-configured rather than declared, so it is structurally invisible to the scan and stays undecorated per #410's Non-goals |
 
 ---
 
