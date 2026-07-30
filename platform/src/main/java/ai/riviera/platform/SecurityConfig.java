@@ -158,6 +158,17 @@ class SecurityConfig {
 	 */
 	private static final String ADMIN_MAIL_OUTBOX_PATH = "/api/admin/mail-outbox";
 	private static final String ADMIN_MAIL_OUTBOX_RESUBMIT_PATH = "/api/admin/mail-outbox/resubmit";
+	/**
+	 * The per-booking mail-delivery view and its resend (#380) — the support lever the outbox above
+	 * cannot be: that one re-drives what the registry still <em>owes</em>, while this one re-sends a
+	 * confirmation whose publication already completed, which is the common "never got the email" case.
+	 * Same ADMIN gate and the same {@code /api/admin/**} exemption from invariant #13.
+	 *
+	 * <p>The lookup is a {@code POST} although it reads: its key is an email address, and a query string
+	 * would deposit that address in access, proxy and browser-history logs.
+	 */
+	private static final String ADMIN_MAIL_DELIVERY_LOOKUP_PATH = "/api/admin/mail-deliveries/lookup";
+	private static final String ADMIN_MAIL_DELIVERY_RESEND_PATH = "/api/admin/mail-deliveries/*/resend";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -327,6 +338,9 @@ class SecurityConfig {
 						// The mail outbox (#405) — same ADMIN gate; platform-wide state, no venue owns it.
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
+						// Per-booking mail delivery + resend (#380) — same ADMIN gate, platform-wide state.
+						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

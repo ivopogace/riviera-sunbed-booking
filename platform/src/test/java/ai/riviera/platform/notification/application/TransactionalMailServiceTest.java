@@ -482,6 +482,28 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
+	 * The outcome the skip above used to discard (#380). Completing normally is right; leaving the
+	 * caller unable to tell a delivery from a deliberate withholding is what made the delivery history
+	 * impossible to record honestly — the registry marks both identically, so this return value is the
+	 * only place the difference exists.
+	 */
+	@Test
+	void reportsTheConfirmationWithheldWhenTheAddressIsSuppressed() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		assertThat(service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+				.isEqualTo(ConfirmationSendOutcome.WITHHELD_SUPPRESSED);
+	}
+
+	@Test
+	void reportsTheConfirmationSentWhenTheAddressIsDeliverable() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(false);
+
+		assertThat(service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+				.isEqualTo(ConfirmationSendOutcome.SENT);
+	}
+
+	/**
 	 * The asymmetry #423 had to settle rather than leave implied: the registry vehicle gets no counter
 	 * of its own, and that is a decision, not an omission. Its transport failure <em>propagates</em>, so
 	 * the event publication stays outstanding and {@code riviera.outbox.pending} — already read by

@@ -123,14 +123,24 @@ public class TransactionalMailService implements MailSender {
 				() -> mailer.sendOperatorApproved(toEmail, signInLink));
 	}
 
-	/** Deliver the booking confirmation now, on the caller's thread; a transport failure propagates. */
-	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+	/**
+	 * Deliver the booking confirmation now, on the caller's thread; a transport failure propagates.
+	 *
+	 * <p><strong>Reports which of the two things it did</strong> (#380), where until then it returned
+	 * {@code void}. The skip and the send both complete normally — they must, or a suppressed address
+	 * would park its publication in a permanent retry loop — so without this value no caller could tell
+	 * a delivery from a deliberate withholding, and neither can the Event Publication Registry: it
+	 * completes the publication either way. That is what made a registry-derived delivery history
+	 * impossible to record honestly, and this return value is the fix's foundation.
+	 */
+	public ConfirmationSendOutcome sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
 		if (suppressions.isSuppressed(toEmail)) {
 			// No address in the line (PII posture of this log); the correlation id rides the MDC.
 			log.info("Booking-confirmation mail skipped: the address is suppressed");
-			return;
+			return ConfirmationSendOutcome.WITHHELD_SUPPRESSED;
 		}
 		mailer.sendBookingConfirmation(toEmail, confirmation);
+		return ConfirmationSendOutcome.SENT;
 	}
 
 	/**

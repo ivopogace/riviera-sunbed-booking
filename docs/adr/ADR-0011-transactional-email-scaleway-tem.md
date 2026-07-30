@@ -85,6 +85,18 @@ Provider landscape (condensed; full table in the research doc):
      > neither is exactly-once. The narrow *sent-then-crashed-before-completion* window is
      > **accepted and documented**, not defended against. User story 9's "neither loses nor
      > duplicates" holds as *"does not lose; may duplicate once in a crash window"*.
+   > **Extended 2026-07-30 (#380).** A *re-send of an already-sent mail* is a third case, and
+   > neither half of the payload test decides it: an admin pressing Resend carries no payload at all.
+   > It sends **synchronously, on the request thread**, and that is not a violation of "nothing sends
+   > on a request thread" — the rule above exists to close a timing oracle on an **anonymous** flow,
+   > and an ADMIN-gated support action has no anonymous caller to leak to. What it buys is the thing
+   > a queued send cannot give: the admin learns the real outcome (sent / withheld / failed) instead
+   > of "queued", and the bulkhead cannot silently shed the press. The send stays bounded by the
+   > relay socket budget (#410), so a request thread cannot hang on it. It publishes **no** event,
+   > which is what keeps it off `payout` and the refund path; the registry-borne alternative was
+   > considered mainly because it would have manufactured a registry row to read a delivery history
+   > from, and that motivation disappeared once #380 recorded attempts directly (V36).
+
    - **Bearer-credential payload → an in-memory async executor, never the registry.** The registry
      persists each publication's payload into `event_publication` as text, and under our `archive`
      completion mode retains it after the send. A recovery mail's payload carries the raw
@@ -232,7 +244,11 @@ Provider landscape (condensed; full table in the research doc):
   mock keeps recording them so CI/e2e stay hermetic.
 - An activation runbook (mirror `docs/runbooks/stripe-profile-smoke-test.md`) documents
   profile + secrets + a smoke send.
-- A future implementer must **not**: send on a request thread; enable open/click tracking; log a
+- A future implementer must **not**: send on a request thread (**amended 2026-07-30, #380** — this
+  bans it on the *anonymous* flows the rule was written for, where response timing is an enumeration
+  oracle; an **ADMIN-gated support action** re-sending an existing mail may send synchronously, and
+  #380's resend does, because a queued send cannot tell the admin what happened and the bulkhead can
+  shed it silently — see the extension note under decision 5); enable open/click tracking; log a
   tokenized link or booking code at the transport layer (invariant #7); or pick a US-parented
   provider without re-opening this ADR.
 

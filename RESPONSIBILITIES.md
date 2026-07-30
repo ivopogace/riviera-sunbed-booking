@@ -117,6 +117,14 @@ never be double-sold.
 **Job:** Own bookings, booking codes, and the lifecycle (confirmed / cancelled /
 completed / no-show). Enforce the cancellation policy and the same-day cutoff.
 Orchestrate the reserve → pay → confirm flow across `availability` and `payment`.
+Publish the **notification-facts** reads a mail needs: the arrival code + contact id
+(`BookingNotificationFacts#notificationInfo`, #371) and, since **#380**, the wider
+`#confirmationFacts` an admin resend rebuilds the mail from (it has no event payload to read), plus
+`CustomerBookings` — which bookings one guest contact has, split off by consumer role (#94) because
+"which bookings does this person have" is a different conversation from "tell the guest about this
+booking". Neither publishes the lifecycle enum: both answer `everConfirmed` (read from
+`confirmed_at`, so a booking cancelled *after* confirmation still reads as having had one), which is
+what a consumer actually needs and keeps `BookingStatus` internal.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to
@@ -354,7 +362,7 @@ deadline, so the errand it opens expires. That listener also decides nothing abo
 is owed: `booking` settles that by publishing the fact only on the accept branch where money is
 genuinely outstanding, which a status read here could not do without racing the stub's synchronous
 confirm — and the module's
-first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
+first owned state (the second is #380's delivery log, below): the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
 with the defining invariant **no send to a suppressed address**, enforced at the one send chokepoint
@@ -401,6 +409,19 @@ consumed by the composition root alone; **no module depends on `notification`**.
 `booking.spi.ConfirmationMailDelivery`, answering "would this customer's confirmation mail be
 withheld?" so a confirmed booking's read model can tell the guest to save their code. That is the
 inverted direction and preserves the rule: the dependency edge is still `notification → booking`.
+Since **#380** I also own the **booking-confirmation delivery log** (V36
+`booking_confirmation_mail_attempt`) — one row per attempt, carrying what triggered it
+(`AUTOMATIC` / `ADMIN_RESEND`) and what became of it (sent / withheld-suppressed / transport-failed /
+abandoned) — plus the ADMIN surface over it: a per-address lookup and a one-click **resend**
+(`/api/admin/mail-deliveries`, controller in my `adapter/in`, the #391/#405 precedent). The log
+exists because the Event Publication Registry cannot answer the question: `completion_date` records
+that the listener *returned*, which it equally does for a suppression skip and for a confirmation
+abandoned for missing facts, so a registry-derived view would report "dispatched" for the two losses
+support actually calls about. `booking.spi.ConfirmationMailDelivery` already stated the rule — a
+consumer needing the *historical* fact records it at send time. The resend sends **synchronously
+through the chokepoint and publishes nothing**, so it re-drives no other `BookingConfirmed`
+consumer (invariants #8/#9 are untouched by construction, pinned by `AdminMailDeliveryIT`), and the
+admin gets the real outcome rather than "queued".
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized** links →
@@ -413,6 +434,10 @@ inverted direction and preserves the rule: the dependency edge is still `notific
   `BookingLinks` composes `<base>/booking/<code>` here from the code I already read through
   `booking::api` to render into the body
 - The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
+- Resolving an email address to a guest contact → **`customer`** (`CustomerLookup#findByEmail`, #380);
+  and *which bookings* a contact has → **`booking`** (`CustomerBookings`). The address reaches
+  `customer::api` and stops there — my delivery log stores a booking id and nothing else, so ADR-0010
+  erasure has no copy here to reach
 - The booking/venue/customer **facts** a confirmation renders → their owners, read via
   `api/` ports at send time
 - Persisting a bearer-credential payload → nobody's job, ever: recovery mails ride the

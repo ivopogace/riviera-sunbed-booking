@@ -8,6 +8,10 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
+import ai.riviera.platform.notification.application.ConfirmationAttemptRecorder;
+import ai.riviera.platform.notification.application.ConfirmationSendOutcome;
+import ai.riviera.platform.notification.application.MailAttemptOutcome;
+import ai.riviera.platform.notification.application.MailAttemptSource;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
@@ -76,13 +80,20 @@ class BookingConfirmationMailListenerTest {
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
+	private final ConfirmationAttemptRecorder attempts = mock(ConfirmationAttemptRecorder.class);
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 
 	private final BookingConfirmationMailListener listener =
-			new BookingConfirmationMailListener(facts, mails, meters);
+			new BookingConfirmationMailListener(facts, mails, attempts, meters);
 
 	private final ListAppender<ILoggingEvent> logged = new ListAppender<>();
 	private ch.qos.logback.classic.Logger logger;
+
+	/** The ordinary answer, so only the specs that care about a withheld or failed send restate it. */
+	@BeforeEach
+	void theSendReportsSentByDefault() {
+		when(mails.sendBookingConfirmation(any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
+	}
 
 	@BeforeEach
 	void captureLogs() {
@@ -167,8 +178,63 @@ class BookingConfirmationMailListenerTest {
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED).counters()).isEmpty();
 	}
 
+	@Test
+	void recordsASentAttemptForADeliveredConfirmation() {
+		givenTheFactsAre(FACTS);
+		givenTheSendReports(ConfirmationSendOutcome.SENT);
+
+		listener.on(EVENT);
+
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.SENT);
+	}
+
+	/**
+	 * The whole reason #380 records attempts rather than reading the registry: this send never happened,
+	 * yet the publication completes exactly as a delivery does. The attempt row is the only artefact
+	 * that tells them apart.
+	 */
+	@Test
+	void recordsAWithheldAttemptWhenTheAddressIsSuppressed() {
+		givenTheFactsAre(FACTS);
+		givenTheSendReports(ConfirmationSendOutcome.WITHHELD_SUPPRESSED);
+
+		listener.on(EVENT);
+
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.WITHHELD_SUPPRESSED);
+	}
+
+	/**
+	 * Recording must not swallow the transport failure — the throw is what keeps the publication
+	 * outstanding for the at-least-once retry (#371) — and the row must survive it, which is why the
+	 * attempt log takes no ambient transaction (see {@code JdbcConfirmationMailAttempts}).
+	 */
+	@Test
+	void recordsTheFailedAttemptAndStillRethrows() {
+		givenTheFactsAre(FACTS);
+		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any());
+
+		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
+
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.TRANSPORT_FAILED);
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@EnumSource(MissingBookingFact.class)
+	void recordsAnAbandonedAttemptForAnyMissingFact(MissingBookingFact fact) {
+		givenTheFactsAre(new BookingMailFacts.Missing(fact));
+
+		listener.on(EVENT);
+
+		verify(attempts).recordAttempt(BOOKING_ID, MailAttemptSource.AUTOMATIC,
+				MailAttemptOutcome.ABANDONED_MISSING_FACTS);
+	}
+
 	private void givenTheFactsAre(BookingMailFacts outcome) {
 		when(facts.resolve(BOOKING_ID, SET_ID)).thenReturn(outcome);
+	}
+
+	private void givenTheSendReports(ConfirmationSendOutcome outcome) {
+		when(mails.sendBookingConfirmation(any(), any())).thenReturn(outcome);
 	}
 
 	private double abandoned(String reason) {

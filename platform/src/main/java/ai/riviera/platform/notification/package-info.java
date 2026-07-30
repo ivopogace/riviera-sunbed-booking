@@ -3,12 +3,17 @@
  * the root goes back to being a pure composition root + auth edge. It owns the mail transports
  * (real SMTP vs the recording mock, profile-swapped), the two delivery vehicles — the Event
  * Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for
- * bearer-credential payloads (ADR-0011 decision 5) — and the module's first owned state: the
+ * bearer-credential payloads (ADR-0011 decision 5) — and, since #380, two tables of its own. The first is the
  * <strong>email-suppression list</strong> (hashed/non-PII at rest since #388/ADR-0012 — a peppered
  * HMAC key + cleartext domain, never the address), with its defining invariant <em>no send to a
  * suppressed address</em>, enforced on both vehicles at the {@code application} chokepoint. Since
  * #391 that state has a lift: an ADMIN-gated reinstatement marks a row {@code reinstated_at} rather
  * than deleting it, so the invariant tracks the flag and the deliverability record still survives.
+ * The second is the <strong>booking-confirmation delivery log</strong> (V36, #380): one row per send
+ * attempt with its trigger and its outcome, read by an ADMIN lookup-by-address and re-driven by a
+ * one-click resend. It exists because the Event Publication Registry cannot answer the question —
+ * {@code completion_date} records that the listener <em>returned</em>, equally true of a suppression
+ * skip and of a #428 abandonment — so the two silent losses would read as "dispatched".
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code api} publishes two role-split
  * ports the edge flows call — the fire-and-forget send port ({@code MailSender}) and, since #400, the
