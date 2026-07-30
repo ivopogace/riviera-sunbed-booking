@@ -247,10 +247,10 @@ three response statuses (`204` / `409 NOT_PENDING` / `404 NO_SUCH_OPERATOR`); th
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `merge close-out — Sonar gate PASSED, review gate HALF-RUN (see F-2), awaiting merge`
+**Stage pointer:** `merge close-out — all three gates passed, merging`
 
-**Next action:** Merge PR #437 once the human authorizes and the `/code-review` subagent fan-out has
-run (F-2); then close-out steps 1–3 + 5–7 (`references/pr-gates.md` §3).
+**Next action:** Confirm CI + Sonar green on `1520ba1`, merge PR #437, then close-out steps 1, 2, 6, 7
+(`references/pr-gates.md` §3 — step 3 done via issue #439, step 4 is this doc, step 5 done).
 
 **Gate results**
 
@@ -258,7 +258,7 @@ run (F-2); then close-out steps 1–3 + 5–7 (`references/pr-gates.md` §3).
 |---|---|
 | CI (PR #437) | ✅ all 7 checks green on `b2af957`, incl. the **full** backend suite — the full-suite-only failure class the scoped local runs cannot show |
 | Sonar | ✅ genuinely clear, not a false-clean zero: `api/issues/search` **total 0**, and `measures` is non-empty with `new_lines=238`, `new_coverage=100.0`, `new_duplicated_blocks=0`, `new_bugs`/`new_vulnerabilities`/`new_code_smells` all 0; the `SonarCloud Code Analysis` check-run concluded `success` |
-| Review | ⚠️ **half-run — see finding F-2.** The `riviera-review-overlay` backend bank was walked in full against the diff (one finding, F-1, fixed); the `/code-review` subagent fan-out was **not** run, because this session carries a standing "do not use the Agent tool unless the user requested it" instruction. Per `pr-gates.md` §1 the PR's review checkbox stays **unticked** rather than claiming a gate that did not fully run |
+| Review | ✅ **ran in full.** Overlay bank (finding F-1) **plus** the `/code-review` fan-out once authorized (F-3..F-6, and F-7/F-8 via the `riviera-docs-freshness` run it prompted). Seven findings fixed, one deferred to issue #439, one dropped at confidence 15 as pre-existing. Comment posted to PR #437 |
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -279,8 +279,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review (agent 5 — code comments) | `TransactionalMailService`'s class Javadoc still promised "the token is already stored … so the user can simply re-request" for **every** send on the port — false for the new kind, and contradicted by this PR's own runbook edit. `MockMailer`'s Javadoc likewise implied every logged link is a bearer credential | fixed — the class Javadoc now states the asymmetry outright (a lost recovery mail self-heals, a lost approval notice does not, which is *why* the counters are read through their `kind` tag); `MockMailer` records that its new logged link is the one that is not a credential |
 | F-6 | review (agent 4) + close-out step 5 | `riviera-docs-freshness` was never run and was missing from *Skills consulted* — the fourth repeat of an omission raised on #427/#430/#436 | fixed — the skill was run over `origin/main...HEAD`; findings below. Added to *Skills consulted* |
 | F-7 | `riviera-docs-freshness` (this run) | ADR-0011 decision 5 stated the operator-approval mail **"will use that same vehicle** when it is built … nothing in that flow exists yet" — future tense, now false | patched in place (mechanical staleness), and the bullet now records *why* this kind is the case where the payload test does not settle the vehicle and the trigger does |
-| F-8 | `riviera-docs-freshness` (this run) | ADR-0011's accepted trade-off justifies best-effort delivery as "tolerable precisely because the flow is **user-retryable** (re-request the email) and the durable half, the token, is already committed" — that reasoning does **not** hold for the operator-approval mail: there is no token and nothing re-sends it | **flagged, deliberately not patched** — the skill's rule is that anything altering a decision's *substance* goes to the human rather than being silently rewritten. The vehicle choice itself is unchanged and was pre-authorised by this same ADR and by epic #367; what is now incomplete is the ADR's stated reason for accepting the loss risk. Raised in PR #437 for the maintainer to amend or accept |
-| F-2 | process (review gate) | The `/code-review` subagent fan-out did not run — this session may not start subagents unasked. The overlay bank ran in full; the **generic** BE/contract banks did not | **open — blocks merge.** Needs one line of human authorization, then re-run per the `pr-gates.md` §1 ladder (rung 1, `Skill("code-review")`, is confirmed working this session). The PR's review checkbox is left unticked and the PR says so |
+| F-8 | `riviera-docs-freshness` (this run) | ADR-0011's accepted trade-off justifies best-effort delivery as "tolerable precisely because the flow is **user-retryable** (re-request the email) and the durable half, the token, is already committed" — that reasoning does **not** hold for the operator-approval mail: there is no token and nothing re-sends it | **deferred → issue #439** (not patched). The skill's rule is that anything altering a decision's *substance* goes to the human rather than being silently rewritten. The vehicle choice itself is unchanged and was pre-authorised by this same ADR and by epic #367; what is now incomplete is the ADR's stated reason for accepting the loss risk |
+| F-2 | process (review gate) | The `/code-review` subagent fan-out did not run — this session may not start subagents unasked. The overlay bank ran in full; the **generic** BE/contract banks did not | **resolved** — the maintainer authorized it and the full fan-out ran (ladder rung 1): eligibility check, 5 parallel review agents, confidence scoring, re-check, and the review comment posted to PR #437. It found F-3..F-6, none of which the overlay walk had caught |
 
 ---
 
@@ -471,7 +471,7 @@ full-suite-only failure class). Testcontainers ITs ran for real, not skipped:
 - [x] Risk register has no stale `open` rows (all eight closed with outcomes); Open Questions empty.
 - [x] **Close-out written in THIS PR** — this final state is committed here citing `merged via PR #437`,
       so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — **deliberately unticked (finding F-2).** The
-      `riviera-review-overlay` backend bank ran in full against the diff; the `/code-review` subagent
-      fan-out did not, because this session may not start subagents unasked. Stated in PR #437 rather
-      than ticked, per `pr-gates.md` §1 ("never substitute silently").
+- [x] **The review gate ran in full** — `riviera-review-overlay`'s backend bank **and** the
+      `/code-review` subagent fan-out (ladder rung 1), the latter after the maintainer authorized it.
+      Six findings: F-1 and F-3..F-7 fixed in `d89435d` + `1520ba1`, F-8 deferred to issue #439, and
+      one candidate dropped at confidence 15 as a pre-existing condition. Review comment posted to PR #437.
