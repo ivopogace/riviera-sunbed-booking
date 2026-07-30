@@ -94,8 +94,8 @@ class MdcTaskDecoratorTest {
 	/**
 	 * #434's addition: a thread that is <em>not</em> the worker — the one closing the context and accounting
 	 * for the sends it is discarding — has to be able to speak for a task it will never run. Without this the
-	 * abandonment lines would carry the shutdown thread's context, i.e. none, and the #415 per-loss rule
-	 * would be N identical lines saying nothing.
+	 * abandonment lines would carry the closing thread's own context, which in production names no request
+	 * at all, and the #415 per-loss rule would be N identical lines saying nothing.
 	 */
 	@Test
 	void runsAnActionUnderTheContextADecoratedTaskWasSubmittedWith() {

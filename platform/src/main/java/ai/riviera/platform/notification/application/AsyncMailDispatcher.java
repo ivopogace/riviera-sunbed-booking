@@ -231,8 +231,10 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	/**
 	 * One line per loss, under the abandoned send's <em>own</em> context: this runs on the thread closing
-	 * the context, which carries none of its own, and invariant #7 keeps the address and the link out of
-	 * the line — so the borrowed correlation id is the only thing that says whose mail this was.
+	 * the application context, which in production is a shutdown thread with no request of its own to name
+	 * (and whatever context it does carry is restored afterwards, not cleared — see {@link MdcTaskDecorator}).
+	 * Invariant #7 keeps the address and the link out of the line, so the borrowed correlation id is the
+	 * only thing left that says whose mail this was.
 	 */
 	private void recordAbandonment(Runnable send) {
 		droppedWhenAbandoned.increment();

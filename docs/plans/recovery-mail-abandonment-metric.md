@@ -42,6 +42,10 @@ runbook row.
 - `riviera-local-debug` — system `gradle` + JDK-25 toolchain registration, scoped `--tests` runs
   only; CI owns the full suite. Its shared-state blind spot is why R-5 exists.
 - `riviera-plan-doc` — this document's shape and the Execution-status state store.
+- `riviera-review-overlay` — the review gate's project bank (RV-BE-1..18 + RV-STYLE-1 + RV-PROC-1),
+  walked over the diff alongside `/code-review`'s subagent fan-out.
+- `riviera-docs-freshness` — the substrate-doc sweep at phase 1, which found the three contradicted
+  facts recorded below.
 - **Not loaded, deliberately:** `postgres` (no SQL, no DDL, no migration), `riviera-stripe-payments`
   (no money path — `payment`/`payout` untouched), `riviera-frontend` / `angular-developer` /
   `playwright-cli` (backend-only; no user-observable surface — this slice makes an existing loss
@@ -131,7 +135,7 @@ ledger applies to it:
 | R-2 | `getQueue().drainTo(...)` races the drainer's `poll()`, so a send is counted *and* runs (double-report) or is missed | med | med | a `BlockingQueue` hands each element to exactly one of `poll`/`drainTo`, so the race is benign in both directions: a task is run **xor** counted. AC-1's wedged drainer makes the count exact; AC-3 proves the counted ones never ran | claude | closed — exact counts in both directions; the wedge holds the only thread for the whole window, so nothing polls concurrently in the pinned case |
 | R-3 | Returning a named type from `decorate` silently changes the registry pool, whose `CompositeTaskDecorator` owns the same slot — the episode throttle strands open (the #410 R-1 hazard, one layer down) | low | high | `decorate`'s signature and the composition order are untouched, and the whole of `RegistryMailExecutorConfigTest` (MDC **and** throttle tests) runs unchanged in the phase-0 batch | claude | closed — `decorate`'s signature and the composition order are untouched; all of `RegistryMailExecutorConfigTest` green unchanged |
 | R-4 | The in-flight send is counted too, over-reporting a mail that already reached the relay — the exact ambiguity #410 refused to resolve by interrupting | med | med | only the **queue** is drained; AC-6 pins that a running send moves no counter, and the Javadoc + runbook state the exclusion so the number is not read as "every mail lost at shutdown" | claude | closed — only the queue is drained; `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` now asserts the running send moves no counter |
-| R-5 | Shared-state accumulation across the full suite (`riviera-local-debug`'s blind spot): `destroy()` now does extra work on every context close, and any context closing with a queued mail gains `WARN` lines | low | low | the added work is bounded by the queue (≤100) and is nil in a drained pool; no shared bean, filter or scheduled job is touched. To be verified by the PR's own CI run before phase 1 builds on it | claude | open — to be closed by the PR's CI run on this push |
+| R-5 | Shared-state accumulation across the full suite (`riviera-local-debug`'s blind spot): `destroy()` now does extra work on every context close, and any context closing with a queued mail gains `WARN` lines | low | low | the added work is bounded by the queue (≤100) and is nil in a drained pool; no shared bean, filter or scheduled job is touched. To be verified by the PR's own CI run before phase 1 builds on it | claude | closed — CI green on the phase-0/1 head (Backend, Frontend, CodeQL) with no IT regression; the added work is bounded by the queue and nil in a drained pool |
 | R-6 | A third `reason` on a shipped series changes what an existing dashboard total means, and an alert on the total starts firing on redeploys | low | med | the total already meant "recovery mail the pool never sent" — both existing reasons are pool-level refusals — so the addition is in-kind; the runbook's standing rule is unchanged (**alert on `reason="saturated"`, track the total**) and AC-1 pins that `saturated` cannot move on a redeploy | claude | closed — the runbook now carries a `reason="abandoned"` row with its own alert rule, restates the standing one (alert on `saturated`, track the total), and says why the third value belongs to this name |
 
 ## Open questions / Assumptions
@@ -247,18 +251,25 @@ That pool is untouched, and `MailListenerExecutorArchitectureTest` keeps it that
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `phases 0–1 built and pushed — PR #436 to be marked ready for review; the review and Sonar gates are then due`
+**Stage pointer:** `merge close-out — both gates run, findings fixed; awaiting merge of PR #436`
 
-**Next action:** Confirm CI is green on this push, mark **PR #436** ready for review, then run the
-review gate (`/code-review`'s fan-out per `references/pr-gates.md` §1, plus the overlay's backend bank)
-and pull the Sonar new-issue list. The close-out commit (stage pointer DONE, `merged via PR #436`) is
-the last one before merge.
+**Next action:** Merge PR #436 once CI and Sonar are green on this commit. Everything the close-out
+can do pre-merge is done; what remains is GitHub-only and needs no commit — closing #434 (the PR's
+`Closes #434` does it). #434 was added as a sub-issue of epic #367 at phase 1, which is the epic tick
+this repo's sub-issue tracking uses in place of a checkbox.
+
+*Fan-out completeness:* all five reviewers reported. Two (shallow-bug-scan, git-history) came back clean
+having independently decompiled Spring 7.0.8 to verify the two facts the whole slice rests on — that
+`ExecutorConfigurationSupport.shutdown()` blocks for the drain window before returning and never hides a
+`shutdownNow()`, and that `ThreadPoolTaskExecutor` decorates *inside* `execute()` so the carrier record
+is what actually sits in the queue. Those were reasoned from the docs at plan time; they are now
+verified against the bytecode in use.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — count and log the send abandoned at shutdown, attributably | ✅ | `e7d68db` |
-| 1 — runbook, metric doc, docs-freshness | ✅ | (this commit) |
-| 2 — review-gate + Sonar-gate findings, then close-out | | |
+| 1 — runbook, metric doc, docs-freshness | ✅ | `dab29a7` |
+| 2 — review-gate findings F-1..F-3 + close-out | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,7 +279,12 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet — the review and Sonar gates are due when the PR is marked ready for review)* | — |
+| F-1 | review (`/code-review` fan-out, prior-PR-comments reviewer; confidence **100**/100) | **RV-PROC-1: the *Skills consulted* line omitted `riviera-review-overlay` and `riviera-docs-freshness`**, though the diff rewrites three substrate docs and the slice goes through the review gate — and the plan's own body records both running. The *identical* finding was raised and fixed on **#427** and again on **#430**, which is what makes it a finding rather than a nitpick: three consecutive slices have now written that line as an inventory of *plan-time* skills when RV-PROC-1 reads it as an inventory of *every area the diff touches*. | fixed-in-`fix-round` |
+| F-2 | review (`/code-review` fan-out, comment-compliance reviewer; confidence **75**/100) | **`recordAbandonment`'s Javadoc said the closing thread "carries none of its own" context** — stated absolutely, while this PR's own `MdcTaskDecorator` deliberately *restores* that thread's context and `everyAbandonedSendIsLoggedOnceUnderItsOwnRequestsContext` asserts a `"shutdown-thread"` value survives. True of production, false as written, and it read as contradicting the decorator's stated reason for restoring. | fixed-in-`fix-round` — reworded to "in production a shutdown thread with no request of its own to name", with the restore behaviour named |
+| F-3 | review (`/code-review` fan-out, comment-compliance reviewer; confidence **25**/100 and **0**/100 respectively — fixed anyway) | Two smaller comment inaccuracies the same reviewer raised: `MdcTaskDecoratorTest`'s "the shutdown thread's context, i.e. none" (scored 25 — the scorer read it as a counterfactual, which it is, but "i.e. none" is still wrong about the thread), and `ObservabilityMetrics:82`'s "a deferral, a **refusal**, a failure and an abandonment" (scored 0 on the mistaken basis that the line was modified by this PR — it was not, and "refusal" is exactly the gloss the new text 20 lines above says to stop using). Both are one-line prose corrections that make the file self-consistent, so they were taken despite scoring below the fan-out's ≥80 posting bar. | fixed-in-`fix-round` |
+| F-4 | review (`/code-review` fan-out, CLAUDE.md-adherence reviewer; confidence **75**/100) | **The `notification` module row grew ~150 words**, against `CLAUDE.md:8`'s own rule — *"Keep this file short and stable; detailed, situational guidance lives in the skills, not here."* Notable because **#410 raised this same candidate, scored it 0, and filtered it** as "a house pattern 12 prior slices each followed". That dismissal does not survive contact with the rule: a pattern repeated by twelve slices is what a worsening violation looks like, not evidence of compliance. | fixed-in-`fix-round` — the addition is cut to the fact (the third value, and that the name reads *never ran*) with a pointer to the runbook for the counting rule and the exclusion; ~60 words instead of ~150 |
+| — | review (`/code-review` fan-out) | **Ran in full** — eligibility + CLAUDE.md-scope + 5 parallel reviewers (CLAUDE.md adherence, shallow bug scan, git-history context, prior-PR comments, code-comment compliance) + per-finding confidence scoring, after the maintainer authorized the subagents that this session's standing instruction otherwise withholds. Two reviewers clean; the three findings above plus F-3's pair came from the other three. `riviera-review-overlay`'s backend bank (RV-BE-1..18, RV-STYLE-1, RV-PROC-1) walked inline alongside it — no additional finding, and RV-BE-13 was actively verified rather than waved through: `CorrelationIdFilter` allowlists an inbound id to `[A-Za-z0-9_-]{1,64}`, so borrowing a correlation id onto a log line carries no CRLF-forging risk. | complete |
+| — | sonar | Gate passed on the reviewed head, and the list pulled from the API rather than read off the badge: `total: 0` issues, `new_duplicated_blocks=0`, `new_coverage=100.0%` — **not** a false-clean zero, since `new_lines=133` confirms an analysis actually ran (the PR #318 failure mode). Re-checked on the fix-round head. | clear |
 
 ## File structure
 
@@ -508,7 +524,7 @@ finds due (expected: `CLAUDE.md`'s `notification` row, `RESPONSIBILITIES.md`'s n
 - [x] **Step 3: `riviera-docs-freshness`** over the phase-0..1 range; patch what the diff
       contradicts, extend where a future session could plausibly undo a decision.
 - [x] **Step 4: Add #434 as a sub-issue of epic #367** (grill finding G-7).
-- [ ] **Step 5: Finalize Execution status** in this PR's own last commit, citing `merged via PR #NN`.
+- [x] **Step 5: Finalize Execution status** in this PR's own last commit, citing `merged via PR #NN`.
 - [x] **Step 6: Commit** — `git commit -m "docs(#434): document the abandoned recovery mail's counter and its limits (#434)"`
 
 ### Docs-freshness run (merge close-out step 5)
@@ -552,7 +568,7 @@ names the deriving property, not a literal, and says "lost", not "uncounted"), t
 
 - [x] **AC-1..AC-5:** `gradle --no-daemon --console=plain test --tests "*AsyncMailDispatcherTest*" --tests "*MdcTaskDecoratorTest*"` → PASS (13 + 7 tests, 0 failures, 0 skipped), phase 0. **Mutation-checked three ways, each reddening exactly one test and nothing else:** counting the queue without draining it reddens AC-3's post-release assertion; logging without borrowing the send's context reddens AC-4's MDC assertion; draining before the window is awaited reddens AC-2. None of the three assertions is vacuous.
 - [x] **AC-6:** `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` → PASS, extended so the in-flight send is asserted to move no counter (still mutation-checked by swapping `shutdown()` for `shutdownNow()`).
-- [ ] **AC-7:** the runbook diff states all three reasons and the exclusion — phase 1.
+- [x] **AC-7:** the runbook diff states all three reasons and the exclusion — phase 1.
 
 **Full-suite verification:** the PR's own CI run — Backend (build + test), Frontend, CodeQL and
 SonarCloud on the ready-for-review head, which is the half scoped local runs cannot prove
@@ -562,22 +578,22 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test (AC-7 is prose, marked as such).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified `N/A`; no availability write path in the diff (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no published
+- [x] Every AC has an implementing task and a verifying test (AC-7 is prose, marked as such).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified `N/A`; no availability write path in the diff (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no published
       surface changed (invariant #11).
-- [ ] **Payment/payout** section justified `N/A`; the spine's executor is untouched (invariants #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] No booking code, address, or token in any new or edited log line (invariant #7) — asserted by AC-4.
-- [ ] No schema change, so no Flyway migration (invariant #12).
-- [ ] **Frontend** `N/A — backend-only`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review`'s subagent fan-out per the
+- [x] **Payment/payout** section justified `N/A`; the spine's executor is untouched (invariants #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] No booking code, address, or token in any new or edited log line (invariant #7) — asserted by AC-4.
+- [x] No schema change, so no Flyway migration (invariant #12).
+- [x] **Frontend** `N/A — backend-only`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #436`.
+- [x] **The review gate ran in full** — `/code-review`'s subagent fan-out per the
       `references/pr-gates.md` §1 ladder, plus `riviera-review-overlay`'s backend bank.

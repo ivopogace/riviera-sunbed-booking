@@ -79,7 +79,9 @@ public final class ObservabilityMetrics {
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
 	 * <em>every</em> send and raises this one immediately. Do not sum the four mail counters — they
-	 * measure a deferral, a refusal, a failure and an abandonment respectively.
+	 * measure a deferral, a send the pool never ran, an attempt that failed, and a confirmation given
+	 * up on, respectively. ("Never ran" rather than "refused" since #434 widened the first of those —
+	 * see {@link #MAIL_RECOVERY_DROPPED}.)
 	 *
 	 * <p>Carries two tags. {@code kind} (verification / password-reset) separates the two recovery
 	 * flows, which have different urgency and different rate-limit budgets. {@code reason} separates
