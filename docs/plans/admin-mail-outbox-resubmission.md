@@ -271,15 +271,15 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — `MailResubmissionServiceTest` for single-flight + cooldown + boot seeding, then the service and its boot-validated cooldown property.
+**Next action:** Phase 2 — the ADMIN controller (`GET`/`POST /api/admin/mail-outbox`), the two `SecurityConfig` matchers, and the security IT; open the draft PR on this push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Scope + outbox port + registry adapter | ✅ | `9c37ee2` |
-| 1 — Resubmission service: single-flight, cooldown, typed outcome | ⏳ | |
-| 2 — ADMIN endpoints + security matchers | | |
+| 0 — Scope + outbox port + registry adapter | ✅ | `dd0f72a` |
+| 1 — Resubmission service: single-flight, cooldown, typed outcome | ✅ | (this commit) |
+| 2 — ADMIN endpoints + security matchers | ⏳ | |
 | 3 — Money-path scoping IT | | |
 | 4 — Admin console: tab strip + Email tab | | |
 | 5 — Mocked e2e + substrate docs + close-out | | |
