@@ -23,8 +23,14 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * asynchronous: handed to the {@link MailDispatcher}, with the failure catch <em>inside</em> the
  * dispatched task so a transport failure dies wherever the task runs — the triggering request's
  * status code (D-8 non-enumeration) and latency (the #369 timing oracle) stay uninfluenced, and
- * a rejected dispatch is equally invisible to the caller. The token is already stored when the
- * edge calls this, so the user can simply re-request.
+ * a rejected dispatch is equally invisible to the caller.
+ *
+ * <p><strong>What a loss costs is not the same for every kind on this vehicle, and #375 is where
+ * that stopped being uniform.</strong> For the recovery pair the token is already stored when the
+ * edge calls this, so the user simply re-requests and the loss self-heals. The operator-approval
+ * notice has no such door: nothing re-sends it, and the operator is left retrying sign-in — the
+ * very experience it was added to remove. That asymmetry is why the loss counters are read through
+ * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
  * <p><strong>The booking confirmation</strong> (module-internal, driven by the registry listener)
  * is deliberately the opposite: synchronous on the listener's thread, transport failures
@@ -69,7 +75,7 @@ public class TransactionalMailService implements MailSender {
 
 	private static final Logger log = LoggerFactory.getLogger(TransactionalMailService.class);
 
-	/** The recovery flow a lost mail belonged to — one series, two audiences with different urgency. */
+	/** Which flow a lost mail belonged to — one series, three audiences with different urgency. */
 	static final String KIND_TAG = "kind";
 
 	static final String KIND_VERIFICATION = "verification";
