@@ -362,7 +362,7 @@ deadline, so the errand it opens expires. That listener also decides nothing abo
 is owed: `booking` settles that by publishing the fact only on the accept branch where money is
 genuinely outstanding, which a status read here could not do without racing the stub's synchronous
 confirm — and the module's
-first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
+first owned state (the second is #380's delivery log, below): the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
 with the defining invariant **no send to a suppressed address**, enforced at the one send chokepoint

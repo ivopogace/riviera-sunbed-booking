@@ -802,6 +802,23 @@ void deniesANonAdminOperator() {                                             // 
 
 ---
 
+### Counting sweep (`riviera-docs-freshness` step 2b, added by #447 — run after merging it in)
+
+`main` gained #447 mid-slice, which added the **counting sweep**: the check for statements a diff
+*structurally cannot contain*, because they live in files the slice never touches. #380 makes the
+**second** table `notification` owns and the **third** port `booking::api` publishes, so the sweep was
+due. Three stale statements, all outside the diff, all patched:
+
+- `notification/package-info.java` — "the module's **first** owned state: the email-suppression list".
+  Now two; the delivery log is named beside it.
+- `booking/api/package-info.java` — "**The two ports** are split by consumer role". Now three, with
+  the third's consumer role named the way the other two already were.
+- `RESPONSIBILITIES.md` — the same present-tense "first owned state" phrasing.
+
+Correctly **not** patched: `shared/package-info.java`'s "the mail machinery … **born with** the
+suppression list as its first owned state" — historical narrative about what #382 did, which stays
+true forever (the skill's Scope discipline).
+
 ### Docs-freshness run (merge close-out step 5, run pre-merge)
 
 `riviera-docs-freshness` over `origin/main...HEAD`, 2026-07-30 — **2 findings, both patched here**
