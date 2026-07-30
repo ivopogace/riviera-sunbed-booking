@@ -250,11 +250,13 @@ gate run in full with its one finding fixed. Everything the close-out can do pre
 remains is GitHub-only and needs no commit — the `#367` epic checkbox tick and closing #410 (its
 `Closes #410` should do it). #434 is already filed.
 
-*One caveat recorded for honesty:* of the five fan-out reviewers, four returned; the shallow-bug-scan
-agent did not report before the gate closed. Its angle is the most redundantly covered of the five — the
-inline pass, the git-history reviewer and the comment-compliance reviewer all read the same hunks, and the
-latter read all nine files in full — but it is a gap in the fan-out, not a clean result, and is recorded as
-such rather than counted as one.
+*Fan-out completeness:* all five reviewers reported. The shallow-bug-scan agent was slow enough that the
+gate was closed and this caveat first recorded as a **gap**; it then returned clean, so the note is
+corrected rather than left standing. It reviewed the pre-`fa38754` diff (so it did not see the F-5 fix) and
+independently verified, against the Spring 7.0.8 bytecode, both that `TaskDecorator.decorate()` runs
+synchronously on the submitting thread and that `CompositeTaskDecorator` applies decorators in list order —
+the same two facts the comment-compliance reviewer and the pre-commit check reached separately. Three
+independent confirmations of the mechanism the whole of Part 1 rests on.
 
 **Merged via PR #433.**
 
@@ -827,6 +829,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
       condition), which was **declared in the PR with this box unticked** rather than substituted
       silently — and the maintainer then authorized the subagents, so the fan-out ran: eligibility +
       CLAUDE.md scope + 5 parallel reviewers + per-finding confidence scoring, posted as a PR review
-      comment. **The fan-out found what the inline pass missed** (F-5) — direct evidence for the gate's
-      own claim that `/code-review` is the strongest rung, worth carrying into
-      `references/case-history.md` if the pattern repeats.
+      comment. All five reviewers reported (the shallow-bug-scan agent late, clean). **The fan-out found
+      what the inline pass missed** (F-5) — direct evidence for the gate's own claim that `/code-review`
+      is the strongest rung, worth carrying into `references/case-history.md` if the pattern repeats.
