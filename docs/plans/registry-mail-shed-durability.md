@@ -160,10 +160,10 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `all gates green (CI + full review gate + Sonar) — awaiting the merge`
+**Stage pointer:** `DONE — merged via PR #432, close-out complete`
 
-**Next action:** merge PR #432. Post-merge, GitHub-only: confirm #407 closed and link it under
-epic #367.
+**Next action:** none. #407 closed as completed and linked under epic #367; the GitHub-only
+close-out steps are done.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
