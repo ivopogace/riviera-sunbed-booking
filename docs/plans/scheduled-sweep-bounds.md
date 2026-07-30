@@ -276,10 +276,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | **review gate** (RV-STYLE-1, overlay half) | Seven multi-line inline comments in the two new ITs — the bank's one-line rule, and `riviera-java-conventions` §6c's authoring side. Each was prose the class Javadoc already carried or could carry | fixed-in-`<review-fixes>` — shortened to one line, deleted where the Javadoc said it, one moved into the helper's Javadoc |
-| F-2 | **review gate** (`riviera-java-conventions` §8) | `ScheduledQueryTimeoutIT` shut its `ExecutorService` down in a `finally` instead of try-with-resources (`ExecutorService` is `AutoCloseable` since Java 19). Declaration order is load-bearing here — the connection must close *first* so the lock releases before `close()` waits on the worker | fixed-in-`<review-fixes>` — try-with-resources, ordering explained in the helper's Javadoc |
-| F-3 | **review gate** (RV-BE-6, judgment) | The retention-basis read's test argument used `LocalDate.now()`, i.e. the JVM default zone, in a test where the date is irrelevant | fixed-in-`<review-fixes>` — a named fixed `SOME_CUTOFF` constant |
-| F-4 | **review gate** (RV-PROC-1, self-caught) | `riviera-java-conventions` was on the plan's *Skills consulted* line but had never actually been loaded — the line was true as intent, false as record. Loading it produced F-1/F-2 | fixed-in-`<review-fixes>` — skill loaded and the diff re-vetted through it; the three findings above are what it caught |
+| F-1 | **review gate** (RV-STYLE-1, overlay half) | Seven multi-line inline comments in the two new ITs — the bank's one-line rule, and `riviera-java-conventions` §6c's authoring side. Each was prose the class Javadoc already carried or could carry | fixed-in-`7c89f7f` — shortened to one line, deleted where the Javadoc said it, one moved into the helper's Javadoc |
+| F-2 | **review gate** (`riviera-java-conventions` §8) | `ScheduledQueryTimeoutIT` shut its `ExecutorService` down in a `finally` instead of try-with-resources (`ExecutorService` is `AutoCloseable` since Java 19). Declaration order is load-bearing here — the connection must close *first* so the lock releases before `close()` waits on the worker | fixed-in-`7c89f7f` — try-with-resources, ordering explained in the helper's Javadoc |
+| F-3 | **review gate** (RV-BE-6, judgment) | The retention-basis read's test argument used `LocalDate.now()`, i.e. the JVM default zone, in a test where the date is irrelevant | fixed-in-`7c89f7f` — a named fixed `SOME_CUTOFF` constant |
+| F-4 | **review gate** (RV-PROC-1, self-caught) | `riviera-java-conventions` was on the plan's *Skills consulted* line but had never actually been loaded — the line was true as intent, false as record. Loading it produced F-1/F-2 | fixed-in-`7c89f7f` — skill loaded and the diff re-vetted through it; the three findings above are what it caught |
 
 ---
 
