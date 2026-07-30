@@ -92,8 +92,12 @@ a stale fact there propagates into every future plan and review.
    `package-info.java` files, `MAIL_CONFIRMATION_ABANDONED`'s "first of the two",
    `MailListenerExecutorArchitectureTest`'s "not just the two that exist today",
    `MockMailerTest`'s assertion description, three surviving "five mail counters", and the
-   runbook's "do not sum the two abandoned counters". One grep found all sixteen at once;
-   #374 hit the same class one slice earlier. **Re-run the sweep after the fix round** —
+   runbook's "do not sum the two abandoned counters". **How they were found is the
+   argument for this step:** ordinary review of the changed files surfaced six; the other
+   **ten** came only from grepping the substrate, in a second round, after the first six
+   were already fixed — invisible to file-by-file review because they were never in the
+   diff. #374 hit the same class one slice earlier. **Re-run the sweep after the fix
+   round** —
    #373's own fix made `PaymentDueAnnouncerIT`'s Javadoc stale within the hour, by turning
    a package-private method public.
 3. **Walk the map top-down for the reverse direction.** Skim each substrate doc's claims

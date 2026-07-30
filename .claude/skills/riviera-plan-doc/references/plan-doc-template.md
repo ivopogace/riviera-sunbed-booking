@@ -32,17 +32,21 @@ slice.>
 > The `riviera-sdlc` routing table's **"Anything, always"** row is due on essentially
 > every slice — that table is the authority for its contents; this line pre-fills them
 > rather than re-listing them, so the two cannot drift. But an author filling it in is
-> thinking about the *routed* skills, so
-> the constant part gets omitted — RV-PROC-1 caught exactly that on **#427, #430, #436,
-> #440, #374 and #373**. Six consecutive slices is not six mistakes; it is a template
-> asking a question whose answer is partly constant, so the fix is to make the author
-> **edit rather than recall**. Each pre-filled entry still carries a parenthesis you must
-> fill with what it actually did — a name with a fixed label attached is cargo cult, and
-> RV-PROC-1 checks the line against the diff either way.
+> thinking about the *routed* skills, so something falls off the line —
+> **RV-PROC-1 caught an omission here on six consecutive slices: #427, #430, #436, #440,
+> #374, #373.** What was omitted varied (`riviera-review-overlay` and
+> `riviera-docs-freshness` most often; `riviera-stripe-payments` on #430,
+> `riviera-local-debug` on #440), which is the point: six in a row is not six mistakes, it
+> is a template asking a question whose answer is partly constant. The fix is to make the
+> author **edit rather than recall**. Each pre-filled entry still carries a parenthesis you
+> must fill with what it actually did — a name with a fixed label attached is cargo cult,
+> and RV-PROC-1 checks the line against the diff either way.
 >
 > Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range + findings) or
 > `N/A — <reason>`**: "not listed" and "not applicable" are indistinguishable in a diff,
-> which is what let it go unnoticed five times.
+> so a skipped run and an inapplicable one read the same. (`tdd` and `riviera-plan-doc`
+> are pre-filled prophylactically — neither has actually been flagged missing; they are
+> here because the row names them, not because they have an incident.)
 
 **Branch:** `<feature|bugfix>/<short-slug>` <must exist in git before phase 0>
 
