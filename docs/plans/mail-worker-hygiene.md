@@ -33,8 +33,8 @@ superseded) and predate both branches.
   the `adapter/in` edge, following the shipped `CustomerRetentionProperties → RetentionWindow`
   pattern; no published surface changes, so no `allowedDependencies` edit and no `event_type` rewrite.
 - `riviera-java-conventions` — record + compact-constructor validation instead of `@Validated`/`@Min`
-  (no JSR-303 on the classpath, #97); named constants over magic numbers (`SOCKET_PHASES`,
-  `SHUTDOWN_BUDGET`); §6c one-line-or-none comments with the long prose in Javadoc; §10 no secret or
+  (no JSR-303 on the classpath, #97); named constants over magic numbers (`SHUTDOWN_BUDGET_MS`,
+  `THREAD_NAME_PREFIX`); §6c one-line-or-none comments with the long prose in Javadoc; §10 no secret or
   address in any line (invariant #7).
 - `riviera-local-debug` — system `gradle` + JDK-25 toolchain registration, scoped `--tests` runs only;
   CI owns the full suite.
@@ -51,50 +51,52 @@ plan commit, so CI gates every later push (`pull_request` only, #417).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a caller with `correlationId` in its MDC, when a task is submitted to the
+- [x] **AC-1:** Given a caller with `correlationId` in its MDC, when a task is submitted to the
       registry mail executor, then the task **runs** with that same MDC map.
       *Pinned by:* `RegistryMailExecutorConfigTest.aWorkerRunsWithTheSubmittersLoggingContext`
-- [ ] **AC-2:** Given a task that ran with a caller's MDC, when a later task runs on the same pooled
+- [x] **AC-2:** Given a task that ran with a caller's MDC, when a later task runs on the same pooled
       thread with no caller context, then it sees **no** leftover context.
       *Pinned by:* `RegistryMailExecutorConfigTest.aWorkerDoesNotInheritThePreviousTasksContext`
-- [ ] **AC-3:** Given a saturated registry pool and a submitter with `correlationId` in its MDC, when
+- [x] **AC-3:** Given a saturated registry pool and a submitter with `correlationId` in its MDC, when
       the send is shed, then the escalated line's own MDC carries that `correlationId` — attributable,
       not merely claimed by a comment. *Pinned by:*
       `RegistryMailExecutorConfigTest.theShedLineIsAttributableToTheSubmittingRequest`
-- [ ] **AC-4:** Given the shared decorator, when the recovery dispatcher runs a send, then the
+- [x] **AC-4:** Given the shared decorator, when the recovery dispatcher runs a send, then the
       caller's context is carried and cleared **through `MdcTaskDecorator`** and `AsyncMailDispatcher`
       holds no capture/restore code of its own. *Pinned by:*
       `AsyncMailDispatcherTest.carriesTheCallersLoggingContext` +
       `AsyncMailDispatcherTest.clearsTheLoggingContextAfterTheTask` (both existing, kept green) and
       `MdcTaskDecoratorTest` (the mechanism, once).
-- [ ] **AC-5:** Given the registry pool's existing `SaturationPolicy` decorator, when MDC propagation
+- [x] **AC-5:** Given the registry pool's existing `SaturationPolicy` decorator, when MDC propagation
       is added, then the episode throttle still opens exactly one line per episode and re-opens for a
       later one — i.e. the decorator slot was **composed**, not replaced. *Pinned by:*
       `RegistryMailExecutorConfigTest.aSaturationEpisodeLogsOnceNotOncePerShedTask` +
       `aLaterEpisodeLogsAgain` (existing, kept green).
-- [ ] **AC-6:** Given no shed and no drop line in scope, when any of these lines is emitted, then it
+- [x] **AC-6:** Given no shed and no drop line in scope, when any of these lines is emitted, then it
       contains no `@`, no `http`, and no arrival code (invariant #7). *Pinned by:*
       `RegistryMailExecutorConfigTest.theShedLineIsAttributableToTheSubmittingRequest` (asserts the
       MDC carries the id while the message carries neither) + the existing
       `AsyncMailDispatcherTest.theDropLineCarriesNeitherAddressNorLink`.
-- [ ] **AC-7:** Given `riviera.notification.mail.socket-timeout-ms` set to `N`, when either mail pool
+- [x] **AC-7:** Given `riviera.notification.mail.socket-timeout-ms` set to `N`, when either mail pool
       is built, then its await-termination window equals `MailTransportBudget`'s derivation from `N`
       and **not** a literal — one knob moves both. *Pinned by:*
-      `MailTransportBudgetTest.derivesTheDrainFromTheSocketBudget`,
-      `RegistryMailExecutorConfigTest.drainsForTheDerivedWindow`,
-      `AsyncMailDispatcherTest.drainsForTheDerivedWindow`
-- [ ] **AC-8:** Given the `mailer` profile, when the context resolves
+      `MailTransportBudgetTest.derivesTheDrainFromTheSocketBudget` +
+      `aRetunedRelayBudgetMovesTheDrainWithIt` (the derivation),
+      `MailTransportPropertiesTest.theDrainWindowIsTheBudget` (the bound value reaching it), and
+      behaviourally by both pools' `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` — which
+      observes the window expiring rather than reading a field back, so no getter or reflection is needed
+- [x] **AC-8:** Given the `mailer` profile, when the context resolves
       `spring.mail.properties.mail.smtp.{connectiontimeout,timeout,writetimeout}`, then all three
       equal the same knob's value — the properties file interpolates it rather than restating `10000`.
       **Holds for `smtp4dev` too** (the phase-1 generalization audit found it restating the literal), so
       the test is parameterized over both profiles that drive the real `SmtpMailer`.
       *Pinned by:* `MailTransportPropertiesTest.theRelayTimeoutsAreTheSameKnobTheDrainIsDerivedFrom`
-- [ ] **AC-9:** Given a socket timeout whose derived drain would exceed the named shutdown budget, or
+- [x] **AC-9:** Given a socket timeout whose derived drain would exceed the named shutdown budget, or
       a non-positive one, when the context binds, then boot **fails** with a message naming the
       property — the degenerate value cannot boot clean (the #414/#426 posture). *Pinned by:*
       `MailTransportPropertiesTest.anOversizedSocketTimeoutFailsTheContext` +
-      `aNonPositiveSocketTimeoutFailsTheContext` + `rejectsValuesOutsideTheTuningRange`
-- [ ] **AC-10:** Given a send still running when the drain window expires, when the pool shuts down,
+      `aNonPositiveSocketTimeoutFailsTheContext` + `acceptsTheWholeTuningRangeButNotBeyondIt`
+- [x] **AC-10:** Given a send still running when the drain window expires, when the pool shuts down,
       then the task is **abandoned without interruption** (no `shutdownNow()`), so it never returns and
       the registry never completes its publication. *Pinned by:*
       `RegistryMailExecutorConfigTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` +
@@ -102,7 +104,7 @@ plan commit, so CI gates every later push (`pull_request` only, #417).
       composed with the already-shipped
       `RegistryMailBulkheadIT.leavesAFailedSendsPublicationOutstanding` (#383 AC-3), which proves the
       other half — a listener that does not return leaves `completion_date` NULL.
-- [ ] **AC-11:** Given `docs/plans/registry-mail-bulkhead.md`, when the follow-up sentence is read,
+- [x] **AC-11:** Given `docs/plans/registry-mail-bulkhead.md`, when the follow-up sentence is read,
       then **#411** is described as folded into #410 rather than as a separate open issue.
       *Pinned by:* review of the diff (prose; no test).
 
@@ -241,17 +243,20 @@ cannot occupy the shared `applicationTaskExecutor` that carries `booking`'s paym
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR #433 ready for review — review gate + Sonar gate due`
+**Stage pointer:** `both gates run — awaiting merge of PR #433`
 
-**Next action:** Run the review gate over the full diff per `riviera-sdlc` `references/pr-gates.md` §1
-(the invocation ladder), layer `riviera-review-overlay`, then pull PR #433's Sonar new-issue list from the
-API and clear every entry. Findings re-enter at Implement.
+**Next action:** Merge PR #433. Everything the close-out can do pre-merge is done; what remains is
+GitHub-only and needs no commit — the `#367` epic checkbox tick and closing #410 (its `Closes #410`
+should do it). #434 is already filed.
+
+**Merged via PR #433.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
 | 1 — the drain window derived from the socket budget, bound and validated | ✅ | `04e6f49` |
 | 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | ✅ | `68e6953` |
+| 3 — review-gate findings F-1..F-4 | ✅ | `<phase-3>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -261,7 +266,12 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-PROC-1 accuracy) | *Skills consulted* cited `SOCKET_PHASES` as a shipped named constant — a leftover from the plan-time 3× derivation that phase 1 replaced with 1×. A stale plan-doc fact is what RV-PROC-1 exists to catch. | fixed-in-`<phase-3>` |
+| F-2 | review (plan-doc discipline / close-out step 4) | **Three AC pin-names named tests that never shipped** — AC-7 cited `RegistryMailExecutorConfigTest.drainsForTheDerivedWindow` and `AsyncMailDispatcherTest.drainsForTheDerivedWindow` (neither exists; the drain is proven behaviourally instead) and AC-9 cited `rejectsValuesOutsideTheTuningRange` (shipped as `acceptsTheWholeTuningRangeButNotBeyondIt`). Exactly the "verify, don't assume" failure the close-out warns about. | fixed-in-`<phase-3>` |
+| F-3 | review (plan-doc accuracy) | The phase-1 code sketch still showed the abandoned `drainWindowOf` reflection approach and its phantom test, describing an implementation that was deliberately not taken. | fixed-in-`<phase-3>` — sketch replaced with what shipped, and the rejected approach recorded as a resolved decision |
+| F-4 | review (runbook completeness) | `RIVIERA_SMTP_SOCKET_TIMEOUT_MS` ships **at** its ceiling, so it can only be tuned *downward* — an operator reading the range `1`–`10000` would not notice, and #370's whole purpose is retuning. The runbook stated the range without stating the asymmetry or what to do when a relay needs more. | fixed-in-`<phase-3>` — the runbook now names the trade-off and the correct escalation (raise the platform grace, then `SHUTDOWN_BUDGET_MS`) |
+| — | review (`/code-review` fan-out) | **Not run** — this session's standing instruction forbids the Agent tool, which is the ladder's rung-3 condition ("the review subagents genuinely cannot run"). The degraded inline path ran instead and is **declared** in the PR with the box left unticked, per `references/pr-gates.md` §1. | declared, not substituted silently |
+| — | sonar | 0 new issues, 0 security hotspots, 0 duplicated blocks, 100% coverage on new code (`new_lines=287`, analysis confirmed present — not a false-clean zero) | clear |
 
 ---
 
@@ -580,45 +590,32 @@ void bindsTheShippedDefault() { /* unset config reproduces #368's value exactly 
 void theEnvironmentOverridesTheBudget() { /* RIVIERA_SMTP_SOCKET_TIMEOUT_MS=4000 */ }
 
 @Test
-void rejectsValuesOutsideTheTuningRange() { /* direct construction, both ends reachable */ }
+void acceptsTheWholeTuningRangeButNotBeyondIt() { /* direct construction, both ends reachable */ }
+
+@Test
+void theDrainWindowIsTheBudget() { /* the bound value reaches MailTransportBudget#shutdownDrain */ }
 ```
 
 ```java
-// RegistryMailExecutorConfigTest (AC-7, AC-10)
-@Test
-void drainsForTheDerivedWindow() {
-	ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig()
-			.registryMailExecutor(SHIPPED, meters, new MailTransportBudget(Duration.ofMillis(2_500)));
-	pool.afterPropertiesSet();
-	try {
-		assertThat(drainWindowOf(pool))
-				.as("tuning the relay budget must move the drain, or the two drift apart again")
-				.isEqualTo(2_500L);
-	}
-	finally {
-		pool.shutdown();
-	}
-}
-
+// RegistryMailExecutorConfigTest + AsyncMailDispatcherTest (AC-7, AC-10) — one per pool
 @Test
 void aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted() throws Exception {
-	ThreadPoolTaskExecutor pool = executorWithDrain(Duration.ofMillis(200));
+	ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED, new MailTransportBudget(TINY_DRAIN));
 	CountDownLatch running = new CountDownLatch(1);
+	CountDownLatch gate = new CountDownLatch(1);
 	AtomicBoolean interrupted = new AtomicBoolean();
 	AtomicBoolean completed = new AtomicBoolean();
-	CountDownLatch gate = new CountDownLatch(1);
 
 	pool.execute(() -> {
 		running.countDown();
 		try {
-			interrupted.set(!gate.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			gate.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+			completed.set(true);
 		}
 		catch (InterruptedException e) {
 			interrupted.set(true);
 			Thread.currentThread().interrupt();
-			return;
 		}
-		completed.set(true);
 	});
 	assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
@@ -633,10 +630,11 @@ void aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted() throws Exception {
 }
 ```
 
-> `drainWindowOf` reads the configured window back off the pool (`awaitTerminationMillis` has no
-> getter — reflect on the field, or assert the wiring through `MailTransportConfig` and keep the
-> behavioural half in `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted`, which needs no getter
-> at all; prefer the latter if reflection trips Sonar). `AsyncMailDispatcherTest` gets the same two.
+> **Resolved in favour of the behavioural assertion.** `awaitTerminationMillis` has no getter, and
+> reflecting on the field would both trip Sonar and assert configuration rather than effect. What shipped
+> instead: `MailTransportPropertiesTest.theDrainWindowIsTheBudget` proves the bound value reaches the
+> derivation, and each pool's `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` *observes the
+> window expiring* — which is the property that matters and needs no getter at all.
 
 - [ ] **Step 2: Run them, verify they fail** —
       `gradle --no-daemon --console=plain test --tests "*MailTransport*" --tests "*RegistryMailExecutorConfigTest*" --tests "*AsyncMailDispatcherTest*"`
@@ -788,10 +786,12 @@ this plan doc
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-6:** `gradle … --tests "*MdcTaskDecoratorTest*" --tests "*RegistryMailExecutorConfigTest*" --tests "*AsyncMailDispatcherTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7..AC-9:** `gradle … --tests "*MailTransport*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-10:** `gradle … --tests "*RegistryMailExecutorConfigTest*"` (abandon-not-interrupt) → PASS, plus the shipped `RegistryMailBulkheadIT.leavesAFailedSendsPublicationOutstanding` green in CI. Verified at commit `<sha>`.
-- [ ] **AC-11:** diff review of `docs/plans/registry-mail-bulkhead.md`. Verified at commit `<sha>`.
+- [x] **AC-1..AC-6:** `gradle --no-daemon --console=plain test --tests "*MdcTaskDecoratorTest*" --tests "*RegistryMailExecutorConfigTest*" --tests "*AsyncMailDispatcherTest*" --tests "*BookingConfirmationMailListenerTest*"` → PASS (`ac9e095`).
+- [x] **AC-7..AC-9:** `gradle --no-daemon --console=plain test --tests "*MailTransport*" --tests "*MailerProfileWiringTest*"` → PASS (`04e6f49`). Both mutation-checked: re-hardcoding one `smtp.timeout` reddens `theRelayTimeoutsAreTheSameKnobTheDrainIsDerivedFrom`, so the assertion is not vacuous.
+- [x] **AC-10:** both pools' `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` → PASS (`04e6f49`), mutation-checked by swapping `shutdown()` for `shutdownNow()` (reddens as intended). Registry half composed with `RegistryMailBulkheadIT` → PASS locally against real Postgres (Docker present).
+- [x] **AC-11:** `docs/plans/registry-mail-bulkhead.md` follow-up sentence now describes #411 as folded into #410 (`68e6953`).
+
+**Full-suite verification:** PR #433's own CI run — Backend (build + test), Frontend, CodeQL and SonarCloud all `success` on the ready-for-review head, which is the half the scoped local runs cannot prove (`riviera-local-debug`'s shared-state blind spot).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
@@ -813,4 +813,9 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 invocation ladder *plus* `riviera-review-overlay`.
+- [ ] **The review gate ran in full** — **deliberately left unticked.** `riviera-review-overlay` was
+      loaded and its whole backend bank walked (RV-BE-1..18 + RV-STYLE-1 + RV-PROC-1), and the ladder's
+      rung 1 (`Skill("code-review")`) *did* load the plugin workflow — but that workflow is a subagent
+      fan-out and this session's standing instruction forbids the Agent tool, which is rung 3's "the
+      review subagents genuinely cannot run". The degraded inline path ran instead and is **declared** in
+      the PR. Ticking this would make the PR record lie about the process (case history: PR #353/#355).

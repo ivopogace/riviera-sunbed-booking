@@ -228,6 +228,14 @@ shutdown drain budget, and a longer drain outlasts the platform's SIGTERM grace,
 killed mid-close instead of shutting down in order. Milliseconds rather than a `Duration` because
 Jakarta Mail reads the interpolated value as a plain number.
 
+**Note the shipped default sits AT the ceiling, so this knob only tunes downward.** That is not an
+oversight: you cannot simultaneously have a relay budget larger than the platform's shutdown grace and
+a drain window that covers it, and the ceiling forces that trade-off to fail at boot rather than hide.
+If a real relay genuinely needs more than 10s per socket operation (#370 is the first point that is
+knowable), the fix is **not** to raise this past its range — it is to raise the platform's shutdown
+grace first, then raise `SHUTDOWN_BUDGET_MS` in `MailTransportProperties` to match. Lowering the knob
+is always safe and shortens both the relay budget and the drain together.
+
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
 vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so
 expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
