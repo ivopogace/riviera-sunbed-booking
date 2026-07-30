@@ -53,6 +53,20 @@ public final class MdcTaskDecorator implements TaskDecorator {
 	}
 
 	/**
+	 * The task {@code decorated} carries, or {@code decorated} itself when this decorator did not produce
+	 * it. The caller's <strong>context stays private</strong> — only the payload comes back out, so the
+	 * "readable solely through {@link #inContextOf}" property this class relies on is untouched.
+	 *
+	 * <p>Added for {@code AsyncMailDispatcher}'s shutdown accounting (#442), which must name the flow a
+	 * discarded send belonged to and can only reach it by looking past this wrapper: the pool applies the
+	 * decoration inside {@code execute}, so what sits on the queue is never the object the dispatcher
+	 * submitted.
+	 */
+	public static Runnable payloadOf(Runnable decorated) {
+		return decorated instanceof ContextCarryingTask carried ? carried.task() : decorated;
+	}
+
+	/**
 	 * Run {@code action} under the logging context {@code task} was submitted with, restoring the running
 	 * thread's own afterwards. A task this decorator did not produce simply carries none, so the action
 	 * runs as it would have anyway — accounting for a loss must never depend on it.

@@ -120,13 +120,13 @@ no SQL), `riviera-stripe-payments` (no money), `riviera-frontend` / `angular-dev
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Only the two `execute()` rejections get the tag and the drain path is missed — a `kind`-filtered query then **silently under-counts**, which is a worse defect than today's honest absence | med | high | AC-3 asserts two *different* kinds through the drain path specifically; AC-4 asserts the unfiltered total still equals every send the pool never ran, so a missed path shows up as a mismatch | Claude | open |
+| R-1 | Only the two `execute()` rejections get the tag and the drain path is missed — a `kind`-filtered query then **silently under-counts**, which is a worse defect than today's honest absence | med | high | AC-3 asserts two *different* kinds through the drain path specifically; AC-4 asserts the unfiltered total still equals every send the pool never ran, so a missed path shows up as a mismatch | Claude | **closed** — `anAbandonedSendNamesTheFlowItLost` green; the risk also produced the phase merge recorded under Execution status, since the half-tagged intermediate was itself the hazard |
 | R-2 | A tag value is spelled differently from the shipped `failed` series (`password_reset` vs `password-reset`), breaking dashboards while every test still passes | low | high | One `MailKind` vocabulary for both emitters (AC-5) + AC-6 pinning the three literals against the runbook's documented values | Claude | open |
-| R-3 | A drained queue element that is not one of ours reaches the accounting and is silently uncounted — the same silent-loss class the counter exists to end | low | med | `dispatch(...)` is the only path onto this queue, so the branch is unreachable by construction; it is nonetheless handled explicitly (an `ERROR` naming the defect, never a swallow) and pinned by AC-3's drain assertions. **No new tag value is invented for it** — polluting a documented vocabulary for an unreachable state is how the next runbook sentence becomes false | Claude | open |
-| R-4 | `MdcTaskDecorator` gains a payload accessor and something reads the *context* out of it, defeating the "reachable only through `inContextOf`" property its Javadoc asserts | low | med | The accessor returns the wrapped task only; the context map stays private to the record. Reviewed under RV-BE-11 | Claude | open |
+| R-3 | A drained queue element that is not one of ours reaches the accounting and is silently uncounted — the same silent-loss class the counter exists to end | low | med | `dispatch(...)` is the only path onto this queue, so the branch is unreachable by construction; it is nonetheless handled explicitly (an `ERROR` naming the defect, never a swallow) and pinned by AC-3's drain assertions. **No new tag value is invented for it** — polluting a documented vocabulary for an unreachable state is how the next runbook sentence becomes false | Claude | **closed** — implemented as specified in `recordAbandonment`; the record deconstruction pattern makes the guard total |
+| R-4 | `MdcTaskDecorator` gains a payload accessor and something reads the *context* out of it, defeating the "reachable only through `inContextOf`" property its Javadoc asserts | low | med | The accessor returns the wrapped task only; the context map stays private to the record. Reviewed under RV-BE-11 | Claude | **closed** — `payloadOf` returns `ContextCarryingTask#task()` and nothing else; the map stays unreachable |
 | R-5 | **Merge conflict with PR #443**, which is open against `docs/runbooks/observability.md` — the same file Phase 2 edits | **high** | low | #443 merges first (it is docs-only and ahead); this branch merges `origin/main` before ready-for-review and re-reads the file. Phase 2 also **owns two sentences #443 explicitly rated "accurate only while #442 is open"** (its lines 83 and 289) — they become false the moment this ships, so the merge is not just conflict-avoidance | Claude | open |
-| R-6 | The widened seam is treated as a published-surface change and trips `ModularityTests` / `PublishedSurfacePlacementArchitectureTests` | low | low | Everything stays package-private inside `notification.application`; the published `MailSender` port keeps its per-kind methods and is untouched. Structural net run at the end of Phase 1 | Claude | open |
-| R-7 | Boot-time meter pre-registration grows from 3 counters to 9 and someone reads the extra series as new failures | low | low | All nine are zero until they fire, exactly as the three were; the runbook's tag table gains the kind rows so a reader meets them documented | Claude | open |
+| R-6 | The widened seam is treated as a published-surface change and trips `ModularityTests` / `PublishedSurfacePlacementArchitectureTests` | low | low | Everything stays package-private inside `notification.application`; the published `MailSender` port keeps its per-kind methods and is untouched. Structural net run at the end of Phase 1 | Claude | **closed** — full structural net green (211 tests, 0 failures, 0 skipped) |
+| R-7 | Boot-time meter pre-registration grows from 3 counters to 9 and someone reads the extra series as new failures | low | low | All nine are zero until they fire, exactly as the three were; the runbook's tag table gains the kind rows so a reader meets them documented | Claude | open — the runbook half lands in Phase 2 |
 
 ## Open questions / Assumptions
 
@@ -201,14 +201,22 @@ read or written.
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0+1 done and pushed; next is phase 2 (docs)`
 
-**Next action:** Load `riviera-local-debug`, then start Phase 0 with its failing test.
+**Next action:** Merge `origin/main` (PR #443 overlap, R-5), then Phase 2's doc sweep.
+
+> **Phases 0 and 1 were merged into one commit, deliberately** — a correction to this plan made at
+> the keyboard, recorded here rather than silently. As planned, Phase 0 would have tagged the two
+> rejection reasons while leaving `abandoned` un-tagged until Phase 1. That intermediate state puts
+> **inconsistent label sets on one meter name**, which `SimpleMeterRegistry` tolerates but a
+> Prometheus registry rejects at scrape time — so the branch would have carried a commit whose CI
+> could fail for a reason unrelated to either phase's intent. The TDD discipline the split existed
+> to buy was kept in full: AC-3's drain-path spec was written red alongside the rest, before any
+> implementation.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The seam + the two rejection paths | | |
-| 1 — The abandoned path | | |
+| 0+1 — The seam, both rejection paths, and the drain path | ✅ | `acd4924` |
 | 2 — Docs: ADR amendment, runbooks, Javadoc sweep | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -349,6 +357,8 @@ touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | Phase 0+1 — a new typed vocabulary replaced three loose string constants | Any other place a mail kind is spelled as a bare string, which would re-open the drift `MailKind` exists to prevent | `grep -rn '"verification"\|"password-reset"\|"operator-approved"' platform/src/main --include=*.java` | 3 — all inside `MailKind` itself, plus one Javadoc mention in `MailSender` | Fix all: the enum is the single source, and the Javadoc line is rewritten in Phase 2 |
+| 2026-07-30 | Phase 0+1 — the slice's premise is "a counter documented as carrying a tag it does not carry" | Every other counter's tag set, read at its **construction site** rather than from prose about it (the standing pattern from PRs #427/#430/#436, recorded on #440's plan as F-5) | `grep -rn "meters.counter(" platform/src/main --include=*.java` | 6 — `MAIL_CONFIRMATION_ABANDONED` (`reason` only), `MAIL_REGISTRY_SHED` (untagged), `MAIL_RECOVERY_FAILED`, `MAIL_RECOVERY_DROPPED`, `REFUNDS_FAILED` ×2 (untagged) | **Skip — no sibling has the defect.** The two registry-vehicle counters carry exactly one kind by construction (the booking confirmation), so a `kind` tag there would be a constant, and both are documented that way. Checked, not assumed: `docs/runbooks/observability.md`'s shed row and the `no-booking`/`no-set`/`no-contact` vocabulary both match their call sites |
 
 ---
 
