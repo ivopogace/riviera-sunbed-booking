@@ -28,4 +28,17 @@ public final class OversizedDrainingPool {
 		pool.setAwaitTerminationMillis(ABSURD_DRAIN_MS);
 		return pool;
 	}
+
+	/**
+	 * A <strong>second</strong> draining pool in the same class — the case a per-class key cannot see, and
+	 * the reason {@code ShutdownDrainArchitectureTest} counts windows as well as classes (review finding
+	 * F-1). One class, two shares of the grace: keyed by class this collapses to a single entry with a
+	 * single claim, so the sum reads correct while the real drain is double.
+	 */
+	public static ThreadPoolTaskExecutor secondPoolInTheSameClass() {
+		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
+		pool.setWaitForTasksToCompleteOnShutdown(true);
+		pool.setAwaitTerminationMillis(ABSURD_DRAIN_MS);
+		return pool;
+	}
 }
