@@ -60,29 +60,29 @@ git before phase 0.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the promoted decorator at `ai.riviera.platform.shared.MdcTaskDecorator`, when
+- [x] **AC-1:** Given the promoted decorator at `ai.riviera.platform.shared.MdcTaskDecorator`, when
       the structural net runs, then the module graph is unchanged and no new dependency edge exists —
       `shared` still depends on nothing but `customer`/`operator`, and neither consumer module needed
       a new grant. *Pinned by:* `ModularityTests.verifiesModularStructure` + `PackageShapeArchitectureTests`.
-- [ ] **AC-2:** Given the registry mail pool after the move, when a mail is submitted with a
+- [x] **AC-2:** Given the registry mail pool after the move, when a mail is submitted with a
       correlation id and the submitting thread then clears its own MDC, then the worker still runs
       under the submitter's context **and** the saturation episode flag still clears — i.e. the
       `CompositeTaskDecorator` was preserved, not replaced. *Pinned by:*
       `RegistryMailExecutorConfigTest.aWorkerRunsWithTheSubmittersLoggingContext` +
       `RegistryMailExecutorConfigTest.aLaterEpisodeLogsAgain` (both existing, unchanged).
-- [ ] **AC-3:** Given the recovery dispatcher after the move, when a send is abandoned at shutdown,
+- [x] **AC-3:** Given the recovery dispatcher after the move, when a send is abandoned at shutdown,
       then the abandonment line still reads the kind back past the carrier and still borrows the
       abandoned send's context. *Pinned by:* `AsyncMailDispatcherTest` (existing, unchanged — the
       `payloadOf`/`inContextOf` helpers travel with the class).
-- [ ] **AC-4:** Given a refund submitted to `bookingRefundExecutor` while the submitting thread
+- [x] **AC-4:** Given a refund submitted to `bookingRefundExecutor` while the submitting thread
       holds a correlation id, when that thread clears its MDC and the worker runs, then the worker
       observes the submitter's correlation id and runs on a `booking-refund-` thread. *Pinned by:*
       `RefundExecutorConfigTest.aWorkerRunsWithTheSubmittersLoggingContext` (new).
-- [ ] **AC-5:** Given the refund pool's decorator slot now holding a composite, when saturation ends
+- [x] **AC-5:** Given the refund pool's decorator slot now holding a composite, when saturation ends
       and a later episode begins, then the second episode logs again — proving the compose did not
       replace the saturation policy's `decorate`. *Pinned by:*
       `RefundExecutorConfigTest.aLaterEpisodeLogsAgain` (existing, must stay green **unchanged**).
-- [ ] **AC-6:** Given every production class that configures its own `ThreadPoolTaskExecutor`, when
+- [x] **AC-6:** Given every production class that configures its own `ThreadPoolTaskExecutor`, when
       the structural rule runs, then each one references `MdcTaskDecorator` — and the rule is proven
       non-vacuous against a fixture pool that does not. *Pinned by:*
       `WorkerContextArchitectureTest.everySelfConfiguredWorkerPoolCarriesTheSubmittersContext` +
@@ -128,25 +128,29 @@ git before phase 0.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The refund pool's `setTaskDecorator` is **called twice** instead of composed, silently replacing the saturation policy — the episode flag then never clears, every later saturation is counted but never logged, and no test about the *missing lines* goes red | med | high | Compose via `CompositeTaskDecorator`, exactly as the registry pool does; AC-5 keeps `aLaterEpisodeLogsAgain` as the tripwire. `RefundExecutorConfig`'s Javadoc already warns about this slot by name | Claude | open |
-| R-2 | The decorator is captured on the **worker** thread rather than the submitting one, making AC-4 pass for the wrong reason (submitter and worker are the same thread in a naive test) | med | med | AC-4 reuses the registry test's shape verbatim: clear the submitter's MDC after submitting, and assert the worker's thread name starts with `booking-refund-`. A worker-side capture then sees an empty map and fails | Claude | open |
-| R-3 | Promotion is justified by "two modules use it", which CLAUDE.md explicitly bars as an admission criterion — the review gate reads the slice as growing `shared` into a utility bag | med | med | The written argument is **ownership**, not reuse (see Architecture + §4a). Reuse is named as the trigger only. The admission text lands in three places so it cannot be read as incidental | Claude | open |
-| R-4 | The two static helpers (`payloadOf`, `inContextOf`) are `notification`-only callers today, so moving them looks like moving module-specific code into the kernel | med | med | They are accessors of the decorator's **own private carrier type** — splitting them would force `ContextCarryingTask` public, which is strictly worse and breaks #442's R-4. Recorded in §4a; the alternative is written down rather than left implicit | Claude | open |
-| R-5 | The AC-6 rule over-reaches onto `ThreadPoolTaskScheduler` (#395's sweeps) or `SimpleAsyncTaskExecutor`, failing the build for pools that have no submitting request to inherit | low | med | Scope the marker to `ThreadPoolTaskExecutor` only; Non-goals states why. Verified today: exactly three production classes call its setters | Claude | open |
-| R-6 | The AC-6 rule is **vacuous** — the detector finds nothing and the rule passes trivially, which is precisely how #410's own guard stayed green while #404 shipped an undecorated pool | med | high | A fixture tree (`ai.riviera.workercontextfixture`) with an undecorated pool, asserted found — the `ShutdownDrainArchitectureTest` / #95 fixture mechanism | Claude | open |
-| R-7 | ArchUnit reads the *call*, not its argument, so a class that references `MdcTaskDecorator` in some other capacity would satisfy AC-6 without decorating | low | low | Accepted and documented in the rule's Javadoc, as `ShutdownDrainArchitectureTest` documents the same limitation. The direction is safe: it cannot mark a decorated pool undecorated, and the per-pool propagation tests (AC-2, AC-4) assert the real behaviour | Claude | open |
+| R-1 | The refund pool's `setTaskDecorator` is **called twice** instead of composed, silently replacing the saturation policy — the episode flag then never clears, every later saturation is counted but never logged, and no test about the *missing lines* goes red | med | high | Compose via `CompositeTaskDecorator`, exactly as the registry pool does; AC-5 keeps `aLaterEpisodeLogsAgain` as the tripwire. `RefundExecutorConfig`'s Javadoc already warns about this slot by name | Claude | **closed** — composed via `CompositeTaskDecorator`; `aLaterEpisodeLogsAgain` stayed green unchanged, and the review's git-history pass independently confirmed the order matches the registry pool's (`3e640ce`) |
+| R-2 | The decorator is captured on the **worker** thread rather than the submitting one, making AC-4 pass for the wrong reason (submitter and worker are the same thread in a naive test) | med | med | AC-4 reuses the registry test's shape verbatim: clear the submitter's MDC after submitting, and assert the worker's thread name starts with `booking-refund-`. A worker-side capture then sees an empty map and fails | Claude | **closed** — the test clears the submitter's MDC after submitting and asserts the `booking-refund-` thread name; it was run **red first** and failed on exactly the correlation-id assertion (`3e640ce`) |
+| R-3 | Promotion is justified by "two modules use it", which CLAUDE.md explicitly bars as an admission criterion — the review gate reads the slice as growing `shared` into a utility bag | med | med | The written argument is **ownership**, not reuse (see Architecture + §4a). Reuse is named as the trigger only. The admission text lands in three places so it cannot be read as incidental | Claude | **closed** — the argument shipped as ownership in three places; the review's CLAUDE.md-adherence pass judged the admission "legitimate … exactly the ground CLAUDE.md requires and explicitly distinguishes from the barred one" |
+| R-4 | The two static helpers (`payloadOf`, `inContextOf`) are `notification`-only callers today, so moving them looks like moving module-specific code into the kernel | med | med | They are accessors of the decorator's **own private carrier type** — splitting them would force `ContextCarryingTask` public, which is strictly worse and breaks #442's R-4. Recorded in §4a; the alternative is written down rather than left implicit | Claude | **closed** — both helpers moved with the class and `ContextCarryingTask` stayed `private`; #442's R-4 property is intact, verified by the git-history reviewer and by `AsyncMailDispatcherTest` passing unchanged |
+| R-5 | The AC-6 rule over-reaches onto `ThreadPoolTaskScheduler` (#395's sweeps) or `SimpleAsyncTaskExecutor`, failing the build for pools that have no submitting request to inherit | low | med | Scope the marker to `ThreadPoolTaskExecutor` only; Non-goals states why. Verified today: exactly three production classes call its setters | Claude | **closed** — the rule matches `ThreadPoolTaskExecutor` only; the generalization audit confirmed **no** `ThreadPoolTaskScheduler` is instantiated in main at all, so nothing was swept up (`1360e50`) |
+| R-6 | The AC-6 rule is **vacuous** — the detector finds nothing and the rule passes trivially, which is precisely how #410's own guard stayed green while #404 shipped an undecorated pool | med | high | A fixture tree (`ai.riviera.workercontextfixture`) with an undecorated pool, asserted found — the `ShutdownDrainArchitectureTest` / #95 fixture mechanism | Claude | **closed** — fixture `UndecoratedWorkerPool` is asserted found *and* asserted undecorated; additionally mutation-checked by reverting phase 1's compose, which reddened exactly one test (`1360e50`) |
+| R-7 | ArchUnit reads the *call*, not its argument, so a class that references `MdcTaskDecorator` in some other capacity would satisfy AC-6 without decorating | low | low | Accepted and documented in the rule's Javadoc, as `ShutdownDrainArchitectureTest` documents the same limitation. The direction is safe: it cannot mark a decorated pool undecorated, and the per-pool propagation tests (AC-2, AC-4) assert the real behaviour | Claude | **closed** — accepted and documented in the rule's Javadoc, mirroring `ShutdownDrainArchitectureTest`'s identical limitation; the real behaviour is asserted per pool by the three propagation tests |
 
 ## Open questions / Assumptions
 
-- **Assumption:** issue AC-1's "decision between promote / duplicate / leave" is delegated to the
-  implementer — three of its four ACs are written as "If promoted", and the issue argues duplication
-  will drift while "leave" contradicts the issue existing. **Decided: promote**, argument recorded
-  above and in the code. — *Owner:* Claude · *Resolves by:* phase 0 (this plan's Architecture line).
-- **Assumption:** no Flyway version is claimed by this slice, so the #122/#127 collision check is
-  moot. Verified: the diff adds no migration, and the ten open PRs are all frontend Dependabot
-  bumps. — *Owner:* Claude · *Resolves by:* phase 0.
+**None outstanding.** All four entries resolved below.
 
 ### Resolved
+
+- **Assumption → confirmed:** issue AC-1's "decision between promote / duplicate / leave" is
+  delegated to the implementer — three of its four ACs are written as "If promoted", and the issue
+  argues duplication will drift while "leave" contradicts the issue existing. **Decided: promote**,
+  on ownership grounds; the argument shipped in the class Javadoc, `shared/package-info.java` and
+  `RESPONSIBILITIES.md` (`68335b6`). The review gate's CLAUDE.md-adherence pass independently judged
+  the admission legitimate against the stated three-part test.
+- **Assumption → confirmed:** no Flyway version is claimed, so the #122/#127 collision check is
+  moot. The shipped diff adds no migration and moves no published event, so no `event_type` rewrite
+  either; the ten open PRs remain frontend Dependabot bumps.
 
 - **Open question (grill):** does promotion need new `allowedDependencies` grants? — **No.** Both
   `booking` and `notification` already list `shared`. Verified against both `package-info.java`
@@ -212,17 +216,18 @@ idempotency key are untouched.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 3)` — draft PR **#458** open, so every later push is CI-gated.
+**Stage pointer:** `DONE — merged via PR #458` (all four phases shipped; CI, review and Sonar gates
+run; F-1/F-2 fixed and re-verified).
 
-**Next action:** Phase 3 — run `riviera-docs-freshness` over this PR's range, patch `CLAUDE.md` and
-`RESPONSIBILITIES.md`, then finalize this section and mark the PR ready for review.
+**Next action:** none — close-out complete. Post-merge items are GitHub-only: confirm #455 closed
+(the PR's `Closes #455` does it) and confirm the PR-activity subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Promote the decorator to `shared` | ✅ | `68335b6` |
 | 1 — Compose it onto the refund pool | ✅ | `a452627` |
 | 2 — Structural guard against a fourth undecorated pool | ✅ | `b09d672` |
-| 3 — Substrate docs + close-out | | |
+| 3 — Substrate docs + close-out | ✅ | `7466335`, `8144dc3` (review fixes F-1/F-2) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -445,31 +450,37 @@ discipline excludes. Likewise `.claude/skills/**` (no reference to the decorator
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run the structural net → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `--tests "*RegistryMailExecutorConfigTest*"` → PASS, unchanged. Verified at `<sha>`.
-- [ ] **AC-3:** Run `--tests "*AsyncMailDispatcherTest*"` → PASS, unchanged. Verified at `<sha>`.
-- [ ] **AC-4:** Run `--tests "*RefundExecutorConfigTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-5:** `aLaterEpisodeLogsAgain` green with the composite in place. Verified at `<sha>`.
-- [ ] **AC-6:** Run `--tests "*WorkerContextArchitectureTest*"` → PASS, both halves. Verified at `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS. Verified at `68335b6`. Also green: `PublishedSurfacePlacementArchitectureTests`, `CompositionRootDisciplineTests`, `MailListenerExecutorArchitectureTest`, `ErrorContractArchitectureTests`, `ScheduledWorkArchitectureTest`.
+- [x] **AC-2:** `--tests "*RegistryMailExecutorConfigTest*"` → PASS; the file is unchanged by this PR apart from one import. Verified at `68335b6`.
+- [x] **AC-3:** `--tests "*AsyncMailDispatcherTest*"` → PASS; unchanged apart from one import, so `payloadOf`/`inContextOf` survived the move intact. Verified at `68335b6`.
+- [x] **AC-4:** `--tests "*RefundExecutorConfigTest*"` → **10 tests, 0 failures, 0 skipped**. Verified at `3e640ce`. Run **red first**: against the undecorated pool it failed on the correlation-id assertion (line 220), so the assertion is not vacuous.
+- [x] **AC-5:** `aLaterEpisodeLogsAgain` green **unchanged** with the composite installed — same run as AC-4 (`3e640ce`), which is the compose-did-not-replace proof.
+- [x] **AC-6:** `--tests "*WorkerContextArchitectureTest*"` → **3 tests, 0 failures, 0 skipped** (`1360e50`). **Mutation-checked**: reverting phase 1's compose reddened `everySelfConfiguredWorkerPoolCarriesTheSubmittersContext` and nothing else; restored and re-verified green.
+
+**End-of-phase regression** (`3e640ce`): every `booking.adapter.in` test class plus `RefundExecutorWiringIT` — 48 tests, **0 failures, 0 skipped**, so the Testcontainers ITs ran for real rather than skipping.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `shared`
-      still depends only on `customer`/`operator` (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9); the refund body is unmodified.
-- [ ] Refund policy still enforced server-side, untouched (invariant #10).
-- [ ] Timezone unaffected (invariant #6). Booking codes unaffected (invariant #7) — and the new
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `shared`
+      still depends only on `customer`/`operator` (invariant #11). The move *removes* a cross-package
+      reach rather than adding one, and no `allowedDependencies` edge was needed.
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9); the refund body is unmodified.
+- [x] Refund policy still enforced server-side, untouched (invariant #10).
+- [x] Timezone unaffected (invariant #6). Booking codes unaffected (invariant #7) — and the new
       test asserts on a correlation id, never a code.
-- [ ] No Flyway migration needed; no published event moved (invariant #12).
-- [ ] **Frontend** N/A.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 invocation ladder *plus*
-      `riviera-review-overlay`, not the overlay alone.
+- [x] No Flyway migration needed; no published event moved (invariant #12), so no `event_type` rewrite.
+- [x] **Frontend** N/A.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register (F-1, F-2 both fixed).
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #458` — no docs-only follow-up PR needed.
+- [x] **The review gate ran in full** — the `pr-gates.md` §1 ladder succeeded at **rung 1**
+      (`Skill("code-review")` was accepted), running the plugin's own workflow: eligibility check,
+      then five parallel reviewers (CLAUDE.md adherence, shallow bug scan, git history, prior-PR
+      comments, code-comment compliance). `riviera-review-overlay`'s backend bank was walked on top.
+      Subagents were authorized by the user, per the ladder's standing-instruction clause.
