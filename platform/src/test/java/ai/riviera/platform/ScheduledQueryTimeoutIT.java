@@ -72,8 +72,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
 		"riviera.scheduled.query-timeout-seconds=1",
-		// Keep the platform's own scheduled jobs out of the window in which this test locks tables
-		// (the #98/#122 lesson): a sweep firing mid-test would queue behind the very lock under test.
+		// Long initial delays keep the platform's own sweeps out of this lock window (#98/#122).
 		"booking.request.initial-delay=PT30M",
 		"booking.awaiting-payment.initial-delay=PT30M",
 		"customer.retention.initial-delay=PT30M",
@@ -85,6 +84,9 @@ class ScheduledQueryTimeoutIT {
 
 	/** Below the 1 s bound the read cannot have blocked on the lock, so the test would be vacuous. */
 	private static final Duration MUST_HAVE_BLOCKED_FOR = Duration.ofMillis(900);
+
+	/** Any date: the retention-basis read under test is cancelled long before its result matters. */
+	private static final LocalDate SOME_CUTOFF = LocalDate.of(2027, 6, 1);
 
 	@Autowired
 	Bookings bookings;
@@ -129,13 +131,10 @@ class ScheduledQueryTimeoutIT {
 				readWhileLocked("booking", () -> bookings.findOverduePendingRequests(now)));
 		assertBounded("the retention sweep's candidate read",
 				readWhileLocked("customer", () -> erasure.expiredGuestCandidates(now, 100)));
-		// The retention sweep's SECOND entry read, and the one the issue did not name: it asks
-		// customer for candidates, then asks booking whether each still has a retention basis —
-		// both before it writes anything. Bounding only the first would leave it able to wedge here.
 		assertBounded("the retention sweep's retention-basis read",
 				readWhileLocked("booking",
 						() -> guestBookingHistory.withBookingOnOrAfter(List.of(new CustomerId(1L)),
-								LocalDate.now())));
+								SOME_CUTOFF)));
 	}
 
 	private static void assertBounded(String what, Outcome outcome) {
@@ -152,14 +151,17 @@ class ScheduledQueryTimeoutIT {
 	 * Runs {@code read} on a worker thread while an unrelated connection holds {@code table} under an
 	 * {@code ACCESS EXCLUSIVE} lock, and reports how long the read took to stop — by returning or by
 	 * throwing. A read that has not stopped within the ceiling fails here, which is the pre-fix state.
+	 *
+	 * <p>Declaration order matters: try-with-resources closes in reverse, so the connection releases
+	 * the lock <em>before</em> {@code ExecutorService#close} waits for the worker. The other order
+	 * would wait on a read that nothing has unblocked.
 	 */
 	private Outcome readWhileLocked(String table, Callable<?> read) throws Exception {
-		ExecutorService worker = Executors.newSingleThreadExecutor();
-		try (Connection blocker = dataSource.getConnection()) {
+		try (ExecutorService worker = Executors.newSingleThreadExecutor();
+				Connection blocker = dataSource.getConnection()) {
 			blocker.setAutoCommit(false);
 			try (Statement lock = blocker.createStatement()) {
-				// Interpolated, not bound: a table name is not a bindable parameter, and every caller
-				// here passes a literal from this file.
+				// A table name cannot be bound; every caller passes a literal from this file.
 				lock.execute("LOCK TABLE " + table + " IN ACCESS EXCLUSIVE MODE");
 			}
 
@@ -181,11 +183,6 @@ class ScheduledQueryTimeoutIT {
 
 			blocker.rollback();
 			return outcome;
-		}
-		finally {
-			// After the lock is released, so a still-blocked read (the pre-fix path) can finish and
-			// the worker thread does not outlive the test.
-			worker.shutdownNow();
 		}
 	}
 

@@ -62,11 +62,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
-		// Far beyond this test's patience: the wedge must not clear on its own, or a pool of one
-		// would pass. This test is about isolation; ScheduledQueryTimeoutIT owns the bound.
+		// Far beyond this test's patience, so the wedge cannot clear on its own (see the Javadoc).
 		"riviera.scheduled.query-timeout-seconds=120",
-		// Keep the platform's own scheduled jobs out of the window (the #98/#122 lesson) — this test
-		// dispatches onto the very pool they would otherwise occupy.
+		// Long initial delays keep the platform's own sweeps off the pool this test dispatches onto.
 		"booking.request.initial-delay=PT30M",
 		"booking.awaiting-payment.initial-delay=PT30M",
 		"customer.retention.initial-delay=PT30M",
@@ -102,8 +100,7 @@ class AbandonedSweepSurvivesWedgedJobIT {
 
 	@BeforeEach
 	void isolate() {
-		// The sweep scans the whole table, so clear this class's own rows first — the Testcontainers
-		// database is shared across the suite. Booking before customer (FK).
+		// The sweep scans the whole table and the container is shared; booking before customer (FK).
 		jdbc.sql("DELETE FROM set_availability WHERE booking_date = :date").param("date", BOOKING_DATE).update();
 		jdbc.sql("DELETE FROM booking WHERE code = :code").param("code", CODE).update();
 		jdbc.sql("DELETE FROM customer WHERE email = :email").param("email", CODE + "@example.com").update();
