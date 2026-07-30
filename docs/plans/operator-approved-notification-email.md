@@ -114,11 +114,11 @@ which must keep passing verbatim.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `ApprovalOutcome` enum → sealed interface is a **published-vocabulary shape change**; a missed consumer breaks the build or, worse, an `equals` comparison silently stops matching | med | med | Only three production consumers (`OperatorRegistrationService`, `JdbcOperators`, `AdminOperatorController`) + tests; all comparisons are `switch` over the closed set, none is `==`/`equals` on an enum constant — verified by `grep -rn "ApprovalOutcome"` before and after. Exhaustive `switch` with no `default` makes a missed case a **compile error** | Claude | open |
+| R-1 | `ApprovalOutcome` enum → sealed interface is a **published-vocabulary shape change**; a missed consumer breaks the build or, worse, an `equals` comparison silently stops matching | med | med | Only three production consumers (`OperatorRegistrationService`, `JdbcOperators`, `AdminOperatorController`) + tests; all comparisons are `switch` over the closed set, none is `==`/`equals` on an enum constant — verified by `grep -rn "ApprovalOutcome"` before and after. Exhaustive `switch` with no `default` makes a missed case a **compile error** | Claude | **closed** (phase 1) — the compiler found the one consumer the grep plan had missed (`WebSliceStubs`); no `==` comparison existed anywhere |
 | R-2 | `contact_email` is **nullable** (V29: the env-managed bootstrap admin has none), so `Approved` can carry `null` and the edge could NPE or mail an empty address | low | med | `OperatorApprovalMail` guards null **and** blank before touching `MailSender`; unit-pinned. A `PENDING` row always has one (the edge requires non-blank at registration) — the guard is for the row shape the schema still permits | Claude | open |
 | R-3 | Mail send inside the approval request could slow it or fail it, or interleave with the session-revocation bracket | low | high | The send goes through `TransactionalMailService.dispatchQuietly` → `AsyncMailDispatcher`: off-thread, never throws, failures swallowed-and-counted. It is issued **after** `lifecycle.approve` returns and touches no session state (approve has no revoke bracket — only suspend/reinstate/password paths do). AC-4 pins it | Claude | open |
 | R-4 | This non-recovery kind rides the `riviera.mail.recovery.*` counters, so a reader of the metric/log could mis-attribute an operator-approval loss to a tourist recovery flow | high | low | Deliberate and documented: "recovery" names the **vehicle** (the in-memory dispatcher), not the flow — the `kind` tag (`operator-approved`) is what disambiguates. `ObservabilityMetrics` Javadoc + `docs/runbooks/observability.md` updated in phase 3; `recordLoss`'s recovery-specific log wording ("the token was issued, so the user can re-request") is generalised, since no token exists on this kind | Claude | open |
-| R-5 | `UPDATE … RETURNING` through `JdbcClient.query(...)` is a shape this repo has not used before; a driver/`JdbcClient` mismatch would surface only against real Postgres | low | high | Proven by a Testcontainers IT (`OperatorApprovalMailIT`, AC-1/AC-2) against the full Flyway chain, not by a unit test. If it does not work, fall back to a same-transaction follow-up read — `approve` is already `@Transactional` and the row is write-locked by the UPDATE, so the fallback is race-free (it costs one extra statement, nothing else) | Claude | open |
+| R-5 | `UPDATE … RETURNING` through `JdbcClient.query(...)` is a shape this repo has not used before; a driver/`JdbcClient` mismatch would surface only against real Postgres | low | high | Proven by a Testcontainers IT against the full Flyway chain, not by a unit test | Claude | **closed** (phase 1) — green in `OperatorLifecycleIT` against real Postgres. It was also less novel than the risk assumed: `insertPending` and the ITs' own fixtures already use `INSERT … RETURNING` through the same `JdbcClient` path. The documented fallback (a same-transaction follow-up read) was not needed |
 | R-6 | Mock/SMTP transports drift — a new kind added to the port but not to one implementation | low | med | `Mailer` is an interface: omitting the method in `MockMailer` or `SmtpMailer` is a compile error. `MailerProfileWiringTest` + `SmtpMailerIT` cover both transports | Claude | open |
 | R-7 | Suppression bypass — a new send path that skips the module's defining invariant | low | high | Impossible by construction: the new `MailSender` method delegates to the same `dispatchQuietly` chokepoint that checks suppression. AC-5 pins it | Claude | open |
 | R-8 | Flyway version collision | none | — | No migration in this slice. (For the record: `V35` is the highest on `main`, `V36` is free, and the only open PRs are Dependabot frontend bumps — no `.sql` in any of them) | Claude | closed — no migration |
@@ -237,15 +237,15 @@ three response statuses (`204` / `409 NOT_PENDING` / `404 NO_SUCH_OPERATOR`); th
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phases 0–1 done, phase 2 next`
 
-**Next action:** Phase 1 — write the failing `OperatorLifecycleIT` case that expects
-`ApprovalOutcome.Approved` to carry the registered address, then make it pass.
+**Next action:** Phase 2 — write `OperatorApprovalMailIT` (AC-1/2/3) red, then add
+`OperatorApprovalMail` and wire it into `AdminOperatorController.approve`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | ✅ | (this commit) |
-| 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | | |
+| 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | ✅ | `afedbec` |
+| 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | ✅ | (this commit) |
 | 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | | |
 | 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | | |
 

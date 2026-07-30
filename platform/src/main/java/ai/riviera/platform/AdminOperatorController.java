@@ -158,13 +158,19 @@ class AdminOperatorController {
 		};
 	}
 
+	/**
+	 * The three wire answers, unchanged since #115 — the sealed rewrite of {@link ApprovalOutcome}
+	 * (#375) changed what the outcome <em>carries</em>, never what it maps to. No {@code default}, so a
+	 * future case is a compile error here rather than a silent {@code 204}.
+	 */
 	private static ResponseEntity<?> toResponse(ApprovalOutcome outcome) {
 		return switch (outcome) {
-			case APPROVED, REJECTED -> ResponseEntity.noContent().build();
-			case NOT_PENDING -> ApiProblem.response(HttpStatus.CONFLICT, "NOT_PENDING",
+			case ApprovalOutcome.Approved ignored -> ResponseEntity.noContent().build();
+			case ApprovalOutcome.Rejected ignored -> ResponseEntity.noContent().build();
+			case ApprovalOutcome.NotPending ignored -> ApiProblem.response(HttpStatus.CONFLICT, "NOT_PENDING",
 					"This operator is not awaiting approval.");
-			case NO_SUCH_OPERATOR -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_OPERATOR",
-					"No such operator.");
+			case ApprovalOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
+					"NO_SUCH_OPERATOR", "No such operator.");
 		};
 	}
 }

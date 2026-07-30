@@ -43,6 +43,8 @@ class JdbcOperators implements Operators {
 	private static final String ID_PARAM = "id";
 	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
 	private static final String TARGET_PARAM = "target";
+	/** Result-set column holding an operator's registered contact address (named, not duplicated — #6a). */
+	private static final String CONTACT_EMAIL = "contact_email";
 
 	private final JdbcClient jdbc;
 
@@ -129,7 +131,7 @@ class JdbcOperators implements Operators {
 				.query((rs, rowNum) -> new PendingOperator(
 						new OperatorId(rs.getLong(ID_PARAM)),
 						rs.getString(USERNAME),
-						rs.getString("contact_email"),
+						rs.getString(CONTACT_EMAIL),
 						rs.getObject("created_at", java.time.OffsetDateTime.class).toInstant()))
 				.list();
 	}
@@ -151,7 +153,7 @@ class JdbcOperators implements Operators {
 				.query((rs, rowNum) -> new OperatorAccount(
 						new OperatorId(rs.getLong(ID_PARAM)),
 						rs.getString(USERNAME),
-						rs.getString("contact_email"),
+						rs.getString(CONTACT_EMAIL),
 						rs.getBoolean("is_admin"),
 						OperatorStatus.SUSPENDED.name().equals(rs.getString("status"))))
 				.list();
@@ -169,31 +171,49 @@ class JdbcOperators implements Operators {
 
 	@Override
 	public ApprovalOutcome activate(OperatorId operatorId) {
-		return transitionFromPending(operatorId, OperatorStatus.ACTIVE, ApprovalOutcome.APPROVED);
+		return transitionFromPending(operatorId, OperatorStatus.ACTIVE)
+				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Approved(row.contactEmail()))
+				.orElseGet(() -> classifyMissedTransition(operatorId));
 	}
 
 	@Override
 	public ApprovalOutcome rejectPending(OperatorId operatorId) {
-		return transitionFromPending(operatorId, OperatorStatus.REJECTED, ApprovalOutcome.REJECTED);
+		return transitionFromPending(operatorId, OperatorStatus.REJECTED)
+				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Rejected())
+				.orElseGet(() -> classifyMissedTransition(operatorId));
+	}
+
+	/** What the transition wrote — present iff this call is the one that flipped the row. */
+	private record TransitionedRow(String contactEmail) {
 	}
 
 	/**
-	 * Move a PENDING operator to {@code target}, returning {@code success} on a hit. A miss is classified
-	 * by an existence read so the edge can distinguish {@code NOT_PENDING} (already decided) from
-	 * {@code NO_SUCH_OPERATOR} (unknown id) — the conditional {@code WHERE status = PENDING} is the
-	 * single source of truth, so two concurrent approvals cannot both win.
+	 * Move a PENDING operator to {@code target}, reporting the row it wrote. The conditional
+	 * {@code WHERE status = PENDING} is the single source of truth, so two concurrent approvals cannot
+	 * both win; {@code RETURNING} hands the winner the stored contact email in the same statement (#375),
+	 * which is what lets {@code activate}'s caller mail an approved operator without a second read and
+	 * without the loser being able to mail anything at all.
 	 */
-	private ApprovalOutcome transitionFromPending(OperatorId operatorId, OperatorStatus target,
-			ApprovalOutcome success) {
-		int rows = jdbc.sql("UPDATE operator SET status = :target WHERE id = :id AND status = :pending")
+	private Optional<TransitionedRow> transitionFromPending(OperatorId operatorId, OperatorStatus target) {
+		return jdbc.sql("""
+				UPDATE operator SET status = :target
+				WHERE id = :id AND status = :pending
+				RETURNING contact_email
+				""")
 				.param(TARGET_PARAM, target.name())
 				.param(ID_PARAM, operatorId.value())
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
-				.update();
-		if (rows == 1) {
-			return success;
-		}
-		return exists(operatorId) ? ApprovalOutcome.NOT_PENDING : ApprovalOutcome.NO_SUCH_OPERATOR;
+				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL)))
+				.optional();
+	}
+
+	/**
+	 * Why a PENDING-guarded transition wrote nothing: an existence read separates
+	 * {@code NotPending} (already decided) from {@code NoSuchOperator} (unknown id), so the edge can
+	 * answer 409 and 404 apart.
+	 */
+	private ApprovalOutcome classifyMissedTransition(OperatorId operatorId) {
+		return exists(operatorId) ? new ApprovalOutcome.NotPending() : new ApprovalOutcome.NoSuchOperator();
 	}
 
 	@Override

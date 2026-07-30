@@ -276,12 +276,12 @@ class WebSliceStubs {
 
 			@Override
 			public ApprovalOutcome approve(OperatorId operatorId) {
-				return ApprovalOutcome.NO_SUCH_OPERATOR;
+				return new ApprovalOutcome.NoSuchOperator();
 			}
 
 			@Override
 			public ApprovalOutcome reject(OperatorId operatorId) {
-				return ApprovalOutcome.NO_SUCH_OPERATOR;
+				return new ApprovalOutcome.NoSuchOperator();
 			}
 
 			@Override
