@@ -33,10 +33,6 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 @Repository
 class JdbcGuestBookingHistory implements GuestBookingHistory {
 
-	/** Below 1 the bound is not a bound; above the 5-minute sweep cadence it no longer bounds. */
-	private static final int MIN_QUERY_TIMEOUT_SECONDS = 1;
-	private static final int MAX_QUERY_TIMEOUT_SECONDS = 300;
-
 	private static final String GUESTS = "guests";
 	private static final String CUTOFF = "cutoff";
 
@@ -45,24 +41,6 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 	JdbcGuestBookingHistory(DataSource dataSource,
 			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
 		this.jdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
-	}
-
-	/**
-	 * The floor is 1, not 0: {@code setQueryTimeout(0)} means <strong>no limit</strong> to JDBC, and
-	 * {@code JdbcTemplate} reads a negative as "use the driver default" — both silently restore the
-	 * unbounded behaviour #395 removed, on a clean boot. The ceiling is the sweep cadence: a bound
-	 * longer than the interval between runs is still holding when the next run is due, so it no longer
-	 * bounds anything operationally. Guarded here because there is no JSR-303 validator on the
-	 * classpath, so {@code @Min} would validate nothing (the #414/#426 house pattern).
-	 */
-	private static int validated(int queryTimeoutSeconds) {
-		if (queryTimeoutSeconds < MIN_QUERY_TIMEOUT_SECONDS || queryTimeoutSeconds > MAX_QUERY_TIMEOUT_SECONDS) {
-			throw new IllegalArgumentException("riviera.scheduled.query-timeout-seconds must be between "
-					+ MIN_QUERY_TIMEOUT_SECONDS + " and " + MAX_QUERY_TIMEOUT_SECONDS + " seconds, but was "
-					+ queryTimeoutSeconds + " — 0 and negatives mean NO limit, which is the unbounded"
-					+ " scheduled query #395 exists to prevent");
-		}
-		return queryTimeoutSeconds;
 	}
 
 	/**
@@ -85,7 +63,7 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);
-		bounded.setQueryTimeout(validated(queryTimeoutSeconds));
+		bounded.setQueryTimeout(queryTimeoutSeconds);
 		return JdbcClient.create(bounded);
 	}
 
