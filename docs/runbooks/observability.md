@@ -75,13 +75,19 @@ never sent.
 > shipped metric breaks every dashboard and alert that reads it — so **do not assume a tourist is
 > behind every increment.**
 >
-> **On `…failed` the `kind` tag tells the flows apart. On THIS series nothing does** — corrected in
-> #440 after this section spent two slices telling you to filter by a tag that was never here.
-> `riviera_mail_recovery_dropped_total` carries `reason` alone: it is raised by the dispatcher, whose
-> interface is `dispatch(Runnable)`, so the kind is not in scope where the increment happens, and a
-> query filtering this series by `kind` matches nothing — during an incident as well as outside one.
-> Until #442 decides whether to widen that seam, attribute a drop by reconciling its timestamp against
-> the approval log and the recovery requests of the same window.
+> **Both series carry `kind`, and on this one that is new** (#442). For two slices this section told
+> you to filter by a tag that was not here: the counter is raised by the dispatcher, whose interface
+> was `dispatch(Runnable)`, so the kind was not in scope where the increment happened and a
+> `kind`-filtered query matched nothing. #440 corrected the wording; #442 widened the seam, so the
+> instruction is now true — **filter by `kind` rather than assuming a tourist is behind an
+> increment.** All three `reason`s carry it, the drain path included, so a filtered query does not
+> under-count.
+>
+> **The tag names the flow, not the person.** Invariant #7 keeps the address and the tokenized link
+> out of metrics and logs alike, so `kind="operator-approved"` tells you an approval notice was lost
+> and that the approval log of that window is where the operator is named. That is the difference
+> between knowing to go and look and not knowing there is anything to look for — it is not a
+> substitute for looking.
 
 **Read one increment as: someone was told an action succeeded, and the mail it promised is not
 coming.** For `verification`/`password-reset` that is a person who asked for a link and got a `200`;
@@ -100,6 +106,18 @@ may not persist (ADR-0011 decision 5), so there is nothing to retry from, by des
 | `reason="saturated"` | The dispatcher's single drainer was busy and all 100 queue slots were full. The relay is degraded or too slow for current volume | **any increase.** Diagnose the relay — this is the actionable one |
 | `reason="shutdown"` | A redeploy outran an in-flight request: the pool stopped accepting before the request reached it. The mail is still lost, but no relay is at fault | not on its own. Expect ones and twos around a deploy; a *sustained* rise means requests are arriving long after shutdown begins |
 | `reason="abandoned"` (#434) | A redeploy outran the **queue**: the send was accepted, never started, and was discarded when the drain window expired. Same deploy, the other side of `execute()` — and bounded by how deep the queue was at SIGTERM, so normally zero or one | not on its own. A *sustained* rise means recovery volume has outgrown a single drainer thread, which nothing else makes visible |
+| `kind="verification"` / `kind="password-reset"` (#442) | Which recovery flow the lost mail belonged to. Both self-heal — the token is already committed, so the person re-requests and gets a fresh link — which is why neither is the kind this dimension was added for | — |
+| `kind="operator-approved"` (#442) | The kind that does **not** self-heal: nothing re-sends it, and the operator learns its account is live only by retrying sign-in. Before #442 a dropped notice was indistinguishable from a dropped password reset, and ADR-0011 decision 5 recorded the loss as mitigated "only in part" for exactly that reason | any increase, and read it as one lost person rather than a relay signal. Remedy: find the approval in that window's log and tell them. Same tag, same meaning, as on `…failed` |
+
+**The two loss counters share one `kind` vocabulary, deliberately** (#442). They are raised from two
+classes, on two threads, at two moments, so a kind spelled `password_reset` on one and
+`password-reset` on the other would break every query that pivots between them while every test
+stayed green. One enum (`MailKind`) is the single source for both, pinned by `MailKindTest`.
+
+**Adding `kind` partitioned this series; it did not double-count it.** An unaggregated query returns
+one row per `(kind, reason)` where it used to return one per `reason` — nine series rather than
+three, all pre-registered at zero from boot so a flow that has never lost a mail is still queryable.
+A `reason`-filtered query matches exactly as before, and the untagged total is unchanged.
 
 **"Never ran" is the line, not "refused" — which is why `abandoned` belongs here.** It was *accepted*,
 unlike its two siblings, and it still sits in this counter because the split #423 drew between this
@@ -298,8 +316,9 @@ vehicle that costs nothing — the publication stays outstanding and the next st
 expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
 vehicle it is a mail that is simply gone — one the recipient re-requests on the recovery kinds, and
 one **nobody** re-sends when it is the `operator-approved` notice (ADR-0011 decision 5, amended #439).
-Which of the two it was, this counter cannot tell you: it carries `reason` only, no `kind` (#442) — so
-do not read an abandoned increment as a self-healing loss by default. Since #434 the sends still **queued** at that
+Which of the two it was, the counter now tells you: since #442 the `abandoned` reason carries `kind`
+like its siblings, so do not read an abandoned increment as a self-healing loss — check the tag, and
+on `operator-approved` go to that window's approval log. Since #434 the sends still **queued** at that
 moment are counted — `riviera.mail.recovery.dropped{reason="abandoned"}`, one `WARN` line each,
 carrying the submitting request's correlation id — and the one caught **running** deliberately is not,
 because it may already have reached the relay. The non-interruption is deliberate for that same

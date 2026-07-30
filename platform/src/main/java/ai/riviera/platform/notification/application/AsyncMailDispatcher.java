@@ -28,10 +28,13 @@ import org.springframework.stereotype.Component;
  * bounded for the complementary reason: a saturated dispatcher drops the send rather than queueing
  * without limit or, worse, falling back to running the send on the caller's thread, which would re-open
  * the very oracle this class exists to close. A dropped recovery mail the person re-requests; a dropped
- * operator-approval notice (#375) nobody re-sends (ADR-0011 decision 5, amended #439) — and this class
- * cannot tell you which it lost, because it dispatches an opaque {@link Runnable} and never learns the
- * kind, which is why {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} carries {@code reason} alone
- * while the send-side {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} carries {@code kind} too (#442).
+ * operator-approval notice (#375) nobody re-sends (ADR-0011 decision 5, amended #439) — and since #442
+ * this class can tell you which it lost, because {@link MailDispatcher#dispatch} takes the
+ * {@link MailKind} alongside the send. {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} therefore
+ * carries {@code kind} on every {@code reason}, as the send-side
+ * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} always did. It had carried {@code reason} alone for
+ * two slices, not because a drop is less attributable than a failure but because the seam was one
+ * parameter narrower than the accounting this class already owed.
  *
  * <p><strong>That rule is the module's, not this class's</strong> (#383). It was stated here and then
  * broken next door: #371's registry-borne booking confirmation went onto the shared executor, because

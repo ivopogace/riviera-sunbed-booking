@@ -124,9 +124,9 @@ no SQL), `riviera-stripe-payments` (no money), `riviera-frontend` / `angular-dev
 | R-2 | A tag value is spelled differently from the shipped `failed` series (`password_reset` vs `password-reset`), breaking dashboards while every test still passes | low | high | One `MailKind` vocabulary for both emitters (AC-5) + AC-6 pinning the three literals against the runbook's documented values | Claude | open |
 | R-3 | A drained queue element that is not one of ours reaches the accounting and is silently uncounted — the same silent-loss class the counter exists to end | low | med | `dispatch(...)` is the only path onto this queue, so the branch is unreachable by construction; it is nonetheless handled explicitly (an `ERROR` naming the defect, never a swallow) and pinned by AC-3's drain assertions. **No new tag value is invented for it** — polluting a documented vocabulary for an unreachable state is how the next runbook sentence becomes false | Claude | **closed** — implemented as specified in `recordAbandonment`; the record deconstruction pattern makes the guard total |
 | R-4 | `MdcTaskDecorator` gains a payload accessor and something reads the *context* out of it, defeating the "reachable only through `inContextOf`" property its Javadoc asserts | low | med | The accessor returns the wrapped task only; the context map stays private to the record. Reviewed under RV-BE-11 | Claude | **closed** — `payloadOf` returns `ContextCarryingTask#task()` and nothing else; the map stays unreachable |
-| R-5 | **Merge conflict with PR #443**, which is open against `docs/runbooks/observability.md` — the same file Phase 2 edits | **high** | low | #443 merges first (it is docs-only and ahead); this branch merges `origin/main` before ready-for-review and re-reads the file. Phase 2 also **owns two sentences #443 explicitly rated "accurate only while #442 is open"** (its lines 83 and 289) — they become false the moment this ships, so the merge is not just conflict-avoidance | Claude | open |
+| R-5 | ~~Merge conflict~~ **resolved**: PR #443, which is open against `docs/runbooks/observability.md` — the same file Phase 2 edits | **high** | low | #443 merged at `7057b49` before Phase 2 began; `git merge origin/main` was clean (its 16 added lines are elsewhere in the file). Phase 2 then rewrote **both** sentences #443 had rated "accurate only while #442 is open" | Claude | **closed** — merged clean, both sentences owned and corrected |
 | R-6 | The widened seam is treated as a published-surface change and trips `ModularityTests` / `PublishedSurfacePlacementArchitectureTests` | low | low | Everything stays package-private inside `notification.application`; the published `MailSender` port keeps its per-kind methods and is untouched. Structural net run at the end of Phase 1 | Claude | **closed** — full structural net green (211 tests, 0 failures, 0 skipped) |
-| R-7 | Boot-time meter pre-registration grows from 3 counters to 9 and someone reads the extra series as new failures | low | low | All nine are zero until they fire, exactly as the three were; the runbook's tag table gains the kind rows so a reader meets them documented | Claude | open — the runbook half lands in Phase 2 |
+| R-7 | Boot-time meter pre-registration grows from 3 counters to 9 and someone reads the extra series as new failures | low | low | All nine are zero until they fire, exactly as the three were; the runbook's tag table gains the kind rows so a reader meets them documented | Claude | **closed** — the runbook's tag table now carries the kind rows and states the partition-not-double-count consequence explicitly |
 
 ## Open questions / Assumptions
 
@@ -136,9 +136,11 @@ no SQL), `riviera-stripe-payments` (no money), `riviera-frontend` / `angular-dev
   `MoneyPathAlertCheck`, which does not read this counter), and no external dashboard is in-repo. —
   *Owner:* Claude · *Resolves by:* Phase 2 (the runbook states the change explicitly, which is the
   available notice)
-- **Assumption:** #443 merges before this PR is marked ready for review. If it has not, this branch
-  still merges `origin/main` first and resolves whatever is there. — *Owner:* Claude ·
-  *Resolves by:* the PR stage
+### Resolved
+
+- **Assumption (resolved):** #443 merges before this PR is marked ready for review. It merged at
+  `7057b49`; `git merge origin/main` was clean and Phase 2 rewrote both of the sentences its review
+  had rated accurate only while #442 stayed open.
 
 ## Availability & concurrency (invariant #2)
 
@@ -201,9 +203,9 @@ read or written.
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 0+1 done and pushed; next is phase 2 (docs)`
+**Stage pointer:** `implement — all phases done; next is the PR gates (ready for review → review → sonar)`
 
-**Next action:** Merge `origin/main` (PR #443 overlap, R-5), then Phase 2's doc sweep.
+**Next action:** Mark PR #444 ready for review, then run the review gate per `pr-gates.md` §1.
 
 > **Phases 0 and 1 were merged into one commit, deliberately** — a correction to this plan made at
 > the keyboard, recorded here rather than silently. As planned, Phase 0 would have tagged the two
@@ -217,7 +219,7 @@ read or written.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0+1 — The seam, both rejection paths, and the drain path | ✅ | `307441c` |
-| 2 — Docs: ADR amendment, runbooks, Javadoc sweep | | |
+| 2 — Docs: ADR amendment, runbooks, Javadoc sweep | ✅ | `<phase2>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

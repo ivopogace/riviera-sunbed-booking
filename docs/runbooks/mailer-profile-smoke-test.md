@@ -126,10 +126,11 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
   mail the person simply re-requests. The **operator-approval notice** (#375) rides the same
   best-effort vehicle and has no such door — nothing re-sends it, and the operator finds out by
   retrying sign-in — so a loss there needs a human. Read
-  `riviera.mail.recovery.failed{kind="operator-approved"}` for a send the relay refused; a send the
-  pool never ran shows up on `riviera.mail.recovery.dropped`, which carries **no `kind`** (#442), so
-  reconcile an increment there against that window's approvals by hand. Then tell the operator
-  directly (`docs/runbooks/observability.md`).
+  `riviera.mail.recovery.failed{kind="operator-approved"}` for a send the relay refused, and
+  `riviera.mail.recovery.dropped{kind="operator-approved"}` for one the pool never ran — since #442
+  both carry the same tag, so either is a direct read rather than a reconciliation by hand. Neither
+  names the operator (invariant #7): find them in that window's approval log, then tell them directly
+  (`docs/runbooks/observability.md`).
 - Verification, reset, booking-confirmation (#371) and operator-approval (#375) mails exist; the
   request-accepted (#373) and cancellation/refund (#374) kinds are still to come.
 - Suppression is **enforced** on both vehicles (V32–V35), but nothing populates the list until the

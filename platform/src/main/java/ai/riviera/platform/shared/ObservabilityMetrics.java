@@ -44,10 +44,11 @@ public final class ObservabilityMetrics {
 	 * sent (#415, widened by #434). <strong>"Recovery" in this name is the vehicle, not the flow</strong>
 	 * — it was coined when that dispatcher carried only email verification and password reset; since
 	 * #375 it also carries the operator-approval notice, which is no recovery flow at all. The name
-	 * stays because renaming a shipped metric breaks whatever reads it — but <strong>nothing on this
-	 * series separates the flows</strong>: unlike {@link #MAIL_RECOVERY_FAILED} it carries no
-	 * {@code kind} tag, and cannot, since it is raised by {@code AsyncMailDispatcher}, whose interface
-	 * is {@code dispatch(Runnable)} and which never learns what it is sending (#442). The sibling
+	 * stays because renaming a shipped metric breaks whatever reads it — and since #442 a {@code kind}
+	 * tag is what separates the flows, on this series exactly as on {@link #MAIL_RECOVERY_FAILED}. It
+	 * did not always: the counter is raised by {@code AsyncMailDispatcher}, whose interface was
+	 * {@code dispatch(Runnable)}, so for two slices the kind was simply not in scope where the
+	 * increment happened. Widening that seam is all #442 was. The sibling
 	 * {@link #MAIL_REGISTRY_SHED} reserved this name and declined to declare it, on the rule that a name
 	 * ships with the emitter that gives it meaning.
 	 *
@@ -56,19 +57,22 @@ public final class ObservabilityMetrics {
 	 * admin resubmission lever republishes it, no longer a restart alone. A dropped
 	 * recovery mail is <em>gone</em>: the payload is a single-use bearer credential the registry may
 	 * not persist (ADR-0011 decision 5), so nothing retries it. Read an increment as one person who will
-	 * wait for a mail that is never coming — and <strong>accept that this series cannot say which
-	 * person</strong>. That gap stopped being cosmetic at #375: the kinds no longer share one
+	 * wait for a mail that is never coming, and read the {@code kind} tag for <em>which</em> person to
+	 * go and find. That dimension stopped being optional at #375: the kinds no longer share one
 	 * consequence, since a {@code verification} or {@code password-reset} loss self-heals when they ask
 	 * again while an {@code operator-approved} loss does not, nothing re-sending it and nobody having
-	 * told them to expect it (ADR-0011 decision 5, amended #439). So an increment here inside a window
-	 * that contained an operator approval is worth reconciling against those approvals by hand — the
-	 * attribution this counter is missing lives only on {@link #MAIL_RECOVERY_FAILED} (#442).
+	 * told them to expect it (ADR-0011 decision 5, amended #439 and #442). <strong>The tag names the
+	 * flow, never the person</strong> — invariant #7 keeps the address out of metrics and logs — so an
+	 * {@code operator-approved} increment sends you to that window's approval log, which is a far
+	 * shorter walk than reconciling an untagged one against it.
 	 *
 	 * <p>Carries a {@code reason} tag distinguishing a saturated pool (a degraded relay — act) from the
 	 * two ways a redeploy loses a mail: the request that reached a closed pool ({@code shutdown}), and
 	 * the send that was accepted but still queued when the drain window expired ({@code abandoned},
 	 * #434). All three are real losses, so all three are counted; the tag is what keeps a deploy from
-	 * reading as an outage.
+	 * reading as an outage. <strong>All three carry {@code kind} too</strong> (#442) — the drain path
+	 * included, which took the most work and mattered most: a {@code kind} query that silently
+	 * under-counted a third of the series would be worse than the honest absence it replaced.
 	 *
 	 * <p><strong>"Never ran" is the line between this counter and {@link #MAIL_RECOVERY_FAILED}, not
 	 * "refused"</strong> — {@code abandoned} was accepted and still belongs here, because the split
