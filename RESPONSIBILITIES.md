@@ -319,7 +319,10 @@ drift apart the way a flat 5s and a 10s socket timeout did; when that window exp
 up rather than interrupting, since an interrupt cannot tell a send that already reached the relay from
 one that has not. Both also carry the submitting request's MDC onto their workers through one shared
 `MdcTaskDecorator` (#410), composed onto the registry pool beside the shed policy that already owns
-its decorator slot. Each shed send increments
+its decorator slot — a class that **#455 moved to `shared`**, because #404's refund pool needed the
+same mechanism and invariant #11 forbids `booking` importing this module's `application` package; the
+decorator is no longer this module's to own, and `WorkerContextArchitectureTest` now pins that every
+self-configured pool carries it. Each shed send increments
 `ObservabilityMetrics.MAIL_REGISTRY_SHED` while escalating one log line per saturation *episode*;
 the recovery dispatcher's mirror-image accounting is `MAIL_RECOVERY_DROPPED` (#415), and it is a
 mirror rather than a copy — **every** drop is logged, not one per episode, because a throttle trades
@@ -458,22 +461,27 @@ moved listener, and the V32 suppression list enforced on both vehicles.
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
-`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`, `ShutdownBudget`. An
+`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`, `ShutdownBudget`,
+`MdcTaskDecorator`. An
 `@ApplicationModule(type = OPEN)`: technical shared code, so it publishes no
 `api`/`vocabulary` surface and consumers use its types directly.
 
 **Job:** hold the handful of edge types that bounded contexts legitimately share — the
 RFC-7807 error-contract factory (#97), the accessors that resolve an authenticated
-principal to a typed id, and the **platform's metric names** (`ObservabilityMetrics`: the
-money-path trio from #100, plus the five mail-loss counters — the registry-mail shed added by
+principal to a typed id, the **platform's metric names** (`ObservabilityMetrics`: the
+money-path trio from #100, plus the six mail-loss counters — the registry-mail shed added by
 #408, the recovery-mail drop by #415, the recovery-mail transport failure by #423, the abandoned
-booking confirmation by #428 and the abandoned cancellation record by #374). Nothing else.
+booking confirmation by #428, the abandoned cancellation record by #374 and the abandoned
+payment-due notice by #373), the **platform's shutdown budget** (`ShutdownBudget`, #456 — the
+SIGTERM grace and every draining pool's claim on it), and the **one way a pooled worker inherits
+its submitter's logging context** (`MdcTaskDecorator`, #455). Nothing else.
 
 > The metric-name clause is deliberately about *names*, not about observability. A name is a
 > `String` constant, compile-time-inlined, with the emission staying in the module that owns
-> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all five of
+> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all six of
 > `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED`, `MAIL_RECOVERY_FAILED`,
-> `MAIL_CONFIRMATION_ABANDONED` and `MAIL_CANCELLATION_ABANDONED`, including the latter four's
+> `MAIL_CONFIRMATION_ABANDONED`, `MAIL_CANCELLATION_ABANDONED` and
+> `MAIL_PAYMENT_DUE_ABANDONED`, including the latter four's
 > `kind`/`reason` tag values, which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
@@ -481,6 +489,16 @@ booking confirmation by #428 and the abandoned cancellation record by #374). Not
 > justification is *not* "more than one module needs it": all six mail counters have a single
 > reader today. They are admitted for consistency of the naming convention, which is a narrower
 > claim — hold new entries to it.
+>
+> **No admission here has ever rested on reuse, and the two newest say so explicitly.**
+> `ShutdownBudget` (#456) because no bounded context owns how long the process has to close, and
+> `MdcTaskDecorator` (#455) because none owns how a pooled worker inherits the submitting request's
+> logging context — the latter is the sharper case, since that mechanism's other half
+> (`CorrelationIdFilter`) lives at the composition root no module may depend on, leaving a
+> module-owned home structurally unavailable to the second consumer. Three modules wanting a type is
+> the trigger for asking the question; the answer is always ownership. (#455 overturned #410's
+> placement of the decorator in `notification` — that decision's stated ground was "both users are
+> inside this one module", which #404's refund pool falsified.)
 
 **Not my job:**
 - **Any business logic or module-owned state** → the owning bounded context. This package

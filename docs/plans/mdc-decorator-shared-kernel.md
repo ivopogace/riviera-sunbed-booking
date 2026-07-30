@@ -36,8 +36,9 @@ published surface, that `PackageShapeArchitectureTests` skips module-root types,
 edge) · `riviera-java-conventions` (§6c one-line-or-none comments; the long argument goes in Javadoc,
 which is exempt) · `riviera-local-debug` (cloud recipe: system `gradle`, JDK-25 toolchain, scoped
 `--tests` runs; CI owns the full suite) · `riviera-review-overlay` (review gate — <pending>) ·
-`riviera-docs-freshness` (<pending — due at close-out over this PR's range; CLAUDE.md and
-RESPONSIBILITIES.md both state the decorator's location>)
+`riviera-docs-freshness` (**ran** over `origin/main..claude/sdlc-455-p55wyp`, **5 findings, all
+patched** — see the Docs-freshness findings table below; the counting sweep also caught one
+**pre-existing** drift #373 left behind, corrected as a declared drive-by)
 
 **Branch:** `claude/sdlc-455-p55wyp` — the cloud session's designated remote branch, standing in for
 `feature/mdc-decorator-shared-kernel` per `riviera-sdlc` §Remote/cloud session addendum. Exists in
@@ -393,6 +394,31 @@ pool.setTaskDecorator(new CompositeTaskDecorator(List.of(saturation, new MdcTask
 - [ ] **Step 6:** Mark the PR ready for review → the Review and Sonar gates become due.
 
 ---
+
+## Docs-freshness findings (`origin/main..claude/sdlc-455-p55wyp`)
+
+> Run at phase 3 per `riviera-sdlc` merge close-out step 5. Format: `doc:line — stated fact —
+> contradicted by — action`. The sweep was re-run after the fix round, per the skill's own rule.
+
+| # | Doc | Stated fact | Contradicted by | Action |
+|---|---|---|---|---|
+| D-1 | `CLAUDE.md` §`shared` blockquote | the kernel holds five types, ending at `ShutdownBudget` | the promotion adds a sixth | **patched** — added with its ownership argument and the #410 overturn |
+| D-2 | `CLAUDE.md` `notification` row | "#410 then made **the two pools'** worker hygiene one decision … carries the MDC onto **both**" | three pools now, and the class left the module | **patched** — the #410 clause stays as history, followed by what #455 changed |
+| D-3 | `RESPONSIBILITIES.md:321` | "one shared `MdcTaskDecorator` (#410), composed onto the registry pool" — stated as `notification`'s | the class moved to `shared` | **patched** — records the move and that the decorator is no longer this module's to own |
+| D-4 | `RESPONSIBILITIES.md` §`shared` opener + Job list | the admitted set omits the decorator; the **Job** list never mentioned `ShutdownBudget` either | the promotion, plus #456's own omission | **patched** — both added; the Job list was demonstrably incomplete before this slice |
+| D-5 | `RESPONSIBILITIES.md` non-reuse note | "this is **the one** admitted type whose justification is *not* 'more than one module needs it'" | `ShutdownBudget` and now `MdcTaskDecorator` are both admitted on ownership | **patched** — generalized to "no admission has ever rested on reuse", naming the two newest |
+
+**Pre-existing drift corrected as a declared drive-by** (not caused by this slice): `RESPONSIBILITIES.md`
+§`shared` said "the **five** mail-loss counters" and listed five, while the very next sentence said
+"all **six**" — #373 shipped `MAIL_PAYMENT_DUE_ABANDONED` and this half of the count was missed. Two
+words and one name; left uncorrected it would have been a known-false statement inside a block this PR
+edits anyway. Called out here and in the PR body so review can separate it from the slice.
+
+**Checked and deliberately NOT patched:** `docs/runbooks/observability.md` — its MDC passages are about
+the recovery vehicle specifically and carry no pool count, so they stay true; noting the new rule
+beside `ShutdownDrainArchitectureTest` would be *new* documentation, which this skill's scope
+discipline excludes. Likewise `.claude/skills/**` (no reference to the decorator's location),
+`CONTEXT.md` (no domain vocabulary change) and `docs/adr/**` (no decision re-decided).
 
 ## Generalization-audit log
 
