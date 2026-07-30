@@ -50,15 +50,19 @@ public interface OperatorLifecycle {
 
 	/**
 	 * Approve the PENDING operator with this id → ACTIVE (it can now sign in). Returns
-	 * {@link ApprovalOutcome#APPROVED}; {@link ApprovalOutcome#NOT_PENDING} if it exists but is not
-	 * PENDING; {@link ApprovalOutcome#NO_SUCH_OPERATOR} if there is no such operator.
+	 * {@link ApprovalOutcome.Approved}, carrying the operator's registered contact email so the caller
+	 * can tell it the account is live (#375) — populated only when <em>this</em> call performed the
+	 * transition, so a concurrent second approval cannot notify twice;
+	 * {@link ApprovalOutcome.NotPending} if it exists but is not PENDING;
+	 * {@link ApprovalOutcome.NoSuchOperator} if there is no such operator.
 	 */
 	ApprovalOutcome approve(OperatorId operatorId);
 
 	/**
 	 * Reject the PENDING operator with this id → REJECTED (it still cannot sign in). Returns
-	 * {@link ApprovalOutcome#REJECTED} / {@link ApprovalOutcome#NOT_PENDING} /
-	 * {@link ApprovalOutcome#NO_SUCH_OPERATOR}, mirroring {@link #approve}.
+	 * {@link ApprovalOutcome.Rejected} / {@link ApprovalOutcome.NotPending} /
+	 * {@link ApprovalOutcome.NoSuchOperator}, mirroring {@link #approve} — but note the asymmetry:
+	 * a rejection carries no address, because this slice deliberately sends the applicant nothing.
 	 */
 	ApprovalOutcome reject(OperatorId operatorId);
 
