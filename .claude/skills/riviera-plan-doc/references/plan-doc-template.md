@@ -17,12 +17,31 @@
 
 **Source of intent:** <spec path in docs/superpowers/specs/ and/or GitHub issue #NN>
 
-**Skills consulted:** <the `riviera-sdlc` Skill-routing gate output — every craft skill
-loaded at plan time + one phrase on what each changed. e.g. `postgres` (BIGINT identity
-PKs, not UUIDv4), `codebase-design` (collapsed the hypothetical out-port seam),
-`angular-developer` + angular-cli MCP (v22 APIs + mandatory a11y). Must cover every area
-the diff touches — a migration in scope with no `postgres` here means the plan is not
-ready. `N/A — <reason>` only for a truly single-area trivial slice.>
+**Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — <what it
+caught>) · `riviera-plan-doc` (this template — <what it forced>) · `tdd` (<how the slice
+was built test-first>) · `riviera-review-overlay` (review gate — <when it ran>) ·
+`riviera-docs-freshness` (<**ran** over `<range>`, N findings — **or** `N/A — <reason>`>)
+· <then every routed skill the gate matched, + one phrase each on what it changed. e.g.
+`postgres` (BIGINT identity PKs, not UUIDv4), `codebase-design` (collapsed the
+hypothetical out-port seam), `angular-developer` + angular-cli MCP (v22 APIs + mandatory
+a11y). Must cover every area the diff touches — a migration in scope with no `postgres`
+here means the plan is not ready. `N/A — <reason>` only for a truly single-area trivial
+slice.>
+
+> **The five leading entries are pre-filled on purpose — extend them, don't replace them.**
+> The `riviera-sdlc` routing table's **"Anything, always"** row (`riviera-plan-doc` ·
+> `tdd` · `riviera-review-overlay`) plus `riviera-docs-freshness` are due on essentially
+> every slice, but an author filling this line is thinking about the *routed* skills, so
+> the constant part gets omitted — RV-PROC-1 caught exactly that on **#427, #430, #436,
+> #440, #374 and #373**. Six consecutive slices is not six mistakes; it is a template
+> asking a question whose answer is partly constant, so the fix is to make the author
+> **edit rather than recall**. Each pre-filled entry still carries a parenthesis you must
+> fill with what it actually did — a name with a fixed label attached is cargo cult, and
+> RV-PROC-1 checks the line against the diff either way.
+>
+> Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range + findings) or
+> `N/A — <reason>`**: "not listed" and "not applicable" are indistinguishable in a diff,
+> which is what let it go unnoticed five times.
 
 **Branch:** `<feature|bugfix>/<short-slug>` <must exist in git before phase 0>
 

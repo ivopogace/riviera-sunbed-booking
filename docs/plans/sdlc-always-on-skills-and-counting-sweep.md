@@ -183,15 +183,15 @@ statement is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window
 > as the change it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement (phase 0 — plan doc committed, draft PR next)`
+**Stage pointer:** `implement (phase 2 — the counting sweep + its close-out citation)`
 
-**Next action:** push the plan-doc commit and open the draft PR immediately (CI fires on
-`pull_request` only, #417), then start phase 1.
+**Next action:** split `riviera-docs-freshness`'s procedure step 2 into `2a`/`2b`, write
+the counting sweep, and cite it from `pr-gates.md` close-out step 5.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ⏳ | |
-| 1 — Gap 1: pre-fill the always-on skills in the template | | |
+| 0 — Plan doc + draft PR | ✅ | `51e537c` (PR #448, draft) |
+| 1 — Gap 1: pre-fill the always-on skills in the template | ✅ | see phase-1 commit below |
 | 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | | |
 | 3 — Docs-freshness run over the slice's own diff + close-out | | |
 
@@ -239,8 +239,8 @@ Skill-routing gate for what the fix touches *before* editing).
   the in-flight PR list, and the six cited plan docs. (Done at plan entry; outcome in
   Open questions → Resolved.)
 - [x] **Step 2: Write this plan doc**, ACs first.
-- [ ] **Step 3: Commit + push, then open the draft PR immediately** — CI fires on
-  `pull_request` only, so a branch with no PR gets no CI at all (#417).
+- [x] **Step 3: Commit + push, then open the draft PR immediately** — CI fires on
+  `pull_request` only, so a branch with no PR gets no CI at all (#417). → PR #448, draft.
 
 ---
 
@@ -248,38 +248,43 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `.claude/skills/riviera-plan-doc/references/plan-doc-template.md:20-25`
 
-- [ ] **Step 1: Record the before-state** (the "failing test" for a prose deliverable) —
+- [x] **Step 1: Record the before-state** (the "failing test" for a prose deliverable) —
 
 ```bash
-grep -A6 '^\*\*Skills consulted:\*\*' \
+grep -A20 '^\*\*Skills consulted:\*\*' \
   .claude/skills/riviera-plan-doc/references/plan-doc-template.md \
-  | grep -cE 'riviera-sdlc|`tdd`|riviera-review-overlay|riviera-docs-freshness'
+  | grep -oE 'riviera-sdlc|`tdd`|riviera-review-overlay|riviera-docs-freshness|riviera-plan-doc' \
+  | sort -u
 ```
 
-→ expected **0** before the edit: the line names only *routed* example skills
-(`postgres`, `codebase-design`, `angular-developer`), which is precisely the gap.
+→ **observed: `riviera-sdlc` alone** (1 of 5). The plan first predicted 0; the one hit is
+the guidance prose naming the *routing gate* it quotes, not a pre-filled entry, so the gap
+is real and the count of **distinct always-on names present** is the honest pin. Everything
+else the line names is a *routed* example (`postgres`, `codebase-design`,
+`angular-developer`) — precisely the gap.
 
-- [ ] **Step 2: Rewrite the Skills-consulted line** so the five always-on entries are
+- [x] **Step 2: Rewrite the Skills-consulted line** so the five always-on entries are
   pre-filled with a fill-in parenthesis each, `riviera-docs-freshness` demanding an
   explicit **ran** (range + findings) or `N/A — <reason>`, and the routed skills follow as
   the extension point. Keep the existing "must cover every area the diff touches" rule —
   that is what RV-PROC-1 checks.
 
-- [ ] **Step 3: Add the adjacent blockquote** carrying the why in one line: the six-slice
+- [x] **Step 3: Add the adjacent blockquote** carrying the why in one line: the six-slice
   run **#427, #430, #436, #440, #374, #373**; *extend, don't replace*; and why the
   docs-freshness parenthesis must stay explicit (not-listed vs not-applicable were
   indistinguishable, which is how it slipped five times).
 
-- [ ] **Step 4: Re-run the step-1 command** → expected **≥4** matching lines (all five
-  names present; the count is of matching lines, not names).
+- [x] **Step 4: Re-run the step-1 command** → **all five** distinct names present
+  (`riviera-sdlc`, `riviera-plan-doc`, `` `tdd` ``, `riviera-review-overlay`,
+  `riviera-docs-freshness`).
 
-- [ ] **Step 5: Generalization-audit pass** — where else does "a template asking a question
+- [x] **Step 5: Generalization-audit pass** — where else does "a template asking a question
   whose answer is partly constant" apply? Search the template for other hand-authored
   lines with a constant part; record the decision in the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "docs(#447): pre-fill the always-on skills in the plan-doc template"`
+- [x] **Step 6: Commit** — `git commit -m "docs(#447): pre-fill the always-on skills in the plan-doc template"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -342,6 +347,7 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | Phase 1 (new pattern: pre-fill the constant part of a hand-authored line) | Other plan-doc-template lines whose answer is partly constant across slices | `grep -n '^\*\*[A-Za-z].*:\*\*' .claude/skills/riviera-plan-doc/references/plan-doc-template.md` | 8 header lines: Goal, Architecture, **Persistence**, Source of intent, Skills consulted, Branch, **Standards**, Stage pointer | **Subset — no further edits.** Two lines already ship their constant pre-filled (`Persistence:` "JDBC only (invariant #1)"; the Angular section's `Standards:` list), so the pattern is proven rather than novel, and this slice applies it to the one line the review gate has actually caught six times. Goal / Architecture / Source-of-intent are wholly slice-specific (no constant to lift); `Branch:` and `Stage pointer:` already spell their convention out inline. |
 
 ---
 
@@ -349,7 +355,11 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1:** *(pending — phase 1)*
+- [x] **AC-1:** Run
+  `grep -A20 '^\*\*Skills consulted:\*\*' .claude/skills/riviera-plan-doc/references/plan-doc-template.md | grep -oE 'riviera-sdlc|riviera-plan-doc|\`tdd\`|riviera-review-overlay|riviera-docs-freshness' | sort -u`
+  → **all five** distinct names (was `riviera-sdlc` alone), and the
+  `riviera-docs-freshness` entry reads `**ran** over <range>, N findings — **or** N/A —
+  <reason>`. Verified in the phase-1 commit.
 - [ ] **AC-2:** *(pending — phase 2)*
 - [ ] **AC-3:** *(pending — phase 2)*
 - [ ] **AC-4:** *(pending — phase 2)*
