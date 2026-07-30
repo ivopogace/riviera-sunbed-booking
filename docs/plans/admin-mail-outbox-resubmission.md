@@ -71,7 +71,9 @@ remote-session addendum.
   *Pinned by:* `MailOutboxScopeIT.leavesCompletedPublicationsAlone`
 - [ ] **AC-6:** Given an anonymous caller, when it calls either mail-outbox endpoint, then `401`;
   given an authenticated non-admin (`OPERATOR` or `CUSTOMER`), then `403` — before any
-  resubmission happens. *Pinned by:* `AdminMailOutboxSecurityIT`
+  resubmission happens, so a denied caller cannot consume the cooldown either.
+  *Pinned by:* `AdminMailOutboxControllerTest.operatorAndCustomerSessionsAreForbiddenOnBothEndpoints` +
+  `.anonymousIsUnauthorizedOnBothEndpoints`
 - [ ] **AC-7:** Given any resubmission, when it logs, then the line carries a count and no email
   address and no arrival code (invariant #7).
   *Pinned by:* `MailResubmissionServiceTest.logsACountAndNoBearerCredential`
@@ -271,16 +273,16 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — the ADMIN controller (`GET`/`POST /api/admin/mail-outbox`), the two `SecurityConfig` matchers, and the security IT; open the draft PR on this push.
+**Next action:** Phase 3 — `MailOutboxScopeIT`: leave a mail, a payout-accrual and a refund publication outstanding, resubmit, assert only the mail moved.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Scope + outbox port + registry adapter | ✅ | `dd0f72a` |
-| 1 — Resubmission service: single-flight, cooldown, typed outcome | ✅ | (this commit) |
-| 2 — ADMIN endpoints + security matchers | ⏳ | |
-| 3 — Money-path scoping IT | | |
+| 1 — Resubmission service: single-flight, cooldown, typed outcome | ✅ | `1515f8e` |
+| 2 — ADMIN endpoints + security matchers | ✅ | (this commit) |
+| 3 — Money-path scoping IT | ⏳ | |
 | 4 — Admin console: tab strip + Email tab | | |
 | 5 — Mocked e2e + substrate docs + close-out | | |
 
@@ -316,10 +318,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `notification/MailOutboxScopeTest.java` — the prefix constant matches the live listener FQCN (R-6); money-path listener ids do not match.
 - `notification/MailResubmissionServiceTest.java` — AC-1, AC-3, AC-4, AC-7 against a fake `MailOutbox` + fixed `Clock`.
-- `notification/AdminMailOutboxControllerTest.java` — the three outcomes' wire shapes.
-- `notification/MailOutboxScopeIT.java` — AC-2, AC-5 (Testcontainers).
-- `notification/AdminMailOutboxSecurityIT.java` — AC-6.
-- `notification/MailResubmissionPropertiesTest.java` — the bound validation + the env placeholder.
+- `AdminMailOutboxControllerTest.java` — the three outcomes' wire shapes **and** AC-6. In the root
+  test package, like every other admin-surface test, because `WebSliceStubs` is package-private there
+  and the subject is the surface *through* `SecurityConfig`. A separate Testcontainers security IT was
+  planned and dropped: this docker-free `@WebMvcTest` already runs the real filter chain, so the IT
+  would have re-proven the same matchers more slowly.
+- `notification/adapter/out/MailOutboxScopeIT.java` — AC-2, AC-5 (Testcontainers).
+- `notification/adapter/in/MailResubmissionPropertiesTest.java` — the bound validation + the env placeholder.
 
 **Frontend** (`frontend/src/app/admin/`)
 
