@@ -54,7 +54,9 @@ or constraint is touched.
   and **no new ADR** (ADR-0011 decision 5 already locked the vehicle choice; nothing here is a fresh
   hard-to-reverse trade-off).
 - `riviera-local-debug` — scoped-test discipline for every command in this doc (CI owns the full suite).
-- `riviera-review-overlay` — due at the review gate, not yet loaded.
+- `riviera-review-overlay` — loaded at the review gate; its backend bank walked against the diff,
+  producing finding F-1 (RV-STYLE-1, a two-line inline comment) which is fixed. RV-PROC-1 re-checked
+  after that fix: it touched backend Java only, an area already covered by this line.
 
 **Branch:** `claude/sdlc-375-uk5u5w` — the cloud session's designated remote branch **stands in for**
 `feature/operator-approved-notification-email` (`riviera-sdlc` §Remote/cloud session addendum). Cut
@@ -64,26 +66,29 @@ fresh from `main` at `d2f3732`; exists before phase 0.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `PENDING` operator registered with `appr-op@example.com`, when an admin approves
-  it, then `OperatorLifecycle.approve` answers `ApprovalOutcome.Approved("appr-op@example.com")` and
-  exactly one `OPERATOR_APPROVED` mail is recorded for that address, carrying a link whose path is
+- [x] **AC-1:** Given a `PENDING` operator registered with a known address, when an admin approves it,
+  then `OperatorLifecycle.approve` answers `ApprovalOutcome.Approved(<that address>)` and exactly one
+  `OPERATOR_APPROVED` mail is recorded for it, carrying an absolute link whose path is
   `/account/sign-in`. *Pinned by:* `OperatorApprovalMailIT.approvingAPendingOperatorMailsItTheSignInLink`
-- [ ] **AC-2:** Given a `PENDING` operator, when the same approval is submitted twice, then the second
+  (end to end through the admin endpoint) + `OperatorLifecycleIT.approveActivatesAPendingOperatorAndReportsItsContactEmail`
+  (the module half) + `OperatorApprovalMailTest.sendsTheSignInLinkBuiltOnTheConfiguredOrigin` (the exact link).
+- [x] **AC-2:** Given a `PENDING` operator, when the same approval is submitted twice, then the second
   call answers `ApprovalOutcome.NotPending` and **no second mail** is recorded — the address is returned
-  only by the statement that flipped the row. *Pinned by:* `OperatorApprovalMailIT.asecondApprovalMailsNothing`
-- [ ] **AC-3:** Given a `PENDING` operator, when an admin **rejects** it — and given an `ACTIVE` operator,
+  only by the statement that flipped the row. *Pinned by:* `OperatorApprovalMailIT.aSecondApprovalMailsNothing`
+  + `OperatorLifecycleIT.aSecondApproveIsNotPendingAndCarriesNoAddress`.
+- [x] **AC-3:** Given a `PENDING` operator, when an admin **rejects** it — and given an `ACTIVE` operator,
   when an admin **suspends** and then **reinstates** it — then no mail of any kind is recorded.
   *Pinned by:* `OperatorApprovalMailIT.rejectAndSuspendReinstateMailNothing`
-- [ ] **AC-4:** Given a `Mailer` whose `sendOperatorApproved` throws, when the send runs, then the
+- [x] **AC-4:** Given a `Mailer` whose `sendOperatorApproved` throws, when the send runs, then the
   failure dies inside the dispatched task and is counted under
   `riviera.mail.recovery.failed{kind="operator-approved",reason="transport"}`; and given an approval,
   the mail is issued only **after** the transition, so it cannot influence the admin's response.
   *Pinned by:* `TransactionalMailServiceTest.anOperatorApprovedTransportFailureIsSwallowedAndCounted`
   and `AdminOperatorControllerTest.approveMailsTheOperatorAfterTheTransition`
-- [ ] **AC-5:** Given a suppressed address, when an operator registered with it is approved, then the
+- [x] **AC-5:** Given a suppressed address, when an operator registered with it is approved, then the
   chokepoint skips the send and the mock records nothing — no new bypass of the module's defining
   invariant. *Pinned by:* `TransactionalMailServiceTest.anOperatorApprovedMailToASuppressedAddressIsSkipped`
-- [ ] **AC-6:** Given the public registration and sign-in surfaces, when this slice ships, then their
+- [x] **AC-6:** Given the public registration and sign-in surfaces, when this slice ships, then their
   request/response contracts are byte-for-byte unchanged and no new account-existence signal appears.
   *Pinned by:* the unchanged `OperatorRegistrationIT` + `PerOperatorLoginIT` (regression, not new tests).
 
@@ -115,37 +120,38 @@ which must keep passing verbatim.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | `ApprovalOutcome` enum → sealed interface is a **published-vocabulary shape change**; a missed consumer breaks the build or, worse, an `equals` comparison silently stops matching | med | med | Only three production consumers (`OperatorRegistrationService`, `JdbcOperators`, `AdminOperatorController`) + tests; all comparisons are `switch` over the closed set, none is `==`/`equals` on an enum constant — verified by `grep -rn "ApprovalOutcome"` before and after. Exhaustive `switch` with no `default` makes a missed case a **compile error** | Claude | **closed** (phase 1) — the compiler found the one consumer the grep plan had missed (`WebSliceStubs`); no `==` comparison existed anywhere |
-| R-2 | `contact_email` is **nullable** (V29: the env-managed bootstrap admin has none), so `Approved` can carry `null` and the edge could NPE or mail an empty address | low | med | `OperatorApprovalMail` guards null **and** blank before touching `MailSender`; unit-pinned. A `PENDING` row always has one (the edge requires non-blank at registration) — the guard is for the row shape the schema still permits | Claude | open |
+| R-2 | `contact_email` is **nullable** (V29: the env-managed bootstrap admin has none), so `Approved` can carry `null` and the edge could NPE or mail an empty address | low | med | `OperatorApprovalMail` guards null **and** blank before touching `MailSender` | Claude | **closed** (phase 2) — pinned twice: `OperatorApprovalMailTest.sendsNothingWhenTheApprovedOperatorHasNoAddress` (both null and blank) and `OperatorLifecycleIT.approveReportsANullAddressWhenTheRowCarriesNone`, which proves the null survives the `RETURNING` round-trip rather than assuming it |
 | R-3 | Mail send inside the approval request could slow it or fail it, or interleave with the session-revocation bracket | low | high | The send goes through `TransactionalMailService.dispatchQuietly` → `AsyncMailDispatcher`: off-thread, never throws, failures swallowed-and-counted. It is issued **after** `lifecycle.approve` returns and touches no session state (approve has no revoke bracket — only suspend/reinstate/password paths do). AC-4 pins it | Claude | **closed** (phase 2) — and hardened past the mitigation: writing the test surfaced that the *link builder* was the one request-time throw source (a mis-set `link-base-url` would have 500'd a committed approval, the #357 failure shape). The link is now built at construction, so a bad origin fails at boot instead |
-| R-4 | This non-recovery kind rides the `riviera.mail.recovery.*` counters, so a reader of the metric/log could mis-attribute an operator-approval loss to a tourist recovery flow | high | low | Deliberate and documented: "recovery" names the **vehicle** (the in-memory dispatcher), not the flow — the `kind` tag (`operator-approved`) is what disambiguates. `ObservabilityMetrics` Javadoc + `docs/runbooks/observability.md` updated in phase 3; `recordLoss`'s recovery-specific log wording ("the token was issued, so the user can re-request") is generalised, since no token exists on this kind | Claude | open |
+| R-4 | This non-recovery kind rides the `riviera.mail.recovery.*` counters, so a reader of the metric/log could mis-attribute an operator-approval loss to a tourist recovery flow | high | low | Deliberate and documented: "recovery" names the **vehicle**, not the flow — the `kind` tag disambiguates | Claude | **closed** (phase 3) — `docs/runbooks/observability.md` states the vehicle-vs-flow reading where an on-call reader meets it, and gains a `kind="operator-approved"` row with its own alert semantics (one lost operator, not a relay signal, since the volume is a trickle). `CLAUDE.md` + `RESPONSIBILITIES.md` carry the same clause. Two recovery-specific log lines were generalised — the loss line no longer promises a token this kind never had |
 | R-5 | `UPDATE … RETURNING` through `JdbcClient.query(...)` is a shape this repo has not used before; a driver/`JdbcClient` mismatch would surface only against real Postgres | low | high | Proven by a Testcontainers IT against the full Flyway chain, not by a unit test | Claude | **closed** (phase 1) — green in `OperatorLifecycleIT` against real Postgres. It was also less novel than the risk assumed: `insertPending` and the ITs' own fixtures already use `INSERT … RETURNING` through the same `JdbcClient` path. The documented fallback (a same-transaction follow-up read) was not needed |
-| R-6 | Mock/SMTP transports drift — a new kind added to the port but not to one implementation | low | med | `Mailer` is an interface: omitting the method in `MockMailer` or `SmtpMailer` is a compile error. `MailerProfileWiringTest` + `SmtpMailerIT` cover both transports | Claude | open |
-| R-7 | Suppression bypass — a new send path that skips the module's defining invariant | low | high | Impossible by construction: the new `MailSender` method delegates to the same `dispatchQuietly` chokepoint that checks suppression. AC-5 pins it | Claude | open |
+| R-6 | Mock/SMTP transports drift — a new kind added to the port but not to one implementation | low | med | `Mailer` is an interface, so an omission is a compile error | Claude | **closed** (phase 0) — and the compiler proved the point immediately, failing on three *test* doubles the plan's grep had not predicted. Both transports covered: `MockMailerTest.recordsOperatorApproved`, `SmtpMailerIT.deliversOperatorApprovedEmailOverSmtp` |
+| R-7 | Suppression bypass — a new send path that skips the module's defining invariant | low | high | Impossible by construction: the new method delegates to the same `dispatchQuietly` chokepoint | Claude | **closed** (phase 0) — pinned by `TransactionalMailServiceTest.anOperatorApprovedMailToASuppressedAddressIsSkipped` |
 | R-8 | Flyway version collision | none | — | No migration in this slice. (For the record: `V35` is the highest on `main`, `V36` is free, and the only open PRs are Dependabot frontend bumps — no `.sql` in any of them) | Claude | closed — no migration |
 
 ## Open questions / Assumptions
 
-- **Assumption:** *The issue's AC-2 ("If the schema lacked an operator email, a Flyway migration adds it
-  and self-registration captures + validates it") is **moot**, because the schema does not lack it.*
-  V29 added `operator.contact_email` and `AuthController` captures it (required, non-blank, trimmed) —
-  so the whole conditional branch, migration and validation alike, is already satisfied. I am **not**
-  adding format validation: the issue's own AC-4 requires the public registration surface to be
-  unchanged, and a syntax check would catch neither of the realistic failures (`gmial.com`, an address
-  the applicant does not control) while changing a shipped public contract. The admin sees the address
-  in the pending queue before approving, which is the check that actually exists.
-  *Owner:* Claude · *Resolves by:* stated in the PR body for the maintainer to overrule if wanted.
-- **Assumption:** *The sign-in link is built from the existing `riviera.recovery.link-base-url`* rather
-  than a new property. That value is already documented as "the absolute origin the emailed links point
-  at" (#368), is already an env-injected deploy secret on #370's checklist, and is already the SPA's
-  own origin since #110. A second knob would be a second thing to mis-set for zero benefit — the cost is
-  that a property named `recovery.*` now also serves a non-recovery link, which phase 3 documents on the
-  record itself. *Owner:* Claude · *Resolves by:* phase 2.
-- **Assumption:** *`/account/sign-in` is the correct landing path* — the audience-aware sign-in page
-  shipped in S9; post-sign-in landing is then driven by `GET /api/venues/mine` (0 venues → onboarding),
-  which is exactly right for a freshly-approved operator. No `returnUrl` is appended.
-  *Owner:* Claude · *Resolves by:* phase 2 (asserted by AC-1).
+**None open.** All three entries below resolved during the build; they are kept (moved, not deleted)
+so the decisions are reviewable.
 
 ### Resolved
+
+- **Assumption → held.** *The issue's AC-2 ("If the schema lacked an operator email, a Flyway migration
+  adds it and self-registration captures + validates it") is **moot**, because the schema does not lack
+  it.* V29 added `operator.contact_email`; `AuthController` captures it (required, non-blank, trimmed).
+  No migration was written, and **no format validation was added**: the issue's own AC-4 requires the
+  public registration surface to be unchanged, and a syntax check would catch neither realistic failure
+  (a typo'd domain, an address the applicant does not control) while changing a shipped public contract.
+  The admin sees the address in the pending queue before approving, which is the check that exists.
+  Flagged in PR #437's Scope notes for the maintainer to overrule. *Resolved:* plan stage, `71ad6e7`.
+- **Assumption → held.** *The sign-in link is built from the existing `riviera.recovery.link-base-url`*
+  rather than a new property — already documented as "the absolute origin the emailed links point at"
+  (#368), already an env-injected deploy secret on #370's checklist. The residual cost (a `recovery.*`
+  property serving a non-recovery link) is documented on `OperatorApprovalMail` itself. *Resolved:*
+  phase 2, `cbdee4d`.
+- **Assumption → held.** *`/account/sign-in` is the correct landing path* — the S9 audience-aware page;
+  post-sign-in landing is then driven by `GET /api/venues/mine` (0 venues → onboarding), which is right
+  for a freshly-approved operator. No `returnUrl` appended. Asserted by AC-1. *Resolved:* phase 2, `cbdee4d`.
+
 
 - **Grill finding (drift):** the issue says "**Schema check first:** verify the operator aggregate
   actually stores a contact email from self-registration; if not, add it (Flyway)". **It does** —
@@ -237,17 +243,25 @@ three response statuses (`204` / `409 NOT_PENDING` / `404 NO_SUCH_OPERATOR`); th
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement complete — marking PR #437 ready for review, then the Review + Sonar gates`
+**Stage pointer:** `merge close-out — Sonar gate PASSED, review gate HALF-RUN (see F-2), awaiting merge`
 
-**Next action:** Mark PR #437 ready for review, run `/code-review` per `references/pr-gates.md` §1
-with `riviera-review-overlay` layered on, then the Sonar issue-list pull.
+**Next action:** Merge PR #437 once the human authorizes and the `/code-review` subagent fan-out has
+run (F-2); then close-out steps 1–3 + 5–7 (`references/pr-gates.md` §3).
+
+**Gate results**
+
+| Gate | Result |
+|---|---|
+| CI (PR #437) | ✅ all 7 checks green on `b2af957`, incl. the **full** backend suite — the full-suite-only failure class the scoped local runs cannot show |
+| Sonar | ✅ genuinely clear, not a false-clean zero: `api/issues/search` **total 0**, and `measures` is non-empty with `new_lines=238`, `new_coverage=100.0`, `new_duplicated_blocks=0`, `new_bugs`/`new_vulnerabilities`/`new_code_smells` all 0; the `SonarCloud Code Analysis` check-run concluded `success` |
+| Review | ⚠️ **half-run — see finding F-2.** The `riviera-review-overlay` backend bank was walked in full against the diff (one finding, F-1, fixed); the `/code-review` subagent fan-out was **not** run, because this session carries a standing "do not use the Agent tool unless the user requested it" instruction. Per `pr-gates.md` §1 the PR's review checkbox stays **unticked** rather than claiming a gate that did not fully run |
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | ✅ | `afedbec` |
 | 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | ✅ | `6963c4a` |
 | 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | ✅ | `cbdee4d` |
-| 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | ✅ | (this commit) |
+| 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | ✅ | `b2af957` + this commit (F-1 fix + close-out) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -255,7 +269,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (overlay, RV-STYLE-1) | `OperatorApprovalMail`'s constructor carried a **two-line** inline comment; the rule is one line or none, with Javadoc exempt | fixed — the rationale moved onto the constructor's Javadoc, where it was always allowed to be long; re-ran `*OperatorApprovalMail*` + `*AdminOperatorControllerTest*` green |
+| F-2 | process (review gate) | The `/code-review` subagent fan-out did not run — this session may not start subagents unasked. The overlay bank ran in full; the **generic** BE/contract banks did not | **open — blocks merge.** Needs one line of human authorization, then re-run per the `pr-gates.md` §1 ladder (rung 1, `Skill("code-review")`, is confirmed working this session). The PR's review checkbox is left unticked and the PR says so |
 
 ---
 
@@ -410,32 +425,43 @@ Test `OperatorApprovalMailTest.java` (create) · `OperatorApprovalMailIT.java` (
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*OperatorApprovalMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `./gradlew test --tests "*OperatorApprovalMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `./gradlew test --tests "*OperatorApprovalMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `./gradlew test --tests "*TransactionalMailServiceTest*" --tests "*AdminOperatorControllerTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `./gradlew test --tests "*TransactionalMailServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `./gradlew test --tests "*OperatorRegistrationIT*" --tests "*PerOperatorLoginIT*"` → PASS. Verified at commit `<sha>`.
+All six verified against the commits below, and independently by **CI's full backend suite** on
+`b2af957` (green) — which is the half the scoped local runs cannot prove (`riviera-local-debug`,
+full-suite-only failure class). Testcontainers ITs ran for real, not skipped:
+`OperatorApprovalMailIT` reported `tests=3 skipped=0 failures=0 errors=0`.
 
-If any AC isn't verified by a passing test, write the test or admit it's not done.
+- [x] **AC-1:** `gradle test --tests "*OperatorApprovalMailIT*" --tests "*OperatorLifecycleIT*" --tests "*OperatorApprovalMailTest*"` → PASS. Verified at `cbdee4d`.
+- [x] **AC-2:** `gradle test --tests "*OperatorApprovalMailIT*" --tests "*OperatorLifecycleIT*"` → PASS. Verified at `cbdee4d`.
+- [x] **AC-3:** `gradle test --tests "*OperatorApprovalMailIT*"` → PASS. Verified at `cbdee4d`.
+- [x] **AC-4:** `gradle test --tests "*TransactionalMailServiceTest*" --tests "*AdminOperatorControllerTest*"` → PASS. Verified at `afedbec` (chokepoint half) and `cbdee4d` (edge half).
+- [x] **AC-5:** `gradle test --tests "*TransactionalMailServiceTest*"` → PASS. Verified at `afedbec`.
+- [x] **AC-6:** `gradle test --tests "*OperatorRegistrationIT*" --tests "*PerOperatorLoginIT*" --tests "*OperatorApprovalIT*"` → PASS, unmodified. Verified at `cbdee4d`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7) — and the new mail carries no bearer credential at all.
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1
-      *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — `JdbcClient` + text-block SQL; `JdbcOnlyArchitectureTests` green.
+- [x] **Availability** section filled — justified `N/A`; the only concurrency in scope is approval
+      concurrency, and the `RETURNING` clause *strengthens* its single-winner property (AC-2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event added
+      (with the reason recorded); `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` +
+      `PackageShapeArchitectureTests` green (invariant #11).
+- [x] **Payment/payout** section filled — `N/A`, no money moves (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A, no new time logic.
+- [x] Booking codes unguessable (invariant #7) — N/A, and the new mail carries no bearer credential at
+      all; the mock's link echo needed no invariant-#7 argument for the first time.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change (the grill's
+      first finding); `V36` left free.
+- [x] **Frontend** standards — N/A, backend-only; no file under `frontend/` touched.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, gate results, findings register.
+- [x] Risk register has no stale `open` rows (all eight closed with outcomes); Open Questions empty.
+- [x] **Close-out written in THIS PR** — this final state is committed here citing `merged via PR #437`,
+      so no docs-only follow-up PR is needed.
+- [ ] **The review gate ran in full** — **deliberately unticked (finding F-2).** The
+      `riviera-review-overlay` backend bank ran in full against the diff; the `/code-review` subagent
+      fan-out did not, because this session may not start subagents unasked. Stated in PR #437 rather
+      than ticked, per `pr-gates.md` §1 ("never substitute silently").

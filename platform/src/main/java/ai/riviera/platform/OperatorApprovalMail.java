@@ -37,10 +37,13 @@ class OperatorApprovalMail {
 	private final MailSender mails;
 	private final URI signInLink;
 
+	/**
+	 * The link is built <strong>here, once</strong>, not per send: it carries no per-request data, so a
+	 * malformed origin should fail the deploy — the posture {@link RecoveryProperties} already takes for
+	 * its TTLs (#426) — rather than raise {@code 500} on an approval that has already committed.
+	 */
 	OperatorApprovalMail(MailSender mails, RecoveryProperties properties) {
 		this.mails = mails;
-		// Built once: it carries no per-request data, so a malformed origin is a boot failure — the
-		// posture RecoveryProperties already takes for its TTLs (#426) — not a 500 on a committed approval.
 		this.signInLink = UriComponentsBuilder.fromUriString(properties.linkBaseUrl())
 				.path(SIGN_IN_PATH)
 				.build()
