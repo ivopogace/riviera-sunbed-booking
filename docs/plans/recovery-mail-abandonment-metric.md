@@ -56,29 +56,29 @@ is recorded in Execution status once it exists.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a wedged drainer with sends queued behind it, when the dispatcher is destroyed
+- [x] **AC-1:** Given a wedged drainer with sends queued behind it, when the dispatcher is destroyed
       with a drain window too short to drain them, then each queued send increments
       `riviera.mail.recovery.dropped{reason="abandoned"}` and **neither** `saturated` nor `shutdown`
       moves — a redeploy's ones-and-twos cannot read as a degraded relay.
       *Pinned by:* `AsyncMailDispatcherTest.aSendStillQueuedWhenTheDrainWindowExpiresIsCountedAsAbandoned`
-- [ ] **AC-2:** Given the same queued sends and the shipped drain window, when the drainer is
+- [x] **AC-2:** Given the same queued sends and the shipped drain window, when the drainer is
       released so the queue empties inside the window, then **nothing** is counted — the window
       exists to deliver those sends, and counting them would report a loss that did not happen.
       *Pinned by:* `AsyncMailDispatcherTest.aSendThatDrainsInsideTheWindowIsNotCountedAsAbandoned`
-- [ ] **AC-3:** Given a send counted as abandoned, when the drainer is later released, then that send
+- [x] **AC-3:** Given a send counted as abandoned, when the drainer is later released, then that send
       **does not run** — the count is honest because the send was discarded, not merely counted.
       *Pinned by:* the post-release assertions of the same `…IsCountedAsAbandoned` test.
-- [ ] **AC-4:** Given sends submitted with `correlationId=corr-1` and a shutdown thread whose own
+- [x] **AC-4:** Given sends submitted with `correlationId=corr-1` and a shutdown thread whose own
       context says otherwise, when they are abandoned, then there is **one `WARN` line per send**,
       each carrying `corr-1` in its own MDC and containing no `@`, no `http` and no arrival code
       (invariant #7, the #415 per-loss rule).
       *Pinned by:* `AsyncMailDispatcherTest.everyAbandonedSendIsLoggedOnceUnderItsOwnRequestsContext`
-- [ ] **AC-5:** Given that same shutdown thread, when the abandonment lines have been emitted, then
+- [x] **AC-5:** Given that same shutdown thread, when the abandonment lines have been emitted, then
       the thread's **own** logging context is intact — accounting for a lost mail must not relabel
       every later shutdown line as that user's request. *Pinned by:* the final assertion of the same
       test, and at the mechanism level by
       `MdcTaskDecoratorTest.restoresWhateverContextTheRunningThreadAlreadyHad`.
-- [ ] **AC-6:** Given a send **running** when the window expires, when the dispatcher is destroyed,
+- [x] **AC-6:** Given a send **running** when the window expires, when the dispatcher is destroyed,
       then it is still abandoned without interruption (no `shutdownNow()`, #410) and is **not**
       counted — it may already have handed off to the relay, so classifying it as lost would
       over-report a mail that arrived.
@@ -127,12 +127,12 @@ ledger applies to it:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The queue is drained **before** the window instead of after, discarding sends the drain exists to deliver — turning delivered mail into counted loss (the issue's own sketch suggests `drainTo` *before* `shutdown()`; grill finding G-1) | med | high | the drain runs strictly after `shutdown()` returns; AC-2 asserts the other half — a send that drains in time is *not* counted — so moving the drain earlier fails loudly | claude | open |
-| R-2 | `getQueue().drainTo(...)` races the drainer's `poll()`, so a send is counted *and* runs (double-report) or is missed | med | med | a `BlockingQueue` hands each element to exactly one of `poll`/`drainTo`, so the race is benign in both directions: a task is run **xor** counted. AC-1's wedged drainer makes the count exact; AC-3 proves the counted ones never ran | claude | open |
-| R-3 | Returning a named type from `decorate` silently changes the registry pool, whose `CompositeTaskDecorator` owns the same slot — the episode throttle strands open (the #410 R-1 hazard, one layer down) | low | high | `decorate`'s signature and the composition order are untouched, and the whole of `RegistryMailExecutorConfigTest` (MDC **and** throttle tests) runs unchanged in the phase-0 batch | claude | open |
-| R-4 | The in-flight send is counted too, over-reporting a mail that already reached the relay — the exact ambiguity #410 refused to resolve by interrupting | med | med | only the **queue** is drained; AC-6 pins that a running send moves no counter, and the Javadoc + runbook state the exclusion so the number is not read as "every mail lost at shutdown" | claude | open |
-| R-5 | Shared-state accumulation across the full suite (`riviera-local-debug`'s blind spot): `destroy()` now does extra work on every context close, and any context closing with a queued mail gains `WARN` lines | low | low | the added work is bounded by the queue (≤100) and is nil in a drained pool; no shared bean, filter or scheduled job is touched. To be verified by the PR's own CI run before phase 1 builds on it | claude | open |
-| R-6 | A third `reason` on a shipped series changes what an existing dashboard total means, and an alert on the total starts firing on redeploys | low | med | the total already meant "recovery mail the pool never sent" — both existing reasons are pool-level refusals — so the addition is in-kind; the runbook's standing rule is unchanged (**alert on `reason="saturated"`, track the total**) and AC-1 pins that `saturated` cannot move on a redeploy | claude | open |
+| R-1 | The queue is drained **before** the window instead of after, discarding sends the drain exists to deliver — turning delivered mail into counted loss (the issue's own sketch suggests `drainTo` *before* `shutdown()`; grill finding G-1) | med | high | the drain runs strictly after `shutdown()` returns; AC-2 asserts the other half — a send that drains in time is *not* counted — so moving the drain earlier fails loudly | claude | closed — `destroy()` drains after `shutdown()`; mutation-checked, moving the drain ahead of the window reddens `aSendThatDrainsInsideTheWindowIsNotCountedAsAbandoned` |
+| R-2 | `getQueue().drainTo(...)` races the drainer's `poll()`, so a send is counted *and* runs (double-report) or is missed | med | med | a `BlockingQueue` hands each element to exactly one of `poll`/`drainTo`, so the race is benign in both directions: a task is run **xor** counted. AC-1's wedged drainer makes the count exact; AC-3 proves the counted ones never ran | claude | closed — exact counts in both directions; the wedge holds the only thread for the whole window, so nothing polls concurrently in the pinned case |
+| R-3 | Returning a named type from `decorate` silently changes the registry pool, whose `CompositeTaskDecorator` owns the same slot — the episode throttle strands open (the #410 R-1 hazard, one layer down) | low | high | `decorate`'s signature and the composition order are untouched, and the whole of `RegistryMailExecutorConfigTest` (MDC **and** throttle tests) runs unchanged in the phase-0 batch | claude | closed — `decorate`'s signature and the composition order are untouched; all of `RegistryMailExecutorConfigTest` green unchanged |
+| R-4 | The in-flight send is counted too, over-reporting a mail that already reached the relay — the exact ambiguity #410 refused to resolve by interrupting | med | med | only the **queue** is drained; AC-6 pins that a running send moves no counter, and the Javadoc + runbook state the exclusion so the number is not read as "every mail lost at shutdown" | claude | closed — only the queue is drained; `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` now asserts the running send moves no counter |
+| R-5 | Shared-state accumulation across the full suite (`riviera-local-debug`'s blind spot): `destroy()` now does extra work on every context close, and any context closing with a queued mail gains `WARN` lines | low | low | the added work is bounded by the queue (≤100) and is nil in a drained pool; no shared bean, filter or scheduled job is touched. To be verified by the PR's own CI run before phase 1 builds on it | claude | open — to be closed by the PR's CI run on this push |
+| R-6 | A third `reason` on a shipped series changes what an existing dashboard total means, and an alert on the total starts firing on redeploys | low | med | the total already meant "recovery mail the pool never sent" — both existing reasons are pool-level refusals — so the addition is in-kind; the runbook's standing rule is unchanged (**alert on `reason="saturated"`, track the total**) and AC-1 pins that `saturated` cannot move on a redeploy | claude | open — closed at phase 1 once the runbook states the three reasons and the standing alert rule |
 
 ## Open questions / Assumptions
 
@@ -247,15 +247,15 @@ That pool is untouched, and `MailListenerExecutorArchitectureTest` keeps it that
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan committed — entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done and pushed; phase 1 (runbook + docs-freshness + close-out) next`
 
-**Next action:** Phase 0 step 1 — write the failing tests in `AsyncMailDispatcherTest` and
-`MdcTaskDecoratorTest`, then push and open the draft PR on the first phase commit (CI fires on
-`pull_request` only, #417) and record its number here.
+**Next action:** Phase 1 step 1 — the `reason="abandoned"` runbook row in
+`docs/runbooks/observability.md`, then the correction at its line 252 and the docs-freshness run.
+Draft **PR #436** is open, so every push is CI-gated; check that run before building on it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — count and log the send abandoned at shutdown, attributably | | |
+| 0 — count and log the send abandoned at shutdown, attributably | ✅ | (this push; SHA recorded at phase 1) |
 | 1 — runbook, metric doc, docs-freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -295,7 +295,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 `notification/application/AsyncMailDispatcherTest.java`,
 `notification/application/MdcTaskDecoratorTest.java`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 // AsyncMailDispatcherTest (AC-1, AC-3)
@@ -390,12 +390,12 @@ void runsTheActionPlainlyForATaskItDidNotDecorate() { /* no carrier: still runs,
 void restoresWhateverContextTheRunningThreadAlreadyHad() { /* "other" survives running a corr-1 task */ }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `gradle --no-daemon --console=plain test --tests "*AsyncMailDispatcherTest*" --tests "*MdcTaskDecoratorTest*"`
       → FAIL: `REASON_ABANDONED` and `MdcTaskDecorator.inContextOf` do not exist (compile), and once
       declared, the abandoned count is `0` where `QUEUED_AT_SHUTDOWN` is expected.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // MdcTaskDecorator — a named carrier instead of a lambda, so a non-worker thread can borrow the context
@@ -474,21 +474,21 @@ Each class's Javadoc gains the reasoning the code cannot carry: why the drain ru
 (a count that is a loss), why the in-flight send is excluded (it may have reached the relay), and why
 this is a third `reason` rather than a fifth name (D-1).
 
-- [ ] **Step 4: Run them, verify they pass** —
+- [x] **Step 4: Run them, verify they pass** —
       `gradle --no-daemon --console=plain test --tests "*AsyncMailDispatcherTest*" --tests "*MdcTaskDecoratorTest*" --tests "*RegistryMailExecutorConfigTest*" --tests "*MailTransport*"`
       then the structural net:
       `gradle --no-daemon --console=plain test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*MailListenerExecutorArchitectureTest*"`
       → PASS, including all four shipped `MdcTaskDecoratorTest` tests and both registry throttle tests
       unchanged (R-3).
 
-- [ ] **Step 5: Generalization-audit pass** — search every `destroy()` / `DisposableBean` /
+- [x] **Step 5: Generalization-audit pass** — search every `destroy()` / `DisposableBean` /
       `waitForTasksToCompleteOnShutdown` / `awaitTermination` site for another place where a bounded
       queue can discard work unaccounted; decide per site and record in the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(#434): count the recovery mail abandoned in the queue at shutdown (#434)"`
+- [x] **Step 6: Commit** — `git commit -m "feat(#434): count the recovery mail abandoned in the queue at shutdown (#434)"`
       → then **push and open the draft PR immediately** (CI fires on `pull_request` only, #417).
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -517,6 +517,7 @@ finds due (expected: `CLAUDE.md`'s `notification` row, `RESPONSIBILITIES.md`'s n
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 0 (accounting for work discarded at shutdown) | any other executor that can discard queued work unaccounted when its context closes | `grep -rn "DisposableBean\|awaitTermination\|WaitForTasksToComplete\|ThreadPoolTaskExecutor" platform/src/main/java` | **one other executor, deliberately left alone.** The registry pool (`RegistryMailExecutorConfig`) discards queued sends at shutdown too, but each one's event publication stays outstanding and the next start republishes it — `riviera.outbox.pending` already carries them, so a counter there would count one loss twice (#423's argument, verbatim). No third executor is declared in main; Boot's shared `applicationTaskExecutor` is auto-configured and carries the registry-backed money-path listeners for the same reason | no further site to fix; the asymmetry is recorded in `AsyncMailDispatcher`'s Javadoc beside the three it already carries |
 
 ---
 
@@ -524,9 +525,9 @@ finds due (expected: `CLAUDE.md`'s `notification` row, `RESPONSIBILITIES.md`'s n
 
 > Filled at the end of each phase with the command run and the commit that proves it — not before.
 
-- [ ] **AC-1..AC-5:** `gradle --no-daemon --console=plain test --tests "*AsyncMailDispatcherTest*" --tests "*MdcTaskDecoratorTest*"` → expected PASS.
-- [ ] **AC-6:** the existing `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted`, extended → expected PASS.
-- [ ] **AC-7:** the runbook diff states all three reasons and the exclusion.
+- [x] **AC-1..AC-5:** `gradle --no-daemon --console=plain test --tests "*AsyncMailDispatcherTest*" --tests "*MdcTaskDecoratorTest*"` → PASS (13 + 7 tests, 0 failures, 0 skipped), phase 0. **Mutation-checked three ways, each reddening exactly one test and nothing else:** counting the queue without draining it reddens AC-3's post-release assertion; logging without borrowing the send's context reddens AC-4's MDC assertion; draining before the window is awaited reddens AC-2. None of the three assertions is vacuous.
+- [x] **AC-6:** `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` → PASS, extended so the in-flight send is asserted to move no counter (still mutation-checked by swapping `shutdown()` for `shutdownNow()`).
+- [ ] **AC-7:** the runbook diff states all three reasons and the exclusion — phase 1.
 
 **Full-suite verification:** the PR's own CI run — Backend (build + test), Frontend, CodeQL and
 SonarCloud on the ready-for-review head, which is the half scoped local runs cannot prove

@@ -45,9 +45,16 @@ class AsyncMailDispatcherTest {
 	private static final String CORRELATION_KEY = "correlationId";
 	private static final int AWAIT_SECONDS = 5;
 	private static final int DROPS = 5;
+	private static final int QUEUED_AT_SHUTDOWN = 3;
 
 	/** #368's shipped relay budget, from which this pool's drain window is derived (#410). */
 	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
+
+	/** A drain window a wedged send cannot possibly fit in, so the queue is still full when it expires. */
+	private static final MailTransportBudget TINY_BUDGET = new MailTransportBudget(Duration.ofMillis(200));
+
+	/** How long an abandoned send is given to prove it is gone; it must never run, not merely run late. */
+	private static final long DISCARD_GRACE_MILLIS = 300;
 
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
@@ -106,6 +113,30 @@ class AsyncMailDispatcherTest {
 		for (int i = 0; i < AsyncMailDispatcher.QUEUE_CAPACITY + drops; i++) {
 			dispatcher.dispatch(() -> {
 			});
+		}
+		return gate;
+	}
+
+	/**
+	 * Wedge the single drainer and queue {@code count} sends behind it, each counting {@code ran} down if it
+	 * ever executes. The wedge is confirmed <em>running</em> first, or it would still be occupying one of the
+	 * queue slots the caller is counting. Returns the gate that releases it.
+	 */
+	private CountDownLatch wedgeWithQueuedSends(AsyncMailDispatcher dispatcher, int count, CountDownLatch ran)
+			throws InterruptedException {
+		CountDownLatch gate = new CountDownLatch(1);
+		CountDownLatch running = new CountDownLatch(1);
+
+		dispatcher.dispatch(() -> {
+			running.countDown();
+			awaitQuietly(gate);
+		});
+		assertThat(running.await(AWAIT_SECONDS, TimeUnit.SECONDS))
+				.as("the single drainer must be occupied before the queue is filled")
+				.isTrue();
+
+		for (int i = 0; i < count; i++) {
+			dispatcher.dispatch(ran::countDown);
 		}
 		return gate;
 	}
@@ -265,11 +296,16 @@ class AsyncMailDispatcherTest {
 	 * interrupt cannot tell a send that already reached the relay from one that has not. What differs is
 	 * the consequence: this vehicle has no publication to fall back on (ADR-0011 decision 5), so an
 	 * abandoned recovery send is a mail the user must re-request.
+	 *
+	 * <p><strong>And it is deliberately not counted</strong> (#434). A send the window catches
+	 * <em>running</em> may already have handed the message to the relay — that ambiguity is the whole
+	 * reason the pool gives up instead of interrupting — so charging it to
+	 * {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} would over-report a mail that arrived. Only the
+	 * queue, whose sends provably never started, is accounted for.
 	 */
 	@Test
 	void aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted() throws Exception {
-		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters,
-				new MailTransportBudget(Duration.ofMillis(200)));
+		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters, TINY_BUDGET);
 		CountDownLatch running = new CountDownLatch(1);
 		CountDownLatch gate = new CountDownLatch(1);
 		AtomicBoolean interrupted = new AtomicBoolean();
@@ -295,7 +331,105 @@ class AsyncMailDispatcherTest {
 				.as("give up, never shutdownNow(): interrupting a send that already handed off to the "
 						+ "relay is what turns at-least-once into a duplicate")
 				.isFalse();
+		assertThat(droppedTotal())
+				.as("a send caught running may already have reached the relay, so counting it as lost "
+						+ "would over-report a mail that arrived")
+				.isZero();
 		gate.countDown();
+	}
+
+	/**
+	 * The fourth loss shape (#434), and the one that moved nothing before this test existed. A send still
+	 * <em>queued</em> when the drain window expires is discarded with the pool: {@code execute} returned
+	 * normally so neither rejection reason fires, the task never ran so {@code MAIL_RECOVERY_FAILED} cannot,
+	 * and this vehicle keeps no durable copy (ADR-0011 decision 5) so {@code riviera.outbox.pending} has
+	 * nothing to show either. It rides the existing series' third {@code reason} rather than a fifth metric
+	 * name: like both siblings, it is a send the pool never ran.
+	 */
+	@Test
+	void aSendStillQueuedWhenTheDrainWindowExpiresIsCountedAsAbandoned() throws Exception {
+		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters, TINY_BUDGET);
+		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN);
+		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN, ran);
+
+		dispatcher.destroy();
+
+		assertThat(droppedFor(AsyncMailDispatcher.REASON_ABANDONED))
+				.as("a send discarded with the pool is as lost as one the pool refused")
+				.isEqualTo(QUEUED_AT_SHUTDOWN);
+		assertThat(droppedFor(AsyncMailDispatcher.REASON_SATURATED))
+				.as("a redeploy is not a degraded relay; the alerting reason must not move")
+				.isZero();
+		assertThat(droppedFor(AsyncMailDispatcher.REASON_SHUTDOWN))
+				.as("these were accepted, not rejected — the tag has to tell a deploy's two losses apart")
+				.isZero();
+
+		gate.countDown();
+		assertThat(ran.await(DISCARD_GRACE_MILLIS, TimeUnit.MILLISECONDS)).isFalse();
+		assertThat(ran.getCount())
+				.as("the count is only honest if the send was discarded, not counted and then run anyway")
+				.isEqualTo(QUEUED_AT_SHUTDOWN);
+	}
+
+	/**
+	 * The other half of the same decision: the drain window exists to <em>deliver</em> these sends, so a
+	 * queue that empties inside it is not a loss. Counting at shutdown before the window is awaited would
+	 * pass the test above and fail this one.
+	 */
+	@Test
+	void aSendThatDrainsInsideTheWindowIsNotCountedAsAbandoned() throws Exception {
+		AsyncMailDispatcher dispatcher = dispatcher();
+		CountDownLatch ran = new CountDownLatch(QUEUED_AT_SHUTDOWN);
+		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN, ran);
+
+		gate.countDown();
+		dispatcher.destroy();
+
+		assertThat(ran.await(AWAIT_SECONDS, TimeUnit.SECONDS))
+				.as("the shipped window is far longer than three no-op sends need")
+				.isTrue();
+		assertThat(droppedTotal())
+				.as("reporting a delivered mail as lost is the mirror-image error of missing one")
+				.isZero();
+	}
+
+	/**
+	 * The #415 per-loss rule, applied where it needed help to stay true (#434). The line is emitted on the
+	 * thread closing the context, not on the request's own, so it carries the correlation id only because
+	 * the abandoned task still holds the context it was submitted with. Invariant #7 keeps the address and
+	 * the link out, which leaves that id as the only handle on whose mail was lost.
+	 */
+	@Test
+	void everyAbandonedSendIsLoggedOnceUnderItsOwnRequestsContext() throws Exception {
+		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters, TINY_BUDGET);
+		MDC.put(CORRELATION_KEY, "corr-1");
+		CountDownLatch gate = wedgeWithQueuedSends(dispatcher, QUEUED_AT_SHUTDOWN,
+				new CountDownLatch(QUEUED_AT_SHUTDOWN));
+		MDC.put(CORRELATION_KEY, "shutdown-thread");
+
+		try {
+			dispatcher.destroy();
+
+			assertThat(logs.list)
+					.as("one line per loss: there is no durable copy to make a repeat redundant")
+					.hasSize(QUEUED_AT_SHUTDOWN)
+					.allSatisfy(event -> {
+						assertThat(event.getLevel())
+								.as("a redeploy outrunning the drain is a real loss, but no relay is at fault")
+								.isEqualTo(Level.WARN);
+						assertThat(event.getMDCPropertyMap())
+								.as("the id must be the submitting request's, not the shutdown thread's")
+								.containsEntry(CORRELATION_KEY, "corr-1");
+						assertThat(event.getFormattedMessage()).doesNotContain("@").doesNotContain("http");
+					});
+			assertThat(MDC.get(CORRELATION_KEY))
+					.as("accounting for a lost mail must not relabel every later shutdown line as that request")
+					.isEqualTo("shutdown-thread");
+		}
+		finally {
+			MDC.clear();
+			gate.countDown();
+		}
 	}
 
 	@Test
