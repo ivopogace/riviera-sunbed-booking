@@ -41,6 +41,8 @@ dependencies {
 	implementation 'org.springframework.modulith:spring-modulith-observability-api'
 	implementation 'org.springframework.modulith:spring-modulith-starter-core'
 	implementation 'org.springframework.modulith:spring-modulith-starter-jdbc'
+	// TargetEventPublication, so #405's mail re-drive can scope by listener (RegistryMailOutbox).
+	implementation 'org.springframework.modulith:spring-modulith-events-core'
 	// Stripe collection only (PaymentIntents + webhook signature verification) — NO Connect
 	// (ADR-0002 / invariant #8). Lives behind the payment module's outbound PaymentGateway.
 	implementation 'com.stripe:stripe-java:33.1.1'

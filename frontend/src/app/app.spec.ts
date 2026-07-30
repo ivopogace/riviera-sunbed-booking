@@ -455,6 +455,8 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'venue-admin',
     // S6 (#115): the platform-admin approval surface — a porcelain glass route, born un-legacied.
     'admin',
+    // #405: the admin console's Email tab — the same porcelain surface, same tab strip.
+    'admin/email',
   ];
 
   // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither

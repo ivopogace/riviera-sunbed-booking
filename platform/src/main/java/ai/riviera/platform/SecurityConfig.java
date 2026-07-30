@@ -150,6 +150,14 @@ class SecurityConfig {
 	 * un-suppressing themselves through a public endpoint would be an abuse and enumeration vector.
 	 */
 	private static final String ADMIN_SUPPRESSION_REINSTATE_PATH = "/api/admin/email-suppressions/reinstate";
+	/**
+	 * The mail outbox (#405) — what the Event Publication Registry still owes the {@code notification}
+	 * module, and the lever that re-drives it without waiting for the next deploy. The same ADMIN gate
+	 * and the same {@code /api/admin/**} exemption from invariant #13: this is platform-wide delivery
+	 * state, owned by no venue, so per-venue ownership has nothing to check here.
+	 */
+	private static final String ADMIN_MAIL_OUTBOX_PATH = "/api/admin/mail-outbox";
+	private static final String ADMIN_MAIL_OUTBOX_RESUBMIT_PATH = "/api/admin/mail-outbox/resubmit";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -316,6 +324,9 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						// Lifting an email suppression (#391) — same ADMIN gate, never self-service.
 						.requestMatchers(HttpMethod.POST, ADMIN_SUPPRESSION_REINSTATE_PATH).hasRole(ADMIN_ROLE)
+						// The mail outbox (#405) — same ADMIN gate; platform-wide state, no venue owns it.
+						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

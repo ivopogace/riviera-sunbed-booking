@@ -156,6 +156,12 @@ export const routes: Routes = [
     title: 'Operators — Riviera',
   },
   {
+    // Admin console Email tab (#405) — the outstanding-mail lever; ADMIN-gated server-side.
+    path: 'admin/email',
+    loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),
+    title: 'Email — Riviera',
+  },
+  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
     // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
     // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the

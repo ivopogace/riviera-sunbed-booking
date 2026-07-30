@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
@@ -25,7 +26,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-operators',
-  imports: [RouterLink, CardGlass],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-ops-title">
@@ -45,6 +46,8 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
           You don't have access to this page.
         </p>
       } @else {
+        <app-admin-console-tabs label="Admin console sections" />
+
         @if (loading()) {
           <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-loading">
             Loading…
