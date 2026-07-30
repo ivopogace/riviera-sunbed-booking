@@ -44,7 +44,14 @@ claims `V36`.
   seam earns its keep; it stays module-internal, not a published port.
 - `riviera-stripe-payments` — confirmed the slice renders a refund **decision** and moves no money;
   no Connect, no gateway call, no ledger write. Produced risk R-3.
-- `riviera-local-debug` — to be loaded before the session's first `./gradlew` (phase 1).
+- `riviera-local-debug` — loaded before the session's first `gradle` (phase 1): supplied the
+  cloud recipe (system `gradle` + a registered JDK-25 toolchain, daemon JVM on 21) and the
+  scoped-test discipline every phase below follows; the bare `test` task was never run locally.
+- `postgres` — **not loaded, and the reason is recorded rather than assumed**: the slice adds no
+  table, column, index, SQL query or Flyway migration (`git diff --stat` shows nothing under
+  `db/migration`), so no row of the routing table fires. Latest version on `main` stays `V35`.
+- `riviera-frontend` / `angular-developer` / `playwright-cli` — not loaded: backend-only diff, no
+  file under `frontend/`.
 
 **Branch:** cloud session — the designated remote branch **`claude/sdlc-374-whbejt`** stands in
 for `feature/email-s6-cancellation-refund-mail` (riviera-sdlc §Remote/cloud addendum). It exists
