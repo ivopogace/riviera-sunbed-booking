@@ -92,19 +92,19 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
       assertion**, not prose — today's Stripe instantiation being `(5s + 20s) × 1 = 25s`, with the
       configured ceilings giving an absolute worst case of `(30s + 80s) × 1 = 110s`.
       *Pinned by:* `StripeConfigTest.theRefundBudgetIsOneRoundTripWithNoSdkRetries`
-- [ ] **AC-2:** Given a `BookingCancelled` whose gateway refund blocks indefinitely, when a
+- [x] **AC-2:** Given a `BookingCancelled` whose gateway refund blocks indefinitely, when a
       `PaymentConfirmed` and a `BookingConfirmed` are published, then the booking still reaches
       `CONFIRMED` (invariant #8) and the payout ledger still accrues (invariant #9) inside the test
       window. *Pinned by:* `RefundBulkheadIT.wedgedRefundDoesNotDelayTheMoneyPath`
-- [ ] **AC-3:** Given a `BookingCancelled` with an amount owed, when the refund listener runs, then
+- [x] **AC-3:** Given a `BookingCancelled` with an amount owed, when the refund listener runs, then
       no transaction is active on the worker **and** no JDBC connection is bound to it for the
       duration of the gateway call. *Pinned by:*
       `RefundBulkheadIT.refundsWithNoTransactionOrConnectionHeldOpen`
-- [ ] **AC-4:** Given a gateway that returns `RefundResult.Failed`, when the listener runs, then it
+- [x] **AC-4:** Given a gateway that returns `RefundResult.Failed`, when the listener runs, then it
       throws, the `event_publication` row stays outstanding, and a subsequent successful attempt
       completes it. *Pinned by:*
       `RefundBulkheadIT.aFailedRefundLeavesThePublicationOutstandingAndIsRetried`
-- [ ] **AC-5:** Given the decomposed listener, when a `BookingCancelled` is published, then the
+- [x] **AC-5:** Given the decomposed listener, when a `BookingCancelled` is published, then the
       registry writes the **same** `listener_id` as before the decomposition, so no Flyway rewrite is
       owed. *Pinned by:* `RefundBulkheadIT.keepsTheListenerIdUnchanged`
 - [x] **AC-6:** Given the refund executor bean is declared, when the context starts, then
@@ -172,7 +172,7 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Declaring a second `Executor` bean makes Boot back off `applicationTaskExecutor` (`@ConditionalOnMissingBean(Executor.class)`), silently dropping every unqualified `@Async` — the money-path listeners included — onto an unbounded `SimpleAsyncTaskExecutor`, where no test fails because unbounded threads always keep up | med | **critical** | `defaultCandidate = false`, the fix #383 established; AC-6's IT asserts both halves (the shared bean exists **and** unqualified `@Async` resolves to it) with **two** such beans in the context, which is the configuration #383 never tested | this slice | **closed** — `RefundExecutorWiringIT` green, 4 tests, 0 skipped: the shared pool is present and unqualified `@Async` still resolves to it |
-| R-2 | Dropping the listener transaction changes durability or completion semantics | low | high | Modulith's completion registration is advisor-based and independent of `@Transactional` (re-derived by #383's review, not taken on faith); AC-4 proves outstanding-on-failure and AC-5 proves the id is unmoved, both against a real registry | this slice | open |
+| R-2 | Dropping the listener transaction changes durability or completion semantics | low | high | Modulith's completion registration is advisor-based and independent of `@Transactional` (re-derived by #383's review, not taken on faith); AC-4 proves outstanding-on-failure and AC-5 proves the id is unmoved, both against a real registry | this slice | **closed** — both green against a real registry; AC-4/AC-5 also passed *before* the swap, which is what makes them regression guards rather than new claims |
 | R-3 | Shedding a refund loses money owed to a tourist (invariant #10) | low | **critical** | A shed submission never runs, so the publication is never completed and `riviera.outbox.pending` carries it until the next start republishes it (AC-4 proves the mechanism). The queue is sized so a whole weather-refund sweep fits without shedding; the shed path is a backstop with its own counter (AC-7), because — unlike a crash — shedding does not itself trigger the restart that recovers it | this slice | open |
 | R-4 | The pool is sized against an estimate that real gateway latency falsifies, and correcting it costs a deploy | high | med | All three bounds are `@ConfigurationProperties` with env placeholders (#408's precedent), validated at both ends (AC-8). Retuning is a config change; the P1 re-derivation is a recorded handoff, not a memory | this slice | open |
 | R-5 | `riviera-java-conventions` §8 says *"don't hand-roll thread pools in application code"* | — | — | Honored, not violated: this is a Spring `ThreadPoolTaskExecutor` bean in a driving-adapter `@Configuration`, not a hand-rolled pool in a service. §8's target is `new Thread()`/`ExecutorService` inside domain or application logic, and its second clause — *"the real scaling knob is the Hikari pool"* — is precisely what phase 2 protects by dropping the connection pin | this slice | open |
@@ -297,16 +297,16 @@ server-side and env-supplied.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 (move the listener, drop the transaction)`
+**Stage pointer:** `implement — phase 3 (structural rule + substrate reconciliation)`
 
-**Next action:** Phase 2 step 1 — write `RefundBulkheadIT` (AC-2/3/4/5) and watch it fail on today's
-shared-pool listener before swapping the annotations.
+**Next action:** Phase 3 step 1 — write `RefundListenerExecutorArchitectureTest`, then prove it
+non-vacuous by reverting the listener to `@ApplicationModuleListener` (R-7).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Establish and pin the refund budget (AC-1) | ✅ | `c57b0b3` |
 | 1 — The bounded executor, its bounds, and its shed policy (AC-6, AC-7, AC-8) | ✅ | `7800e03` |
-| 2 — Move the listener onto it and drop the transaction (AC-2, AC-3, AC-4, AC-5) | | |
+| 2 — Move the listener onto it and drop the transaction (AC-2, AC-3, AC-4, AC-5) | ✅ | `5cbfde8` |
 | 3 — Make the rule structural; reconcile the substrate (AC-9) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -425,25 +425,25 @@ unbound the money path — is caught by a test that exists before the listener m
 
 **Files:** Modify `BookingRefundListener.java` · Test `RefundBulkheadIT.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-2 (a wedged refund vs. the spine), AC-3 (no transaction
+- [x] **Step 1: Write the failing tests** — AC-2 (a wedged refund vs. the spine), AC-3 (no transaction
       **and** no bound connection across the call), AC-4 (a failed refund leaves the publication
       outstanding and a later attempt completes it), AC-5 (`listener_id` unchanged, asserted against
       what the running registry writes).
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `gradle --no-daemon --console=plain test --tests "*RefundBulkheadIT*"` → FAIL (AC-2 times out:
       the refund is on the shared pool and starves the spine; AC-3 fails: a transaction and a
       connection are held).
-- [ ] **Step 3: Minimal implementation** — swap the annotations on the listener; rewrite its Javadoc
+- [x] **Step 3: Minimal implementation** — swap the annotations on the listener; rewrite its Javadoc
       to state the bulkhead, the dropped transaction and why dropping it is safe.
-- [ ] **Step 4: Run them, verify they pass** — the same command, then the regression scope that guards
+- [x] **Step 4: Run them, verify they pass** — the same command, then the regression scope that guards
       R-2 and the money path:
       `gradle --no-daemon --console=plain test --tests "*BookingRefundListenerTest*" --tests "*PayoutReversalIT*" --tests "*PayoutAccrualIT*" --tests "*PaymentEventListenerIT*" --tests "*WeatherRefundIT*" --tests "*CancelBookingIT*" --tests "*ConcurrentReservationIT*"`
       → PASS **unmodified** (that they are unmodified is the point).
-- [ ] **Step 5: Generalization-audit pass** — re-run #383's phase-0 search over every async listener
+- [x] **Step 5: Generalization-audit pass** — re-run #383's phase-0 search over every async listener
       now that a second one has moved, and record which remain on the shared pool **and why that is
       still right** (the DB-only spine listeners).
-- [ ] **Step 6: Commit** — `git commit -m "fix(#404): run the cancellation refund on its own bounded executor"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "fix(#404): run the cancellation refund on its own bounded executor"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -484,6 +484,7 @@ unbound the money path — is caught by a test that exists before the listener m
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 2 (a second listener moved off the shared pool) | #383's phase-0 sweep, re-run: every async event listener, to see which still put a blocking external round-trip on the shared `applicationTaskExecutor` | `grep -rnE '^\s*@(ApplicationModuleListener\|Async\|EventListener\|TransactionalEventListener)' platform/src/main/java` | 8 listener methods: 3 mail (`MAIL_EXECUTOR`), 1 refund (`REFUND_EXECUTOR`, this slice), and 4 on the shared pool — `PaymentEventListener` ×2, `BookingConfirmedPayoutListener`, `BookingCancelledPayoutListener` | **Fix all — the class is now closed.** Every listener that makes a blocking *external* call is bulkheaded; the four remaining are DB-only and *are* the spine, so moving them would shed money-path work onto a smaller pool (strictly worse — #383's Non-goals, restated here). #383's audit found one genuine sibling and deferred it; this slice is that deferral, and re-running the same search now returns none |
 | 2026-07-30 | phase 1 (new pattern: a second bulkhead executor beside a driving adapter) | every bean the container could see as an `Executor`, since one visible by type makes Boot skip `applicationTaskExecutor` entirely (R-1) | `grep -rn -A2 "@Bean" platform/src/main/java \| grep -E "TaskScheduler\|ScheduledExecutor\|ExecutorService\|TaskExecutor\|Executor\b"` | 2: `RegistryMailExecutorConfig` (#383) and this slice's `RefundExecutorConfig`. `AsyncMailDispatcher` (#369) holds an executor but is published as a `MailDispatcher`, so it is invisible to the condition; scheduling uses Boot's own `taskScheduler` via `spring.task.scheduling.pool.size` | **Fix all — already compliant.** Both carry `defaultCandidate = false`. **Deliberately no structural rule added:** an ArchUnit rule would key on the syntax (`@Bean` returning an `Executor`), while `RefundExecutorWiringIT` asserts the *outcome* on the real context — that `applicationTaskExecutor` exists and unqualified `@Async` resolves to it. The outcome test catches any future cause, including bean types a syntactic rule would not think to match (a `ThreadPoolTaskScheduler` is also an `Executor`), so it strictly dominates |
 | 2026-07-30 | phase 0 (new pattern: pinning a gateway call's occupancy budget instead of assuming it) | every blocking `StripeClient` call, to see which others have a duration the codebase reasons about but never asserts | `grep -n "stripe.v1()" platform/src/main/java` | 4 calls in `StripePaymentGateway`: `refund`, `initiate` (×2, via `createWithRecovery`), `cancel` (retrieve + cancel) | **Subset — one pin, deliberately.** The three *client-level* facts (connect timeout, read timeout, retry count) are shared by every call, so `theRefundBudgetIsOneRoundTripWithNoSdkRetries` protects all of them; a per-call pin would restate the same builder. The **per-call multiplier** differs and is worth recording rather than pinning here: `initiate` deliberately replays once on `ApiConnectionException` (#66 orphan recovery), so its worst case is **2 × 25s = 50s**, and `cancel` makes two sequential calls. Neither is in scope — `initiate` runs on a request thread (its own hazard class, already bounded by #52's timeouts) and `cancel` runs on the abandoned-payment sweep, which #395 gave a thread of its own. Only `refund` runs on the money-path spine, which is why only `refund` gets a bulkhead |
 
@@ -492,10 +493,10 @@ unbound the money path — is caught by a test that exists before the listener m
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1:** Run `gradle test --tests "*StripeConfigTest*"` → `theRefundBudgetIsOneRoundTripWithNoSdkRetries` PASS. Proven non-vacuous first: asserting `1` retry failed with `expected: <1> but was: <0>`, which verified the source-reading against the real stripe-java 33.1.1 jar rather than trusting it.
-- [ ] **AC-2:** Run `gradle test --tests "*RefundBulkheadIT*"` → `wedgedRefundDoesNotDelayTheMoneyPath` PASS; pre-fix failure mode recorded.
-- [ ] **AC-3:** Run `gradle test --tests "*RefundBulkheadIT*"` → `refundsWithNoTransactionOrConnectionHeldOpen` PASS; non-vacuity proven.
-- [ ] **AC-4:** Run `gradle test --tests "*RefundBulkheadIT*"` → `aFailedRefundLeavesThePublicationOutstandingAndIsRetried` PASS.
-- [ ] **AC-5:** Run `gradle test --tests "*RefundBulkheadIT*"` → `keepsTheListenerIdUnchanged` PASS.
+- [x] **AC-2:** Run `gradle test --tests "*RefundBulkheadIT*"` → `wedgedRefundDoesNotDelayTheMoneyPath` PASS. **Pre-fix failure mode recorded:** `ConditionTimeoutException: Condition with alias 'payment -> booking confirmation (invariant #8)' didn't complete within 20 seconds` — the money path starved behind ten wedged refunds on the shared pool, which is the harm the issue names.
+- [x] **AC-3:** Run `gradle test --tests "*RefundBulkheadIT*"` → `refundsWithNoTransactionOrConnectionHeldOpen` PASS. Non-vacuous by construction: both sample lists are asserted `isNotEmpty()` first, so a refund that never ran fails rather than passing on nothing. Pre-fix it failed on the transaction/connection samples.
+- [x] **AC-4:** Run `gradle test --tests "*RefundBulkheadIT*"` → `aFailedRefundLeavesThePublicationOutstandingAndIsRetried` PASS, against a real registry.
+- [x] **AC-5:** Run `gradle test --tests "*RefundBulkheadIT*"` → `keepsTheListenerIdUnchanged` PASS — the id the running registry writes still reads `ai.riviera.platform.booking.adapter.in.BookingRefundListener.on(...BookingCancelled)`, so no Flyway rewrite is owed (invariant #12).
 - [x] **AC-6:** Run `gradle test --tests "*RefundExecutorWiringIT*"` → PASS, `tests="4" skipped="0"` (checked in the result XML — a Docker-less skip would have read as green).
 - [x] **AC-7:** Run `gradle test --tests "*RefundExecutorConfigTest*"` → PASS (10 methods: bounds, shed-without-throw-or-caller-run, per-shed counting, episode throttling, drain-does-not-end-an-episode, later-episode-logs-again, shutdown-not-counted, abandoned-not-interrupted).
 - [x] **AC-8:** Run `gradle test --tests "*RefundExecutorPropertiesTest*"` → PASS (all three bounds rejected at both ends).
