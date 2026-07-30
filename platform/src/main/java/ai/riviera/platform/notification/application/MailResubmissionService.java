@@ -13,25 +13,27 @@ import org.springframework.stereotype.Service;
  * The once-only policy behind the ADMIN resubmit lever (#405) — the whole reason this slice is a
  * service and not a two-line controller.
  *
- * <p><strong>The framework supplies no guard, despite documenting one.</strong>
- * {@code EventPublicationRepository.markResubmitted} is described as returning {@code false} when
- * another instance has already claimed a publication, and
- * {@code DefaultEventPublicationRegistry#processPublications} does honour that answer — but the method
- * is a {@code default} whose body is {@code return true} and {@code JdbcEventPublicationRepository}
- * does not override it. Every claim succeeds. Two clicks therefore both proceed, and both send.
+ * <p><strong>Duplicate mail is prevented one layer down, and this is not that layer.</strong> #405
+ * reports that {@code markResubmitted} provides no guard — a {@code default} returning {@code true}.
+ * That is the <em>v1</em> repository. This deployment runs v2 (V8 ships the v2 schema), where the
+ * method is a real claim: {@code UPDATE … SET STATUS = 'RESUBMITTED' … WHERE ID = ? AND STATUS !=
+ * 'RESUBMITTED'}, whose row count the registry honours. A publication whose previous resubmission is
+ * still draining on {@code registryMailExecutor} (#383) is therefore skipped — durably, in the
+ * database, across instances and across restarts, which no in-process lock could match.
  *
- * <p><strong>So the guard is two parts, because there are two races.</strong> A
- * {@link ReentrantLock#tryLock()} answers the simultaneous one — two admins, or a double-click landing
- * on two request threads. It cannot answer the <em>sequential</em> one: the registry completes a
- * publication only once the listener returns, and that listener is {@code @Async} on
- * {@code registryMailExecutor} (#383), so a press moments after an accepted one finds the identical
- * rows still outstanding. That is what {@link MailResubmissionWindow} covers.
+ * <p><strong>What this class adds is a bound on redundant work, and an answer.</strong> The registry's
+ * claim is per publication; nothing bounds how often the whole scope is swept. During a relay outage
+ * every send fails fast and is marked {@code FAILED} again immediately, so an admin clicking through
+ * an incident would drive a full re-send storm at the relay each time — and each press would report
+ * success while achieving nothing. The {@link ReentrantLock#tryLock()} answers the simultaneous case
+ * (two admins, or one double-click on two request threads) and {@link MailResubmissionWindow} the
+ * rapid-sequential one, so a press either does real work or says plainly why it did not.
  *
- * <p><strong>The window starts at construction, not at the first press</strong>, which closes the
- * third race #405 names: an admin clicking seconds after a deploy, concurrent with the restart
- * republication ({@code republish-outstanding-events-on-restart=true}, fired from
- * {@code afterSingletonsInstantiated}). Treating the boot republish as resubmission zero costs at most
- * one refused press per deploy and removes a duplicate nobody would have been able to explain.
+ * <p><strong>The window starts at construction, not at the first press.</strong> A deploy has just
+ * republished everything outstanding ({@code republish-outstanding-events-on-restart=true}, fired from
+ * {@code afterSingletonsInstantiated}), so a press seconds later is the same redundant sweep as any
+ * other rapid second one. Treating the boot republish as resubmission zero costs at most one refused
+ * press per deploy.
  *
  * <p>Nothing here logs an address or an arrival code (invariant #7) — and structurally cannot: this
  * service sees publication <em>counts</em>, never payloads.

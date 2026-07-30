@@ -15,13 +15,13 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * {@code riviera.notification.mail-resubmission.cooldown-ms} would be
  * {@code RIVIERA_NOTIFICATION_MAILRESUBMISSION_COOLDOWNMS}.
  *
- * <p><strong>Both bounds matter, and the lower one is the security-shaped half.</strong> A
- * non-positive cooldown boots cleanly and silently reduces the duplicate guard to the single-flight
- * lock alone — which cannot see a send still draining on {@code registryMailExecutor}, so a rapid
- * second press would re-send every outstanding mail. That is the exact failure AC-3 forbids, arriving
- * as configuration rather than as code. The floor is deliberately above one second: anything shorter
- * cannot outlive even a healthy relay round-trip, so it would satisfy the "positive" check while
- * providing no window at all.
+ * <p><strong>Both bounds matter, and the lower one is the load-shaped half.</strong> A non-positive
+ * cooldown boots cleanly and reduces the throttle to the single-flight lock alone, which does not
+ * outlive one call. During a relay outage every send fails fast and the registry marks it failed, so
+ * the whole scope is eligible again within milliseconds and a held-down button becomes a re-send storm
+ * against the relay that is already struggling. The floor is deliberately above one second: anything
+ * shorter cannot outlive even a healthy relay round-trip, so it would satisfy a "positive" check while
+ * throttling nothing.
  *
  * <p>The ceiling bounds the typo from the other side. An oversized value does not fail — it just
  * refuses every press for hours, so the lever an admin reaches for during an incident reports
@@ -51,10 +51,10 @@ record MailResubmissionProperties(@DefaultValue("60000") int cooldownMs) {
 			throw new IllegalArgumentException(
 					"riviera.notification.mail-resubmission.cooldown-ms must be between " + MIN_COOLDOWN_MS
 							+ " and " + MAX_COOLDOWN_MS + ", but was " + cooldownMs
-							+ "; too short and the duplicate guard collapses to the single-flight lock, which "
-							+ "cannot see a send still draining on the registry mail pool, so a rapid second "
-							+ "press re-sends every outstanding mail — and too long and the lever answers "
-							+ "COOLING_DOWN through the whole incident it exists for");
+							+ "; too short and the throttle collapses to the single-flight lock, which does not "
+							+ "outlive one call, so a held-down button re-sweeps and re-attempts every "
+							+ "outstanding send — and too long and the lever answers COOLING_DOWN through "
+							+ "the whole incident it exists for");
 		}
 	}
 }

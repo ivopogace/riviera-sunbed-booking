@@ -24,12 +24,12 @@ public interface MailResubmission {
 	/**
 	 * Re-drive every outstanding publication in scope, once.
 	 *
-	 * <p>"Once" is this method's responsibility, not the framework's: {@code markResubmitted} is
-	 * documented as a claim that fails when another instance got there first, but it is a
-	 * {@code default} method returning {@code true} that the JDBC repository does not override, so two
-	 * clicks would otherwise both proceed and both send (#405 finding 2). See
-	 * {@link MailResubmissionOutcome.AlreadyRunning} and {@link MailResubmissionOutcome.CoolingDown}
-	 * for the two halves of the guard.
+	 * <p>"Once" is shared between two layers, and the durable half is the registry's: its
+	 * {@code markResubmitted} claim skips a publication whose previous resubmission is still in flight
+	 * (v2 repository — #405 describes the v1 one, where that method is an unoverridden {@code default}).
+	 * What this port adds is a bound on how often the whole scope is swept, and a caller-visible reason
+	 * when it refuses — see {@link MailResubmissionOutcome.AlreadyRunning} and
+	 * {@link MailResubmissionOutcome.CoolingDown}.
 	 */
 	MailResubmissionOutcome resubmit();
 }

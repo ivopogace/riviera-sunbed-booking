@@ -14,10 +14,11 @@ already exposes the resubmission mechanism (`IncompleteEventPublications`), so t
 **scope by the owning module's listener-id prefix, not by event type** — `BookingConfirmed` is
 consumed by the mail listener *and* by `BookingConfirmedPayoutListener`, so an event-type
 predicate would resubmit invariant-#9 accruals from a button labelled "mail". The second:
-the framework offers **no** concurrency guard (`markResubmitted` is a `default` returning
-`true`; see grill G-2), so the once-only property in AC-3 is built here as
-**single-flight + cooldown**, and the cooldown clock starts at boot so a click seconds after a
-deploy cannot race the restart republication.
+duplicate mail is **already** prevented by the registry one layer down (G-2, corrected during
+implementation), so the service-level **single-flight + cooldown** is a throttle on the *sweep* —
+it stops a press during a relay outage from re-attempting every outstanding send, and stops a
+press that achieved nothing from reporting success. The cooldown clock starts at boot, so the
+deploy's own republication counts as sweep zero.
 
 **Persistence:** JDBC only (invariant #1). **No migration** — this slice reads and re-drives
 the framework-owned `event_publication` table through Modulith's own API and adds no table,
@@ -57,8 +58,9 @@ remote-session addendum.
   then only the mail publication is resubmitted — the other two stay outstanding and no ledger
   entry and no Stripe call results. *Pinned by:* `MailOutboxScopeIT.resubmitsMailWithoutTouchingTheMoneyPath`
 - [ ] **AC-3:** Given a resubmission has just run, when a second invocation arrives concurrently
-  **or** inside the cooldown window, then it resubmits nothing and reports `ALREADY_RUNNING` /
-  `COOLING_DOWN` — the mail is delivered once, not twice.
+  **or** inside the cooldown window, then it sweeps nothing and reports `ALREADY_RUNNING` /
+  `COOLING_DOWN` rather than a success that moved nothing. (The *mail-delivered-once* half of this
+  is the registry's own per-publication claim — see G-2.)
   *Pinned by:* `MailResubmissionServiceTest.refusesAConcurrentInvocation` +
   `MailResubmissionServiceTest.refusesASecondInvocationInsideTheCooldown`
 - [ ] **AC-4:** Given the service has just started with `republish-outstanding-events-on-restart=true`,
@@ -120,11 +122,12 @@ remote-session addendum.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A "mail" button resubmits a payout accrual (invariant #9) or a Stripe refund (invariant #8) | **high if scoped by event type** | high | Scope by the *listener-id prefix of the owning module*, never by event type; AC-2 leaves one of each outstanding and asserts they are untouched | plan | open |
-| R-2 | Two clicks deliver the mail twice — the framework's documented guard does not exist (G-2) | high | med (a duplicate mail to a tourist) | Single-flight `tryLock` + a cooldown that outlives an async send; AC-3 | plan | open |
-| R-3 | A click seconds after a deploy races the restart republication (same duplicate, different source) | med | med | The cooldown clock is seeded at service construction, so the boot republish counts as resubmission #1; AC-4 | plan | open |
-| R-4 | `ResubmissionOptions` looks like the 2.1 way to scope, but routes to `processFailedPublications` → `findFailedPublications`, which `JdbcEventPublicationRepository` does **not** override (returns empty) — the endpoint would silently do nothing (G-3) | **certain if used** | high (a button that reports success and sends nothing) | Use the `Predicate` overload, which routes to `processIncompletePublications`; the javadoc on the adapter records why, and AC-1/AC-2 would fail loudly against the other overload | plan | open |
+| R-2 | ~~Two clicks deliver the mail twice~~ **retired by G-2**: the v2 registry claims each publication before invoking it, so a still-draining send is skipped in the database. Replaced by: a press during a relay outage re-attempts every outstanding send, and reports success while moving nothing | med | med (relay load + a misleading answer) | Single-flight `tryLock` + cooldown, re-justified as a sweep throttle; AC-3 | plan | closed — corrected in the phase-3 commit |
+| R-3 | A press seconds after a deploy repeats the restart republication's sweep | med | low | The cooldown clock is seeded at service construction, so the boot republish counts as sweep zero; AC-4 | plan | open |
+| R-4 | `ResubmissionOptions` looks like the 2.1 way to scope, but its query only reaches `FAILED` publications — a **shed** send (#383) never runs, is never marked failed, and would be silently skipped by the very lever meant to clear it (G-3, revised) | **certain if used** | high (a button that reports success and leaves shed mail owed) | Use the `Predicate` overload, which routes to `processIncompletePublications`; the adapter javadoc records why | plan | open |
 | R-5 | Adding `spring-modulith-events-core` to the compile classpath drags framework internals into a module | low | low | It is already on the **runtime** classpath via `spring-modulith-starter-jdbc`; only the driven adapter in `adapter/out` imports it, and the version stays BOM-managed (no pinned version in `build.gradle`) | plan | open |
 | R-6 | The scoping prefix is a string constant that silently stops matching if the listener package moves (the V31/#382 failure mode, one level up) | med | high (a silent no-op) | A unit test pins the constant against the live listener class's FQCN, so a package move goes red at build time rather than in production | plan | open |
+| R-9 | A test fixture that hand-builds a registry row passes for the wrong reason — the framework skips a malformed row exactly as it skips an out-of-scope one | **realised** | med (a false green on the money-path guarantee) | `MailOutboxScopeIT` reopens the registry's *own* archived row and ends with an unscoped control that must re-drive it; two drafts failed this control before the fixture was right | plan | closed — the control is now part of the test |
 | R-7 | The new endpoints are a shared-state bean reached by ITs; a cooldown that leaks across tests makes the **full suite only** go red (the `riviera-local-debug` failure class) | med | med | The service takes the injected `Clock`, and the cooldown is instance state on a bean each test context creates fresh; ITs that need two invocations drive the port directly with a controlled clock rather than replaying HTTP | plan | open |
 | R-8 | Error contract drift on the two new endpoints | low | low | Both are `200` with a typed outcome (the #391 `AdminEmailSuppressionController` precedent); malformed input is impossible (no request body); nothing hand-rolls an error body — `ApiProblem`/`ApiErrorHandler` only | plan | open |
 
@@ -145,18 +148,27 @@ remote-session addendum.
   #391 (`POST /api/admin/email-suppressions/reinstate`) as the pattern to follow "on its own
   rate-limit budget". It has none: `RateLimitFilter` matches an explicit path list and **no
   `/api/admin/**` path is in it**. → See G-4 for the decision.
-- **G-2 — confirmed against the 2.1.0 sources.** `EventPublicationRepository.markResubmitted` is a
-  `default` method whose body is `return true`, and `JdbcEventPublicationRepository` does not
-  override it. `DefaultEventPublicationRegistry.processPublications` skips a publication only when
-  that call returns `false`, so no claim is ever lost. The guard must be built here → R-2.
-- **G-3 — sharper than the issue states, and it inverts the issue's own advice.** The issue
-  suggests "2.1 adds `ResubmissionOptions`" as the scoping tool. But
-  `PersistentApplicationEventMulticaster.resubmitIncompletePublications(ResubmissionOptions)`
-  delegates to `processFailedPublications`, which calls `countByStatus(RESUBMITTED)` and
-  `findFailedPublications(criteria)` — and while `JdbcEventPublicationRepository` *does* override
-  `countByStatus`, it does **not** override `findFailedPublications`, whose `default` returns
-  `Collections.emptyList()`. That overload is therefore a **guaranteed no-op** in this deployment,
-  not merely a filter that finds nothing. Use `resubmitIncompletePublications(Predicate)` → R-4.
+- **G-2 — the issue is wrong about this deployment, found while making the AC-2 IT go green
+  (correction landed after phase 3).** The finding is true of `JdbcEventPublicationRepository` — the
+  **v1** repository. V8 ships the **v2** schema and `spring.modulith.events.jdbc.use-legacy-structure`
+  defaults to `false`, so the bean is `JdbcEventPublicationRepositoryV2`, where `markResubmitted` is a
+  real claim: `UPDATE … SET STATUS = 'RESUBMITTED' … WHERE ID = ? AND STATUS != 'RESUBMITTED'`, whose
+  row count `processPublications` honours. Duplicate mail is therefore prevented **durably, in the
+  database, across instances** — stronger than any in-process lock. `markProcessing`/`markFailed` are
+  implemented too, so the `status` column *is* written (contra the issue's finding 3). The
+  service-level guard is retained on its own merits and re-justified: it throttles the **sweep**, not
+  the send → R-2 restated. *Cost of the correction: the first two drafts of `MailOutboxScopeIT`
+  hand-built an outstanding row with `status` NULL, which `STATUS != 'RESUBMITTED'` never matches
+  (NULL comparison), so the framework silently skipped it and the control never fired.*
+- **G-3 — the issue's advice is still wrong, but for a different and more interesting reason**
+  (revised with G-2). `ResubmissionOptions` is not a no-op here: v2 implements both
+  `countByStatus` and `findFailedPublications`. It is *incomplete* — its query is
+  `STATUS = 'FAILED' OR (STATUS IS NULL AND COMPLETION_DATE IS NULL)`, which reaches a send whose
+  listener **threw**, but not one the bulkhead **shed**: a rejected send never runs, so nothing marks
+  it failed and it sits at `PUBLISHED` with its publication outstanding — precisely the durability
+  #383/#407 relies on, and precisely what this lever exists to clear. Its `maxInFlight` gate is a
+  second trap, counting `RESUBMITTED` rows a never-completing send leaves behind. Use
+  `resubmitIncompletePublications(Predicate)`, which reads *incomplete* and covers both → R-4.
 - **G-4 — the public `EventPublication` cannot express the scope the ACs require.** It exposes
   `getEvent()`, dates, status and attempts — **no target identifier**. Scoping by event type is
   therefore the only thing the api-jar alone can do, and it is exactly wrong (R-1): `BookingConfirmed`
@@ -273,16 +285,16 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — `MailOutboxScopeIT`: leave a mail, a payout-accrual and a refund publication outstanding, resubmit, assert only the mail moved.
+**Next action:** Phase 4 — the admin console tab strip + Email tab (service, component, specs), then phase 5's mocked e2e.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Scope + outbox port + registry adapter | ✅ | `dd0f72a` |
 | 1 — Resubmission service: single-flight, cooldown, typed outcome | ✅ | `1515f8e` |
 | 2 — ADMIN endpoints + security matchers | ✅ | (this commit) |
-| 3 — Money-path scoping IT | ⏳ | |
+| 3 — Money-path scoping IT (+ the G-2/G-3 correction) | ✅ | (this commit) |
 | 4 — Admin console: tab strip + Email tab | | |
 | 5 — Mocked e2e + substrate docs + close-out | | |
 
@@ -292,7 +304,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (backend, run on `c4e3bd7`) | 113 tests failed: `@WebMvcTest` loads **every** controller, so the new `AdminMailOutboxController` broke every web-slice test that did not stub its port. A scoped local run could not show it — the only class with a `@MockitoBean` for that port was the new one | fixed — `WebSliceStubs` gained an inert `MailResubmission`, the file that exists for exactly this |
 
 ---
 

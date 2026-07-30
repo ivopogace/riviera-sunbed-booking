@@ -61,11 +61,11 @@ public sealed interface MailResubmissionOutcome {
 	 * A resubmission ran recently enough that its sends may still be in flight, so this one did
 	 * nothing.
 	 *
-	 * <p>This is the refusal that actually delivers AC-3's "rapid" half. The registry marks a
-	 * publication complete only once the listener returns, and that listener is {@code @Async} on
-	 * {@code registryMailExecutor} (#383) — so for the whole duration of a send the publication is
-	 * still outstanding and still in scope. Without this window, a second press moments later would
-	 * find the same rows and send every one of them twice.
+	 * <p>The registry would refuse those publications individually — its claim skips one whose previous
+	 * resubmission is still draining on {@code registryMailExecutor} (#383) — so this refusal is about
+	 * the sweep, not the mail. It keeps a press during a relay outage, where every send fails fast and
+	 * is immediately eligible again, from turning a button into a retry storm, and it tells the admin
+	 * so instead of reporting a success that moved nothing.
 	 */
 	record CoolingDown(Duration remaining) implements MailResubmissionOutcome {
 	}

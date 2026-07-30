@@ -2,6 +2,7 @@ package ai.riviera.platform;
 
 import java.net.URI;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -48,6 +49,9 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.notification.application.MailOutboxStatus;
+import ai.riviera.platform.notification.application.MailResubmission;
+import ai.riviera.platform.notification.application.MailResubmissionOutcome;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.ReinstateSuppression;
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -370,6 +374,26 @@ class WebSliceStubs {
 	@Bean
 	ReinstateSuppression reinstateSuppression() {
 		return _ -> new ReinstateOutcome.NotSuppressed();
+	}
+
+	/**
+	 * {@code AdminMailOutboxController}'s port (#405). Inert: an empty outbox with the lever accepting,
+	 * so a slice that merely loads the controller re-drives nothing. {@code AdminMailOutboxControllerTest}
+	 * overrides it with a {@code @MockitoBean} to drive the real outcomes.
+	 */
+	@Bean
+	MailResubmission mailResubmission() {
+		return new MailResubmission() {
+			@Override
+			public MailOutboxStatus status() {
+				return new MailOutboxStatus(0, Duration.ZERO);
+			}
+
+			@Override
+			public MailResubmissionOutcome resubmit() {
+				return new MailResubmissionOutcome.Resubmitted(0, Duration.ZERO);
+			}
+		};
 	}
 
 	@Bean

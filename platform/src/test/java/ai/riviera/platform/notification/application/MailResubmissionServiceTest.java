@@ -23,8 +23,13 @@ import org.slf4j.LoggerFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The once-only policy of #405 (AC-1, AC-3, AC-4, AC-7), driven at the application boundary against a
- * fake {@link MailOutbox} and a clock the test moves by hand.
+ * The sweep-throttle policy of #405 (AC-1, AC-3, AC-4, AC-7), driven at the application boundary
+ * against a fake {@link MailOutbox} and a clock the test moves by hand.
+ *
+ * <p>What is <em>not</em> under test here is duplicate mail: the registry prevents that itself, one
+ * layer down, by claiming each publication before invoking its listener (v2 repository). These tests
+ * cover the layer this class does own — how often the whole scope may be swept, and whether a press
+ * that achieves nothing says so.
  *
  * <p>Time is injected rather than slept through on purpose: a cooldown test that waits for real
  * seconds is both slow and flaky, and the property under test is arithmetic on an {@link Instant}, not
@@ -100,7 +105,7 @@ class MailResubmissionServiceTest {
 
 		assertThat(outcome).isEqualTo(new MailResubmissionOutcome.CoolingDown(Duration.ofSeconds(40)));
 		assertThat(outcome.resubmitted()).isZero();
-		assertThat(outbox.resubmissions()).as("the same rows would have been sent twice").isEqualTo(1);
+		assertThat(outbox.resubmissions()).as("a second sweep would re-attempt every outstanding send").isEqualTo(1);
 	}
 
 	@Test

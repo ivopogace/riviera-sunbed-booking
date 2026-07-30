@@ -32,11 +32,13 @@ public interface MailOutbox {
 	 * Hands every outstanding publication in scope back to the registry for delivery, returning how
 	 * many were handed over.
 	 *
-	 * <p>The count is what the scope <em>matched</em>. In this deployment that equals what was
-	 * resubmitted, because the framework's one skip condition — {@code markResubmitted} returning
-	 * {@code false} — cannot fire: it is a {@code default} method returning {@code true} that the JDBC
-	 * repository does not override (#405 finding 2). Should a future version implement the claim, the
-	 * number degrades to an upper bound rather than becoming wrong.
+	 * <p><strong>The count is what the scope matched, which is an upper bound on what was actually
+	 * re-driven.</strong> The registry claims each publication before invoking its listener
+	 * ({@code markResubmitted}) and skips one whose previous resubmission is still in flight, so a
+	 * press landing mid-drain legitimately reports more than it moved. Reporting the match is the
+	 * honest number available through this API — the framework's resubmission entry point returns
+	 * {@code void} — and it is the number an admin can act on: it says how much this module still owes,
+	 * which is the question the console asks.
 	 */
 	int resubmitOutstanding();
 }
