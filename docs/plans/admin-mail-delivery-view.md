@@ -58,7 +58,9 @@ questions the issue asked to be weighed were settled with the maintainer on 2026
   **The angular-cli MCP server never finished connecting this session**, so its
   `get_best_practices`/`search_documentation` tools were unavailable; the in-repo `angular-developer`
   skill (authoritative per `CLAUDE.md`) was used instead. Recorded rather than silently skipped.
-- `playwright-cli` — **due at phase 5**; append what it changed.
+- `playwright-cli` (phase 5) — spec placed in the CI-safe mocked suite (`frontend/e2e/`, never
+  `real-backend/`), stateful `page.route` mocks so a resend's re-read has something new to show, and
+  the shared `expectNoSeriousAxeViolations` policy rather than a hand-rolled AxeBuilder.
 
 **Branch:** `claude/sdlc-380-34lpjq` — the cloud session's designated remote branch **stands in for**
 `feature/admin-mail-delivery-view` (`riviera-sdlc` remote-session addendum); it exists and is level
@@ -308,9 +310,10 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `implement — phases 0–4 done; phase 5 (e2e) next`
+**Stage pointer:** `implement — phases 0–5 done; phase 6 (substrate docs) next`
 
-**Next action:** Phase 5 — load `playwright-cli` and write the CI-safe mocked e2e spec.
+**Next action:** Phase 6 — substrate docs (RESPONSIBILITIES, CLAUDE.md, ADR-0011), the
+`riviera-docs-freshness` pass, then mark the PR ready and run the review + Sonar gates.
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -325,7 +328,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 | 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | ✅ | `1cc8392` |
 | 3 — Resend service + ADMIN lookup/resend endpoints | ✅ | `ca4302e` |
 | 4 — Frontend card, service, unit + a11y specs | ✅ | `70b8dea` |
-| 5 — Playwright mocked e2e | | |
+| 5 — Playwright mocked e2e | ✅ | `bc08591` |
 | 6 — Substrate docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -336,6 +339,7 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-4 | sonar (phase-3/4 push, PR #449) | `java:S1192` again — the third `"email"` in `JdbcCustomerDirectory` is a **column** name in `findById`, which the new `PARAM_EMAIL` constant does not describe. | fixed-in-`bc08591` — added a separate `COL_EMAIL`, the `JdbcBookings` `PARAM_*`/`COL_*` split. Collapsing both onto one constant would have named a column after a bind parameter. |
 | F-3 | sonar (phase-2 push, PR #449) | `java:S1192` CRITICAL — the literal `"email"` bound three times in `JdbcCustomerDirectory` once `findByEmail` joined it. | fixed-in-`ca4302e` — named `PARAM_EMAIL`, the `JdbcBookings` `PARAM_*` convention. |
 | F-2 | sonar (phase-1 push, PR #449) | `java:S6213` MAJOR — `ConfirmationAttemptRecorder.record(...)` matches a restricted identifier (`record`). | fixed-in-`1cc8392` — renamed to `recordAttempt`. The push also revealed the recorder's swallow branch was the slice's only uncovered new code, so `ConfirmationAttemptRecorderTest` (4 tests) now pins R-1's policy — including that the catch stays `DataAccessException` and does **not** absorb a programming error. |
 | F-1 | sonar (phase-0 push, PR #449) | `java:S2479` CRITICAL — a literal tab inside V36's `INSERT` text block (the column-list line was indented one tab past the block's common prefix, so the tab survived incidental-whitespace stripping into the SQL string). The gate passed with it; the repo's 0-new-issues bar does not. | fixed-in-`1a64291` — re-indented past the prefix with **spaces**, the convention `JdbcAccountErasure`/`JdbcCustomerDirectory` already follow. Same latent tab fixed in the IT's text block. No behaviour change (SQL is whitespace-insensitive); IT re-run 13/0/0. |

@@ -22,8 +22,11 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 @Repository
 class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.customer.api.CustomerLookup {
 
-	/** Named once, per the {@code JdbcBookings} PARAM_* convention — three call sites bind it. */
+	/** Named once, per the {@code JdbcBookings} bind-parameter convention — three call sites bind it. */
 	private static final String PARAM_EMAIL = "email";
+
+	/** The column, kept apart from the bind parameter above: the two coincide today by accident, not by rule. */
+	private static final String COL_EMAIL = "email";
 
 	private final JdbcClient jdbc;
 
@@ -65,7 +68,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 		return jdbc.sql("SELECT email, full_name, phone FROM customer WHERE id = :id")
 				.param("id", id.value())
 				.query((rs, rowNum) -> new GuestContact(
-						rs.getString("email"), rs.getString("full_name"), rs.getString("phone")))
+						rs.getString(COL_EMAIL), rs.getString("full_name"), rs.getString("phone")))
 				.optional();
 	}
 }
