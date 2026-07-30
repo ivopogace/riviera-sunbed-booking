@@ -276,7 +276,9 @@ combined overrun, since nothing else would.
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
 vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so
 expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
-vehicle it is a lost mail the user must re-request. Since #434 the sends still **queued** at that
+vehicle it is a mail that is simply gone — one the recipient re-requests on the recovery kinds, and
+one **nobody** re-sends when it is the `operator-approved` notice (read the `kind` tag before
+assuming a self-healing loss; ADR-0011 decision 5, amended #439). Since #434 the sends still **queued** at that
 moment are counted — `riviera.mail.recovery.dropped{reason="abandoned"}`, one `WARN` line each,
 carrying the submitting request's correlation id — and the one caught **running** deliberately is not,
 because it may already have reached the relay. The non-interruption is deliberate for that same

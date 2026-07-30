@@ -85,6 +85,11 @@ from `main` at `15e15ad`.
 - **Flipping ADR-0011 from Proposed to Accepted** — still gated on #370 (domain + DPA).
 - **A general docs-freshness sweep of the mail arc.** Two stale bullets *inside the one runbook
   block this slice edits* are patched (folded in per the #219 lesson); the rest is close-out step 5.
+- **Rewriting already-merged plan docs.** `recovery-mail-drop-metric.md`, `mail-worker-hygiene.md`
+  and `recovery-mail-abandonment-metric.md` still contain the old phrasing — as a *record of what
+  that slice argued and shipped at the time*, one of them inside a quoted code block, and two of them
+  written before #375 existed. Editing them would falsify the history, not fix a claim: they describe
+  the past, while the ADR, the Javadoc and the runbooks describe today. Left deliberately.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -184,19 +189,18 @@ N/A — no contract change. No endpoint, DTO, status code, or wire shape is touc
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2 done, phase 3 next)`
+**Stage pointer:** `implement done → PR #440 (draft) → phase 4 close-out`
 
-**Next action:** Phase 3 — the two runbooks (`mailer-profile-smoke-test.md` activation warning +
-the two stale interim bullets; `observability.md`'s drain-window paragraph), then phase 4 close-out
-(merge `origin/main`, mark PR #440 ready, review gate, sonar gate).
+**Next action:** Phase 4 — merge latest `origin/main`, mark PR #440 ready for review, then the
+review gate (`pr-gates.md` §1 ladder + `riviera-review-overlay`) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan (grill, maintainer decision, this doc) | ✅ | `7ae0ad7` |
 | 1 — the ADR amendment | ✅ | `4da3967` |
-| 2 — the code sites (`notification` + `shared`) | ✅ | *(this commit)* |
-| 3 — the runbook sites (+ two stale interim bullets) | | |
-| 4 — close-out (AC verification, this section) | | |
+| 2 — the code sites (`notification` + `shared`) | ✅ | `4cc87a1` |
+| 3 — the runbook sites (+ two stale interim bullets) | ✅ | *(this commit)* |
+| 4 — close-out (AC verification, this section) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -300,12 +304,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `docs/runbooks/mailer-profile-smoke-test.md` · `docs/runbooks/observability.md`
 
-- [ ] **Step 1:** Amend the activation warning and the drain-window paragraph to name the
+- [x] **Step 1:** Amend the activation warning and the drain-window paragraph to name the
       asymmetry, pointing at `observability.md`'s `kind="operator-approved"` row rather than
       restating it.
-- [ ] **Step 2:** Patch the two stale *Known interim limits* bullets in the same block (#219 lesson).
-- [ ] **Step 3: Commit** — `git commit -m "docs(#439): reconcile the mail runbooks with the per-kind loss (#439)"`
-- [ ] **Step 4:** Update this section.
+- [x] **Step 2:** Patch the two stale *Known interim limits* bullets in the same block (#219 lesson).
+- [x] **Step 3: Commit** — `git commit -m "docs(#439): reconcile the mail runbooks with the per-kind loss (#439)"`
+- [x] **Step 4:** Update this section.
 
 ## Phase 4 — Close-out
 

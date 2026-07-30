@@ -116,11 +116,19 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
   sends now dispatch off the request thread through a dedicated bounded in-memory executor, so the
   timing account-enumeration oracle is closed and this is no longer a bar to activation. Activation
   remains gated on **#370** alone (sending domain + DPA). Two consequences worth knowing before you
-  activate: a send is **best-effort** (a crash or redeploy past the drain window loses it — the user
-  re-requests; since #410 that window is derived from the relay socket budget,
+  activate: a send is **best-effort** (a crash or redeploy past the drain window loses it, and nothing
+  retries it; since #410 that window is derived from the relay socket budget,
   `riviera.notification.mail.socket-timeout-ms`, rather than being a flat 5s that expired while a send
   was still legitimately running), and a failed send is logged at WARN by `AsyncMailDispatcher` /
   `CustomerRecovery` naming only the exception class, never the address or link — so "did it send?"
   is answered from the provider console, not from our logs.
-- Only verification + reset emails exist; the booking-confirmation email is #371.
-- No bounce/complaint suppression yet (later slice) — watch the TEM console during early use.
+- **What a lost send costs is per-kind** (ADR-0011 decision 5, amended #439). A verification or reset
+  mail the person simply re-requests. The **operator-approval notice** (#375) rides the same
+  best-effort vehicle and has no such door — nothing re-sends it, and the operator finds out by
+  retrying sign-in — so a loss there needs a human: read
+  `riviera.mail.recovery.{dropped,failed}{kind="operator-approved"}` and tell the operator directly
+  (`docs/runbooks/observability.md`).
+- Verification, reset, booking-confirmation (#371) and operator-approval (#375) mails exist; the
+  request-accepted (#373) and cancellation/refund (#374) kinds are still to come.
+- Suppression is **enforced** on both vehicles (V32–V35), but nothing populates the list until the
+  bounce/complaint webhook feed lands (#372) — so watch the TEM console during early use.
