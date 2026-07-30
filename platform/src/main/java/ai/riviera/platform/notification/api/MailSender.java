@@ -50,8 +50,10 @@ public interface MailSender {
 	 * (ADR-0011 decision 5, amended #439). There is no token already stored and no page offering a
 	 * retry, so a lost notice is unrecoverable in the product: the operator learns its account is live
 	 * by trying to sign in, the very experience this exists to remove. That is accepted as the
-	 * knowingly weaker case and mitigated only operationally — the loss counters carry
-	 * {@code kind="operator-approved"} and the runbook's remedy is to tell the operator, which is a
+	 * knowingly weaker case and mitigated only operationally, and only in part: a send the transport
+	 * <em>ran and lost</em> is attributable, {@code MAIL_RECOVERY_FAILED} carrying
+	 * {@code kind="operator-approved"}, while one the pool <em>never ran</em> is not, its counter
+	 * carrying {@code reason} alone (#442). Either way the remedy is to tell the operator, which is a
 	 * real remedy because a human is already in the loop: the admin who approved.
 	 */
 	void sendOperatorApproved(String toEmail, URI signInLink);

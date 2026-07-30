@@ -125,9 +125,11 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
 - **What a lost send costs is per-kind** (ADR-0011 decision 5, amended #439). A verification or reset
   mail the person simply re-requests. The **operator-approval notice** (#375) rides the same
   best-effort vehicle and has no such door — nothing re-sends it, and the operator finds out by
-  retrying sign-in — so a loss there needs a human: read
-  `riviera.mail.recovery.{dropped,failed}{kind="operator-approved"}` and tell the operator directly
-  (`docs/runbooks/observability.md`).
+  retrying sign-in — so a loss there needs a human. Read
+  `riviera.mail.recovery.failed{kind="operator-approved"}` for a send the relay refused; a send the
+  pool never ran shows up on `riviera.mail.recovery.dropped`, which carries **no `kind`** (#442), so
+  reconcile an increment there against that window's approvals by hand. Then tell the operator
+  directly (`docs/runbooks/observability.md`).
 - Verification, reset, booking-confirmation (#371) and operator-approval (#375) mails exist; the
   request-accepted (#373) and cancellation/refund (#374) kinds are still to come.
 - Suppression is **enforced** on both vehicles (V32–V35), but nothing populates the list until the

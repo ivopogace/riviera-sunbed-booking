@@ -26,8 +26,10 @@ import org.springframework.stereotype.Component;
  * bounded for the complementary reason: a saturated dispatcher drops the send rather than queueing
  * without limit or, worse, falling back to running the send on the caller's thread, which would re-open
  * the very oracle this class exists to close. A dropped recovery mail the person re-requests; a dropped
- * operator-approval notice (#375) nobody re-sends, which is why the drop counters are read through their
- * {@code kind} tag rather than in aggregate (ADR-0011 decision 5, amended #439).
+ * operator-approval notice (#375) nobody re-sends (ADR-0011 decision 5, amended #439) — and this class
+ * cannot tell you which it lost, because it dispatches an opaque {@link Runnable} and never learns the
+ * kind, which is why {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} carries {@code reason} alone
+ * while the send-side {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} carries {@code kind} too (#442).
  *
  * <p><strong>That rule is the module's, not this class's</strong> (#383). It was stated here and then
  * broken next door: #371's registry-borne booking confirmation went onto the shared executor, because
@@ -188,10 +190,12 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	 * address or the link (invariant #7); the correlation id rides the MDC.
 	 *
 	 * <p>Neither line says who must act, because this class cannot know: it dispatches an opaque
-	 * {@code Runnable} and never sees the kind. The mechanism is the same for all of them — nothing retries
-	 * the send — but the <em>cost</em> is not, and only the counter's {@code kind} tag can tell a recovery
-	 * mail the person re-requests from an approval notice nobody re-sends (ADR-0011 decision 5, amended
-	 * #439). So the lines state the mechanism and leave the attribution to the tag the runbook reads.
+	 * {@code Runnable} and never sees the kind. The mechanism is the same for all of them — nothing
+	 * retries the send — but the <em>cost</em> is not: a recovery mail the person re-requests, an
+	 * approval notice nobody re-sends (ADR-0011 decision 5, amended #439). So the lines state the
+	 * mechanism and claim no more. <strong>Nothing else here supplies the attribution either</strong> —
+	 * the counter these increments feed carries {@code reason} only — so a lost approval notice is
+	 * reconstructed from the approval log, not from this signal (#442).
 	 */
 	private void recordDrop(TaskRejectedException cause) {
 		if (executor.getThreadPoolExecutor().isShutdown()) {

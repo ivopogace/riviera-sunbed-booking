@@ -12,8 +12,9 @@ which has no token and nothing to re-send it.
 rationale, do not change the vehicle.** ADR-0011 decision 5's trade-off becomes explicitly
 **per-kind** — the recovery pair self-heals (token committed, user re-requests), the
 operator-approval notice is accepted as the knowingly weaker case (loss unrecoverable,
-mitigated only operationally by the `kind="operator-approved"` counters plus the runbook's
-"tell them" remedy). Option 2 (move the notice to the Event Publication Registry for
+mitigated only operationally — and, per finding F-3, only *in part*: the **failed** counter carries
+`kind="operator-approved"`, the **dropped** counter carries `reason` alone, so a dropped notice is
+reconciled by hand against the window's approvals; the remaining design question is #442). Option 2 (move the notice to the Event Publication Registry for
 at-least-once) was considered and rejected — see Open questions → Resolved. Zero behaviour
 change: prose, Javadoc, and three log-message clauses.
 
@@ -29,7 +30,11 @@ the text to be true **and** append a dated blockquote note quoting the removed c
 in-file convention set by the #371 and #386 amendments; no new ADR, since nothing hard-to-reverse
 is being decided) · `riviera-java-conventions` (§6c — Javadoc is the documented surface and is
 exempt from the one-line comment rule, so the per-kind explanation belongs *in* the Javadoc on the
-port rather than inline at call sites) · `riviera-plan-doc` (this doc). **Not loaded, deliberately:**
+port rather than inline at call sites) · `riviera-plan-doc` (this doc) · `riviera-local-debug`
+(the cloud recipe for the phase-2 test run: system `gradle` + a registered JDK-25 toolchain, daemon
+on 21, scoped `--tests` only — never the bare `test` task) · `riviera-review-overlay`
+(the review gate's project half; its own RV-PROC-1 item is what caught the two skills missing from
+this line — see finding F-1). **Not loaded, deliberately:**
 `riviera-modulith` — no class, package, published surface, or dependency changes; the only
 `api/` file touched is `MailSender`, whose *contract prose* changes while its methods, types and
 module edges stay byte-identical. `postgres`, `riviera-stripe-payments`, `riviera-frontend`,
@@ -105,7 +110,7 @@ the wording of three `WARN`/`ERROR` log lines whose metric increments beside the
 | R-1 | The amendment reads as reopening the **vehicle choice**, inviting a future session to "finish" the move to the registry | med | med | The note states in its own sentence that the choice is pre-authorised by this bullet and epic #367 and was **not** reconsidered, and records option 2 as considered-and-rejected with the reason | Claude | open |
 | R-2 | Editing a log-message string silently breaks something that greps for it (an alert rule, a test, a runbook) | low | med | Swept first: `grep -rn "must re-request" platform/src/test docs frontend` → the only hits are one stale test *comment* and one runbook sentence, both in scope. No alert rule or assertion matches | Claude | open |
 | R-3 | The scope grows from the four sites the maintainer approved to every prose repetition, turning a docs fix into a sprawling diff | high | low | Bounded by one test — *does this sentence carry the **justification** for accepting the loss, or an on-call instruction?* If yes it is fixed; if it merely describes the vehicle's mechanism, the fix is a clause, not a rewrite. Site list frozen in the File-structure section below (10 sites) and reported in the PR | Claude | open |
-| R-4 | The `kind`-tag mitigation the amendment leans on is itself unreliable, making the "accepted" risk worse than recorded | low | high | Not taken on faith: the two counters (`MAIL_RECOVERY_DROPPED` #415/#434, `MAIL_RECOVERY_FAILED` #423) are shipped and tagged `kind="operator-approved"`, and `docs/runbooks/observability.md` already carries that row with its own alert semantics. The amendment cites what exists, promising nothing new | Claude | open |
+| R-4 | The `kind`-tag mitigation the amendment leans on is itself unreliable, making the "accepted" risk worse than recorded | low | high | **The risk fired.** The plan asserted both counters were tagged `kind`; only `MAIL_RECOVERY_FAILED` is. `MAIL_RECOVERY_DROPPED` carries `reason` alone and structurally cannot carry more, being raised by a dispatcher whose interface is `dispatch(Runnable)`. Caught by the review gate (F-3) after this row had *claimed the check was already done* — the row was written from the runbook's `failed` table and never traced to the `meters.counter(...)` call sites | Claude | **closed** — every affected sentence now states the attribution gap; the design question is issue #442. Lesson recorded in the Generalization-audit log: a claim about what a counter *carries* is verified at its construction site, never from prose about it |
 | R-5 | A reader takes "accepted as the weaker case" as *nobody noticed*, when it is a deliberate, dated call | low | low | The note names the trade explicitly (unrecoverable in the product, mitigated operationally) and names the human in the loop — the admin who approved, who can be told to tell them | Claude | open |
 
 ## Open questions / Assumptions
@@ -117,7 +122,8 @@ the wording of three `WARN`/`ERROR` log lines whose metric increments beside the
 - **Which option?** → **Option 1, amend the ADR** (maintainer, `AskUserQuestion`, 2026-07-30). Option 2
   (mint an ids-only `OperatorApproved` event so the notice rides the registry and gains at-least-once)
   was rejected: it reverses epic #367's "the trigger settles it" reasoning for a kind whose loss is
-  already *visible* (a tagged counter, volume one per approval) and *remediable* (the approving admin
+  already *visible* (a counter — tagged by kind on the failed path, unattributed on the dropped one,
+  F-3/#442 — at a volume of one per approval) and *remediable* (the approving admin
   is a human already in the loop), and it would buy durability with an event whose only consumer is
   the edge that raised it.
 - **How wide?** → **Fix every site carrying the false justification, not only the ADR paragraph**
@@ -210,7 +216,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(no gate has run yet)* | — |
+| F-1 | review — overlay **RV-PROC-1** (self-caught while walking the bank) | *Skills consulted* omitted `riviera-local-debug`, loaded and used for the phase-2 scoped test run, and `riviera-review-overlay` itself. The line has to cover every area the diff and the process touched, or RV-PROC-1 is untruthful | fixed — both added with what each changed (phase-4 commit) |
+| F-2 | review — `/code-review` pass 1 (CLAUDE.md adherence) | No issues. Confirmed the diff's per-kind claim is what `CLAUDE.md`'s notification row already states independently, that invariant #7 still holds on all three re-worded log lines, that no metric name or tag value moved, and that `CLAUDE.md` itself needs no patch | closed — no action |
+| F-3 | review — `/code-review` passes 2, 3, 4 and 5 **independently**, and the highest-value finding of the gate | **The slice's own new prose claimed a tag that does not exist.** `MAIL_RECOVERY_DROPPED` is built with `REASON_TAG` only (`AsyncMailDispatcher:167-171`); only `MAIL_RECOVERY_FAILED` carries `kind`. Six new sentences told a reader to attribute a *dropped* mail by `kind`, one of them a literal runbook query (`…dropped{kind="operator-approved"}`) that matches nothing during an incident — the same defect class the slice exists to remove, introduced while removing it. Worse, R-4 had *claimed this was verified*: it was written from the runbook's `failed` table and never traced to the `meters.counter(...)` call sites | fixed — all six corrected to state the attribution gap; verified against the construction sites, not the prose |
+| F-4 | review — pass 3 (git history), **contradicting pass 5** | The same false claim **predates this PR** in two places: `ObservabilityMetrics`' DROPPED Javadoc ("so the `kind` tag is what separates the flows") and `observability.md`'s `dropped` blockquote ("filter by it"), both from the #375/#415 arc. Pass 5 asserted the opposite — that no such claim existed on `main` — having diffed only the added lines. Resolved by reading `git show origin/main:` for both files: pass 3 is correct | fixed — both patched in the same blocks this slice already edits (#219 lesson), and disclosed in the PR as pre-existing rather than passed off as this slice's own |
+| F-5 | review — pass 4 (prior-PR comments) | This is the **third** occurrence of the "a Javadoc claim about what a counter carries was written to sound consistent instead of being checked at the call site" finding on these same files — raised on PR #427 (finding 2), PR #430 (finding 1) and PR #436 (finding 3). A standing expectation, not a one-off | closed — the rule is now recorded in the Generalization-audit log rather than re-learned a fourth time; the design question the pattern exposed is issue #442 |
 
 ---
 
@@ -266,7 +276,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [x] **Step 1:** Rewrite the trade-off paragraph as a per-kind statement — the loss modes, then
       the recovery pair (self-heals: token committed, user re-requests) and the operator-approval
-      notice (unrecoverable; mitigated only by the tagged counters and the runbook's manual remedy).
+      notice (unrecoverable; mitigated only by the counters — attributable on `failed`, not on
+      `dropped` — and the runbook's manual remedy).
       Keep the two clauses that are still true and load-bearing: the pool is **not**
       `applicationTaskExecutor`, and the known residual (the synchronous token insert).
 - [x] **Step 2:** Append `> **Amended 2026-07-30 (#439).**` quoting the removed justification,
@@ -305,8 +316,8 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `docs/runbooks/mailer-profile-smoke-test.md` · `docs/runbooks/observability.md`
 
 - [x] **Step 1:** Amend the activation warning and the drain-window paragraph to name the
-      asymmetry, pointing at `observability.md`'s `kind="operator-approved"` row rather than
-      restating it.
+      asymmetry, pointing at `observability.md`'s `kind="operator-approved"` row (which belongs to the
+      **failed** series) rather than restating it.
 - [x] **Step 2:** Patch the two stale *Known interim limits* bullets in the same block (#219 lesson).
 - [x] **Step 3: Commit** — `git commit -m "docs(#439): reconcile the mail runbooks with the per-kind loss (#439)"`
 - [x] **Step 4:** Update this section.
@@ -329,6 +340,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-30 | Phase 0 (plan) — the issue named one site; a repeated *justification* is exactly the pattern that spreads by copy | Any claim that the in-memory vehicle's loss is acceptable *because* the flow is retryable / a token is committed | `grep -rn "user-retryable\|best-effort\|re-request\|self-heal\|acceptable because" docs/ CLAUDE.md RESPONSIBILITIES.md platform/src/main` | **10** (1 ADR, 6 Java, 2 runbook, 1 test comment) — vs the 1 in the issue and the 4 in the grill | Fix all 10. Bounded by R-3's test (justification/instruction → clause; mechanism → short clause). `CLAUDE.md`'s "having no durable copy" is mechanism-true for every kind → left |
+| 2026-07-30 | Review gate (F-3/F-4) — a claim about **what a counter carries** must be read at its `meters.counter(...)` construction site; prose about a metric is not evidence of the metric, and the sibling counter's documentation is the most convincing wrong source there is | Every `kind`/`reason` tag claim in the touched files, checked against the builder | `grep -rn "meters.counter" platform/src/main` then compare each doc sentence to the tags actually passed | 8 false sentences (6 new, 2 pre-existing on `main`) | All 8 fixed. Recurrence is why this row exists: prior PRs #427, #430 and #436 each carried one instance of the same pattern on these same files (F-5) |
 | 2026-07-30 | Phase 0 (plan) — second pass, after the first found the claim in Javadoc | Would the same false claim reach a reader through **runtime** output, not just source? | `grep -rn "must re-request" platform/src/main platform/src/test docs frontend` | 3 log strings (emitted for every kind), 1 test comment, 1 runbook line | All four added to the phase-2/3 site list; swept for assertions and alert rules first, none matched (R-2) |
 
 ---

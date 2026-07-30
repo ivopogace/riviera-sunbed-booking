@@ -110,11 +110,17 @@ Provider landscape (condensed; full table in the research doc):
      half already committed; and nothing re-sends it — the operator is not sitting on a page offering
      a retry, and learns its account is live only by trying to sign in, which is the exact experience
      #375 was written to remove. This kind is accepted as the **knowingly weaker case**: the loss is
-     unrecoverable *in the product* and is mitigated only *operationally* — every loss increments
-     `MAIL_RECOVERY_DROPPED` or `MAIL_RECOVERY_FAILED` under `kind="operator-approved"`, whose volume
-     is a trickle (one per approval, so any increase is one identifiable person), and
-     `docs/runbooks/observability.md` prescribes the remedy: tell them. What makes that remedy real
-     rather than a shrug is that a human is already in the loop — the admin who approved.
+     unrecoverable *in the product* and is mitigated only *operationally* — and, as #440's review
+     established, only **in part**. Every loss is counted, but only one of the two is *attributable*: a
+     send the transport ran and lost raises `MAIL_RECOVERY_FAILED` under `kind="operator-approved"`,
+     naming one identifiable person at a volume of one per approval; a send the pool never ran raises
+     `MAIL_RECOVERY_DROPPED`, which carries `reason` alone and cannot carry the kind, because it is
+     raised by the dispatcher, whose interface is `dispatch(Runnable)`. So a **dropped** approval notice
+     surfaces only as an unattributed increment, to be reconciled by hand against that window's
+     approvals. `docs/runbooks/observability.md` carries both readings and the remedy — tell them —
+     which is a real remedy rather than a shrug because a human is already in the loop: the admin who
+     approved. **Whether the drop path should carry the kind at all is [#442](https://github.com/ivopogace/riviera-sunbed-booking/issues/442);**
+     if it ever does, the "only in part" above stops being true and this note needs amending again.
 
    The pool is deliberately **not** Boot's shared
    `applicationTaskExecutor`, which carries the Modulith money-path listeners; and it drops on

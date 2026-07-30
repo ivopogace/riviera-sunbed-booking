@@ -44,19 +44,24 @@ public final class ObservabilityMetrics {
 	 * sent (#415, widened by #434). <strong>"Recovery" in this name is the vehicle, not the flow</strong>
 	 * — it was coined when that dispatcher carried only email verification and password reset; since
 	 * #375 it also carries the operator-approval notice, which is no recovery flow at all. The name
-	 * stays because renaming a shipped metric breaks whatever reads it, so the {@code kind} tag is what
-	 * separates the flows. The sibling
+	 * stays because renaming a shipped metric breaks whatever reads it — but <strong>nothing on this
+	 * series separates the flows</strong>: unlike {@link #MAIL_RECOVERY_FAILED} it carries no
+	 * {@code kind} tag, and cannot, since it is raised by {@code AsyncMailDispatcher}, whose interface
+	 * is {@code dispatch(Runnable)} and which never learns what it is sending (#442). The sibling
 	 * {@link #MAIL_REGISTRY_SHED} reserved this name and declined to declare it, on the rule that a name
 	 * ships with the emitter that gives it meaning.
 	 *
 	 * <p><strong>It measures a strictly worse event than the shed does.</strong> A shed registry mail
 	 * is deferred — its event publication stays outstanding and a restart republishes it. A dropped
 	 * recovery mail is <em>gone</em>: the payload is a single-use bearer credential the registry may
-	 * not persist (ADR-0011 decision 5), so nothing retries it. Read an increment as one person who
-	 * will wait for a mail that is never coming — and read the {@code kind} tag to learn whether they
-	 * can do anything about it. A {@code verification} or {@code password-reset} loss self-heals when
-	 * they ask again; an {@code operator-approved} loss (#375) does not, because nothing re-sends it
-	 * and they were never told to expect it (amended #439, as on {@link #MAIL_RECOVERY_FAILED}).
+	 * not persist (ADR-0011 decision 5), so nothing retries it. Read an increment as one person who will
+	 * wait for a mail that is never coming — and <strong>accept that this series cannot say which
+	 * person</strong>. That gap stopped being cosmetic at #375: the kinds no longer share one
+	 * consequence, since a {@code verification} or {@code password-reset} loss self-heals when they ask
+	 * again while an {@code operator-approved} loss does not, nothing re-sending it and nobody having
+	 * told them to expect it (ADR-0011 decision 5, amended #439). So an increment here inside a window
+	 * that contained an operator approval is worth reconciling against those approvals by hand — the
+	 * attribution this counter is missing lives only on {@link #MAIL_RECOVERY_FAILED} (#442).
 	 *
 	 * <p>Carries a {@code reason} tag distinguishing a saturated pool (a degraded relay — act) from the
 	 * two ways a redeploy loses a mail: the request that reached a closed pool ({@code shutdown}), and
