@@ -69,32 +69,32 @@ user-observable surface`)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the `event_publication` table is held under an `ACCESS EXCLUSIVE` lock by an
+- [x] **AC-1:** Given the `event_publication` table is held under an `ACCESS EXCLUSIVE` lock by an
   unrelated connection, when the outbox-backlog gauge read that `MoneyPathAlertCheck` performs is
   executed, then it **aborts with a `DataAccessException` within its configured bound** rather than
   blocking for as long as the lock is held. *Pinned by:*
   `ScheduledQueryTimeoutIT.aWedgedOutboxGaugeReadAbortsInsteadOfPinningTheSchedulerThread`
-- [ ] **AC-2:** Given the table a scheduled job reads is held under an `ACCESS EXCLUSIVE` lock, when
+- [x] **AC-2:** Given the table a scheduled job reads is held under an `ACCESS EXCLUSIVE` lock, when
   that job's entry query runs, then it aborts within its bound and surfaces the driver's cancel —
   for **all four** such queries: the abandoned-payment sweep's candidate read, the request-expiry
   sweep's candidate read, and **both** of the retention sweep's (its `customer` candidate read *and*
   its `booking` retention-basis read, the fifth query the issue's four-job count missed).
   *Pinned by:* `ScheduledQueryTimeoutIT.everyScheduledEntryQueryIsBounded`
-- [ ] **AC-3:** Given one scheduled job is wedged on a locked table and is **still stuck** (its bound
+- [x] **AC-3:** Given one scheduled job is wedged on a locked table and is **still stuck** (its bound
   set far above the test's patience, so the wedge does not self-clear), when the abandoned-payment
   sweep is dispatched on the platform's real `TaskScheduler`, then it **completes** — expiring an
   `AWAITING_PAYMENT` booking and **deleting its `set_availability` row**, so the `(set, date)` is
   claimable again. *Pinned by:*
   `AbandonedSweepSurvivesWedgedJobIT.theAbandonedSweepStillReleasesItsClaimWhileAnotherJobIsWedged`
-- [ ] **AC-4:** Given the committed configuration, when the fitness function counts every
+- [x] **AC-4:** Given the committed configuration, when the fitness function counts every
   `@Scheduled` method on the production classpath, then `spring.task.scheduling.pool.size` is **at
   least** that count — so adding a fifth scheduled job without raising the pool **fails the build**.
   *Pinned by:* `ScheduledWorkArchitectureTest.everyScheduledJobHasAThreadOfItsOwn`
-- [ ] **AC-5:** Given the whole repository's Spring configuration, when the fitness function scans
+- [x] **AC-5:** Given the whole repository's Spring configuration, when the fitness function scans
   every `application*.properties`, then **no** `spring.jdbc.template.query-timeout` is set anywhere —
   the instrument that would reach `availability`'s claim path cannot be introduced by accident.
   *Pinned by:* `ScheduledWorkArchitectureTest.noGlobalQueryTimeoutIsIntroduced`
-- [ ] **AC-6:** Given two clients claiming the same `(set, date)` concurrently, when both submit,
+- [x] **AC-6:** Given two clients claiming the same `(set, date)` concurrently, when both submit,
   then exactly one wins — unchanged by this slice. *Pinned by:* the existing `ConcurrentReservationIT`,
   `ConcurrentClaimIT` and `StaffMarkVsOnlineClaimConcurrencyIT`, which must stay green **untouched**.
 
@@ -130,25 +130,32 @@ user-observable surface`)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The bound reaches `availability`'s claim and turns a legitimate contention wait into an abort (invariant #2) | low | **critical** | No global property (AC-5, machine-locked). `JdbcAvailabilityClaim` keeps the shared, unbounded `JdbcClient` — untouched by the diff. Bounded clients are constructed per adapter and used by **named methods only**. AC-6 keeps the three concurrency ITs green *without edits* | Claude | open |
-| R-2 | Pool size and job count drift apart — a fifth `@Scheduled` job silently re-shares a thread | **high** (this is how the finding was born) | med | AC-4's fitness function counts `@Scheduled` methods on the production classpath and fails the build; non-vacuity guard names today's four so a broken scan cannot pass green | Claude | open |
-| R-3 | The timeout is set too tight and a healthy sweep aborts on an ordinary slow tick | low | med | Default **10 s** against candidate reads that are index-served and complete in single-digit ms, on jobs that tick every 5 min — three orders of magnitude of headroom; overridable per environment | Claude | open |
-| R-4 | The timeout IT is flaky in CI (it asserts an elapsed-time upper bound) | med | low | Mirror `SuppressionQueryTimeoutIT` exactly: a **real** `ACCESS EXCLUSIVE` lock (not a mocked slow query), a 1 s timeout, and a 15 s "must have aborted by" ceiling — a ~14 s margin, the shape already proven in CI since #386 | Claude | open |
-| R-5 | The isolation IT races the real scheduler's tick and is nondeterministic | med | med | Do **not** wait for a tick: dispatch both tasks onto the autowired `TaskScheduler` bean explicitly. That still proves the property under test (the pool really has ≥ 2 usable threads) without depending on `fixedDelay` timing — the #98/#122 lesson about tests that lean on sweep cadence | Claude | open |
-| R-6 | A shared `riviera.scheduled.*` property read from three modules reads as cross-module coupling at review | med | low | It is ops config, not a module dependency — no import, no grant, no `ModularityTests` edge. Each javadoc states the one rationale and points at the others; the alternative (three module-scoped names for one ops concern) is recorded as rejected below | Claude | open |
-| R-7 | Bounding the gauge read changes `/actuator/prometheus` behavior for scrapes, not just the alert check | low | low | Same read, same failure mode as any other DB error during a scrape; the gauge already propagates whatever the query throws. Called out here so review checks it rather than discovers it | Claude | open |
+| R-1 | The bound reaches `availability`'s claim and turns a legitimate contention wait into an abort (invariant #2) | low | **critical** | No global property (AC-5, machine-locked). `JdbcAvailabilityClaim` keeps the shared, unbounded `JdbcClient` — untouched by the diff. Bounded clients are constructed per adapter and used by **named methods only**. AC-6 keeps the three concurrency ITs green *without edits* | Claude | **closed** — no global property (AC-5 machine-locks it); `JdbcAvailabilityClaim` is absent from the diff; the concurrency ITs pass unedited. Confirmed independently by the review fan-out's CLAUDE.md agent |
+| R-2 | Pool size and job count drift apart — a fifth `@Scheduled` job silently re-shares a thread | **high** (this is how the finding was born) | med | AC-4's fitness function counts `@Scheduled` methods on the production classpath and fails the build; non-vacuity guard names today's four so a broken scan cannot pass green | Claude | **closed** — `ScheduledWorkArchitectureTest.everyScheduledJobHasAThreadOfItsOwn` fails the build if the pool cannot carry the job count; non-vacuity guard names today's four |
+| R-3 | The timeout is set too tight and a healthy sweep aborts on an ordinary slow tick | low | med | Default **10 s** against candidate reads that are index-served and complete in single-digit ms, on jobs that tick every 5 min — three orders of magnitude of headroom; overridable per environment | Claude | **closed, and tightened** — 10 s kept, but F-7 showed the real hazard was the *other* end: 0 means no limit. Now floor-and-ceiling guarded at boot (1..300 s) |
+| R-4 | The timeout IT is flaky in CI (it asserts an elapsed-time upper bound) | med | low | Mirror `SuppressionQueryTimeoutIT` exactly: a **real** `ACCESS EXCLUSIVE` lock (not a mocked slow query), a 1 s timeout, and a 15 s "must have aborted by" ceiling — a ~14 s margin, the shape already proven in CI since #386 | Claude | **closed** — the elapsed-time assertion is bracketed (≥ 0.9 s proves it blocked, < 15 s proves it was cancelled); green locally and on every CI push |
+| R-5 | The isolation IT races the real scheduler's tick and is nondeterministic | med | med | Do **not** wait for a tick: dispatch both tasks onto the autowired `TaskScheduler` bean explicitly. That still proves the property under test (the pool really has ≥ 2 usable threads) without depending on `fixedDelay` timing — the #98/#122 lesson about tests that lean on sweep cadence | Claude | **closed** — the test dispatches both tasks onto the autowired `TaskScheduler` explicitly and never waits for a tick |
+| R-6 | A shared `riviera.scheduled.*` property read from three modules reads as cross-module coupling at review | med | low | It is ops config, not a module dependency — no import, no grant, no `ModularityTests` edge. Each javadoc states the one rationale and points at the others; the alternative (three module-scoped names for one ops concern) is recorded as rejected below | Claude | **closed** — the review fan-out raised no boundary finding; no import, grant, or `ModularityTests` edge changed |
+| R-7 | Bounding the gauge read changes `/actuator/prometheus` behavior for scrapes, not just the alert check | low | low | Same read, same failure mode as any other DB error during a scrape; the gauge already propagates whatever the query throws. Called out here so review checks it rather than discovers it | Claude | **closed** — the shallow-bug agent disassembled Micrometer's `DefaultGauge.value()` and confirmed it catches `Throwable` and returns `NaN`, so a scrape degrades exactly as the Javadoc claims and the rest of `check()` still runs |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `spring.task.scheduling.pool.size = 4` (today's `@Scheduled` count) is enough
-  headroom, because `ScheduledThreadPoolExecutor` never exceeds its core size and each job runs
-  `fixedDelay` (so a job never overlaps itself and never needs a second thread). — *Owner:* Claude ·
-  *Resolves by:* phase 0, by the fitness function encoding `poolSize >= jobCount` as the rule.
-- **Assumption:** the four bounded reads are the complete set of database work a `@Scheduled` job
-  performs *before* it starts mutating. — *Owner:* Claude · *Resolves by:* phase 1's
-  generalization-audit pass, which walks each `@Scheduled` method's call graph to its first write.
+*(empty — both entries resolved below.)*
 
 ### Resolved
+
+- **Assumption (confirmed): `spring.task.scheduling.pool.size = 4` is enough headroom.** Held:
+  `ScheduledThreadPoolExecutor` never exceeds its core size and every job is `fixedDelay`, so no job
+  overlaps itself or needs a second thread. Phase 0 (`0d636c6`) turned the number into the rule —
+  `poolSize >= jobCount`, machine-checked — so the assumption no longer has to be re-made.
+- **Assumption (FALSIFIED): the four bounded reads are all the database work a `@Scheduled` job does
+  before it mutates.** There are **five**. Phase 1's generalization-audit pass (`397b2ce`) walked each
+  job's call graph to its first write and found the retention sweep asks *two* questions before
+  writing — `customer` for candidates, then `booking` for the retention basis via
+  `GuestBookingHistory`. Bounding only the first would have left that sweep able to wedge on the
+  second, on the same `booking` table the other two sweeps read. This is the entry that justifies the
+  audit step existing: the issue's own per-job count implied four, and four is what a careful reading
+  of the issue would have shipped.
 
 - **Open question (from the intake grill): does `MoneyPathAlertCheck` issue a query at all?** The
   issue's table and the class's own javadoc say it "adds no query of its own" and only reads the
@@ -258,16 +265,16 @@ already has its own explicit timeouts (#52/#426) and deliberately runs outside a
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review; review gate + Sonar gate next`
+**Stage pointer:** `merge close-out — gates all green, merging via PR #450`
 
-**Next action:** Run the review gate (`riviera-sdlc` `references/pr-gates.md` §1) over the PR diff,
-then pull the Sonar new-issue list.
+**Next action:** Merge PR #450, then close-out steps 1/2/6/7 (issue closed by `Closes #395`, no parent epic, unsubscribe, notify).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Isolate the scheduler's lane (pool size + fitness function) | ✅ | `0d636c6` |
 | 1 — Bound every scheduled entry query | ✅ | `397b2ce` |
-| 2 — Prove it end-to-end + correct the stale docs | ✅ | |
+| 2 — Prove it end-to-end + correct the stale docs | ✅ | `9e9481b` |
+| review-gate fixes (F-1…F-8) | ✅ | `7c89f7f`, `670f43b`, `ca20ff9` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -415,29 +422,30 @@ Modify `MoneyPathAlertCheck.java` (javadoc), `docs/deploy/production-hardening.m
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*ScheduledQueryTimeoutIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run, `everyScheduledEntryQueryIsBounded` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `gradle test --tests "*AbandonedSweepSurvivesWedgedJobIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4/AC-5:** Run `gradle test --tests "*ScheduledWorkArchitectureTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `gradle test --tests "*ConcurrentReservationIT*" --tests "*ConcurrentClaimIT*" --tests "*StaffMarkVsOnlineClaimConcurrencyIT*"` → PASS, **with no diff in those files**. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*ScheduledQueryTimeoutIT*"` → PASS (red first: the unbounded read was still blocked after 15 s). Verified at `397b2ce`, re-run green at `ca20ff9`.
+- [x] **AC-2:** Same run, `everyScheduledEntryQueryIsBounded` → PASS across **four** entry queries, not three — the fifth read the phase-1 audit found is covered. Verified at `397b2ce`.
+- [x] **AC-3:** `gradle test --tests "*AbandonedSweepSurvivesWedgedJobIT*"` → PASS, and proven non-vacuous by forcing `spring.task.scheduling.pool.size=1`, where it fails on the sweep's timeout. Verified at `9e9481b`.
+- [x] **AC-4/AC-5:** `gradle test --tests "*ScheduledWorkArchitectureTest*"` → PASS (red first: the pool-size property was unset). Verified at `0d636c6`.
+- [x] **AC-6:** `gradle test --tests "*ConcurrentReservationIT*" --tests "*ConcurrentClaimIT*"` → PASS **with those files untouched by the diff** (`git diff --stat origin/main...HEAD` lists neither). Verified at `397b2ce`; CI's full suite re-proves it on every push, including `StaffMarkVsOnlineClaimConcurrencyIT`.
+- [x] **Guard (F-7):** `gradle test --tests "*ScheduledQueryTimeoutBoundsTest*"` → PASS. Verified at `ca20ff9`.
 
 ## Self-review checklist (before merge / PR)
 
 - [ ] Every AC has an implementing task and a verifying test.
 - [ ] No placeholders / TODO / TBD anywhere in the doc.
 - [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; the concurrency ITs pass **unedited** (invariant #2).
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; the concurrency ITs pass **unedited** (invariant #2).
 - [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module imports added; no grant changes (invariant #11).
-- [ ] **Payment/payout** N/A justified (invariants #5, #8, #9).
+- [x] **Modulith** section filled; no cross-module imports added; no grant changes (invariant #11).
+- [x] **Payment/payout** N/A justified (invariants #5, #8, #9).
 - [ ] Refund policy enforced server-side (invariant #10) — untouched.
 - [ ] Timezone correct (invariant #6) — no date arithmetic in scope.
 - [ ] Booking codes unguessable (invariant #7) — no code is logged by anything added here.
 - [ ] No Flyway migration needed; none added (invariant #12).
-- [ ] **Frontend** N/A — backend-only.
+- [x] **Frontend** N/A — backend-only.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **Close-out written in THIS PR** — this is that commit; the slice was **merged via PR #450**.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
