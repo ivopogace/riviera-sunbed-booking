@@ -34,8 +34,20 @@ compose lands) · `riviera-modulith` (confirmed `shared` is flat classes at the 
 published surface, that `PackageShapeArchitectureTests` skips module-root types, and that both
 `booking` and `notification` **already** grant `shared` — so promotion adds no `allowedDependencies`
 edge) · `riviera-java-conventions` (§6c one-line-or-none comments; the long argument goes in Javadoc,
-which is exempt) · `riviera-local-debug` (cloud recipe: system `gradle`, JDK-25 toolchain, scoped
-`--tests` runs; CI owns the full suite) · `riviera-review-overlay` (review gate — <pending>) ·
+which is exempt) · `codebase-design` (loaded at the review gate per RV-PROC-1, F-2 — re-vetted the
+seam: the deletion test passes, since removing the class puts hand-rolled MDC copy/restore back in
+three pools, which is literally what `AsyncMailDispatcher` did before #410, and three installation
+sites make it a real seam rather than a hypothetical one; **changed no decision**) ·
+`domain-modeling` (same trigger — confirmed the slice adds **no** ubiquitous-language term and needs
+no ADR: `shared` is explicitly not a bounded context, so a technical decorator earns no `CONTEXT.md`
+entry, and the ADR bar wants hard-to-reverse **and** surprising **and** a real trade-off) ·
+`riviera-stripe-payments` (loaded because the diff touches `RefundExecutorConfig` and the skill's own
+trigger is deliberately generous — confirmed the slice touches **only** the executor's decorator
+slot: no gateway call, refund decision, amount, idempotency key, or ledger effect, so collect-only /
+no-Connect and invariants #8–#10 are untouched) · `riviera-local-debug` (cloud recipe: system
+`gradle`, JDK-25 toolchain, scoped `--tests` runs; CI owns the full suite) ·
+`riviera-review-overlay` (review gate — full backend bank walked on the diff; RV-BE-1/5/7/8/9/17
+N/A with reasons, RV-BE-3/11/12 the live ones and all green, RV-PROC-1 self-flagged as F-2) ·
 `riviera-docs-freshness` (**ran** over `origin/main..claude/sdlc-455-p55wyp`, **5 findings, all
 patched** — see the Docs-freshness findings table below; the counting sweep also caught one
 **pre-existing** drift #373 left behind, corrected as a declared drive-by)
@@ -220,7 +232,8 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review` fan-out, CLAUDE.md-adherence reviewer) | **`RESPONSIBILITIES.md`'s tagged-counter count went stale inside this PR's own docs-freshness fix.** Extending the enumerated list from five names to six left the trailing clause reading "including the **latter four's** `kind`/`reason` tag values". Verified against source rather than scored: `MAIL_REGISTRY_SHED` registers untagged (`RegistryMailExecutorConfig:188`), while the other **five** pass `MailKind.TAG`/`REASON_TAG` — so the tagged remainder is five. Textbook counting-sweep drift, and the skill's own case history predicted it (#373's fix went stale within the hour) | **fixed** — "latter four's" → "latter five's"; re-swept the whole block, all counts now agree (six / six / five) |
+| F-2 | review gate, RV-PROC-1 (self-check against the `riviera-sdlc` routing table) | The routing table's backend-structure row names **`codebase-design` + `domain-modeling`** beside `riviera-modulith` for "moving a class between packages", and `riviera-stripe-payments` triggers on anything touching refund. Only `riviera-modulith` had been loaded, so *Skills consulted* was untruthful about the design's provenance | **fixed** — all three loaded and the slice re-vetted through them (outcome recorded on the *Skills consulted* line); none changed a decision, which is itself the finding's answer |
 
 ---
 

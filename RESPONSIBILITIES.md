@@ -481,7 +481,7 @@ its submitter's logging context** (`MdcTaskDecorator`, #455). Nothing else.
 > the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all six of
 > `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED`, `MAIL_RECOVERY_FAILED`,
 > `MAIL_CONFIRMATION_ABANDONED`, `MAIL_CANCELLATION_ABANDONED` and
-> `MAIL_PAYMENT_DUE_ABANDONED`, including the latter four's
+> `MAIL_PAYMENT_DUE_ABANDONED`, including the latter five's
 > `kind`/`reason` tag values, which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
