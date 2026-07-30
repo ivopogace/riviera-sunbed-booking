@@ -314,24 +314,33 @@ so a redeploy stopped waiting on sends that were still legitimately running and 
 underneath them. Milliseconds rather than a `Duration` because Jakarta Mail reads the interpolated value
 as a plain number.
 
-**The ceiling is a per-pool share, not the whole shutdown budget — the two drains add.** The registry
-executor and the recovery dispatcher are separate beans, and Spring runs their `destroy()` methods
-sequentially on one thread, so at the shipped 10s the pair can hold shutdown for **20s**, not 10.
-That is why `MailTransportProperties` derives the ceiling as
-`MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS` rather than stating it directly: the combined figure is the
-one that has to fit Render's ~30s SIGTERM→SIGKILL window, and it leaves the rest for the web layer and
+**The ceiling is a per-pool share of a PLATFORM budget, not a mail one — every drain adds.** The
+registry executor and the recovery dispatcher are separate beans, and Spring runs their `destroy()`
+methods sequentially on one thread, so at the shipped 10s the pair can hold shutdown for **20s**, not
+10 — and since #404 `booking`'s refund bulkhead claims a further 5s on the same window. The combined
+figure is what has to fit Render's ~30s SIGTERM→SIGKILL grace, leaving the rest for the web layer and
 Hikari to close in order — affordable here only because `server.shutdown` is *not* graceful, so no
-request-draining phase competes for the same window.
+request-draining phase competes for it.
+
+Since **#456** that arithmetic lives in one place: `shared/ShutdownBudget` states `SIGTERM_GRACE_MS`
+and every pool's claim against it, and `ShutdownDrainArchitectureTest` **discovers** draining pools
+from bytecode and asserts their claims sum inside the grace. It reads call sites rather than the
+`ApplicationContext` deliberately — the two bulkhead pools are `defaultCandidate = false` and the
+recovery dispatcher's pool is not a bean at all, so a context scan would miss a third of the budget
+and report healthy.
 
 **Note the shipped default sits AT the per-pool ceiling, so this knob only tunes downward.** That is not
 an oversight: you cannot simultaneously have a relay budget larger than the grace and a drain that
 covers it, and the ceiling forces that trade-off to fail at boot rather than hide. If a real relay
 genuinely needs more than 10s per socket operation (#370 is the first point that is knowable), the fix
-is **not** to raise this past its range — raise the platform's shutdown grace first, then
-`MAIL_SHUTDOWN_BUDGET_MS`, and the per-pool ceiling follows. Lowering the knob is always safe and
-shortens both the relay budget and the drain together. And if a **third** mail pool is ever added,
-increment `DRAINING_POOLS` — `theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget` is what catches the
-combined overrun, since nothing else would.
+is **not** to raise this past its range — raise the platform's shutdown grace first
+(`ShutdownBudget.SIGTERM_GRACE_MS`), then this module's claim, and the per-pool ceiling follows.
+Lowering the knob is always safe and shortens both the relay budget and the drain together. And a
+**new draining pool anywhere** — mail or not — fails `ShutdownDrainArchitectureTest` until it is
+accounted for and its claim declared, which is the check the previous, mail-scoped one could not be:
+that one asserted `SHUTDOWN_BUDGET_MS * DRAINING_POOLS <= MAIL_SHUTDOWN_BUDGET_MS`, where the left
+operand was *defined* as the right divided by the same factor, so it could never fail — and it did not
+fail when pool #3 landed.
 
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
 vehicle that costs nothing — the publication stays outstanding and the next start (or the #405 admin lever) republishes it, so

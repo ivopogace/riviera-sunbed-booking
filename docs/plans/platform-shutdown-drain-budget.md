@@ -82,7 +82,8 @@ The branch name spans #454/#455/#456 because it was minted for a triage request;
 - [ ] **AC-6:** Given `RefundExecutorProperties`, when it validates `shutdownDrain`, then its ceiling
       is read from `ShutdownBudget`'s refund claim, and the shipped `PT5S` still binds and still
       rejects `PT0.5S` and `PT6S`. *Pinned by:*
-      `RefundExecutorPropertiesTest.rejectsADrainOutsideTheClaim`
+      `RefundExecutorPropertiesTest.rejectsADrainThatWouldOutlastTheShutdownGrace` (existing name kept
+      — renaming a passing test to match a plan draft is churn, and the name still describes the rule)
 - [ ] **AC-7:** Given the whole context under the `mailer` profile, when it starts, then all three
       pools still initialize with their shipped drain windows — the repoint is a change of *where the
       number is stated*, not of the number. *Pinned by:* `RefundExecutorWiringIT` (existing, unchanged)
@@ -207,18 +208,17 @@ unchanged; **no** payout-ledger effect; **no** refund-policy change. Pinned indi
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3 — docs freshness + close-out)`
 
-**Next action:** Phase 2 step 1 — repoint `MailTransportProperties`' ceiling at
-`ShutdownBudget.MAIL_POOL_CLAIM_MS`, delete `MAIL_SHUTDOWN_BUDGET_MS` + `DRAINING_POOLS`, and retire
-the unfalsifiable test that read them.
+**Next action:** Phase 3 step 1 — run `riviera-docs-freshness` over `origin/main...HEAD` including the
+counting sweep, then mark the PR ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Discover every draining pool (AC-1, AC-2) | ✅ | `<phase-0>` |
 | 1 — State the grace and its claims in `shared` (AC-3, AC-4) | ✅ | `<phase-1>` |
-| 2 — Repoint both modules; retire the vacuous guard (AC-5, AC-6, AC-7) | ⏳ | |
-| 3 — Docs freshness + close-out | | |
+| 2 — Repoint both modules; retire the vacuous guard (AC-5, AC-6, AC-7) | ✅ | `<phase-2>` |
+| 3 — Docs freshness + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -523,7 +523,7 @@ public final class ShutdownBudget {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-30 | phase 0 | "increment this constant when a new X lands" tripwires with no mechanical rule behind them | `grep -rn "increment this\|when a third\|increment when\|when a new .* lands" platform/src/main/java platform/src/test/java --include=*.java` | 2 — `MailTransportProperties:66`, `MailTransportPropertiesTest:150` | **Both are this slice's own targets, retired in phase 2. No third site.** The two comparable hand-maintained lists — `ScheduledWorkArchitectureTest.KNOWN_SCHEDULED_JOBS` and `MailListenerExecutorArchitectureTest`'s non-vacuity list — are already backed by a rule that fails when the list drifts, which is exactly the property this slice adds here. No further action |
-| | phase 2 | a per-module constant stating a platform-wide bound | | | |
+| 2026-07-30 | phase 2 | a per-module constant restating a platform-wide bound | `grep -rn "SIGTERM\|platform's grace\|shutdown grace\|Render's ~30s" platform/src/main/java --include=*.java` | 7 mentions across 3 files | **No other constant restates the grace** — all seven are prose that now *points at* `ShutdownBudget` rather than duplicating it. One was left imprecise by the repoint (`MailTransportProperties`' "what the shutdown may spend on mail", true of the pair but not of the per-pool ceiling it annotates) and was corrected in the same phase. `MailTransportBudget` is untouched on purpose: it derives the drain from the socket budget, which is #410's decision and orthogonal to where the ceiling is stated |
 
 ---
 

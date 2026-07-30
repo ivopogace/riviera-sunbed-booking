@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import ai.riviera.platform.shared.ShutdownBudget;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -28,8 +30,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * cleanly. The ceiling closes the hole from the other side: the drain window is derived from this value,
  * and a drain longer than the platform's SIGTERM→SIGKILL grace means the process is killed mid-shutdown
  * instead of closing Hikari and the web layer in order, which is worse than giving up. So the ceiling is
- * the drain budget, and the shipped 10s sits at it: at that value the drain exactly fills what the
- * shutdown may spend on mail, which is the most it should ever be allowed.
+ * this pool's drain claim, and the shipped 10s sits at it: at that value the drain exactly fills what
+ * shutdown may spend on <em>each</em> mail pool, which is the most it should ever be allowed. What the
+ * whole process may spend, and who else claims a share of it, is {@link ShutdownBudget}'s to say.
  *
  * <p>The guard is a compact constructor rather than {@code @Validated} + {@code @Min} for the same
  * reason as {@link RegistryMailProperties}: Boot validates {@code @ConfigurationProperties} only when a
@@ -46,49 +49,20 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 record MailTransportProperties(@DefaultValue("10000") int socketTimeoutMs) {
 
 	/**
-	 * The whole shutdown budget mail may spend, across <strong>both</strong> pools — the drain is derived
-	 * from it one-to-one — but the ceiling is a <strong>division</strong>, because two pools drain it,
-	 * not one.
-	 */
-	static final int MAIL_SHUTDOWN_BUDGET_MS = 20_000;
-
-	/**
-	 * The pools that spend {@link #MAIL_SHUTDOWN_BUDGET_MS}: the registry executor and the recovery
-	 * dispatcher. They are <strong>separate beans</strong>, and Spring's {@code destroySingletons()} runs
-	 * their {@code destroy()} methods sequentially on one thread, so their drain windows <strong>add
-	 * rather than overlap</strong> — the combined worst case is this many times the per-pool ceiling.
+	 * The per-pool ceiling, and therefore this knob's: each mail pool may spend at most its share of the
+	 * platform's SIGTERM grace, which is stated once in {@link ShutdownBudget} and claimed there by
+	 * <em>every</em> pool that drains — including {@code booking}'s refund bulkhead (#404), which this
+	 * module neither can nor should count (invariant #11).
 	 *
-	 * <p>Getting this wrong is what the review caught: #410's first cut set the per-pool ceiling to the
-	 * whole 10s on the reasoning that "the mail drain is only one phase of context close", which was true
-	 * when each pool carried its own 5s literal (5 + 5 = 10s) and false the moment both read one derived
-	 * value (10 + 10 = 20s). The number did not change; the sentence justifying it had quietly stopped
-	 * being true. Spelling the stacking out as a constant is what keeps a <em>third</em> mail pool from
-	 * silently pushing the combined drain past the platform's grace — increment this when one lands, and
-	 * the per-pool ceiling falls out.
-	 *
-	 * <p><strong>A non-mail pool now shares the same grace, and this constant cannot see it</strong>
-	 * (#404). {@code booking}'s refund bulkhead is a third sequentially-destroyed
-	 * {@code ThreadPoolTaskExecutor}, so the combined drain is this budget <em>plus</em> whatever
-	 * {@code riviera.booking.refund.shutdown-drain} is set to. It is capped at 5s against exactly this
-	 * arithmetic (20s here + 5s there, inside Render's ~30s), but the cap lives in that module's own
-	 * properties: this name says <em>mail</em>, and {@code notification} must not reach into
-	 * {@code booking} to count it (invariant #11). What that leaves is a real gap —
-	 * {@code theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget} is mail-scoped and would not notice a
-	 * fourth pool landing outside this module. Closing it needs a platform-wide budget rather than a
-	 * per-module one; that is #456.
+	 * <p><strong>Why the arithmetic moved out</strong> (#456). It used to live here as
+	 * {@code MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS}, with a note to increment the divisor when a third
+	 * mail pool landed. The third pool that landed was not a mail pool, so nothing incremented and nothing
+	 * failed: the test guarding it asserted {@code (a / b) * b <= a}, true for every positive integer pair.
+	 * A budget divided inside one module cannot ration a resource the whole process spends —
+	 * {@code ShutdownDrainArchitectureTest} now discovers the pools and sums their claims, so this record
+	 * states only what <em>this</em> module's pools may each spend, and enforces it at boot.
 	 */
-	static final int DRAINING_POOLS = 2;
-
-	/**
-	 * The per-pool ceiling, and therefore this knob's: each pool may spend at most its share of the
-	 * combined budget. At the shipped 10s the two pools together may hold shutdown for 20s of Render's
-	 * ~30s SIGTERM→SIGKILL window, leaving the rest for the web layer and Hikari to close in order —
-	 * which is affordable precisely because {@code server.shutdown} is <em>not</em> graceful here, so no
-	 * request-draining phase competes for it. (The 30s is Render's documented default rather than a
-	 * repo-recorded fact; if the platform or its grace changes,
-	 * {@link #MAIL_SHUTDOWN_BUDGET_MS} is the one line to correct.)
-	 */
-	static final int SHUTDOWN_BUDGET_MS = MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS;
+	static final int SHUTDOWN_BUDGET_MS = ShutdownBudget.MAIL_POOL_CLAIM_MS;
 
 	MailTransportProperties {
 		if (socketTimeoutMs <= 0 || socketTimeoutMs > SHUTDOWN_BUDGET_MS) {
@@ -97,9 +71,10 @@ record MailTransportProperties(@DefaultValue("10000") int socketTimeoutMs) {
 							+ SHUTDOWN_BUDGET_MS + ", but was " + socketTimeoutMs
 							+ "; it is both the relay's per-operation budget and EACH pool's shutdown drain "
 							+ "window, so a non-positive value would restore Jakarta Mail's infinite "
-							+ "timeouts (#368) while an oversized one would make the " + DRAINING_POOLS
-							+ " pools' drains, which add rather than overlap, outlast the platform's "
-							+ "SIGTERM grace and get the process killed mid-shutdown");
+							+ "timeouts (#368) while an oversized one would overspend this module's share "
+							+ "of the platform's SIGTERM grace — pools drain SEQUENTIALLY at context "
+							+ "close, so the windows add rather than overlap and the process is killed "
+							+ "mid-shutdown instead (the whole budget: ShutdownBudget)");
 		}
 	}
 }
