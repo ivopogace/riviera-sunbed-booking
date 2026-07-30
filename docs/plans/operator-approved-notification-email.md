@@ -237,17 +237,17 @@ three response statuses (`204` / `409 NOT_PENDING` / `404 NO_SUCH_OPERATOR`); th
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phases 0–2 done, phase 3 (docs) next`
+**Stage pointer:** `implement complete — marking PR #437 ready for review, then the Review + Sonar gates`
 
-**Next action:** Phase 3 — update `RESPONSIBILITIES.md`, `docs/runbooks/observability.md` and
-`CLAUDE.md`, then mark PR #437 ready for review and run the Review + Sonar gates.
+**Next action:** Mark PR #437 ready for review, run `/code-review` per `references/pr-gates.md` §1
+with `riviera-review-overlay` layered on, then the Sonar issue-list pull.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | ✅ | `afedbec` |
 | 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | ✅ | `6963c4a` |
-| 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | ✅ | (this commit) |
-| 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | | |
+| 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | ✅ | `cbdee4d` |
+| 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
