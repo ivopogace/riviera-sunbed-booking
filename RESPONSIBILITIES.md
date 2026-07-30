@@ -300,8 +300,12 @@ the recovery dispatcher's mirror-image accounting is `MAIL_RECOVERY_DROPPED` (#4
 mirror rather than a copy — **every** drop is logged, not one per episode, because a throttle trades
 repeated lines for the durable record that makes them redundant and this vehicle has none, and a
 rejection during **shutdown is counted here** (a real loss, tagged `reason=shutdown` so a redeploy
-cannot read as a degraded relay) where the registry excludes it as a non-event; #423 completed that
-accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
+cannot read as a degraded relay) where the registry excludes it as a non-event. A redeploy loses mail
+on both sides of `execute()`, so since #434 the tag has a third value, `abandoned` — the send accepted
+and still queued when the drain window expired — counted by draining the queue *after* the window is
+awaited, which is what makes the number a loss rather than a guess; the send caught **running** is
+deliberately excluded, being the one that may already have reached the relay. Read the name as **never
+ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
 which is the likelier loss and the first of the four mail counters to move in a relay outage. It is
 tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
 can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an

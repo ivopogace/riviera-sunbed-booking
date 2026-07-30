@@ -84,7 +84,7 @@ is recorded in Execution status once it exists.
       over-report a mail that arrived.
       *Pinned by:* `AsyncMailDispatcherTest.aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted`
       (existing, extended with the count assertion).
-- [ ] **AC-7:** Given `docs/runbooks/observability.md`, when the recovery-mail section is read, then
+- [x] **AC-7:** Given `docs/runbooks/observability.md`, when the recovery-mail section is read, then
       it states which losses each name covers — including that abandonment is now
       `reason="abandoned"`, and what the counter still excludes — so no counter reads as more
       complete than it is. Its pre-#434 sentence *"not counted by `riviera.mail.recovery.dropped`,
@@ -132,7 +132,7 @@ ledger applies to it:
 | R-3 | Returning a named type from `decorate` silently changes the registry pool, whose `CompositeTaskDecorator` owns the same slot — the episode throttle strands open (the #410 R-1 hazard, one layer down) | low | high | `decorate`'s signature and the composition order are untouched, and the whole of `RegistryMailExecutorConfigTest` (MDC **and** throttle tests) runs unchanged in the phase-0 batch | claude | closed — `decorate`'s signature and the composition order are untouched; all of `RegistryMailExecutorConfigTest` green unchanged |
 | R-4 | The in-flight send is counted too, over-reporting a mail that already reached the relay — the exact ambiguity #410 refused to resolve by interrupting | med | med | only the **queue** is drained; AC-6 pins that a running send moves no counter, and the Javadoc + runbook state the exclusion so the number is not read as "every mail lost at shutdown" | claude | closed — only the queue is drained; `aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted` now asserts the running send moves no counter |
 | R-5 | Shared-state accumulation across the full suite (`riviera-local-debug`'s blind spot): `destroy()` now does extra work on every context close, and any context closing with a queued mail gains `WARN` lines | low | low | the added work is bounded by the queue (≤100) and is nil in a drained pool; no shared bean, filter or scheduled job is touched. To be verified by the PR's own CI run before phase 1 builds on it | claude | open — to be closed by the PR's CI run on this push |
-| R-6 | A third `reason` on a shipped series changes what an existing dashboard total means, and an alert on the total starts firing on redeploys | low | med | the total already meant "recovery mail the pool never sent" — both existing reasons are pool-level refusals — so the addition is in-kind; the runbook's standing rule is unchanged (**alert on `reason="saturated"`, track the total**) and AC-1 pins that `saturated` cannot move on a redeploy | claude | open — closed at phase 1 once the runbook states the three reasons and the standing alert rule |
+| R-6 | A third `reason` on a shipped series changes what an existing dashboard total means, and an alert on the total starts firing on redeploys | low | med | the total already meant "recovery mail the pool never sent" — both existing reasons are pool-level refusals — so the addition is in-kind; the runbook's standing rule is unchanged (**alert on `reason="saturated"`, track the total**) and AC-1 pins that `saturated` cannot move on a redeploy | claude | closed — the runbook now carries a `reason="abandoned"` row with its own alert rule, restates the standing one (alert on `saturated`, track the total), and says why the third value belongs to this name |
 
 ## Open questions / Assumptions
 
@@ -247,16 +247,18 @@ That pool is untouched, and `MailListenerExecutorArchitectureTest` keeps it that
 > **This section is the session-recovery anchor.** Re-read it (plus the current `riviera-sdlc` stage
 > reference) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 0 done and pushed; phase 1 (runbook + docs-freshness + close-out) next`
+**Stage pointer:** `phases 0–1 built and pushed — PR #436 to be marked ready for review; the review and Sonar gates are then due`
 
-**Next action:** Phase 1 step 1 — the `reason="abandoned"` runbook row in
-`docs/runbooks/observability.md`, then the correction at its line 252 and the docs-freshness run.
-Draft **PR #436** is open, so every push is CI-gated; check that run before building on it.
+**Next action:** Confirm CI is green on this push, mark **PR #436** ready for review, then run the
+review gate (`/code-review`'s fan-out per `references/pr-gates.md` §1, plus the overlay's backend bank)
+and pull the Sonar new-issue list. The close-out commit (stage pointer DONE, `merged via PR #436`) is
+the last one before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — count and log the send abandoned at shutdown, attributably | ✅ | (this push; SHA recorded at phase 1) |
-| 1 — runbook, metric doc, docs-freshness + close-out | | |
+| 0 — count and log the send abandoned at shutdown, attributably | ✅ | `e7d68db` |
+| 1 — runbook, metric doc, docs-freshness | ✅ | (this commit) |
+| 2 — review-gate + Sonar-gate findings, then close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -497,17 +499,40 @@ this is a third `reason` rather than a fifth name (D-1).
 **Files:** Modify `docs/runbooks/observability.md`, this plan doc, and whatever the docs-freshness run
 finds due (expected: `CLAUDE.md`'s `notification` row, `RESPONSIBILITIES.md`'s notification section)
 
-- [ ] **Step 1: The runbook row** (AC-7) — add `reason="abandoned"` to
+- [x] **Step 1: The runbook row** (AC-7) — add `reason="abandoned"` to
       `riviera_mail_recovery_dropped_total`'s tag table with its alert rule (not on its own; a
       *sustained* rise means recovery volume has outgrown a single drainer thread, which nothing else
       makes visible), and state the one loss the counter still excludes (the in-flight send).
-- [ ] **Step 2: Correct the contradicted sentence** at `docs/runbooks/observability.md:252`, which
+- [x] **Step 2: Correct the contradicted sentence** at `docs/runbooks/observability.md:252`, which
       currently says abandonment is *not* counted.
-- [ ] **Step 3: `riviera-docs-freshness`** over the phase-0..1 range; patch what the diff
+- [x] **Step 3: `riviera-docs-freshness`** over the phase-0..1 range; patch what the diff
       contradicts, extend where a future session could plausibly undo a decision.
-- [ ] **Step 4: Add #434 as a sub-issue of epic #367** (grill finding G-7).
+- [x] **Step 4: Add #434 as a sub-issue of epic #367** (grill finding G-7).
 - [ ] **Step 5: Finalize Execution status** in this PR's own last commit, citing `merged via PR #NN`.
-- [ ] **Step 6: Commit** — `git commit -m "docs(#434): document the abandoned recovery mail's counter and its limits (#434)"`
+- [x] **Step 6: Commit** — `git commit -m "docs(#434): document the abandoned recovery mail's counter and its limits (#434)"`
+
+### Docs-freshness run (merge close-out step 5)
+
+Range `origin/main..HEAD`, run at phase 1. **Three contradicted facts, all patched:**
+
+- `docs/runbooks/observability.md:252` — stated that an abandoned send is *"**not** counted by
+  `riviera.mail.recovery.dropped`, which counts rejections, not abandonment at shutdown"* —
+  contradicted by phase 0 — **patched** to name the `reason="abandoned"` series and to state the one
+  loss still excluded (the in-flight send), so it cannot read as more complete than it is.
+- `CLAUDE.md:157` — the `notification` row stated the tag's value set as *"(`saturated`/`shutdown`)"* —
+  now three — **patched**, with the drain-after-the-window rule and the exclusion, since both are
+  decisions a future session could plausibly undo.
+- `RESPONSIBILITIES.md:302` — stated *"#423 **completed** that accounting"*, a present-tense
+  completeness claim #434 disproves, alongside the same two-value tag — **patched** to "extended", plus
+  the third value and why the name reads *never ran* rather than *refused*.
+
+Checked and **clean**: `CONTEXT.md` (a metric tag is not ubiquitous language — its only `abandon` hit
+is the Request-mode pay-window, unrelated), `docs/adr/ADR-0011` (decision 5 says a redeploy past the
+drain window loses the send and never claims it is invisible, so it stays true), `docs/adr/ADR-0012`,
+`docs/agents/*`, `docs/deploy/*`, `docs/runbooks/mailer-profile-smoke-test.md` (its drain sentence
+names the deriving property, not a literal, and says "lost", not "uncounted"), the `riviera-*` skills
+(none cites these classes or the counter), `README.md`. Knowledge-graph refresh **skipped** —
+`graphify-out/` is absent in this cloud clone, as expected.
 
 ---
 
