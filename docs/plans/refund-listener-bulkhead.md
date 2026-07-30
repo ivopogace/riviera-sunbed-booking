@@ -107,17 +107,17 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 - [ ] **AC-5:** Given the decomposed listener, when a `BookingCancelled` is published, then the
       registry writes the **same** `listener_id` as before the decomposition, so no Flyway rewrite is
       owed. *Pinned by:* `RefundBulkheadIT.keepsTheListenerIdUnchanged`
-- [ ] **AC-6:** Given the refund executor bean is declared, when the context starts, then
+- [x] **AC-6:** Given the refund executor bean is declared, when the context starts, then
       `applicationTaskExecutor` is **still present** and unqualified `@Async` still resolves to it —
       with two `defaultCandidate = false` executors in the context, not one.
       *Pinned by:* `RefundExecutorWiringIT`
-- [ ] **AC-7:** Given the pool is saturated at `poolSize + queueCapacity`, when a further refund is
+- [x] **AC-7:** Given the pool is saturated at `poolSize + queueCapacity`, when a further refund is
       submitted, then the submission is **shed**: `riviera.refunds.shed` increments, an `ERROR` is
       logged once per saturation episode (an episode ending when the queue drains), the handler
       neither throws nor runs the task on the calling thread, and a rejection arriving during
       shutdown is neither counted nor escalated.
       *Pinned by:* `RefundExecutorConfigTest`
-- [ ] **AC-8:** Given a non-positive or oversized `pool-size`, `queue-capacity` or `shutdown-drain`,
+- [x] **AC-8:** Given a non-positive or oversized `pool-size`, `queue-capacity` or `shutdown-drain`,
       when the context binds the properties, then boot **fails** with a message naming the property
       and its range — rather than booting clean onto a `SynchronousQueue` (capacity ≤ 0) or a queue
       deep enough to be the unbounded one this slice removes.
@@ -171,7 +171,7 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Declaring a second `Executor` bean makes Boot back off `applicationTaskExecutor` (`@ConditionalOnMissingBean(Executor.class)`), silently dropping every unqualified `@Async` — the money-path listeners included — onto an unbounded `SimpleAsyncTaskExecutor`, where no test fails because unbounded threads always keep up | med | **critical** | `defaultCandidate = false`, the fix #383 established; AC-6's IT asserts both halves (the shared bean exists **and** unqualified `@Async` resolves to it) with **two** such beans in the context, which is the configuration #383 never tested | this slice | open |
+| R-1 | Declaring a second `Executor` bean makes Boot back off `applicationTaskExecutor` (`@ConditionalOnMissingBean(Executor.class)`), silently dropping every unqualified `@Async` — the money-path listeners included — onto an unbounded `SimpleAsyncTaskExecutor`, where no test fails because unbounded threads always keep up | med | **critical** | `defaultCandidate = false`, the fix #383 established; AC-6's IT asserts both halves (the shared bean exists **and** unqualified `@Async` resolves to it) with **two** such beans in the context, which is the configuration #383 never tested | this slice | **closed** — `RefundExecutorWiringIT` green, 4 tests, 0 skipped: the shared pool is present and unqualified `@Async` still resolves to it |
 | R-2 | Dropping the listener transaction changes durability or completion semantics | low | high | Modulith's completion registration is advisor-based and independent of `@Transactional` (re-derived by #383's review, not taken on faith); AC-4 proves outstanding-on-failure and AC-5 proves the id is unmoved, both against a real registry | this slice | open |
 | R-3 | Shedding a refund loses money owed to a tourist (invariant #10) | low | **critical** | A shed submission never runs, so the publication is never completed and `riviera.outbox.pending` carries it until the next start republishes it (AC-4 proves the mechanism). The queue is sized so a whole weather-refund sweep fits without shedding; the shed path is a backstop with its own counter (AC-7), because — unlike a crash — shedding does not itself trigger the restart that recovers it | this slice | open |
 | R-4 | The pool is sized against an estimate that real gateway latency falsifies, and correcting it costs a deploy | high | med | All three bounds are `@ConfigurationProperties` with env placeholders (#408's precedent), validated at both ends (AC-8). Retuning is a config change; the P1 re-derivation is a recorded handoff, not a memory | this slice | open |
@@ -297,15 +297,15 @@ server-side and env-supplied.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 (the bounded executor)`
+**Stage pointer:** `implement — phase 2 (move the listener, drop the transaction)`
 
-**Next action:** Phase 1 step 1 — write the three failing tests (`RefundExecutorConfigTest`,
-`RefundExecutorPropertiesTest`, `RefundExecutorWiringIT`) before the bean exists.
+**Next action:** Phase 2 step 1 — write `RefundBulkheadIT` (AC-2/3/4/5) and watch it fail on today's
+shared-pool listener before swapping the annotations.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Establish and pin the refund budget (AC-1) | ✅ | `c57b0b3` |
-| 1 — The bounded executor, its bounds, and its shed policy (AC-6, AC-7, AC-8) | | |
+| 1 — The bounded executor, its bounds, and its shed policy (AC-6, AC-7, AC-8) | ✅ | `7800e03` |
 | 2 — Move the listener onto it and drop the transaction (AC-2, AC-3, AC-4, AC-5) | | |
 | 3 — Make the rule structural; reconcile the substrate (AC-9) | | |
 
@@ -397,27 +397,27 @@ letting a stale number ride into the Paysera era.
 The pool is built and proven **before** anything runs on it, so R-1 — the trap that would silently
 unbound the money path — is caught by a test that exists before the listener moves.
 
-- [ ] **Step 1: Write the failing tests** — AC-7 (shed counts, escalates once per episode, a later
+- [x] **Step 1: Write the failing tests** — AC-7 (shed counts, escalates once per episode, a later
       episode logs again, never throws, never runs on the caller, shutdown rejections are neither
       counted nor escalated), AC-8 (each bound rejected at both ends with a message naming the
       property), AC-6 (`applicationTaskExecutor` still present; unqualified `@Async` still resolves to
       it — with **two** `defaultCandidate = false` executors in the context).
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `gradle --no-daemon --console=plain test --tests "*RefundExecutorConfigTest*" --tests "*RefundExecutorPropertiesTest*" --tests "*RefundExecutorWiringIT*"`
       → FAIL (the classes do not exist).
-- [ ] **Step 3: Minimal implementation** — the properties record (`pool-size` 4, `queue-capacity` 500,
+- [x] **Step 3: Minimal implementation** — the properties record (`pool-size` 4, `queue-capacity` 500,
       `shutdown-drain` PT30S, each with a floor and a ceiling and the reason for both in Javadoc), the
       `@Bean(name = REFUND_EXECUTOR, defaultCandidate = false)` with core = max = `poolSize`, the
       saturation policy as a combined `RejectedExecutionHandler` + `TaskDecorator`, and the
       `REFUND_SHED` constant.
-- [ ] **Step 4: Run them, verify they pass** — the same command → PASS, then the structural net:
+- [x] **Step 4: Run them, verify they pass** — the same command → PASS, then the structural net:
       `gradle --no-daemon --console=plain test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*CompositionRootDisciplineTests*"`
-- [ ] **Step 5: Generalization-audit pass** — the pattern being introduced is "a second bounded
+- [x] **Step 5: Generalization-audit pass** — the pattern being introduced is "a second bounded
       executor beside a driving adapter". Search every `@Bean` returning an `Executor`/
       `ThreadPoolTaskExecutor` and confirm each carries `defaultCandidate = false`; decide whether the
       rule should be structural rather than reviewed.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#404): add a bounded executor for cancellation refunds"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "feat(#404): add a bounded executor for cancellation refunds"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -484,6 +484,7 @@ unbound the money path — is caught by a test that exists before the listener m
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 1 (new pattern: a second bulkhead executor beside a driving adapter) | every bean the container could see as an `Executor`, since one visible by type makes Boot skip `applicationTaskExecutor` entirely (R-1) | `grep -rn -A2 "@Bean" platform/src/main/java \| grep -E "TaskScheduler\|ScheduledExecutor\|ExecutorService\|TaskExecutor\|Executor\b"` | 2: `RegistryMailExecutorConfig` (#383) and this slice's `RefundExecutorConfig`. `AsyncMailDispatcher` (#369) holds an executor but is published as a `MailDispatcher`, so it is invisible to the condition; scheduling uses Boot's own `taskScheduler` via `spring.task.scheduling.pool.size` | **Fix all — already compliant.** Both carry `defaultCandidate = false`. **Deliberately no structural rule added:** an ArchUnit rule would key on the syntax (`@Bean` returning an `Executor`), while `RefundExecutorWiringIT` asserts the *outcome* on the real context — that `applicationTaskExecutor` exists and unqualified `@Async` resolves to it. The outcome test catches any future cause, including bean types a syntactic rule would not think to match (a `ThreadPoolTaskScheduler` is also an `Executor`), so it strictly dominates |
 | 2026-07-30 | phase 0 (new pattern: pinning a gateway call's occupancy budget instead of assuming it) | every blocking `StripeClient` call, to see which others have a duration the codebase reasons about but never asserts | `grep -n "stripe.v1()" platform/src/main/java` | 4 calls in `StripePaymentGateway`: `refund`, `initiate` (×2, via `createWithRecovery`), `cancel` (retrieve + cancel) | **Subset — one pin, deliberately.** The three *client-level* facts (connect timeout, read timeout, retry count) are shared by every call, so `theRefundBudgetIsOneRoundTripWithNoSdkRetries` protects all of them; a per-call pin would restate the same builder. The **per-call multiplier** differs and is worth recording rather than pinning here: `initiate` deliberately replays once on `ApiConnectionException` (#66 orphan recovery), so its worst case is **2 × 25s = 50s**, and `cancel` makes two sequential calls. Neither is in scope — `initiate` runs on a request thread (its own hazard class, already bounded by #52's timeouts) and `cancel` runs on the abandoned-payment sweep, which #395 gave a thread of its own. Only `refund` runs on the money-path spine, which is why only `refund` gets a bulkhead |
 
 ---
@@ -495,9 +496,9 @@ unbound the money path — is caught by a test that exists before the listener m
 - [ ] **AC-3:** Run `gradle test --tests "*RefundBulkheadIT*"` → `refundsWithNoTransactionOrConnectionHeldOpen` PASS; non-vacuity proven.
 - [ ] **AC-4:** Run `gradle test --tests "*RefundBulkheadIT*"` → `aFailedRefundLeavesThePublicationOutstandingAndIsRetried` PASS.
 - [ ] **AC-5:** Run `gradle test --tests "*RefundBulkheadIT*"` → `keepsTheListenerIdUnchanged` PASS.
-- [ ] **AC-6:** Run `gradle test --tests "*RefundExecutorWiringIT*"` → both assertions PASS.
-- [ ] **AC-7:** Run `gradle test --tests "*RefundExecutorConfigTest*"` → PASS.
-- [ ] **AC-8:** Run `gradle test --tests "*RefundExecutorPropertiesTest*"` → PASS.
+- [x] **AC-6:** Run `gradle test --tests "*RefundExecutorWiringIT*"` → PASS, `tests="4" skipped="0"` (checked in the result XML — a Docker-less skip would have read as green).
+- [x] **AC-7:** Run `gradle test --tests "*RefundExecutorConfigTest*"` → PASS (10 methods: bounds, shed-without-throw-or-caller-run, per-shed counting, episode throttling, drain-does-not-end-an-episode, later-episode-logs-again, shutdown-not-counted, abandoned-not-interrupted).
+- [x] **AC-8:** Run `gradle test --tests "*RefundExecutorPropertiesTest*"` → PASS (all three bounds rejected at both ends).
 - [ ] **AC-9:** Run `gradle test --tests "*RefundListenerExecutorArchitectureTest*"` → PASS, and proven non-vacuous per phase 3 step 2.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
