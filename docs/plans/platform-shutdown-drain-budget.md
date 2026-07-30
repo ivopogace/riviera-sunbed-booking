@@ -127,7 +127,7 @@ The branch name spans #454/#455/#456 because it was minted for a triage request;
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | ArchUnit's `getMethodCallsFromSelf()` fails to resolve the `setAwaitTerminationMillis` target (owner type not in the imported packages), so the scan silently finds zero pools and the guard is green-and-blind | med | high | AC-2's fixture pool is the non-vacuity proof and fails first if resolution breaks. Documented fallback: `ArchitectureTestSupport.bytecode(Path)` constant-pool substring scan, already the repo's technique in `NoStripeConnectArchitectureTest` and `ResponsibilitiesArchitectureTests` | this slice | open |
+| R-1 | ArchUnit's `getMethodCallsFromSelf()` fails to resolve the `setAwaitTerminationMillis` target (owner type not in the imported packages), so the scan silently finds zero pools and the guard is green-and-blind | med | high | AC-2's fixture pool is the non-vacuity proof and fails first if resolution breaks. Documented fallback: `ArchitectureTestSupport.bytecode(Path)` constant-pool substring scan, already the repo's technique in `NoStripeConnectArchitectureTest` and `ResponsibilitiesArchitectureTests` | this slice | **closed, phase 0** — did not materialize; both rules green on the first run. The rule matches the owner by **package prefix** (`org.springframework.scheduling.concurrent.`) rather than `isAssignableTo(ThreadPoolTaskExecutor.class)`, which is what keeps it independent of whether ArchUnit resolved the Spring hierarchy. Fallback not taken |
 | R-2 | The marker method is the wrong one — a pool that calls `setWaitForTasksToCompleteOnShutdown(true)` but never `setAwaitTerminationMillis` would be missed, or vice versa | med | med | Detect the **union** of both markers. Spring's `ExecutorConfigurationSupport.awaitTerminationIfNecessary` gates on `awaitTerminationMillis > 0`, so that is the primary marker; the other is included because a pool declaring one and not the other is exactly the half-configured case worth surfacing. Over-detection is the safe direction — it fails the build and a human decides | this slice | open |
 | R-3 | ArchUnit cannot read the *argument* of `setWaitForTasksToCompleteOnShutdown`, so a pool passing `false` is counted as draining when it is not | low | low | Accepted, and it fails **safe**: an over-counted pool makes the budget tighter, never looser. Recorded in the guard's Javadoc so a future author does not read a spurious claim as a real one | this slice | open |
 | R-4 | A future `spring.task.scheduling.shutdown.await-termination=true` adds a fourth claimant that is a Boot-configured pool with no `ThreadPoolTaskExecutor` call site, so the bytecode scan cannot see it | low | high | The guard adds a **second, property-based rule** in the `ScheduledWorkArchitectureTest#noGlobalQueryTimeoutIsIntroduced` shape: fail if `spring.task.scheduling.shutdown.await-termination` is set in `src/main/resources` without a declared claim. Cheap, and it closes the one discovery hole the bytecode scan structurally has | this slice | open |
@@ -137,13 +137,18 @@ The branch name spans #454/#455/#456 because it was minted for a triage request;
 
 ## Open questions / Assumptions
 
-- **Assumption:** ArchUnit resolves method-call targets to types outside the imported package set
-  (`ThreadPoolTaskExecutor` is a Spring type, not under `ai.riviera.platform`). — *Owner:* this slice ·
-  *Resolves by:* phase 0 step 2, which is precisely the red-test run that answers it. If it does not,
-  R-1's bytecode fallback is taken in the same phase.
 - **Assumption:** Render's SIGTERM→SIGKILL grace is ~30s (documented default, unverified against this
   service). — *Owner:* this slice · *Resolves by:* recorded as R-7 and carried in `ShutdownBudget`'s
   Javadoc; not blocking, because every claim today is sized against it already.
+
+### Resolved
+
+- **Assumption (phase 0):** ArchUnit resolves method-call targets to types outside the imported package
+  set (`ThreadPoolTaskExecutor` is a Spring type, not under `ai.riviera.platform`). — **Confirmed.**
+  Both rules passed on the first run, with the production scan finding exactly the three known pools
+  including the non-bean dispatcher one. The rule matches the target owner by package prefix rather
+  than by assignability, so it never depends on hierarchy resolution. R-1's bytecode fallback is not
+  needed.
 
 ## Availability & concurrency (invariant #2)
 
@@ -202,16 +207,15 @@ unchanged; **no** payout-ledger effect; **no** refund-policy change. Pinned indi
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 step 1 — write `ShutdownDrainArchitectureTest#theDetectorFindsAnOversizedFixturePool`
-against a new fixture pool and run it red, which is also the experiment that resolves the ArchUnit
-call-resolution assumption (R-1).
+**Next action:** Phase 1 step 1 — write `ShutdownBudgetTest#rejectsAClaimSetThatOverrunsTheGrace` red,
+then add `shared/ShutdownBudget.java`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Discover every draining pool (AC-1, AC-2) | | |
-| 1 — State the grace and its claims in `shared` (AC-3, AC-4) | | |
+| 0 — Discover every draining pool (AC-1, AC-2) | ✅ | `<phase-0>` |
+| 1 — State the grace and its claims in `shared` (AC-3, AC-4) | ⏳ | |
 | 2 — Repoint both modules; retire the vacuous guard (AC-5, AC-6, AC-7) | | |
 | 3 — Docs freshness + close-out | | |
 
@@ -517,7 +521,7 @@ public final class ShutdownBudget {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | phase 0 | "increment this constant when a new X lands" tripwires with no mechanical rule behind them | `grep -rn "increment this\|when a third\|when a new" platform/src/main/java --include=*.java` | | |
+| 2026-07-30 | phase 0 | "increment this constant when a new X lands" tripwires with no mechanical rule behind them | `grep -rn "increment this\|when a third\|increment when\|when a new .* lands" platform/src/main/java platform/src/test/java --include=*.java` | 2 — `MailTransportProperties:66`, `MailTransportPropertiesTest:150` | **Both are this slice's own targets, retired in phase 2. No third site.** The two comparable hand-maintained lists — `ScheduledWorkArchitectureTest.KNOWN_SCHEDULED_JOBS` and `MailListenerExecutorArchitectureTest`'s non-vacuity list — are already backed by a rule that fails when the list drifts, which is exactly the property this slice adds here. No further action |
 | | phase 2 | a per-module constant stating a platform-wide bound | | | |
 
 ---
