@@ -130,7 +130,7 @@ The branch name spans #454/#455/#456 because it was minted for a triage request;
 | R-1 | ArchUnit's `getMethodCallsFromSelf()` fails to resolve the `setAwaitTerminationMillis` target (owner type not in the imported packages), so the scan silently finds zero pools and the guard is green-and-blind | med | high | AC-2's fixture pool is the non-vacuity proof and fails first if resolution breaks. Documented fallback: `ArchitectureTestSupport.bytecode(Path)` constant-pool substring scan, already the repo's technique in `NoStripeConnectArchitectureTest` and `ResponsibilitiesArchitectureTests` | this slice | **closed, phase 0** — did not materialize; both rules green on the first run. The rule matches the owner by **package prefix** (`org.springframework.scheduling.concurrent.`) rather than `isAssignableTo(ThreadPoolTaskExecutor.class)`, which is what keeps it independent of whether ArchUnit resolved the Spring hierarchy. Fallback not taken |
 | R-2 | The marker method is the wrong one — a pool that calls `setWaitForTasksToCompleteOnShutdown(true)` but never `setAwaitTerminationMillis` would be missed, or vice versa | med | med | Detect the **union** of both markers. Spring's `ExecutorConfigurationSupport.awaitTerminationIfNecessary` gates on `awaitTerminationMillis > 0`, so that is the primary marker; the other is included because a pool declaring one and not the other is exactly the half-configured case worth surfacing. Over-detection is the safe direction — it fails the build and a human decides | this slice | open |
 | R-3 | ArchUnit cannot read the *argument* of `setWaitForTasksToCompleteOnShutdown`, so a pool passing `false` is counted as draining when it is not | low | low | Accepted, and it fails **safe**: an over-counted pool makes the budget tighter, never looser. Recorded in the guard's Javadoc so a future author does not read a spurious claim as a real one | this slice | open |
-| R-4 | A future `spring.task.scheduling.shutdown.await-termination=true` adds a fourth claimant that is a Boot-configured pool with no `ThreadPoolTaskExecutor` call site, so the bytecode scan cannot see it | low | high | The guard adds a **second, property-based rule** in the `ScheduledWorkArchitectureTest#noGlobalQueryTimeoutIsIntroduced` shape: fail if `spring.task.scheduling.shutdown.await-termination` is set in `src/main/resources` without a declared claim. Cheap, and it closes the one discovery hole the bytecode scan structurally has | this slice | open |
+| R-4 | A future `spring.task.scheduling.shutdown.await-termination=true` adds a fourth claimant that is a Boot-configured pool with no `ThreadPoolTaskExecutor` call site, so the bytecode scan cannot see it | low | high | The guard adds a **second, property-based rule** in the `ScheduledWorkArchitectureTest#noGlobalQueryTimeoutIsIntroduced` shape: fail if the key is set in `src/main/resources` without a declared claim. Cheap, and it closes the one discovery hole the bytecode scan structurally has | this slice | **closed, phase 1** — `noBootPoolIsMadeToDrainWithoutAClaim`. Covers **both** Boot pools, not just the scheduler: `spring.task.execution.shutdown.await-termination` would make the shared `applicationTaskExecutor` drain too, and that pool carries the money-path spine |
 | R-5 | Admitting `ShutdownBudget` to `shared` sets a precedent that erodes CLAUDE.md's "not a home for code used in more than one place" | med | med | The admission argument is written in §4a and in the class Javadoc, and it is deliberately **not** "two modules need it": it is that the SIGTERM grace is a property of the *deployment*, which no bounded context owns — the same argument that admitted `ObservabilityMetrics`. A type that fails *that* test is not admitted by this precedent | this slice | open |
 | R-6 | The 25s of claims against Render's ~30s leaves only 5s for the web layer and Hikari to close in order — the guard blesses a total that is already tight | med | med | Out of scope to retune (Non-goals), but the guard makes the headroom **visible and named** (`SIGTERM_GRACE_MS` minus the claim sum) rather than implicit across three files. If the headroom is judged too thin, that is now a one-line change in one place | this slice | open |
 | R-7 | The ~30s grace is Render's documented default, not a repo-verified fact, and a platform change would invalidate every claim at once | low | high | Unchanged from #410's position, but improved: the number now lives in exactly one constant with the provenance in its Javadoc, so correcting it is a single edit rather than a hunt across two modules | this slice | open |
@@ -207,16 +207,17 @@ unchanged; **no** payout-ledger effect; **no** refund-policy change. Pinned indi
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 step 1 — write `ShutdownBudgetTest#rejectsAClaimSetThatOverrunsTheGrace` red,
-then add `shared/ShutdownBudget.java`.
+**Next action:** Phase 2 step 1 — repoint `MailTransportProperties`' ceiling at
+`ShutdownBudget.MAIL_POOL_CLAIM_MS`, delete `MAIL_SHUTDOWN_BUDGET_MS` + `DRAINING_POOLS`, and retire
+the unfalsifiable test that read them.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Discover every draining pool (AC-1, AC-2) | ✅ | `<phase-0>` |
-| 1 — State the grace and its claims in `shared` (AC-3, AC-4) | ⏳ | |
-| 2 — Repoint both modules; retire the vacuous guard (AC-5, AC-6, AC-7) | | |
+| 1 — State the grace and its claims in `shared` (AC-3, AC-4) | ✅ | `<phase-1>` |
+| 2 — Repoint both modules; retire the vacuous guard (AC-5, AC-6, AC-7) | ⏳ | |
 | 3 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
