@@ -265,12 +265,24 @@ independent confirmations of the mechanism the whole of Part 1 rests on.
 
 **Merged via PR #433.**
 
+> **Close-out miss, corrected after the merge.** Two edits meant to land before the merge did not: the
+> phase table never gained rows 4–5, and the self-review checklist was never ticked — both because the
+> scripted `str.replace` calls that should have made them were written **without assertions** and silently
+> no-op'd once earlier edits had changed the surrounding text. The merged doc therefore under-reported the
+> slice (omitting the F-5 fix and the #407 integration, its two most consequential commits) and read, by its
+> own rule, as though the work were unfinished. Correcting it needed exactly the docs-only follow-up
+> `riviera-sdlc` close-out step 4 exists to prevent — which is the signal that section names: step 4 was
+> skipped. The transferable lesson is narrow and mechanical: **assert every scripted plan-doc edit**, the
+> way the edits that did land were asserted.
+
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
 | 1 — the drain window derived from the socket budget, bound and validated | ✅ | `04e6f49` |
 | 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | ✅ | `68e6953` |
-| 3 — review-gate findings F-1..F-4 | ✅ | `a8369b8` |
+| 3 — review-gate findings F-1..F-4 (inline overlay pass) | ✅ | `a8369b8` |
+| 4 — `/code-review` fan-out finding F-5 (the drain-stacking arithmetic) | ✅ | `fa38754` |
+| 5 — merge-from-main integration (#407 / PR #432) + finding F-6 | ✅ | `1611456` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -813,22 +825,27 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified `N/A`; no availability write path in the diff (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no published surface changed (invariant #11).
-- [ ] **Payment/payout** section justified `N/A`; the spine's executor is untouched (invariants #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] No booking code, address, or token in any new or edited log line (invariant #7).
-- [ ] No schema change, so no Flyway migration (invariant #12).
-- [ ] **Frontend** `N/A — backend-only`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test — pin-names re-verified against the
+      shipped test methods rather than assumed (that check produced F-2; F-6 then caught the one it missed,
+      a citation pointing at *another* class's test).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified `N/A`; no availability write path in the diff (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no published surface changed (invariant #11).
+- [x] **Payment/payout** section justified `N/A`; the spine's executor is untouched (invariants #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] No booking code, address, or token in any new or edited log line (invariant #7).
+- [x] No schema change, so no Flyway migration (invariant #12).
+- [x] **Frontend** `N/A — backend-only`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table (six phases), AND the
+      findings register (F-1..F-6 plus the gate and Sonar rows).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #433` — with one miss, corrected here:
+      the phase table and this checklist were left stale by unasserted scripted edits. See the note under
+      Execution status.
 - [x] **The review gate ran in full** — in two passes. `riviera-review-overlay`'s whole backend bank
       (RV-BE-1..18 + RV-STYLE-1 + RV-PROC-1) ran inline first; the `/code-review` subagent fan-out was
       initially blocked by a standing session instruction against the Agent tool (the ladder's rung-3
