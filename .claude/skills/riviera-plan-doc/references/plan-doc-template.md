@@ -17,12 +17,36 @@
 
 **Source of intent:** <spec path in docs/superpowers/specs/ and/or GitHub issue #NN>
 
-**Skills consulted:** <the `riviera-sdlc` Skill-routing gate output — every craft skill
-loaded at plan time + one phrase on what each changed. e.g. `postgres` (BIGINT identity
-PKs, not UUIDv4), `codebase-design` (collapsed the hypothetical out-port seam),
-`angular-developer` + angular-cli MCP (v22 APIs + mandatory a11y). Must cover every area
-the diff touches — a migration in scope with no `postgres` here means the plan is not
-ready. `N/A — <reason>` only for a truly single-area trivial slice.>
+**Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — <what it
+caught>) · `riviera-plan-doc` (this template — <what it forced>) · `tdd` (<how the slice
+was built test-first>) · `riviera-review-overlay` (review gate — <when it ran>) ·
+`riviera-docs-freshness` (<**ran** over `<range>`, N findings — **or** `N/A — <reason>`>)
+· <then every routed skill the gate matched, + one phrase each on what it changed. e.g.
+`postgres` (BIGINT identity PKs, not UUIDv4), `codebase-design` (collapsed the
+hypothetical out-port seam), `angular-developer` + angular-cli MCP (v22 APIs + mandatory
+a11y). Must cover every area the diff touches — a migration in scope with no `postgres`
+here means the plan is not ready. `N/A — <reason>` only for a truly single-area trivial
+slice.>
+
+> **The five leading entries are pre-filled on purpose — extend them, don't replace them.**
+> The `riviera-sdlc` routing table's **"Anything, always"** row is due on essentially
+> every slice — that table is the authority for its contents; this line pre-fills them
+> rather than re-listing them, so the two cannot drift. But an author filling it in is
+> thinking about the *routed* skills, so something falls off the line —
+> **RV-PROC-1 caught an omission here on six consecutive slices: #427, #430, #436, #440,
+> #374, #373.** What was omitted varied (`riviera-review-overlay` and
+> `riviera-docs-freshness` most often; `riviera-stripe-payments` on #430,
+> `riviera-local-debug` on #440), which is the point: six in a row is not six mistakes, it
+> is a template asking a question whose answer is partly constant. The fix is to make the
+> author **edit rather than recall**. Each pre-filled entry still carries a parenthesis you
+> must fill with what it actually did — a name with a fixed label attached is cargo cult,
+> and RV-PROC-1 checks the line against the diff either way.
+>
+> Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range + findings) or
+> `N/A — <reason>`**: "not listed" and "not applicable" are indistinguishable in a diff,
+> so a skipped run and an inapplicable one read the same. (`tdd` and `riviera-plan-doc`
+> are pre-filled prophylactically — neither has actually been flagged missing; they are
+> here because the row names them, not because they have an incident.)
 
 **Branch:** `<feature|bugfix>/<short-slug>` <must exist in git before phase 0>
 

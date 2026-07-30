@@ -104,3 +104,29 @@ recurring. Fixed in #355, whose own `/review` pass then caught a false-passing a
 and a repeat RV-STYLE-1 slip in that very fix. Lesson: never tick a box for a command
 that didn't run — leave it unticked, say which half ran and why, and ask for the missing
 half; the unrun half is where the recurring defect class hides.
+
+## #447 — the constant nobody remembered, and the count nobody could see (2026-07-30)
+
+Two gaps, both caught by the review gate repeatedly rather than by one incident.
+
+**The constant.** The plan-doc template asked for *Skills consulted* as free prose, so an
+author filling it in thought about the **routed** skills and let something fall off the
+line. RV-PROC-1 caught an omission on six consecutive slices — #427, #430, #436, #440,
+#374, #373. What went missing varied (`riviera-review-overlay` and `riviera-docs-freshness`
+most often; `riviera-stripe-payments` on #430, `riviera-local-debug` on #440), which is the
+tell: six in a row is not six careless authors, it is a template asking a question whose
+answer is partly constant. Lesson: **pre-fill the constant part so the author edits rather
+than recalls**, and make `riviera-docs-freshness` state *ran* or *N/A + reason* — "not
+listed" and "not applicable" look identical in a diff, so a skipped run hid five times.
+
+**The count.** #373 added the third registry-borne booking mail and the sixth mail counter,
+falsifying **sixteen** stated facts — "the two booking kinds", "the first of the two",
+"five mail counters", and so on. Reviewing the changed files found six of them. The other
+**ten** came only from grepping the substrate, in a second round, after the first six were
+fixed: by definition they lived in files the diff never touched, so no amount of reviewing
+the diff could surface them. One of the sixteen was self-inflicted inside the fix round —
+`PaymentDueAnnouncerIT`'s Javadoc still called a method package-private an hour after the
+fix made it public. #374 hit the same class one slice earlier. Lesson: when a slice makes
+the **Nth** of something, grep the substrate for the phrasings of **N−1** (not just the
+renamed identifier) and **re-run the sweep after the fix round** — `riviera-docs-freshness`
+procedure step 2b, cited from merge close-out step 5.
