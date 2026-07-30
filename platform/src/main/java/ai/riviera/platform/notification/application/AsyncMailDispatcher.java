@@ -67,7 +67,8 @@ import org.springframework.stereotype.Component;
  * That read arrived after this class was written and inherited Postgres's infinite default statement
  * timeout; {@code JdbcEmailSuppressions} now gives it a finite {@code queryTimeout} of its own (#386),
  * deliberately scoped to that one lookup rather than set globally, where it would also bound
- * {@code availability}'s {@code SELECT … FOR UPDATE} (invariant #2).
+ * {@code availability}'s {@code INSERT … ON CONFLICT} claim, whose loser waits on the winner's index
+ * tuple lock (invariant #2).
  *
  * <p><strong>Every drop is counted, and every drop is logged — one line each, deliberately</strong> (#415).
  * The counter ({@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED}) is the alertable signal; before it, "how
