@@ -41,6 +41,9 @@ questions the issue asked to be weighed were settled with the maintainer on 2026
 - `riviera-docs-freshness` (close-out step 5, run **pre-merge**) — the substrate audit below; 2
   findings, both patched in this PR rather than in a docs-only follow-up.
 - `riviera-plan-doc` — this template + the Execution-status state-store rule.
+- `tdd` — every phase red-first: the migration IT before V36, the listener specs before the typed
+  outcome, the resend specs before the service, the card spec before the card, and — the one that
+  mattered most — the review's post-resend re-read bug reproduced red before it was fixed.
 - `postgres` — `BIGINT GENERATED ALWAYS AS IDENTITY` PK + `TEXT`-with-`CHECK` state tokens over a
   native enum, `TIMESTAMPTZ`, and an explicit index on the FK column (Postgres creates none);
   killed an early sketch that keyed the table on a UUID.
