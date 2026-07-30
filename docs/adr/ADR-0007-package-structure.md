@@ -279,8 +279,10 @@ two modules that happen not to use those types — until an edge listener on
 **Decision.** Those four types move to `ai.riviera.platform.shared`, declared
 `@ApplicationModule(type = OPEN)`. This is a **Shared Kernel** (Evans, DDD ch. 14), not a bounded
 context: it owns no aggregate, publishes no `api`/`vocabulary`/`events`/`spi` surface (OPEN means
-consumers reference its types directly), and its four classes sit flat at the module root — so it
-matches **neither** the thin nor the full template, deliberately. `PackageShapeArchitectureTests`
+consumers reference its types directly), and its classes sit flat at the module root — so it
+matches **neither** the thin nor the full template, deliberately. (Membership has since grown by one:
+#456 added `ShutdownBudget`. The decision here is the *shape* — flat, OPEN, no published surface — not
+the arity; the admission bar that governs what may join is in the `shared` `package-info`.) `PackageShapeArchitectureTests`
 permits this because it skips types sitting at a module root; that is now an intentional allowance
 rather than an accident.
 

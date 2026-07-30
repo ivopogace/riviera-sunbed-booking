@@ -2,6 +2,8 @@ package ai.riviera.platform.booking.adapter.in;
 
 import java.time.Duration;
 
+import ai.riviera.platform.shared.ShutdownBudget;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -33,12 +35,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *       <p>First, <strong>the budget is shared and it stacks.</strong> This is the third pool in the
  *       context that drains on shutdown, and pools are separate beans whose {@code destroy()} methods
  *       {@code destroySingletons()} runs <em>sequentially on one thread</em> — so the windows add rather
- *       than overlap. {@code MailTransportProperties} already spends 20s of Render's ~30s SIGTERM→SIGKILL
- *       grace across its two, and says in as many words that a third pool must not push the combined
- *       drain past it. At 30s here the total would have been 50s: the process is killed mid-close, Hikari
+ *       than overlap. The two mail pools already claim 20s of Render's ~30s SIGTERM→SIGKILL grace
+ *       between them. At 30s here the total would have been 50s: the process is killed mid-close, Hikari
  *       and the web layer never close in order, and the long drain does not even finish. 5s leaves 5s of
- *       the grace for them, the same divide-the-budget-among-claimants logic
- *       {@code MailTransportProperties.SHUTDOWN_BUDGET_MS} uses.
+ *       the grace for them. Since #456 that arithmetic is not restated per module but stated once in
+ *       {@link ShutdownBudget} and checked as a sum — the version of it that lived in
+ *       {@code notification} could not see this pool, which is how the 30s reached review at all.
  *
  *       <p>Second, <strong>abandoning a refund is cheap here in a way abandoning a mail is not.</strong>
  *       The mail pools drain long because an interrupted send cannot be retried safely — at-least-once
@@ -101,13 +103,14 @@ record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duratio
 	static final Duration MIN_SHUTDOWN_DRAIN = Duration.ofSeconds(1);
 
 	/**
-	 * Equal to the default, as {@code MailTransportProperties}' own ceiling is: at this value the drain
-	 * already fills what shutdown can afford this pool once the two mail pools have taken their 20s of
-	 * Render's ~30s grace, so the knob exists to turn it <strong>down</strong>. Raising it is not a
-	 * tuning decision but a re-division of a platform-wide budget — do that where the budget is
-	 * stated, not here.
+	 * This pool's claim on the platform's SIGTERM grace, equal to the default as
+	 * {@code MailTransportProperties}' own ceiling is: at this value the drain already fills what
+	 * shutdown can afford this pool once the two mail pools have taken their share, so the knob exists to
+	 * turn it <strong>down</strong>. Raising it is not a tuning decision but a re-division of a
+	 * platform-wide budget — do that in {@link ShutdownBudget}, where the grace and every pool's claim
+	 * against it are stated together and {@code ShutdownDrainArchitectureTest} checks the sum (#456).
 	 */
-	static final Duration MAX_SHUTDOWN_DRAIN = DEFAULT_SHUTDOWN_DRAIN;
+	static final Duration MAX_SHUTDOWN_DRAIN = Duration.ofMillis(ShutdownBudget.REFUND_POOL_CLAIM_MS);
 
 	RefundExecutorProperties {
 		poolSize = poolSize == null ? DEFAULT_POOL_SIZE : poolSize;

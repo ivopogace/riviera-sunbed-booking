@@ -458,7 +458,7 @@ moved listener, and the V32 suppression list enforced on both vehicles.
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
-`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`. An
+`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`, `ShutdownBudget`. An
 `@ApplicationModule(type = OPEN)`: technical shared code, so it publishes no
 `api`/`vocabulary` surface and consumers use its types directly.
 

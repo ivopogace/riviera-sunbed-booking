@@ -126,31 +126,21 @@ class MailTransportPropertiesTest {
 	}
 
 	/**
-	 * The stacking the review caught (#410 F-5): the two mail pools are separate beans, and Spring's
-	 * {@code destroySingletons()} runs their {@code destroy()} methods sequentially on one thread, so
-	 * their drain windows <strong>add</strong>. The first cut of this slice set the per-pool ceiling to
-	 * the whole budget on the reasoning that "the mail drain is only one phase of context close" — true
-	 * while each pool carried its own 5s literal, false the moment both read one derived value.
+	 * The stacking check that used to live here is gone, and its absence is the point (#456).
 	 *
-	 * <p>What this pins is the relationship, not the numbers: raising the per-pool ceiling without
-	 * raising the combined budget goes red here, and so does adding a third draining pool without
-	 * incrementing {@link MailTransportProperties#DRAINING_POOLS}. Either would silently push shutdown
-	 * past the platform's SIGTERM grace, where the process is killed mid-close instead of shutting down
-	 * in order — and nothing else in the suite would notice.
+	 * <p>It asserted {@code SHUTDOWN_BUDGET_MS * DRAINING_POOLS <= MAIL_SHUTDOWN_BUDGET_MS} where the
+	 * left operand was <em>defined</em> as the right divided by the same factor — {@code (a / b) * b <= a}
+	 * for every positive integer pair, so it could not fail. Its only live assertion was
+	 * {@code DRAINING_POOLS == 2}, a change-detector that fires when someone edits the very constant they
+	 * would have had to remember to edit; #404 landed a third draining pool in {@code booking} and it did
+	 * not fire, because a mail-scoped count cannot see a {@code booking} pool and invariant #11 rightly
+	 * stops it trying.
+	 *
+	 * <p>The replacement is {@code ShutdownDrainArchitectureTest} in the root test package, which
+	 * <em>discovers</em> draining pools from bytecode and sums their claims against
+	 * {@code ShutdownBudget.SIGTERM_GRACE_MS}. What survives here is the half this module can honestly
+	 * own: its own knob stays inside its own claim, enforced at boot, pinned below.
 	 */
-	@Test
-	void theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget() {
-		int worstCase = MailTransportProperties.SHUTDOWN_BUDGET_MS * MailTransportProperties.DRAINING_POOLS;
-
-		assertThat(worstCase)
-				.as("the pools drain sequentially, so a per-pool ceiling that fits alone can still "
-						+ "overrun the budget together")
-				.isLessThanOrEqualTo(MailTransportProperties.MAIL_SHUTDOWN_BUDGET_MS);
-		assertThat(MailTransportProperties.DRAINING_POOLS)
-				.as("the registry executor and the recovery dispatcher — increment when a third lands")
-				.isEqualTo(2);
-	}
-
 	@Test
 	void acceptsTheWholeTuningRangeButNotBeyondIt() {
 		assertThat(new MailTransportProperties(1).socketTimeoutMs()).isEqualTo(1);
