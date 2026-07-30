@@ -57,7 +57,7 @@ money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three a
 
 | Metric | Meaning | Alert when |
 |---|---|---|
-| `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (**not yet covered by a test — #407**) — and since #405 you need not wait for one: `POST /api/admin/mail-outbox/resubmit` re-drives it on demand. Until it lands, a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
+| `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (pinned end-to-end by `RegistryMailShedDurabilityIT`, #407: it saturates a shrunk bulkhead, sheds a real confirmation, and proves the publication is still outstanding afterwards) — and since #405 you need not wait for one: `POST /api/admin/mail-outbox/resubmit` re-drives it on demand. Until it lands, a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
 
 **A rejection during shutdown is not a shed** and does not touch this counter: a redeploy can reject an
 in-flight send from an otherwise idle pool, which logs one `INFO` and is not saturation. Without that
@@ -173,9 +173,14 @@ in the outbox — but the normal return is exactly why nothing else sees it: the
 Registry marks the publication **complete**, and the outbox gauge never moves.
 
 **Read one increment as: one tourist paid, holds a `CONFIRMED` booking, and will never receive their
-arrival code by mail.** The booking itself is fine; only the mail is gone. The operational remedy is
-the admin resend (#380/#405) *after* the underlying data fault is fixed — nothing will retry on its
-own.
+arrival code by mail.** The booking itself is fine; only the mail is gone.
+
+**Nothing re-drives it — the #405 admin lever included.** `POST /api/admin/mail-outbox/resubmit`
+resubmits *outstanding* publications; this one was marked **complete** on the listener's normal
+return, which is the very property that keeps this loss off `riviera_outbox_pending` (above). The
+per-booking resend that would reach an already-completed publication is **#380, not yet built**. So
+until it lands the remedy is out-of-band: fix the underlying data fault first, then reach the tourist
+through the contact details on the booking. Nothing will retry on its own.
 
 | Tag | Meaning | Which module to investigate | Alert when |
 |---|---|---|---|
