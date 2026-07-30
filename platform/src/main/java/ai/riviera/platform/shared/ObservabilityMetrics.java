@@ -52,7 +52,8 @@ public final class ObservabilityMetrics {
 	 * ships with the emitter that gives it meaning.
 	 *
 	 * <p><strong>It measures a strictly worse event than the shed does.</strong> A shed registry mail
-	 * is deferred — its event publication stays outstanding and a restart republishes it. A dropped
+	 * is deferred — its event publication stays outstanding, and since #405 either a restart or the
+	 * admin resubmission lever republishes it, no longer a restart alone. A dropped
 	 * recovery mail is <em>gone</em>: the payload is a single-use bearer credential the registry may
 	 * not persist (ADR-0011 decision 5), so nothing retries it. Read an increment as one person who will
 	 * wait for a mail that is never coming — and <strong>accept that this series cannot say which

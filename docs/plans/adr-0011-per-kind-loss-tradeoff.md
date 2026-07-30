@@ -200,7 +200,8 @@ N/A — no contract change. No endpoint, DTO, status code, or wire shape is touc
 `git log --grep "(#440)"` away — recording the PR number is what let this section be written
 before the merge instead of in a second docs-only PR)
 
-**Next action:** Nothing in the repo. Post-merge, GitHub-only: confirm #439 closed by the PR, file
+**Next action:** Nothing in the repo — `origin/main` integrated at phase 6 (PR #438 / #405) with
+scoped tests re-run green (54 tests, 0 skipped). Post-merge, GitHub-only: confirm #439 closed by the PR, file
 #439 and #442 under epic #367, and confirm the PR-activity subscription ended with the merge.
 
 | Phase | Status | Commits |
@@ -210,7 +211,8 @@ before the merge instead of in a second docs-only PR)
 | 2 — the code sites (`notification` + `shared`) | ✅ | `4cc87a1` |
 | 3 — the runbook sites (+ two stale interim bullets) | ✅ | `6e34699` |
 | 4 — review-gate fixes (F-1, F-3, F-4) | ✅ | `d00abc3` |
-| 5 — close-out (AC verification, this section) | ✅ | *(this commit)* |
+| 5 — close-out (AC verification, this section) | ✅ | `0a9ac5c` |
+| 6 — integrate `origin/main` (PR #438 / #405 landed mid-gate) | ✅ | *(this commit)* |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -224,6 +226,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-2 | review — `/code-review` pass 1 (CLAUDE.md adherence) | No issues. Confirmed the diff's per-kind claim is what `CLAUDE.md`'s notification row already states independently, that invariant #7 still holds on all three re-worded log lines, that no metric name or tag value moved, and that `CLAUDE.md` itself needs no patch | closed — no action |
 | F-3 | review — `/code-review` passes 2, 3, 4 and 5 **independently**, and the highest-value finding of the gate | **The slice's own new prose claimed a tag that does not exist.** `MAIL_RECOVERY_DROPPED` is built with `REASON_TAG` only (`AsyncMailDispatcher:167-171`); only `MAIL_RECOVERY_FAILED` carries `kind`. Six new sentences told a reader to attribute a *dropped* mail by `kind`, one of them a literal runbook query (`…dropped{kind="operator-approved"}`) that matches nothing during an incident — the same defect class the slice exists to remove, introduced while removing it. Worse, R-4 had *claimed this was verified*: it was written from the runbook's `failed` table and never traced to the `meters.counter(...)` call sites | fixed — all six corrected to state the attribution gap; verified against the construction sites, not the prose |
 | F-4 | review — pass 3 (git history), **contradicting pass 5** | The same false claim **predates this PR** in two places: `ObservabilityMetrics`' DROPPED Javadoc ("so the `kind` tag is what separates the flows") and `observability.md`'s `dropped` blockquote ("filter by it"), both from the #375/#415 arc. Pass 5 asserted the opposite — that no such claim existed on `main` — having diffed only the added lines. Resolved by reading `git show origin/main:` for both files: pass 3 is correct | fixed — both patched in the same blocks this slice already edits (#219 lesson), and disclosed in the PR as pre-existing rather than passed off as this slice's own |
+| F-6 | integration (phase 6) — the merge, not the review | PR #438 (#405) landed while the gates ran, adding an **admin resubmission lever** for outstanding publications. Its own runbook edit says a shed registry mail is republished by "either a restart or the #405 admin lever", but `ObservabilityMetrics:55` — a sentence inside the very Javadoc block this slice rewrites — still said a restart alone | fixed — one clause, patched in passing per the #219 lesson. **Disclosed as #405's drift, not this slice's**: no branch authored a false sentence, the two simply landed hours apart |
 | F-5 | review — pass 4 (prior-PR comments) | This is the **third** occurrence of the "a Javadoc claim about what a counter carries was written to sound consistent instead of being checked at the call site" finding on these same files — raised on PR #427 (finding 2), PR #430 (finding 1) and PR #436 (finding 3). A standing expectation, not a one-off | closed — the rule is now recorded in the Generalization-audit log rather than re-learned a fourth time; the design question the pattern exposed is issue #442 |
 
 ---
