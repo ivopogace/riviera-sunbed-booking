@@ -293,15 +293,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `plan — committed, entering implement (phase 1)`
+**Stage pointer:** `implement (phase 2)` — draft PR **#445** open, so every push is CI-gated.
 
-**Next action:** Load `riviera-local-debug`, then start phase 1 (extract `BookingMailFacts` +
-`BookingMailFactsService`, refactor `BookingConfirmationMailListener` onto it) test-first.
+**Next action:** Phase 2 — add the cancellation message kind to the `Mailer` port and both
+transports (`MockMailer` + `SentEmail`, `SmtpMailer`), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + branch | ⏳ | |
-| 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | | |
+| 0 — Plan doc + branch | ✅ | `8acf653` · draft PR #445 |
+| 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | ✅ | `d713e1a` |
 | 2 — Transport: the cancellation message kind | | |
 | 3 — Chokepoint + the cancellation listener | | |
 | 4 — End-to-end registry IT | | |
