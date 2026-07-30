@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * about to need it verbatim.</strong> Applying the deletion test: removing this class does not
  * simplify anything — it puts the same three ordered reads, the same three-way missing-fact
  * vocabulary and the same injected-port block back into every listener that mails about a booking,
- * which is two today (confirmation, cancellation) and three the day #373 lands. It is not a
+ * which is three since #373 (confirmation, cancellation, payment-due). It is not a
  * published port and never should be: one implementation, no cross-module caller, so a
  * {@code notification.api} entry would be a hypothetical seam.
  *

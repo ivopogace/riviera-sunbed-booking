@@ -34,7 +34,8 @@ public final class ObservabilityMetrics {
 	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
 	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415). Each later mail loss earned a name of its
 	 * own for the same reason ({@link #MAIL_RECOVERY_FAILED} #423, {@link #MAIL_CONFIRMATION_ABANDONED}
-	 * #428, {@link #MAIL_CANCELLATION_ABANDONED} #374): <strong>do not sum them.</strong> This one is the only member of the set that is expected
+	 * #428, {@link #MAIL_CANCELLATION_ABANDONED} #374, {@link #MAIL_PAYMENT_DUE_ABANDONED} #373):
+	 * <strong>do not sum them.</strong> This one is the only member of the set that is expected
 	 * to be re-delivered, which is precisely why summing would mislead.
 	 */
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";

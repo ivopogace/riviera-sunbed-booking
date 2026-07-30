@@ -25,8 +25,17 @@ import ai.riviera.platform.booking.events.BookingPaymentDue;
  * sweep still protects the set; buying it back would mean publishing inside the accept transaction,
  * which is the defect this class exists to avoid.
  *
- * <p>Package-private, like every other collaborator behind the {@link RespondToRequest} seam
- * (invariant #11). Deliberately <em>not</em> where the failure is swallowed: a commit failure
+ * <p><strong>The class is package-private and the method is public</strong> — {@link RequestReleaseService}'s
+ * documented convention ("Methods public for the proxy; the class stays package-private"), and worth
+ * following even though the advice currently applies either way. Spring's
+ * {@code AnnotationTransactionAttributeSource} is public-methods-only by default, so a package-private
+ * {@code @Transactional} rests on proxying behaviour that is not the documented contract — and the
+ * failure mode if it ever stops holding is the worst kind: no transaction, so no commit for the
+ * after-commit listener to follow and no {@code event_publication} row, which is a payment-due mail
+ * that silently never sends. The visibility costs nothing; {@link PaymentDueAnnouncerIT} guards the
+ * behaviour itself.
+ *
+ * <p>Deliberately <em>not</em> where the failure is swallowed: a commit failure
  * surfaces after this method returns, so the catch has to sit at the call site, where
  * {@code RespondToRequestService} can say why an accept must survive it.
  */
@@ -40,7 +49,7 @@ class PaymentDueAnnouncer {
 	}
 
 	@Transactional
-	void announce(BookingPaymentDue paymentDue) {
+	public void announce(BookingPaymentDue paymentDue) {
 		events.publishEvent(paymentDue);
 	}
 }

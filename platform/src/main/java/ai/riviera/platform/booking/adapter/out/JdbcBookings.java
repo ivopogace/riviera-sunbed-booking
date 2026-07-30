@@ -124,10 +124,7 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 			long bookingId, VenueId venueId, Instant now) {
-		// Guarded venue-scoped accept (issue #98): only a still-pending, still-unexpired request of
-		// THIS venue transitions; RETURNING yields the accepted facts atomically. accepted_at is the
-		// pay-window clock (never created_at — the instant TTL would sweep an accepted request), and
-		// is read back rather than assumed so #373's mailed deadline anchors to the stamped row.
+		// Guarded venue-scoped accept (#98); accepted_at is read back so #373's deadline anchors to it.
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :awaiting, accepted_at = :now

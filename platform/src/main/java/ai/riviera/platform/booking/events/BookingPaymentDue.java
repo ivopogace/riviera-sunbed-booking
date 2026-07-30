@@ -41,6 +41,12 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
  * accepted arm begins expiring this booking ({@code accepted_at + booking.request.pay-window}, both
  * sides derived from {@code RequestWindows} so the promise and the enforcement cannot drift).
  *
+ * <p>{@code venueId} rides even though the one subscriber resolves the venue's name from
+ * {@code setId} instead: it is an identifying fact of the booking, it costs nothing on an ids-only
+ * payload, and the two sibling events carry it — a lone divergence would need more explaining than
+ * the field does. Adding it later would be the awkward direction, since a published payload's
+ * subscribers are not all in this repo's future.
+ *
  * <p><strong>The booking code is deliberately absent</strong>, as on every published payload here:
  * the registry serializes events into {@code event_publication} as text and retains them under
  * archive completion mode, so carrying the arrival credential would persist it in cleartext

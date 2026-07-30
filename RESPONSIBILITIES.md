@@ -403,9 +403,15 @@ withheld?" so a confirmed booking's read model can tell the guest to save their 
 inverted direction and preserves the rule: the dependency edge is still `notification → booking`.
 
 **Not My Job:**
-- Deciding **when** to send, minting/hashing recovery tokens, building the tokenized links →
-  the **platform edge** (`CustomerRecovery`, RV-BE-11); I am handed fully-formed messages
-  and own only delivery
+- Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized** links →
+  the **platform edge** (`CustomerRecovery`, RV-BE-11); for the edge-triggered kinds I am handed
+  fully-formed messages and own only delivery. **#373 drew the line that rule always implied:**
+  a *credential-material* link — one whose token I would have to mint, hash or time-bound — is the
+  edge's, and a link I merely *format* from a fact already in my hand is mine. The registry-borne
+  booking mails have no edge flow to build one (they are raised by listeners inside the hexagon)
+  and the arrival code cannot ride the payload (invariant #7, it would be persisted as text), so
+  `BookingLinks` composes `<base>/booking/<code>` here from the code I already read through
+  `booking::api` to render into the body
 - The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
 - The booking/venue/customer **facts** a confirmation renders → their owners, read via
   `api/` ports at send time

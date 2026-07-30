@@ -117,8 +117,7 @@ class RespondToRequestServiceTest {
 
 	@Test
 	void publishesPaymentDueWhenCollectionIsPending() {
-		// The one branch where money is genuinely still owed: the PaymentIntent is registered and the
-		// verified webhook has not spoken (invariant #8). Ids only — never the arrival code (#7).
+		// The one branch that owes anything: registered intent, webhook not yet spoken (invariant #8).
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
@@ -131,9 +130,7 @@ class RespondToRequestServiceTest {
 
 	@Test
 	void publishesNoPaymentDueWhenCollectionSucceedsInline() {
-		// The default-profile stub collects synchronously and the booking is CONFIRMED before this
-		// method returns, so nothing is owed: a "pay by" mail here would contradict the confirmation
-		// mail arriving beside it (payment.api.CollectionGuarantee names the same asymmetry, #390).
+		// The stub confirms before this returns, so a "pay by" mail would contradict the confirmation.
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
@@ -168,9 +165,7 @@ class RespondToRequestServiceTest {
 
 	@Test
 	void aFailedAnnouncementLeavesTheAcceptAccepted() {
-		// The accept and the PaymentIntent are already committed and issued; failing the response now
-		// would report a lie AND send the operator into a retry that answers NOT_PENDING. The mail is
-		// what is lost, and it is lost with a log line rather than silently.
+		// The accept is committed and the intent issued; failing now would lie and invite a retry.
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));

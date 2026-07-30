@@ -215,8 +215,7 @@ class SmtpMailerIT {
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
 		assertThat(GreenMailUtil.getAddressList(message.getFrom())).isEqualTo(FROM);
-		// getSubject() decodes; the raw header is an RFC-2047 encoded-word whenever the subject leaves
-		// ASCII — this one's em dash, and every Albanian venue name carrying an Ë or Ç.
+		// getSubject() decodes the RFC-2047 encoded-word any non-ASCII subject becomes.
 		assertThat(message.getSubject()).isEqualTo("Miramar Beach accepted your request — payment due");
 		assertThat(GreenMailUtil.getHeaders(message)).doesNotContain(BOOKING_CODE);
 

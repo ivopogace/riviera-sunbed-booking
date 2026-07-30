@@ -84,8 +84,7 @@ public class MockMailer implements Mailer {
 	@Override
 	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
 		sent.add(SentEmail.paymentDue(toEmail, paymentDue));
-		// Neither the code nor the pay link (which embeds it) is logged — the two booking kinds' rule,
-		// and here the link is what a reader could actually walk to an unpaid booking with.
+		// Neither the code nor the pay link that embeds it: the link reaches an unpaid booking.
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {} {} due by {}", SentEmail.Kind.PAYMENT_DUE,
 				sanitize(toEmail), sanitize(paymentDue.venueName()), paymentDue.bookingDate(),
 				paymentDue.currency(), paymentDue.amountMinor(), paymentDue.payBy());

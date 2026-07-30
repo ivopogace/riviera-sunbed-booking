@@ -2,6 +2,8 @@ package ai.riviera.platform.notification.application;
 
 import java.net.URI;
 
+import org.springframework.web.util.UriComponentsBuilder;
+
 /**
  * Builds the link a booking mail points at (#373): the code-gated booking view,
  * {@code <base>/booking/<code>}.
@@ -10,7 +12,7 @@ import java.net.URI;
  * <em>credential-material machinery</em> — minting a token, hashing it, deciding its TTL — at the
  * platform edge, and this mints nothing: it formats a booking code the module already reads through
  * {@code booking.api} in order to render it into the mail body. The edge cannot build this one
- * anyway, because the two booking mails are raised by registry listeners inside the hexagon rather
+ * anyway, because the three booking mails are raised by registry listeners inside the hexagon rather
  * than by an edge flow with a request in hand.
  *
  * <p><strong>Why {@code /booking/<code>} and not {@code /booking/pay}.</strong> The pay screen
@@ -27,7 +29,13 @@ import java.net.URI;
  */
 public record BookingLinks(String baseUrl) {
 
-	private static final String BOOKING_PATH = "/booking/";
+	/**
+	 * The SPA route segment, as a segment rather than a {@code "/booking/"} path literal: the URI is
+	 * assembled from parts, which encodes the code and keeps the analyzer's hardcoded-URI rule
+	 * (java:S1075) satisfied without pretending the route is a tunable. It is not — it must match
+	 * {@code app.routes.ts}, and a deployment free to change it could only break every mailed link.
+	 */
+	private static final String BOOKING_SEGMENT = "booking";
 
 	public BookingLinks {
 		if (baseUrl == null || baseUrl.isBlank()) {
@@ -46,7 +54,10 @@ public record BookingLinks(String baseUrl) {
 
 	/** The code-gated view for this booking — where an accepted request's guest goes to pay. */
 	public URI forBooking(String bookingCode) {
-		return URI.create(baseUrl + BOOKING_PATH + bookingCode);
+		return UriComponentsBuilder.fromUriString(baseUrl)
+				.pathSegment(BOOKING_SEGMENT, bookingCode)
+				.build()
+				.toUri();
 	}
 
 	private static String trimTrailingSlash(String value) {

@@ -55,6 +55,14 @@ day it lands, because `RegistryMailOutbox` scopes by the
   keep: it is the only place that owns "publish this durably, outside the accept
   transaction") and declined a second resolver seam in `notification` — the existing
   `BookingMailFactsService` already answers the three-port question verbatim.
+- `tdd` — every phase red-first; the review-fix round too.
+- `riviera-review-overlay` — the review gate's project bank (RV-BE/RV-PROC/RV-STYLE), walked on
+  top of `/code-review`; its findings are in the register below.
+- `riviera-docs-freshness` — run over `origin/main...HEAD` at the review-fix round, after the
+  review found six substrate/Javadoc statements this slice had made false. **This omission was
+  the finding**: the routing table's always-on row and the substrate-doc trigger both applied
+  from the start, and the same two skills were missing from the five preceding sibling plan docs
+  (#427, #430, #436, #440, #374). Recorded here rather than quietly added.
 
 **Branch:** `claude/sdlc-373-obf7dk` — the cloud session's designated remote branch stands
 in for `feature/email-s5-payment-due` (`riviera-sdlc` § Remote/cloud session addendum).
@@ -95,7 +103,9 @@ in for `feature/email-s5-payment-due` (`riviera-sdlc` § Remote/cloud session ad
       republication), when the listener runs both times, then the send is attempted per
       delivery with no dedupe table — the accepted at-least-once contract — and a
       transport failure **propagates** so the publication stays outstanding.
-      *Pinned by:* `RequestPaymentDueMailIT.transportFailureLeavesThePublicationOutstanding`
+      *Pinned by:* `RequestPaymentDueMailIT.resubmissionProducesNoSecondMail` (the registry half)
+      + `TransactionalMailServiceTest.thePaymentDueIsSynchronousAndPropagatesTransportFailures`
+      (the propagation half — the review found the originally-cited method never existed)
 - [ ] **AC-8:** Given the listener, then it is annotated
       `@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)` + `@TransactionalEventListener`
       (`AFTER_COMMIT`), and the arch rule's non-vacuity guard names **all three** shipped
@@ -113,6 +123,10 @@ in for `feature/email-s5-payment-due` (`riviera-sdlc` § Remote/cloud session ad
       when an accept has already transitioned and issued its PaymentIntent, then the accept
       still answers `Accepted(AWAITING_PAYMENT)` and the lost mail is logged with the booking id.
       *Pinned by:* `RespondToRequestServiceTest.aFailedAnnouncementLeavesTheAcceptAccepted`
+- [ ] **AC-13:** Given the announcer, then its `@Transactional` genuinely opens a transaction, so
+      the publication is persisted rather than silently dropped by an after-commit listener with no
+      commit to follow.
+      *Pinned by:* `PaymentDueAnnouncerIT.announcingPersistsAnEventPublication`
 - [ ] **AC-11:** Given `ApplicationModules.verify()`, then the new event and listener
       introduce no boundary violation and no new module grant.
       *Pinned by:* `ModularityTests.verifiesModularStructure`
@@ -263,18 +277,18 @@ and stays hermetic.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 3 (substrate docs), then ready-for-review`
+**Stage pointer:** `review gate — findings fixed, re-verifying`
 
-**Next action:** Phase 3 — record the third registry-borne booking mail and the sixth
-mail counter in `CLAUDE.md` / `RESPONSIBILITIES.md` / the observability runbook, then mark
-PR #446 ready for review and run the Review + Sonar gates.
+**Next action:** Re-run the scoped tests + the structural net over the fix round, push, and
+confirm CI + Sonar green on the new head before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `booking`: the event, the widened accept facts, the `Pending`-only publish | ✅ | `<phase-0>` |
-| 1 — `notification`: the mail kind, the transport, the pay link | ✅ | `<phase-1>` |
-| 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | ✅ | `<phase-2>` |
-| 3 — substrate docs + close-out | ⏳ | |
+| 0 — `booking`: the event, the widened accept facts, the `Pending`-only publish | ✅ | `8c626ec` |
+| 1 — `notification`: the mail kind, the transport, the pay link | ✅ | `d290bd8` |
+| 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | ✅ | `da79ebd` |
+| 3 — substrate docs | ✅ | `a36867d`, `c31e40e` |
+| 4 — review-gate fixes | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -284,7 +298,15 @@ what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (git-history) | `PaymentDueAnnouncer.announce` was package-private, against `RequestReleaseService`'s documented "methods public for the proxy" convention. The advice does apply on this Spring version (proved by `PaymentDueAnnouncerIT`, which the agent predicted would fail and does not) — but the convention exists so nothing rests on version-specific proxying, and the failure mode is a mail that silently never sends | fixed — method made public, reasoning recorded on the class |
+| F-2 | review (CLAUDE.md + overlay RV-BE-11) | `notification/package-info.java` and `RESPONSIBILITIES.md` both stated the module "is handed fully-formed links and owns only delivery", which this slice made false by building the pay link inside the module | fixed — the code placement is right (a registry listener has no request; the code cannot ride the payload per invariant #7), so both docs now draw the line the rule always implied: credential-material machinery is the edge's, formatting a fact already in hand is the module's |
+| F-3 | review (prior-PR + overlay) | Six substrate/Javadoc statements undercounted after the third mail landed: `Mailer` ("two booking kinds"), `MissingBookingFact` ("two counters"/"two listeners"), `BookingMailFactsService` (a hedge naming #373 itself), `notification/package-info.java`, `booking/events/package-info.java`, and `ObservabilityMetrics.MAIL_REGISTRY_SHED`'s enumeration | fixed — all six patched; `BookingLinks` also contradicted its own diff ("two booking mails") |
+| F-4 | review (prior-PR) | AC-7 cited `RequestPaymentDueMailIT.transportFailureLeavesThePublicationOutstanding`, which never existed, and the new kind had no chokepoint failure-path test at all — the gap #371's review closed for the confirmation | fixed — three tests added to `TransactionalMailServiceTest` (propagation, suppressed skip, no fail-open); AC-7 re-pinned to what shipped |
+| F-5 | review (overlay RV-PROC-1) | *Skills consulted* omitted `riviera-review-overlay` and `riviera-docs-freshness` — the sixth consecutive slice to omit them | fixed — both added, with the repeat recorded rather than quietly corrected |
+| F-6 | review (overlay RV-STYLE-1) | Six multi-line inline `//` comments in new code (Javadoc is exempt) | fixed — each cut to one line or dropped |
+| F-7 | review (overlay RV-BE-4) | `BookingPaymentDue.venueId` is unread by the only subscriber | resolved with rationale — kept for symmetry with the two sibling events and because widening a published payload later is the harder direction; the reason is now stated on the record |
+| F-8 | sonar | `java:S1075` (MINOR code smell) on `BookingLinks` — hardcoded `"/booking/"` URI literal | fixed in code — the URI is now assembled from path segments via `UriComponentsBuilder`, which also encodes the code and matches the edge's link-building idiom. Reported list back to zero |
+| F-9 | review (overlay RV-BE-1/7/9) | The three default-Blocker items | pass — no availability write path added, the guard predicate untouched; confirmation still webhook-only; `assertOwns` still the first act of `accept` |
 
 ---
 
