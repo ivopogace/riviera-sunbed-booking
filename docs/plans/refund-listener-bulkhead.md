@@ -421,7 +421,8 @@ unbound the money path — is caught by a test that exists before the listener m
       `gradle --no-daemon --console=plain test --tests "*RefundExecutorConfigTest*" --tests "*RefundExecutorPropertiesTest*" --tests "*RefundExecutorWiringIT*"`
       → FAIL (the classes do not exist).
 - [x] **Step 3: Minimal implementation** — the properties record (`pool-size` 4, `queue-capacity` 500,
-      `shutdown-drain` PT30S, each with a floor and a ceiling and the reason for both in Javadoc), the
+      `shutdown-drain` PT5S — landed as PT30S, corrected by the review gate's F-4; each with a floor and
+      a ceiling and the reason for both in Javadoc), the
       `@Bean(name = REFUND_EXECUTOR, defaultCandidate = false)` with core = max = `poolSize`, the
       saturation policy as a combined `RejectedExecutionHandler` + `TaskDecorator`, and the
       `REFUND_SHED` constant.
