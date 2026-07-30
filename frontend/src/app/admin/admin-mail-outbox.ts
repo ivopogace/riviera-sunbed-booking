@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { AdminConsoleTabs } from './admin-console-tabs';
+import { AdminMailDelivery } from './admin-mail-delivery';
 import { AdminMailOutboxService } from './admin-mail-outbox.service';
 import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model';
 
@@ -25,12 +26,16 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
  * stale the moment it is rendered, and a button disabled by a stale number is indistinguishable from
  * a broken one. It disables only for the round-trip it is actually making.
  *
+ * <p>Since #380 the page carries a second card, {@link AdminMailDelivery}: the outbox above answers
+ * "what does the registry still owe us", that one answers "what happened to this tourist's mail" —
+ * the same concern from opposite ends, which is why it is a card here rather than a third tab.
+ *
  * <p>Like `/admin`, the page self-gates on {@link OperatorAuth} for UX while the backend
  * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
  */
 @Component({
   selector: 'app-admin-mail-outbox',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminMailDelivery],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-outbox-title">
@@ -111,6 +116,8 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
           >
             {{ notice() }}
           </p>
+
+          <app-admin-mail-delivery />
         }
       }
     </section>

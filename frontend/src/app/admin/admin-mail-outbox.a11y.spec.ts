@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { OperatorAuth } from '../core/operator-auth';
+import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { AdminMailOutbox } from './admin-mail-outbox';
 import { AdminMailOutboxService } from './admin-mail-outbox.service';
 import { MailOutboxStatusView } from './admin.model';
@@ -28,6 +29,12 @@ function serviceStub(status: MailOutboxStatusView): Partial<AdminMailOutboxServi
   };
 }
 
+/** The nested delivery card's port — never exercised from these specs. */
+const inertDeliveryService = {
+  lookup: async () => ({ bookings: [] }),
+  resend: async () => ({ outcome: 'SENT' as const }),
+};
+
 async function render(status: MailOutboxStatusView): Promise<ComponentFixture<AdminMailOutbox>> {
   await TestBed.configureTestingModule({
     imports: [AdminMailOutbox],
@@ -35,6 +42,8 @@ async function render(status: MailOutboxStatusView): Promise<ComponentFixture<Ad
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub },
       { provide: AdminMailOutboxService, useValue: serviceStub(status) },
+      // The page nests the #380 delivery card; inert here, it has its own specs.
+      { provide: AdminMailDeliveryService, useValue: inertDeliveryService },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminMailOutbox);

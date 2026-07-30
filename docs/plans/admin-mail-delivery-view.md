@@ -50,8 +50,15 @@ questions the issue asked to be weighed were settled with the maintainer on 2026
 - `riviera-frontend` — the new surface is a card **on the existing `/admin/email` page** in the
   `admin/` feature folder (no third tab, no route), its HTTP service colocated, models in the
   feature's existing `admin.model.ts`.
-- `riviera-tailwind`, `angular-developer` + angular-cli MCP, `playwright-cli` — **due at phase 4/5**
-  (frontend + e2e); re-run the gate there and append what each changed.
+- `riviera-tailwind` (phase 4) — token-first styling (`--riv-card-ink`), `text-[14px]` over `text-sm`,
+  per-property `[transition:…]`, and no `@apply`: the card reuses the `appCardGlass` directive and sets
+  its own radius rather than inheriting one.
+- `angular-developer` (phase 4) — Signal Forms for the one field (the `auth/` precedent, v22-stable),
+  `@if`/`@for` control flow, `inject()`, no `ChangeDetectionStrategy`/`standalone` boilerplate.
+  **The angular-cli MCP server never finished connecting this session**, so its
+  `get_best_practices`/`search_documentation` tools were unavailable; the in-repo `angular-developer`
+  skill (authoritative per `CLAUDE.md`) was used instead. Recorded rather than silently skipped.
+- `playwright-cli` — **due at phase 5**; append what it changed.
 
 **Branch:** `claude/sdlc-380-34lpjq` — the cloud session's designated remote branch **stands in for**
 `feature/admin-mail-delivery-view` (`riviera-sdlc` remote-session addendum); it exists and is level
@@ -122,9 +129,14 @@ with `origin/main`.
 
 `N/A — new behavior, replaces nothing.` The `/admin/email` page gains a second card; the #405
 outbox card, its status read, its cooldown reporting and its error states are untouched (no shared
-component, no shared service method, no shared endpoint). Verified by leaving
-`admin-mail-outbox.spec.ts` and `admin-mail-outbox.e2e.ts` unmodified — if either needs an edit, that
-is a parity signal to record here.
+component, no shared service method, no shared endpoint).
+
+**One consequence did land on the outbox specs, and it is test wiring rather than behaviour.** Nesting
+the card inside `AdminMailOutbox` means its TestBed must now provide `AdminMailDeliveryService`, so
+`admin-mail-outbox.spec.ts` and `admin-mail-outbox.a11y.spec.ts` each gained one inert provider. No
+assertion, expectation or component behaviour changed — recorded here because the plan predicted those
+files would be untouched, and an unrecorded edit to them is exactly the parity signal this section
+exists to catch.
 
 ## Risk register
 
@@ -296,10 +308,9 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `implement — backend done (phases 0–3); phase 4 (frontend) next`
+**Stage pointer:** `implement — phases 0–4 done; phase 5 (e2e) next`
 
-**Next action:** Phase 4 — re-run the Skill-routing gate (`angular-developer` + angular-cli MCP,
-`riviera-tailwind`), then build the console card test-first.
+**Next action:** Phase 5 — load `playwright-cli` and write the CI-safe mocked e2e spec.
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -313,7 +324,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 | 1 — Record the automatic path (typed send outcome + listener recording) | ✅ | `5d26e5a` |
 | 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | ✅ | `1cc8392` |
 | 3 — Resend service + ADMIN lookup/resend endpoints | ✅ | `ca4302e` |
-| 4 — Frontend card, service, unit + a11y specs | | |
+| 4 — Frontend card, service, unit + a11y specs | ✅ | `70b8dea` |
 | 5 — Playwright mocked e2e | | |
 | 6 — Substrate docs + close-out | | |
 

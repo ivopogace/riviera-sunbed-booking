@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { AdminMailOutbox } from './admin-mail-outbox';
 import { AdminMailOutboxService } from './admin-mail-outbox.service';
 import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model';
@@ -37,6 +38,12 @@ function serviceStub(status: MailOutboxStatusView = { outstanding: 0, cooldownRe
   };
 }
 
+/** The nested delivery card's port — never exercised from these specs. */
+const inertDeliveryService = {
+  lookup: async () => ({ bookings: [] }),
+  resend: async () => ({ outcome: 'SENT' as const }),
+};
+
 async function render(
   auth: OperatorAuth,
   service: ReturnType<typeof serviceStub>,
@@ -47,6 +54,8 @@ async function render(
       provideRouter([]),
       { provide: OperatorAuth, useValue: auth },
       { provide: AdminMailOutboxService, useValue: service },
+      // The page nests the #380 delivery card; inert here, it has its own specs.
+      { provide: AdminMailDeliveryService, useValue: inertDeliveryService },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminMailOutbox);
