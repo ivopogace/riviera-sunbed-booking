@@ -231,7 +231,10 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| — | CI | All 7 checks green on `33a3010` — Backend (build + test), Frontend (lint + test + build), CodeQL ×2, SonarCloud ×2 | passed |
+| — | Sonar gate | **0 new issues, 0 accepted issues, 0 security hotspots, 0.0% duplication, 100.0% coverage on new code** — clears the repo's stricter bar (0 new / 0 dup / ≥80% new-code coverage). Issue list pulled and empty, so nothing to triage | passed |
+| — | review gate (overlay pass) | `riviera-review-overlay` backend bank walked: RV-BE-3 ✅ (both consumers already grant `shared`; OPEN kernel, so direct type reference is correct), RV-BE-12 ✅ (module-root type, the documented `shared` allowance), RV-STYLE-1 ✅ (zero inline comments added — all prose is Javadoc, exempt), RV-PROC-1 ✅ (*Skills consulted* matches every area the diff touches). RV-BE-1/4/5/7/8/9/10/14/15/16/17/18 ➖ N/A — no availability write, no event, no money, no endpoint, no venue-scoped surface, no migration | passed |
+| — | review gate (reviewer 1/5, CLAUDE.md adherence) | No findings. Independently verified the `shared` admission against all three clauses and confirmed `MAIL_POOL_CLAIM_MS`/`REFUND_POOL_CLAIM_MS` match what actually ships | passed |
 
 ---
 
