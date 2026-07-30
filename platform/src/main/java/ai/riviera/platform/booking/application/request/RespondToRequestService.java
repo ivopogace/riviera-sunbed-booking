@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
@@ -59,17 +60,22 @@ class RespondToRequestService implements RespondToRequest {
 	private final CheckoutPort checkout;
 	private final ConfirmBooking confirmBooking;
 	private final ReleaseAbandonedBooking releaseAbandoned;
+	private final PaymentDueAnnouncer paymentDue;
+	private final RequestWindows windows;
 	private final Clock clock;
 
 	RespondToRequestService(VenueOwnership ownership, Bookings bookings,
 			RequestReleaseService declineRelease, CheckoutPort checkout, ConfirmBooking confirmBooking,
-			ReleaseAbandonedBooking releaseAbandoned, Clock clock) {
+			ReleaseAbandonedBooking releaseAbandoned, PaymentDueAnnouncer paymentDue,
+			RequestWindows windows, Clock clock) {
 		this.ownership = ownership;
 		this.bookings = bookings;
 		this.declineRelease = declineRelease;
 		this.checkout = checkout;
 		this.confirmBooking = confirmBooking;
 		this.releaseAbandoned = releaseAbandoned;
+		this.paymentDue = paymentDue;
+		this.windows = windows;
 		this.clock = clock;
 	}
 
@@ -134,6 +140,7 @@ class RespondToRequestService implements RespondToRequest {
 				// Real Stripe: the payment request is issued; the guest pays via the code-gated view
 				// and the verified webhook confirms (invariant #8) — never this response.
 				log.info("request {} accepted, payment request issued", accepted.bookingId());
+				announcePaymentDue(accepted);
 				yield new AcceptOutcome.Accepted(BookingStatus.AWAITING_PAYMENT);
 			}
 			case PaymentOutcome.Failed failed -> {
@@ -148,6 +155,33 @@ class RespondToRequestService implements RespondToRequest {
 				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;
 			}
 		};
+	}
+
+	/**
+	 * Raise the "payment is now due, by {@code payBy}" fact (#373) for the one accept branch that owes
+	 * anything — {@link BookingPaymentDue} argues which and why the accept transaction cannot carry it.
+	 * The deadline comes off {@link RequestWindows}, whose other half is the abandoned sweep's cutoff,
+	 * so the mailed promise and the enforcement are one decision.
+	 *
+	 * <p><strong>A failure here may not fail the accept.</strong> By this point the transition has
+	 * committed and the PaymentIntent is registered: the venue said yes and the guest can pay. Throwing
+	 * would report that as an error and send the operator into a retry the guard answers
+	 * {@code NOT_PENDING} — a worse outcome than the mail this loses. So it is caught, and caught
+	 * loudly: the {@code WARN} names the booking (ids only, invariant #7), because with no publication
+	 * row written there is nothing for {@code riviera.outbox.pending} or the #405 re-drive to find.
+	 */
+	private void announcePaymentDue(AcceptedRequest accepted) {
+		try {
+			paymentDue.announce(new BookingPaymentDue(new BookingId(accepted.bookingId()),
+					accepted.venueId(), accepted.setId(), accepted.bookingDate(),
+					windows.payDeadline(accepted.acceptedAt()), accepted.amountMinor(),
+					accepted.currency()));
+		}
+		catch (RuntimeException notAnnounced) {
+			log.warn("payment-due fact not published for accepted booking {} — the accept and its payment "
+					+ "request stand, but no mail will tell the guest their deadline", accepted.bookingId(),
+					notAnnounced);
+		}
 	}
 
 	@Override

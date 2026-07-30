@@ -87,8 +87,10 @@ in for `feature/email-s5-payment-due` (`riviera-sdlc` § Remote/cloud session ad
       abandoned sweep's accepted arm begins expiring that booking — i.e.
       `accepted_at + booking.request.pay-window`, both sides reading the same
       `RequestWindows` bean (one source of truth; the sweep can only be *late*, never
-      early).
-      *Pinned by:* `PaymentDueDeadlineTest.deadlineMatchesTheSweepCutoff`
+      early). Made structural rather than merely tested: `payDeadline(acceptedAt)` and
+      `acceptedBefore(now)` are exact inverses off one field, and the sweep now takes the
+      whole record instead of a bare `Duration`.
+      *Pinned by:* `RequestWindowsTest.theMailedDeadlineIsExactlyTheSweepsCutoff`
 - [ ] **AC-7:** Given the same `BookingPaymentDue` delivered twice (registry
       republication), when the listener runs both times, then the send is attempted per
       delivery with no dedupe table — the accepted at-least-once contract — and a
@@ -107,6 +109,10 @@ in for `feature/email-s5-payment-due` (`riviera-sdlc` § Remote/cloud session ad
       `riviera.mail.payment-due.abandoned` tagged `no-booking`/`no-set`/`no-contact`, and
       logs an `ERROR` carrying ids only — never the booking code.
       *Pinned by:* `RequestPaymentDueMailIT.abandonsAndCountsAMissingFact`
+- [ ] **AC-12:** Given a publish that fails (the `event_publication` insert or its commit),
+      when an accept has already transitioned and issued its PaymentIntent, then the accept
+      still answers `Accepted(AWAITING_PAYMENT)` and the lost mail is logged with the booking id.
+      *Pinned by:* `RespondToRequestServiceTest.aFailedAnnouncementLeavesTheAcceptAccepted`
 - [ ] **AC-11:** Given `ApplicationModules.verify()`, then the new event and listener
       introduce no boundary violation and no new module grant.
       *Pinned by:* `ModularityTests.verifiesModularStructure`
@@ -142,6 +148,7 @@ abandoned sweep, and the existing two booking mails are untouched in behavior.
 | R-6 | A registry-vehicle send that throws parks a permanently-failing publication | low | med | Only *transport* failures propagate; a missing fact and a suppressed address both return **normally** (AC-9/AC-10), the #371/#374 rule | agent | open |
 | R-7 | A new bounded executor is added, pushing the combined shutdown drain past the SIGTERM grace | none | — | No new pool: the listener rides the existing `registryMailExecutor`. `MailTransportProperties.DRAINING_POOLS` stays `2` | agent | open |
 | R-8 | Flyway version collision with a parallel slice | none | — | No migration in this slice. (Next free number is **V36**; the ten open PRs are all Dependabot frontend bumps — no backend diff, no migration.) | agent | closed — no migration |
+| R-10 | A failed publish turns a successful accept into a 500, and the operator's retry then answers `NOT_PENDING` | low | med | The announce is caught at the call site and logged `WARN` with the booking id; the accept's own answer is unchanged. Deliberately no counter — the failure mode is "the database is unavailable", which every other subsystem already reports, and no publication row exists for the #405 re-drive to find. AC-12 pins it | agent | open |
 | R-9 | The mailed link points at `localhost:4200` in production | low | med | The base URL reuses the already-deployed `RIVIERA_RECOVERY_LINK_BASE_URL`, validated at boot (absolute URI, non-blank) like its siblings | agent | open |
 
 ## Open questions / Assumptions
@@ -256,16 +263,15 @@ and stays hermetic.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Phase 0 — write `RespondToRequestServiceTest`'s three publication tests
-(AC-1/2/3) red, then widen `AcceptedRequest` + the `RETURNING` list and add
-`BookingPaymentDue` + `PaymentDueAnnouncer`.
+**Next action:** Phase 1 — add the `PaymentDueMail` kind to the `Mailer` port, both
+transports, `SentEmail`, the chokepoint send, and `BookingLinks` + its bound property.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `booking`: the event, the widened accept facts, the `Pending`-only publish | | |
-| 1 — `notification`: the mail kind, the transport, the pay link | | |
+| 0 — `booking`: the event, the widened accept facts, the `Pending`-only publish | ✅ | `<phase-0>` |
+| 1 — `notification`: the mail kind, the transport, the pay link | ⏳ | |
 | 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | | |
 | 3 — substrate docs + close-out | | |
 
@@ -293,7 +299,11 @@ what the fix touches *before* editing).
   `RequestWindows` + the announcer, publish on the `Pending` branch only.
 - `booking/adapter/out/JdbcBookings.java` — **modify**; widen the accept `RETURNING` list
   and its row mapper.
-- `booking/application/Bookings.java` — **modify** if the port signature's return type moves.
+- `booking/application/request/RequestWindows.java` — **modify**; `payDeadline` /
+  `acceptedBefore`, the two halves of the one-source-of-truth deadline.
+- `booking/application/refund/ExpireAbandonedBookings.java` + `AbandonedBookingSweepService.java`
+  + `adapter/in/AbandonedBookingScheduler.java` — **modify**; the sweep takes `RequestWindows`
+  rather than a bare `Duration`, so its cutoff and the mailed deadline share one definition.
 
 **`notification`**
 - `notification/application/PaymentDueMail.java` — **new**; the structured message.
@@ -318,7 +328,7 @@ what the fix touches *before* editing).
 
 **Tests**
 - `booking/application/request/RespondToRequestServiceTest.java` — **modify** (AC-1..3).
-- `booking/application/request/PaymentDueDeadlineTest.java` — **new** (AC-6).
+- `booking/application/request/RequestWindowsTest.java` — **new** (AC-6).
 - `notification/RequestPaymentDueMailIT.java` — **new** (AC-4, 5, 7, 9, 10).
 - `notification/adapter/in/MailListenerExecutorArchitectureTest.java` — **modify** (AC-8).
 
@@ -412,7 +422,7 @@ this plan doc
 
 - [ ] **AC-1..3:** `gradle test --tests "*RespondToRequestServiceTest*"` → PASS.
 - [ ] **AC-4, 5, 7, 9, 10:** `gradle test --tests "*RequestPaymentDueMailIT*"` → PASS.
-- [ ] **AC-6:** `gradle test --tests "*PaymentDueDeadlineTest*"` → PASS.
+- [ ] **AC-6:** `gradle test --tests "*RequestWindowsTest*"` → PASS.
 - [ ] **AC-8:** `gradle test --tests "*MailListenerExecutorArchitectureTest*"` → PASS.
 - [ ] **AC-11:** `gradle test --tests "*ModularityTests*"` → PASS.
 

@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.request;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -12,7 +13,10 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.QueryTimeoutException;
 
+import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
@@ -58,7 +62,11 @@ class RespondToRequestServiceTest {
 	private static final OperatorId OPERATOR = new OperatorId(7);
 	private static final VenueId VENUE = new VenueId(1);
 	private static final BookingId BOOKING = new BookingId(42);
+	private static final SetId SET = new SetId(11);
+	private static final LocalDate BOOKING_DATE = LocalDate.of(2026, 8, 1);
 	private static final Instant NOW = Instant.parse("2026-07-10T08:00:00Z");
+	private static final Duration PAY_WINDOW = Duration.ofHours(12);
+	private static final RequestWindows WINDOWS = new RequestWindows(Duration.ofHours(24), PAY_WINDOW);
 
 	private final VenueOwnership ownership = mock(VenueOwnership.class);
 	private final Bookings bookings = mock(Bookings.class);
@@ -66,12 +74,18 @@ class RespondToRequestServiceTest {
 	private final CheckoutPort checkout = mock(CheckoutPort.class);
 	private final ConfirmBooking confirmBooking = mock(ConfirmBooking.class);
 	private final ReleaseAbandonedBooking releaseAbandoned = mock(ReleaseAbandonedBooking.class);
+	private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 	private final Clock clock = Clock.fixed(NOW, ZoneId.of("UTC"));
 
 	private RespondToRequestService service() {
 		return new RespondToRequestService(ownership, bookings,
 				new RequestReleaseService(bookings, availability), checkout, confirmBooking,
-				releaseAbandoned, clock);
+				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, clock);
+	}
+
+	/** The facts the guarded accept transition RETURNINGs — every one of them a payload field. */
+	private static AcceptedRequest acceptedRequest() {
+		return new AcceptedRequest(BOOKING.value(), VENUE, SET, BOOKING_DATE, NOW, 4500L, "EUR");
 	}
 
 	@Test
@@ -87,7 +101,7 @@ class RespondToRequestServiceTest {
 	@Test
 	void acceptTransitionsThenIssuesPaymentRequest() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
-				.thenReturn(Optional.of(new AcceptedRequest(BOOKING.value(), 4500L, "EUR")));
+				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
@@ -102,9 +116,77 @@ class RespondToRequestServiceTest {
 	}
 
 	@Test
+	void publishesPaymentDueWhenCollectionIsPending() {
+		// The one branch where money is genuinely still owed: the PaymentIntent is registered and the
+		// verified webhook has not spoken (invariant #8). Ids only — never the arrival code (#7).
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+
+		service().accept(OPERATOR, VENUE, BOOKING);
+
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, BOOKING_DATE,
+				NOW.plus(PAY_WINDOW), 4500L, "EUR"));
+	}
+
+	@Test
+	void publishesNoPaymentDueWhenCollectionSucceedsInline() {
+		// The default-profile stub collects synchronously and the booking is CONFIRMED before this
+		// method returns, so nothing is owed: a "pay by" mail here would contradict the confirmation
+		// mail arriving beside it (payment.api.CollectionGuarantee names the same asymmetry, #390).
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
+
+		service().accept(OPERATOR, VENUE, BOOKING);
+
+		verifyNoInteractions(publisher);
+	}
+
+	@Test
+	void publishesNoPaymentDueWhenPaymentInitFails() {
+		// The booking is reverted to PENDING_REQUEST, so there is nothing to pay and no way to pay it.
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
+
+		service().accept(OPERATOR, VENUE, BOOKING);
+
+		verifyNoInteractions(publisher);
+	}
+
+	@Test
+	void publishesNoPaymentDueWhenPaymentIssuanceThrows() {
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(checkout.pay(any(), any())).thenThrow(new IllegalStateException("payment row insert failed"));
+
+		assertThrows(IllegalStateException.class, () -> service().accept(OPERATOR, VENUE, BOOKING));
+
+		verifyNoInteractions(publisher);
+	}
+
+	@Test
+	void aFailedAnnouncementLeavesTheAcceptAccepted() {
+		// The accept and the PaymentIntent are already committed and issued; failing the response now
+		// would report a lie AND send the operator into a retry that answers NOT_PENDING. The mail is
+		// what is lost, and it is lost with a log line rather than silently.
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		doThrow(new QueryTimeoutException("event_publication insert timed out"))
+				.when(publisher).publishEvent(any(Object.class));
+
+		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
+
+		AcceptOutcome.Accepted accepted = assertInstanceOf(AcceptOutcome.Accepted.class, outcome);
+		assertEquals(BookingStatus.AWAITING_PAYMENT, accepted.status());
+	}
+
+	@Test
 	void acceptOnStubProfileConfirmsSynchronously() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
-				.thenReturn(Optional.of(new AcceptedRequest(BOOKING.value(), 4500L, "EUR")));
+				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
@@ -119,7 +201,7 @@ class RespondToRequestServiceTest {
 		// R-4: the venue said yes — a PI-creation failure must NOT release the (set, date); it
 		// reverts so the operator can retry (the idempotency key makes the retry replay-safe).
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
-				.thenReturn(Optional.of(new AcceptedRequest(BOOKING.value(), 4500L, "EUR")));
+				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
 		when(bookings.revertAcceptToPending(BOOKING.value())).thenReturn(true);
 
