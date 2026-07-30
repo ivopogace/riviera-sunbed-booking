@@ -371,7 +371,7 @@ recovery vehicle a *transient* failure of the lookup itself sends the mail rathe
 because the list is empty until #372's feed lands and D-8 makes a dropped reset indistinguishable
 from success to the user. The registry vehicle still propagates, so at-least-once retries against a
 healthy DB. The lookup is bounded by a `queryTimeout` scoped to its own adapter — never the global
-property, which would also bound `availability`'s `SELECT … FOR UPDATE` (invariant #2). V34 tightened
+property, which would also bound `availability`'s `INSERT … ON CONFLICT` claim, whose loser waits on the winner's index tuple lock (invariant #2). V34 tightened
 the `domain` CHECK to mirror the Java writer exactly. **V35/#391 added the one sanctioned
 exception to never-deleted — and it is still not a deletion:** an ADMIN-gated
 `POST /api/admin/email-suppressions/reinstate` sets a `reinstated_at` flag on the row (so

@@ -44,8 +44,9 @@ own risk table is wrong about `MoneyPathAlertCheck` "adding no query of its own"
 · `tdd` (each phase red-first: the fitness function fails on the unset pool size, the timeout IT
 hangs against an unbounded client, the isolation IT queues behind the wedge at pool size 1) ·
 `riviera-review-overlay` (review gate — ran at the PR stage, see Findings register) ·
-`riviera-docs-freshness` (**ran** over this slice's own range at merge close-out step 5 — see
-Execution status) · `riviera-modulith` (placement: each module bounds its **own** adapter; the pool
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` — 1 finding, F-6: the substrate cites the
+wrong SQL mechanism for the claim a global timeout would bound; `CLAUDE.md` + `RESPONSIBILITIES.md`
+patched, `ADR-0011` flagged for the human) · `riviera-modulith` (placement: each module bounds its **own** adapter; the pool
 size is app-level config in the root `application.properties` alongside `RateLimitFilter` /
 `MoneyPathAlertCheck`, not a module concern — and no new `allowedDependencies` grant is needed
 because nothing crosses a module boundary) · `riviera-java-conventions` (constructor injection into
@@ -279,6 +280,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-1 | **review gate** (RV-STYLE-1, overlay half) | Seven multi-line inline comments in the two new ITs — the bank's one-line rule, and `riviera-java-conventions` §6c's authoring side. Each was prose the class Javadoc already carried or could carry | fixed-in-`7c89f7f` — shortened to one line, deleted where the Javadoc said it, one moved into the helper's Javadoc |
 | F-2 | **review gate** (`riviera-java-conventions` §8) | `ScheduledQueryTimeoutIT` shut its `ExecutorService` down in a `finally` instead of try-with-resources (`ExecutorService` is `AutoCloseable` since Java 19). Declaration order is load-bearing here — the connection must close *first* so the lock releases before `close()` waits on the worker | fixed-in-`7c89f7f` — try-with-resources, ordering explained in the helper's Javadoc |
 | F-3 | **review gate** (RV-BE-6, judgment) | The retention-basis read's test argument used `LocalDate.now()`, i.e. the JVM default zone, in a test where the date is irrelevant | fixed-in-`7c89f7f` — a named fixed `SOME_CUTOFF` constant |
+| F-5 | **review gate** (`/code-review` fan-out, comment-guidance agent) | My own count went stale inside my own PR: the property comment said the timeout is read by "the three adapters" and enumerated three, but phase 1's generalization audit had since wired a **fourth** (`JdbcGuestBookingHistory`). The plan doc's phase-1 Step 3 carried the same undercount while its own audit log recorded the fourth — the document disagreed with itself. Exactly the counting-sweep failure class, one slice after the audit that exists to catch it | fixed-in-`(this commit)` — both sites now read "four adapters, five reads" |
+| F-6 | **`riviera-docs-freshness`** (close-out step 5, rename grep) | Three substrate docs state that the global `spring.jdbc.template.query-timeout` "would also bound `availability`'s `SELECT … FOR UPDATE`". The **decision** is right and unchanged, but the cited **mechanism** is wrong: `availability`'s claim is `INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING` and contains no `FOR UPDATE` — the repo's `FOR UPDATE` statements live in `venue`. Pre-existing, but this slice adds four more bounded clients asserting the *correct* mechanism, so leaving it made the substrate contradict the new code | **partly patched.** `CLAUDE.md` + `RESPONSIBILITIES.md` corrected in place (living present-tense facts). `docs/adr/ADR-0011` line 218 says the same thing and is **flagged, not patched** — an ADR is a dated record and the skill reserves ADR edits for the human. Invariant #2's own wording in `CLAUDE.md` is untouched: it correctly offers both mechanisms as options |
 | F-4 | **review gate** (RV-PROC-1, self-caught) | `riviera-java-conventions` was on the plan's *Skills consulted* line but had never actually been loaded — the line was true as intent, false as record. Loading it produced F-1/F-2 | fixed-in-`7c89f7f` — skill loaded and the diff re-vetted through it; the three findings above are what it caught |
 
 ---
@@ -353,7 +356,8 @@ Modify `ObservabilityConfig.java`, `JdbcBookings.java`, `JdbcAccountErasure.java
 - [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*ScheduledQueryTimeoutIT*"` → FAIL
   (the unbounded reads block until the test's own timeout).
 - [x] **Step 3: Minimal implementation** — one property,
-  `riviera.scheduled.query-timeout-seconds` (default 10), read by each of the three adapters, each
+  `riviera.scheduled.query-timeout-seconds` (no code default — one number, one place), read by each
+  of the four adapters (the fourth arrived with step 5's audit, below), each
   building its own `JdbcTemplate`-backed bounded `JdbcClient` exactly as
   `JdbcEmailSuppressions#boundedClient` does. The canonical rationale javadoc lives on
   `ObservabilityConfig`; `JdbcBookings` and `JdbcAccountErasure` state the local stakes and point at
