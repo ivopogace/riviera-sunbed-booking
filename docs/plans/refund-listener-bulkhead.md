@@ -192,13 +192,17 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 
 ## Open questions / Assumptions
 
-- **Assumption:** the largest realistic single-burst refund count is one weather-refund sweep over
-  one `(venue, date)` — bounded by a venue's confirmed bookings for that day — and a `queue-capacity`
-  of 500 therefore absorbs several venues' worth of one storm without shedding. *Owner:* this slice ·
-  *Resolves by:* phase 1, by writing the derivation into `RefundExecutorProperties`' Javadoc so the
-  number is falsifiable rather than folkloric; the env placeholder is what makes being wrong cheap.
+*(Empty — every entry resolved below.)*
 
 ### Resolved
+
+- **Assumption (resolved in phase 1, `89ec7f7`):** the largest realistic single-burst refund count is
+  one weather-refund sweep over one `(venue, date)`, so a `queue-capacity` of 500 absorbs several
+  venues' worth of one storm without shedding. The derivation is now written into
+  `RefundExecutorProperties`' Javadoc — falsifiable rather than folkloric — and the env placeholder is
+  what makes being wrong cheap. It stays an *assumption* about traffic rather than a proven bound,
+  which is the honest status: nothing in the codebase caps sets-per-venue, and the first real weather
+  refund is what will test it. That is why the shed path exists at all, and why it is counted.
 
 - **Open question (resolved at plan time, by the maintainer):** *is this worth building at all
   given the Paysera migration?* — Resolved **build it, vendor-neutral**. ADR-0009 puts `booking`
@@ -308,10 +312,10 @@ server-side and env-supplied.
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings (F-1…F-5); re-review + re-check CI/Sonar next`
+**Stage pointer:** `merge close-out — gates all green, ready to merge via PR #453`
 
-**Next action:** Push the F-1…F-5 fix round, re-run the review over the changed surface, then
-re-check CI + the Sonar issue list before merge.
+**Next action:** Merge PR #453, then the post-merge GitHub-only items: confirm #404 closed, and
+confirm the PR-activity subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -537,31 +541,35 @@ earlier slices are historical records, not living docs, per the skill's scope di
 - [x] **AC-5:** Run `gradle test --tests "*RefundBulkheadIT*"` → `keepsTheListenerIdUnchanged` PASS — the id the running registry writes still reads `ai.riviera.platform.booking.adapter.in.BookingRefundListener.on(...BookingCancelled)`, so no Flyway rewrite is owed (invariant #12).
 - [x] **AC-6:** Run `gradle test --tests "*RefundExecutorWiringIT*"` → PASS, `tests="4" skipped="0"` (checked in the result XML — a Docker-less skip would have read as green).
 - [x] **AC-7:** Run `gradle test --tests "*RefundExecutorConfigTest*"` → PASS (10 methods: bounds, shed-without-throw-or-caller-run, per-shed counting, episode throttling, drain-does-not-end-an-episode, later-episode-logs-again, shutdown-not-counted, abandoned-not-interrupted).
-- [x] **AC-8:** Run `gradle test --tests "*RefundExecutorPropertiesTest*"` → PASS (all three bounds rejected at both ends).
+- [x] **AC-8:** Run `gradle test --tests "*RefundExecutorPropertiesTest*"` → PASS (all three bounds rejected at both ends). Strengthened by the review gate: `rejectsADrainThatWouldOutlastTheShutdownGrace` now also asserts `DEFAULT_SHUTDOWN_DRAIN == MAX_SHUTDOWN_DRAIN`, so a future retune cannot quietly raise the ceiling above this pool's share of the shutdown grace without failing here (F-4).
 - [x] **AC-9:** Run `gradle test --tests "*RefundListenerExecutorArchitectureTest*"` → PASS, 8 tests, 0 skipped. Non-vacuity proven **three ways, none of them a manual revert**: `theRuleExaminesTheRefundListener` (the scope predicate finds the real production listener), `revertingToApplicationModuleListenerIsRejected` (the fixture #383 would revert to is rejected), and `theCompliantShapePasses` (the rule does not reject everything). `thePaymentEventListenerIsOutOfScopeAndCorrectlySo` pins the other edge.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; no new write path to `set_availability` (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports;
-      `allowedDependencies` unchanged (invariant #11).
-- [ ] **Payment/payout** section filled; webhook-as-truth protected rather than changed; refund
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; no new write path to `set_availability` (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports;
+      `allowedDependencies` unchanged (invariant #11). The one edit in `notification` is Javadoc only —
+      re-verified by the fix-round re-review, so no dependency onto `booking` was introduced.
+- [x] **Payment/payout** section filled; webhook-as-truth protected rather than changed; refund
       idempotency key unchanged; money in minor units; accrual/reversal untouched (invariants #5, #8, #9).
-- [ ] Refund policy still enforced server-side, still decided in `booking` (invariant #10).
-- [ ] Timezone: no new time arithmetic (invariant #6).
-- [ ] No booking code, address or token in any new log line (invariant #7).
-- [ ] No Flyway migration needed — and that claim is pinned by AC-5, not asserted (invariant #12).
-- [ ] **Frontend** N/A.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — this document's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Refund policy still enforced server-side, still decided in `booking` (invariant #10).
+- [x] Timezone: no new time arithmetic (invariant #6).
+- [x] No booking code, address or token in any new log line (invariant #7).
+- [x] No Flyway migration needed — and that claim is pinned by AC-5, not asserted (invariant #12).
+- [x] **Frontend** N/A.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — this document's final state is committed here, citing
+      **merged via PR #453**, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `riviera-review-overlay` layered onto `/code-review`'s
+      five-agent fan-out (rung 1 of the invocation ladder; the maintainer authorised the subagents when
+      asked, per §1). **Five findings, F-4 a Blocker found independently by three of the five.** All
+      fixed or explicitly assessed; the fix round was then re-reviewed over its own diff, which found
+      one further stale value (fixed in `659aa68`).
