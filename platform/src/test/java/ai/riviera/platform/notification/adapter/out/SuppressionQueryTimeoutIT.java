@@ -32,9 +32,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * driver actually issues the cancel, which is the part that could silently not work.
  *
  * <p>The timeout is set to one second here purely to keep the test quick; production uses the
- * adapter's five-second default. Note what is <em>not</em> asserted: nothing global. The whole point
- * of the design is that {@code spring.jdbc.template.query-timeout} stays unset, so this bound cannot
- * reach {@code availability}'s {@code SELECT … FOR UPDATE} (invariant #2).
+ * adapter's two-second default ({@code DEFAULT_QUERY_TIMEOUT_SECONDS}, lowered from five in #390 once
+ * a request-path caller made it a user-facing latency ceiling). Note what is <em>not</em> asserted:
+ * nothing global. The whole point of the design is that {@code spring.jdbc.template.query-timeout}
+ * stays unset, so this bound cannot reach {@code availability}'s {@code INSERT … ON CONFLICT} claim,
+ * whose loser waits on the winner's index tuple lock (invariant #2).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

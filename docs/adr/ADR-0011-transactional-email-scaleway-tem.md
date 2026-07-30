@@ -221,6 +221,20 @@ Provider landscape (condensed; full table in the research doc):
    >
    > **Revisit when #370 lands.** Once a real bounce feed populates the list, the list stops being
    > empty and the calculus above changes: re-weigh whether the recovery vehicle should fail closed.
+   >
+   > **Amended 2026-07-30 (#451).** The third bullet above names the wrong statement. `availability`'s
+   > claim is `INSERT INTO set_availability … ON CONFLICT (set_id, booking_date) DO NOTHING` — "the
+   > row's creation is the claim", per `JdbcAvailabilityClaim`'s own Javadoc — and contains no
+   > `SELECT … FOR UPDATE` at all; the repo's `FOR UPDATE` statements live in `venue` (`JdbcVenues`,
+   > #226) and in this module's own suppression upsert. **The decision is unaffected, by a different
+   > route:** what a global `spring.jdbc.template.query-timeout` would abort is the *loser* of that
+   > `ON CONFLICT` waiting on the winner's index tuple lock until it commits — still a legitimate
+   > contention wait at invariant #2's serialization point, so the global property is still the wrong
+   > instrument and the adapter-scoped bound still the right one. Invariant #2's own wording in
+   > `CLAUDE.md` was always correct: it offers the row lock and the atomic claim as alternatives.
+   > Found by `riviera-docs-freshness` at #395's close-out; the living substrate (`CLAUDE.md`,
+   > `RESPONSIBILITIES.md`) was corrected by #450, and the rule is machine-locked by
+   > `ScheduledWorkArchitectureTest.noGlobalQueryTimeoutIsIntroduced` (#395).
 
 ## Preconditions (Proposed → Accepted)
 
