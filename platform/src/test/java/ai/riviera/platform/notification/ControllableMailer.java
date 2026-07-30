@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 
@@ -84,6 +85,21 @@ public final class ControllableMailer implements Mailer {
 
 	@Override
 	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		observeRegistrySend(toEmail);
+	}
+
+	/**
+	 * The cancellation rides the same vehicle (#374), so it is observed identically rather than
+	 * stubbed out. A no-op here would make a cancellation invisible to every bulkhead assertion —
+	 * "the spine stays responsive while the transport hangs" would silently stop covering half the
+	 * registry traffic the day someone pointed one of these ITs at a cancellation.
+	 */
+	@Override
+	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		observeRegistrySend(toEmail);
+	}
+
+	private void observeRegistrySend(String toEmail) {
 		entered.add(toEmail);
 		transactionActive.add(TransactionSynchronizationManager.isActualTransactionActive());
 		connectionBound.add(TransactionSynchronizationManager.hasResource(dataSource));

@@ -4,6 +4,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -55,6 +56,8 @@ class TransactionalMailServiceTest {
 	private static final URI SIGN_IN_LINK = URI.create("https://riviera.example/account/sign-in");
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
+	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY);
 
 	private final Mailer mailer = mock(Mailer.class);
 	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);
@@ -279,6 +282,56 @@ class TransactionalMailServiceTest {
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any());
 		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
 				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * AC-6: the cancellation joins the confirmation on the registry vehicle, so it must behave like it
+	 * and not like the recovery pair beside it — synchronous on the listener's thread, and the throw
+	 * left intact, because that is the whole mechanism keeping the publication outstanding for the
+	 * restart republish. A dispatched-and-swallowed cancellation would look identical in every other
+	 * test and quietly turn at-least-once into fire-and-forget.
+	 */
+	@Test
+	void theBookingCancellationIsSynchronousAndPropagatesTransportFailures() {
+		service.sendBookingCancellation(EMAIL, CANCELLATION);
+
+		verify(mailer).sendBookingCancellation(EMAIL, CANCELLATION);
+		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
+
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingCancellation(any(), any());
+		assertThatThrownBy(() -> service.sendBookingCancellation(EMAIL, CANCELLATION))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * AC-7. The skip must <em>return</em>, not throw: on this vehicle a throw parks the publication in
+	 * a permanent retry loop against an address the policy will keep refusing (R-6). Counting it would
+	 * also be wrong — a withheld mail is the suppression list working.
+	 */
+	@Test
+	void aSuppressedAddressSkipsTheCancellation() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		assertThatCode(() -> service.sendBookingCancellation(EMAIL, CANCELLATION)).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendBookingCancellation(any(), any());
+		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
+	}
+
+	/**
+	 * #386's fail-open carve-out is the <em>recovery</em> vehicle's alone. Here the throw is
+	 * load-bearing: it keeps the publication outstanding so at-least-once retries against a healthy
+	 * database, rather than burning the delivery on a blip.
+	 */
+	@Test
+	void aFailingSuppressionReadDoesNotFailOpenOnTheCancellation() {
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new TransientDataAccessResourceException("read timed out"));
+
+		assertThatThrownBy(() -> service.sendBookingCancellation(EMAIL, CANCELLATION))
+				.isInstanceOf(TransientDataAccessResourceException.class);
+
+		verify(mailer, never()).sendBookingCancellation(any(), any());
 	}
 
 	@Test

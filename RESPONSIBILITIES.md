@@ -43,7 +43,9 @@ review-only.
    set **synchronously** via `availability`'s `release` port (the existing
    booking → availability direction), and publishes `BookingCancelled` — on which
    **`payout`** reverses its ledger entry and `booking`'s own refund listener drives
-   **`payment`**'s `RefundPort` with the amount `booking` decided.
+   **`payment`**'s `RefundPort` with the amount `booking` decided. **`notification`** is the
+   third subscriber (#374) and the only non-money one: it mails the tourist a record of the
+   cancellation and that refund amount.
 
 > **Variant — Request-to-Book** (per venue's booking mode; *shipped — issue #98*): between
 > steps 2 and 3 the host accepts or declines (`booking` owns the request lifecycle and its
@@ -318,7 +320,7 @@ and still queued when the drain window expired — counted by draining the queue
 awaited, which is what makes the number a loss rather than a guess; the send caught **running** is
 deliberately excluded, being the one that may already have reached the relay. Read the name as **never
 ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
-which is the likelier loss and the first of the four mail counters to move in a relay outage. It is
+which is the likelier loss and the first of the five mail counters to move in a relay outage. It is
 tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
 can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
 operator acts on the cause, not the consequence. **Since #442 the drop counter carries `kind` too**, on
@@ -335,9 +337,17 @@ confirmation this module **abandons** for a missing booking/set/contact (complet
 by design) gets the fourth name of its own, `MAIL_CONFIRMATION_ABANDONED` (#428), tagged
 `no-booking`/`no-set`/`no-contact` for the three modules it implicates and escalated per loss to
 `ERROR` — none of the three facts is reachable through any application path, so it is zero in a
-healthy system and reads as a data-integrity fault rather than a relay one —
-the `BookingConfirmed`
-confirmation mail (assembled from `booking`/`venue`/`customer` published ports, ids only), and the module's
+healthy system and reads as a data-integrity fault rather than a relay one; #374's cancellation
+listener abandons the same three ways and gets the **fifth** name, `MAIL_CANCELLATION_ABANDONED`,
+a sibling series rather than a `kind` tag, because #442 could tag `MAIL_RECOVERY_*` only where the
+name states the *vehicle* and these two state the *flow* — the shared part is the `reason`
+vocabulary, read off one enum so the two cannot drift into two spellings —
+the two **registry-borne booking mails**, both assembled from `booking`/`venue`/`customer` published
+ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirmation mail and, since
+#374, the `BookingCancelled` cancellation/refund record — one listener covering every cancellation
+channel, tourist self-service and operator weather refund alike, because it subscribes to the fact
+rather than to either caller, and **rendering** the server-computed refund (invariant #10) rather
+than deciding it — and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
@@ -415,20 +425,20 @@ The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #3
 **Job:** hold the handful of edge types that bounded contexts legitimately share — the
 RFC-7807 error-contract factory (#97), the accessors that resolve an authenticated
 principal to a typed id, and the **platform's metric names** (`ObservabilityMetrics`: the
-money-path trio from #100, plus the four mail-loss counters — the registry-mail shed added by
-#408, the recovery-mail drop by #415, the recovery-mail transport failure by #423, and the abandoned
-booking confirmation by #428). Nothing else.
+money-path trio from #100, plus the five mail-loss counters — the registry-mail shed added by
+#408, the recovery-mail drop by #415, the recovery-mail transport failure by #423, the abandoned
+booking confirmation by #428 and the abandoned cancellation record by #374). Nothing else.
 
 > The metric-name clause is deliberately about *names*, not about observability. A name is a
 > `String` constant, compile-time-inlined, with the emission staying in the module that owns
-> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all four of
-> `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED`, `MAIL_RECOVERY_FAILED` and
-> `MAIL_CONFIRMATION_ABANDONED`, including the latter three's `kind`/`reason` tag values, which are
-> the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
+> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all five of
+> `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED`, `MAIL_RECOVERY_FAILED`,
+> `MAIL_CONFIRMATION_ABANDONED` and `MAIL_CANCELLATION_ABANDONED`, including the latter four's
+> `kind`/`reason` tag values, which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
 > down" and no way to check one against the other. Note this is the one admitted type whose
-> justification is *not* "more than one module needs it": all four mail counters have a single
+> justification is *not* "more than one module needs it": all five mail counters have a single
 > reader today. They are admitted for consistency of the naming convention, which is a narrower
 > claim — hold new entries to it.
 

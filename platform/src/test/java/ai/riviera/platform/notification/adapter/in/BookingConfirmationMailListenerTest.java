@@ -1,23 +1,16 @@
 package ai.riviera.platform.notification.adapter.in;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
-import java.util.Optional;
 
-import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
-import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
-import ai.riviera.platform.customer.api.CustomerLookup;
-import ai.riviera.platform.customer.vocabulary.CustomerId;
-import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.BookingMailFacts;
+import ai.riviera.platform.notification.application.BookingMailFactsService;
+import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
-import ai.riviera.platform.venue.api.SetBookingFacts;
-import ai.riviera.platform.venue.vocabulary.BookingMode;
-import ai.riviera.platform.venue.vocabulary.MoneyView;
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -32,7 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,42 +41,45 @@ import static org.mockito.Mockito.when;
 
 /**
  * What the listener does when it <em>gives up</em> (#428) — the one mail loss
- * {@code riviera.outbox.pending} cannot show.
+ * {@code riviera.outbox.pending} cannot show — and, since #374, that it maps the resolved facts onto
+ * the right message fields.
  *
- * <p>The three early returns complete normally, so the Event Publication Registry marks the
- * publication done and no gauge moves: #423's registry-asymmetry argument ("a transport failure
- * propagates, so the outbox already carries it") holds only for failures that <em>throw</em>. These
- * specs pin the accounting that closes it, and just as deliberately pin where it stays silent — a
- * healthy send and a propagating transport failure are not abandonments, and counting either would
- * make this counter unreadable as the data-integrity signal the runbook says it is.
+ * <p>The abandoned paths complete normally, so the Event Publication Registry marks the publication
+ * done and no gauge moves: #423's registry-asymmetry argument ("a transport failure propagates, so
+ * the outbox already carries it") holds only for failures that <em>throw</em>. These specs pin the
+ * accounting that closes it, and just as deliberately pin where it stays silent — a healthy send and
+ * a propagating transport failure are not abandonments, and counting either would make this counter
+ * unreadable as the data-integrity signal the runbook says it is.
+ *
+ * <p><strong>Stubs the resolver, not three ports</strong> (#374): the three reads and their
+ * short-circuit ordering moved into {@code BookingMailFactsService} and are pinned by
+ * {@code BookingMailFactsServiceTest}, which is now the only place that knows their order. What is
+ * left here is exactly this adapter's own behavior. The field-mapping spec below is new with that
+ * move and is the reason it is not merely a mechanical rewrite: the listener now copies five values
+ * out of one record into another, so a transposed {@code venueName}/{@code rowLabel} would compile,
+ * pass every old spec, and mail nonsense.
  *
  * <p>Companion to {@code BookingConfirmationMailIT}, which covers the happy registry path
- * end-to-end against Postgres; the abandoned paths are pure listener logic over three stubbed
- * ports, so they belong in a fast unit test.
+ * end-to-end against Postgres; these are pure listener logic over one stubbed collaborator.
  */
 class BookingConfirmationMailListenerTest {
 
 	private static final BookingId BOOKING_ID = new BookingId(42L);
 	private static final SetId SET_ID = new SetId(7L);
-	private static final CustomerId CUSTOMER_ID = new CustomerId(11L);
 	private static final String CODE = "ABCD2345";
 	private static final String EMAIL = "tourist@example.com";
 
 	private static final BookingConfirmed EVENT = new BookingConfirmed(BOOKING_ID, new VenueId(3L),
 			SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR");
-	private static final BookingNotificationInfo BOOKING = new BookingNotificationInfo(CODE, CUSTOMER_ID);
-	private static final SetBookingInfo SET = new SetBookingInfo(SET_ID, new VenueId(3L), "Vala Beach",
-			"A", 3, "ONLINE", new MoneyView(4500, "EUR"), LocalTime.of(18, 0), BookingMode.INSTANT);
-	private static final GuestContact CONTACT = new GuestContact(EMAIL, "Tourist", "+355691234567");
+	private static final BookingMailFacts.Resolved FACTS =
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
 
-	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
-	private final SetBookingFacts sets = mock(SetBookingFacts.class);
-	private final CustomerLookup customers = mock(CustomerLookup.class);
+	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 
 	private final BookingConfirmationMailListener listener =
-			new BookingConfirmationMailListener(bookings, sets, customers, mails, meters);
+			new BookingConfirmationMailListener(facts, mails, meters);
 
 	private final ListAppender<ILoggingEvent> logged = new ListAppender<>();
 	private ch.qos.logback.classic.Logger logger;
@@ -101,44 +97,21 @@ class BookingConfirmationMailListenerTest {
 		logged.stop();
 	}
 
-	@Test
-	void aMissingBookingIsCountedAndAbandoned() {
-		when(bookings.notificationInfo(BOOKING_ID)).thenReturn(Optional.empty());
+	@ParameterizedTest(name = "{0}")
+	@EnumSource(MissingBookingFact.class)
+	void anyMissingFactIsCountedUnderItsOwnReasonAndAbandoned(MissingBookingFact fact) {
+		givenTheFactsAre(new BookingMailFacts.Missing(fact));
 
 		assertThatCode(() -> listener.on(EVENT)).doesNotThrowAnyException();
 
-		assertThat(abandoned("no-booking")).isEqualTo(1.0);
-		verifyNoInteractions(sets, customers, mails);
-	}
-
-	@Test
-	void aMissingSetIsCountedUnderItsOwnReason() {
-		when(bookings.notificationInfo(BOOKING_ID)).thenReturn(Optional.of(BOOKING));
-		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.empty());
-
-		assertThatCode(() -> listener.on(EVENT)).doesNotThrowAnyException();
-
-		assertThat(abandoned("no-set")).isEqualTo(1.0);
-		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED)
-				.tag("reason", "no-booking").counter()).isNull();
-		verifyNoInteractions(customers, mails);
-	}
-
-	@Test
-	void aMissingContactIsCountedUnderItsOwnReason() {
-		when(bookings.notificationInfo(BOOKING_ID)).thenReturn(Optional.of(BOOKING));
-		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
-		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
-
-		assertThatCode(() -> listener.on(EVENT)).doesNotThrowAnyException();
-
-		assertThat(abandoned("no-contact")).isEqualTo(1.0);
+		assertThat(abandoned(fact.tagValue())).isEqualTo(1.0);
+		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED).counters()).hasSize(1);
 		verifyNoInteractions(mails);
 	}
 
 	@Test
 	void aCompleteConfirmationCountsNothing() {
-		givenEveryFactResolves();
+		givenTheFactsAre(FACTS);
 
 		listener.on(EVENT);
 
@@ -147,14 +120,29 @@ class BookingConfirmationMailListenerTest {
 	}
 
 	/**
+	 * The five resolved fields and the three that ride the event, each in its own slot. Positional
+	 * records make a transposition of two same-typed neighbours ({@code venueName}/{@code rowLabel})
+	 * invisible to the compiler, so it is asserted rather than eyeballed.
+	 */
+	@Test
+	void mapsEveryResolvedFactOntoTheMessage() {
+		givenTheFactsAre(FACTS);
+
+		listener.on(EVENT);
+
+		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
+				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR"));
+	}
+
+	/**
 	 * All three paths, not one: a level or redaction regression on a single branch must not hide behind
 	 * a green spec for its siblings, and the three branches log through one helper precisely so this
 	 * can be asserted uniformly.
 	 */
-	@ParameterizedTest(name = "reason={0}")
-	@ValueSource(strings = { "no-booking", "no-set", "no-contact" })
-	void everyAbandonedPathLogsAnErrorCarryingNoCredential(String reason) {
-		givenTheFactsResolveUpTo(reason);
+	@ParameterizedTest(name = "{0}")
+	@EnumSource(MissingBookingFact.class)
+	void everyAbandonedPathLogsAnErrorCarryingNoCredential(MissingBookingFact fact) {
+		givenTheFactsAre(new BookingMailFacts.Missing(fact));
 
 		listener.on(EVENT);
 
@@ -162,29 +150,16 @@ class BookingConfirmationMailListenerTest {
 		assertThat(events).hasSize(1);
 		assertThat(events.getFirst().getLevel()).isEqualTo(Level.ERROR);
 		assertThat(events.getFirst().getFormattedMessage())
-				.contains(reason)
+				.contains(fact.tagValue())
 				.contains(String.valueOf(BOOKING_ID.value()))
 				.contains(String.valueOf(SET_ID.value()))
 				.doesNotContain(CODE)
 				.doesNotContain(EMAIL);
 	}
 
-	/** Stub just enough for the listener to reach — and abandon at — the named branch. */
-	private void givenTheFactsResolveUpTo(String reason) {
-		when(bookings.notificationInfo(BOOKING_ID))
-				.thenReturn("no-booking".equals(reason) ? Optional.empty() : Optional.of(BOOKING));
-		if (!"no-booking".equals(reason)) {
-			when(sets.setBookingInfo(SET_ID))
-					.thenReturn("no-set".equals(reason) ? Optional.empty() : Optional.of(SET));
-		}
-		if ("no-contact".equals(reason)) {
-			when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
-		}
-	}
-
 	@Test
 	void aTransportFailureStillPropagatesAndCountsNothing() {
-		givenEveryFactResolves();
+		givenTheFactsAre(FACTS);
 		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any());
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
@@ -192,15 +167,13 @@ class BookingConfirmationMailListenerTest {
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED).counters()).isEmpty();
 	}
 
-	private void givenEveryFactResolves() {
-		when(bookings.notificationInfo(BOOKING_ID)).thenReturn(Optional.of(BOOKING));
-		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
-		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
+	private void givenTheFactsAre(BookingMailFacts outcome) {
+		when(facts.resolve(BOOKING_ID, SET_ID)).thenReturn(outcome);
 	}
 
 	private double abandoned(String reason) {
 		return meters.get(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED)
-				.tag("reason", reason).counter().count();
+				.tag(MissingBookingFact.TAG, reason).counter().count();
 	}
 
 }

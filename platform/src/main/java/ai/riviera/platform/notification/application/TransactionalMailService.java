@@ -32,10 +32,11 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * very experience it was added to remove. That asymmetry is why the loss counters are read through
  * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
- * <p><strong>The booking confirmation</strong> (module-internal, driven by the registry listener)
- * is deliberately the opposite: synchronous on the listener's thread, transport failures
- * propagating, so the Event Publication Registry keeps the publication outstanding and retries —
- * the at-least-once contract (#371). Public only for {@code adapter/in}; not on the published port.
+ * <p><strong>The two booking mails</strong> — the confirmation (#371) and the cancellation/refund
+ * record (#374), both module-internal and driven by registry listeners — are deliberately the
+ * opposite: synchronous on the listener's thread, transport failures propagating, so the Event
+ * Publication Registry keeps the publication outstanding and retries — the at-least-once contract.
+ * Public only for {@code adapter/in}; neither is on the published port.
  *
  * <p><strong>Suppression</strong> — the module's defining invariant, <em>no send to a suppressed
  * address</em> — is enforced here for both vehicles, per send attempt (so a registry retry honors
@@ -64,7 +65,8 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * less observable than the one this class exists to record.
  *
  * <p><strong>The registry vehicle deliberately gets no equivalent counter.</strong> Its transport
- * failure propagates (see {@link #sendBookingConfirmation}), so the publication stays outstanding and
+ * failure propagates (see {@link #sendBookingConfirmation} and {@link #sendBookingCancellation}), so
+ * the publication stays outstanding and
  * {@code riviera.outbox.pending} — already watched by {@code MoneyPathAlertCheck} — rises on exactly
  * this event. Adding a second series would count one failure twice and invite summing two numbers
  * that mean different things. The asymmetry is a property of the vehicles, not an oversight:
@@ -127,6 +129,22 @@ public class TransactionalMailService implements MailSender {
 			return;
 		}
 		mailer.sendBookingConfirmation(toEmail, confirmation);
+	}
+
+	/**
+	 * Deliver the cancellation/refund record now, on the caller's thread; a transport failure
+	 * propagates (#374). The registry vehicle's posture, identical to
+	 * {@link #sendBookingConfirmation} and deliberately unlike the dispatched sends above: the throw
+	 * is what keeps the publication outstanding for the restart republish, and the suppression check
+	 * gets no {@link #isSuppressedOrFailOpen} carve-out here for the same reason — a blip should cost
+	 * a retry, not the delivery.
+	 */
+	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Booking-cancellation mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendBookingCancellation(toEmail, cancellation);
 	}
 
 	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {
@@ -197,9 +215,10 @@ public class TransactionalMailService implements MailSender {
 	 * {@link #REASON_SUPPRESSION_LOOKUP} so a broken lookup is legible as the database fault it is rather
 	 * than as the relay fault it is not.
 	 *
-	 * <p>Deliberately <strong>not</strong> shared with {@link #sendBookingConfirmation}: on the registry
-	 * vehicle the throw is load-bearing, keeping the publication outstanding so the at-least-once
-	 * contract (#371) retries against a healthy database instead of burning the delivery on a blip.
+	 * <p>Deliberately <strong>not</strong> shared with either registry-vehicle send
+	 * ({@link #sendBookingConfirmation}, {@link #sendBookingCancellation}): there the throw is
+	 * load-bearing, keeping the publication outstanding so the at-least-once contract (#371) retries
+	 * against a healthy database instead of burning the delivery on a blip.
 	 */
 	private boolean isSuppressedOrFailOpen(MailKind kind, String toEmail) {
 		try {

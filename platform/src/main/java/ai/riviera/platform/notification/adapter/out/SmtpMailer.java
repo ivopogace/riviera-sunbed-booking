@@ -13,11 +13,13 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 
 /**
- * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371): delivers every message kind over the
+ * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371, cancellations in
+ * #374): delivers every message kind over the
  * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
  * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active under
  * {@code @Profile("mailer")} — where missing SMTP config fails at boot (unresolved placeholder), never on
@@ -35,6 +37,7 @@ class SmtpMailer implements Mailer {
 	private static final String VERIFICATION_SUBJECT = "Verify your email";
 	private static final String RESET_SUBJECT = "Reset your password";
 	private static final String CONFIRMATION_SUBJECT = "Your booking at %s is confirmed";
+	private static final String CANCELLATION_SUBJECT = "Your booking at %s is cancelled";
 	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
@@ -90,6 +93,52 @@ class SmtpMailer implements Mailer {
 						DATE_FORMAT.format(confirmation.bookingDate()), confirmation.rowLabel(),
 						confirmation.positionNo(),
 						formatAmount(confirmation.amountMinor(), confirmation.currency())));
+	}
+
+	@Override
+	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		send(toEmail, CANCELLATION_SUBJECT.formatted(headerSafe(cancellation.venueName())), """
+				%s
+
+				  Booking:  %s
+				  Venue:    %s
+				  Date:     %s
+				%s"""
+				.formatted(opening(cancellation), cancellation.bookingCode(), cancellation.venueName(),
+						DATE_FORMAT.format(cancellation.bookingDate()), refundLine(cancellation)));
+	}
+
+	/**
+	 * Why the booking ended, in the tourist's terms. Exhaustive over the published enum with no
+	 * {@code default}, so a fourth {@code RefundReason} is a compile error here rather than a blank
+	 * first line in someone's inbox.
+	 */
+	private static String opening(BookingCancellationMail cancellation) {
+		return switch (cancellation.reason()) {
+			case POLICY -> "Your cancellation is confirmed.";
+			case WEATHER -> "The venue cancelled bookings for %s because of the weather."
+					.formatted(DATE_FORMAT.format(cancellation.bookingDate()));
+			case CONFLICT -> "The venue had to cancel your booking.";
+		};
+	}
+
+	/**
+	 * Nothing refunded is said in words, never as {@code EUR 0.00} — a zero amount on a "Refund:" line
+	 * reads as a refund at a glance, which is the opposite of what happened (ADR-0005 tier
+	 * {@code NONE}, past the invariant-#4 cutoff).
+	 */
+	private static String refundLine(BookingCancellationMail cancellation) {
+		if (cancellation.refundMinor() <= 0) {
+			return """
+
+					No refund applies — the booking was cancelled after the free-cancellation cutoff.""";
+		}
+		return """
+				  Refund:   %s
+
+				The refund is on its way back to the payment method you used; it can take a few working
+				days to appear on your statement."""
+				.formatted(formatAmount(cancellation.refundMinor(), cancellation.currency()));
 	}
 
 	@Override

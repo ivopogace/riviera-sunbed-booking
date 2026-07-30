@@ -34,7 +34,7 @@ public final class ObservabilityMetrics {
 	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
 	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415). Each later mail loss earned a name of its
 	 * own for the same reason ({@link #MAIL_RECOVERY_FAILED} #423, {@link #MAIL_CONFIRMATION_ABANDONED}
-	 * #428): <strong>do not sum them.</strong> This one is the only member of the set that is expected
+	 * #428, {@link #MAIL_CANCELLATION_ABANDONED} #374): <strong>do not sum them.</strong> This one is the only member of the set that is expected
 	 * to be re-delivered, which is precisely why summing would mislead.
 	 */
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
@@ -94,10 +94,10 @@ public final class ObservabilityMetrics {
 	 * <p><strong>Read this one first during a suspected relay outage.</strong> Saturating the recovery
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
-	 * <em>every</em> send and raises this one immediately. Do not sum the four mail counters — they
-	 * measure a deferral, a send the pool never ran, an attempt that failed, and a confirmation given
-	 * up on, respectively. ("Never ran" rather than "refused" since #434 widened the first of those —
-	 * see {@link #MAIL_RECOVERY_DROPPED}.)
+	 * <em>every</em> send and raises this one immediately. Do not sum the five mail counters — they
+	 * measure a deferral, a send the pool never ran, an attempt that failed, and — since #374, on two
+	 * separate series — a booking mail given up on. ("Never ran" rather than "refused" since #434
+	 * widened the first of those — see {@link #MAIL_RECOVERY_DROPPED}.)
 	 *
 	 * <p>Carries two tags. {@code kind} (verification / password-reset / operator-approved) separates
 	 * the flows, which differ in urgency, in rate-limit budget, and — since #375 — in whether the loss
@@ -118,9 +118,9 @@ public final class ObservabilityMetrics {
 
 	/**
 	 * Counter: booking-confirmation mails the registry listener <em>gave up on</em> because a fact it
-	 * needs — the booking, the set, or the contact — did not resolve (#428). The fourth and last of
-	 * the mail-loss names, and the only one that measures a loss <strong>no gauge could otherwise
-	 * see</strong>.
+	 * needs — the booking, the set, or the contact — did not resolve (#428). The first of the two
+	 * <em>abandoned</em> names ({@link #MAIL_CANCELLATION_ABANDONED} is the other, #374), and the kind
+	 * of loss <strong>no gauge could otherwise see</strong>.
 	 *
 	 * <p><strong>That invisibility is the whole reason it exists.</strong>
 	 * {@link #MAIL_RECOVERY_FAILED} explains why the registry vehicle needs no <em>transport</em>
@@ -131,8 +131,9 @@ public final class ObservabilityMetrics {
 	 * later, so a retry would park a permanently-failing publication in the outbox); giving up
 	 * <em>silently</em> was not.
 	 *
-	 * <p>Do not sum the four. A shed is deferred, a drop was refused, a failure was attempted — this
-	 * one was abandoned, and it is the only one that is <strong>never</strong> retried.
+	 * <p>Do not sum them. A shed is deferred, a drop was refused, a failure was attempted — an
+	 * abandoned mail is the only kind that is <strong>never</strong> retried; and the two abandoned
+	 * series are not each other's totals either ({@link #MAIL_CANCELLATION_ABANDONED} says why).
 	 *
 	 * <p>Carries a {@code reason} tag ({@code no-booking} / {@code no-set} / {@code no-contact})
 	 * because the three implicate three different modules — {@code booking}, {@code venue},
@@ -143,6 +144,31 @@ public final class ObservabilityMetrics {
 	 * {@code BookingConfirmationMailListener} and the observability runbook.
 	 */
 	public static final String MAIL_CONFIRMATION_ABANDONED = "riviera.mail.confirmation.abandoned";
+
+	/**
+	 * Counter: cancellation/refund mails the registry listener <em>gave up on</em> because a fact it
+	 * needs — the booking, the set, or the contact — did not resolve (#374). The sibling of
+	 * {@link #MAIL_CONFIRMATION_ABANDONED}: same vehicle, same invisibility, same three
+	 * {@code reason} tag values, different consequence. An increment here means a tourist whose
+	 * booking was cancelled has no written record of it, and — where a refund applied — none of the
+	 * money owed back.
+	 *
+	 * <p><strong>A sibling series rather than a {@code kind} tag on the confirmation counter, and the
+	 * reason is a rule rather than a preference.</strong> Tagging would have been the #442 move, but
+	 * #442 could make it because {@code MAIL_RECOVERY_*} names a <em>vehicle</em>; this name states a
+	 * <em>flow</em>, so a {@code kind=cancellation} on a metric called {@code confirmation} would be a
+	 * contradiction rather than a dimension. Renaming the shipped one to fit is barred by the standing
+	 * rule that a shipped metric name breaks whatever reads it. What #442's lesson does reach is the
+	 * {@code reason} dimension, which is why both series read it off one enum
+	 * ({@code notification.application.MissingBookingFact}) and cannot drift into two spellings.
+	 *
+	 * <p><strong>Do not sum this with its sibling.</strong> They answer different questions and are
+	 * acted on differently: an abandoned confirmation is chased by reaching the tourist with their
+	 * arrival code (invariant #7 applies to that errand), while an abandoned cancellation is chased by
+	 * confirming the refund itself actually moved — the money is unaffected by this loss, only the
+	 * record of it. Both are data-integrity signals, never relay ones; see the observability runbook.
+	 */
+	public static final String MAIL_CANCELLATION_ABANDONED = "riviera.mail.cancellation.abandoned";
 
 	private ObservabilityMetrics() {
 	}

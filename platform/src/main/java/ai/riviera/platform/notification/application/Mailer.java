@@ -13,9 +13,9 @@ import java.net.URI;
  * {@code SmtpMailer} under {@code mailer} (#368, ADR-0011); {@code MockMailerProdGuard} forbids the
  * mock from running in production.
  *
- * <p>Recovery messages carry a raw single-use token inside the emailed link and booking confirmations
- * carry the arrival code — both bearer credentials (invariant #7). The caller hands each here fully
- * formed, so the mailer never touches the token store, the account, or the booking. <strong>No
+ * <p>Recovery messages carry a raw single-use token inside the emailed link and the two booking
+ * kinds carry the arrival code — both bearer credentials (invariant #7). The caller hands each here
+ * fully formed, so the mailer never touches the token store, the account, or the booking. <strong>No
  * implementation reachable in production may log them</strong>: {@code SmtpMailer} logs neither, and
  * {@code MockMailer}'s deliberate dev-only echo of the recovery <em>link</em> is the documented
  * exception — mock-only, prod-guarded, and never extended to the arrival code. Unpublished
@@ -36,6 +36,14 @@ public interface Mailer {
 	 * details structured rather than pre-rendered, so presentation stays the implementation's business.
 	 */
 	void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation);
+
+	/**
+	 * Send the cancellation/refund record (#374): what was cancelled, why, and the server-computed
+	 * refund — or, when the cutoff has passed and nothing is returned, that none applies. Structured
+	 * like the confirmation, and for the same reason; the implementation decides how a zero refund and
+	 * each {@code RefundReason} read.
+	 */
+	void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation);
 
 	/**
 	 * Send the "your operator account is approved" message with the sign-in link (#375). The only kind

@@ -14,7 +14,10 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * the refund (ADR-0005); {@code availability} is freed and the refund issued <em>synchronously</em>
  * by {@code booking} (calling {@code availability::api} / {@code payment::api}) rather than via this
  * event, because those modules already sit downstream of {@code booking} and an event back to them
- * would cycle (invariant #11). So {@code payout} is the sole subscriber.
+ * would cycle (invariant #11). {@code notification} is the second subscriber (#374), mailing the
+ * guest a record of the cancellation and its refund — a read-only consumer on the same fact, which is
+ * why it changes nothing above: the money path is still {@code payout} plus {@code booking}'s own
+ * refund listener.
  *
  * <p>Id-based, immutable payload (invariant #11): technical ids ({@link BookingId}, {@link VenueId},
  * {@link SetId}) plus the cancellation facts — the {@code bookingDate} ({@code Europe/Tirane},

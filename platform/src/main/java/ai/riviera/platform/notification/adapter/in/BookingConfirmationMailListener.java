@@ -1,7 +1,5 @@
 package ai.riviera.platform.notification.adapter.in;
 
-import java.util.Optional;
-
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.slf4j.Logger;
@@ -10,16 +8,13 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.BookingConfirmed;
-import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
-import ai.riviera.platform.customer.api.CustomerLookup;
-import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.BookingMailFacts;
+import ai.riviera.platform.notification.application.BookingMailFactsService;
+import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
-import ai.riviera.platform.venue.api.SetBookingFacts;
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * Mails the tourist their booking code when a booking is confirmed (#371, epic #367 story 1) — the
@@ -27,11 +22,13 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
  *
  * <p>The {@code notification} module's driving adapter for the registry vehicle (#382; until then
  * this listener sat at the platform edge — the move is why the module's {@code allowedDependencies}
- * read like a fan-in). It assembles one message from three owners' published ports: {@code booking}
- * supplies the arrival code + contact id, {@code venue} the venue name + set label, {@code customer}
- * the address. Nothing is re-derived that the event already carries: the date, amount and currency
- * are immutable facts of the confirmation and ride the payload. Delivery goes through
- * {@link TransactionalMailService} — the chokepoint — never the transport directly.
+ * read like a fan-in). The three-port assembly it used to perform inline moved inside the hexagon in
+ * #374, when the cancellation listener needed it verbatim: {@link BookingMailFactsService} now reads
+ * {@code booking}, {@code venue} and {@code customer}, and this class keeps only what is
+ * confirmation-specific — the message it builds and the loss it counts. Nothing is re-derived that
+ * the event already carries: the date, amount and currency are immutable facts of the confirmation
+ * and ride the payload. Delivery goes through {@link TransactionalMailService} — the chokepoint —
+ * never the transport directly.
  *
  * <p><strong>Asynchronous and after-commit</strong>, so a mail failure can never roll back a booking.
  * This was an {@code @ApplicationModuleListener} until #383; it is now that annotation's own expansion
@@ -99,26 +96,13 @@ class BookingConfirmationMailListener {
 
 	private static final Logger log = LoggerFactory.getLogger(BookingConfirmationMailListener.class);
 
-	/** Which fact was missing — the tag exists because the three implicate three different modules. */
-	private static final String REASON_TAG = "reason";
-
-	private static final String REASON_NO_BOOKING = "no-booking";
-
-	private static final String REASON_NO_SET = "no-set";
-
-	private static final String REASON_NO_CONTACT = "no-contact";
-
-	private final BookingNotificationFacts bookings;
-	private final SetBookingFacts sets;
-	private final CustomerLookup customers;
+	private final BookingMailFactsService facts;
 	private final TransactionalMailService mails;
 	private final MeterRegistry meters;
 
-	BookingConfirmationMailListener(BookingNotificationFacts bookings, SetBookingFacts sets,
-			CustomerLookup customers, TransactionalMailService mails, MeterRegistry meters) {
-		this.bookings = bookings;
-		this.sets = sets;
-		this.customers = customers;
+	BookingConfirmationMailListener(BookingMailFactsService facts, TransactionalMailService mails,
+			MeterRegistry meters) {
+		this.facts = facts;
 		this.mails = mails;
 		this.meters = meters;
 	}
@@ -126,25 +110,13 @@ class BookingConfirmationMailListener {
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 	@TransactionalEventListener
 	void on(BookingConfirmed event) {
-		Optional<BookingNotificationInfo> booking = bookings.notificationInfo(event.bookingId());
-		if (booking.isEmpty()) {
-			abandon(REASON_NO_BOOKING, event);
-			return;
+		switch (facts.resolve(event.bookingId(), event.setId())) {
+			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
+			case BookingMailFacts.Resolved booking -> mails.sendBookingConfirmation(booking.toEmail(),
+					new BookingConfirmationMail(booking.bookingCode(), booking.venueName(),
+							event.bookingDate(), booking.rowLabel(), booking.positionNo(),
+							event.amountMinor(), event.currency()));
 		}
-		Optional<SetBookingInfo> set = sets.setBookingInfo(event.setId());
-		if (set.isEmpty()) {
-			abandon(REASON_NO_SET, event);
-			return;
-		}
-		Optional<GuestContact> contact = customers.findById(booking.get().customerId());
-		if (contact.isEmpty()) {
-			abandon(REASON_NO_CONTACT, event);
-			return;
-		}
-
-		mails.sendBookingConfirmation(contact.get().email(), new BookingConfirmationMail(
-				booking.get().code(), set.get().venueName(), event.bookingDate(),
-				set.get().rowLabel(), set.get().positionNo(), event.amountMinor(), event.currency()));
 	}
 
 	/**
@@ -156,10 +128,12 @@ class BookingConfirmationMailListener {
 	 * two answer different questions (which request, which booking) and the ids are not made redundant
 	 * by it. Ids and the reason only — never the arrival code (invariant #7), never the address.
 	 */
-	private void abandon(String reason, BookingConfirmed event) {
-		meters.counter(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED, REASON_TAG, reason).increment();
+	private void abandon(MissingBookingFact fact, BookingConfirmed event) {
+		meters.counter(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED,
+				MissingBookingFact.TAG, fact.tagValue()).increment();
 		log.error("Booking-confirmation mail abandoned ({}) for booking {} on set {} — the fact cannot "
 				+ "appear later, so the publication completes and nothing retries it: a paying tourist "
-				+ "has no arrival code by mail", reason, event.bookingId().value(), event.setId().value());
+				+ "has no arrival code by mail", fact.tagValue(), event.bookingId().value(),
+				event.setId().value());
 	}
 }
