@@ -51,33 +51,33 @@ no SQL), `riviera-stripe-payments` (no money), `riviera-frontend` / `angular-dev
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a saturated dispatcher, when a send of a known kind is refused, then
+- [x] **AC-1:** Given a saturated dispatcher, when a send of a known kind is refused, then
       `riviera.mail.recovery.dropped` increments under **that kind** and `reason="saturated"`, and
       not under any other kind. *Pinned by:*
       `AsyncMailDispatcherTest.aSaturatedDropNamesTheFlowItLost`
-- [ ] **AC-2:** Given a dispatcher that has already shut down, when a send of a known kind is
+- [x] **AC-2:** Given a dispatcher that has already shut down, when a send of a known kind is
       refused, then the counter increments under that kind and `reason="shutdown"`. *Pinned by:*
       `AsyncMailDispatcherTest.aDropDuringShutdownIsCountedButAttributedToTheShutdown`
-- [ ] **AC-3:** Given sends of **two different kinds** still queued when the drain window expires,
+- [x] **AC-3:** Given sends of **two different kinds** still queued when the drain window expires,
       when the context closes, then each increments the counter under **its own** kind and
       `reason="abandoned"` — the drain path attributes as precisely as the two rejection paths.
       *Pinned by:* `AsyncMailDispatcherTest.anAbandonedSendNamesTheFlowItLost`
-- [ ] **AC-4:** Given drops across several kinds and reasons, when the whole series is summed
+- [x] **AC-4:** Given drops across several kinds and reasons, when the whole series is summed
       without a tag filter, then the total equals the number of sends the pool never ran — adding
       the dimension partitions the series, it does not double-count it. *Pinned by:*
       `AsyncMailDispatcherTest.countsEveryDropUnderTheOneMetricName`
-- [ ] **AC-5:** Given both in-memory-vehicle loss counters, when their `kind` tag values are
+- [x] **AC-5:** Given both in-memory-vehicle loss counters, when their `kind` tag values are
       compared, then they come from the same `MailKind` vocabulary — a kind cannot be spelled one
       way on `dropped` and another on `failed`. *Pinned by:*
       `MailKindTest.bothLossCountersShareOneKindVocabulary`
-- [ ] **AC-6:** Given the shipped tag values, when `MailKind` is read, then they are exactly
+- [x] **AC-6:** Given the shipped tag values, when `MailKind` is read, then they are exactly
       `verification`, `password-reset` and `operator-approved` — renaming one would break every
       dashboard and alert that already reads `riviera.mail.recovery.failed`. *Pinned by:*
       `MailKindTest.theShippedTagValuesAreStable`
-- [ ] **AC-7:** Given `TransactionalMailService` dispatches a send, when the dispatcher receives it,
+- [x] **AC-7:** Given `TransactionalMailService` dispatches a send, when the dispatcher receives it,
       then it receives the kind alongside it — the service cannot dispatch a send it has not
       attributed. *Pinned by:* `TransactionalMailServiceTest.everyDispatchedSendCarriesItsKind`
-- [ ] **AC-8:** Given ADR-0011 decision 5 and `docs/runbooks/observability.md`, when the `dropped`
+- [x] **AC-8:** Given ADR-0011 decision 5 and `docs/runbooks/observability.md`, when the `dropped`
       series' attribution is read, then no sentence claims the kind is absent or structurally
       impossible, and decision 5's "only **in part**" clause is amended. *Verified by:*
       `grep -rn "reason. alone\|no .kind.\|only \*\*in part\*\*" docs/ platform/src/main` returning
@@ -121,7 +121,7 @@ no SQL), `riviera-stripe-payments` (no money), `riviera-frontend` / `angular-dev
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Only the two `execute()` rejections get the tag and the drain path is missed — a `kind`-filtered query then **silently under-counts**, which is a worse defect than today's honest absence | med | high | AC-3 asserts two *different* kinds through the drain path specifically; AC-4 asserts the unfiltered total still equals every send the pool never ran, so a missed path shows up as a mismatch | Claude | **closed** — `anAbandonedSendNamesTheFlowItLost` green; the risk also produced the phase merge recorded under Execution status, since the half-tagged intermediate was itself the hazard |
-| R-2 | A tag value is spelled differently from the shipped `failed` series (`password_reset` vs `password-reset`), breaking dashboards while every test still passes | low | high | One `MailKind` vocabulary for both emitters (AC-5) + AC-6 pinning the three literals against the runbook's documented values | Claude | open |
+| R-2 | A tag value is spelled differently from the shipped `failed` series (`password_reset` vs `password-reset`), breaking dashboards while every test still passes | low | high | One `MailKind` vocabulary for both emitters (AC-5) + AC-6 pinning the three literals against the runbook's documented values | Claude | **closed** — `MailKindTest` green; reviewer 4 independently confirmed no dangling `KIND_*` references remain |
 | R-3 | A drained queue element that is not one of ours reaches the accounting and is silently uncounted — the same silent-loss class the counter exists to end | low | med | `dispatch(...)` is the only path onto this queue, so the branch is unreachable by construction; it is nonetheless handled explicitly (an `ERROR` naming the defect, never a swallow) and pinned by AC-3's drain assertions. **No new tag value is invented for it** — polluting a documented vocabulary for an unreachable state is how the next runbook sentence becomes false | Claude | **closed** — implemented as specified in `recordAbandonment`; the record deconstruction pattern makes the guard total |
 | R-4 | `MdcTaskDecorator` gains a payload accessor and something reads the *context* out of it, defeating the "reachable only through `inContextOf`" property its Javadoc asserts | low | med | The accessor returns the wrapped task only; the context map stays private to the record. Reviewed under RV-BE-11 | Claude | **closed** — `payloadOf` returns `ContextCarryingTask#task()` and nothing else; the map stays unreachable |
 | R-5 | ~~Merge conflict~~ **resolved**: PR #443, which is open against `docs/runbooks/observability.md` — the same file Phase 2 edits | **high** | low | #443 merged at `7057b49` before Phase 2 began; `git merge origin/main` was clean (its 16 added lines are elsewhere in the file). Phase 2 then rewrote **both** sentences #443 had rated "accurate only while #442 is open" | Claude | **closed** — merged clean, both sentences owned and corrected |
@@ -203,9 +203,10 @@ read or written.
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — all phases done; next is the PR gates (ready for review → review → sonar)`
+**Stage pointer:** `merge close-out — all gates green, merged via PR #444`
 
-**Next action:** Mark PR #444 ready for review, then run the review gate per `pr-gates.md` §1.
+**Next action:** Post-merge, GitHub-only (no repo commit remains): confirm #442 closed by the PR, tick
+it on epic #367's checklist citing PR #444, and confirm the PR-activity subscription ended.
 
 > **Phases 0 and 1 were merged into one commit, deliberately** — a correction to this plan made at
 > the keyboard, recorded here rather than silently. As planned, Phase 0 would have tagged the two
@@ -220,6 +221,8 @@ read or written.
 |-------|--------|---------|
 | 0+1 — The seam, both rejection paths, and the drain path | ✅ | `307441c` |
 | 2 — Docs: ADR amendment, runbooks, Javadoc sweep | ✅ | `c99b988` |
+
+| 3 — Review-gate finding F-1 | ✅ | `d5c51ba` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -274,26 +277,26 @@ touches *before* editing).
 `AsyncMailDispatcher.java`, `TransactionalMailService.java`, `AsyncMailDispatcherTest.java`,
 `TransactionalMailServiceTest.java`, `SynchronousMailDispatch.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1, AC-2, AC-5, AC-6, AC-7. The saturation and
+- [x] **Step 1: Write the failing tests** — AC-1, AC-2, AC-5, AC-6, AC-7. The saturation and
       shutdown specs move from `droppedFor(reason)` to `droppedFor(kind, reason)`; the existing
       `everyDropIsLoggedBecauseEachIsTheOnlyRecordOfALoss`, `theDropLineCarriesNeitherAddressNorLink`
       and `countsEveryDropUnderTheOneMetricName` are re-pointed at the widened seam unchanged in
       intent (behavior-parity ledger rows 5, 7 and 2).
-- [ ] **Step 2: Run them, verify they fail** — `gradle test --tests "*AsyncMailDispatcherTest*"
+- [x] **Step 2: Run them, verify they fail** — `gradle test --tests "*AsyncMailDispatcherTest*"
       --tests "*MailKindTest*"` → FAIL (does not compile: `dispatch` takes one argument).
-- [ ] **Step 3: Minimal implementation** — the `MailKind` enum; the widened `dispatch`; the
+- [x] **Step 3: Minimal implementation** — the `MailKind` enum; the widened `dispatch`; the
       `EnumMap`-backed counters pre-registered per reason; `TransactionalMailService` passing its
       kind through.
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS. Then broaden to the module:
+- [x] **Step 4: Run them, verify they pass** — same command → PASS. Then broaden to the module:
       `gradle test --tests "*notification*"`.
-- [ ] **Step 5: Generalization-audit pass** — search for every other place a mail `kind` is spelled
+- [x] **Step 5: Generalization-audit pass** — search for every other place a mail `kind` is spelled
       as a bare string, and for any *other* counter on these vehicles whose tag set was written from
       prose rather than from its construction site (the standing pattern recorded on #440's plan,
       F-5). Append to the log.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#442): attribute a refused recovery mail to its flow (#442)"`
-- [ ] **Step 7: Push and open the draft PR immediately** — CI fires on `pull_request` only, so a
+- [x] **Step 6: Commit** — `git commit -m "feat(#442): attribute a refused recovery mail to its flow (#442)"`
+- [x] **Step 7: Push and open the draft PR immediately** — CI fires on `pull_request` only, so a
       branch with no PR gets no CI at all (`riviera-sdlc` rule 3, #417).
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -307,24 +310,24 @@ touches *before* editing).
 > name, and R-1 says a half-tagged series is worse than an untagged one — so it gets its own red
 > test before any of it is written.
 
-- [ ] **Step 1: Write the failing test** — AC-3: wedge the drainer, queue sends of **two different
+- [x] **Step 1: Write the failing test** — AC-3: wedge the drainer, queue sends of **two different
       kinds**, let the drain window expire, assert each kind's `abandoned` counter is exactly its own
       count. Extend `countsEveryDropUnderTheOneMetricName` (AC-4) to span all three reasons and more
       than one kind.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*AsyncMailDispatcherTest*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*AsyncMailDispatcherTest*"` → FAIL
       (the abandoned counter cannot name a kind).
-- [ ] **Step 3: Minimal implementation** — queue a `KindedSend(MailKind, Runnable)`; add the narrow
+- [x] **Step 3: Minimal implementation** — queue a `KindedSend(MailKind, Runnable)`; add the narrow
       payload accessor to `MdcTaskDecorator` so the drain can unwrap; attribute each abandonment and
       carry the kind into its log line. The unreachable non-`KindedSend` branch is handled
       explicitly per R-3, never swallowed, and invents no tag value.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS. Then the module and the structural
+- [x] **Step 4: Run it, verify it passes** — same command → PASS. Then the module and the structural
       net: `gradle test --tests "*notification*" --tests "*ModularityTests*"
       --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"
       --tests "*PublishedSurfacePlacementArchitectureTests*"` (R-6).
-- [ ] **Step 5: Generalization-audit pass** — does any other accounting path read a queued/wrapped
+- [x] **Step 5: Generalization-audit pass** — does any other accounting path read a queued/wrapped
       task and lose information doing it? Check the registry pool's shed policy. Append to the log.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#442): attribute a mail abandoned at shutdown to its flow (#442)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "feat(#442): attribute a mail abandoned at shutdown to its flow (#442)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -338,29 +341,29 @@ touches *before* editing).
 > **Merge `origin/main` first** (R-5) — PR #443 rewrites parts of `observability.md`, and two of the
 > sentences this phase owns are the ones it rated "accurate only while #442 is open".
 
-- [ ] **Step 1: ADR-0011 decision 5** — the "only **in part**" clause and the "cannot carry the
+- [x] **Step 1: ADR-0011 decision 5** — the "only **in part**" clause and the "cannot carry the
       kind, because it is raised by the dispatcher, whose interface is `dispatch(Runnable)`"
       sentence are now false. Rewrite the bullet to state that both counters attribute, and append a
       dated `> **Amended 2026-07-30 (#442).**` blockquote **quoting the removed claim** (the
       #371/#386/#439 convention) so the history stays legible.
-- [ ] **Step 2: `docs/runbooks/observability.md`** — the `dropped` section's blockquote (the "On
+- [x] **Step 2: `docs/runbooks/observability.md`** — the `dropped` section's blockquote (the "On
       THIS series nothing does" correction #440 shipped) is replaced by the true statement; the tag
       table gains `kind` rows mirroring the `failed` table's; the shutdown section's "this counter
       cannot tell you" sentence is corrected. State the behavior-parity consequence: an unaggregated
       query now returns one row per kind.
-- [ ] **Step 3: `docs/runbooks/mailer-profile-smoke-test.md:130`** — "carries **no `kind`**" is now
+- [x] **Step 3: `docs/runbooks/mailer-profile-smoke-test.md:130`** — "carries **no `kind`**" is now
       false.
-- [ ] **Step 4: Javadoc sweep** — `ObservabilityMetrics.MAIL_RECOVERY_DROPPED` (the "cannot, since
+- [x] **Step 4: Javadoc sweep** — `ObservabilityMetrics.MAIL_RECOVERY_DROPPED` (the "cannot, since
       it is raised by `AsyncMailDispatcher`" paragraph), `AsyncMailDispatcher`'s class Javadoc and
       `recordDrop`'s, `MailDispatcher`, `TransactionalMailService`, `MailSender:56`. Every one of
       these currently *argues* the gap; each must now describe what ships.
-- [ ] **Step 5: `RESPONSIBILITIES.md` + `CLAUDE.md`** — both describe `MAIL_RECOVERY_FAILED` as the
+- [x] **Step 5: `RESPONSIBILITIES.md` + `CLAUDE.md`** — both describe `MAIL_RECOVERY_FAILED` as the
       `kind`-tagged one by contrast. Reconcile the `notification` Job paragraph and the module-table
       row.
-- [ ] **Step 6: Verify no stale claim survives** — `grep -rn "never learns the kind\|carries \`reason\` alone\|no \`kind\`\|only \*\*in part\*\*" docs/ platform/src/main RESPONSIBILITIES.md CLAUDE.md`
+- [x] **Step 6: Verify no stale claim survives** — `grep -rn "never learns the kind\|carries \`reason\` alone\|no \`kind\`\|only \*\*in part\*\*" docs/ platform/src/main RESPONSIBILITIES.md CLAUDE.md`
       → only amendment blockquotes quoting the old text may match.
-- [ ] **Step 7: Commit** — `git commit -m "docs(#442): state the drop path's attribution where the repo claimed it was impossible (#442)"`
-- [ ] **Step 8: Update plan-doc execution status**; mark the PR ready for review.
+- [x] **Step 7: Commit** — `git commit -m "docs(#442): state the drop path's attribution where the repo claimed it was impossible (#442)"`
+- [x] **Step 8: Update plan-doc execution status**; mark the PR ready for review.
 
 ---
 
@@ -377,30 +380,30 @@ touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** Run `gradle test --tests "*AsyncMailDispatcherTest*"` → PASS.
-- [ ] **AC-5, AC-6:** Run `gradle test --tests "*MailKindTest*"` → PASS.
-- [ ] **AC-7:** Run `gradle test --tests "*TransactionalMailServiceTest*"` → PASS.
-- [ ] **AC-8:** Run the Phase 2 step-6 grep → no stale claim outside an amendment blockquote.
-- [ ] **Structural net:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS.
+- [x] **AC-1..AC-4:** Run `gradle test --tests "*AsyncMailDispatcherTest*"` → PASS. Verified at commit `d5c51ba`.
+- [x] **AC-5, AC-6:** Run `gradle test --tests "*MailKindTest*"` → PASS. Verified at commit `d5c51ba`.
+- [x] **AC-7:** Run `gradle test --tests "*TransactionalMailServiceTest*"` → PASS. Verified at commit `d5c51ba`.
+- [x] **AC-8:** Run the Phase 2 step-6 grep → no stale claim outside an amendment blockquote. Verified at commit `12c9c3b`, re-confirmed by the review gate's reviewer 4.
+- [x] **Structural net:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS (211 tests, 0 failures, 0 skipped).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A); no `(set, date)` write path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking surface.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; nothing new published (invariant #11).
-- [ ] **Payment/payout** section filled (N/A — no money in scope) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — N/A.
-- [ ] **Booking codes unguessable (invariant #7)** — and the new tag carries a flow name, never an address or a tokenized link; the existing PII assertion still passes.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A); no `(set, date)` write path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking surface.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; nothing new published (invariant #11).
+- [x] **Payment/payout** section filled (N/A — no money in scope) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — N/A.
+- [x] **Booking codes unguessable (invariant #7)** — and the new tag carries a flow name, never an address or a tokenized link; the existing PII assertion still passes.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
