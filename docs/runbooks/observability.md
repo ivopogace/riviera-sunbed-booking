@@ -228,7 +228,7 @@ is zero in a healthy system, so it cannot flood, and with the publication comple
 durable copy — the line is the only per-loss artefact there is. Lines carry the booking and set ids,
 never the arrival code and never the address (invariant #7).
 
-**Which of the four mail counters to read first, during a suspected relay outage:**
+**Which of the five mail counters to read first, during a suspected relay outage:**
 
 1. **`riviera_mail_recovery_failed_total{reason="transport"}`** — the fastest and least ambiguous
    signal. One failed send moves it; no queue has to fill first.
@@ -238,8 +238,9 @@ never the arrival code and never the address (invariant #7).
 3. **`riviera_mail_recovery_dropped_total`** — last. It needs 100 sends queued behind a wedged
    drainer, so at current volume it is a symptom of a *long* outage, not an early warning.
 
-`riviera_mail_confirmation_abandoned_total` is deliberately **not** in that order: it never rises
-because of a relay, so seeing it during an outage means you have found a *second*, unrelated fault.
+Neither abandoned counter — `riviera_mail_confirmation_abandoned_total` nor its #374 sibling
+`riviera_mail_cancellation_abandoned_total` — is in that order, deliberately: they never rise because
+of a relay, so seeing either during an outage means you have found a *second*, unrelated fault.
 
 **Why the registry vehicle has no *transport* failure counter of its own.** Its transport failure
 propagates rather than being swallowed, so the publication survives and step 2 above already accounts
@@ -324,6 +325,58 @@ carrying the submitting request's correlation id — and the one caught **runnin
 because it may already have reached the relay. The non-interruption is deliberate for that same
 reason: an interrupt cannot tell a send that already handed off to the relay from one that has not, and
 interrupting the first is how at-least-once becomes a duplicate mail.
+
+### `riviera_mail_cancellation_abandoned_total` (counter, #374)
+
+**The sibling of `riviera_mail_confirmation_abandoned_total`, and read exactly the same way** — same
+vehicle, same three `reason` tag values, same invisibility to every other signal. A cancellation mail
+the registry listener **gave up on** because the booking, the set, or the guest contact did not
+resolve; the listener returns *normally*, so the publication is marked complete and
+`riviera_outbox_pending` never moves.
+
+**Read one increment as: a booking was cancelled and the tourist has no written record of it —
+including, where a refund applied, no record of the money owed back.** Two things follow, and the
+order matters:
+
+1. **The money is not affected by this loss.** The refund is issued on a different subscriber to the
+   same event (`booking`'s own `BookingCancelled` listener → `payment`'s `RefundPort`) and the payout
+   reversal on a third (invariant #9). None of them is touched by a failed mail. Confirm the refund
+   actually moved — check `riviera_refunds_failed` and the booking's payment record — *then* worry
+   about the mail.
+2. **Nothing re-drives the mail**, the #405 admin lever included, for the same reason as its sibling:
+   the publication was completed on the normal return. There is no per-booking resend yet (#380), so
+   reaching the tourist is out-of-band once the underlying data fault is fixed.
+
+Unlike the confirmation's remedy, this one involves **no bearer credential**: the cancellation record
+is not a credential and can be re-sent by ordinary means. The arrival code that appears in the mail
+is dead the moment the booking is `CANCELLED`.
+
+| Tag | Meaning | Which module to investigate | Alert when |
+|---|---|---|---|
+| `reason="no-booking"` | `BookingNotificationFacts.notificationInfo` found no booking for the cancelled booking id | `booking` | **any increase** |
+| `reason="no-set"` | `SetBookingFacts.setBookingInfo` found no set for the event's set id | `venue` | **any increase** |
+| `reason="no-contact"` | `CustomerLookup.findById` found no contact for the booking's customer id | `customer` | **any increase** |
+
+> **Data-integrity signal, not a relay signal** — the whole argument on the confirmation counter above
+> applies unchanged: all three rows are FK-protected, no code path deletes a booking, and erasure and
+> the retention sweep tombstone in place. Start at the module in the table, not at the relay.
+
+**Why a separate series instead of `kind="cancellation"` on the confirmation counter.** #442 tagged
+the two `MAIL_RECOVERY_*` series by `kind` because *"recovery"* there names the **vehicle**, so a
+dimension for the flow was the missing piece. This name states the **flow**, so
+`riviera_mail_confirmation_abandoned_total{kind="cancellation"}` would be a contradiction rather than
+a dimension — and renaming the shipped one to something vehicle-shaped is barred by the standing rule
+that a shipped metric name breaks whatever reads it. What #442's lesson *does* reach is the `reason`
+dimension: both series read it off one enum (`notification.application.MissingBookingFact`), so a
+filter written for one works verbatim on the other and `no-set` cannot become `no_set` across them.
+
+**Do not sum the two abandoned counters.** They are acted on differently — see the numbered steps
+above, and the confirmation's invariant-#7 errand, which has no analogue here.
+
+**Logging is one `ERROR` per loss, unthrottled**, for the same three reasons as its sibling: zero in a
+healthy system so it cannot flood, no durable copy of the mail, and nothing else recording the loss.
+Lines carry the booking and set ids — which is what tells you *which* refund to go confirm — and
+never the arrival code or the address (invariant #7).
 
 ## Alert route (today): in-app self-check → ERROR log
 

@@ -54,45 +54,45 @@ and is level with `origin/main`.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `CONFIRMED` booking with a guest contact, when `BookingCancelled` is
+- [x] **AC-1:** Given a `CONFIRMED` booking with a guest contact, when `BookingCancelled` is
       published after commit, then exactly one cancellation mail is recorded to that contact's
       address carrying the booking code, venue, date and the event's refund amount.
       *Pinned by:* `BookingCancellationMailIT.mailsTheGuestOneCancellationRecord`
-- [ ] **AC-2:** Given a cancellation whose server-computed refund is `0` minor units (cancelled
+- [x] **AC-2:** Given a cancellation whose server-computed refund is `0` minor units (cancelled
       after the invariant-#4 cutoff, ADR-0005 tier `NONE`), when the mail is sent, then it states
       that no refund applies and names no amount.
       *Pinned by:* `SmtpMailerIT.rendersNoRefundWhenNothingIsReturned`
-- [ ] **AC-3:** Given the same event delivered through each cancellation channel — tourist
+- [x] **AC-3:** Given the same event delivered through each cancellation channel — tourist
       self-service (`RefundReason.POLICY`) and admin weather refund (`RefundReason.WEATHER`) —
       then both produce a mail, and the body states which of the two happened.
       *Pinned by:* `BookingCancellationMailIT.coversBothCancellationChannels`,
       `SmtpMailerIT.namesTheCancellationReason`
-- [ ] **AC-4:** Given a rendered cancellation mail, then every amount is derived from integer minor
+- [x] **AC-4:** Given a rendered cancellation mail, then every amount is derived from integer minor
       units + the ISO currency and no floating-point type appears on the path (invariant #5).
       *Pinned by:* `SmtpMailerIT.rendersTheRefundFromMinorUnits`
-- [ ] **AC-5:** Given an outstanding publication for the cancellation listener, when
+- [x] **AC-5:** Given an outstanding publication for the cancellation listener, when
       `IncompleteEventPublications` resubmits (what `republish-outstanding-events-on-restart` does
       at boot), then no second mail is produced for an already-completed publication.
       *Pinned by:* `BookingCancellationMailIT.resubmissionProducesNoSecondMail`
-- [ ] **AC-6:** Given the mail transport throws, when the listener runs, then the exception
+- [x] **AC-6:** Given the mail transport throws, when the listener runs, then the exception
       propagates so the publication stays outstanding — and given the *cancellation transaction*,
       then it has already committed, so no mail outcome can affect the cancellation or its refund.
       *Pinned by:* `BookingCancellationMailListenerTest.aTransportFailurePropagates`,
       `BookingCancellationMailIT.mailsTheGuestOneCancellationRecord` (AFTER_COMMIT phase)
-- [ ] **AC-7:** Given the recipient's address is on the suppression list, when the listener runs,
+- [x] **AC-7:** Given the recipient's address is on the suppression list, when the listener runs,
       then no send is attempted and the listener completes normally (no permanent retry loop).
       *Pinned by:* `TransactionalMailServiceTest.aSuppressedAddressSkipsTheCancellation`
-- [ ] **AC-8:** Given any one of the booking, set or contact does not resolve, then the listener
+- [x] **AC-8:** Given any one of the booking, set or contact does not resolve, then the listener
       returns normally, increments `riviera.mail.cancellation.abandoned` under the matching
       `reason` tag, and logs one `ERROR` carrying ids only.
       *Pinned by:* `BookingCancellationMailListenerTest.aMissing{Booking,Set,Contact}IsCountedAndAbandoned`
-- [ ] **AC-9:** Given the module's structural net, then the new listener is
+- [x] **AC-9:** Given the module's structural net, then the new listener is
       `@Async(MAIL_EXECUTOR)` + `@TransactionalEventListener` at `AFTER_COMMIT`, its id falls under
       the notification listener-id prefix (so #405's admin re-drive scopes it), and
       `ApplicationModules.verify()` still passes.
       *Pinned by:* `MailListenerExecutorArchitectureTest.theRuleExaminesBothProductionListeners`,
       `MailOutboxScopeTest.scopesTheCancellationListener`, `ModularityTests`
-- [ ] **AC-10:** Given the mock transport, then it records the new kind with its fields verbatim and
+- [x] **AC-10:** Given the mock transport, then it records the new kind with its fields verbatim and
       logs no arrival code (invariant #7); given the SMTP transport, then the body carries no
       tracking pixel or rewritten link (ADR-0011 §25-TDDDG).
       *Pinned by:* `MockMailerTest.recordsTheCancellation`, `SmtpMailerIT.carriesNoTrackingMarkup`
@@ -134,23 +134,18 @@ and is level with `origin/main`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Refactoring a **shipped** listener (phase 1) silently changes its registry `listener_id`, dead-lettering every outstanding confirmation publication | low | high | The id embeds FQCN + method name + parameter type only — none change. Phase 1 touches the constructor and body, and leaves `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` + `BookingMailFixtures.LISTENER_ID` (value untouched) as the pin | agent | open |
-| R-2 | The new listener reaches for `@ApplicationModuleListener` (the obvious spelling) and lands the send on Boot's shared pool — the money-path spine (invariants #8/#9) | med | high | `MailListenerExecutorArchitectureTest` already fails this by construction and was written naming #374; phase 3 additionally extends its non-vacuity guard to name **both** listeners | agent | open |
-| R-3 | The mail promises a refund the async `BookingRefundListener` may then fail to issue (`riviera.refunds.failed`), so the tourist holds a written record of money that never moved | med | med | Accepted and made explicit in the copy: the mail states the refund **decision** and that it is being returned to the original payment method, never that it has settled. The existing `REFUNDS_FAILED` counter + money-path alert remains the detection path. Recorded as a Non-goal, not silently glossed | maintainer | open |
-| R-4 | A venue-wide weather refund cancels N bookings in one transaction, publishing N events that all land on the 2-thread/200-deep registry pool at once — a shed (`riviera.mail.registry.shed`) drops mails from the queue | low | med | The bulkhead is designed for exactly this and the shed is durable: a shed send never runs, so its publication stays outstanding (`RegistryMailShedDurabilityIT`) and #405's admin re-drive or the restart republish recovers it. Realistic N is one venue's online sets (tens), well under the 200-deep queue. No new mitigation; verified, not assumed | agent | open |
-| R-5 | Near-verbatim second listener trips SonarCloud's **0 duplicated blocks** merge bar, blocking the PR after the build is done | med | med | Pre-empted by design: the duplicated part (three port reads + reason vocabulary + field/constructor block) is extracted in phase 1 *before* the second listener exists in phase 3 | agent | open |
-| R-6 | Rendering the refund reintroduces floating point (`double`/`BigDecimal` euros) on the money path (invariant #5) | low | high | Reuse `SmtpMailer.formatAmount` verbatim — integer minor units → `BigDecimal.movePointLeft` at the display edge only, exponent from `Currency`, `RoundingMode.UNNECESSARY`. AC-4 pins it | agent | open |
-| R-7 | The mail leaks the arrival code into a log line (invariant #7) | low | med | The code is mailed (a decision the maintainer took, see Resolved Q-2) but never logged: `MockMailer`'s cancellation branch follows the confirmation branch's no-code rule, `SmtpMailer` logs nothing, and the abandon line carries ids only. `MockMailerTest` asserts the absence | agent | open |
-| R-8 | `booking` later adds a fourth `RefundReason` and the mail renders a blank or wrong opening line | low | low | The transport switches **exhaustively** over the published enum with no `default`, so a new constant is a compile error in this module rather than a silent blank | agent | open |
+| R-1 | Refactoring a **shipped** listener (phase 1) silently changes its registry `listener_id`, dead-lettering every outstanding confirmation publication | low | high | The id embeds FQCN + method name + parameter type only — none change. Phase 1 touches the constructor and body, and leaves `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` + `BookingMailFixtures.LISTENER_ID` (value untouched) as the pin | agent | **closed** `5cd3f37` — the pin ran green against the refactored listener |
+| R-2 | The new listener reaches for `@ApplicationModuleListener` (the obvious spelling) and lands the send on Boot's shared pool — the money-path spine (invariants #8/#9) | med | high | `MailListenerExecutorArchitectureTest` already fails this by construction and was written naming #374; phase 3 additionally extends its non-vacuity guard to name **both** listeners | agent | **closed** `9f2c42a` — `theRuleExaminesBothProductionListeners` |
+| R-3 | The mail promises a refund the async `BookingRefundListener` may then fail to issue (`riviera.refunds.failed`), so the tourist holds a written record of money that never moved | med | med | Accepted and made explicit in the copy: the mail states the refund **decision** and that it is being returned to the original payment method, never that it has settled. The existing `REFUNDS_FAILED` counter + money-path alert remains the detection path. Recorded as a Non-goal, not silently glossed | maintainer | **accepted** — the copy says the refund is on its way back, never that it arrived; closing it needs a refund-settled fact no module publishes |
+| R-4 | A venue-wide weather refund cancels N bookings in one transaction, publishing N events that all land on the 2-thread/200-deep registry pool at once — a shed (`riviera.mail.registry.shed`) drops mails from the queue | low | med | The bulkhead is designed for exactly this and the shed is durable: a shed send never runs, so its publication stays outstanding (`RegistryMailShedDurabilityIT`) and #405's admin re-drive or the restart republish recovers it. Realistic N is one venue's online sets (tens), well under the 200-deep queue. No new mitigation; verified, not assumed | agent | **closed** — `RegistryMailShedDurabilityIT` green after this slice; the new listener inherits the durability unchanged |
+| R-5 | Near-verbatim second listener trips SonarCloud's **0 duplicated blocks** merge bar, blocking the PR after the build is done | med | med | Pre-empted by design: the duplicated part (three port reads + reason vocabulary + field/constructor block) is extracted in phase 1 *before* the second listener exists in phase 3 | agent | **closed** — Sonar reported **0.0% duplication on new code** on every push |
+| R-6 | Rendering the refund reintroduces floating point (`double`/`BigDecimal` euros) on the money path (invariant #5) | low | high | Reuse `SmtpMailer.formatAmount` verbatim — integer minor units → `BigDecimal.movePointLeft` at the display edge only, exponent from `Currency`, `RoundingMode.UNNECESSARY`. AC-4 pins it | agent | **closed** `5155745` — plus `rendersAnAmountWithNonZeroCents`, which is what would catch a `/100.0` |
+| R-7 | The mail leaks the arrival code into a log line (invariant #7) | low | med | The code is mailed (a decision the maintainer took, see Resolved Q-2) but never logged: `MockMailer`'s cancellation branch follows the confirmation branch's no-code rule, `SmtpMailer` logs nothing, and the abandon line carries ids only. `MockMailerTest` asserts the absence | agent | **closed** `5155745` — asserted on the mock, on SMTP, and on both abandon lines |
+| R-8 | `booking` later adds a fourth `RefundReason` and the mail renders a blank or wrong opening line | low | low | The transport switches **exhaustively** over the published enum with no `default`, so a new constant is a compile error in this module rather than a silent blank | agent | **closed** `5155745` — `everyRefundReasonRendersABody` also reads all three today, `CONFLICT` included |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `notification` may consume `booking.vocabulary.RefundReason` directly rather than
-  mapping it to a module-local enum — it is published vocabulary and the grant already exists.
-  *Owner:* agent · *Resolves by:* phase 2 (`ModularityTests` settles it).
-- **Assumption:** No operator-initiated single-booking cancel channel needs covering, because none
-  exists — see Resolved Q-3. *Owner:* agent · *Resolves by:* phase 4 (the IT enumerates the two real
-  publishers).
+*(empty — every entry resolved below.)*
 
 ### Resolved
 
@@ -168,6 +163,14 @@ and is level with `origin/main`.
   `RefundReason.CONFLICT` is admitted by the V14 CHECK as a closed value set but is not exercised in
   v1. Listening to the event covers every publisher present *and* future, which is exactly the issue's
   stated intent, so no AC changes — AC-3 enumerates the two that exist and R-8 covers a third arriving.
+- **A-1 — May `notification` consume `booking.vocabulary.RefundReason` directly?** → **Yes**, confirmed
+  at phase 2: it is published vocabulary, the grant already existed, and `ModularityTests` is green.
+  Mapping it to a module-local copy would have bought nothing and cost the exhaustive-switch guard
+  (R-8) that makes a fourth constant a compile error.
+- **A-2 — Does any cancellation channel go uncovered?** → **No**, confirmed at phase 4: the two real
+  publishers both reach the listener (`BookingCancellationMailIT` drives one through the API and the
+  other through the event), and subscribing to the fact rather than to a caller covers a third by
+  construction.
 - **Q-4 — Reuse `riviera.mail.confirmation.abandoned` for the cancellation listener's giving-up?**
   → **No; a sibling counter, `riviera.mail.cancellation.abandoned`.** Tagging the shipped series with
   a `kind` would leave a metric *named* `confirmation` counting cancellations, and the repo's standing
@@ -293,10 +296,10 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 5 — docs)` — draft PR **#445** open, so every push is CI-gated.
+**Stage pointer:** `review gate` — all five phases built; PR **#445** being marked ready for review.
 
-**Next action:** Phase 5 — the observability runbook's new counter section, `RESPONSIBILITIES.md`
-and `CLAUDE.md`; then merge `origin/main` and mark PR #445 ready for review.
+**Next action:** Run the review gate (`riviera-sdlc` `references/pr-gates.md` §1 invocation ladder
++ `riviera-review-overlay`), then the Sonar issue list, then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -304,8 +307,8 @@ and `CLAUDE.md`; then merge `origin/main` and mark PR #445 ready for review.
 | 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | ✅ | `5cd3f37` |
 | 2 — Transport: the cancellation message kind | ✅ | `5155745` |
 | 3 — Chokepoint + the cancellation listener | ✅ | `9f2c42a` |
-| 4 — End-to-end registry IT | ✅ | `PHASE4SHA` |
-| 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | | |
+| 4 — End-to-end registry IT | ✅ | `c337cd6` |
+| 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -511,16 +514,16 @@ Modify `TransactionalMailService.java`, `ObservabilityMetrics.java`,
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*BookingCancellationMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `./gradlew test --tests "*BookingCancellationMailIT*" --tests "*SmtpMailerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `./gradlew test --tests "*BookingCancellationMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `./gradlew test --tests "*BookingCancellationMailListenerTest*" --tests "*BookingCancellationMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** `./gradlew test --tests "*TransactionalMailServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** `./gradlew test --tests "*BookingCancellationMailListenerTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-9:** `./gradlew test --tests "*MailListenerExecutorArchitectureTest*" --tests "*MailOutboxScopeTest*" --tests "*ModularityTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-10:** `./gradlew test --tests "*MockMailerTest*" --tests "*SmtpMailerIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `./gradlew test --tests "*BookingCancellationMailIT*"` → PASS. Verified at commit `c337cd6`.
+- [x] **AC-2:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS. Verified at commit `5155745`.
+- [x] **AC-3:** `./gradlew test --tests "*BookingCancellationMailIT*" --tests "*SmtpMailerIT*"` → PASS. Verified at commit `c337cd6`.
+- [x] **AC-4:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS. Verified at commit `5155745`.
+- [x] **AC-5:** `./gradlew test --tests "*BookingCancellationMailIT*"` → PASS. Verified at commit `c337cd6`.
+- [x] **AC-6:** `./gradlew test --tests "*BookingCancellationMailListenerTest*" --tests "*BookingCancellationMailIT*"` → PASS. Verified at commit `9f2c42a`.
+- [x] **AC-7:** `./gradlew test --tests "*TransactionalMailServiceTest*"` → PASS. Verified at commit `9f2c42a`.
+- [x] **AC-8:** `./gradlew test --tests "*BookingCancellationMailListenerTest*"` → PASS. Verified at commit `9f2c42a`.
+- [x] **AC-9:** `./gradlew test --tests "*MailListenerExecutorArchitectureTest*" --tests "*MailOutboxScopeTest*" --tests "*ModularityTests*"` → PASS. Verified at commit `9f2c42a`.
+- [x] **AC-10:** `./gradlew test --tests "*MockMailerTest*" --tests "*SmtpMailerIT*"` → PASS. Verified at commit `5155745`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

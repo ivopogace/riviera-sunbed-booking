@@ -118,9 +118,9 @@ public final class ObservabilityMetrics {
 
 	/**
 	 * Counter: booking-confirmation mails the registry listener <em>gave up on</em> because a fact it
-	 * needs — the booking, the set, or the contact — did not resolve (#428). The fourth and last of
-	 * the mail-loss names, and the only one that measures a loss <strong>no gauge could otherwise
-	 * see</strong>.
+	 * needs — the booking, the set, or the contact — did not resolve (#428). The first of the two
+	 * <em>abandoned</em> names ({@link #MAIL_CANCELLATION_ABANDONED} is the other, #374), and the kind
+	 * of loss <strong>no gauge could otherwise see</strong>.
 	 *
 	 * <p><strong>That invisibility is the whole reason it exists.</strong>
 	 * {@link #MAIL_RECOVERY_FAILED} explains why the registry vehicle needs no <em>transport</em>
@@ -131,8 +131,9 @@ public final class ObservabilityMetrics {
 	 * later, so a retry would park a permanently-failing publication in the outbox); giving up
 	 * <em>silently</em> was not.
 	 *
-	 * <p>Do not sum the four. A shed is deferred, a drop was refused, a failure was attempted — this
-	 * one was abandoned, and it is the only one that is <strong>never</strong> retried.
+	 * <p>Do not sum them. A shed is deferred, a drop was refused, a failure was attempted — an
+	 * abandoned mail is the only kind that is <strong>never</strong> retried; and the two abandoned
+	 * series are not each other's totals either ({@link #MAIL_CANCELLATION_ABANDONED} says why).
 	 *
 	 * <p>Carries a {@code reason} tag ({@code no-booking} / {@code no-set} / {@code no-contact})
 	 * because the three implicate three different modules — {@code booking}, {@code venue},
