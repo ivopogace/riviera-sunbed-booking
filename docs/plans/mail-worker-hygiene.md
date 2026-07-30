@@ -256,7 +256,7 @@ should do it). #434 is already filed.
 | 0 — the shared MDC decorator, composed onto both pools + the corrected comments | ✅ | `ac9e095` |
 | 1 — the drain window derived from the socket budget, bound and validated | ✅ | `04e6f49` |
 | 2 — housekeeping (#411 fold-in), runbook rows, docs-freshness + close-out | ✅ | `68e6953` |
-| 3 — review-gate findings F-1..F-4 | ✅ | `<phase-3>` |
+| 3 — review-gate findings F-1..F-4 | ✅ | `a8369b8` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -266,10 +266,10 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (RV-PROC-1 accuracy) | *Skills consulted* cited `SOCKET_PHASES` as a shipped named constant — a leftover from the plan-time 3× derivation that phase 1 replaced with 1×. A stale plan-doc fact is what RV-PROC-1 exists to catch. | fixed-in-`<phase-3>` |
-| F-2 | review (plan-doc discipline / close-out step 4) | **Three AC pin-names named tests that never shipped** — AC-7 cited `RegistryMailExecutorConfigTest.drainsForTheDerivedWindow` and `AsyncMailDispatcherTest.drainsForTheDerivedWindow` (neither exists; the drain is proven behaviourally instead) and AC-9 cited `rejectsValuesOutsideTheTuningRange` (shipped as `acceptsTheWholeTuningRangeButNotBeyondIt`). Exactly the "verify, don't assume" failure the close-out warns about. | fixed-in-`<phase-3>` |
-| F-3 | review (plan-doc accuracy) | The phase-1 code sketch still showed the abandoned `drainWindowOf` reflection approach and its phantom test, describing an implementation that was deliberately not taken. | fixed-in-`<phase-3>` — sketch replaced with what shipped, and the rejected approach recorded as a resolved decision |
-| F-4 | review (runbook completeness) | `RIVIERA_SMTP_SOCKET_TIMEOUT_MS` ships **at** its ceiling, so it can only be tuned *downward* — an operator reading the range `1`–`10000` would not notice, and #370's whole purpose is retuning. The runbook stated the range without stating the asymmetry or what to do when a relay needs more. | fixed-in-`<phase-3>` — the runbook now names the trade-off and the correct escalation (raise the platform grace, then `SHUTDOWN_BUDGET_MS`) |
+| F-1 | review (RV-PROC-1 accuracy) | *Skills consulted* cited `SOCKET_PHASES` as a shipped named constant — a leftover from the plan-time 3× derivation that phase 1 replaced with 1×. A stale plan-doc fact is what RV-PROC-1 exists to catch. | fixed-in-`a8369b8` |
+| F-2 | review (plan-doc discipline / close-out step 4) | **Three AC pin-names named tests that never shipped** — AC-7 cited `RegistryMailExecutorConfigTest.drainsForTheDerivedWindow` and `AsyncMailDispatcherTest.drainsForTheDerivedWindow` (neither exists; the drain is proven behaviourally instead) and AC-9 cited `rejectsValuesOutsideTheTuningRange` (shipped as `acceptsTheWholeTuningRangeButNotBeyondIt`). Exactly the "verify, don't assume" failure the close-out warns about. | fixed-in-`a8369b8` |
+| F-3 | review (plan-doc accuracy) | The phase-1 code sketch still showed the abandoned `drainWindowOf` reflection approach and its phantom test, describing an implementation that was deliberately not taken. | fixed-in-`a8369b8` — sketch replaced with what shipped, and the rejected approach recorded as a resolved decision |
+| F-4 | review (runbook completeness) | `RIVIERA_SMTP_SOCKET_TIMEOUT_MS` ships **at** its ceiling, so it can only be tuned *downward* — an operator reading the range `1`–`10000` would not notice, and #370's whole purpose is retuning. The runbook stated the range without stating the asymmetry or what to do when a relay needs more. | fixed-in-`a8369b8` — the runbook now names the trade-off and the correct escalation (raise the platform grace, then `SHUTDOWN_BUDGET_MS`) |
 | — | review (`/code-review` fan-out) | **Not run** — this session's standing instruction forbids the Agent tool, which is the ladder's rung-3 condition ("the review subagents genuinely cannot run"). The degraded inline path ran instead and is **declared** in the PR with the box left unticked, per `references/pr-gates.md` §1. | declared, not substituted silently |
 | — | sonar | 0 new issues, 0 security hotspots, 0 duplicated blocks, 100% coverage on new code (`new_lines=287`, analysis confirmed present — not a false-clean zero) | clear |
 
