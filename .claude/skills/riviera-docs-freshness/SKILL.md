@@ -40,6 +40,7 @@ a stale fact there propagates into every future plan and review.
 | `.claude/skills/riviera-*/SKILL.md` | **concrete file names, class names, endpoints, and example tables** inside skills | a rename/removal of anything a skill cites as an example |
 | `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars | build/tooling changes |
 | `docs/deploy/*`, `docs/runbooks/*` | deploy-pipeline shape, hosting/service names, env vars, ops procedures | a CD/hosting change, a rotated secret's name, a new or changed operational mechanism |
+| `platform/src/**` — **Javadoc, `package-info.java`, and test-assertion descriptions** | counts and enumerations of things the code owns ("the two booking kinds", "the first of the two counters", "not just the two that exist today") | the **counting sweep**'s territory (step 2b): a slice that adds the Nth of something. Source prose is in the map for this reason alone — it is what the next reader believes; the rest of the code is the reviewer's job, not this skill's |
 
 ## Procedure
 
@@ -65,8 +66,10 @@ a stale fact there propagates into every future plan and review.
    the **count** can, and it is seconds against a class of error that otherwise ships.
 
    Grep the **words**, not the new identifier — in two steps, because the phrasings alone
-   are too broad (186 hits repo-wide when this was written) and collapse to a readable list
-   once filtered by the vocabulary of the thing that grew (67 for the mail lineage):
+   are too broad (~200 hits repo-wide when this was written) and collapse to a readable
+   list once filtered by the vocabulary of the thing that grew (~75 for the mail lineage).
+   Re-measure rather than trusting those two numbers: they date the recipe, they do not
+   describe your repo today.
 
    ```bash
    # 1. phrasings of N−1 — ordinal and cardinal, spelled-out and digit

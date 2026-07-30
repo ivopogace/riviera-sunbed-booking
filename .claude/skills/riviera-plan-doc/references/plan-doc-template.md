@@ -29,9 +29,10 @@ here means the plan is not ready. `N/A — <reason>` only for a truly single-are
 slice.>
 
 > **The five leading entries are pre-filled on purpose — extend them, don't replace them.**
-> The `riviera-sdlc` routing table's **"Anything, always"** row (`riviera-plan-doc` ·
-> `tdd` · `riviera-review-overlay` · `riviera-docs-freshness`) is due on essentially
-> every slice, but an author filling this line is thinking about the *routed* skills, so
+> The `riviera-sdlc` routing table's **"Anything, always"** row is due on essentially
+> every slice — that table is the authority for its contents; this line pre-fills them
+> rather than re-listing them, so the two cannot drift. But an author filling it in is
+> thinking about the *routed* skills, so
 > the constant part gets omitted — RV-PROC-1 caught exactly that on **#427, #430, #436,
 > #440, #374 and #373**. Six consecutive slices is not six mistakes; it is a template
 > asking a question whose answer is partly constant, so the fix is to make the author

@@ -126,9 +126,9 @@ its rename/removal grep verbatim as `2a` and gains `2b`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The pre-filled line becomes cargo-cult — an author ships `tdd (build)` on a slice built without a test, so the line is *present* and *false*, which is worse than absent | med | med | Every pre-filled entry carries a parenthesis the author must fill with what it actually did (not a fixed label); `riviera-docs-freshness` additionally forces ran-or-N/A-with-reason; RV-PROC-1 re-checks the line against the diff at every review incl. fix commits | this slice | open |
+| R-1 | The pre-filled line becomes cargo-cult — an author ships `tdd (build)` on a slice built without a test, so the line is *present* and *false*, which is worse than absent | med | med | Every pre-filled entry carries a parenthesis the author must fill with what it actually did (not a fixed label); `riviera-docs-freshness` additionally forces ran-or-N/A-with-reason; RV-PROC-1 re-checks the line against the diff at every review incl. fix commits | this slice | **closed** — every pre-filled entry ships a `<…>` the author must fill, and `riviera-docs-freshness`'s forces ran-or-N/A; shipped in `9ad7af3` |
 | R-2 | A future editor "simplifies" the pre-fill back to a bare placeholder, restoring the gap | med | med | The adjacent blockquote records the six-slice run (#427/#430/#436/#440/#374/#373) and says *extend, don't replace* — AC-1 + AC-4 | this slice | **closed** — blockquote shipped in `9ad7af3`; AC-1 + AC-4 verified |
-| R-3 | The counting sweep is too noisy to run — an unscoped phrasing grep returns 186 hits repo-wide, and a check nobody runs is not a check | high | med | Document the **two-step** recipe measured on this repo: phrasing grep **filtered by the grown thing's vocabulary** (67 hits for the mail lineage, of which #373's review confirmed 16 real), plus the present-tense-only scope discipline that discards historical narrative | this slice | **closed** — recipe shipped in `562a07a` and exercised in phase 3: the two-step grep returned a readable list and found the one real finding |
+| R-3 | The counting sweep is too noisy to run — an unscoped phrasing grep returns ~200 hits repo-wide, and a check nobody runs is not a check | high | med | Document the **two-step** recipe measured on this repo: phrasing grep **filtered by the grown thing's vocabulary** (~200 hits unfiltered → ~75 for the mail lineage, of which #373's review confirmed 16 real), plus the present-tense-only scope discipline that discards historical narrative | this slice | **closed** — recipe shipped in `562a07a` and exercised in phase 3: the two-step grep returned a readable list and found the one real finding |
 | R-4 | Adding a procedure step to `riviera-docs-freshness` renumbers steps 3–6 and silently breaks any doc citing "step N" of that skill | low | med | Fold the sweep into step 2 as `2a`/`2b` so later numbers are untouched; verified by grep that no doc outside the skill cites its internal step numbers (only `riviera-sdlc`'s *own* "close-out step 5" is cited externally, which this slice does not move) | this slice | **closed** — steps 3–6 verified unmoved after the edit |
 | R-5 | This slice's own edits falsify a stated fact elsewhere (the very failure it exists to catch) | low | med | Run the new counting sweep on this slice's own diff as part of AC-5; record the result in the Docs-freshness run section | this slice | **closed** — it fired: `riviera-sdlc` SKILL.md:122 plus one ripple, both patched (Docs-freshness run) |
 
@@ -187,11 +187,10 @@ statement is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window
 > as the change it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `PR — marking #448 ready for review, which makes the Review + Sonar gates due`
+**Stage pointer:** `review gate — fix round pushed, re-reviewing the changed surface`
 
-**Next action:** mark PR #448 ready for review, then run the review gate per
-`riviera-sdlc` `references/pr-gates.md` §1 (invocation ladder) with
-`riviera-review-overlay` layered on, followed by the Sonar gate's reported-list check.
+**Next action:** re-walk RV-PROC-1 + the overlay items over the fix commit, confirm CI and
+the Sonar list stay clean on the new head, then merge and run the close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -200,7 +199,9 @@ statement is touched.
 | 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | ✅ | `562a07a` |
 | 3 — Docs-freshness run over the slice's own diff + close-out | ✅ | `924b22e` |
 
-**Merged via PR #448.**
+**Close-out reference:** this slice merges **via PR #448** — recorded as the PR number, never a
+merge SHA, per close-out step 4. (A reference, not a claim that the merge has happened: at the
+time of writing the gates are still running.)
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -210,7 +211,14 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet — gates not reached | — |
+| F-1 | review (`/code-review` fan-out, Major) | Execution status asserted **"Merged via PR #448"** as settled fact while the same section says the gates had not run — the PR-record-lies failure `pr-gates.md` warns about, inverted | fixed-in-`FIXSHA` — reworded to a close-out *reference* (PR number, never a merge SHA) that does not claim the merge happened |
+| F-2 | review (`/code-review` fan-out, Major) | Self-review checklist claimed "risk register has no stale `open` rows (all five closed)" while R-1's Resolution cell still read `open` | fixed-in-`FIXSHA` — R-1 closed with its outcome and shipping commit |
+| F-3 | review (`/code-review` fan-out, Major) | Generalization-audit log reported **8** header lines where the command it cites returns **10** — the original run was piped through `head -8`, so `**Next action:**` and `**Files:**` were never seen. The slice's own undercount class, inside its own audit log | fixed-in-`FIXSHA` — count corrected to 10, both extra lines addressed, and the cause recorded in the row |
+| F-4 | review (`/code-review` fan-out, Major) | Step 2b's grep targets `platform/src` and declares Javadoc/test-assertion text in scope, but the skill's own **substrate-doc map** — the table it presents as the canonical inventory of what can go stale — had no row for source prose | fixed-in-`FIXSHA` — map gains a `platform/src/**` Javadoc/`package-info`/test-assertion row, scoped to counts and enumerations only |
+| F-5 | review (`/code-review` fan-out, Major) | The template's new blockquote **re-listed** the "Anything, always" row's skill names, creating a second manually-synced home — exactly what RV-PROC-1 ("that table is the authority; do not re-list it here") and `riviera-plan-doc` §0 forbid, and the drift class this very slice adds a sweep for | fixed-in-`FIXSHA` — blockquote now points at the row as the authority instead of enumerating it |
+| F-6 | review (`/code-review` fan-out, Minor) | The documented grep recipe's illustrative counts (186 / 67) were measured over a **narrower path set** than the command finally shipped, which returns 201 / 77 — so they never matched the recipe as written | fixed-in-`FIXSHA` — restated as ~200 / ~75 with an explicit "re-measure, these date the recipe" instruction, in both the skill and R-3 |
+| F-7 | review (`/code-review` fan-out, Minor) | Blockquote placement: the new Skills-consulted note sits mid-field, where every other blockquote in the template follows a heading | **rejected with rationale** — the header block has no headings, so any note explaining this line is necessarily mid-field, and AC-1 requires the *why* to sit beside the thing it explains. Moving it to a heading would separate the rule from the field it governs |
+| F-8 | review (`/code-review` fan-out, Minor) | RV-STYLE-1: the step-2b grep snippet carries a two-line `#` comment header | **rejected with rationale** — RV-STYLE-1 scopes to inline comments inside a code body; these are two *independent* one-line comments inside a fenced example in a markdown doc, each fitting on its line |
 
 ## Docs-freshness run
 
@@ -401,7 +409,7 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-30 | Phase 3 (counting sweep, dogfooded on this slice's own diff — R-5) | Statements counting the always-on skill set, or `riviera-docs-freshness`'s procedure steps | `grep -rniE 'always[- ]on\|anything, always' CLAUDE.md .claude/skills docs/agents`, then the N−1 phrasing grep filtered to skills/plan-doc vocabulary | 1 real: `riviera-sdlc` SKILL.md:122's "Anything, always" row named three skills where the template now pre-fills five — **plus one ripple**, the template blockquote that described that row, found only by re-running the sweep after the fix | **Fixed all.** Row now names `riviera-docs-freshness` with its due-condition and points at the pre-fill; blockquote patched to match. Every other phrasing hit is a "two/three" of a different subject (two-suite e2e split, two payment ports, two themes, two-template layout, three review tools) and stays true. |
-| 2026-07-30 | Phase 1 (new pattern: pre-fill the constant part of a hand-authored line) | Other plan-doc-template lines whose answer is partly constant across slices | `grep -n '^\*\*[A-Za-z].*:\*\*' .claude/skills/riviera-plan-doc/references/plan-doc-template.md` | 8 header lines: Goal, Architecture, **Persistence**, Source of intent, Skills consulted, Branch, **Standards**, Stage pointer | **Subset — no further edits.** Two lines already ship their constant pre-filled (`Persistence:` "JDBC only (invariant #1)"; the Angular section's `Standards:` list), so the pattern is proven rather than novel, and this slice applies it to the one line the review gate has actually caught six times. Goal / Architecture / Source-of-intent are wholly slice-specific (no constant to lift); `Branch:` and `Stage pointer:` already spell their convention out inline. |
+| 2026-07-30 | Phase 1 (new pattern: pre-fill the constant part of a hand-authored line) | Other plan-doc-template lines whose answer is partly constant across slices | `grep -n '^\*\*[A-Za-z].*:\*\*' .claude/skills/riviera-plan-doc/references/plan-doc-template.md` | 10 header lines: Goal, Architecture, **Persistence**, Source of intent, Skills consulted, Branch, **Standards**, Stage pointer, Next action, Files | **Subset — no further edits.** Two lines already ship their constant pre-filled (`Persistence:` "JDBC only (invariant #1)"; the Angular section's `Standards:` list), so the pattern is proven rather than novel, and this slice applies it to the one line the review gate has actually caught six times. Goal / Architecture / Source-of-intent / `Next action:` / `Files:` are wholly slice-specific (no constant to lift); `Branch:` and `Stage pointer:` already spell their convention out inline. *(Count corrected at the review gate from 8 — the original run was piped through `head -8`, so two lines were never seen: the undercount class this slice exists to catch, inside its own audit log.)* |
 
 ---
 
