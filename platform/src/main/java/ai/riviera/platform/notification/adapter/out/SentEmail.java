@@ -4,6 +4,7 @@ import java.net.URI;
 
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.PaymentDueMail;
 
 /**
  * One email the {@link MockMailer} recorded instead of sending (S8, epic #108; extended for the
@@ -12,16 +13,19 @@ import ai.riviera.platform.notification.application.BookingConfirmationMail;
  * {@link #link} out of the "sent" record, or to assert what a {@link #confirmation} or
  * {@link #cancellation} carried. Not used by the real {@link SmtpMailer}.
  *
- * <p>Exactly one of {@link #link} / {@link #confirmation} / {@link #cancellation} is populated, per
- * {@link #kind}; use the {@link #recovery}, {@link #bookingConfirmation} and
- * {@link #bookingCancellation} factories rather than the canonical constructor so no caller has to
- * remember which slot goes with which kind. The two booking kinds deliberately do <em>not</em> share
+ * <p>Exactly one of {@link #link} / {@link #confirmation} / {@link #cancellation} / {@link #paymentDue}
+ * is populated, per {@link #kind}; use the {@link #recovery}, {@link #bookingConfirmation},
+ * {@link #bookingCancellation} and {@link #paymentDue(String, PaymentDueMail)} factories rather than
+ * the canonical constructor so no caller has to
+ * remember which slot goes with which kind. The three booking kinds deliberately do <em>not</em> share
  * a slot: an IT asserting on a confirmation must not silently match a cancellation, which is exactly
- * what a shared {@code Object} payload would allow. Public alongside {@link MockMailer} (#382): it is
+ * what a shared {@code Object} payload would allow — and #373's payment-due mail is the case that
+ * makes the rule bite, since it carries the same code and venue as the confirmation for the same
+ * booking and says the opposite thing about the money. Public alongside {@link MockMailer} (#382): it is
  * the value the mock's observation seam speaks to ITs outside this package.
  */
 public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmationMail confirmation,
-		BookingCancellationMail cancellation) {
+		BookingCancellationMail cancellation, PaymentDueMail paymentDue) {
 
 	/** Which message this is. */
 	public enum Kind {
@@ -29,12 +33,13 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 		PASSWORD_RESET,
 		BOOKING_CONFIRMATION,
 		BOOKING_CANCELLATION,
+		PAYMENT_DUE,
 		OPERATOR_APPROVED
 	}
 
 	/** A recovery email, identified by its tokenized link (a bearer credential, invariant #7). */
 	static SentEmail recovery(String toEmail, Kind kind, URI link) {
-		return new SentEmail(toEmail, kind, link, null, null);
+		return new SentEmail(toEmail, kind, link, null, null, null);
 	}
 
 	/**
@@ -44,16 +49,26 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	 * mock's logging rules turn on.
 	 */
 	static SentEmail operatorApproved(String toEmail, URI signInLink) {
-		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null);
+		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null);
 	}
 
 	/** A booking confirmation, identified by the details it renders. */
 	static SentEmail bookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-		return new SentEmail(toEmail, Kind.BOOKING_CONFIRMATION, null, confirmation, null);
+		return new SentEmail(toEmail, Kind.BOOKING_CONFIRMATION, null, confirmation, null, null);
 	}
 
 	/** A cancellation/refund record, identified by the details it renders. */
 	static SentEmail bookingCancellation(String toEmail, BookingCancellationMail cancellation) {
-		return new SentEmail(toEmail, Kind.BOOKING_CANCELLATION, null, null, cancellation);
+		return new SentEmail(toEmail, Kind.BOOKING_CANCELLATION, null, null, cancellation, null);
+	}
+
+	/**
+	 * An accepted request's payment-due notice, identified by the details it renders (#373). Its
+	 * {@code payLink} lives on the payload rather than in the shared {@link #link} slot, so an IT
+	 * reaching for a recovery link can never match it: that slot's occupants are followed blindly by
+	 * the recovery ITs, and this URL leads to a booking, not a token exchange.
+	 */
+	static SentEmail paymentDue(String toEmail, PaymentDueMail paymentDue) {
+		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue);
 	}
 }

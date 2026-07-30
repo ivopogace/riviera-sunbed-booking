@@ -46,6 +46,14 @@ public interface Mailer {
 	void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation);
 
 	/**
+	 * Send the "your request was accepted, payment is due by …" message (#373): the deadline, the
+	 * amount, and the link to the code-gated view where the guest pays. Structured like the two
+	 * booking kinds above, and for the same reason — the implementation decides how a UTC instant
+	 * reads to a tourist (invariant #6: in {@code Europe/Tirane}).
+	 */
+	void sendPaymentDue(String toEmail, PaymentDueMail paymentDue);
+
+	/**
 	 * Send the "your operator account is approved" message with the sign-in link (#375). The only kind
 	 * on this port carrying no bearer credential at all, so the mock's dev-only link echo needs no
 	 * invariant-#7 argument here.

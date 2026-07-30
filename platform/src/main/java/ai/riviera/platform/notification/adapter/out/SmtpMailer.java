@@ -3,6 +3,7 @@ package ai.riviera.platform.notification.adapter.out;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Currency;
 import java.util.Locale;
@@ -16,10 +17,11 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
+import ai.riviera.platform.notification.application.PaymentDueMail;
 
 /**
  * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371, cancellations in
- * #374): delivers every message kind over the
+ * #374, the accepted request's payment deadline in #373): delivers every message kind over the
  * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
  * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active under
  * {@code @Profile("mailer")} — where missing SMTP config fails at boot (unresolved placeholder), never on
@@ -38,11 +40,26 @@ class SmtpMailer implements Mailer {
 	private static final String RESET_SUBJECT = "Reset your password";
 	private static final String CONFIRMATION_SUBJECT = "Your booking at %s is confirmed";
 	private static final String CANCELLATION_SUBJECT = "Your booking at %s is cancelled";
+	private static final String PAYMENT_DUE_SUBJECT = "%s accepted your request — payment due";
 	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
 	private static final DateTimeFormatter DATE_FORMAT =
 			DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
+
+	/**
+	 * The zone every deadline in this mail is stated in (invariant #6). A pay-by instant is only
+	 * actionable as a wall clock, and {@code Europe/Tirane} is the one both the guest and the venue
+	 * are standing in; rendering it in UTC or in the JVM default would be a different time of day.
+	 */
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
+
+	/**
+	 * A deadline needs the hour, and the offset so a guest reading it abroad cannot be an hour out —
+	 * the one place this transport prints a time rather than a date.
+	 */
+	private static final DateTimeFormatter DEADLINE_FORMAT =
+			DateTimeFormatter.ofPattern("d MMMM yyyy 'at' HH:mm (zzz)", Locale.ENGLISH);
 
 	private final JavaMailSender sender;
 	private final String from;
@@ -139,6 +156,29 @@ class SmtpMailer implements Mailer {
 				The refund is on its way back to the payment method you used; it can take a few working
 				days to appear on your statement."""
 				.formatted(formatAmount(cancellation.refundMinor(), cancellation.currency()));
+	}
+
+	@Override
+	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+		send(toEmail, PAYMENT_DUE_SUBJECT.formatted(headerSafe(paymentDue.venueName())), """
+				%s accepted your request — your set is held until you pay.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Date:          %s
+				  To pay:        %s
+				  Pay by:        %s
+
+				Pay here:
+
+				%s
+
+				If we haven't received payment by then the set is released for someone else, and you
+				would need to request it again."""
+				.formatted(paymentDue.venueName(), paymentDue.bookingCode(), paymentDue.venueName(),
+						DATE_FORMAT.format(paymentDue.bookingDate()),
+						formatAmount(paymentDue.amountMinor(), paymentDue.currency()),
+						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink()));
 	}
 
 	@Override

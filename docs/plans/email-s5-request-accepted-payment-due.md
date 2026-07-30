@@ -263,16 +263,17 @@ and stays hermetic.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Phase 1 — add the `PaymentDueMail` kind to the `Mailer` port, both
-transports, `SentEmail`, the chokepoint send, and `BookingLinks` + its bound property.
+**Next action:** Phase 2 — add `RequestPaymentDueMailListener`, the
+`MAIL_PAYMENT_DUE_ABANDONED` counter, the arch-rule non-vacuity guard rename, and
+`RequestPaymentDueMailIT`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `booking`: the event, the widened accept facts, the `Pending`-only publish | ✅ | `<phase-0>` |
-| 1 — `notification`: the mail kind, the transport, the pay link | ⏳ | |
-| 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | | |
+| 1 — `notification`: the mail kind, the transport, the pay link | ✅ | `<phase-1>` |
+| 2 — the listener, its abandoned-counter, the arch-rule guard, the ITs | ⏳ | |
 | 3 — substrate docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
