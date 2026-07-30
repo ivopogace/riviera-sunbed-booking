@@ -198,7 +198,7 @@ statement is touched.
 | 0 — Plan doc + draft PR | ✅ | `51e537c` (PR #448, draft) |
 | 1 — Gap 1: pre-fill the always-on skills in the template | ✅ | `9ad7af3` |
 | 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | ✅ | `562a07a` |
-| 3 — Docs-freshness run over the slice's own diff + close-out | ✅ | `47aca35` |
+| 3 — Docs-freshness run over the slice's own diff + close-out | ✅ | `924b22e` |
 
 **Merged via PR #448.**
 
