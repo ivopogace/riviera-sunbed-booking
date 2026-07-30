@@ -320,7 +320,7 @@ and still queued when the drain window expired — counted by draining the queue
 awaited, which is what makes the number a loss rather than a guess; the send caught **running** is
 deliberately excluded, being the one that may already have reached the relay. Read the name as **never
 ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
-which is the likelier loss and the first of the five mail counters to move in a relay outage. It is
+which is the likelier loss and the first of the six mail counters to move in a relay outage. It is
 tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
 can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
 operator acts on the cause, not the consequence. **Since #442 the drop counter carries `kind` too**, on
@@ -450,7 +450,7 @@ booking confirmation by #428 and the abandoned cancellation record by #374). Not
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
 > down" and no way to check one against the other. Note this is the one admitted type whose
-> justification is *not* "more than one module needs it": all five mail counters have a single
+> justification is *not* "more than one module needs it": all six mail counters have a single
 > reader today. They are admitted for consistency of the naming convention, which is a narrower
 > claim — hold new entries to it.
 

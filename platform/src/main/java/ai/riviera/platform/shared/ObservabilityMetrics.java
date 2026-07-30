@@ -95,9 +95,9 @@ public final class ObservabilityMetrics {
 	 * <p><strong>Read this one first during a suspected relay outage.</strong> Saturating the recovery
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
-	 * <em>every</em> send and raises this one immediately. Do not sum the five mail counters — they
-	 * measure a deferral, a send the pool never ran, an attempt that failed, and — since #374, on two
-	 * separate series — a booking mail given up on. ("Never ran" rather than "refused" since #434
+	 * <em>every</em> send and raises this one immediately. Do not sum the six mail counters — they
+	 * measure a deferral, a send the pool never ran, an attempt that failed, and — on three separate
+	 * series (#428, #374, #373) — a booking mail given up on. ("Never ran" rather than "refused" since #434
 	 * widened the first of those — see {@link #MAIL_RECOVERY_DROPPED}.)
 	 *
 	 * <p>Carries two tags. {@code kind} (verification / password-reset / operator-approved) separates
@@ -119,8 +119,9 @@ public final class ObservabilityMetrics {
 
 	/**
 	 * Counter: booking-confirmation mails the registry listener <em>gave up on</em> because a fact it
-	 * needs — the booking, the set, or the contact — did not resolve (#428). The first of the two
-	 * <em>abandoned</em> names ({@link #MAIL_CANCELLATION_ABANDONED} is the other, #374), and the kind
+	 * needs — the booking, the set, or the contact — did not resolve (#428). The first of the three
+	 * <em>abandoned</em> names ({@link #MAIL_CANCELLATION_ABANDONED} #374 and
+	 * {@link #MAIL_PAYMENT_DUE_ABANDONED} #373 are the others), and the kind
 	 * of loss <strong>no gauge could otherwise see</strong>.
 	 *
 	 * <p><strong>That invisibility is the whole reason it exists.</strong>
@@ -133,7 +134,7 @@ public final class ObservabilityMetrics {
 	 * <em>silently</em> was not.
 	 *
 	 * <p>Do not sum them. A shed is deferred, a drop was refused, a failure was attempted — an
-	 * abandoned mail is the only kind that is <strong>never</strong> retried; and the two abandoned
+	 * abandoned mail is the only kind that is <strong>never</strong> retried; and the three abandoned
 	 * series are not each other's totals either ({@link #MAIL_CANCELLATION_ABANDONED} says why).
 	 *
 	 * <p>Carries a {@code reason} tag ({@code no-booking} / {@code no-set} / {@code no-contact})

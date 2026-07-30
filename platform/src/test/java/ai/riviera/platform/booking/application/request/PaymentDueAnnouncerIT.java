@@ -34,12 +34,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code fallbackExecution} is false, so the event is simply dropped) and no
  * {@code event_publication} row for the restart republish or the #405 re-drive to find.
  *
- * <p>That failure mode is a live risk rather than a hypothetical: Spring's
- * {@code AnnotationTransactionAttributeSource} is <em>public-methods-only</em> by default, and this
- * method — like every other collaborator behind the {@link RespondToRequest} seam — is
- * package-private (invariant #11). So the assertion below is deliberately behavioural: a persisted
- * publication row is proof a real transaction committed, which no amount of reading the annotation
- * can establish.
+ * <p><strong>The review round is why the method is public and this test still exists.</strong>
+ * Spring's {@code AnnotationTransactionAttributeSource} is <em>public-methods-only</em> by default, so
+ * a package-private {@code @Transactional} — the shape this started as, matching every other
+ * collaborator behind the {@link RespondToRequest} seam — rests on proxying behaviour that is not the
+ * documented contract. It applied in practice (this test passed before the visibility changed), but
+ * {@code RequestReleaseService}'s convention makes the method public so nothing depends on that. The
+ * assertion stays behavioural for the same reason it was written: a persisted publication row is proof
+ * a real transaction committed, which no amount of reading the annotation — or the modifier — can
+ * establish, and it is what would catch a future Spring version tightening the rule again.
  *
  * <p>The event names a booking id nothing resolves, on purpose. What is under test is the
  * <em>publication</em>, not the send; the listener will abandon and complete the row, which is why

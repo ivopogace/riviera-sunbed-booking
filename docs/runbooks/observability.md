@@ -181,7 +181,7 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 
 ### `riviera_mail_confirmation_abandoned_total` (counter, #428)
 
-**A mail loss `riviera_outbox_pending` cannot show** — and one of the two that are never retried by
+**A mail loss `riviera_outbox_pending` cannot show** — and one of the three that are never retried by
 anything. Since #374 it has a sibling, `riviera_mail_cancellation_abandoned_total`, which is this
 counter's argument applied to the cancellation listener; everything below holds for both, and the
 one place they differ — what an operator does about an increment — is in that section.
@@ -230,7 +230,7 @@ is zero in a healthy system, so it cannot flood, and with the publication comple
 durable copy — the line is the only per-loss artefact there is. Lines carry the booking and set ids,
 never the arrival code and never the address (invariant #7).
 
-**Which of the five mail counters to read first, during a suspected relay outage:**
+**Which of the six mail counters to read first, during a suspected relay outage:**
 
 1. **`riviera_mail_recovery_failed_total{reason="transport"}`** — the fastest and least ambiguous
    signal. One failed send moves it; no queue has to fill first.
@@ -373,8 +373,9 @@ that a shipped metric name breaks whatever reads it. What #442's lesson *does* r
 dimension: both series read it off one enum (`notification.application.MissingBookingFact`), so a
 filter written for one works verbatim on the other and `no-set` cannot become `no_set` across them.
 
-**Do not sum the two abandoned counters.** They are acted on differently — see the numbered steps
-above, and the confirmation's invariant-#7 errand, which has no analogue here.
+**Do not sum the three abandoned counters.** They are acted on differently — see the numbered steps
+above, the confirmation's invariant-#7 errand, which has no analogue here, and #373's deadline, which
+makes its errand expire.
 
 **Logging is one `ERROR` per loss, unthrottled**, for the same three reasons as its sibling: zero in a
 healthy system so it cannot flood, no durable copy of the mail, and nothing else recording the loss.
