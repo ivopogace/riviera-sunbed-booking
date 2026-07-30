@@ -485,10 +485,10 @@ its submitter's logging context** (`MdcTaskDecorator`, #455). Nothing else.
 > `kind`/`reason` tag values, which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
-> down" and no way to check one against the other. Note this is the one admitted type whose
-> justification is *not* "more than one module needs it": all six mail counters have a single
-> reader today. They are admitted for consistency of the naming convention, which is a narrower
-> claim — hold new entries to it.
+> down" and no way to check one against the other. Note the names are admitted on a justification
+> unique to them — **consistency of the naming convention**, not need: all six mail counters have a
+> single reader today, so "more than one module needs it" would not have carried them. That is a
+> narrower claim than the other entries make — hold new *metric-name* entries to it.
 >
 > **No admission here has ever rested on reuse, and the two newest say so explicitly.**
 > `ShutdownBudget` (#456) because no bounded context owns how long the process has to close, and
