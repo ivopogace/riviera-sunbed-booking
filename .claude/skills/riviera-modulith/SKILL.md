@@ -76,8 +76,8 @@ full" — it owns a published command port with real concurrency semantics; smal
 module thin, **having no service** does.
 
 **`shared` fits neither template**, deliberately: it is not a bounded context but an
-`@ApplicationModule(type = OPEN)` Shared Kernel — four flat classes at the module root, no published
-surface (OPEN means consumers reference its types directly), no `application`/`domain`/`adapter`.
+`@ApplicationModule(type = OPEN)` Shared Kernel — a handful of flat classes at the module root, no
+published surface (OPEN means consumers reference its types directly), no `application`/`domain`/`adapter`.
 `PackageShapeArchitectureTests` permits this because it skips types sitting at a module root. Don't
 copy the shape for a context, and don't grow `shared` into one.
 

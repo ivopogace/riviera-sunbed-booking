@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * {@code WebCorsConfig}, {@code TimeConfig}, …) sits directly under {@code ai.riviera.platform} and is
  * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
  * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. The non-context {@code shared} kernel
- * (#371) matches neither template deliberately — four flat classes at the module root, no published
+ * (#371) matches neither template deliberately — flat classes at the module root, no published
  * surface — and passes here because types sitting at a module root are skipped.
  */
 class PackageShapeArchitectureTests {
