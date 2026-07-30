@@ -122,7 +122,7 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
       and its range — rather than booting clean onto a `SynchronousQueue` (capacity ≤ 0) or a queue
       deep enough to be the unbounded one this slice removes.
       *Pinned by:* `RefundExecutorPropertiesTest`
-- [ ] **AC-9:** Given any event listener in `booking.adapter.in` that reaches `payment::api`, when the
+- [x] **AC-9:** Given any event listener in `booking.adapter.in` that reaches `payment::api`, when the
       architecture rule runs, then it must carry `@Async` naming the refund executor — and the rule is
       proven non-vacuous by finding today's listener.
       *Pinned by:* `RefundListenerExecutorArchitectureTest`
@@ -143,13 +143,13 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 - **An admin re-drive lever for outstanding refunds** (the `/api/admin/mail-outbox` equivalent, #405).
   A shed or crash-lost refund is recovered by `republish-outstanding-events-on-restart`, and AC-4
   proves the publication survives. Shortening that horizon is automated money-path retry and deserves
-  its own issue and risk register — filed at close-out (phase 3 step 5), not ridden in here.
+  its own issue and risk register — **filed as #454**, not ridden in here.
 - **MDC propagation onto the refund pool** (#410's `MdcTaskDecorator`). That class lives in
   `notification.application` and invariant #11 forbids importing it from `booking`; promoting it to
   `shared` is a cross-module move with its own docs cost. Today's shared pool propagates no MDC
   either, so **this is not a regression** — the shed line itself stays attributable regardless,
   because `ThreadPoolExecutor.execute` calls `reject(...)` on the *calling* thread, which here is the
-  thread committing the cancellation. Recorded as a follow-up in phase 3 step 5.
+  thread committing the cancellation. **Filed as #455.**
 
 ## Behavior-parity ledger
 
@@ -174,10 +174,10 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 | R-1 | Declaring a second `Executor` bean makes Boot back off `applicationTaskExecutor` (`@ConditionalOnMissingBean(Executor.class)`), silently dropping every unqualified `@Async` — the money-path listeners included — onto an unbounded `SimpleAsyncTaskExecutor`, where no test fails because unbounded threads always keep up | med | **critical** | `defaultCandidate = false`, the fix #383 established; AC-6's IT asserts both halves (the shared bean exists **and** unqualified `@Async` resolves to it) with **two** such beans in the context, which is the configuration #383 never tested | this slice | **closed** — `RefundExecutorWiringIT` green, 4 tests, 0 skipped: the shared pool is present and unqualified `@Async` still resolves to it |
 | R-2 | Dropping the listener transaction changes durability or completion semantics | low | high | Modulith's completion registration is advisor-based and independent of `@Transactional` (re-derived by #383's review, not taken on faith); AC-4 proves outstanding-on-failure and AC-5 proves the id is unmoved, both against a real registry | this slice | **closed** — both green against a real registry; AC-4/AC-5 also passed *before* the swap, which is what makes them regression guards rather than new claims |
 | R-3 | Shedding a refund loses money owed to a tourist (invariant #10) | low | **critical** | A shed submission never runs, so the publication is never completed and `riviera.outbox.pending` carries it until the next start republishes it (AC-4 proves the mechanism). The queue is sized so a whole weather-refund sweep fits without shedding; the shed path is a backstop with its own counter (AC-7), because — unlike a crash — shedding does not itself trigger the restart that recovers it | this slice | open |
-| R-4 | The pool is sized against an estimate that real gateway latency falsifies, and correcting it costs a deploy | high | med | All three bounds are `@ConfigurationProperties` with env placeholders (#408's precedent), validated at both ends (AC-8). Retuning is a config change; the P1 re-derivation is a recorded handoff, not a memory | this slice | open |
-| R-5 | `riviera-java-conventions` §8 says *"don't hand-roll thread pools in application code"* | — | — | Honored, not violated: this is a Spring `ThreadPoolTaskExecutor` bean in a driving-adapter `@Configuration`, not a hand-rolled pool in a service. §8's target is `new Thread()`/`ExecutorService` inside domain or application logic, and its second clause — *"the real scaling knob is the Hikari pool"* — is precisely what phase 2 protects by dropping the connection pin | this slice | open |
-| R-6 | Full-suite-only failure: a new `@ConfigurationProperties` bean plus a second pool changes context caching, or the shed counter accumulates across tests in one JVM | med | med | The `riviera-local-debug` shared-state rule. The counter is read per-test from a fresh `SimpleMeterRegistry` in the unit tests; the ITs assert deltas, never absolutes. Verified only by the push's CI run | this slice | open |
-| R-7 | The architecture rule (AC-9) is vacuous — it finds no listener and passes forever | med | med | Non-vacuity is a step, not a hope: phase 3 step 2 reverts the listener to `@ApplicationModuleListener` and requires the rule to go red before restoring it, the same proof #383 used | this slice | open |
+| R-4 | The pool is sized against an estimate that real gateway latency falsifies, and correcting it costs a deploy | high | med | All three bounds are `@ConfigurationProperties` with env placeholders (#408's precedent), validated at both ends (AC-8). Retuning is a config change; the P1 re-derivation is a recorded handoff, not a memory | this slice | **closed** — the queue is 500 deep against a worst realistic burst of one venue-day, the shed path is counted (`riviera.refunds.shed`) and documented in the observability runbook, and AC-4 proves the publication survives; the residual retry horizon is #454 |
+| R-5 | `riviera-java-conventions` §8 says *"don't hand-roll thread pools in application code"* | — | — | Honored, not violated: this is a Spring `ThreadPoolTaskExecutor` bean in a driving-adapter `@Configuration`, not a hand-rolled pool in a service. §8's target is `new Thread()`/`ExecutorService` inside domain or application logic, and its second clause — *"the real scaling knob is the Hikari pool"* — is precisely what phase 2 protects by dropping the connection pin | this slice | **closed** — the bean is a Spring `ThreadPoolTaskExecutor` in a driving-adapter `@Configuration`, the shape #383 established; AC-3 pins the Hikari half |
+| R-6 | Full-suite-only failure: a new `@ConfigurationProperties` bean plus a second pool changes context caching, or the shed counter accumulates across tests in one JVM | med | med | The `riviera-local-debug` shared-state rule. The counter is read per-test from a fresh `SimpleMeterRegistry` in the unit tests; the ITs assert deltas, never absolutes. Verified only by the push's CI run | this slice | **open until this push's CI** — and the class did bite once already, in-slice: `RefundBulkheadIT`'s first cut used global counters, so refunds still draining from the wedge test completed *after* the next test's `reset()` and made an exact `== 1` unsatisfiable. Fixed by keying every sample to the booking under test rather than by sleeping |
+| R-7 | The architecture rule (AC-9) is vacuous — it finds no listener and passes forever | med | med | Non-vacuity is a step, not a hope: proven by **fixtures** rather than the planned manual revert — `RefundListenerRuleFixtures` keeps the negative cases permanent, per #409's lesson that a temporary revert is a proof nobody can re-run | this slice | **closed** — 8 tests, incl. three independent non-vacuity checks |
 
 ## Open questions / Assumptions
 
@@ -297,17 +297,17 @@ server-side and env-supplied.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 3 (structural rule + substrate reconciliation)`
+**Stage pointer:** `PR — marking ready for review; Review + Sonar gates due next`
 
-**Next action:** Phase 3 step 1 — write `RefundListenerExecutorArchitectureTest`, then prove it
-non-vacuous by reverting the listener to `@ApplicationModuleListener` (R-7).
+**Next action:** Mark PR #453 ready for review, then run the Review gate (`references/pr-gates.md` §1)
+followed by the Sonar issue-list pull.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Establish and pin the refund budget (AC-1) | ✅ | `c57b0b3` |
 | 1 — The bounded executor, its bounds, and its shed policy (AC-6, AC-7, AC-8) | ✅ | `7800e03` |
 | 2 — Move the listener onto it and drop the transaction (AC-2, AC-3, AC-4, AC-5) | ✅ | `5cbfde8` |
-| 3 — Make the rule structural; reconcile the substrate (AC-9) | | |
+| 3 — Make the rule structural; reconcile the substrate (AC-9) | ✅ | `505e807` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -453,30 +453,52 @@ unbound the money path — is caught by a test that exists before the listener m
 `MailListenerExecutorArchitectureTest.java` (Javadoc), `CLAUDE.md`, `RESPONSIBILITIES.md`,
 `docs/runbooks/observability.md`
 
-- [ ] **Step 1: Write the failing test** — every event listener in `booking.adapter.in` whose method
+- [x] **Step 1: Write the failing test** — every event listener in `booking.adapter.in` whose method
       reaches `payment::api` must carry `@Async` naming `REFUND_EXECUTOR`; resolve the annotation
       method-first then type, and discover candidates via `ArchitectureTestSupport.productionClasses()`
       so the test source set is excluded (the `classpath*:` scanning trap #409 documented).
-- [ ] **Step 2: Run it, verify it fails and is not vacuous** — temporarily revert the listener to
+- [x] **Step 2: Run it, verify it fails and is not vacuous** — temporarily revert the listener to
       `@ApplicationModuleListener` → FAIL naming that listener; restore (R-7).
-- [ ] **Step 3: Reconcile the substrate** — patch the stale boundary bullet in
+- [x] **Step 3: Reconcile the substrate** — patch the stale boundary bullet in
       `MailListenerExecutorArchitectureTest`'s Javadoc (it claims `booking`'s listeners belong on the
       shared pool, which is now false for one of them); add the refund pool to `CLAUDE.md`'s `booking`
       row and `RESPONSIBILITIES.md`'s `booking` **Job**; document `riviera.refunds.shed` in
       `docs/runbooks/observability.md` beside the mail loss counters, stating what it does **not**
       mean (a shed refund is outstanding, not lost).
-- [ ] **Step 4: Run the full architecture set** —
+- [x] **Step 4: Run the full architecture set** —
       `gradle --no-daemon --console=plain test --tests "*RefundListenerExecutorArchitectureTest*" --tests "*MailListenerExecutorArchitectureTest*" --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"`
       → PASS.
-- [ ] **Step 5: Run `riviera-docs-freshness` over `origin/main...HEAD`**, then file the two recorded
+- [x] **Step 5: Run `riviera-docs-freshness` over `origin/main...HEAD`**, then file the two recorded
       follow-ups (the admin re-drive lever; MDC propagation via a `shared` `MdcTaskDecorator`) and add
       the P1 handoff line to epic **#284**: *re-derive the refund bulkhead's worst-case bound from
       Paysera's client timeouts and retry policy, and resize `riviera.booking.refund.*` against it.*
-- [ ] **Step 6: Commit** — `git commit -m "test(#404): pin that the refund listener names its executor"`
-- [ ] **Step 7: Finalize this document** — stage pointer DONE, every phase row ✅, risks closed,
+- [x] **Step 6: Commit** — `git commit -m "test(#404): pin that the refund listener names its executor"`
+- [x] **Step 7: Finalize this document** — stage pointer DONE, every phase row ✅, risks closed,
       `merged via PR #NN`.
 
 ---
+
+## Docs-freshness report (`origin/main...HEAD`)
+
+Run at phase 3 — **4 findings, all patched, none needing a human decision.** The counting sweep's
+trigger here was *"this slice makes the second dedicated bulkhead executor, and moves the first
+non-mail listener off the shared pool"*.
+
+| Doc | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `MailListenerExecutorArchitectureTest` Javadoc, boundary bullet | "`booking`'s and `payout`'s `@ApplicationModuleListener`s belong on the shared pool" | this slice moves one of `booking`'s off it | **patched** — restated so the criterion is the blocking external round-trip, not the module, and it now points at the sibling rule |
+| `CLAUDE.md` `booking` row | said nothing about which executor the refund drains on, nor about the dropped transaction | #404 | patched |
+| `RESPONSIBILITIES.md` `booking` **Not My Job** | "Talking to Stripe or moving money → `payment`" read as covering the wiring too | `booking` now owns the executor its own driving adapter drains on | patched — with the distinction spelled out (wiring for *my* adapter, not gateway knowledge) |
+| `docs/runbooks/observability.md` | no entry for `riviera.refunds.shed`, and no statement of why a shed needs a counter when the outbox gauge also rises | #404 | patched |
+
+Deliberately **not** patched, having been re-read and found still true: `RESPONSIBILITIES.md`'s
+`notification` Job ("the shared `applicationTaskExecutor` that carries the payment→booking and
+booking→payout listeners" — exactly what remains); `RegistryMailExecutorWiringIT`'s "the money-path
+listeners carry a bare `@Async`" (they still do; the refund listener was never one of them);
+`riviera-modulith`'s `@ApplicationModuleListener` guidance (still the default — this is the second
+exception, not a repo-wide replacement); and every "the two …" hit in the sweep that turned out to be
+two of some other subject (two assertions, two halves, the two *mail* pools). `docs/plans/*` from
+earlier slices are historical records, not living docs, per the skill's scope discipline.
 
 ## Generalization-audit log
 
@@ -500,7 +522,7 @@ unbound the money path — is caught by a test that exists before the listener m
 - [x] **AC-6:** Run `gradle test --tests "*RefundExecutorWiringIT*"` → PASS, `tests="4" skipped="0"` (checked in the result XML — a Docker-less skip would have read as green).
 - [x] **AC-7:** Run `gradle test --tests "*RefundExecutorConfigTest*"` → PASS (10 methods: bounds, shed-without-throw-or-caller-run, per-shed counting, episode throttling, drain-does-not-end-an-episode, later-episode-logs-again, shutdown-not-counted, abandoned-not-interrupted).
 - [x] **AC-8:** Run `gradle test --tests "*RefundExecutorPropertiesTest*"` → PASS (all three bounds rejected at both ends).
-- [ ] **AC-9:** Run `gradle test --tests "*RefundListenerExecutorArchitectureTest*"` → PASS, and proven non-vacuous per phase 3 step 2.
+- [x] **AC-9:** Run `gradle test --tests "*RefundListenerExecutorArchitectureTest*"` → PASS, 8 tests, 0 skipped. Non-vacuity proven **three ways, none of them a manual revert**: `theRuleExaminesTheRefundListener` (the scope predicate finds the real production listener), `revertingToApplicationModuleListenerIsRejected` (the fixture #383 would revert to is rejected), and `theCompliantShapePasses` (the rule does not reject everything). `thePaymentEventListenerIsOutOfScopeAndCorrectlySo` pins the other edge.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

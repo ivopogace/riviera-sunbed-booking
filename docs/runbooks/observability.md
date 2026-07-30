@@ -57,12 +57,24 @@ money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three a
 
 | Metric | Meaning | Alert when |
 |---|---|---|
+| `riviera_refunds_shed_total` (counter, #404) | A cancellation **refund** was shed: the refund bulkhead's pool was saturated — `riviera.booking.refund.pool-size` threads busy and all `queue-capacity` slots full — so `BookingRefundListener` never ran and the gateway was never asked. Like the mail shed below, the work survives: the event publication stays outstanding and `republish-outstanding-events-on-restart` re-delivers it at the next start. **Read it beside `riviera_refunds_failed_total`, never summed with it** — *failed* is a refund the gateway refused (investigate there); *shed* is one it was never asked for (investigate the pool and the burst) | **any increase.** Reaching saturation at all means a burst far larger than one weather-refund sweep, or a gateway degraded long enough to back up 500 refunds. Diagnose the gateway first; raising the bounds trades a lossless shed for a longer backlog |
 | `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (pinned end-to-end by `RegistryMailShedDurabilityIT`, #407: it saturates a shrunk bulkhead, sheds a real confirmation, and proves the publication is still outstanding afterwards) — and since #405 you need not wait for one: `POST /api/admin/mail-outbox/resubmit` re-drives it on demand. Until it lands, a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
 
 **A rejection during shutdown is not a shed** and does not touch this counter: a redeploy can reject an
 in-flight send from an otherwise idle pool, which logs one `INFO` and is not saturation. Without that
 distinction the "any increase" rule above would fire on every routine deploy. **The recovery counter
-below makes the opposite call, for a reason** — see its note.
+below makes the opposite call, for a reason** — see its note. `riviera_refunds_shed_total` follows the
+registry pool's convention on both counts (shutdown rejections uncounted, one escalated `ERROR` per
+saturation episode), because it shares the registry vehicle's durability: what is shed stays
+outstanding.
+
+**Why a shed refund needs its own counter when `riviera_outbox_pending` also rises.** Two reasons, and
+the second is the one that matters. The backlog gauge alerts at a *threshold* (default 10), so the
+first shed refund — the one worth knowing about — is invisible there. And a shed is the only loss mode
+that does **not** trigger its own recovery: a crash restarts by definition and the restart republishes,
+whereas a shed happens while the process is healthy and nothing restarts it. Until someone acts, a
+tourist owed money under invariant #10 has not been paid. If you see this counter move, the lever is
+a restart (or a targeted resubmission) — not waiting.
 
 ### `riviera_mail_recovery_dropped_total` (counter, #415)
 

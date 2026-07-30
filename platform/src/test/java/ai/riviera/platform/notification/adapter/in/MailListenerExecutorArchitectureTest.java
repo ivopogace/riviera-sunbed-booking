@@ -78,9 +78,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li><strong>{@code @Async} is resolved method-first, then type</strong>, because Spring resolves
  *       it that way; a class-level {@code @Async(MAIL_EXECUTOR)} is a compliant spelling and must
  *       not read as "no {@code @Async} at all".</li>
- *   <li><strong>The rule is module-local.</strong> {@code booking}'s and {@code payout}'s
- *       {@code @ApplicationModuleListener}s belong on the shared pool — the bulkhead exists because
- *       mail makes a blocking network round-trip, not because async listeners are bad.</li>
+ *   <li><strong>The rule is module-local, and since #404 it is no longer the only one of its
+ *       kind.</strong> This rule governs {@code notification}; {@code booking}'s refund listener now
+ *       has its own — {@code RefundListenerExecutorArchitectureTest} — because it makes the same
+ *       blocking round-trip to a different transport. What still belongs on the shared pool is what
+ *       always did: {@code booking}'s {@code PaymentEventListener} and {@code payout}'s
+ *       accrual/reversal listeners, which are DB-only and <em>are</em> the spine. The principle
+ *       these two rules share is the criterion, not the annotation — a bulkhead exists because a
+ *       listener makes a blocking external round-trip, not because async listeners are bad.</li>
  * </ul>
  */
 class MailListenerExecutorArchitectureTest {
