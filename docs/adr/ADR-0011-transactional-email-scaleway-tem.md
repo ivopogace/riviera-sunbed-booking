@@ -226,7 +226,8 @@ Provider landscape (condensed; full table in the research doc):
    > claim is `INSERT INTO set_availability … ON CONFLICT (set_id, booking_date) DO NOTHING` — "the
    > row's creation is the claim", per `JdbcAvailabilityClaim`'s own Javadoc — and contains no
    > `SELECT … FOR UPDATE` at all; the repo's `FOR UPDATE` statements live in `venue` (`JdbcVenues`,
-   > #226) and in this module's own suppression upsert. **The decision is unaffected, by a different
+   > #226) and in this module's own `reinstate` path (#391) — *not* in its `suppress` upsert, which is
+   > itself an `INSERT … ON CONFLICT`. **The decision is unaffected, by a different
    > route:** what a global `spring.jdbc.template.query-timeout` would abort is the *loser* of that
    > `ON CONFLICT` waiting on the winner's index tuple lock until it commits — still a legitimate
    > contention wait at invariant #2's serialization point, so the global property is still the wrong
