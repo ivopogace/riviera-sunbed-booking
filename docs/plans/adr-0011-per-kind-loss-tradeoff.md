@@ -50,13 +50,13 @@ from `main` at `15e15ad`.
 > **behaviour** the prose describes is already pinned by the tests #375/#415/#423/#434 shipped
 > (`AsyncMailDispatcherTest`, `TransactionalMailServiceTest`) and those must stay green — AC-5.
 
-- [ ] **AC-1:** Given ADR-0011 decision 5, when its trade-off paragraph is read, then it states the
+- [x] **AC-1:** Given ADR-0011 decision 5, when its trade-off paragraph is read, then it states the
       justification **per kind** and no longer asserts that the vehicle's loss is tolerable *because*
       the flow is user-retryable and a token is already committed. *Verified by:*
       `grep -n "user-retryable" docs/adr/ADR-0011-transactional-email-scaleway-tem.md` → the phrase
       survives only inside the amendment note that quotes it as the **removed** claim, and inside the
       recovery-pair bullet where it is true.
-- [ ] **AC-2:** Given the amendment, when a reader asks why the ADR changed, then a dated
+- [x] **AC-2:** Given the amendment, when a reader asks why the ADR changed, then a dated
       `> **Amended 2026-07-30 (#439).**` blockquote — matching the #371 and #386 convention in the
       same decision — quotes the removed justification, states that the vehicle *choice* was not
       reconsidered, and records why option 2 was rejected. *Verified by:*
@@ -184,15 +184,16 @@ N/A — no contract change. No endpoint, DTO, status code, or wire shape is touc
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan → implement (phase 1 next)`
+**Stage pointer:** `implement (phase 1 done, phase 2 next)`
 
-**Next action:** Phase 1 — rewrite ADR-0011 decision 5's trade-off paragraph per-kind and append
-the dated amendment note; then phase 2 (the six code sites), phase 3 (the two runbooks).
+**Next action:** Phase 2 — the six code sites (`MailSender`, `MailDispatcher`,
+`AsyncMailDispatcher` incl. its three log lines, `MailTransportBudget`,
+`RegistryMailExecutorConfig`, `ObservabilityMetrics`), then push + open the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan (grill, maintainer decision, this doc) | ⏳ | |
-| 1 — the ADR amendment | | |
+| 0 — plan (grill, maintainer decision, this doc) | ✅ | `7ae0ad7` |
+| 1 — the ADR amendment | ✅ | *(this commit — sha recorded in phase 2's window)* |
 | 2 — the code sites (`notification` + `shared`) | | |
 | 3 — the runbook sites (+ two stale interim bullets) | | |
 | 4 — close-out (AC verification, this section) | | |
@@ -259,17 +260,17 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `docs/adr/ADR-0011-transactional-email-scaleway-tem.md:101-111`
 
-- [ ] **Step 1:** Rewrite the trade-off paragraph as a per-kind statement — the loss modes, then
+- [x] **Step 1:** Rewrite the trade-off paragraph as a per-kind statement — the loss modes, then
       the recovery pair (self-heals: token committed, user re-requests) and the operator-approval
       notice (unrecoverable; mitigated only by the tagged counters and the runbook's manual remedy).
       Keep the two clauses that are still true and load-bearing: the pool is **not**
       `applicationTaskExecutor`, and the known residual (the synchronous token insert).
-- [ ] **Step 2:** Append `> **Amended 2026-07-30 (#439).**` quoting the removed justification,
+- [x] **Step 2:** Append `> **Amended 2026-07-30 (#439).**` quoting the removed justification,
       stating that the vehicle choice was **not** reconsidered, and recording option 2 as
       considered-and-rejected — the #371/#386 convention.
-- [ ] **Step 3:** Verify AC-1 + AC-2 — `grep -n "user-retryable"` and `grep -c "Amended"`.
-- [ ] **Step 4: Commit** — `git commit -m "docs(#439): make ADR-0011's accepted mail loss per-kind (#439)"`
-- [ ] **Step 5:** Update this Execution status in the same commit window.
+- [x] **Step 3:** Verify AC-1 + AC-2 — `grep -n "user-retryable"` and `grep -c "Amended"`.
+- [x] **Step 4: Commit** — `git commit -m "docs(#439): make ADR-0011's accepted mail loss per-kind (#439)"`
+- [x] **Step 5:** Update this Execution status in the same commit window.
 
 ## Phase 2 — The code sites
 
