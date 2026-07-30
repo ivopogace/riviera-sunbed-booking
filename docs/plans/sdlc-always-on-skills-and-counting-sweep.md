@@ -35,9 +35,10 @@ artifacts under change) · `tdd` (`N/A as executable tests` — the deliverable 
 each AC is pinned by a verification **command** whose expected output is stated, run
 before and after each edit; there is no behavior to red-green) · `riviera-review-overlay`
 (review gate — RV-PROC-1 is the item that caught both gaps, and it re-checks this very
-line) · `riviera-docs-freshness` (**due**, runs in phase 3 over `origin/main...HEAD` — the
-skill is also the second artifact under change, so this slice dogfoods its new counting
-sweep on its own diff; result recorded in the Docs-freshness run section)
+line) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` — **1 finding + 1
+ripple, both patched**: the "Anything, always" routing row named three skills where the
+template now pre-fills five; the skill is also the second artifact under change, so this
+slice dogfooded its own new counting sweep — full run recorded below)
 
 **Branch:** `claude/sdlc-447-dcr1si` — the cloud session's **designated remote branch
 stands in for** `feature/<slug>` (`riviera-sdlc` § Remote/cloud session addendum).
@@ -126,21 +127,24 @@ its rename/removal grep verbatim as `2a` and gains `2b`.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The pre-filled line becomes cargo-cult — an author ships `tdd (build)` on a slice built without a test, so the line is *present* and *false*, which is worse than absent | med | med | Every pre-filled entry carries a parenthesis the author must fill with what it actually did (not a fixed label); `riviera-docs-freshness` additionally forces ran-or-N/A-with-reason; RV-PROC-1 re-checks the line against the diff at every review incl. fix commits | this slice | open |
-| R-2 | A future editor "simplifies" the pre-fill back to a bare placeholder, restoring the gap | med | med | The adjacent blockquote records the six-slice run (#427/#430/#436/#440/#374/#373) and says *extend, don't replace* — AC-1 + AC-4 | this slice | open |
-| R-3 | The counting sweep is too noisy to run — an unscoped phrasing grep returns 186 hits repo-wide, and a check nobody runs is not a check | high | med | Document the **two-step** recipe measured on this repo: phrasing grep **filtered by the grown thing's vocabulary** (67 hits for the mail lineage, of which #373's review confirmed 16 real), plus the present-tense-only scope discipline that discards historical narrative | this slice | open |
-| R-4 | Adding a procedure step to `riviera-docs-freshness` renumbers steps 3–6 and silently breaks any doc citing "step N" of that skill | low | med | Fold the sweep into step 2 as `2a`/`2b` so later numbers are untouched; verified by grep that no doc outside the skill cites its internal step numbers (only `riviera-sdlc`'s *own* "close-out step 5" is cited externally, which this slice does not move) | this slice | open |
-| R-5 | This slice's own edits falsify a stated fact elsewhere (the very failure it exists to catch) | low | med | Run the new counting sweep on this slice's own diff as part of AC-5; record the result in the Docs-freshness run section | this slice | open |
+| R-2 | A future editor "simplifies" the pre-fill back to a bare placeholder, restoring the gap | med | med | The adjacent blockquote records the six-slice run (#427/#430/#436/#440/#374/#373) and says *extend, don't replace* — AC-1 + AC-4 | this slice | **closed** — blockquote shipped in `9ad7af3`; AC-1 + AC-4 verified |
+| R-3 | The counting sweep is too noisy to run — an unscoped phrasing grep returns 186 hits repo-wide, and a check nobody runs is not a check | high | med | Document the **two-step** recipe measured on this repo: phrasing grep **filtered by the grown thing's vocabulary** (67 hits for the mail lineage, of which #373's review confirmed 16 real), plus the present-tense-only scope discipline that discards historical narrative | this slice | **closed** — recipe shipped in `562a07a` and exercised in phase 3: the two-step grep returned a readable list and found the one real finding |
+| R-4 | Adding a procedure step to `riviera-docs-freshness` renumbers steps 3–6 and silently breaks any doc citing "step N" of that skill | low | med | Fold the sweep into step 2 as `2a`/`2b` so later numbers are untouched; verified by grep that no doc outside the skill cites its internal step numbers (only `riviera-sdlc`'s *own* "close-out step 5" is cited externally, which this slice does not move) | this slice | **closed** — steps 3–6 verified unmoved after the edit |
+| R-5 | This slice's own edits falsify a stated fact elsewhere (the very failure it exists to catch) | low | med | Run the new counting sweep on this slice's own diff as part of AC-5; record the result in the Docs-freshness run section | this slice | **closed** — it fired: `riviera-sdlc` SKILL.md:122 plus one ripple, both patched (Docs-freshness run) |
 
 ## Open questions / Assumptions
 
 > **Mandatory. Work is NOT done while this has unresolved entries.**
 
-- **Assumption:** a plan doc is warranted despite the slice shipping no production code —
-  `riviera-sdlc` rule 6 exempts only a one-line/copy fix, and this has five ACs, a
-  case-history requirement, and edits three files that every future session loads.
-  *Owner:* this slice · *Resolves by:* phase 0 (accepted on write; no further action).
+*(empty — both entries resolved below.)*
 
 ### Resolved
+
+- **Assumption (resolved at phase 0):** a plan doc is warranted despite the slice shipping
+  no production code — `riviera-sdlc` rule 6 exempts only a one-line/copy fix, and this has
+  five ACs, a case-history requirement, and edits files every future session loads. Outcome:
+  written; it earned itself in phase 3, where the plan's R-5 dogfood is what caught the
+  `riviera-sdlc` routing-row finding.
 
 - **Assumption (resolved at plan time):** the issue's factual claims still hold today —
   verified at intake: `plan-doc-template.md:20–25` is still hand-authored prose with no
@@ -183,18 +187,20 @@ statement is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window
 > as the change it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement (phase 3 — docs-freshness run over the slice's own diff)`
+**Stage pointer:** `PR — marking #448 ready for review, which makes the Review + Sonar gates due`
 
-**Next action:** run `riviera-docs-freshness` over `origin/main...HEAD`, including the new
-counting sweep dogfooded on this diff (R-5); record the run, verify AC-5, then mark PR #448
-ready for review.
+**Next action:** mark PR #448 ready for review, then run the review gate per
+`riviera-sdlc` `references/pr-gates.md` §1 (invocation ladder) with
+`riviera-review-overlay` layered on, followed by the Sonar gate's reported-list check.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `51e537c` (PR #448, draft) |
 | 1 — Gap 1: pre-fill the always-on skills in the template | ✅ | `9ad7af3` |
-| 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | ✅ | see phase-2 commit below |
-| 3 — Docs-freshness run over the slice's own diff + close-out | ⏳ | |
+| 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | ✅ | `562a07a` |
+| 3 — Docs-freshness run over the slice's own diff + close-out | ✅ | `47aca35` |
+
+**Merged via PR #448.**
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -208,11 +214,52 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Docs-freshness run
 
-> Filled in phase 3: `riviera-docs-freshness` over `origin/main...HEAD`, including the new
-> counting sweep run against this slice's own diff (R-5). Range, per-step outcome, and one
-> line per finding (`doc:line — stated fact — contradicted by — action`).
+> `riviera-docs-freshness` over `origin/main...HEAD`, including the new counting sweep run
+> against this slice's own diff (R-5) — the rule's first exercise, on itself.
 
-*(pending — phase 3)*
+**Range:** `origin/main...HEAD` · **Findings: 1** (patched, plus its one ripple).
+
+- **Step 1 — fact-changes in the diff.** Three prose files change: (a) the plan-doc
+  template's Skills-consulted guidance gains a pre-filled constant + a blockquote;
+  (b) `riviera-docs-freshness`'s procedure step 2 splits into `2a`/`2b` and its frontmatter
+  description gains the counting-sweep trigger; (c) `pr-gates.md` close-out step 5 gains a
+  bullet. Nothing is renamed or removed; no mechanism is swapped; no module, endpoint,
+  value set, or skill is added or deleted.
+- **Step 2a — rename/removal grep.** `N/A — nothing renamed or removed.` The one
+  identifier-shaped change is `riviera-docs-freshness`'s internal step numbering, which R-4
+  designed away by folding the sweep into step 2; `grep -rniE "docs-freshness.{0,60}step
+  [0-9]"` over the repo confirms the only external citation is `riviera-sdlc`'s own "merge
+  close-out step 5", which this slice does not move.
+- **Step 2b — counting sweep (dogfood, R-5).** Did this slice make the Nth of something?
+  Yes: the template now pre-fills **five** always-on entries where the routing table's
+  always-on row named **three**. Swept for statements that count either the always-on set
+  or the skill's procedure steps —
+  `grep -rniE 'always[- ]on|anything, always' CLAUDE.md .claude/skills docs/agents`, then
+  the phrasing grep `'\b(the|both|only) (two|three|2|3)\b|\bof the (two|three)\b'`
+  filtered to skills/plan-doc vocabulary.
+  **Finding (the sweep's whole point — it is not in the diff):**
+  `.claude/skills/riviera-sdlc/SKILL.md:122` — the **"Anything, always"** routing row named
+  three skills and omitted `riviera-docs-freshness`, so an agent consulting the table alone
+  would reproduce gap 1 exactly. → **patched in place**: the row now carries
+  `riviera-docs-freshness` with its due-condition and points at the template's pre-fill.
+  **Ripple, caught by re-running the sweep after the fix** (step 2b's own
+  re-run-after-the-fix-round rule, which #373 learned the hard way): the template's new
+  blockquote described that row as naming three *plus* docs-freshness — true when written,
+  false one commit later. → patched to match.
+  Every other phrasing hit is about a different subject and stays true: the two-suite e2e
+  split, `payment`'s two ports, the two themes, the two-template module layout, the three
+  review tools, the three docs-only close-out PRs.
+- **Step 3 — reverse walk.** `CLAUDE.md:314` ("plan-doc discipline + the canonical
+  template") and `CLAUDE.md:327` ("substrate-doc staleness audit (merge close-out step 5;
+  every epic close-out)") both remain true — the skills gained content, not a new home or
+  trigger point. `riviera-review-overlay`'s RV-PROC-1 text is untouched by this slice and
+  stays accurate: it checks the line against the diff either way.
+- **Step 4 — patch or flag.** Two patches (the finding + its ripple), in this phase's
+  commit window. Nothing changes a decision's substance, so nothing is flagged to the
+  human.
+- **Step 5 — report.** Above. **Step 6 — graph refresh:** skipped — `graphify-out/` is
+  absent in this cloud clone (gitignored, so a fresh clone starts without it); nothing to
+  refresh, nothing to commit.
 
 ---
 
@@ -228,6 +275,9 @@ Skill-routing gate for what the fix touches *before* editing).
   frontmatter description gains the sweep's trigger.
 - `.claude/skills/riviera-sdlc/references/pr-gates.md` — gap 2: close-out step 5 cites
   the counting sweep so it is reachable from the gate.
+- `.claude/skills/riviera-sdlc/SKILL.md` — **not planned; added in phase 3** as the
+  counting sweep's own first finding: the "Anything, always" routing row named three
+  skills where the template now pre-fills five.
 - `docs/plans/sdlc-always-on-skills-and-counting-sweep.md` — this plan.
 
 ---
@@ -333,14 +383,14 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
 
 **Files:** Modify `docs/plans/sdlc-always-on-skills-and-counting-sweep.md`
 
-- [ ] **Step 1: Run `riviera-docs-freshness`** over `origin/main...HEAD`, *including the
+- [x] **Step 1: Run `riviera-docs-freshness`** over `origin/main...HEAD`, *including the
   new counting sweep on this slice's own diff* (R-5) — the first exercise of the rule.
-- [ ] **Step 2: Record the run** in the Docs-freshness run section (range + findings +
+- [x] **Step 2: Record the run** in the Docs-freshness run section (range + findings +
   action per finding), and patch anything it flags.
-- [ ] **Step 3: Verify every AC** in the Acceptance-criteria verification section.
-- [ ] **Step 4: Finalize the Execution status + Self-review checklist**, citing
-  `merged via PR #NN` (never a merge SHA), then mark the PR ready for review.
-- [ ] **Step 5: Commit** — `git commit -m "docs(#447): record the docs-freshness run and close out the plan"`
+- [x] **Step 3: Verify every AC** in the Acceptance-criteria verification section.
+- [x] **Step 4: Finalize the Execution status + Self-review checklist**, citing
+  `merged via PR #448` (never a merge SHA), then mark the PR ready for review.
+- [x] **Step 5: Commit** — `git commit -m "docs(#447): record the docs-freshness run and close out the plan"`
 
 ---
 
@@ -350,6 +400,7 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | Phase 3 (counting sweep, dogfooded on this slice's own diff — R-5) | Statements counting the always-on skill set, or `riviera-docs-freshness`'s procedure steps | `grep -rniE 'always[- ]on\|anything, always' CLAUDE.md .claude/skills docs/agents`, then the N−1 phrasing grep filtered to skills/plan-doc vocabulary | 1 real: `riviera-sdlc` SKILL.md:122's "Anything, always" row named three skills where the template now pre-fills five — **plus one ripple**, the template blockquote that described that row, found only by re-running the sweep after the fix | **Fixed all.** Row now names `riviera-docs-freshness` with its due-condition and points at the pre-fill; blockquote patched to match. Every other phrasing hit is a "two/three" of a different subject (two-suite e2e split, two payment ports, two themes, two-template layout, three review tools) and stays true. |
 | 2026-07-30 | Phase 1 (new pattern: pre-fill the constant part of a hand-authored line) | Other plan-doc-template lines whose answer is partly constant across slices | `grep -n '^\*\*[A-Za-z].*:\*\*' .claude/skills/riviera-plan-doc/references/plan-doc-template.md` | 8 header lines: Goal, Architecture, **Persistence**, Source of intent, Skills consulted, Branch, **Standards**, Stage pointer | **Subset — no further edits.** Two lines already ship their constant pre-filled (`Persistence:` "JDBC only (invariant #1)"; the Angular section's `Standards:` list), so the pattern is proven rather than novel, and this slice applies it to the one line the review gate has actually caught six times. Goal / Architecture / Source-of-intent are wholly slice-specific (no constant to lift); `Branch:` and `Stage pointer:` already spell their convention out inline. |
 
 ---
@@ -373,31 +424,36 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
   → **1** (the six-slice run, gap 1), and `grep -c "sixteen"
   .claude/skills/riviera-docs-freshness/SKILL.md` → **2** (step 2b's case history plus the
   close-out-facing summary, gap 2). Verified in the phase-1 / phase-2 commits.
-- [ ] **AC-5:** *(pending — phase 3)*
+- [x] **AC-5:** Run
+  `git diff --name-only origin/main...HEAD | grep -cvE '^(\.claude/skills|docs/plans)/'`
+  → **0** (5 files: 4 under `.claude/skills/`, 1 under `docs/plans/`; `platform/` and
+  `frontend/` untouched), and the **Docs-freshness run** section above is filled with the
+  range, per-step outcome, and both patches. Verified in the phase-3 commit.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying command (no test class exists for
+- [x] Every AC has an implementing task and a verifying command (no test class exists for
       prose — the deviation is stated in the AC blockquote rather than papered over).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases — `N/A`, no code.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases — `N/A`, no code.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — `platform/` untouched.
+- [x] **Availability** section filled (justified `N/A`) — no code path touches availability (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — `N/A`, nothing in scope touches them.
+- [x] **Modulith** section filled (justified `N/A`); no Java in the diff, module structure unchanged (invariant #11).
+- [x] **Payment/payout** section filled (`N/A`); no money moves (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — `N/A`, unchanged.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — `N/A`, no time handling.
+- [x] Booking codes unguessable (invariant #7) — `N/A`.
+- [x] Flyway migration present for schema changes (invariant #12) — `N/A`, no schema change, no version claimed.
+- [x] **Frontend** standards met or deviation documented — `N/A`, `frontend/` untouched.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows (all five closed with their outcome); Open Questions empty.
+- [x] **Close-out written in THIS PR** — this doc's final state is committed here, citing
+      `merged via PR #448`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+      *(ticked when the gate has actually run — the PR is being marked ready for review now.)*
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

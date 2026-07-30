@@ -30,7 +30,7 @@ slice.>
 
 > **The five leading entries are pre-filled on purpose — extend them, don't replace them.**
 > The `riviera-sdlc` routing table's **"Anything, always"** row (`riviera-plan-doc` ·
-> `tdd` · `riviera-review-overlay`) plus `riviera-docs-freshness` are due on essentially
+> `tdd` · `riviera-review-overlay` · `riviera-docs-freshness`) is due on essentially
 > every slice, but an author filling this line is thinking about the *routed* skills, so
 > the constant part gets omitted — RV-PROC-1 caught exactly that on **#427, #430, #436,
 > #440, #374 and #373**. Six consecutive slices is not six mistakes; it is a template
