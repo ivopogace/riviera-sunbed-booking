@@ -124,15 +124,13 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 			long bookingId, VenueId venueId, Instant now) {
-		// Guarded venue-scoped accept (issue #98): only a still-pending, still-unexpired request of
-		// THIS venue transitions; RETURNING yields the amount facts atomically. accepted_at is the
-		// pay-window clock (never created_at — the instant TTL would sweep an accepted request).
+		// Guarded venue-scoped accept (#98); accepted_at is read back so #373's deadline anchors to it.
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :awaiting, accepted_at = :now
 				WHERE id = :id AND venue_id = :venue AND status = :pending
 				  AND request_expires_at > :now
-				RETURNING id, amount_minor, amount_currency
+				RETURNING id, venue_id, set_id, booking_date, accepted_at, amount_minor, amount_currency
 				""")
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.param("now", java.sql.Timestamp.from(now))
@@ -140,7 +138,10 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_VENUE, venueId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.AcceptedRequest(
-						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getTimestamp("accepted_at").toInstant(), rs.getLong(COL_AMOUNT_MINOR),
+						rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}
 

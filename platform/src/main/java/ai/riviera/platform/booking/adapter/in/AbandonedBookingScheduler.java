@@ -43,7 +43,7 @@ class AbandonedBookingScheduler {
 	@Scheduled(fixedDelayString = "${booking.awaiting-payment.sweep-interval:PT5M}",
 			initialDelayString = "${booking.awaiting-payment.initial-delay:PT1M}")
 	void sweep() {
-		int expired = expireAbandonedBookings.sweep(properties.ttl(), requestWindows.payWindow());
+		int expired = expireAbandonedBookings.sweep(properties.ttl(), requestWindows);
 		if (expired > 0) {
 			log.info("abandoned-payment sweep expired {} booking(s)", expired);
 		}

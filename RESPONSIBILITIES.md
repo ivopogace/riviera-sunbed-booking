@@ -320,7 +320,7 @@ and still queued when the drain window expired — counted by draining the queue
 awaited, which is what makes the number a loss rather than a guess; the send caught **running** is
 deliberately excluded, being the one that may already have reached the relay. Read the name as **never
 ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
-which is the likelier loss and the first of the five mail counters to move in a relay outage. It is
+which is the likelier loss and the first of the six mail counters to move in a relay outage. It is
 tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
 can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
 operator acts on the cause, not the consequence. **Since #442 the drop counter carries `kind` too**, on
@@ -342,12 +342,18 @@ listener abandons the same three ways and gets the **fifth** name, `MAIL_CANCELL
 a sibling series rather than a `kind` tag, because #442 could tag `MAIL_RECOVERY_*` only where the
 name states the *vehicle* and these two state the *flow* — the shared part is the `reason`
 vocabulary, read off one enum so the two cannot drift into two spellings —
-the two **registry-borne booking mails**, both assembled from `booking`/`venue`/`customer` published
-ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirmation mail and, since
+the **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer` published
+ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirmation mail; since
 #374, the `BookingCancelled` cancellation/refund record — one listener covering every cancellation
 channel, tourist self-service and operator weather refund alike, because it subscribes to the fact
 rather than to either caller, and **rendering** the server-computed refund (invariant #10) rather
-than deciding it — and the module's
+than deciding it; and since #373 the `BookingPaymentDue` notice an accepted Request-mode booking's
+guest gets, whose sixth counter `MAIL_PAYMENT_DUE_ABANDONED` completes the abandoned set and is the
+only one of the three whose loss is **predictive** — the sweep releases the set at the mailed
+deadline, so the errand it opens expires. That listener also decides nothing about *whether* payment
+is owed: `booking` settles that by publishing the fact only on the accept branch where money is
+genuinely outstanding, which a status read here could not do without racing the stub's synchronous
+confirm — and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
@@ -397,9 +403,15 @@ withheld?" so a confirmed booking's read model can tell the guest to save their 
 inverted direction and preserves the rule: the dependency edge is still `notification → booking`.
 
 **Not My Job:**
-- Deciding **when** to send, minting/hashing recovery tokens, building the tokenized links →
-  the **platform edge** (`CustomerRecovery`, RV-BE-11); I am handed fully-formed messages
-  and own only delivery
+- Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized** links →
+  the **platform edge** (`CustomerRecovery`, RV-BE-11); for the edge-triggered kinds I am handed
+  fully-formed messages and own only delivery. **#373 drew the line that rule always implied:**
+  a *credential-material* link — one whose token I would have to mint, hash or time-bound — is the
+  edge's, and a link I merely *format* from a fact already in my hand is mine. The registry-borne
+  booking mails have no edge flow to build one (they are raised by listeners inside the hexagon)
+  and the arrival code cannot ride the payload (invariant #7, it would be persisted as text), so
+  `BookingLinks` composes `<base>/booking/<code>` here from the code I already read through
+  `booking::api` to render into the body
 - The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
 - The booking/venue/customer **facts** a confirmation renders → their owners, read via
   `api/` ports at send time
@@ -438,7 +450,7 @@ booking confirmation by #428 and the abandoned cancellation record by #374). Not
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
 > down" and no way to check one against the other. Note this is the one admitted type whose
-> justification is *not* "more than one module needs it": all five mail counters have a single
+> justification is *not* "more than one module needs it": all six mail counters have a single
 > reader today. They are admitted for consistency of the naming convention, which is a narrower
 > claim — hold new entries to it.
 

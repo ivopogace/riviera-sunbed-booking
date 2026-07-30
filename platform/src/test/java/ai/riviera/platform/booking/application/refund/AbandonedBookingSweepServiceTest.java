@@ -2,6 +2,8 @@ package ai.riviera.platform.booking.application.refund;
 
 import java.time.Clock;
 import java.time.Duration;
+
+import ai.riviera.platform.booking.application.request.RequestWindows;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -35,7 +37,8 @@ class AbandonedBookingSweepServiceTest {
 	private static final Clock CLOCK =
 			Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 	private static final Duration TTL = Duration.ofMinutes(15);
-	private static final Duration PAY_WINDOW = Duration.ofHours(12);
+	private static final RequestWindows WINDOWS =
+			new RequestWindows(Duration.ofHours(24), Duration.ofHours(12));
 	private static final BookingId STALE = new BookingId(4242L);
 
 	private final List<BookingId> released = new ArrayList<>();
@@ -55,7 +58,7 @@ class AbandonedBookingSweepServiceTest {
 	void releasesAStaleBookingWithNoCollectionOnRecord() {
 		// #125: no payment row (a pay() that threw after the reserve commit). Past the TTL this is a
 		// stranded booking, so the sweep — the crash backstop — must release it, not skip it forever.
-		int expired = sweepWith(new PaymentCancellation.NoCollection()).sweep(TTL, PAY_WINDOW);
+		int expired = sweepWith(new PaymentCancellation.NoCollection()).sweep(TTL, WINDOWS);
 
 		assertEquals(1, expired, "a stale no-collection booking is expired");
 		assertEquals(List.of(STALE), released, "and its claim is released exactly once");
@@ -64,7 +67,7 @@ class AbandonedBookingSweepServiceTest {
 	@Test
 	void leavesASucceededBookingForTheWebhook() {
 		// A succeeded payment is NotCancellable — the confirm webhook wins (invariant #8), never the sweep.
-		int expired = sweepWith(new PaymentCancellation.NotCancellable("succeeded")).sweep(TTL, PAY_WINDOW);
+		int expired = sweepWith(new PaymentCancellation.NotCancellable("succeeded")).sweep(TTL, WINDOWS);
 
 		assertEquals(0, expired, "a succeeded booking is not expired by the sweep");
 		assertTrue(released.isEmpty(), "and its claim is left held for the confirm webhook");
@@ -73,7 +76,7 @@ class AbandonedBookingSweepServiceTest {
 	@Test
 	void skipsATransientGatewayFailure() {
 		// A transient Failed is retried next run — not released this round.
-		int expired = sweepWith(new PaymentCancellation.Failed("lock_timeout")).sweep(TTL, PAY_WINDOW);
+		int expired = sweepWith(new PaymentCancellation.Failed("lock_timeout")).sweep(TTL, WINDOWS);
 
 		assertEquals(0, expired, "a transient cancel failure is not expired this run");
 		assertTrue(released.isEmpty(), "and nothing is released");
@@ -82,7 +85,7 @@ class AbandonedBookingSweepServiceTest {
 	@Test
 	void releasesAfterAnAuthoritativeCancel() {
 		// Regression guard for the pre-#125 happy path: a Canceled PaymentIntent still releases the set.
-		int expired = sweepWith(new PaymentCancellation.Canceled()).sweep(TTL, PAY_WINDOW);
+		int expired = sweepWith(new PaymentCancellation.Canceled()).sweep(TTL, WINDOWS);
 
 		assertEquals(1, expired, "a canceled PaymentIntent expires the booking");
 		assertEquals(List.of(STALE), released, "and releases its claim");

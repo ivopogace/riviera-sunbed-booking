@@ -181,7 +181,7 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 
 ### `riviera_mail_confirmation_abandoned_total` (counter, #428)
 
-**A mail loss `riviera_outbox_pending` cannot show** — and one of the two that are never retried by
+**A mail loss `riviera_outbox_pending` cannot show** — and one of the three that are never retried by
 anything. Since #374 it has a sibling, `riviera_mail_cancellation_abandoned_total`, which is this
 counter's argument applied to the cancellation listener; everything below holds for both, and the
 one place they differ — what an operator does about an increment — is in that section.
@@ -230,7 +230,7 @@ is zero in a healthy system, so it cannot flood, and with the publication comple
 durable copy — the line is the only per-loss artefact there is. Lines carry the booking and set ids,
 never the arrival code and never the address (invariant #7).
 
-**Which of the five mail counters to read first, during a suspected relay outage:**
+**Which of the six mail counters to read first, during a suspected relay outage:**
 
 1. **`riviera_mail_recovery_failed_total{reason="transport"}`** — the fastest and least ambiguous
    signal. One failed send moves it; no queue has to fill first.
@@ -240,9 +240,10 @@ never the arrival code and never the address (invariant #7).
 3. **`riviera_mail_recovery_dropped_total`** — last. It needs 100 sends queued behind a wedged
    drainer, so at current volume it is a symptom of a *long* outage, not an early warning.
 
-Neither abandoned counter — `riviera_mail_confirmation_abandoned_total` nor its #374 sibling
-`riviera_mail_cancellation_abandoned_total` — is in that order, deliberately: they never rise because
-of a relay, so seeing either during an outage means you have found a *second*, unrelated fault.
+None of the three abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
+`riviera_mail_cancellation_abandoned_total`, or #373's `riviera_mail_payment_due_abandoned_total` —
+is in that order, deliberately: they never rise because
+of a relay, so seeing any of them during an outage means you have found a *second*, unrelated fault.
 
 **Why the registry vehicle has no *transport* failure counter of its own.** Its transport failure
 propagates rather than being swallowed, so the publication survives and step 2 above already accounts
@@ -372,13 +373,50 @@ that a shipped metric name breaks whatever reads it. What #442's lesson *does* r
 dimension: both series read it off one enum (`notification.application.MissingBookingFact`), so a
 filter written for one works verbatim on the other and `no-set` cannot become `no_set` across them.
 
-**Do not sum the two abandoned counters.** They are acted on differently — see the numbered steps
-above, and the confirmation's invariant-#7 errand, which has no analogue here.
+**Do not sum the three abandoned counters.** They are acted on differently — see the numbered steps
+above, the confirmation's invariant-#7 errand, which has no analogue here, and #373's deadline, which
+makes its errand expire.
 
 **Logging is one `ERROR` per loss, unthrottled**, for the same three reasons as its sibling: zero in a
 healthy system so it cannot flood, no durable copy of the mail, and nothing else recording the loss.
 Lines carry the booking and set ids — which is what tells you *which* refund to go confirm — and
 never the arrival code or the address (invariant #7).
+
+### `riviera_mail_payment_due_abandoned_total` (counter, #373)
+
+**The third of the abandoned series** — same vehicle, same three `reason` tag values off the same
+enum, same invisibility to `riviera_outbox_pending`, same "do not sum" rule, same data-integrity
+reading. The mail is the one an accepted Request-mode booking's guest gets telling them payment is
+due and by when.
+
+**What makes this one different is that it is a *deadline* you are racing, not a record you are
+reconstructing.** The other two describe something already settled; this one is the guest's only
+notice that an accepted request must be paid for. So read one increment as a **prediction**: unless
+someone reaches that guest out-of-band, the abandoned-payment sweep will expire the booking at its
+`payBy` and release the set, and the venue will have held a spot for nothing.
+
+1. **Get the deadline first.** The `ERROR` line carries it alongside the booking and set ids,
+   precisely so you do not have to derive it. It is `accepted_at + booking.request.pay-window`
+   (default `PT12H`) — the same instant the sweep enforces, because both come off `RequestWindows`.
+2. **Act before it, or not at all.** Reaching the guest after `payBy` is pointless: the set is gone
+   and they would have to request it again. Nothing re-drives the mail — the #405 admin lever
+   included — because the publication was completed on the normal return.
+3. **Then fix the data fault** at the module named in the table below, so the next accept mails.
+
+| Tag | Meaning | Which module to investigate | Alert when |
+|---|---|---|---|
+| `reason="no-booking"` | `BookingNotificationFacts.notificationInfo` found no booking for the accepted booking id | `booking` | **any increase** |
+| `reason="no-set"` | `SetBookingFacts.setBookingInfo` found no set for the event's set id | `venue` | **any increase** |
+| `reason="no-contact"` | `CustomerLookup.findById` found no contact for the booking's customer id | `customer` | **any increase** |
+
+**Logging is one `ERROR` per loss, unthrottled**, for its siblings' three reasons. Lines carry the
+booking id, the set id and the deadline — never the arrival code, never the pay link that embeds it
+(invariant #7), never the address.
+
+> **The separate-series argument is the cancellation counter's, verbatim:** this name states a
+> **flow**, so it cannot be a `kind` tag on a counter named for a different flow, and the shipped
+> names stay. Only the `reason` dimension is shared, off one enum, so a filter written for any of the
+> three works on all three.
 
 ## Alert route (today): in-app self-check → ERROR log
 

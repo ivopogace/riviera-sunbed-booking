@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -10,6 +11,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -57,6 +59,13 @@ public final class BookingMailFixtures {
 	 */
 	public static final String CANCELLATION_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "BookingCancellationMailListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+
+	/**
+	 * The registry's id for the payment-due listener (#373). Like {@link #CANCELLATION_LISTENER_ID} it
+	 * needs no migration — the class is new, so its default id is correct on first write.
+	 */
+	public static final String PAYMENT_DUE_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
+			+ "RequestPaymentDueMailListener.on(ai.riviera.platform.booking.events.BookingPaymentDue)";
 
 	private final JdbcClient jdbc;
 	private final TransactionTemplate transactions;
@@ -114,6 +123,17 @@ public final class BookingMailFixtures {
 			RefundReason reason) {
 		return new BookingCancelled(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), date, refundMinor, "EUR", reason);
+	}
+
+	/**
+	 * The payment-due fact an IT publishes to drive the mail (#373). {@code amountMinor} doubles as the
+	 * fragment {@link #outstandingPublicationsFor} matches on, so callers pass an improbable value for
+	 * the reason the class Javadoc gives.
+	 */
+	public BookingPaymentDue paymentDueOf(SetRef set, long bookingId, LocalDate date, long amountMinor,
+			Instant payBy) {
+		return new BookingPaymentDue(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), date, payBy, amountMinor, "EUR");
 	}
 
 	/** How much the registry still owes the confirmation listener for one test's event. */

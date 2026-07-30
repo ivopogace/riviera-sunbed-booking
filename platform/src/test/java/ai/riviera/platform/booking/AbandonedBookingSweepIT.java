@@ -22,6 +22,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
@@ -58,6 +59,9 @@ import static org.mockito.Mockito.when;
 class AbandonedBookingSweepIT {
 
 	private static final Duration PAY_WINDOW = Duration.ofHours(12);
+
+	/** #373 handed the sweep the whole record, so its cutoff and the mailed deadline share one source. */
+	private static final RequestWindows WINDOWS = new RequestWindows(Duration.ofHours(24), PAY_WINDOW);
 	private static final Duration TTL = Duration.ofMinutes(15);
 	private static final int STALE_AGE_MINUTES = 60;
 	private static final int FRESH_AGE_MINUTES = 1;
@@ -170,7 +174,7 @@ class AbandonedBookingSweepIT {
 		claim(set, date);
 		assertEquals(1L, availabilityRows(set, date), "precondition: the set is claimed");
 
-		int expired = sweep.sweep(TTL, PAY_WINDOW);
+		int expired = sweep.sweep(TTL, WINDOWS);
 
 		assertEquals(1, expired, "the one stale AWAITING_PAYMENT booking is expired");
 		assertEquals("CANCELLED", statusOf(booking), "the abandoned booking is cancelled");
@@ -192,7 +196,7 @@ class AbandonedBookingSweepIT {
 		claim(set, date);
 
 		// The sweep cancels the PaymentIntent + releases the set...
-		assertEquals(1, sweep.sweep(TTL, PAY_WINDOW));
+		assertEquals(1, sweep.sweep(TTL, WINDOWS));
 		assertEquals("CANCELLED", statusOf(booking));
 		assertEquals(0L, availabilityRows(set, date));
 
@@ -205,7 +209,7 @@ class AbandonedBookingSweepIT {
 
 		// Re-running the sweep also no-ops: the booking is no longer AWAITING_PAYMENT, so it is not even
 		// selected, and the PaymentIntent is cancelled exactly once across both drivers.
-		assertEquals(0, sweep.sweep(TTL, PAY_WINDOW));
+		assertEquals(0, sweep.sweep(TTL, WINDOWS));
 		verify(cancelableIntent, times(1)).cancel();
 	}
 
@@ -220,7 +224,7 @@ class AbandonedBookingSweepIT {
 		insertPayment(fresh, "pi_sweep_fresh");
 		claim(set, freshDate);
 
-		int expired = sweep.sweep(TTL, PAY_WINDOW);
+		int expired = sweep.sweep(TTL, WINDOWS);
 
 		assertEquals(0, expired, "neither a confirmed nor a within-TTL booking is swept");
 		assertEquals("CONFIRMED", statusOf(confirmed), "a CONFIRMED booking is never touched");
@@ -244,7 +248,7 @@ class AbandonedBookingSweepIT {
 		when(succeeded.getStatus()).thenReturn("succeeded");
 		when(intents.retrieve("pi_succeeded")).thenReturn(succeeded);
 
-		int expired = sweep.sweep(TTL, PAY_WINDOW);
+		int expired = sweep.sweep(TTL, WINDOWS);
 
 		assertEquals(0, expired, "a booking whose payment succeeded is not expired by the sweep");
 		assertEquals("AWAITING_PAYMENT", statusOf(booking), "it is left for the confirm webhook (invariant #8)");
@@ -265,7 +269,7 @@ class AbandonedBookingSweepIT {
 		claim(set, date);
 		assertEquals(1L, availabilityRows(set, date), "precondition: the set is claimed");
 
-		int expired = sweep.sweep(TTL, PAY_WINDOW);
+		int expired = sweep.sweep(TTL, WINDOWS);
 
 		assertEquals(1, expired, "the stale no-collection booking is expired");
 		assertEquals("CANCELLED", statusOf(booking), "the stranded booking is cancelled");

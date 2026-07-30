@@ -11,6 +11,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.PaymentDueMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,6 +33,10 @@ class MockMailerTest {
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), 2500, "EUR", RefundReason.POLICY);
 
 	private final MockMailer mailer = new MockMailer();
+
+	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail("CODE1234", "Vala Beach",
+			java.time.LocalDate.of(2026, 8, 1), java.time.Instant.parse("2026-07-31T18:00:00Z"),
+			4500, "EUR", URI.create("https://riviera.example/booking/CODE1234"));
 
 	@Test
 	void recordsEachEmailAndReturnsTheLatestPerAddress() {
@@ -64,7 +69,32 @@ class MockMailerTest {
 		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.BOOKING_CANCELLATION);
 		assertThat(recorded.cancellation()).isEqualTo(CANCELLATION);
 		assertThat(recorded.link()).as("a cancellation carries no tokenized link").isNull();
-		assertThat(recorded.confirmation()).as("the two booking kinds do not share a slot").isNull();
+		assertThat(recorded.confirmation()).as("the three booking kinds do not share a slot").isNull();
+	}
+
+	@Test
+	void recordsThePaymentDue() {
+		mailer.sendPaymentDue("tourist@example.com", PAYMENT_DUE);
+
+		SentEmail recorded = mailer.lastTo("tourist@example.com").orElseThrow();
+		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.PAYMENT_DUE);
+		assertThat(recorded.paymentDue()).isEqualTo(PAYMENT_DUE);
+		assertThat(recorded.link()).as("the pay link rides the payload, not the recovery slot").isNull();
+		assertThat(recorded.confirmation()).as("the three booking kinds do not share a slot").isNull();
+		assertThat(recorded.cancellation()).isNull();
+	}
+
+	/**
+	 * Invariant #7 twice: the arrival code, and the pay link that embeds it. The mock echoes recovery
+	 * links by design, so this is the assertion that keeps that affordance from creeping onto a link
+	 * that reaches an unpaid booking.
+	 */
+	@Test
+	void neverLogsThePayLink(CapturedOutput output) {
+		mailer.sendPaymentDue("tourist@example.com", PAYMENT_DUE);
+
+		assertThat(output).doesNotContain(PAYMENT_DUE.payLink().toString());
+		assertThat(output).doesNotContain(PAYMENT_DUE.bookingCode());
 	}
 
 	@Test

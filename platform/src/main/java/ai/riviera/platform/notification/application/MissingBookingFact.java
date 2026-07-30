@@ -5,13 +5,14 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 /**
  * Which of the three facts a booking mail needs did not resolve — the {@code reason} dimension both
  * registry-listener abandon counters are read through
- * ({@link ObservabilityMetrics#MAIL_CONFIRMATION_ABANDONED} and
- * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED}).
+ * ({@link ObservabilityMetrics#MAIL_CONFIRMATION_ABANDONED},
+ * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED} and, since #373,
+ * {@link ObservabilityMetrics#MAIL_PAYMENT_DUE_ABANDONED}).
  *
  * <p><strong>One type rather than three string constants per listener</strong> — the {@code MailKind}
- * argument (#442) applied to the dimension those two counters do <em>not</em> share. There the two
+ * argument (#442) applied to the dimension those counters do <em>not</em> share. There the two
  * loss counters were raised from two classes and could not name a flow at all; here they are raised
- * from two listeners that each already knew the vocabulary, and the failure a shared type forecloses
+ * from three listeners that each already knew the vocabulary, and the failure a shared type forecloses
  * is the same one: {@code no-set} on one series and {@code no_set} on the other, with the runbook's
  * "start at the module in the table" instruction matching one of them.
  *
@@ -34,7 +35,7 @@ public enum MissingBookingFact {
 	/** {@code customer.api.CustomerLookup} found no contact — investigate {@code customer}. */
 	NO_CONTACT("no-contact");
 
-	/** The metric tag key. Shared by both abandon counters, so a reader can pivot between them. */
+	/** The metric tag key. Shared by all three abandon counters, so a reader can pivot between them. */
 	public static final String TAG = "reason";
 
 	private final String tagValue;

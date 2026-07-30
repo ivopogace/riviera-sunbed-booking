@@ -15,18 +15,29 @@
  * synchronous {@code MailDeliverability} read that lets the authenticated verification-resend stop
  * claiming a mail was sent when suppression withheld it; {@code application} holds the
  * chokepoint service, the internal transport/dispatch/suppression ports and the dispatcher;
- * {@code adapter/in} the two registry listeners — {@code BookingConfirmed} and, since #374,
- * {@code BookingCancelled} (both driving adapters, both on the mail bulkhead); {@code adapter/out}
+ * {@code adapter/in} the three registry listeners — {@code BookingConfirmed}, since #374
+ * {@code BookingCancelled}, and since #373 {@code BookingPaymentDue} (all driving adapters, all on
+ * the mail bulkhead) — plus the config that binds them their properties; {@code adapter/out}
  * the transports and the suppression repository. No {@code domain} — the module owns table-backed
  * state but no aggregate yet (the single {@code SuppressionReason} enum rides with its port).
  *
- * <p>The edge keeps deciding <em>when</em> to send and keeps all credential-material machinery
- * (token minting/hashing, link building — RV-BE-11); this module is handed fully-formed links and
- * booking facts and owns only delivery. Nothing depends on {@code notification} except the root.
+ * <p>The edge keeps deciding <em>when</em> to send and keeps all <strong>credential-material</strong>
+ * machinery — minting a token, hashing it, deciding its TTL, and building the link that carries it
+ * (RV-BE-11). For the edge-triggered kinds this module is therefore handed fully-formed links and owns
+ * only delivery.
  *
- * <p>The grants below are the two registry listeners' reads, least-privilege (#95) — no command
- * surface; #374 added a second listener without widening them, because both assemble the same facts
- * through one shared resolver. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
+ * <p><strong>#373 drew the one line that rule always implied but never had to state.</strong> The
+ * registry-borne booking mails are raised <em>inside</em> the hexagon by listeners, so there is no
+ * edge flow holding a request to build anything; and the arrival code cannot ride the event payload,
+ * which the registry persists as text (invariant #7). So {@code BookingLinks} formats
+ * {@code <base>/booking/<code>} here, from a code this module already reads through {@code booking::api}
+ * to render into the body. That mints nothing and hashes nothing — it is presentation of a fact
+ * already in hand, which is what keeps it on this side of RV-BE-11. Nothing depends on
+ * {@code notification} except the root.
+ *
+ * <p>The grants below are the three registry listeners' reads, least-privilege (#95) — no command
+ * surface; #374 and #373 each added a listener without widening them, because all three assemble the
+ * same facts through one shared resolver. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
  * {@code ApiProblem} factory (#391); it publishes no named interfaces, so the whole (deliberately
  * tiny) module root is the narrowest grant available, exactly as {@code payout} declares it.
  * {@code booking::spi} is the one <em>inbound</em> grant (#390): booking declares

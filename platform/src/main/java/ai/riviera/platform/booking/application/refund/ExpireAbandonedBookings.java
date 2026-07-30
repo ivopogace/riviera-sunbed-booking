@@ -2,6 +2,8 @@ package ai.riviera.platform.booking.application.refund;
 
 import java.time.Duration;
 
+import ai.riviera.platform.booking.application.request.RequestWindows;
+
 /**
  * The abandoned-payment TTL sweep use case (issue #51): expire bookings that have lingered in
  * {@code AWAITING_PAYMENT} longer than {@code ttl} and free their held {@code (set, date)}. Driven
@@ -19,12 +21,18 @@ public interface ExpireAbandonedBookings {
 	 *
 	 * <p>Two clocks (issue #98): an <em>instant</em> booking is abandoned {@code ttl} after
 	 * creation (the guest was at the checkout screen); an <em>accepted request</em> is abandoned
-	 * only {@code payWindow} after {@code accepted_at} — never on the creation clock, which may be
+	 * only a pay window after {@code accepted_at} — never on the creation clock, which may be
 	 * hours older than the accept.
 	 *
+	 * <p>The second clock arrives as the whole {@link RequestWindows} rather than a bare
+	 * {@code Duration} (#373): the cutoff it derives is the same instant the payment-due mail
+	 * promises the guest, and the record owns both directions of that arithmetic so the promise and
+	 * the enforcement cannot drift apart.
+	 *
 	 * @param ttl how long an instant booking may stay {@code AWAITING_PAYMENT} before it is considered abandoned
-	 * @param payWindow how long an accepted request's guest has to pay, measured from accept
+	 * @param windows the Request-to-Book windows; only {@code payWindow} is read here, via
+	 *        {@link RequestWindows#acceptedBefore}
 	 * @return the number of bookings actually expired this run (for logging/observability)
 	 */
-	int sweep(Duration ttl, Duration payWindow);
+	int sweep(Duration ttl, RequestWindows windows);
 }

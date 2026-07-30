@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
+import ai.riviera.platform.notification.application.PaymentDueMail;
 
 /**
  * Default-profile ({@code @Profile("!mailer & !smtp4dev")}) recording {@link Mailer} that plays a cooperative mail
@@ -78,6 +79,15 @@ public class MockMailer implements Mailer {
 				SentEmail.Kind.BOOKING_CANCELLATION, sanitize(toEmail), sanitize(cancellation.venueName()),
 				cancellation.bookingDate(), cancellation.refundMinor(), cancellation.currency(),
 				cancellation.reason());
+	}
+
+	@Override
+	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+		sent.add(SentEmail.paymentDue(toEmail, paymentDue));
+		// Neither the code nor the pay link that embeds it: the link reaches an unpaid booking.
+		log.info("[mock-mailer] {} (to {}) for {} on {} — {} {} due by {}", SentEmail.Kind.PAYMENT_DUE,
+				sanitize(toEmail), sanitize(paymentDue.venueName()), paymentDue.bookingDate(),
+				paymentDue.currency(), paymentDue.amountMinor(), paymentDue.payBy());
 	}
 
 	@Override

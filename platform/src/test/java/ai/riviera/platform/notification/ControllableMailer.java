@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
+import ai.riviera.platform.notification.application.PaymentDueMail;
 
 /**
  * A transport whose latency and failure are the test's to choose — the "deliberately blocking
@@ -96,6 +97,12 @@ public final class ControllableMailer implements Mailer {
 	 */
 	@Override
 	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		observeRegistrySend(toEmail);
+	}
+
+	/** #373's payment-due notice is the third kind on this vehicle — observed, for the reason above. */
+	@Override
+	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
 		observeRegistrySend(toEmail);
 	}
 

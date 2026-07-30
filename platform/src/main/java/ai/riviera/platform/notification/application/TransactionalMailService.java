@@ -32,11 +32,12 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * very experience it was added to remove. That asymmetry is why the loss counters are read through
  * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
- * <p><strong>The two booking mails</strong> — the confirmation (#371) and the cancellation/refund
- * record (#374), both module-internal and driven by registry listeners — are deliberately the
+ * <p><strong>The three booking mails</strong> — the confirmation (#371), the cancellation/refund
+ * record (#374) and the accepted request's payment deadline (#373), all module-internal and driven
+ * by registry listeners — are deliberately the
  * opposite: synchronous on the listener's thread, transport failures propagating, so the Event
  * Publication Registry keeps the publication outstanding and retries — the at-least-once contract.
- * Public only for {@code adapter/in}; neither is on the published port.
+ * Public only for {@code adapter/in}; none is on the published port.
  *
  * <p><strong>Suppression</strong> — the module's defining invariant, <em>no send to a suppressed
  * address</em> — is enforced here for both vehicles, per send attempt (so a registry retry honors
@@ -65,7 +66,8 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * less observable than the one this class exists to record.
  *
  * <p><strong>The registry vehicle deliberately gets no equivalent counter.</strong> Its transport
- * failure propagates (see {@link #sendBookingConfirmation} and {@link #sendBookingCancellation}), so
+ * failure propagates (see {@link #sendBookingConfirmation}, {@link #sendBookingCancellation} and
+ * {@link #sendPaymentDue}), so
  * the publication stays outstanding and
  * {@code riviera.outbox.pending} — already watched by {@code MoneyPathAlertCheck} — rises on exactly
  * this event. Adding a second series would count one failure twice and invite summing two numbers
@@ -147,6 +149,20 @@ public class TransactionalMailService implements MailSender {
 		mailer.sendBookingCancellation(toEmail, cancellation);
 	}
 
+	/**
+	 * Deliver the accepted request's payment deadline now, on the caller's thread; a transport failure
+	 * propagates (#373). The registry vehicle's posture, identical to its two siblings — and the one
+	 * where the retry the throw buys is most obviously worth having, since the mail is the guest's
+	 * only warning that an unnoticed acceptance will be swept away again.
+	 */
+	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Payment-due mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendPaymentDue(toEmail, paymentDue);
+	}
+
 	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {
 		// Between them the two catches cover the whole task: nothing may escape onto the drainer.
 		dispatcher.dispatch(kind, () -> {
@@ -215,8 +231,9 @@ public class TransactionalMailService implements MailSender {
 	 * {@link #REASON_SUPPRESSION_LOOKUP} so a broken lookup is legible as the database fault it is rather
 	 * than as the relay fault it is not.
 	 *
-	 * <p>Deliberately <strong>not</strong> shared with either registry-vehicle send
-	 * ({@link #sendBookingConfirmation}, {@link #sendBookingCancellation}): there the throw is
+	 * <p>Deliberately <strong>not</strong> shared with any registry-vehicle send
+	 * ({@link #sendBookingConfirmation}, {@link #sendBookingCancellation}, {@link #sendPaymentDue}):
+	 * there the throw is
 	 * load-bearing, keeping the publication outstanding so the at-least-once contract (#371) retries
 	 * against a healthy database instead of burning the delivery on a blip.
 	 */

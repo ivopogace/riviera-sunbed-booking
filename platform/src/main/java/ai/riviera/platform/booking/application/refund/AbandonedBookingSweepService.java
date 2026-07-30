@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
@@ -59,10 +60,10 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 	}
 
 	@Override
-	public int sweep(Duration ttl, Duration payWindow) {
+	public int sweep(Duration ttl, RequestWindows windows) {
 		Instant now = clock.instant();
 		List<BookingId> stale =
-				bookings.findExpirableAwaitingPayment(now.minus(ttl), now.minus(payWindow));
+				bookings.findExpirableAwaitingPayment(now.minus(ttl), windows.acceptedBefore(now));
 		int expired = 0;
 		for (BookingId id : stale) {
 			try {

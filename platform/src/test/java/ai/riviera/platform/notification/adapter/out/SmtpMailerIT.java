@@ -2,6 +2,7 @@ package ai.riviera.platform.notification.adapter.out;
 
 import java.net.ServerSocket;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import jakarta.mail.internet.MimeMessage;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.PaymentDueMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,6 +41,11 @@ class SmtpMailerIT {
 	private static final String FROM = "noreply@test.local";
 	private static final URI LINK = URI.create("https://app.example/account/verify?token=s3cret-t0ken");
 	private static final String BOOKING_CODE = "XK4T9PQ2";
+
+	private static final URI PAY_LINK = URI.create("https://app.example/booking/" + BOOKING_CODE);
+
+	/** 18:30 UTC = 20:30 in Tirane on a summer date (CEST) — the gap is what the assertion reads. */
+	private static final Instant DEADLINE = Instant.parse("2026-08-14T18:30:00Z");
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR");
@@ -189,6 +196,59 @@ class SmtpMailerIT {
 		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
 
 		assertThat(output).doesNotContain(BOOKING_CODE);
+	}
+
+	// ---- the payment-due kind (#373, Email S5) -----------------------------------------------
+
+	/**
+	 * AC-5 at the transport: the deadline, the amount and the pay link all reach the body, and the
+	 * deadline is stated in {@code Europe/Tirane} (invariant #6) rather than in UTC or the JVM default.
+	 *
+	 * <p>The instant chosen is deliberately one where those differ and the choice is visible: 18:30 UTC
+	 * is 20:30 in Tirane on a summer date (CEST, UTC+2). A transport that rendered the raw instant
+	 * would print 18:30 and pass every other assertion here — so the hour is the assertion.
+	 */
+	@Test
+	void statesThePayDeadlineInTiraneWithThePayLink() throws Exception {
+		mailer().sendPaymentDue(TO, paymentDue());
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
+		assertThat(GreenMailUtil.getAddressList(message.getFrom())).isEqualTo(FROM);
+		// getSubject() decodes the RFC-2047 encoded-word any non-ASCII subject becomes.
+		assertThat(message.getSubject()).isEqualTo("Miramar Beach accepted your request — payment due");
+		assertThat(GreenMailUtil.getHeaders(message)).doesNotContain(BOOKING_CODE);
+
+		String body = message.getContent().toString();
+		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026", "EUR 25.00");
+		assertThat(body).as("the deadline in Europe/Tirane, not UTC").contains("14 August 2026 at 20:30");
+		assertThat(body).contains(PAY_LINK.toString());
+	}
+
+	@Test
+	void thePaymentDueMailCarriesNoTrackingMarkup() throws Exception {
+		mailer().sendPaymentDue(TO, paymentDue());
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
+		assertThat(message.getContent().toString()).doesNotContain("<html", "<img", "http://track", "utm_");
+	}
+
+	/**
+	 * Invariant #7 twice over: the arrival code, and the pay link that embeds it. The link is the one
+	 * this transport must be most careful with — a recovery link at least expires on use.
+	 */
+	@Test
+	void neverLogsTheCodeOrThePayLink(CapturedOutput output) {
+		mailer().sendPaymentDue(TO, paymentDue());
+
+		assertThat(output).doesNotContain(BOOKING_CODE);
+		assertThat(output).doesNotContain(PAY_LINK.toString());
+	}
+
+	private static PaymentDueMail paymentDue() {
+		return new PaymentDueMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
+				DEADLINE, 2500, "EUR", PAY_LINK);
 	}
 
 	private static BookingCancellationMail cancellation(long refundMinor, RefundReason reason) {

@@ -1,6 +1,8 @@
 package ai.riviera.platform.notification.application;
 
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -58,6 +60,10 @@ class TransactionalMailServiceTest {
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY);
+	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail(
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
+			Instant.parse("2026-07-31T18:00:00Z"), 4500, "EUR",
+			URI.create("https://riviera.example/booking/CODE1234"));
 
 	private final Mailer mailer = mock(Mailer.class);
 	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);
@@ -332,6 +338,56 @@ class TransactionalMailServiceTest {
 				.isInstanceOf(TransientDataAccessResourceException.class);
 
 		verify(mailer, never()).sendBookingCancellation(any(), any());
+	}
+
+	/**
+	 * #373 joins the registry vehicle, so it must behave like its two siblings and not like the
+	 * recovery pair beside them. The throw is the mechanism, not an accident: it is what keeps the
+	 * publication outstanding for the restart republish and the #405 re-drive. A
+	 * dispatched-and-swallowed payment-due mail would look identical in every other test in this
+	 * slice — the listener IT included, since the mock transport never fails there — and would turn
+	 * at-least-once into fire-and-forget for the one mail whose loss costs the guest their booking.
+	 */
+	@Test
+	void thePaymentDueIsSynchronousAndPropagatesTransportFailures() {
+		service.sendPaymentDue(EMAIL, PAYMENT_DUE);
+
+		verify(mailer).sendPaymentDue(EMAIL, PAYMENT_DUE);
+		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
+
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPaymentDue(any(), any());
+		assertThatThrownBy(() -> service.sendPaymentDue(EMAIL, PAYMENT_DUE))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * The skip must <em>return</em>, not throw: a throw parks the publication in a permanent retry
+	 * loop against an address the policy will keep refusing (R-6). Counting it would be wrong too — a
+	 * withheld mail is the suppression list working.
+	 */
+	@Test
+	void aSuppressedAddressSkipsThePaymentDue() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		assertThatCode(() -> service.sendPaymentDue(EMAIL, PAYMENT_DUE)).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendPaymentDue(any(), any());
+		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
+	}
+
+	/**
+	 * #386's fail-open carve-out is the <em>recovery</em> vehicle's alone, here as on the cancellation:
+	 * a blip should cost a retry against a healthy database, not the delivery.
+	 */
+	@Test
+	void aFailingSuppressionReadDoesNotFailOpenOnThePaymentDue() {
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new TransientDataAccessResourceException("read timed out"));
+
+		assertThatThrownBy(() -> service.sendPaymentDue(EMAIL, PAYMENT_DUE))
+				.isInstanceOf(TransientDataAccessResourceException.class);
+
+		verify(mailer, never()).sendPaymentDue(any(), any());
 	}
 
 	@Test
