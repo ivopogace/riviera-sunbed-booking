@@ -294,7 +294,16 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 
 **Stage pointer:** `review gate RUN (findings fixed) — Sonar gate PASSED — ready to merge`
 
-**Next action:** Await the human's merge decision. Every gate has run; nothing is outstanding.
+**Next action:** Await CI on the integration merge, then merge (authorized). Every gate has run.
+
+**Integration with `main` (#437 / issue #375, operator-approved notification email):** merged in,
+one conflict — both slices appended to `CLAUDE.md`'s single-line `notification` table row. Resolved
+by taking main's row and re-splicing this slice's clause at the same anchor, so #375's addition is
+intact. Checked the substantive question the conflict hints at: **#375 sends on the in-memory
+dispatcher vehicle, not a new registry listener**, so this slice's listener-id scope is unaffected
+(had it added one, the prefix would have covered it automatically — which is the designed behaviour,
+not an accident). Scoped backend set, the structural net, frontend lint and the full frontend unit
+suite all re-run green on the merge.
 
 **Review gate (RUN):** `/code-review`'s five-agent fan-out over `origin/main...HEAD`, with
 `riviera-review-overlay` layered into the CLAUDE.md-adherence agent. Six findings were raised and
