@@ -257,16 +257,16 @@ already has its own explicit timeouts (#52/#426) and deliberately runs outside a
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0-1 done, entering phase 2`
+**Stage pointer:** `PR — marking ready for review; review gate + Sonar gate next`
 
-**Next action:** Phase 2 — write `AbandonedSweepSurvivesWedgedJobIT` (both instruments together on
-the real `TaskScheduler`), then correct `MoneyPathAlertCheck`'s Javadoc and the deploy runbook.
+**Next action:** Run the review gate (`riviera-sdlc` `references/pr-gates.md` §1) over the PR diff,
+then pull the Sonar new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Isolate the scheduler's lane (pool size + fitness function) | ✅ | `0d636c6` |
-| 1 — Bound every scheduled entry query | ✅ | |
-| 2 — Prove it end-to-end + correct the stale docs | | |
+| 1 — Bound every scheduled entry query | ✅ | `397b2ce` |
+| 2 — Prove it end-to-end + correct the stale docs | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -370,25 +370,25 @@ Modify `ObservabilityConfig.java`, `JdbcBookings.java`, `JdbcAccountErasure.java
 **Files:** Create `platform/src/test/java/ai/riviera/platform/AbandonedSweepSurvivesWedgedJobIT.java` ·
 Modify `MoneyPathAlertCheck.java` (javadoc), `docs/deploy/production-hardening.md`
 
-- [ ] **Step 1: Write the failing test** — seed an `AWAITING_PAYMENT` booking holding a
+- [x] **Step 1: Write the failing test** — seed an `AWAITING_PAYMENT` booking holding a
   `set_availability` row. Lock `event_publication` `ACCESS EXCLUSIVE`; set
   `riviera.scheduled.query-timeout-seconds` **high** for this test so the wedge genuinely does not
   self-clear. Dispatch the wedged gauge read on the autowired `TaskScheduler`, then dispatch
   `ExpireAbandonedBookings.sweep(...)` on the same scheduler; assert it completes, the booking is no
   longer `AWAITING_PAYMENT`, and its `set_availability` row is gone. Release the lock in a `finally`.
-- [ ] **Step 2: Run it, verify it fails** — temporarily override
+- [x] **Step 2: Run it, verify it fails** — temporarily override
   `spring.task.scheduling.pool.size=1` in the test to prove the test is not vacuous: the sweep must
   queue behind the wedge and time out. Then remove the override.
-- [ ] **Step 3: Minimal implementation** — none needed (phases 0+1 are the implementation); correct
+- [x] **Step 3: Minimal implementation** — none needed (phases 0+1 are the implementation); correct
   `MoneyPathAlertCheck`'s javadoc ("it adds no query of its own" → it reads a gauge **whose supplier
   queries `event_publication` on this thread, bounded since #395") and add the scheduling facts to
   `docs/deploy/production-hardening.md`.
-- [ ] **Step 4: Run it, verify it passes** → PASS.
-- [ ] **Step 5: Generalization-audit pass** — record whether any other doc or javadoc repeats the
+- [x] **Step 4: Run it, verify it passes** → PASS.
+- [x] **Step 5: Generalization-audit pass** — record whether any other doc or javadoc repeats the
   "adds no query of its own" claim or the "four jobs, one thread" fact
   (`riviera-docs-freshness` counting sweep).
-- [ ] **Step 6: Commit** — `git commit -m "prove a wedged job cannot stall the abandoned sweep (#395)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "prove a wedged job cannot stall the abandoned sweep (#395)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -398,6 +398,7 @@ Modify `MoneyPathAlertCheck.java` (javadoc), `docs/deploy/production-hardening.m
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 2 (bug fix: a Javadoc stating a falsehood) | any other doc or Javadoc repeating "adds no query of its own", or the "four jobs / one thread" fact this slice invalidates | `grep -rn "no query of its own\|adds no query"` + `grep -rni "four @Scheduled\|four scheduled\|one thread"` + `grep -rn "<each scheduler class>" docs/ CLAUDE.md RESPONSIBILITIES.md` | 1 live claim (`MoneyPathAlertCheck`'s own Javadoc) + 1 historical one (`notification-hardening.md`'s dated audit row, which *filed* #395) | **fixed the live one, left the historical one.** An append-only audit-log row dated 2026-07-28 is a record of what was true then, not a live claim — rewriting it would erase the finding's provenance. Verified nothing else states the count: `CLAUDE.md`/`RESPONSIBILITIES.md` never mention the schedulers, and the "three money-path signals" claims in two plan docs stay true |
 | 2026-07-30 | phase 1 (new pattern: a bounded entry query) | every `@Scheduled` method's call graph down to its **first write** — is there another entry read? | read each of `AbandonedBookingSweepService`, `ExpireRequestsService`, `ExpireGuestContactsService`, `MoneyPathAlertCheck.check` | **5 entry reads, not 4.** `ExpireGuestContactsService.sweep()` asks `customer` for candidates *and then* asks `booking` for the retention basis (`GuestBookingHistory#withBookingOnOrAfter`), both before any write. The alert check's other two signals are meter reads, no DB | **fixed all.** Bounded `JdbcGuestBookingHistory` outright (its sole consumer is the sweep, so it has no request path to protect) and extended `ScheduledQueryTimeoutIT` to cover it. Left the per-item **writes** unbounded on purpose — Behavior-parity ledger row 4 |
 | 2026-07-30 | phase 0 (new pattern: a shared executor with no isolation rule) | other shared/bounded executors that could starve the same way | `grep -rn "ThreadPoolTaskExecutor\|setCorePoolSize\|setQueueCapacity\|applicationTaskExecutor\|@Async" platform/src/main/java` | 2 pools (`RegistryMailExecutorConfig`, `AsyncMailDispatcher`) + 3 `@Async` mail listeners | **skip — already closed.** Both pools are deliberately isolated and bounded (#369/#383/#408) and all three `@Async` sites name their executor explicitly, pinned by `MailListenerExecutorArchitectureTest`. Nothing runs on Boot's shared `applicationTaskExecutor`. The scheduler pool was the last shared executor with no rule |
 

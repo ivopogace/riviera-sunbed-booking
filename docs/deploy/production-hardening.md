@@ -142,6 +142,30 @@ improvement plan, rooted in the in-memory choices of
 [ADR-0004](../adr/0004-non-prod-hosting-render-neon-pages.md) (rate-limit buckets) and
 ADR-0006 (the per-IP rate-limit filter).
 
+### Inside the one instance: the scheduled jobs do not share a thread (#395)
+
+One runner does **not** mean one thread. Until #395, Spring Boot's default scheduler pool of
+**one** carried all four `@Scheduled` jobs, and none of their queries had a timeout (Postgres's
+default statement timeout is infinite) — so a single wedged read stalled every sweep. The worst
+case is quiet: `AbandonedBookingScheduler` stops, expired bookings keep their
+`availability(set_id, booking_date)` claims, those sets stay unsellable, and `MoneyPathAlertCheck` —
+the thing that would notice — is stalled on the same thread. Nothing is double-sold (the failure is
+strictly in the safe direction), and nothing pages.
+
+Two knobs now hold that open, both in `application.properties`:
+
+| Property | Default | What it buys |
+|---|---|---|
+| `spring.task.scheduling.pool.size` | `4` | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
+| `riviera.scheduled.query-timeout-seconds` | `10` | A finite bound on each job's **entry** query, so a wedged job eventually ends instead of pinning its thread and its pooled connection. Applied per adapter; the sweeps' per-item **writes** stay unbounded on purpose. |
+
+**Operationally:** a bounded read that aborts fails that run, logs, and is retried on the next tick
+(every sweep is idempotent and its per-row transitions are guarded), so repeated sweep failures in
+the log mean a *database* problem — a lock held by a migration, a saturated pool — not a sweep bug.
+Raise `riviera.scheduled.query-timeout-seconds` only if a healthy sweep is genuinely slower than the
+bound; **never** reach for `spring.jdbc.template.query-timeout` to do it, which would also bound
+`availability`'s claim (invariant #2) and is failed by the build.
+
 ### What breaks at two instances
 
 | Load-bearing assumption | Where it lives | Failure mode at N > 1 instances |
