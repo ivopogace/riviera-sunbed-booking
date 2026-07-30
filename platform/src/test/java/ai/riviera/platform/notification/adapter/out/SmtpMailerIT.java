@@ -18,6 +18,8 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 
 import jakarta.mail.internet.MimeMessage;
 
+import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,6 +92,108 @@ class SmtpMailerIT {
 		mailer().sendBookingConfirmation(TO, CONFIRMATION);
 
 		assertThat(output).doesNotContain(BOOKING_CODE);
+	}
+
+	// ---- the cancellation/refund kind (#374, Email S6) ---------------------------------------
+
+	/**
+	 * AC-1/AC-4/AC-10 at the transport: one plain-text message, the refund rendered from integer minor
+	 * units, no tracking markup — and the arrival code in the body as the booking's reference but never
+	 * in the subject, which surfaces in lock-screen previews (invariant #7, the confirmation's rule).
+	 */
+	@Test
+	void rendersTheRefundFromMinorUnits() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
+		assertThat(GreenMailUtil.getAddressList(message.getFrom())).isEqualTo(FROM);
+		assertThat(GreenMailUtil.getHeaders(message))
+				.contains("Subject: Your booking at Miramar Beach is cancelled")
+				.doesNotContain(BOOKING_CODE);
+
+		String body = message.getContent().toString();
+		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026", "EUR 25.00");
+	}
+
+	/**
+	 * 2500 minor units is EUR 25.00 and 2505 is EUR 25.05 — the second is what catches an
+	 * integer-division or {@code /100.0} regression, which the round number alone would not.
+	 */
+	@Test
+	void rendersAnAmountWithNonZeroCents() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(2505, RefundReason.POLICY));
+
+		assertThat(theOnlyReceivedMessage().getContent().toString()).contains("EUR 25.05");
+	}
+
+	/**
+	 * AC-2: cancelled after the cutoff, ADR-0005 tier {@code NONE}. Stating "EUR 0.00" would be
+	 * technically true and read as a refund, so the copy has to say the opposite in words — and name
+	 * no amount at all, which is what the currency assertion pins.
+	 */
+	@Test
+	void rendersNoRefundWhenNothingIsReturned() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(0, RefundReason.POLICY));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).doesNotContain("EUR");
+		assertThat(body).containsIgnoringCase("no refund");
+	}
+
+	/**
+	 * AC-3: the one event feeds both cancellation channels, so the body is what tells a tourist which
+	 * happened. A weather cancellation is one they never asked for; the two must not read alike.
+	 */
+	@Test
+	void namesTheCancellationReason() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
+		String policyBody = theOnlyReceivedMessage().getContent().toString();
+		greenMail.reset();
+
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.WEATHER));
+		String weatherBody = theOnlyReceivedMessage().getContent().toString();
+
+		assertThat(policyBody).containsIgnoringCase("your cancellation").doesNotContainIgnoringCase("weather");
+		assertThat(weatherBody).containsIgnoringCase("weather");
+		assertThat(weatherBody).isNotEqualTo(policyBody);
+	}
+
+	/**
+	 * Every reason renders — including {@code CONFLICT}, which the V14 CHECK admits but v1 never
+	 * issues. The transport switches exhaustively so a fourth constant is a compile error, but nothing
+	 * makes the third produce sensible copy except a spec that reads it.
+	 */
+	@Test
+	void everyRefundReasonRendersABody() throws Exception {
+		for (RefundReason reason : RefundReason.values()) {
+			greenMail.reset();
+			mailer().sendBookingCancellation(TO, cancellation(2500, reason));
+
+			String body = theOnlyReceivedMessage().getContent().toString();
+			assertThat(body).as("body for %s", reason).isNotBlank().contains("Miramar Beach");
+		}
+	}
+
+	@Test
+	void carriesNoTrackingMarkup() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.WEATHER));
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
+		assertThat(message.getContent().toString()).doesNotContain("<html", "<img", "http://track", "utm_");
+	}
+
+	@Test
+	void neverLogsTheBookingCodeOnACancellation(CapturedOutput output) {
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
+
+		assertThat(output).doesNotContain(BOOKING_CODE);
+	}
+
+	private static BookingCancellationMail cancellation(long refundMinor, RefundReason reason) {
+		return new BookingCancellationMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
+				refundMinor, "EUR", reason);
 	}
 
 	/**

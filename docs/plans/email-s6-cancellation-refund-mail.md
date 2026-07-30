@@ -293,16 +293,16 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 2)` — draft PR **#445** open, so every push is CI-gated.
+**Stage pointer:** `implement (phase 3)` — draft PR **#445** open, so every push is CI-gated.
 
-**Next action:** Phase 2 — add the cancellation message kind to the `Mailer` port and both
-transports (`MockMailer` + `SentEmail`, `SmtpMailer`), test-first.
+**Next action:** Phase 3 — the send chokepoint (`TransactionalMailService.sendBookingCancellation`),
+the `MAIL_CANCELLATION_ABANDONED` counter and `BookingCancellationMailListener`, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | `8acf653` · draft PR #445 |
-| 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | ✅ | `d713e1a` |
-| 2 — Transport: the cancellation message kind | | |
+| 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | ✅ | `5cd3f37` |
+| 2 — Transport: the cancellation message kind | ✅ | `PHASE2SHA` |
 | 3 — Chokepoint + the cancellation listener | | |
 | 4 — End-to-end registry IT | | |
 | 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | | |

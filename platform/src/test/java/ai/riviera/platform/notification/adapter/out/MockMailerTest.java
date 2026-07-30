@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
+import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,6 +27,9 @@ class MockMailerTest {
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR");
+
+	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
+			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), 2500, "EUR", RefundReason.POLICY);
 
 	private final MockMailer mailer = new MockMailer();
 
@@ -52,6 +57,17 @@ class MockMailerTest {
 	}
 
 	@Test
+	void recordsTheCancellation() {
+		mailer.sendBookingCancellation("tourist@example.com", CANCELLATION);
+
+		SentEmail recorded = mailer.lastTo("tourist@example.com").orElseThrow();
+		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.BOOKING_CANCELLATION);
+		assertThat(recorded.cancellation()).isEqualTo(CANCELLATION);
+		assertThat(recorded.link()).as("a cancellation carries no tokenized link").isNull();
+		assertThat(recorded.confirmation()).as("the two booking kinds do not share a slot").isNull();
+	}
+
+	@Test
 	void recordsOperatorApproved() {
 		URI signInLink = URI.create("https://x/account/sign-in");
 		mailer.sendOperatorApproved("owner@vala-beach.example", signInLink);
@@ -65,10 +81,11 @@ class MockMailerTest {
 	@Test
 	void neverLogsTheBookingCode(CapturedOutput output) {
 		mailer.sendBookingConfirmation("tourist@example.com", CONFIRMATION);
+		mailer.sendBookingCancellation("tourist@example.com", CANCELLATION);
 
 		// The mock deliberately logs recovery LINKS as a dev affordance, but the arrival code is a
 		// bearer credential (invariant #7) with no such need — the tourist has it in the app.
 		assertThat(output).doesNotContain(BOOKING_CODE);
-		assertThat(output).contains("BOOKING_CONFIRMATION");
+		assertThat(output).contains("BOOKING_CONFIRMATION", "BOOKING_CANCELLATION");
 	}
 }

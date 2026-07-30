@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 
@@ -67,6 +68,16 @@ public class MockMailer implements Mailer {
 		// tourist already has it in the app — so invariant #7 costs nothing here.
 		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.BOOKING_CONFIRMATION,
 				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
+	}
+
+	@Override
+	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		sent.add(SentEmail.bookingCancellation(toEmail, cancellation));
+		// No code in the line, for the confirmation's reason: mailing it is the point, logging it is not.
+		log.info("[mock-mailer] {} (to {}) for {} on {} — refund {} {} ({})",
+				SentEmail.Kind.BOOKING_CANCELLATION, sanitize(toEmail), sanitize(cancellation.venueName()),
+				cancellation.bookingDate(), cancellation.refundMinor(), cancellation.currency(),
+				cancellation.reason());
 	}
 
 	@Override

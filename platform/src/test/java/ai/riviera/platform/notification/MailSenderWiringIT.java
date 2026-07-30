@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Primary;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.PostgresContainerConfiguration;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 
@@ -112,6 +113,11 @@ class MailSenderWiringIT {
 
 		@Override
 		public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+			record();
+		}
+
+		@Override
+		public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
 			record();
 		}
 
