@@ -41,6 +41,12 @@ dependencies {
 	implementation 'org.springframework.modulith:spring-modulith-observability-api'
 	implementation 'org.springframework.modulith:spring-modulith-starter-core'
 	implementation 'org.springframework.modulith:spring-modulith-starter-jdbc'
+	// Compile against the registry's core types (#405). Already on the RUNTIME classpath via
+	// starter-jdbc; declared here because the ADMIN mail re-drive must scope by LISTENER, and the
+	// published events-api deliberately hides the target identifier — only TargetEventPublication
+	// carries it, so without this an admin "resubmit mail" could only filter by event type and would
+	// replay payout accruals (invariant #9) and Stripe refunds (invariant #8). BOM-versioned.
+	implementation 'org.springframework.modulith:spring-modulith-events-core'
 	// Stripe collection only (PaymentIntents + webhook signature verification) — NO Connect
 	// (ADR-0002 / invariant #8). Lives behind the payment module's outbound PaymentGateway.
 	implementation 'com.stripe:stripe-java:33.1.1'

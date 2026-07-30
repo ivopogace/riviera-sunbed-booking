@@ -271,14 +271,14 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `MailOutboxScopeTest` for the listener-id scoping predicate, watch it fail, then add the scope + driven port.
+**Next action:** Phase 1 — `MailResubmissionServiceTest` for single-flight + cooldown + boot seeding, then the service and its boot-validated cooldown property.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Scope + outbox port + registry adapter | | |
-| 1 — Resubmission service: single-flight, cooldown, typed outcome | | |
+| 0 — Scope + outbox port + registry adapter | ✅ | `9c37ee2` |
+| 1 — Resubmission service: single-flight, cooldown, typed outcome | ⏳ | |
 | 2 — ADMIN endpoints + security matchers | | |
 | 3 — Money-path scoping IT | | |
 | 4 — Admin console: tab strip + Email tab | | |
