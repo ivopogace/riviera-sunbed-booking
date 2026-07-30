@@ -1,12 +1,15 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.notification.application.MailTransportBudget;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import ch.qos.logback.classic.Level;
@@ -20,10 +23,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -56,7 +61,21 @@ class RegistryMailExecutorConfigTest {
 	 */
 	private static final RegistryMailProperties TINY = new RegistryMailProperties(1, 1);
 
+	/**
+	 * One worker with room to queue — what makes "the next task on the same pooled thread" mean it, so
+	 * {@link #aWorkerDoesNotInheritThePreviousTasksContext} cannot pass merely by landing elsewhere.
+	 */
+	private static final RegistryMailProperties SINGLE_WORKER = new RegistryMailProperties(1, 10);
+
 	private static final int SHED_SENDS = 5;
+
+	private static final String CORRELATION_KEY = "correlationId";
+
+	/** #368's shipped relay budget, from which the drain window is derived (#410). */
+	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
+
+	/** Short enough that a test can watch the window expire; the shipped one is ten seconds. */
+	private static final Duration TINY_DRAIN = Duration.ofMillis(200);
 
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
@@ -73,10 +92,17 @@ class RegistryMailExecutorConfigTest {
 	void releaseLogs() {
 		configLogger.detachAppender(logs);
 		logs.stop();
+		MDC.clear();
 	}
 
 	private ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props) {
-		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig().registryMailExecutor(props, meters);
+		return initializedExecutor(props, SHIPPED_BUDGET);
+	}
+
+	private ThreadPoolTaskExecutor initializedExecutor(RegistryMailProperties props,
+			MailTransportBudget budget) {
+		ThreadPoolTaskExecutor pool = new RegistryMailExecutorConfig()
+				.registryMailExecutor(props, meters, budget);
 		pool.afterPropertiesSet();
 		return pool;
 	}
@@ -306,6 +332,172 @@ class RegistryMailExecutorConfigTest {
 				"a redeploy rejects in-flight sends from an IDLE pool; counting them would make the "
 						+ "runbook's 'alert on any increase' fire on every routine deploy");
 		assertEquals(0, escalations(), "and would print a relay-degradation message for a non-event");
+	}
+
+	/**
+	 * AC-1 (#410). Until this pool had a {@code TaskDecorator}, every line emitted from a mail worker
+	 * was unattributable: {@code BookingConfirmationMailListener}'s abandoned-confirmation {@code ERROR}
+	 * (#428), {@code TransactionalMailService}'s suppression {@code WARN}, and whatever #370's real relay
+	 * produces on a transport failure. Invariant #7 keeps the recipient and the arrival code out of those
+	 * lines, so the correlation id is the only handle on <em>which</em> send they describe.
+	 *
+	 * <p>The caller's MDC is cleared before the assertion, so only a copy captured at submit time can
+	 * satisfy it — a decorator that read the context on the worker instead would see nothing.
+	 */
+	@Test
+	void aWorkerRunsWithTheSubmittersLoggingContext() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED);
+		AtomicReference<String> seen = new AtomicReference<>();
+		AtomicReference<String> workerThread = new AtomicReference<>();
+		CountDownLatch ran = new CountDownLatch(1);
+		MDC.put(CORRELATION_KEY, "corr-1");
+
+		try {
+			pool.execute(() -> {
+				seen.set(MDC.get(CORRELATION_KEY));
+				workerThread.set(Thread.currentThread().getName());
+				ran.countDown();
+			});
+			MDC.clear();
+
+			assertTrue(ran.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS), "the send never ran");
+			assertTrue(workerThread.get().startsWith(RegistryMailExecutorConfig.THREAD_NAME_PREFIX),
+					"the send must run on this pool, or the propagation proves nothing");
+			assertEquals("corr-1", seen.get(),
+					"a worker-thread line is unattributable without the submitter's correlation id");
+		}
+		finally {
+			pool.shutdown();
+		}
+	}
+
+	/**
+	 * AC-2 — the other half of propagation: a carried context must not outlive its own task.
+	 *
+	 * <p>Both tasks are asserted, not just the second. Checking only that the second saw nothing would
+	 * be satisfied by a pool that propagates nothing at all — the state this test was written in — so it
+	 * would pass before the fix and keep passing if the decorator were later dropped. Asserting the
+	 * first task <em>did</em> see the context is what makes the absence in the second mean "cleared".
+	 */
+	@Test
+	void aWorkerDoesNotInheritThePreviousTasksContext() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(SINGLE_WORKER);
+		AtomicReference<String> carried = new AtomicReference<>("never ran");
+		AtomicReference<String> leaked = new AtomicReference<>("never ran");
+		CountDownLatch first = new CountDownLatch(1);
+		CountDownLatch second = new CountDownLatch(1);
+
+		try {
+			MDC.put(CORRELATION_KEY, "corr-1");
+			pool.execute(() -> {
+				carried.set(MDC.get(CORRELATION_KEY));
+				first.countDown();
+			});
+			MDC.clear();
+			assertTrue(first.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+			pool.execute(() -> {
+				leaked.set(MDC.get(CORRELATION_KEY));
+				second.countDown();
+			});
+
+			assertTrue(second.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+			assertEquals("corr-1", carried.get(), "propagation must be on for the absence below to mean anything");
+			assertNull(leaked.get(),
+					"one booking's correlation id must not label the next booking's confirmation mail");
+		}
+		finally {
+			pool.shutdown();
+		}
+	}
+
+	/**
+	 * AC-3 (#410) — the claim the shed comment makes, asserted rather than assumed.
+	 *
+	 * <p>It holds for a different reason than the worker-side lines above:
+	 * {@code ThreadPoolExecutor.execute} calls {@code reject(...)} on the <strong>calling</strong>
+	 * thread, which in production is the thread committing the booking transaction (an
+	 * {@code AFTER_COMMIT} listener is dispatched from inside {@code commit()}), and that thread does
+	 * carry {@code CorrelationIdFilter}'s context. So the escalated line was already attributable and
+	 * the {@code TaskDecorator} is not what makes it so — which is exactly why it is pinned here: the
+	 * property is load-bearing (invariant #7 leaves nothing else in the line to identify the send by)
+	 * and nothing else would notice it breaking.
+	 */
+	@Test
+	void theShedLineIsAttributableToTheSubmittingRequest() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(TINY);
+		CountDownLatch gate = new CountDownLatch(1);
+		MDC.put(CORRELATION_KEY, "corr-1");
+
+		try {
+			gate = saturate(pool, () -> { }, SHED_SENDS);
+
+			ILoggingEvent escalated = logs.list.stream()
+					.filter(event -> event.getLevel() == Level.ERROR)
+					.findFirst()
+					.orElseThrow();
+			assertEquals("corr-1", escalated.getMDCPropertyMap().get(CORRELATION_KEY),
+					"a shed warning that cannot be tied to a request tells you a mail was dropped, "
+							+ "not whose");
+			assertFalse(escalated.getFormattedMessage().contains("@"),
+					"the recipient is never in the line (invariant #7)");
+			assertFalse(escalated.getFormattedMessage().contains("http"),
+					"and neither is a link");
+		}
+		finally {
+			gate.countDown();
+			pool.shutdown();
+		}
+	}
+
+	/**
+	 * AC-10 (#410 Part 2) — what happens when the drain window expires, asserted rather than left to a
+	 * reader of {@code ExecutorConfigurationSupport}.
+	 *
+	 * <p>Two assertions, and the second is the decision. Spring awaits the window and then <em>gives
+	 * up</em>: it does not escalate to {@code shutdownNow()}, so a send still on a thread is neither
+	 * interrupted nor waited for. That is deliberate here — interrupting a send whose publication is
+	 * still outstanding would be safe, but interrupting one that already handed the message to the relay
+	 * is precisely how at-least-once becomes a duplicate mail, and an interrupt cannot tell the two
+	 * apart. The unfinished send therefore never returns, which is what leaves the publication
+	 * outstanding for the next start's republish ({@code RegistryMailBulkheadIT} proves that half
+	 * against a real registry).
+	 *
+	 * <p>The tiny budget is the point of deriving the window from configuration: the shipped drain is
+	 * ten seconds, and no unit test should wait that long to observe it.
+	 */
+	@Test
+	void aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED, new MailTransportBudget(TINY_DRAIN));
+		CountDownLatch running = new CountDownLatch(1);
+		CountDownLatch gate = new CountDownLatch(1);
+		AtomicBoolean interrupted = new AtomicBoolean();
+		AtomicBoolean completed = new AtomicBoolean();
+
+		pool.execute(() -> {
+			running.countDown();
+			try {
+				gate.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+				completed.set(true);
+			}
+			catch (InterruptedException e) {
+				interrupted.set(true);
+				Thread.currentThread().interrupt();
+			}
+		});
+		assertTrue(running.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+				"the send must be on a thread before the pool is shut down");
+
+		pool.shutdown();
+
+		assertFalse(completed.get(),
+				"the send must not have finished — an unfinished listener is what leaves the event "
+						+ "publication outstanding for the next start's republish");
+		assertFalse(interrupted.get(),
+				"and it must not be interrupted: an interrupt cannot tell a send that has already "
+						+ "reached the relay from one that has not, and the first is where the duplicate "
+						+ "mail comes from, so the window expiring means give up — never shutdownNow()");
+		gate.countDown();
 	}
 
 	private static void awaitQuietly(CountDownLatch gate) {

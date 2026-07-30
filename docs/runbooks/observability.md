@@ -212,6 +212,47 @@ taking the money-path listeners with it. That is the unbounded queue the bulkhea
 restored by a well-meaning retune. A huge `pool-size` is the mirror image, surfacing as
 `OutOfMemoryError: unable to create native thread` on the transaction-commit thread.
 
+**The relay socket budget is a third knob, shared by both mail vehicles** (`#410`):
+
+| Env var | Property | Default | Accepted range |
+|---|---|---|---|
+| `RIVIERA_SMTP_SOCKET_TIMEOUT_MS` | `riviera.notification.mail.socket-timeout-ms` | `10000` | `1`–`10000` |
+
+**Retuning it moves three things at once, by design.** It is interpolated into all three
+`spring.mail.properties.mail.smtp.*` timeouts (connect / read / write) under both the `mailer` and
+`smtp4dev` profiles, **and** both mail pools derive their shutdown drain window from it. Before #410
+those were four copies of one decision and they disagreed — 5s of drain against a 10s socket budget —
+so a redeploy stopped waiting on sends that were still legitimately running and closed the data source
+underneath them. Milliseconds rather than a `Duration` because Jakarta Mail reads the interpolated value
+as a plain number.
+
+**The ceiling is a per-pool share, not the whole shutdown budget — the two drains add.** The registry
+executor and the recovery dispatcher are separate beans, and Spring runs their `destroy()` methods
+sequentially on one thread, so at the shipped 10s the pair can hold shutdown for **20s**, not 10.
+That is why `MailTransportProperties` derives the ceiling as
+`MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS` rather than stating it directly: the combined figure is the
+one that has to fit Render's ~30s SIGTERM→SIGKILL window, and it leaves the rest for the web layer and
+Hikari to close in order — affordable here only because `server.shutdown` is *not* graceful, so no
+request-draining phase competes for the same window.
+
+**Note the shipped default sits AT the per-pool ceiling, so this knob only tunes downward.** That is not
+an oversight: you cannot simultaneously have a relay budget larger than the grace and a drain that
+covers it, and the ceiling forces that trade-off to fail at boot rather than hide. If a real relay
+genuinely needs more than 10s per socket operation (#370 is the first point that is knowable), the fix
+is **not** to raise this past its range — raise the platform's shutdown grace first, then
+`MAIL_SHUTDOWN_BUDGET_MS`, and the per-pool ceiling follows. Lowering the knob is always safe and
+shortens both the relay budget and the drain together. And if a **third** mail pool is ever added,
+increment `DRAINING_POOLS` — `theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget` is what catches the
+combined overrun, since nothing else would.
+
+**When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
+vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so
+expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
+vehicle it is a lost mail the user must re-request, and note that it is **not** counted by
+`riviera.mail.recovery.dropped`, which counts *rejections*, not abandonment at shutdown. The
+non-interruption is deliberate: an interrupt cannot tell a send that already handed off to the relay
+from one that has not, and interrupting the first is how at-least-once becomes a duplicate mail.
+
 ## Alert route (today): in-app self-check → ERROR log
 
 `MoneyPathAlertCheck` (`@Profile("stripe")`, scheduled every

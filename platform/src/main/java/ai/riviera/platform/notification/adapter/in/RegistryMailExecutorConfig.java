@@ -1,11 +1,14 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.notification.application.MailTransportBudget;
+import ai.riviera.platform.notification.application.MdcTaskDecorator;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import io.micrometer.core.instrument.Counter;
@@ -17,6 +20,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskDecorator;
+import org.springframework.core.task.support.CompositeTaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -55,6 +59,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * pools stay separate on purpose: the recovery vehicle carries a bearer credential the registry may
  * not persist (ADR-0011 decision 5), so it has nothing to be retried from and <em>must</em> drop.
  *
+ * <p><strong>The shutdown drain is derived, and expiring it means giving up</strong> (#410 Part 2). The
+ * window is {@link MailTransportBudget#shutdownDrain()} — one of the relay's socket-operation budgets —
+ * rather than the 5-second literal #383 shipped, which was smaller than the budget a single degraded send
+ * can legitimately occupy and so gave up on work that was still running. When it expires,
+ * {@code ExecutorConfigurationSupport} returns and this configuration deliberately does <em>not</em>
+ * escalate to {@code shutdownNow()}: interrupting a send whose publication is still outstanding would be
+ * safe, but interrupting one that already handed the message to the relay is precisely how at-least-once
+ * becomes a <strong>duplicate mail</strong>, and an interrupt cannot tell the two apart. The abandoned
+ * send therefore never returns, its publication stays outstanding, and the next start republishes it —
+ * which is the whole reason the registry vehicle can afford to be cut off.
+ * {@code aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted} pins both halves.
+ *
  * <p><strong>{@code defaultCandidate = false} is load-bearing — do not "tidy" it away.</strong> Boot
  * declares {@code applicationTaskExecutor} {@code @ConditionalOnMissingBean(Executor.class)}, so
  * merely <em>defining</em> a second {@link java.util.concurrent.Executor} bean makes Boot skip the
@@ -75,13 +91,14 @@ class RegistryMailExecutorConfig {
 	 */
 	static final String MAIL_EXECUTOR = "registryMailExecutor";
 
-	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
-	private static final String THREAD_NAME_PREFIX = "registry-mail-";
+	/** Package-private so the spec can assert a send ran on <em>this</em> pool without restating it. */
+	static final String THREAD_NAME_PREFIX = "registry-mail-";
 
 	private static final Logger log = LoggerFactory.getLogger(RegistryMailExecutorConfig.class);
 
 	@Bean(name = MAIL_EXECUTOR, defaultCandidate = false)
-	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props, MeterRegistry meters) {
+	ThreadPoolTaskExecutor registryMailExecutor(RegistryMailProperties props, MeterRegistry meters,
+			MailTransportBudget budget) {
 		SaturationPolicy saturation = new SaturationPolicy(meters);
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
 		pool.setCorePoolSize(props.poolSize());
@@ -89,10 +106,11 @@ class RegistryMailExecutorConfig {
 		pool.setQueueCapacity(props.queueCapacity());
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
 		pool.setRejectedExecutionHandler(saturation);
-		pool.setTaskDecorator(saturation);
-		// A short grace for sends already in flight; whatever does not finish stays outstanding.
+		// Composed, never replaced: the pool has one decorator slot and two decorators need it (#410).
+		pool.setTaskDecorator(new CompositeTaskDecorator(List.of(saturation, new MdcTaskDecorator())));
+		// One socket operation's grace for sends already in flight; whatever does not finish stays outstanding.
 		pool.setWaitForTasksToCompleteOnShutdown(true);
-		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
+		pool.setAwaitTerminationMillis(budget.shutdownDrain().toMillis());
 		return pool;
 	}
 
@@ -130,12 +148,20 @@ class RegistryMailExecutorConfig {
 	 *
 	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both would defeat
 	 * the bulkhead. The line carries no recipient and no booking code (invariant #7); the correlation
-	 * id rides the MDC.
+	 * id rides the MDC — and here that is true for a reason worth writing down, because #410 was filed
+	 * on the assumption it was not. {@code ThreadPoolExecutor.execute} calls {@code reject(...)} on the
+	 * <strong>calling</strong> thread, which for this pool is the thread committing the booking
+	 * transaction (an {@code AFTER_COMMIT} listener is dispatched from inside {@code commit()}), so the
+	 * context {@code CorrelationIdFilter} put there is still present. The rejection lines were therefore
+	 * always attributable; what was not, until #410, is every line emitted from a <em>worker</em>
+	 * thread, which is what {@link MdcTaskDecorator} fixes.
+	 * {@code RegistryMailExecutorConfigTest#theShedLineIsAttributableToTheSubmittingRequest} pins this
+	 * half rather than leaving a comment to assert it.
 	 *
-	 * <p><strong>This class owns the pool's only {@code TaskDecorator} slot.</strong> A later slice
-	 * that wants one too — #410, propagating the caller's MDC onto the mail workers, is the one in
-	 * flight — must <em>compose</em> with {@link #decorate} rather than call
-	 * {@code setTaskDecorator} again, which silently replaces it: the episode flag would then never
+	 * <p><strong>This class no longer owns the pool's {@code TaskDecorator} slot alone.</strong> Since
+	 * #410 the slot holds a {@link CompositeTaskDecorator} of {@link #decorate} and
+	 * {@link MdcTaskDecorator}, and a third decorator must <em>join that list</em> rather than call
+	 * {@code setTaskDecorator} again, which silently replaces the lot: the episode flag would then never
 	 * clear, and after the first saturation every later one would be counted but never logged. No
 	 * test would go red for the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
 	 */

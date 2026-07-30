@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification.application;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,6 +46,9 @@ class AsyncMailDispatcherTest {
 	private static final int AWAIT_SECONDS = 5;
 	private static final int DROPS = 5;
 
+	/** #368's shipped relay budget, from which this pool's drain window is derived (#410). */
+	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
+
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 	private ch.qos.logback.classic.Logger dispatcherLogger;
@@ -63,7 +67,7 @@ class AsyncMailDispatcherTest {
 	}
 
 	private AsyncMailDispatcher dispatcher() {
-		return new AsyncMailDispatcher(meters);
+		return new AsyncMailDispatcher(meters, SHIPPED_BUDGET);
 	}
 
 	private double droppedFor(String reason) {
@@ -253,6 +257,45 @@ class AsyncMailDispatcherTest {
 		finally {
 			dispatcher.destroy();
 		}
+	}
+
+	/**
+	 * AC-10 for this vehicle (#410 Part 2). Same decision as the registry pool's — the window is derived
+	 * from the relay budget, and when it expires the pool gives up rather than interrupting, because an
+	 * interrupt cannot tell a send that already reached the relay from one that has not. What differs is
+	 * the consequence: this vehicle has no publication to fall back on (ADR-0011 decision 5), so an
+	 * abandoned recovery send is a mail the user must re-request.
+	 */
+	@Test
+	void aSendOutlastingTheDrainWindowIsAbandonedNotInterrupted() throws Exception {
+		AsyncMailDispatcher dispatcher = new AsyncMailDispatcher(meters,
+				new MailTransportBudget(Duration.ofMillis(200)));
+		CountDownLatch running = new CountDownLatch(1);
+		CountDownLatch gate = new CountDownLatch(1);
+		AtomicBoolean interrupted = new AtomicBoolean();
+		AtomicBoolean completed = new AtomicBoolean();
+
+		dispatcher.dispatch(() -> {
+			running.countDown();
+			try {
+				gate.await(AWAIT_SECONDS, TimeUnit.SECONDS);
+				completed.set(true);
+			}
+			catch (InterruptedException e) {
+				interrupted.set(true);
+				Thread.currentThread().interrupt();
+			}
+		});
+		assertThat(running.await(AWAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+
+		dispatcher.destroy();
+
+		assertThat(completed).as("the drain window expired, so the send did not finish").isFalse();
+		assertThat(interrupted)
+				.as("give up, never shutdownNow(): interrupting a send that already handed off to the "
+						+ "relay is what turns at-least-once into a duplicate")
+				.isFalse();
+		gate.countDown();
 	}
 
 	@Test

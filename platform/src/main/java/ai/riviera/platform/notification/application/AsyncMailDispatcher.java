@@ -1,7 +1,5 @@
 package ai.riviera.platform.notification.application;
 
-import java.util.Map;
-
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import io.micrometer.core.instrument.Counter;
@@ -9,7 +7,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -39,7 +36,11 @@ import org.springframework.stereotype.Component;
  *
  * <p>The caller's logging context rides along so a failed send stays traceable to its request (the
  * correlation id from {@code CorrelationIdFilter}), and is cleared afterwards so it cannot leak onto the
- * next task sharing the pooled thread. Package-private (RV-BE-11); pinned by {@code AsyncMailDispatcherTest}.
+ * next task sharing the pooled thread. <strong>Since #410 that is {@link MdcTaskDecorator}'s job, not
+ * this class's</strong> — the hand-rolled capture/restore here was the only implementation of a rule the
+ * registry vehicle's pool needed too, and two implementations of one rule is how one of them ends up
+ * missing (it had been, for the whole of #383). Package-private (RV-BE-11); pinned by
+ * {@code AsyncMailDispatcherTest}.
  *
  * <p><strong>One drainer thread, deliberately</strong> — recovery mail is a handful of sends a day, and a
  * serial drain behind a 100-deep buffer is the whole requirement. Core and max are equal on purpose: a
@@ -85,6 +86,16 @@ import org.springframework.stereotype.Component;
  * instead, so a routine redeploy cannot read as a degraded relay: only {@link #REASON_SATURATED} escalates
  * to {@code ERROR} and warrants investigating the relay.
  *
+ * <p><strong>The shutdown drain is derived from the relay budget, and expiring it means giving up</strong>
+ * (#410). The window is {@link MailTransportBudget#shutdownDrain()} rather than the 5-second literal #369
+ * shipped, which was smaller than the budget one degraded send can legitimately occupy — so a redeploy
+ * mid-backlog abandoned work that was still running and closed the data source underneath it. When the
+ * window expires this class does <em>not</em> escalate to {@code shutdownNow()}: an interrupt cannot tell
+ * a send that already handed the message to the relay from one that has not, and interrupting the first is
+ * how at-least-once becomes a duplicate. The cost lands differently here than for the registry vehicle,
+ * though, and that asymmetry is the same one as everywhere else in this class — an abandoned recovery send
+ * has no publication to be republished from, so it is simply a mail the user must re-request.
+ *
  * <p><strong>The cause is read after the rejection, and that race is one-directional by construction.</strong>
  * {@code execute} throws before {@link #recordDrop} can ask why, so a saturation rejection coinciding with a
  * concurrent {@code destroy()} is attributed to the shutdown. The converse cannot happen: {@code shutdown()}
@@ -104,7 +115,6 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	/** Package-private so the spec can fill the queue exactly rather than hard-code a number that drifts. */
 	static final int QUEUE_CAPACITY = 100;
 
-	private static final int SHUTDOWN_DRAIN_SECONDS = 5;
 	private static final String THREAD_NAME_PREFIX = "recovery-mail-";
 
 	/** The drop's cause, as a metric tag — one series, two operationally different meanings. */
@@ -120,15 +130,16 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	private final Counter droppedWhenSaturated;
 	private final Counter droppedWhenShuttingDown;
 
-	AsyncMailDispatcher(MeterRegistry meters) {
+	AsyncMailDispatcher(MeterRegistry meters, MailTransportBudget budget) {
 		ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
 		pool.setCorePoolSize(POOL_SIZE);
 		pool.setMaxPoolSize(POOL_SIZE);
 		pool.setQueueCapacity(QUEUE_CAPACITY);
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
+		pool.setTaskDecorator(new MdcTaskDecorator());
 		// A redeploy must not silently swallow a reset link a user is already waiting for.
 		pool.setWaitForTasksToCompleteOnShutdown(true);
-		pool.setAwaitTerminationSeconds(SHUTDOWN_DRAIN_SECONDS);
+		pool.setAwaitTerminationMillis(budget.shutdownDrain().toMillis());
 		pool.initialize();
 		this.executor = pool;
 		this.droppedWhenSaturated = meters.counter(ObservabilityMetrics.MAIL_RECOVERY_DROPPED, REASON_TAG,
@@ -139,9 +150,8 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	@Override
 	public void dispatch(Runnable send) {
-		Map<String, String> callerContext = MDC.getCopyOfContextMap();
 		try {
-			executor.execute(() -> runWithin(callerContext, send));
+			executor.execute(send);
 		}
 		catch (TaskRejectedException e) {
 			recordDrop(e);
@@ -163,18 +173,6 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 		droppedWhenSaturated.increment();
 		log.error("Recovery email dispatcher saturated ({}); the send was dropped with nothing to retry from, so "
 				+ "the user must re-request", cause.getClass().getSimpleName());
-	}
-
-	private static void runWithin(Map<String, String> callerContext, Runnable send) {
-		if (callerContext != null) {
-			MDC.setContextMap(callerContext);
-		}
-		try {
-			send.run();
-		}
-		finally {
-			MDC.clear();
-		}
 	}
 
 	@Override
