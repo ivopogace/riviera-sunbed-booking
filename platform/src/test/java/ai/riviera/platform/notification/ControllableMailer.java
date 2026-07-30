@@ -78,6 +78,11 @@ public final class ControllableMailer implements Mailer {
 	}
 
 	@Override
+	public void sendOperatorApproved(String toEmail, URI signInLink) {
+		// See above — also a recovery-vehicle kind (#375), so also not this pool's business.
+	}
+
+	@Override
 	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
 		entered.add(toEmail);
 		transactionActive.add(TransactionSynchronizationManager.isActualTransactionActive());

@@ -20,7 +20,9 @@ import ai.riviera.platform.notification.application.Mailer;
  * kind is demoable end-to-end with zero external credentials and backend ITs can assert on what was sent
  * via {@link #lastTo}. Recovery messages additionally log their tokenized link (dev-only, see below);
  * a booking confirmation deliberately logs no arrival code — the tourist already has it in the app, so
- * the affordance would buy nothing and invariant #7 costs nothing to honour there.
+ * the affordance would buy nothing and invariant #7 costs nothing to honour there. The
+ * operator-approval notice (#375) logs its link too, but needs none of that argument: its link is the
+ * public sign-in URL, so it is the one logged link here that is not a bearer credential.
  *
  * <p>{@code @Profile("!mailer & !smtp4dev")} so exactly one {@link Mailer} bean exists: the mock unless a
  * real-transport profile ({@code mailer}, or the local-dev {@code smtp4dev}) swaps in
@@ -65,6 +67,14 @@ public class MockMailer implements Mailer {
 		// tourist already has it in the app — so invariant #7 costs nothing here.
 		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.BOOKING_CONFIRMATION,
 				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
+	}
+
+	@Override
+	public void sendOperatorApproved(String toEmail, URI signInLink) {
+		SentEmail email = SentEmail.operatorApproved(toEmail, signInLink);
+		sent.add(email);
+		// Logged like a recovery link but for the opposite reason: this URL is public, not a credential.
+		log.info("[mock-mailer] {} link (to {}): {}", email.kind(), sanitize(toEmail), signInLink);
 	}
 
 	private void logRecovery(SentEmail email) {

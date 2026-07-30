@@ -21,12 +21,23 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	public enum Kind {
 		EMAIL_VERIFICATION,
 		PASSWORD_RESET,
-		BOOKING_CONFIRMATION
+		BOOKING_CONFIRMATION,
+		OPERATOR_APPROVED
 	}
 
 	/** A recovery email, identified by its tokenized link (a bearer credential, invariant #7). */
 	static SentEmail recovery(String toEmail, Kind kind, URI link) {
 		return new SentEmail(toEmail, kind, link, null);
+	}
+
+	/**
+	 * The operator-approval notice, identified by its sign-in link. It shares the {@link #link} slot
+	 * with {@link #recovery} but deliberately not its factory: that link is a bearer credential and
+	 * this one is the ordinary sign-in URL, and one factory for both would erase the distinction the
+	 * mock's logging rules turn on.
+	 */
+	static SentEmail operatorApproved(String toEmail, URI signInLink) {
+		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null);
 	}
 
 	/** A booking confirmation, identified by the details it renders. */

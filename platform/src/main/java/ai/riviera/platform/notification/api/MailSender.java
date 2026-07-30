@@ -32,4 +32,17 @@ public interface MailSender {
 
 	/** Send the "reset your password" message with the tokenized reset link. */
 	void sendPasswordReset(String toEmail, URI resetLink);
+
+	/**
+	 * Tell a self-registered operator that a platform admin approved its account, pointing at the
+	 * sign-in page (#375).
+	 *
+	 * <p>The first kind here whose link is <strong>not</strong> a bearer credential — it is the
+	 * ordinary sign-in URL, which anyone may hold. It still travels this port rather than the Event
+	 * Publication Registry, because ADR-0011 decision 5 reads more than the payload: approval is
+	 * edge-orchestrated from an admin request, not a domain fact another module acts on, so minting an
+	 * event to carry the news back to the edge that issued the request would be ceremony. It inherits
+	 * the contract above unchanged — in particular, a mail failure may not fail or slow the approval.
+	 */
+	void sendOperatorApproved(String toEmail, URI signInLink);
 }

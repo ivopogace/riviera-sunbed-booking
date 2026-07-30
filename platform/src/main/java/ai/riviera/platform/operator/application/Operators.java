@@ -56,7 +56,8 @@ public interface Operators {
 
 	/**
 	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the
-	 * pending/exists/absent cases (#115, S6).
+	 * pending/exists/absent cases (#115, S6). On success the outcome carries the operator's stored
+	 * contact email, read by the same guarded statement that performed the transition (#375).
 	 */
 	ApprovalOutcome activate(OperatorId operatorId);
 

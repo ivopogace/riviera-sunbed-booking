@@ -72,12 +72,14 @@ class AdminOperatorController {
 	private final OperatorLifecycle lifecycle;
 	private final CurrentOperator currentOperator;
 	private final PrincipalSessionRevoker sessionRevoker;
+	private final OperatorApprovalMail approvalMail;
 
 	AdminOperatorController(OperatorLifecycle lifecycle, CurrentOperator currentOperator,
-			PrincipalSessionRevoker sessionRevoker) {
+			PrincipalSessionRevoker sessionRevoker, OperatorApprovalMail approvalMail) {
 		this.lifecycle = lifecycle;
 		this.currentOperator = currentOperator;
 		this.sessionRevoker = sessionRevoker;
+		this.approvalMail = approvalMail;
 	}
 
 	/** The admin's view of a pending operator: the technical id (to act on), username, contact email, and when. */
@@ -93,9 +95,20 @@ class AdminOperatorController {
 		return lifecycle.pending().stream().map(PendingOperatorResponse::from).toList();
 	}
 
+	/**
+	 * Approve a registration and, if that is what actually happened, tell the operator by email (#375).
+	 * The mail is deliberately <em>after</em> the transition and gated on its outcome: the address
+	 * arrives on {@link ApprovalOutcome.Approved} straight from the guarded {@code UPDATE}, so a second
+	 * admin racing the same registration is handed none and cannot send a duplicate. Unlike the
+	 * suspension bracket below, nothing here is ordered around a revoke — approval revokes nothing.
+	 */
 	@PostMapping("/{operatorId}/approve")
 	ResponseEntity<?> approve(@PathVariable long operatorId) {
-		return toResponse(lifecycle.approve(new OperatorId(operatorId)));
+		ApprovalOutcome outcome = lifecycle.approve(new OperatorId(operatorId));
+		if (outcome instanceof ApprovalOutcome.Approved approved) {
+			approvalMail.notifyApproved(approved);
+		}
+		return toResponse(outcome);
 	}
 
 	@PostMapping("/{operatorId}/reject")
@@ -158,13 +171,19 @@ class AdminOperatorController {
 		};
 	}
 
+	/**
+	 * The three wire answers, unchanged since #115 — the sealed rewrite of {@link ApprovalOutcome}
+	 * (#375) changed what the outcome <em>carries</em>, never what it maps to. No {@code default}, so a
+	 * future case is a compile error here rather than a silent {@code 204}.
+	 */
 	private static ResponseEntity<?> toResponse(ApprovalOutcome outcome) {
 		return switch (outcome) {
-			case APPROVED, REJECTED -> ResponseEntity.noContent().build();
-			case NOT_PENDING -> ApiProblem.response(HttpStatus.CONFLICT, "NOT_PENDING",
+			case ApprovalOutcome.Approved ignored -> ResponseEntity.noContent().build();
+			case ApprovalOutcome.Rejected ignored -> ResponseEntity.noContent().build();
+			case ApprovalOutcome.NotPending ignored -> ApiProblem.response(HttpStatus.CONFLICT, "NOT_PENDING",
 					"This operator is not awaiting approval.");
-			case NO_SUCH_OPERATOR -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_OPERATOR",
-					"No such operator.");
+			case ApprovalOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
+					"NO_SUCH_OPERATOR", "No such operator.");
 		};
 	}
 }

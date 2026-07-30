@@ -52,6 +52,17 @@ class MockMailerTest {
 	}
 
 	@Test
+	void recordsOperatorApproved() {
+		URI signInLink = URI.create("https://x/account/sign-in");
+		mailer.sendOperatorApproved("owner@vala-beach.example", signInLink);
+
+		SentEmail recorded = mailer.lastTo("owner@vala-beach.example").orElseThrow();
+		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.OPERATOR_APPROVED);
+		assertThat(recorded.link()).isEqualTo(signInLink);
+		assertThat(recorded.confirmation()).as("this kind renders no booking details").isNull();
+	}
+
+	@Test
 	void neverLogsTheBookingCode(CapturedOutput output) {
 		mailer.sendBookingConfirmation("tourist@example.com", CONFIRMATION);
 

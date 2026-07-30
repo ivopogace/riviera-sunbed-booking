@@ -66,12 +66,21 @@ below makes the opposite call, for a reason** — see its note.
 
 ### `riviera_mail_recovery_dropped_total` (counter, #415)
 
-The other vehicle's loss. A **verification or password-reset** mail the bounded in-memory dispatcher
-(#369) **never ran**, and therefore never sent.
+The other vehicle's loss. A mail the bounded in-memory dispatcher (#369) **never ran**, and therefore
+never sent.
 
-**Read one increment as: one person asked for a reset or verification link, got a `200`, and no mail
-is coming.** They recover only by requesting again — and nothing will tell them to. This is the
-counter's whole meaning, and it is why the series exists.
+> **"Recovery" names the vehicle, not the flow.** Both series here were named when this dispatcher
+> carried only the verification and password-reset mails; since #375 it also carries the
+> operator-approval notice, which is no recovery flow at all. The names are kept because renaming a
+> shipped metric breaks every dashboard and alert that reads it — **the `kind` tag is what tells the
+> flows apart**, so filter by it rather than assuming a tourist is behind every increment.
+
+**Read one increment as: someone was told an action succeeded, and the mail it promised is not
+coming.** For `verification`/`password-reset` that is a person who asked for a link and got a `200`;
+for `operator-approved` it is an operator whose account really is active but who has no way to know —
+it will find out by retrying sign-in, which is precisely the experience #375 set out to remove. All
+three recover only by acting again, and nothing will tell them to. This is the counter's whole
+meaning, and it is why the series exists.
 
 **It is not the shed counter's twin, and the two must never be summed.** A shed registry mail is
 *deferred*: its event publication is still outstanding, and either a restart or the #405 admin lever republishes it. A dropped
@@ -121,11 +130,11 @@ address or the link (invariant #7).
 
 ### `riviera_mail_recovery_failed_total` (counter, #423)
 
-The same vehicle's *other* loss, and the one that moves first in a real outage. A **verification or
-password-reset** mail the dispatcher **accepted** and then could not deliver.
+The same vehicle's *other* loss, and the one that moves first in a real outage. A mail the dispatcher
+**accepted** and then could not deliver. ("Recovery" names the vehicle — see the note above.)
 
-**Read one increment as: the same thing a `dropped` increment means to the user** — they asked for a
-link, got a `200`, and no mail is coming — **but a different thing to you.** `dropped` says the
+**Read one increment as: the same thing a `dropped` increment means to the recipient** — the action
+succeeded and no mail is coming — **but a different thing to you.** `dropped` says the
 dispatcher never ran the work — it refused it at submit, or discarded it unrun at shutdown. This says
 the work was taken, ran, and failed. Only one of those is about the relay.
 
@@ -134,6 +143,7 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 | `reason="transport"` | The send attempt itself failed — the relay refused the message or could not be reached (down, DNS, auth, SMTP 5xx). **This is the relay signal**, with one caveat below | **any increase.** A sustained rise usually means the relay is broken *right now*, and every recovery mail is being lost for its duration |
 | `reason="suppression-lookup"` | The pre-send suppression read failed **non-transiently** — a revoked grant, schema drift, a column renamed under `JdbcEmailSuppressions`. The mail is lost before the relay is ever reached | **any increase — but go to the database, not the mail provider.** A *transient* read failure is not here: #386 fails open and sends anyway, so it counts nothing |
 | `kind="verification"` / `kind="password-reset"` | Which recovery flow the lost mail belonged to. They ride different rate-limit budgets (register vs recovery), so a rise in only one narrows where to look | — |
+| `kind="operator-approved"` (#375) | Not a recovery flow at all: an operator whose registration an admin approved was never told. Volume is a trickle — one per approval — so **any** increase is one identifiable operator, and the manual remedy is to tell them, since nothing re-sends | any increase, but read it as one lost person rather than as a relay signal — with this volume the relay evidence lives in the other kinds |
 
 > **`transport` is "the send failed", not "the relay failed" — read the exception class before
 > paging the provider.** The tag is applied to *any* exception escaping the send call, so a defect

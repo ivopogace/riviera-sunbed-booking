@@ -17,12 +17,20 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * this service, so the cross-cutting send rules live in exactly one place instead of at each
  * call site (they previously lived in the edge's {@code CustomerRecovery.dispatchQuietly}).
  *
- * <p><strong>Recovery sends</strong> (the published {@link MailSender} port) are best-effort and
+ * <p><strong>Every send on the published {@link MailSender} port</strong> — the recovery pair, and
+ * since #375 the operator-approval notice, whose link is no credential but whose trigger is an admin
+ * request rather than a domain fact (ADR-0011 decision 5) — is best-effort and
  * asynchronous: handed to the {@link MailDispatcher}, with the failure catch <em>inside</em> the
  * dispatched task so a transport failure dies wherever the task runs — the triggering request's
  * status code (D-8 non-enumeration) and latency (the #369 timing oracle) stay uninfluenced, and
- * a rejected dispatch is equally invisible to the caller. The token is already stored when the
- * edge calls this, so the user can simply re-request.
+ * a rejected dispatch is equally invisible to the caller.
+ *
+ * <p><strong>What a loss costs is not the same for every kind on this vehicle, and #375 is where
+ * that stopped being uniform.</strong> For the recovery pair the token is already stored when the
+ * edge calls this, so the user simply re-requests and the loss self-heals. The operator-approval
+ * notice has no such door: nothing re-sends it, and the operator is left retrying sign-in — the
+ * very experience it was added to remove. That asymmetry is why the loss counters are read through
+ * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
  * <p><strong>The booking confirmation</strong> (module-internal, driven by the registry listener)
  * is deliberately the opposite: synchronous on the listener's thread, transport failures
@@ -67,12 +75,19 @@ public class TransactionalMailService implements MailSender {
 
 	private static final Logger log = LoggerFactory.getLogger(TransactionalMailService.class);
 
-	/** The recovery flow a lost mail belonged to — one series, two audiences with different urgency. */
+	/** Which flow a lost mail belonged to — one series, three audiences with different urgency. */
 	static final String KIND_TAG = "kind";
 
 	static final String KIND_VERIFICATION = "verification";
 
 	static final String KIND_PASSWORD_RESET = "password-reset";
+
+	/**
+	 * The first kind on this vehicle that is not a recovery flow (#375). The series keeps its
+	 * {@code riviera.mail.recovery.*} names because they were always the <em>vehicle's</em> names —
+	 * renaming a shipped metric breaks whatever reads it, and this tag is what tells the two apart.
+	 */
+	static final String KIND_OPERATOR_APPROVED = "operator-approved";
 
 	/** Which system failed — the whole reason the counter is tagged rather than plain. */
 	static final String REASON_TAG = "reason";
@@ -112,6 +127,12 @@ public class TransactionalMailService implements MailSender {
 		dispatchQuietly(KIND_PASSWORD_RESET, toEmail, () -> mailer.sendPasswordReset(toEmail, resetLink));
 	}
 
+	@Override
+	public void sendOperatorApproved(String toEmail, URI signInLink) {
+		dispatchQuietly(KIND_OPERATOR_APPROVED, toEmail,
+				() -> mailer.sendOperatorApproved(toEmail, signInLink));
+	}
+
 	/** Deliver the booking confirmation now, on the caller's thread; a transport failure propagates. */
 	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
 		if (suppressions.isSuppressed(toEmail)) {
@@ -127,7 +148,7 @@ public class TransactionalMailService implements MailSender {
 		dispatcher.dispatch(() -> {
 			try {
 				if (isSuppressedOrFailOpen(kind, toEmail)) {
-					log.info("Recovery {} mail skipped: the address is suppressed", kind);
+					log.info("The {} mail was skipped: the address is suppressed", kind);
 					return;
 				}
 			}
@@ -163,8 +184,8 @@ public class TransactionalMailService implements MailSender {
 	 */
 	private void recordLoss(String kind, String reason, RuntimeException cause) {
 		meters.counter(ObservabilityMetrics.MAIL_RECOVERY_FAILED, KIND_TAG, kind, REASON_TAG, reason).increment();
-		log.warn("Recovery {} mail was not delivered — {} failure ({}); the token was issued, so the user can "
-				+ "re-request", kind, reason, cause.getClass().getSimpleName());
+		log.warn("The {} mail was not delivered — {} failure ({}); this vehicle keeps no durable copy, so "
+				+ "the send is not retried", kind, reason, cause.getClass().getSimpleName());
 	}
 
 	/**

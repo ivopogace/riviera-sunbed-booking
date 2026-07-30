@@ -239,6 +239,14 @@ operator with this id called?*, so the edge can revoke its sessions **before** a
 commits rather than only after. A suspension **keeps** the operator's
 `operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway.
 
+Since #375 an approval also **reports the approved operator's stored contact email**, on
+`ApprovalOutcome.Approved` — the same move `OperatorLifecycleOutcome.Changed` made for the username,
+and for the same reason: the caller needs it to act, and a second read would open a window. The
+address is returned by the `RETURNING` clause of the very `WHERE status = PENDING` `UPDATE` that
+performs the transition, so the admin that loses a race for one registration receives no address and
+cannot act twice. Reporting a stored account attribute is still this module's job; what is done with
+it — composing and sending a mail — is emphatically not (below).
+
 **Not My Job:**
 - Tourist identity → **`customer`**
 - The venue's own data — map, pricing, pools → **`venue`** (I own *who may act on* a
@@ -261,6 +269,10 @@ commits rather than only after. A suspension **keeps** the operator's
   (`PrincipalSessionRevoker`, #128). I report *that the transition happened* and *whose* it
   was; deleting `SPRING_SESSION` rows is session machinery and I never import
   `org.springframework.session`
+- **Telling an approved operator that it can now sign in** (#375) → the **platform edge**
+  (`OperatorApprovalMail`) driving **`notification`**. Same split as the line above, and for the same
+  reason: I report *that the approval happened* and *which address it registered with*; deciding to
+  mail, building the sign-in link, and delivering it are not mine. I import no mail type
 
 **Shipped** (#73 module + per-venue `assertOwns` → `403` in every venue-scoped
 application service; #74 per-operator DB-backed credentials — no shared password; **#115
@@ -351,7 +363,11 @@ never marked failed. The application-side single-flight + cooldown is therefore 
 eligible again in milliseconds. Publishes exactly one
 named interface, `notification::api`, holding **two role-split ports**:
 the fire-and-forget `MailSender` (never throws, runs off the caller's thread,
-suppression-enforced) and, since #400, the synchronous read `MailDeliverability`
+suppression-enforced — and since #375 carrying the **operator-approval notice** alongside the two
+recovery kinds, which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and the `kind` tag
+names the flow: the notice carries no bearer credential, but it is edge-orchestrated from an admin
+request rather than driven by a domain fact, and ADR-0011 decision 5 reads both) and, since #400,
+the synchronous read `MailDeliverability`
 ("would a mail to this address be withheld right now?"). They are deliberately separate
 conversations — `MailSender`'s contract is that a send influences neither the triggering
 response's status nor its latency (D-8, #369), which the anonymous `forgot-password` flow
