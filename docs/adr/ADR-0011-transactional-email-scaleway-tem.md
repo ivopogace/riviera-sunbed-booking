@@ -99,9 +99,30 @@ Provider landscape (condensed; full table in the research doc):
      the request would be ceremony that also persists the payload.
 
    The executor's trade-off is accepted deliberately: it is **best-effort, not at-least-once** — a
-   crash, a redeploy past the drain window, or a saturated queue loses the send, and that is
-   tolerable precisely because the flow is user-retryable (re-request the email) and the durable
-   half, the token, is already committed. The pool is deliberately **not** Boot's shared
+   crash, a redeploy past the drain window, a saturated queue, or a send the pool accepted and could
+   not deliver loses the mail, and nothing retries it. **What that loss costs is not the same for
+   every kind riding the vehicle, so the justification has to be read per kind:**
+
+   - **The recovery pair (verification, password reset) self-heals.** The durable half — the token —
+     is already committed when the edge calls the port, and the flow is user-retryable: the person
+     asks again and gets a fresh link. A lost send costs one round trip.
+   - **The operator-approval notice (#375) does not.** It carries no token, so there is no durable
+     half already committed; and nothing re-sends it — the operator is not sitting on a page offering
+     a retry, and learns its account is live only by trying to sign in, which is the exact experience
+     #375 was written to remove. This kind is accepted as the **knowingly weaker case**: the loss is
+     unrecoverable *in the product* and is mitigated only *operationally* — and, as #440's review
+     established, only **in part**. Every loss is counted, but only one of the two is *attributable*: a
+     send the transport ran and lost raises `MAIL_RECOVERY_FAILED` under `kind="operator-approved"`,
+     naming one identifiable person at a volume of one per approval; a send the pool never ran raises
+     `MAIL_RECOVERY_DROPPED`, which carries `reason` alone and cannot carry the kind, because it is
+     raised by the dispatcher, whose interface is `dispatch(Runnable)`. So a **dropped** approval notice
+     surfaces only as an unattributed increment, to be reconciled by hand against that window's
+     approvals. `docs/runbooks/observability.md` carries both readings and the remedy — tell them —
+     which is a real remedy rather than a shrug because a human is already in the loop: the admin who
+     approved. **Whether the drop path should carry the kind at all is [#442](https://github.com/ivopogace/riviera-sunbed-booking/issues/442);**
+     if it ever does, the "only in part" above stops being true and this note needs amending again.
+
+   The pool is deliberately **not** Boot's shared
    `applicationTaskExecutor`, which carries the Modulith money-path listeners; and it drops on
    saturation rather than running the send on the caller's thread, which would re-open the oracle.
    One **residual** is knowingly left open: the token row is still inserted synchronously on the
@@ -109,6 +130,28 @@ Provider landscape (condensed; full table in the research doc):
    Equalizing it was considered and rejected — on `register` the branch asymmetry is structural and
    pre-existing (the fresh branch also inserts an account and a session row), and D-8 answers that
    class with bcrypt-cost equalization rather than write-count equalization.
+
+   > **Amended 2026-07-30 (#439).** The paragraph above previously justified the whole vehicle's loss
+   > risk in one breath: a lost send is "tolerable precisely because the flow is **user-retryable**
+   > (re-request the email) and the durable half, **the token**, is already committed." Both halves
+   > were true of the only kinds the vehicle carried when that was written, and **neither is true of
+   > the operator-approval notice** #375 later put on it. So the ADR went on recording the risk as
+   > uniformly self-healing after it had stopped being so — while the code
+   > (`TransactionalMailService`) and `docs/runbooks/observability.md` already said otherwise. This
+   > amendment makes the justification per-kind; it does not discover a new risk, it stops
+   > mis-describing one we already run.
+   >
+   > **The vehicle *choice* is not what changed, and was not reconsidered.** It stays pre-authorised
+   > by this bullet and by epic #367 ("no secret, but it's edge-orchestrated from an admin request,
+   > not a domain event"), and #375 shipped it as specified.
+   >
+   > **Moving the notice to the Event Publication Registry to buy it at-least-once was the considered
+   > alternative, and was rejected** (maintainer, #439). Its payload is ids-only in practice, so the
+   > payload test above would have allowed it — but taking it would reverse the *trigger settles it*
+   > reasoning for a kind whose loss is already **visible** (a tagged counter, at a volume of one per
+   > approval) and **remediable** (the approving admin can be told to tell them), and would buy that
+   > durability by minting a domain event whose only consumer is the edge that raised the request.
+   > Re-open it if a real lost approval ever shows the operational remedy failing in practice.
 6. **One platform sending domain.** SPF + DKIM (2048-bit) + DMARC (`p=none` → tighten) on the
    platform domain; shared IP pool (our volume never keeps a dedicated IP warm). Mail "from" an
    operator's own domain (per-tenant DKIM delegation) is explicitly out until an operator

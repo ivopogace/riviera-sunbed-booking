@@ -33,8 +33,10 @@ import java.time.Duration;
  * does <em>not</em> escalate to {@code shutdownNow()}. Interrupting a send whose publication is still
  * outstanding would be safe, but interrupting one that has already handed the message to the relay is
  * precisely how at-least-once becomes a duplicate — and an interrupt cannot tell the two apart. So an
- * unfinished registry send stays outstanding for the next start's republish, and an unfinished recovery
- * send is a loss the user re-requests (it has no durable copy, ADR-0011 decision 5). Both pools' tests
+ * unfinished registry send stays outstanding for the next start's republish, and an unfinished send on
+ * the in-memory vehicle is simply lost — it has no durable copy (ADR-0011 decision 5), which the person
+ * answers by re-requesting on the recovery kinds and cannot answer at all on the approval notice
+ * (amended #439). Both pools' tests
  * pin the non-interruption, so a future "let's be tidy and call shutdownNow" goes red.
  *
  * <p>A plain application-layer value carrying no configuration type — the

@@ -72,8 +72,16 @@ never sent.
 > **"Recovery" names the vehicle, not the flow.** Both series here were named when this dispatcher
 > carried only the verification and password-reset mails; since #375 it also carries the
 > operator-approval notice, which is no recovery flow at all. The names are kept because renaming a
-> shipped metric breaks every dashboard and alert that reads it — **the `kind` tag is what tells the
-> flows apart**, so filter by it rather than assuming a tourist is behind every increment.
+> shipped metric breaks every dashboard and alert that reads it — so **do not assume a tourist is
+> behind every increment.**
+>
+> **On `…failed` the `kind` tag tells the flows apart. On THIS series nothing does** — corrected in
+> #440 after this section spent two slices telling you to filter by a tag that was never here.
+> `riviera_mail_recovery_dropped_total` carries `reason` alone: it is raised by the dispatcher, whose
+> interface is `dispatch(Runnable)`, so the kind is not in scope where the increment happens, and a
+> query filtering this series by `kind` matches nothing — during an incident as well as outside one.
+> Until #442 decides whether to widen that seam, attribute a drop by reconciling its timestamp against
+> the approval log and the recovery requests of the same window.
 
 **Read one increment as: someone was told an action succeeded, and the mail it promised is not
 coming.** For `verification`/`password-reset` that is a person who asked for a link and got a `200`;
@@ -276,7 +284,10 @@ combined overrun, since nothing else would.
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
 vehicle that costs nothing — the publication stays outstanding and the next start (or the #405 admin lever) republishes it, so
 expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
-vehicle it is a lost mail the user must re-request. Since #434 the sends still **queued** at that
+vehicle it is a mail that is simply gone — one the recipient re-requests on the recovery kinds, and
+one **nobody** re-sends when it is the `operator-approved` notice (ADR-0011 decision 5, amended #439).
+Which of the two it was, this counter cannot tell you: it carries `reason` only, no `kind` (#442) — so
+do not read an abandoned increment as a self-healing loss by default. Since #434 the sends still **queued** at that
 moment are counted — `riviera.mail.recovery.dropped{reason="abandoned"}`, one `WARN` line each,
 carrying the submitting request's correlation id — and the one caught **running** deliberately is not,
 because it may already have reached the relay. The non-interruption is deliberate for that same

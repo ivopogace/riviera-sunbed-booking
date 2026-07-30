@@ -295,7 +295,8 @@ class AsyncMailDispatcherTest {
 	 * from the relay budget, and when it expires the pool gives up rather than interrupting, because an
 	 * interrupt cannot tell a send that already reached the relay from one that has not. What differs is
 	 * the consequence: this vehicle has no publication to fall back on (ADR-0011 decision 5), so an
-	 * abandoned recovery send is a mail the user must re-request.
+	 * abandoned send is a mail the recipient must ask for again — or, on the approval notice, cannot
+	 * (amended #439).
 	 *
 	 * <p><strong>And it is deliberately not counted</strong> (#434). A send the window catches
 	 * <em>running</em> may already have handed the message to the relay — that ambiguity is the whole
