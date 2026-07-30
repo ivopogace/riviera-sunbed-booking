@@ -211,10 +211,11 @@ unchanged; **no** payout-ledger effect; **no** refund-policy change. Pinned indi
 
 ## Execution status
 
-**Stage pointer:** `review gate — PR #457 marked ready`
+**Stage pointer:** `merge — all three gates passed, awaiting merge authorization`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (the invocation
-ladder) with `riviera-review-overlay` layered on, then the Sonar gate once CI reports.
+**Next action:** Merge PR #457 (squash), then run the merge close-out checklist. All three gates have
+passed: CI 7/7 on `2eba1fb`, Sonar 0 new issues / 0 duplication / 100% new-code coverage, review gate
+run in full (5-reviewer fan-out + overlay, 3 findings, all fixed).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -231,7 +232,7 @@ Implement per the `riviera-sdlc` re-entry rule (run the Skill-routing gate for w
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | CI | All 7 checks green on `33a3010` — Backend (build + test), Frontend (lint + test + build), CodeQL ×2, SonarCloud ×2 | passed |
+| — | CI | All 7 checks green on the review-fix head `2eba1fb` — Backend (build + test), Frontend (lint + test + build), CodeQL ×2, SonarCloud ×2. Also green on `33a3010` before the fix | passed |
 | — | Sonar gate | **0 new issues, 0 accepted issues, 0 security hotspots, 0.0% duplication, 100.0% coverage on new code** — clears the repo's stricter bar (0 new / 0 dup / ≥80% new-code coverage). Issue list pulled and empty, so nothing to triage | passed |
 | — | review gate (overlay pass) | `riviera-review-overlay` backend bank walked: RV-BE-3 ✅ (both consumers already grant `shared`; OPEN kernel, so direct type reference is correct), RV-BE-12 ✅ (module-root type, the documented `shared` allowance), RV-STYLE-1 ✅ (zero inline comments added — all prose is Javadoc, exempt), RV-PROC-1 ✅ (*Skills consulted* matches every area the diff touches). RV-BE-1/4/5/7/8/9/10/14/15/16/17/18 ➖ N/A — no availability write, no event, no money, no endpoint, no venue-scoped surface, no migration | passed |
 | — | review gate (reviewer 1/5, CLAUDE.md adherence) | No findings. Independently verified the `shared` admission against all three clauses and confirmed `MAIL_POOL_CLAIM_MS`/`REFUND_POOL_CLAIM_MS` match what actually ships | passed |
@@ -567,5 +568,5 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — final plan-doc state committed here, `merged via PR #457`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
