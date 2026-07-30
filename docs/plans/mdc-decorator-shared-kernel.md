@@ -199,15 +199,15 @@ idempotency key are untouched.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 2)` — draft PR **#458** open, so every later push is CI-gated.
 
-**Next action:** Phase 0 — move `MdcTaskDecorator` + its test to `shared`, update the three call
-sites' imports, and run the structural net.
+**Next action:** Phase 2 — the `WorkerContextArchitectureTest` guard plus its non-vacuity fixture, so
+a fourth self-configured pool cannot ship undecorated the way the third did.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Promote the decorator to `shared` | | |
-| 1 — Compose it onto the refund pool | | |
+| 0 — Promote the decorator to `shared` | ✅ | `68335b6` |
+| 1 — Compose it onto the refund pool | ✅ | `a452627` |
 | 2 — Structural guard against a fourth undecorated pool | | |
 | 3 — Substrate docs + close-out | | |
 

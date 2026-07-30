@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -71,6 +73,9 @@ class RefundExecutorConfigTest {
 
 	private static final int SHED_REFUNDS = 5;
 
+	/** {@code CorrelationIdFilter}'s MDC key, spelled out rather than imported: it is root-package. */
+	private static final String CORRELATION_KEY = "correlationId";
+
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 	private ch.qos.logback.classic.Logger configLogger;
@@ -86,6 +91,8 @@ class RefundExecutorConfigTest {
 	void releaseLogs() {
 		configLogger.detachAppender(logs);
 		logs.stop();
+		// MDC is thread-local and JUnit reuses the thread, so a failed assertion must not leak a context.
+		MDC.clear();
 	}
 
 	private ThreadPoolTaskExecutor initializedExecutor(RefundExecutorProperties props) {
@@ -171,6 +178,47 @@ class RefundExecutorConfigTest {
 			assertTrue(ran.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS), "the refund never ran");
 			assertTrue(threadName.getFirst().startsWith(RefundExecutorConfig.THREAD_NAME_PREFIX),
 					"a refund must be identifiable in a thread dump as a refund, not as a generic task");
+		}
+		finally {
+			pool.shutdown();
+		}
+	}
+
+	/**
+	 * AC-4 (#455) — a refund <em>worker's</em> own lines are attributable to the request that cancelled
+	 * the booking. Invariant #7 keeps the booking code out of them, so the correlation id is the only
+	 * handle on which cancellation the listener's {@code refunded cancelled booking} INFO — or a gateway
+	 * failure — describes.
+	 *
+	 * <p><strong>Clearing the submitter's MDC after handing the task over is the whole test.</strong>
+	 * Only a context captured at <em>submit</em> time can survive that: a decorator capturing inside the
+	 * returned {@code Runnable} would read the worker's own empty context and fail here. Asserting the
+	 * worker's thread name is the other half — propagation on the caller's thread would prove nothing.
+	 *
+	 * <p>This is deliberately the shape of {@code RegistryMailExecutorConfigTest}'s namesake: the two
+	 * pools now share one mechanism, so their proofs should be comparable line for line.
+	 */
+	@Test
+	void aWorkerRunsWithTheSubmittersLoggingContext() throws Exception {
+		ThreadPoolTaskExecutor pool = initializedExecutor(SHIPPED);
+		AtomicReference<String> seen = new AtomicReference<>();
+		AtomicReference<String> workerThread = new AtomicReference<>();
+		CountDownLatch ran = new CountDownLatch(1);
+		MDC.put(CORRELATION_KEY, "corr-1");
+
+		try {
+			pool.execute(() -> {
+				seen.set(MDC.get(CORRELATION_KEY));
+				workerThread.set(Thread.currentThread().getName());
+				ran.countDown();
+			});
+			MDC.clear();
+
+			assertTrue(ran.await(RELEASE_TIMEOUT_SECONDS, TimeUnit.SECONDS), "the refund never ran");
+			assertTrue(workerThread.get().startsWith(RefundExecutorConfig.THREAD_NAME_PREFIX),
+					"the refund must run on this pool, or the propagation proves nothing");
+			assertEquals("corr-1", seen.get(),
+					"a worker-thread line is unattributable without the submitter's correlation id");
 		}
 		finally {
 			pool.shutdown();
