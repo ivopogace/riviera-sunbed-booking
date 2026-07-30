@@ -22,6 +22,9 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 @Repository
 class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.customer.api.CustomerLookup {
 
+	/** Named once, per the {@code JdbcBookings} PARAM_* convention — three call sites bind it. */
+	private static final String PARAM_EMAIL = "email";
+
 	private final JdbcClient jdbc;
 
 	JdbcCustomerDirectory(JdbcClient jdbc) {
@@ -40,7 +43,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 				    updated_at = NOW()
 				RETURNING id
 				""")
-				.param("email", email)
+				.param(PARAM_EMAIL, email)
 				.param("name", contact.fullName())
 				.param("phone", contact.phone())
 				.query(Long.class)
@@ -52,7 +55,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 	public java.util.Optional<CustomerId> findByEmail(String email) {
 		// Read-only by design: findOrCreate above would answer the same question by creating a row.
 		return jdbc.sql("SELECT id FROM customer WHERE email = :email")
-				.param("email", Emails.normalize(email))
+				.param(PARAM_EMAIL, Emails.normalize(email))
 				.query((rs, rowNum) -> new CustomerId(rs.getLong("id")))
 				.optional();
 	}

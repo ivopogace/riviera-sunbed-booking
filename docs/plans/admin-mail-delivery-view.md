@@ -81,7 +81,7 @@ with `origin/main`.
   client. *Pinned by:* `BookingConfirmationResendServiceTest.reportsAndRecordsATransportFailure`
 - [ ] **AC-6:** Given a signed-in operator without the platform-admin role, when it calls either
   endpoint, then the platform answers `403`; anonymous gets `401`. *Pinned by:*
-  `AdminMailDeliveryIT.deniesANonAdminOperator`
+  `AdminMailDeliveryControllerTest.aNonAdminOperatorIsForbiddenAndNeverReachesEitherPort` + `.anAnonymousRequestIsUnauthorizedAndNeverReachesEitherPort`
 - [ ] **AC-7:** Given an email address with no bookings (or an unknown address), when an admin looks
   it up, then the platform answers `200` with an empty list — never a 404 and never a different
   latency or shape for "address unknown" vs "address known with no bookings". *Pinned by:*
@@ -89,7 +89,7 @@ with `origin/main`.
 - [ ] **AC-8:** Given any lookup or resend response, when it is serialised, then it carries no
   booking code and no arrival credential anywhere (invariant #7), and the attempt table holds no
   email address (ADR-0010 erasure reach). *Pinned by:*
-  `AdminMailDeliveryIT.neverRendersTheArrivalCode` + `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode`
+  `AdminMailDeliveryIT.neverRendersTheArrivalCode` + `AdminMailDeliveryControllerTest.neverRendersTheArrivalCodeOrTheRecipientAddress` + `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode`
 - [ ] **AC-9:** Given an admin on `/admin/email`, when they enter an address and press Look up, then
   the page lists each booking with its attempt history and a Resend button, and reports the resend
   outcome in an `aria-live` region. *Pinned by:* `admin-mail-delivery.spec.ts` +
@@ -296,9 +296,10 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `implement — phases 0–2 done; phase 3 next`
+**Stage pointer:** `implement — backend done (phases 0–3); phase 4 (frontend) next`
 
-**Next action:** Phase 3 — the resend service and the two ADMIN endpoints.
+**Next action:** Phase 4 — re-run the Skill-routing gate (`angular-developer` + angular-cli MCP,
+`riviera-tailwind`), then build the console card test-first.
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -311,7 +312,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 | 0 — V36 attempt table + `ConfirmationMailAttempts` port/adapter | ✅ | `1c03dee` |
 | 1 — Record the automatic path (typed send outcome + listener recording) | ✅ | `5d26e5a` |
 | 2 — The three new reads (`booking::api` ×2, `customer::api` ×1) | ✅ | `1cc8392` |
-| 3 — Resend service + ADMIN lookup/resend endpoints | | |
+| 3 — Resend service + ADMIN lookup/resend endpoints | ✅ | `ca4302e` |
 | 4 — Frontend card, service, unit + a11y specs | | |
 | 5 — Playwright mocked e2e | | |
 | 6 — Substrate docs + close-out | | |
@@ -324,6 +325,7 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-3 | sonar (phase-2 push, PR #449) | `java:S1192` CRITICAL — the literal `"email"` bound three times in `JdbcCustomerDirectory` once `findByEmail` joined it. | fixed-in-`ca4302e` — named `PARAM_EMAIL`, the `JdbcBookings` `PARAM_*` convention. |
 | F-2 | sonar (phase-1 push, PR #449) | `java:S6213` MAJOR — `ConfirmationAttemptRecorder.record(...)` matches a restricted identifier (`record`). | fixed-in-`1cc8392` — renamed to `recordAttempt`. The push also revealed the recorder's swallow branch was the slice's only uncovered new code, so `ConfirmationAttemptRecorderTest` (4 tests) now pins R-1's policy — including that the catch stays `DataAccessException` and does **not** absorb a programming error. |
 | F-1 | sonar (phase-0 push, PR #449) | `java:S2479` CRITICAL — a literal tab inside V36's `INSERT` text block (the column-list line was indented one tab past the block's common prefix, so the tab survived incidental-whitespace stripping into the SQL string). The gate passed with it; the repo's 0-new-issues bar does not. | fixed-in-`1a64291` — re-indented past the prefix with **spaces**, the convention `JdbcAccountErasure`/`JdbcCustomerDirectory` already follow. Same latent tab fixed in the IT's text block. No behaviour change (SQL is whitespace-insensitive); IT re-run 13/0/0. |
 

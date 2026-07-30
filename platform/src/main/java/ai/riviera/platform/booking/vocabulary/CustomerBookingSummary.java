@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.vocabulary;
 
 import java.time.LocalDate;
 
-import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * One row of "which bookings does this guest contact have" (#380) — what the admin mail-delivery view
@@ -16,11 +16,13 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * credential (invariant #7), and the address is the caller's own input.
  *
  * @param bookingId the booking, and the key an admin resend is addressed to
- * @param venueId the venue, from which the view resolves a display name via {@code venue::api}
+ * @param setId the booked set, from which the view resolves the venue name via
+ *        {@code venue.api.SetBookingFacts} — the same read the confirmation mail itself uses, which is
+ *        why this is a set and not a venue id: no new venue-side port is needed for a name
  * @param bookingDate the booked day, a {@code LocalDate} in {@code Europe/Tirane} (invariant #6)
  * @param everConfirmed whether this booking ever reached {@code CONFIRMED} — see
  *        {@link BookingConfirmationFacts#everConfirmed()} for why it is not a status test
  */
-public record CustomerBookingSummary(BookingId bookingId, VenueId venueId, LocalDate bookingDate,
+public record CustomerBookingSummary(BookingId bookingId, SetId setId, LocalDate bookingDate,
 		boolean everConfirmed) {
 }

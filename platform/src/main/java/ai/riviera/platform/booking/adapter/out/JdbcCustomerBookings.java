@@ -10,7 +10,7 @@ import ai.riviera.platform.booking.api.CustomerBookings;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CustomerBookingSummary;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
-import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * {@link CustomerBookings} over the {@code booking} table (#380). Package-private driven adapter
@@ -34,7 +34,7 @@ class JdbcCustomerBookings implements CustomerBookings {
 	@Override
 	public List<CustomerBookingSummary> forCustomer(CustomerId customerId) {
 		return jdbc.sql("""
-				SELECT id, venue_id, booking_date, confirmed_at IS NOT NULL AS ever_confirmed
+				SELECT id, set_id, booking_date, confirmed_at IS NOT NULL AS ever_confirmed
 				FROM booking
 				WHERE customer_id = :customer
 				ORDER BY booking_date DESC, id DESC
@@ -44,7 +44,7 @@ class JdbcCustomerBookings implements CustomerBookings {
 				.param("limit", MAX_BOOKINGS)
 				.query((rs, rowNum) -> new CustomerBookingSummary(
 						new BookingId(rs.getLong("id")),
-						new VenueId(rs.getLong("venue_id")),
+						new SetId(rs.getLong("set_id")),
 						rs.getObject("booking_date", LocalDate.class),
 						rs.getBoolean("ever_confirmed")))
 				.list();

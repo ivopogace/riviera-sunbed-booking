@@ -47,13 +47,16 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
-import ai.riviera.platform.notification.api.MailDeliverability;
-import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.notification.application.BookingConfirmationResend;
+import ai.riviera.platform.notification.application.MailDeliveryLookup;
 import ai.riviera.platform.notification.application.MailOutboxStatus;
 import ai.riviera.platform.notification.application.MailResubmission;
 import ai.riviera.platform.notification.application.MailResubmissionOutcome;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.ReinstateSuppression;
+import ai.riviera.platform.notification.application.ResendOutcome;
+import ai.riviera.platform.notification.api.MailDeliverability;
+import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
@@ -389,6 +392,22 @@ class WebSliceStubs {
 	@Bean
 	ReinstateSuppression reinstateSuppression() {
 		return _ -> new ReinstateOutcome.NotSuppressed();
+	}
+
+	/**
+	 * {@code AdminMailDeliveryController}'s two ports (#380). Inert: no bookings for any address, and a
+	 * resend that reports an unknown booking — so a slice that merely loads the controller mails nobody.
+	 * {@code AdminMailDeliveryControllerTest} overrides both with {@code @MockitoBean}s to drive the real
+	 * shapes.
+	 */
+	@Bean
+	MailDeliveryLookup mailDeliveryLookup() {
+		return _ -> List.of();
+	}
+
+	@Bean
+	BookingConfirmationResend bookingConfirmationResend() {
+		return _ -> ResendOutcome.NO_SUCH_BOOKING;
 	}
 
 	/**

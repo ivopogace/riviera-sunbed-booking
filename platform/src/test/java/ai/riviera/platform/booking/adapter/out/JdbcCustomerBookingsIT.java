@@ -65,8 +65,8 @@ class JdbcCustomerBookingsIT {
 		assertFalse(awaiting.everConfirmed(), "never confirmed — no confirmation mail was ever due");
 		assertTrue(wasConfirmed.everConfirmed());
 		assertEquals(confirmed, wasConfirmed.bookingId().value());
-		assertEquals(venueOfOnlineSet(), wasConfirmed.venueId().value(),
-				"the venue id the view resolves a name from through venue::api");
+		assertEquals(onlineSetId(), wasConfirmed.setId().value(),
+				"the set the view resolves a venue name from through venue.api.SetBookingFacts");
 	}
 
 	@Test
@@ -111,8 +111,8 @@ class JdbcCustomerBookingsIT {
 				.param("e", email).query(Long.class).single());
 	}
 
-	private long venueOfOnlineSet() {
-		return jdbc.sql("SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
+	private long onlineSetId() {
+		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
 				.query(Long.class).single();
 	}
 
