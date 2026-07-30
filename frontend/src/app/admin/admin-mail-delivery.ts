@@ -150,6 +150,9 @@ export class AdminMailDelivery {
   protected readonly model = signal({ email: '' });
   protected readonly lookupForm = form(this.model);
 
+  /** The address the visible results belong to — not the live field, which the admin may already be retyping. */
+  private readonly searchedEmail = signal('');
+
   protected readonly bookings = signal<readonly MailDeliveryBookingView[]>([]);
   protected readonly searching = signal(false);
   protected readonly searched = signal(false);
@@ -167,6 +170,7 @@ export class AdminMailDelivery {
     this.notice.set('');
     try {
       this.bookings.set((await this.service.lookup(email)).bookings);
+      this.searchedEmail.set(email);
       this.searched.set(true);
     } catch {
       this.bookings.set([]);
@@ -208,10 +212,17 @@ export class AdminMailDelivery {
     }
   }
 
-  /** Re-read after a resend so the new attempt appears; a failure here must not overwrite the outcome. */
+  /**
+   * Re-read after a resend so the new attempt appears. Keyed on the address that was *searched*, never
+   * on the live field: an admin who has started typing the next address must not have the results they
+   * just acted on replaced by someone else's, under a notice saying their mail was sent.
+   *
+   * A failure here must not overwrite the outcome notice — the resend still happened — so it drops the
+   * list rather than showing one that is now wrong.
+   */
   private async refresh(): Promise<void> {
     try {
-      this.bookings.set((await this.service.lookup(this.model().email.trim())).bookings);
+      this.bookings.set((await this.service.lookup(this.searchedEmail())).bookings);
     } catch {
       this.bookings.set([]);
       this.searched.set(false);

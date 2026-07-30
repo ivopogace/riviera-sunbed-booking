@@ -184,6 +184,28 @@ describe('AdminMailDelivery', () => {
     expect(testId(fixture, 'admin-delivery-notice')?.textContent).toContain('never confirmed');
   });
 
+  /**
+   * The field is live, the results are not: an admin who starts typing the next address before
+   * pressing Resend on the results still on screen must not have those results silently replaced by
+   * someone else's — under a notice saying their mail was sent.
+   */
+  it('re-reads the address that was searched, not whatever is in the field now', async () => {
+    const service = serviceStub(WITHHELD_THEN_RESENT);
+    const fixture = await render(service);
+    await lookUp(fixture);
+
+    const input: HTMLInputElement = testId(fixture, 'admin-delivery-email') as HTMLInputElement;
+    input.value = 'someone-else@example.com';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (testId(fixture, 'admin-delivery-resend-42') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(service.lookup).toHaveBeenLastCalledWith(EMAIL);
+  });
+
   it('shows an error when the lookup itself fails', async () => {
     const service = serviceStub();
     service.lookup = vi.fn(async () => {

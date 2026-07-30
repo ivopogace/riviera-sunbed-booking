@@ -44,6 +44,19 @@ questions the issue asked to be weighed were settled with the maintainer on 2026
   precedent) rather than the root; forced the `api`-vs-`spi` re-check (all three new reads are
   **inbound** `api/` ports, no inversion needed); required the `booking::api` role-split rather
   than piling methods onto one port (#94).
+- `codebase-design` (loaded at the **review gate**, closing RV-PROC-1 — see F-5) — re-vetted the new
+  seams with the deletion test. It **kept** `ConfirmationAttemptRecorder`, which had looked like a
+  pass-through: delete it and the clock stamping, the best-effort swallow policy and the `WARN` line
+  reappear at two call sites and drift. It also **kept the two outcome enums split**
+  (`ConfirmationSendOutcome` / `MailAttemptOutcome`) — collapsing them would widen the chokepoint's
+  declared range to values it can never return. Neither seam changed shape; both are now argued rather
+  than assumed.
+- `domain-modeling` (same) — checked whether the slice introduces ubiquitous language. It does not:
+  `CONTEXT.md` carries no email terms at all (verified by grep), so "delivery attempt" would be
+  implementation vocabulary in a glossary that deliberately excludes it. The one decision that *was*
+  hard-to-reverse and surprising — a resend sending synchronously on a request thread — is an
+  **amendment to ADR-0011 decision 5**, not a new ADR, since it extends an existing decision rather
+  than making one.
 - `riviera-java-conventions` — the typed outcome returned from `sendBookingConfirmation` instead of
   a boolean/exception pair (§6), package-private adapters, `Optional` from query ports, named state
   tokens kept in lockstep with the SQL `CHECK` (§6a), one-line-or-none inline comments (§6c).
@@ -339,6 +352,9 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-7 | review (`/code-review` agent 2 — bug scan) | **Real defect.** `admin-mail-delivery.ts` re-read the results after a resend using the **live** form field, not the address that was searched. An admin who starts typing the next address before pressing Resend on the results still on screen has them silently replaced by a different (possibly empty) set, under a notice saying the mail was sent. | fixed-in-`ff3d36f` — the searched address is captured in its own signal and the re-read is keyed on that. Test-first: `re-reads the address that was searched, not whatever is in the field now` reproduced it (red) before the fix. |
+| F-6 | review (`/code-review` agent 1 — CLAUDE.md) | **RV-STYLE-1** (Minor): a two-line `//` inline comment in `JdbcBookingNotificationFacts`. Javadoc is exempt; this was not Javadoc. | fixed-in-`ff3d36f` — cut to one line pointing at `BookingConfirmationFacts#everConfirmed`, where the full reasoning already lived. |
+| F-5 | review (`/code-review` agent 1 — RV-PROC-1) | **Major, and correct.** The routing table's backend-structure row requires `riviera-modulith` **+ `codebase-design` + `domain-modeling``; only the first was loaded and recorded. | fixed-in-`ff3d36f` — both loaded at the review gate and the seams re-vetted through them (outcome in *Skills consulted*). The re-vet **confirmed** the shipped shapes rather than changing them, so no code moved; the process gap was real regardless, and pretending otherwise is what RV-PROC-1 exists to prevent. |
 | F-4 | sonar (phase-3/4 push, PR #449) | `java:S1192` again — the third `"email"` in `JdbcCustomerDirectory` is a **column** name in `findById`, which the new `PARAM_EMAIL` constant does not describe. | fixed-in-`bc08591` — added a separate `COL_EMAIL`, the `JdbcBookings` `PARAM_*`/`COL_*` split. Collapsing both onto one constant would have named a column after a bind parameter. |
 | F-3 | sonar (phase-2 push, PR #449) | `java:S1192` CRITICAL — the literal `"email"` bound three times in `JdbcCustomerDirectory` once `findByEmail` joined it. | fixed-in-`ca4302e` — named `PARAM_EMAIL`, the `JdbcBookings` `PARAM_*` convention. |
 | F-2 | sonar (phase-1 push, PR #449) | `java:S6213` MAJOR — `ConfirmationAttemptRecorder.record(...)` matches a restricted identifier (`record`). | fixed-in-`1cc8392` — renamed to `recordAttempt`. The push also revealed the recorder's swallow branch was the slice's only uncovered new code, so `ConfirmationAttemptRecorderTest` (4 tests) now pins R-1's policy — including that the catch stays `DataAccessException` and does **not** absorb a programming error. |

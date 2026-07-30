@@ -40,8 +40,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	@Override
 	public Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId) {
-		// ever_confirmed reads confirmed_at, not status: a booking cancelled after confirmation did get
-		// a confirmation, and a status test would refuse a legitimate resend for it.
+		// confirmed_at, not status — see BookingConfirmationFacts#everConfirmed for why.
 		return jdbc.sql("""
 				SELECT set_id, booking_date, amount_minor, amount_currency, code, customer_id,
 				       confirmed_at IS NOT NULL AS ever_confirmed
