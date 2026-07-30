@@ -310,10 +310,10 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `implement — phases 0–5 done; phase 6 (substrate docs) next`
+**Stage pointer:** `PR ready-for-review — review gate next`
 
-**Next action:** Phase 6 — substrate docs (RESPONSIBILITIES, CLAUDE.md, ADR-0011), the
-`riviera-docs-freshness` pass, then mark the PR ready and run the review + Sonar gates.
+**Next action:** Mark PR #449 ready for review, then run the review gate (`references/pr-gates.md`
+§1 invocation ladder + `riviera-review-overlay`), then the Sonar gate, then merge close-out.
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -329,7 +329,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 | 3 — Resend service + ADMIN lookup/resend endpoints | ✅ | `ca4302e` |
 | 4 — Frontend card, service, unit + a11y specs | ✅ | `70b8dea` |
 | 5 — Playwright mocked e2e | ✅ | `bc08591` |
-| 6 — Substrate docs + close-out | | |
+| 6 — Substrate docs + close-out | ✅ | `10e22ef` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -777,12 +777,31 @@ void deniesANonAdminOperator() {                                             // 
 
 ---
 
+### Docs-freshness run (merge close-out step 5, run pre-merge)
+
+`riviera-docs-freshness` over `origin/main...HEAD`, 2026-07-30 — **2 findings, both patched here**
+rather than in a follow-up PR:
+
+- `CLAUDE.md` (notification row, aggregate-root cell) — stated the module owns `email_suppression`
+  state; V36 added a second table. Patched to name both.
+- `CLAUDE.md` (booking row) — enumerates the module's published cross-module facts and would have
+  omitted the two this slice adds. Patched with `confirmationFacts` + `CustomerBookings`, including
+  why neither publishes `BookingStatus`.
+
+Checked and **not** stale: `RESPONSIBILITIES.md:395` ("`notification::api` … two role-split ports")
+— this slice publishes no new port, its admin surface using module-internal ones, so the count holds.
+`CONTEXT.md` — no new *ubiquitous-language* term (an attempt log is delivery machinery, not a domain
+term the business speaks); the glossary's mail entries are about tokens and verification, which are
+untouched. No `riviera-*` skill cites a file or method this slice renamed — the one hit for the moved
+`isAddressShaped` is a historical plan-doc record (#391's), which stays true.
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 3 (admin endpoints) | request-time email-shape validation, after #380 became its second caller | `grep -rn "isAddressShaped" platform/src/main` | 2 (this controller + #391's suppression reinstatement) | **Extracted rather than copied**: `AddressShape` now holds the check and both admin surfaces call it, so they cannot drift on what they accept. #398 had already fixed a half-check once, which is the argument against a second copy. |
 | 2026-07-30 | phase 0 (V36 + attempt log) | state tokens whose Java enum and SQL `CHECK` must stay in lockstep | `grep -rln "CHECK (.* IN (" src/main/resources/db/migration` | 14 migrations | **Matched the house pattern, added no new one**: V36's tokens are the enum constants' `name()`, and the lockstep is pinned by inserting every constant (`ConfirmationMailAttemptsIT.storesEvery*TheEnumSpells`). No existing table needs a change — several already carry an equivalent pin, and retrofitting the rest is out of this slice. |
 
 ---
