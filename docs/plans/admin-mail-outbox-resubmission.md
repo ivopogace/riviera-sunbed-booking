@@ -50,43 +50,43 @@ remote-session addendum.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given outstanding booking-confirmation publications, when an ADMIN invokes the
+- [x] **AC-1:** Given outstanding booking-confirmation publications, when an ADMIN invokes the
   resubmission port, then every one of them is handed back to the registry for delivery and the
   outcome reports how many. *Pinned by:* `MailResubmissionServiceTest.resubmitsEveryOutstandingMailPublication`
-- [ ] **AC-2:** Given one outstanding mail publication **and** one outstanding payout-accrual
+- [x] **AC-2:** Given one outstanding mail publication **and** one outstanding payout-accrual
   publication **and** one outstanding refund publication, when the resubmission port is invoked,
   then only the mail publication is resubmitted — the other two stay outstanding and no ledger
   entry and no Stripe call results. *Pinned by:* `MailOutboxScopeIT.resubmitsMailWithoutTouchingTheMoneyPath`
-- [ ] **AC-3:** Given a resubmission has just run, when a second invocation arrives concurrently
+- [x] **AC-3:** Given a resubmission has just run, when a second invocation arrives concurrently
   **or** inside the cooldown window, then it sweeps nothing and reports `ALREADY_RUNNING` /
   `COOLING_DOWN` rather than a success that moved nothing. (The *mail-delivered-once* half of this
   is the registry's own per-publication claim — see G-2.)
   *Pinned by:* `MailResubmissionServiceTest.refusesAConcurrentInvocation` +
   `MailResubmissionServiceTest.refusesASecondInvocationInsideTheCooldown`
-- [ ] **AC-4:** Given the service has just started with `republish-outstanding-events-on-restart=true`,
+- [x] **AC-4:** Given the service has just started with `republish-outstanding-events-on-restart=true`,
   when an admin invokes resubmission immediately, then it is refused as `COOLING_DOWN` — the boot
   republication counts as the first resubmission.
   *Pinned by:* `MailResubmissionServiceTest.startsCoolingDownAtBootSoAClickCannotRaceTheRestartRepublish`
-- [ ] **AC-5:** Given a publication that is already complete, when resubmission runs, then it is not
+- [x] **AC-5:** Given a publication that is already complete, when resubmission runs, then it is not
   redelivered (the existing `BookingConfirmationMailIT` guarantee is untouched — completed rows are
   archived out of `event_publication` under `completion-mode=archive`).
   *Pinned by:* `MailOutboxScopeIT.leavesCompletedPublicationsAlone`
-- [ ] **AC-6:** Given an anonymous caller, when it calls either mail-outbox endpoint, then `401`;
+- [x] **AC-6:** Given an anonymous caller, when it calls either mail-outbox endpoint, then `401`;
   given an authenticated non-admin (`OPERATOR` or `CUSTOMER`), then `403` — before any
   resubmission happens, so a denied caller cannot consume the cooldown either.
   *Pinned by:* `AdminMailOutboxControllerTest.operatorAndCustomerSessionsAreForbiddenOnBothEndpoints` +
   `.anonymousIsUnauthorizedOnBothEndpoints`
-- [ ] **AC-7:** Given any resubmission, when it logs, then the line carries a count and no email
+- [x] **AC-7:** Given any resubmission, when it logs, then the line carries a count and no email
   address and no arrival code (invariant #7).
   *Pinned by:* `MailResubmissionServiceTest.logsACountAndNoBearerCredential`
-- [ ] **AC-8:** Given a signed-in admin on the console's Email tab, when the outbox is non-empty and
+- [x] **AC-8:** Given a signed-in admin on the console's Email tab, when the outbox is non-empty and
   they press Resubmit, then the count is shown, the result is announced, and a refused (cooling-down)
   attempt is reported as such rather than as a failure.
   *Pinned by:* `admin-mail-outbox.spec.ts` + `admin-mail-outbox.e2e.ts`
-- [ ] **AC-9:** Given a non-admin (or signed-out) visitor on `/admin/email`, when the page renders,
+- [x] **AC-9:** Given a non-admin (or signed-out) visitor on `/admin/email`, when the page renders,
   then it offers no Resubmit control — matching the existing `/admin` self-gate, with the backend
   role gate as the real authority. *Pinned by:* `admin-mail-outbox.spec.ts`
-- [ ] **AC-10:** Given the Email tab renders in either state, when axe runs, then there are no
+- [x] **AC-10:** Given the Email tab renders in either state, when axe runs, then there are no
   serious violations and the tab strip exposes the current tab to assistive tech.
   *Pinned by:* `admin-mail-outbox.a11y.spec.ts` + `admin-mail-outbox.e2e.ts`
 
@@ -121,26 +121,28 @@ remote-session addendum.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A "mail" button resubmits a payout accrual (invariant #9) or a Stripe refund (invariant #8) | **high if scoped by event type** | high | Scope by the *listener-id prefix of the owning module*, never by event type; AC-2 leaves one of each outstanding and asserts they are untouched | plan | open |
+| R-1 | A "mail" button resubmits a payout accrual (invariant #9) or a Stripe refund (invariant #8) | **high if scoped by event type** | high | Scope by the *listener-id prefix of the owning module*, never by event type | plan | closed — `MailOutboxScopeIT.resubmitsMailWithoutTouchingTheMoneyPath`, with an unscoped control proving the row was live |
 | R-2 | ~~Two clicks deliver the mail twice~~ **retired by G-2**: the v2 registry claims each publication before invoking it, so a still-draining send is skipped in the database. Replaced by: a press during a relay outage re-attempts every outstanding send, and reports success while moving nothing | med | med (relay load + a misleading answer) | Single-flight `tryLock` + cooldown, re-justified as a sweep throttle; AC-3 | plan | closed — corrected in the phase-3 commit |
-| R-3 | A press seconds after a deploy repeats the restart republication's sweep | med | low | The cooldown clock is seeded at service construction, so the boot republish counts as sweep zero; AC-4 | plan | open |
-| R-4 | `ResubmissionOptions` looks like the 2.1 way to scope, but its query only reaches `FAILED` publications — a **shed** send (#383) never runs, is never marked failed, and would be silently skipped by the very lever meant to clear it (G-3, revised) | **certain if used** | high (a button that reports success and leaves shed mail owed) | Use the `Predicate` overload, which routes to `processIncompletePublications`; the adapter javadoc records why | plan | open |
-| R-5 | Adding `spring-modulith-events-core` to the compile classpath drags framework internals into a module | low | low | It is already on the **runtime** classpath via `spring-modulith-starter-jdbc`; only the driven adapter in `adapter/out` imports it, and the version stays BOM-managed (no pinned version in `build.gradle`) | plan | open |
-| R-6 | The scoping prefix is a string constant that silently stops matching if the listener package moves (the V31/#382 failure mode, one level up) | med | high (a silent no-op) | A unit test pins the constant against the live listener class's FQCN, so a package move goes red at build time rather than in production | plan | open |
+| R-3 | A press seconds after a deploy repeats the restart republication's sweep | med | low | The cooldown clock is seeded at service construction | plan | closed — `MailResubmissionServiceTest.startsCoolingDownAtBootSoAClickCannotRaceTheRestartRepublish` |
+| R-4 | `ResubmissionOptions` looks like the 2.1 way to scope, but its query only reaches `FAILED` publications — a **shed** send (#383) never runs, is never marked failed, and would be silently skipped by the very lever meant to clear it (G-3, revised) | **certain if used** | high (a button that reports success and leaves shed mail owed) | Use the `Predicate` overload, which routes to `processIncompletePublications`; the adapter javadoc records why | plan | closed — the `Predicate` overload ships; the adapter javadoc records both traps |
+| R-5 | Adding `spring-modulith-events-core` to the compile classpath drags framework internals into a module | low | low | Already on the **runtime** classpath via `spring-modulith-starter-jdbc`; only `adapter/out` imports it; BOM-versioned | plan | closed — one adapter, `ModularityTests` green |
+| R-6 | The scoping prefix is a string constant that silently stops matching if the listener package moves (the V31/#382 failure mode, one level up) | med | high (a silent no-op) | A unit test pins the constant against the confirmation listener's real id, which `RegistryMailBulkheadIT` in turn pins against what the running registry writes | plan | closed — `MailOutboxScopeTest` |
 | R-9 | A test fixture that hand-builds a registry row passes for the wrong reason — the framework skips a malformed row exactly as it skips an out-of-scope one | **realised** | med (a false green on the money-path guarantee) | `MailOutboxScopeIT` reopens the registry's *own* archived row and ends with an unscoped control that must re-drive it; two drafts failed this control before the fixture was right | plan | closed — the control is now part of the test |
-| R-7 | The new endpoints are a shared-state bean reached by ITs; a cooldown that leaks across tests makes the **full suite only** go red (the `riviera-local-debug` failure class) | med | med | The service takes the injected `Clock`, and the cooldown is instance state on a bean each test context creates fresh; ITs that need two invocations drive the port directly with a controlled clock rather than replaying HTTP | plan | open |
-| R-8 | Error contract drift on the two new endpoints | low | low | Both are `200` with a typed outcome (the #391 `AdminEmailSuppressionController` precedent); malformed input is impossible (no request body); nothing hand-rolls an error body — `ApiProblem`/`ApiErrorHandler` only | plan | open |
+| R-7 | The new endpoints are a shared-state bean reached by ITs; a cooldown that leaks across tests makes the **full suite only** go red (the `riviera-local-debug` failure class) | med | med | `MailOutboxScopeIT` drives `MailOutbox` directly, below the cooldown; the policy is tested against a controllable clock | plan | closed — but the *sibling* failure class did fire, as F-1 |
+| R-8 | Error contract drift on the two new endpoints | low | low | Both are `200` with a typed outcome (#391 precedent); no request body to validate; no hand-rolled error body | plan | closed — `AdminMailOutboxControllerTest` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the console's Email tab may show the **outstanding count** before the admin
-  presses anything — a read #405's ACs do not require. Without it the button is blind ("press and
-  hope"), and the design canvas's own rule is that every screen is backed by a real endpoint. It is
-  the same scoped count the resubmission already computes, ADMIN-gated, so the marginal surface is
-  one `GET`. *Owner:* this slice · *Resolves by:* phase 2.
-- **Assumption:** "extend the admin dashboard" means the console's **tab chrome + the one tab this
-  issue is about**, not the canvas's five tabs — two of which the canvas itself documents as having
-  no backend. *Owner:* this slice · *Resolves by:* phase 4.
+*(Both assumptions below were carried out as stated; they moved to Resolved in phase 5.)*
+
+### Resolved
+
+- **The status read shipped** (phase 2). `GET /api/admin/mail-outbox` reports the same scoped count the
+  resubmission computes, so the two cannot disagree about what "outstanding" means, and the console's
+  lever is never a blind one. Beyond #405's ACs, deliberately.
+- **"Extend the admin dashboard" was read as tab chrome + the one tab this issue is about** (phase 4).
+  The canvas's Commissions and Payouts tabs have no backend — the canvas documents this itself — so
+  building them would have meant inventing endpoints in a mail-retry slice.
 
 ### Resolved (issue-intake grill, #405 against today's `main`)
 
@@ -286,9 +288,9 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `PR ready for review — review gate + Sonar gate due`
 
-**Next action:** Phase 5 — the CI-safe mocked Playwright spec for the Email tab, then the substrate-doc updates and close-out.
+**Next action:** Run the review gate on PR #438 per `riviera-sdlc` `references/pr-gates.md` §1, then re-pull the Sonar new-issue list now that the frontend has landed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -297,7 +299,7 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 | 2 — ADMIN endpoints + security matchers | ✅ | (this commit) |
 | 3 — Money-path scoping IT (+ the G-2/G-3 correction) | ✅ | (this commit) |
 | 4 — Admin console: tab strip + Email tab | ✅ | (this commit) |
-| 5 — Mocked e2e + substrate docs + close-out | ⏳ | |
+| 5 — Mocked e2e + substrate docs + close-out | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -360,64 +362,64 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `notification/application/MailOutbox.java`, `notification/adapter/out/RegistryMailOutbox.java`, `notification/MailOutboxScopeTest.java` · Modify `platform/build.gradle`
 
-- [ ] **Step 1: Write the failing test** — `MailOutboxScopeTest`: the scope matches the live
+- [x] **Step 1: Write the failing test** — `MailOutboxScopeTest`: the scope matches the live
   `BookingConfirmationMailListener`'s listener id (derived from the class, not typed twice) and
   rejects the payout/refund listener ids.
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*MailOutboxScopeTest*"`
-- [ ] **Step 3: Minimal implementation** — the prefix constant + the `TargetEventPublication`
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*MailOutboxScopeTest*"`
+- [x] **Step 3: Minimal implementation** — the prefix constant + the `TargetEventPublication`
   pattern-match predicate; `RegistryMailOutbox` counting via `EventPublicationRegistry#findIncompletePublications`
   and re-driving via `IncompleteEventPublications#resubmitIncompletePublications(Predicate)` (never the
   `ResubmissionOptions` overload — R-4).
-- [ ] **Step 4: Run it, verify it passes** — same command.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `feat(#405): scope the mail outbox to the notification module's listeners`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `feat(#405): scope the mail outbox to the notification module's listeners`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Resubmission service: single-flight, cooldown, typed outcome
 
 **Files:** Create `MailResubmission.java`, `MailResubmissionOutcome.java`, `MailOutboxStatus.java`, `MailResubmissionWindow.java`, `MailResubmissionService.java`, `MailResubmissionProperties.java`, `MailResubmissionConfig.java`, `MailResubmissionServiceTest.java`, `MailResubmissionPropertiesTest.java` · Modify `application.properties`
 
-- [ ] **Step 1: Write the failing tests** — AC-1, AC-3, AC-4, AC-7 against a fake `MailOutbox` and a
+- [x] **Step 1: Write the failing tests** — AC-1, AC-3, AC-4, AC-7 against a fake `MailOutbox` and a
   controllable `Clock`.
-- [ ] **Step 2–4:** red → implement (`tryLock` + cooldown seeded at construction) → green,
+- [x] **Step 2–4:** red → implement (`tryLock` + cooldown seeded at construction) → green,
   `--tests "*MailResubmission*"`.
-- [ ] **Step 5: Generalization-audit pass** — check the other boot-validated property records for the
+- [x] **Step 5: Generalization-audit pass** — check the other boot-validated property records for the
   same bound shape.
-- [ ] **Step 6: Commit** — `feat(#405): guard mail resubmission with single-flight and a cooldown`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `feat(#405): guard mail resubmission with single-flight and a cooldown`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — ADMIN endpoints + security matchers
 
 **Files:** Create `AdminMailOutboxController.java`, `AdminMailOutboxControllerTest.java`, `AdminMailOutboxSecurityIT.java` · Modify `SecurityConfig.java`
 
-- [ ] **Step 1–4:** red → implement → green (AC-6 + the wire shapes),
+- [x] **Step 1–4:** red → implement → green (AC-6 + the wire shapes),
   `--tests "*AdminMailOutbox*"`.
-- [ ] **Step 5:** Generalization-audit pass over the `/api/admin/**` matcher block.
-- [ ] **Step 6: Commit** — `feat(#405): expose the ADMIN mail-outbox status and resubmit endpoints`
-- [ ] **Step 7: Update plan-doc execution status.** *(Open the draft PR here at the latest — CI only
+- [x] **Step 5:** Generalization-audit pass over the `/api/admin/**` matcher block.
+- [x] **Step 6: Commit** — `feat(#405): expose the ADMIN mail-outbox status and resubmit endpoints`
+- [x] **Step 7: Update plan-doc execution status.** *(Open the draft PR here at the latest — CI only
   fires on `pull_request`, so nothing has been built by CI before this point.)*
 
 ## Phase 3 — Money-path scoping IT
 
 **Files:** Create `MailOutboxScopeIT.java`
 
-- [ ] **Step 1–4:** AC-2 + AC-5 against real Postgres — leave one mail, one payout-accrual and one
+- [x] **Step 1–4:** AC-2 + AC-5 against real Postgres — leave one mail, one payout-accrual and one
   refund publication outstanding, resubmit, assert only the mail moved and the ledger is untouched.
-- [ ] **Step 5–7:** audit, commit (`test(#405): prove the mail re-drive cannot touch the money path`), status.
+- [x] **Step 5–7:** audit, commit (`test(#405): prove the mail re-drive cannot touch the money path`), status.
 
 ## Phase 4 — Admin console: tab strip + Email tab
 
 **Files:** Create `admin-console-tabs.ts`(+spec), `admin-mail-outbox.ts`(+spec, +a11y spec), `admin-mail-outbox.service.ts`(+spec) · Modify `admin.model.ts`, `admin-operators.ts`, `app.routes.ts`
 
-- [ ] **Step 1–4:** red → implement → green — `npm test` scoped to the admin specs, then `npm run lint`.
-- [ ] **Step 5–7:** audit, commit (`feat(#405): add the admin console Email tab`), status.
+- [x] **Step 1–4:** red → implement → green — `npm test` scoped to the admin specs, then `npm run lint`.
+- [x] **Step 5–7:** audit, commit (`feat(#405): add the admin console Email tab`), status.
 
 ## Phase 5 — Mocked e2e + substrate docs + close-out
 
 **Files:** Create `frontend/e2e/admin-mail-outbox.e2e.ts` · Modify `RESPONSIBILITIES.md`, this doc
 
-- [ ] **Step 1–4:** the CI-safe mocked spec (AC-8, AC-10) via `npm run test:e2e:a11y`.
-- [ ] **Step 5–7:** audit, commit, finalize the execution status **in this PR** (stage pointer DONE,
+- [x] **Step 1–4:** the CI-safe mocked spec (AC-8, AC-10) via `npm run test:e2e:a11y`.
+- [x] **Step 5–7:** audit, commit, finalize the execution status **in this PR** (stage pointer DONE,
   every phase row ✅, risks closed, `merged via PR #NN`).
 
 ---
@@ -426,31 +428,35 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | Phase 1 — new boot-validated property record | Other `@ConfigurationProperties` records with range guards | `grep -rn "@ConfigurationProperties" platform/src/main/java` | `RegistryMailProperties`, `MailTransportProperties`, `RateLimitProperties`, `AbandonedPaymentProperties`, `CustomerRetentionProperties` | Matched the shape exactly (compact-constructor guard + both bounds + the message that names the failure mode). No change needed elsewhere |
+| 2026-07-30 | Phase 2 — new controller in a `@WebMvcTest`-loaded package | Other admin controllers' ports in the web-slice stub set | `grep -n "@Bean" platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` | 47 stubs, one per controller port | **This was the miss (F-1).** Every `@WebMvcTest` loads every controller, so the new port needed a stub. Fixed in phase 3; the audit is recorded here because running it *at* phase 2 would have caught it before CI did |
+| 2026-07-30 | Phase 3 — the v1-vs-v2 repository correction | Everywhere the slice asserted "the framework has no guard" | `grep -rn "duplicate guard\|finding 2\|finding 3" platform/src/main platform/src/test docs/plans` | 7 sites (4 javadocs, 1 property comment, 1 test javadoc, the plan doc) | All rewritten in one pass. The code was right; only its stated reasons came from the v1 class |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** `gradle --no-daemon --console=plain test --tests "*MailOutbox*" --tests "*MailResubmission*" --tests "*AdminMailOutbox*"` → PASS.
-- [ ] **AC-8..AC-10:** `npm test` (admin specs) + `npm run test:e2e:a11y` → PASS.
-- [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
+- [x] **AC-1..AC-7:** `gradle --no-daemon --console=plain test --tests "*MailOutbox*" --tests "*MailResubmission*" --tests "*AdminMailOutbox*"` → PASS.
+- [x] **AC-8..AC-10:** `npm test` (admin specs) + `npm run test:e2e:a11y` → PASS.
+- [x] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A with reasoning.
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant needed (invariant #11).
-- [ ] **Payment/payout** N/A justified — and AC-2 proves the scope cannot reach them (invariants #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: the cooldown reads the injected `Clock`, UTC `Instant` only (invariant #6).
-- [ ] No booking code or address in any log line or response (invariant #7).
-- [ ] No Flyway migration needed; verified no schema change (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract; axe clean.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A with reasoning.
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant needed (invariant #11).
+- [x] **Payment/payout** N/A justified — and AC-2 proves the scope cannot reach them (invariants #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: the cooldown reads the injected `Clock`, UTC `Instant` only (invariant #6).
+- [x] No booking code or address in any log line or response (invariant #7).
+- [x] No Flyway migration needed; verified no schema change (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract; axe clean.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] **Close-out written in THIS PR** — this section is final; the slice merges via **PR #438**.
+- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1. *(Due now that
+      the PR is ready for review; left unticked until it has actually run.)*

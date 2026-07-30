@@ -334,7 +334,21 @@ exception to never-deleted — and it is still not a deletion:** an ADMIN-gated
 `POST /api/admin/email-suppressions/reinstate` sets a `reinstated_at` flag on the row (so
 `isSuppressed` reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at`
 and the prior `reason` so a reinstate→re-bounce loop stays visible; a later bounce clears the flag
-through the ordinary upsert. A hard `DELETE` on this table remains a defect. Publishes exactly one
+through the ordinary upsert. A hard `DELETE` on this table remains a defect. **#405 gave the registry vehicle an operational
+trigger:** an ADMIN-gated `GET`/`POST /api/admin/mail-outbox` reports what the Event Publication
+Registry still owes this module and re-drives it on demand, so the retry horizon for a failed
+confirmation stops being "the next deploy" (`republish-outstanding-events-on-restart` fires once, at
+boot). It is **scoped by listener-id prefix to this module's own listeners**, never by event type —
+`BookingConfirmed` fans out to `payout`'s accrual too, so an event-type predicate would replay
+invariant-#9 ledger work from a button labelled "mail" (`MailOutboxScopeIT` leaves an accrual
+outstanding and proves it is untouched). Two framework facts the trigger rests on, both of which
+issue #405 states the other way round because it read the **v1** JDBC repository: V8 ships the **v2**
+schema, so `markResubmitted` is a real claim (`… WHERE ID = ? AND STATUS != 'RESUBMITTED'`) that makes
+duplicate delivery a database guarantee rather than an application one, and `ResubmissionOptions`
+reaches only `FAILED` publications — never a **shed** send, which by construction never ran and so was
+never marked failed. The application-side single-flight + cooldown is therefore a throttle on the
+*sweep*, not the duplicate guard: during a relay outage every send fails fast and the whole scope is
+eligible again in milliseconds. Publishes exactly one
 named interface, `notification::api`, holding **two role-split ports**:
 the fire-and-forget `MailSender` (never throws, runs off the caller's thread,
 suppression-enforced) and, since #400, the synchronous read `MailDeliverability`
