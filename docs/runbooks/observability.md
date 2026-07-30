@@ -57,7 +57,7 @@ money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three a
 
 | Metric | Meaning | Alert when |
 |---|---|---|
-| `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (**not yet covered by a test — #407**), but until then a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
+| `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (**not yet covered by a test — #407**) — and since #405 you need not wait for one: `POST /api/admin/mail-outbox/resubmit` re-drives it on demand. Until it lands, a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
 
 **A rejection during shutdown is not a shed** and does not touch this counter: a redeploy can reject an
 in-flight send from an otherwise idle pool, which logs one `INFO` and is not saturation. Without that
@@ -83,7 +83,7 @@ three recover only by acting again, and nothing will tell them to. This is the c
 meaning, and it is why the series exists.
 
 **It is not the shed counter's twin, and the two must never be summed.** A shed registry mail is
-*deferred*: its event publication is still outstanding and a restart republishes it. A dropped
+*deferred*: its event publication is still outstanding, and either a restart or the #405 admin lever republishes it. A dropped
 recovery mail is *gone*: the payload is a single-use bearer credential the Event Publication Registry
 may not persist (ADR-0011 decision 5), so there is nothing to retry from, by design.
 
@@ -274,7 +274,7 @@ increment `DRAINING_POOLS` — `theCombinedDrainOfEveryPoolFitsTheMailShutdownBu
 combined overrun, since nothing else would.
 
 **When the drain window expires, an in-flight send is abandoned, never interrupted.** For the registry
-vehicle that costs nothing — the publication stays outstanding and the next start republishes it, so
+vehicle that costs nothing — the publication stays outstanding and the next start (or the #405 admin lever) republishes it, so
 expect `riviera.outbox.pending` to carry a redeploy's unfinished sends briefly. For the recovery
 vehicle it is a lost mail the user must re-request. Since #434 the sends still **queued** at that
 moment are counted — `riviera.mail.recovery.dropped{reason="abandoned"}`, one `WARN` line each,

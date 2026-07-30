@@ -23,3 +23,25 @@ export interface OperatorAccountView {
   readonly admin: boolean;
   readonly suspended: boolean;
 }
+
+/**
+ * What the Event Publication Registry still owes the notification module (#405); mirrors the backend
+ * `AdminMailOutboxController.MailOutboxStatusResponse`. `outstanding` counts publications, not
+ * recipients — the console never sees an address or an arrival code (invariant #7).
+ * `cooldownRemainingSeconds` is 0 when a resubmission would be accepted now.
+ */
+export interface MailOutboxStatusView {
+  readonly outstanding: number;
+  readonly cooldownRemainingSeconds: number;
+}
+
+/**
+ * The result of pressing Resubmit; mirrors `AdminMailOutboxController.MailResubmissionResponse`.
+ * Both refusals are `200` with `resubmitted: 0` — an admin acts on them, so they are outcomes rather
+ * than errors, and each carries the window until the next attempt is accepted.
+ */
+export interface MailResubmissionResultView {
+  readonly outcome: 'RESUBMITTED' | 'ALREADY_RUNNING' | 'COOLING_DOWN';
+  readonly resubmitted: number;
+  readonly cooldownRemainingSeconds: number;
+}
