@@ -33,19 +33,24 @@ import org.springframework.stereotype.Component;
  * rather than an operator's typo.
  */
 @Component
-record ScheduledQueryTimeout(int seconds) {
+record ScheduledQueryTimeout(@Value("${riviera.scheduled.query-timeout-seconds}") int seconds) {
 
 	/** Below 1 the bound is not a bound; above the 5-minute sweep cadence it no longer bounds. */
 	private static final int MIN_SECONDS = 1;
 	private static final int MAX_SECONDS = 300;
 
-	ScheduledQueryTimeout(@Value("${riviera.scheduled.query-timeout-seconds}") int seconds) {
+	/**
+	 * Compact, and the {@code @Value} sits on the record component rather than a constructor
+	 * parameter: a compact constructor declares no parameters to annotate, and {@code @Value} targets
+	 * {@code PARAMETER}, so javac propagates it from the component to the canonical constructor's
+	 * parameter, which is what Spring resolves.
+	 */
+	ScheduledQueryTimeout {
 		if (seconds < MIN_SECONDS || seconds > MAX_SECONDS) {
 			throw new IllegalArgumentException("riviera.scheduled.query-timeout-seconds must be between "
 					+ MIN_SECONDS + " and " + MAX_SECONDS + " seconds, but was " + seconds
 					+ " — 0 and negatives mean NO limit, which is the unbounded scheduled query"
 					+ " #395 exists to prevent");
 		}
-		this.seconds = seconds;
 	}
 }
