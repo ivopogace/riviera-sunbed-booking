@@ -342,12 +342,18 @@ listener abandons the same three ways and gets the **fifth** name, `MAIL_CANCELL
 a sibling series rather than a `kind` tag, because #442 could tag `MAIL_RECOVERY_*` only where the
 name states the *vehicle* and these two state the *flow* — the shared part is the `reason`
 vocabulary, read off one enum so the two cannot drift into two spellings —
-the two **registry-borne booking mails**, both assembled from `booking`/`venue`/`customer` published
-ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirmation mail and, since
+the **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer` published
+ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirmation mail; since
 #374, the `BookingCancelled` cancellation/refund record — one listener covering every cancellation
 channel, tourist self-service and operator weather refund alike, because it subscribes to the fact
 rather than to either caller, and **rendering** the server-computed refund (invariant #10) rather
-than deciding it — and the module's
+than deciding it; and since #373 the `BookingPaymentDue` notice an accepted Request-mode booking's
+guest gets, whose sixth counter `MAIL_PAYMENT_DUE_ABANDONED` completes the abandoned set and is the
+only one of the three whose loss is **predictive** — the sweep releases the set at the mailed
+deadline, so the errand it opens expires. That listener also decides nothing about *whether* payment
+is owed: `booking` settles that by publishing the fact only on the accept branch where money is
+genuinely outstanding, which a status read here could not do without racing the stub's synchronous
+confirm — and the module's
 first owned state: the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
 deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
