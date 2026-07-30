@@ -1,15 +1,8 @@
 package ai.riviera.platform.notification;
 
-import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.sql.DataSource;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -17,27 +10,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
-import ai.riviera.platform.booking.vocabulary.BookingId;
-import ai.riviera.platform.notification.application.BookingConfirmationMail;
-import ai.riviera.platform.notification.application.Mailer;
+import ai.riviera.platform.notification.ConfirmationMailFixtures.SetRef;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.venue.vocabulary.SetId;
-import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,29 +50,23 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       connection does not follow from the transaction, and it is the resource #383 is about.</li>
  * </ul>
  *
- * <p>The nested {@link ControllableMailerConfiguration} gives this class its <strong>own</strong>
+ * <p>What a <em>shed</em> send costs is the sibling question, and this class does not answer it: it
+ * wedges the transport, it never overflows the queue. {@code RegistryMailShedDurabilityIT} (#407)
+ * owns that, in its own context, for the isolation reason below.
+ *
+ * <p>The imported {@link ControllableMailerConfiguration} gives this class its <strong>own</strong>
  * Spring context rather than the suite's shared one — deliberate: a test that deliberately wedges a
  * thread pool must not hand that pool to the next class in the run. The gate is released
- * unconditionally in {@link #releaseTransport()}. Bookings are SQL-seeded on dates no other IT uses,
- * following this package's unique-date discipline (a claimed {@code (set, date)} is never released,
- * invariant #2), and never claimed through {@code availability}. Testcontainers; skipped where Docker
- * is absent.
+ * unconditionally in {@link #releaseTransport()}. Bookings are SQL-seeded on dates no other IT uses
+ * via {@link ConfirmationMailFixtures}, and never claimed through {@code availability}.
+ * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, ControllableMailerConfiguration.class })
 @SpringBootTest
 class RegistryMailBulkheadIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(20);
-
-	/**
-	 * How long a wedged send stays wedged if {@link #releaseTransport()} somehow never runs. It must
-	 * comfortably outlast every {@link #WAIT} in a single test — a gate that reopens on its own part-way
-	 * through unwedges the pool and lets the money-path assertions pass for the wrong reason, which is
-	 * how the first draft of this class went green against the unfixed listener. It is a deadlock
-	 * backstop, not a timing knob.
-	 */
-	private static final Duration GATE_BACKSTOP = Duration.ofMinutes(2);
 
 	/**
 	 * More wedged sends than Boot's stock {@code applicationTaskExecutor} core pool (8), so that before
@@ -97,132 +75,10 @@ class RegistryMailBulkheadIT {
 	 */
 	private static final int WEDGED_SENDS = 10;
 
-	private static final String LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
-
 	/** Improbable enough to identify one test's publication in a database several IT classes write to. */
 	private static final long RETRY_AMOUNT_MINOR = 383_000_601L;
 
 	private static final long LISTENER_ID_AMOUNT_MINOR = 383_000_602L;
-
-	@TestConfiguration(proxyBeanMethods = false)
-	static class ControllableMailerConfiguration {
-
-		@Bean
-		@Primary
-		ControllableMailer controllableMailer(DataSource dataSource) {
-			return new ControllableMailer(dataSource);
-		}
-	}
-
-	/**
-	 * A transport whose latency and failure are the test's to choose — the "deliberately blocking
-	 * mailer" #383's AC-1 asks for. It also records the sending thread's transactional context, which
-	 * is AC-7's whole assertion.
-	 *
-	 * <p><strong>Two flags, not one, because the weaker one alone can be satisfied while the harm
-	 * remains.</strong> {@code isActualTransactionActive()} goes false under
-	 * {@code @Transactional(NOT_SUPPORTED)} — but with no transaction to suspend,
-	 * {@code AbstractPlatformTransactionManager} takes its "empty transaction" branch,
-	 * {@code newSynchronization} follows the default {@code SYNCHRONIZATION_ALWAYS}, and
-	 * {@code DataSourceUtils} then binds the first read's {@code ConnectionHolder} for the whole method
-	 * scope. The connection — the resource #383 is actually about — stays pinned across the SMTP
-	 * round-trip. Only {@code hasResource(dataSource)} sees that, and only dropping {@code @Transactional}
-	 * outright makes it false.
-	 */
-	static final class ControllableMailer implements Mailer {
-
-		/**
-		 * Replaced per test, not merely counted down: a {@link CountDownLatch} is single-use, so one
-		 * shared instance would stay open for every test after the first release and silently stop
-		 * blocking anything — a wedging test that wedges nothing still passes its money-path assertions.
-		 */
-		private volatile CountDownLatch gate = new CountDownLatch(1);
-
-		private final DataSource dataSource;
-		private final AtomicBoolean blocking = new AtomicBoolean();
-		private final AtomicBoolean failing = new AtomicBoolean();
-		private final List<String> entered = new CopyOnWriteArrayList<>();
-		private final List<String> delivered = new CopyOnWriteArrayList<>();
-		private final List<Boolean> transactionActive = new CopyOnWriteArrayList<>();
-		private final List<Boolean> connectionBound = new CopyOnWriteArrayList<>();
-
-		ControllableMailer(DataSource dataSource) {
-			this.dataSource = dataSource;
-		}
-
-		@Override
-		public void sendEmailVerification(String toEmail, URI verificationLink) {
-			// Not exercised here; the recovery vehicle has its own pool (#369) and its own tests.
-		}
-
-		@Override
-		public void sendPasswordReset(String toEmail, URI resetLink) {
-			// See above.
-		}
-
-		@Override
-		public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-			entered.add(toEmail);
-			transactionActive.add(TransactionSynchronizationManager.isActualTransactionActive());
-			connectionBound.add(TransactionSynchronizationManager.hasResource(dataSource));
-			if (blocking.get()) {
-				awaitGate();
-			}
-			if (failing.get()) {
-				throw new IllegalStateException("transport unavailable (test)");
-			}
-			delivered.add(toEmail);
-		}
-
-		private void awaitGate() {
-			try {
-				gate.await(GATE_BACKSTOP.toSeconds(), TimeUnit.SECONDS);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-		}
-
-		void block() {
-			blocking.set(true);
-		}
-
-		void failEverySend(boolean fail) {
-			failing.set(fail);
-		}
-
-		void release() {
-			blocking.set(false);
-			gate.countDown();
-		}
-
-		void reset() {
-			entered.clear();
-			delivered.clear();
-			transactionActive.clear();
-			connectionBound.clear();
-			blocking.set(false);
-			failing.set(false);
-			gate = new CountDownLatch(1);
-		}
-
-		long attemptsMatching(String addressPrefix) {
-			return entered.stream().filter(address -> address.startsWith(addressPrefix)).count();
-		}
-
-		long deliveriesMatching(String addressPrefix) {
-			return delivered.stream().filter(address -> address.startsWith(addressPrefix)).count();
-		}
-
-		List<Boolean> transactionActive() {
-			return List.copyOf(transactionActive);
-		}
-
-		List<Boolean> connectionBound() {
-			return List.copyOf(connectionBound);
-		}
-	}
 
 	@Autowired
 	ControllableMailer transport;
@@ -239,49 +95,17 @@ class RegistryMailBulkheadIT {
 	@Autowired
 	IncompleteEventPublications incompletePublications;
 
-	private record SetRef(long setId, long venueId) {
-	}
+	private ConfirmationMailFixtures fixtures;
 
 	@BeforeEach
 	void resetTransport() {
+		fixtures = new ConfirmationMailFixtures(jdbc, txManager, publisher);
 		transport.reset();
 	}
 
 	@AfterEach
 	void releaseTransport() {
 		transport.release();
-	}
-
-	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
-	}
-
-	private long seedBooking(SetRef set, String code, LocalDate date, String contactEmail, long amountMinor,
-			String status) {
-		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES (:e, 'Bulkhead Guest', '+355781') RETURNING id")
-				.param("e", contactEmail).query(Long.class).single();
-		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
-				                     amount_minor, amount_currency, status)
-				VALUES (:code, :venue, :set, :cust, :date, :amount, 'EUR', :status)
-				RETURNING id
-				""")
-				.param("code", code).param("venue", set.venueId()).param("set", set.setId())
-				.param("cust", customerId).param("date", date).param("amount", amountMinor)
-				.param("status", status)
-				.query(Long.class).single();
-	}
-
-	/** Publish inside a transaction so the AFTER_COMMIT registry-backed listeners are triggered. */
-	private void publishInTransaction(Object event) {
-		new TransactionTemplate(txManager).executeWithoutResult(status -> publisher.publishEvent(event));
-	}
-
-	private BookingConfirmed confirmationOf(SetRef set, long bookingId, LocalDate date, long amountMinor) {
-		return new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, amountMinor, "EUR");
 	}
 
 	private String statusOf(long bookingId) {
@@ -296,24 +120,6 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * Publications of <em>one test's</em> event, keyed on its deliberately-improbable amount rather than
-	 * on the booking id — the lesson {@code EventRegistryDurabilityIT} already paid for. A
-	 * {@code BookingConfirmed} payload carries {@code bookingId}, {@code venueId} and {@code setId} as
-	 * identically-shaped {@code {"value":n}} records, so matching a bare {@code "value":<id>} also matches
-	 * another test's row whose venue or set happens to share the number — and ids here are small integers
-	 * in a container several IT classes write to.
-	 */
-	private long outstandingMailPublications(long amountMinor) {
-		return jdbc.sql("""
-				SELECT COUNT(*) FROM event_publication
-				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND serialized_event LIKE :amountFragment
-				""")
-				.param("listener", LISTENER_ID).param("amountFragment", "%" + amountMinor + "%")
-				.query(Long.class).single();
-	}
-
-	/**
 	 * AC-1 — the money path is not behind the mail queue. Ten confirmations are dispatched into an
 	 * unresponsive transport (more than the shared executor's eight core threads, so before the fix the
 	 * pool is exhausted, not merely busy); an eleventh booking is then confirmed through the payment
@@ -322,22 +128,22 @@ class RegistryMailBulkheadIT {
 	 */
 	@Test
 	void wedgedMailDoesNotDelayTheMoneyPath() {
-		SetRef set = onlineSet();
+		SetRef set = fixtures.onlineSet();
 		transport.block();
 
 		LocalDate wedgeDate = LocalDate.of(2031, 3, 1);
 		for (int i = 0; i < WEDGED_SENDS; i++) {
-			long id = seedBooking(set, "WEDGE%03d".formatted(i), wedgeDate.plusDays(i),
+			long id = fixtures.seedBooking(set, "WEDGE%03d".formatted(i), wedgeDate.plusDays(i),
 					"wedge-%d@example.com".formatted(i), 1500L, "CONFIRMED");
-			publishInTransaction(confirmationOf(set, id, wedgeDate.plusDays(i), 1500L));
+			fixtures.publishInTransaction(fixtures.confirmationOf(set, id, wedgeDate.plusDays(i), 1500L));
 		}
 		Awaitility.await("mail sends are in flight").atMost(WAIT)
 				.until(() -> transport.attemptsMatching("wedge-") >= 2);
 
 		LocalDate payDate = LocalDate.of(2031, 4, 2);
-		long paidBooking = seedBooking(set, "BULKHED1", payDate, "bulkhead-payer@example.com", 5500L,
+		long paidBooking = fixtures.seedBooking(set, "BULKHED1", payDate, "bulkhead-payer@example.com", 5500L,
 				"AWAITING_PAYMENT");
-		publishInTransaction(new PaymentConfirmed(new BookingRef(paidBooking), "pi_bulkhead_test"));
+		fixtures.publishInTransaction(new PaymentConfirmed(new BookingRef(paidBooking), "pi_bulkhead_test"));
 
 		Awaitility.await("payment -> booking confirmation (invariant #8)").atMost(WAIT)
 				.until(() -> "CONFIRMED".equals(statusOf(paidBooking)));
@@ -352,23 +158,23 @@ class RegistryMailBulkheadIT {
 	/**
 	 * AC-3 — a failed send stays outstanding and is re-delivered on resubmit, which is exactly what
 	 * {@code republish-outstanding-events-on-restart} performs at boot. The resubmit predicate is
-	 * narrowed to this booking on purpose: the container is shared with other IT classes, and a blanket
-	 * resubmit would re-deliver their events too.
+	 * narrowed to this booking on purpose: the database is shared with other IT classes in this
+	 * context, and a blanket resubmit would re-deliver their events too.
 	 */
 	@Test
 	void aFailedSendLeavesThePublicationOutstandingAndIsRetried() {
-		SetRef set = onlineSet();
+		SetRef set = fixtures.onlineSet();
 		LocalDate date = LocalDate.of(2031, 5, 3);
 		String contact = "retry-me@example.com";
-		long bookingId = seedBooking(set, "RETRYME1", date, contact, RETRY_AMOUNT_MINOR, "CONFIRMED");
+		long bookingId = fixtures.seedBooking(set, "RETRYME1", date, contact, RETRY_AMOUNT_MINOR, "CONFIRMED");
 
 		transport.failEverySend(true);
-		publishInTransaction(confirmationOf(set, bookingId, date, RETRY_AMOUNT_MINOR));
+		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, RETRY_AMOUNT_MINOR));
 
 		Awaitility.await("the failing send was attempted").atMost(WAIT)
 				.until(() -> transport.attemptsMatching(contact) >= 1);
 		Awaitility.await("the publication is still outstanding, so a restart would retry it").atMost(WAIT)
-				.until(() -> outstandingMailPublications(RETRY_AMOUNT_MINOR) == 1L);
+				.until(() -> fixtures.outstandingMailPublications(RETRY_AMOUNT_MINOR) == 1L);
 
 		transport.failEverySend(false);
 		incompletePublications.resubmitIncompletePublications(publication ->
@@ -378,7 +184,7 @@ class RegistryMailBulkheadIT {
 		Awaitility.await("the retry delivered").atMost(WAIT)
 				.until(() -> transport.deliveriesMatching(contact) == 1L);
 		Awaitility.await("and the publication is now complete").atMost(WAIT)
-				.until(() -> outstandingMailPublications(RETRY_AMOUNT_MINOR) == 0L);
+				.until(() -> fixtures.outstandingMailPublications(RETRY_AMOUNT_MINOR) == 0L);
 	}
 
 	/**
@@ -388,24 +194,21 @@ class RegistryMailBulkheadIT {
 	 */
 	@Test
 	void keepsTheListenerIdV31Migrated() {
-		SetRef set = onlineSet();
+		SetRef set = fixtures.onlineSet();
 		LocalDate date = LocalDate.of(2031, 6, 4);
-		long bookingId = seedBooking(set, "LSTNRID1", date, "listener-id@example.com", LISTENER_ID_AMOUNT_MINOR,
-				"CONFIRMED");
+		long bookingId = fixtures.seedBooking(set, "LSTNRID1", date, "listener-id@example.com",
+				LISTENER_ID_AMOUNT_MINOR, "CONFIRMED");
 
 		transport.failEverySend(true);
-		publishInTransaction(confirmationOf(set, bookingId, date, LISTENER_ID_AMOUNT_MINOR));
+		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, LISTENER_ID_AMOUNT_MINOR));
 
 		Awaitility.await("an outstanding row exists under the migrated listener id").atMost(WAIT)
-				.until(() -> outstandingMailPublications(LISTENER_ID_AMOUNT_MINOR) == 1L);
+				.until(() -> fixtures.outstandingMailPublications(LISTENER_ID_AMOUNT_MINOR) == 1L);
 
-		List<String> ids = jdbc.sql("SELECT listener_id FROM event_publication "
-						+ "WHERE completion_date IS NULL AND serialized_event LIKE :amountFragment")
-				.param("amountFragment", "%" + LISTENER_ID_AMOUNT_MINOR + "%")
-				.query(String.class).list();
+		List<String> ids = fixtures.outstandingListenerIds(LISTENER_ID_AMOUNT_MINOR);
 		assertThat(ids)
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding row")
-				.contains(LISTENER_ID);
+				.contains(ConfirmationMailFixtures.LISTENER_ID);
 	}
 
 	/**
@@ -421,12 +224,12 @@ class RegistryMailBulkheadIT {
 	 */
 	@Test
 	void sendsWithNoTransactionHeldOpen() {
-		SetRef set = onlineSet();
+		SetRef set = fixtures.onlineSet();
 		LocalDate date = LocalDate.of(2031, 7, 5);
 		String contact = "no-tx@example.com";
-		long bookingId = seedBooking(set, "NOTXHELD", date, contact, 2800L, "CONFIRMED");
+		long bookingId = fixtures.seedBooking(set, "NOTXHELD", date, contact, 2800L, "CONFIRMED");
 
-		publishInTransaction(confirmationOf(set, bookingId, date, 2800L));
+		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, 2800L));
 
 		Awaitility.await("delivered").atMost(WAIT).until(() -> transport.deliveriesMatching(contact) == 1L);
 		assertThat(transport.transactionActive())
