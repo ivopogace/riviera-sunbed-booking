@@ -52,6 +52,18 @@ claims `V36`.
   `db/migration`), so no row of the routing table fires. Latest version on `main` stays `V35`.
 - `riviera-frontend` / `angular-developer` / `playwright-cli` — not loaded: backend-only diff, no
   file under `frontend/`.
+- `riviera-review-overlay` — loaded at the review gate, layered onto the `code-review` plugin's
+  five-reviewer fan-out (not run alone, which the overlay itself forbids); contributed the RV-BE
+  bank, RV-STYLE-1 and RV-PROC-1 — and RV-PROC-1 is what produced findings F-1/F-2 below.
+- `riviera-docs-freshness` — loaded for the substrate-doc edits (`CLAUDE.md`,
+  `RESPONSIBILITIES.md`, `docs/runbooks/observability.md`) and again at merge close-out step 5;
+  produced findings F-3/F-4.
+
+> **Why these last two are listed here at all** (F-1): four prior reviews on this same file
+> cluster — #427, #430, #436, #440 — each raised the identical omission. A slice that rewrites
+> substrate docs and goes through the review gate has consulted both skills by definition, so
+> leaving them off is not a small inaccuracy; it is the line failing at the one job RV-PROC-1
+> gives it.
 
 **Branch:** cloud session — the designated remote branch **`claude/sdlc-374-whbejt`** stands in
 for `feature/email-s6-cancellation-refund-mail` (riviera-sdlc §Remote/cloud addendum). It exists
@@ -303,10 +315,13 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `review gate` — all five phases built; PR **#445** being marked ready for review.
+**Stage pointer:** `review gate — fixing findings`. All five phases built; PR **#445** ready for
+review. CI 7/7 green on `1ea511b`; the **Sonar gate is green *and its reported list pulled and
+empty*** (`api/issues/search` total 0, `new_duplicated_blocks` 0, `new_coverage` 100.0 over
+`new_lines` 496 — the non-empty `new_lines` is what rules out the procedure's false-clean read).
 
-**Next action:** Run the review gate (`riviera-sdlc` `references/pr-gates.md` §1 invocation ladder
-+ `riviera-review-overlay`), then the Sonar issue list, then the merge close-out.
+**Next action:** Finish the review-fix round in the findings register below, then the merge
+close-out (`references/pr-gates.md` §3), whose step 5 runs `riviera-docs-freshness`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -315,7 +330,7 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 | 2 — Transport: the cancellation message kind | ✅ | `5155745` |
 | 3 — Chokepoint + the cancellation listener | ✅ | `9f2c42a` |
 | 4 — End-to-end registry IT | ✅ | `c337cd6` |
-| 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | ⏳ | |
+| 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | ✅ | `1ea511b` · `6c0e0d5` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -325,7 +340,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (prior-PR-comments reviewer) | **RV-PROC-1:** *Skills consulted* omitted `riviera-review-overlay` and `riviera-docs-freshness`, though the diff rewrites three substrate docs and the slice goes through the review gate. The reviewer found the identical note already raised and fixed on **#427, #430, #436 and #440** — this plan doc reproduced it a fifth time | fixed-in-`FIXSHA` — both added, with what each contributed |
+| F-2 | review (prior-PR-comments reviewer) | Execution-status drift: phase 5 sat `⏳` with no commit while `1ea511b` had already completed it, and the findings register read "none yet" during the review gate. The plan doc is the state store (rule 11), so this is the one defect that misleads the *next* session | fixed-in-`FIXSHA` — phase 5 ✅ with both commits; stage pointer now carries the CI + Sonar evidence |
+| F-3 | review (prior-PR-comments reviewer) | `CLAUDE.md`'s `notification` row grew by a full paragraph against the file's own "keep this file short and stable" header rule. Raised as *context*, not asserted — reviewer precedent is inconsistent (accepted on #436/#437, fixed on #438) | fixed-in-`FIXSHA` — **accepted the critique**: #436's "a pattern twelve slices repeated is what a worsening violation looks like" is right, and the detail has two better homes that already hold it (the `ObservabilityMetrics` Javadoc and the runbook section). Trimmed to the load-bearing facts |
+| F-4 | self (docs-accuracy, during the gate) | `CLAUDE.md`'s spine-flow paragraph enumerates the `BookingConfirmed`/`BookingCancelled` subscribers as `payout` plus `booking`'s refund listener, never `notification`. Pre-existing, but this slice adds a second `notification` listener to that fan-out, so leaving it makes the paragraph describe a spine the code no longer has | fixed-in-`FIXSHA` — one clause, and it now says why three subscribers on `BookingCancelled` forced #405's listener-id scope |
+| F-5 | `riviera-docs-freshness` (run over `origin/main...HEAD`) | Two stale counts in `RESPONSIBILITIES.md` the slice invalidated without touching: "the first of the **four** mail counters to move in a relay outage" (line ~321) and "all **four** mail counters have a single reader today" (line ~439). Exactly the #72 failure mode this skill exists to catch — a number in a doc every session loads | fixed-in-`FIXSHA` — both now five |
 
 ---
 
