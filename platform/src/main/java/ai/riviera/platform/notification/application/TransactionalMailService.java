@@ -65,7 +65,8 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * less observable than the one this class exists to record.
  *
  * <p><strong>The registry vehicle deliberately gets no equivalent counter.</strong> Its transport
- * failure propagates (see {@link #sendBookingConfirmation}), so the publication stays outstanding and
+ * failure propagates (see {@link #sendBookingConfirmation} and {@link #sendBookingCancellation}), so
+ * the publication stays outstanding and
  * {@code riviera.outbox.pending} — already watched by {@code MoneyPathAlertCheck} — rises on exactly
  * this event. Adding a second series would count one failure twice and invite summing two numbers
  * that mean different things. The asymmetry is a property of the vehicles, not an oversight:
@@ -214,9 +215,10 @@ public class TransactionalMailService implements MailSender {
 	 * {@link #REASON_SUPPRESSION_LOOKUP} so a broken lookup is legible as the database fault it is rather
 	 * than as the relay fault it is not.
 	 *
-	 * <p>Deliberately <strong>not</strong> shared with {@link #sendBookingConfirmation}: on the registry
-	 * vehicle the throw is load-bearing, keeping the publication outstanding so the at-least-once
-	 * contract (#371) retries against a healthy database instead of burning the delivery on a blip.
+	 * <p>Deliberately <strong>not</strong> shared with either registry-vehicle send
+	 * ({@link #sendBookingConfirmation}, {@link #sendBookingCancellation}): there the throw is
+	 * load-bearing, keeping the publication outstanding so the at-least-once contract (#371) retries
+	 * against a healthy database instead of burning the delivery on a blip.
 	 */
 	private boolean isSuppressedOrFailOpen(MailKind kind, String toEmail) {
 		try {

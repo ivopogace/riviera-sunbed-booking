@@ -30,9 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code applicationTaskExecutor}: the pool carrying payment→booking confirmation (invariant #8) and
  * booking→payout accrual (invariant #9). #369 bought that isolation for recovery mail and wrote down
  * why; #371 then landed a per-confirmed-booking send on the shared pool, and nothing failed. Epic #367
- * still has registry-borne mails to write (#373 request-accepted, #374 cancellation/refund), each of
- * which would reach for the same annotation. A rule is the only thing that makes the second one fail
- * loudly instead of shipping the same defect twice.
+ * still had registry-borne mails to write, each of which would reach for the same annotation. A rule
+ * is the only thing that makes the second one fail loudly instead of shipping the same defect twice —
+ * and #374 (cancellation/refund) has since shipped as exactly that second listener, arriving compliant
+ * rather than being caught, which is the outcome a fitness function is for. #373 (request-accepted) is
+ * still to write.
  *
  * <p><strong>What a {@code notification} listener of a platform event must be:</strong>
  * {@code @Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)} + {@code @TransactionalEventListener} at

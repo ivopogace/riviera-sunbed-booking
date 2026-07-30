@@ -15,7 +15,8 @@
  * synchronous {@code MailDeliverability} read that lets the authenticated verification-resend stop
  * claiming a mail was sent when suppression withheld it; {@code application} holds the
  * chokepoint service, the internal transport/dispatch/suppression ports and the dispatcher;
- * {@code adapter/in} the {@code BookingConfirmed} listener (a driving adapter); {@code adapter/out}
+ * {@code adapter/in} the two registry listeners — {@code BookingConfirmed} and, since #374,
+ * {@code BookingCancelled} (both driving adapters, both on the mail bulkhead); {@code adapter/out}
  * the transports and the suppression repository. No {@code domain} — the module owns table-backed
  * state but no aggregate yet (the single {@code SuppressionReason} enum rides with its port).
  *
@@ -23,8 +24,9 @@
  * (token minting/hashing, link building — RV-BE-11); this module is handed fully-formed links and
  * booking facts and owns only delivery. Nothing depends on {@code notification} except the root.
  *
- * <p>The grants below are the {@code BookingConfirmed} listener's reads, least-privilege (#95) — no
- * command surface. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
+ * <p>The grants below are the two registry listeners' reads, least-privilege (#95) — no command
+ * surface; #374 added a second listener without widening them, because both assemble the same facts
+ * through one shared resolver. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
  * {@code ApiProblem} factory (#391); it publishes no named interfaces, so the whole (deliberately
  * tiny) module root is the narrowest grant available, exactly as {@code payout} declares it.
  * {@code booking::spi} is the one <em>inbound</em> grant (#390): booking declares

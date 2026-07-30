@@ -34,7 +34,7 @@ public final class ObservabilityMetrics {
 	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
 	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415). Each later mail loss earned a name of its
 	 * own for the same reason ({@link #MAIL_RECOVERY_FAILED} #423, {@link #MAIL_CONFIRMATION_ABANDONED}
-	 * #428): <strong>do not sum them.</strong> This one is the only member of the set that is expected
+	 * #428, {@link #MAIL_CANCELLATION_ABANDONED} #374): <strong>do not sum them.</strong> This one is the only member of the set that is expected
 	 * to be re-delivered, which is precisely why summing would mislead.
 	 */
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
@@ -94,10 +94,10 @@ public final class ObservabilityMetrics {
 	 * <p><strong>Read this one first during a suspected relay outage.</strong> Saturating the recovery
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
-	 * <em>every</em> send and raises this one immediately. Do not sum the four mail counters — they
-	 * measure a deferral, a send the pool never ran, an attempt that failed, and a confirmation given
-	 * up on, respectively. ("Never ran" rather than "refused" since #434 widened the first of those —
-	 * see {@link #MAIL_RECOVERY_DROPPED}.)
+	 * <em>every</em> send and raises this one immediately. Do not sum the five mail counters — they
+	 * measure a deferral, a send the pool never ran, an attempt that failed, and — since #374, on two
+	 * separate series — a booking mail given up on. ("Never ran" rather than "refused" since #434
+	 * widened the first of those — see {@link #MAIL_RECOVERY_DROPPED}.)
 	 *
 	 * <p>Carries two tags. {@code kind} (verification / password-reset / operator-approved) separates
 	 * the flows, which differ in urgency, in rate-limit budget, and — since #375 — in whether the loss

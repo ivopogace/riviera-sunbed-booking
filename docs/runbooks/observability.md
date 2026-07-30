@@ -181,8 +181,10 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 
 ### `riviera_mail_confirmation_abandoned_total` (counter, #428)
 
-**The one mail loss `riviera_outbox_pending` cannot show** — and the only one of the four that is
-never retried by anything.
+**A mail loss `riviera_outbox_pending` cannot show** — and one of the two that are never retried by
+anything. Since #374 it has a sibling, `riviera_mail_cancellation_abandoned_total`, which is this
+counter's argument applied to the cancellation listener; everything below holds for both, and the
+one place they differ — what an operator does about an increment — is in that section.
 
 A booking confirmation the registry listener **gave up on** because a fact it needs did not resolve:
 the booking row, the set, or the guest contact. The listener logs and returns *normally*, which is

@@ -43,7 +43,9 @@ review-only.
    set **synchronously** via `availability`'s `release` port (the existing
    booking → availability direction), and publishes `BookingCancelled` — on which
    **`payout`** reverses its ledger entry and `booking`'s own refund listener drives
-   **`payment`**'s `RefundPort` with the amount `booking` decided.
+   **`payment`**'s `RefundPort` with the amount `booking` decided. **`notification`** is the
+   third subscriber (#374) and the only non-money one: it mails the tourist a record of the
+   cancellation and that refund amount.
 
 > **Variant — Request-to-Book** (per venue's booking mode; *shipped — issue #98*): between
 > steps 2 and 3 the host accepts or declines (`booking` owns the request lifecycle and its
