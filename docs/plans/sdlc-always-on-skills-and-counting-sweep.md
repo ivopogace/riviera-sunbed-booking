@@ -187,10 +187,11 @@ statement is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window
 > as the change it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `review gate — fix round pushed, re-reviewing the changed surface`
+**Stage pointer:** `merge — gates cleared, awaiting the merge and the post-merge close-out items`
 
-**Next action:** re-walk RV-PROC-1 + the overlay items over the fix commit, confirm CI and
-the Sonar list stay clean on the new head, then merge and run the close-out.
+**Next action:** confirm CI + the Sonar reported list on the final head, merge PR #448,
+then run close-out steps 1-3 and 6-7 (the GitHub-only items; steps 4-5 are already in this
+PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -220,6 +221,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-9 | review (`/code-review` fan-out, **Major**) | The "six consecutive slices" claim — inherited verbatim from issue #447 — overstated the evidence. Verified against each cited plan doc: #430's RV-PROC-1 finding was about `riviera-stripe-payments` (its line already listed `riviera-review-overlay`), and #440's was about `riviera-local-debug`; `tdd` and `riviera-plan-doc` have **never** been flagged missing | fixed-in-`bdf09f0` — restated accurately (six consecutive slices each omitted *something*; which skill varied, and it is named), with `tdd`/`riviera-plan-doc` marked as pre-filled prophylactically rather than incident-driven. Issue premise corrected, per the intake gate's "record the drift" rule |
 | F-10 | review (`/code-review` fan-out, **Major**) | "One grep found all sixteen at once" mischaracterized #373: its plan doc records **six** found by ordinary review and **ten more** by a substrate grep in a *second* round | fixed-in-`bdf09f0` — restated as 6-then-10 in the skill, `pr-gates.md`, and the new case-history entry. The accurate version is the *stronger* argument: the ten were invisible to file-by-file review precisely because they were never in the diff |
 | F-11 | review (`/code-review` fan-out, Major) | `case-history.md` states it is "the one place [the incidents] are told in full", and every `(case history: #NNN)` citation in `riviera-sdlc` has a matching entry — the new #447 rules cited an incident with no entry | fixed-in-`bdf09f0` — added the `## #447` entry covering both gaps; the two new citations now read `(case history: #447)` per the convention |
+| F-12 | review — self-caught on the re-review (Minor) | The AC-verification section's own hit counts (AC-2 "2 hits", AC-4 "sixteen → 2") went stale during the fix rounds — a count quietly going wrong inside the slice whose subject is counts quietly going wrong | fixed-in-`FIX3SHA` — re-verified at the final head and corrected to 3 and 1, with the change noted rather than silently overwritten |
 | F-7 | review (`/code-review` fan-out, Minor) | Blockquote placement: the new Skills-consulted note sits mid-field, where every other blockquote in the template follows a heading | **rejected with rationale** — the header block has no headings, so any note explaining this line is necessarily mid-field, and AC-1 requires the *why* to sit beside the thing it explains. Moving it to a heading would separate the rule from the field it governs |
 | F-8 | review (`/code-review` fan-out, Minor) | RV-STYLE-1: the step-2b grep snippet carries a two-line `#` comment header | **rejected with rationale** — RV-STYLE-1 scopes to inline comments inside a code body; these are two *independent* one-line comments inside a fenced example in a markdown doc, each fitting on its line |
 
@@ -429,15 +431,18 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
   `riviera-docs-freshness` entry reads `**ran** over <range>, N findings — **or** N/A —
   <reason>`. Verified in the phase-1 commit.
 - [x] **AC-2:** Run `grep -n "counting sweep" .claude/skills/riviera-docs-freshness/SKILL.md`
-  → **2** hits: the frontmatter trigger and the **step 2b** heading inside the Procedure,
-  which states the why-the-diff-cannot-reveal-it rule and carries the runnable two-step
-  grep recipe. Verified in the phase-2 commit.
+  → **3** hits after the fix rounds: the frontmatter trigger, the **step 2b** heading
+  inside the Procedure (which states the why-the-diff-cannot-reveal-it rule and carries the
+  runnable two-step grep recipe), and the substrate-doc map's new source-prose row added
+  for F-4. *(Was 2 at the phase-2 commit — corrected here rather than left stale, since a
+  count going quietly wrong is this slice's own subject.)*
 - [x] **AC-3:** Run `grep -n "counting sweep" .claude/skills/riviera-sdlc/references/pr-gates.md`
-  → **1** hit, at line 252, inside merge close-out **step 5**. Verified in the phase-2 commit.
+  → **1** hit, inside merge close-out **step 5**. Verified at the final head.
 - [x] **AC-4:** Run `grep -c "#427" .claude/skills/riviera-plan-doc/references/plan-doc-template.md`
   → **1** (the six-slice run, gap 1), and `grep -c "sixteen"
-  .claude/skills/riviera-docs-freshness/SKILL.md` → **2** (step 2b's case history plus the
-  close-out-facing summary, gap 2). Verified in the phase-1 / phase-2 commits.
+  .claude/skills/riviera-docs-freshness/SKILL.md` → **1** (step 2b's case history, gap 2 —
+  the second occurrence went away when F-10 reworded that paragraph). The fuller account
+  now also lives in `case-history.md`'s `## #447` entry (F-11). Verified at the final head.
 - [x] **AC-5:** Run
   `git diff --name-only origin/main...HEAD | grep -cvE '^(\.claude/skills|docs/plans)/'`
   → **0** (5 files: 4 under `.claude/skills/`, 1 under `docs/plans/`; `platform/` and
@@ -466,8 +471,14 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Risk register has no stale `open` rows (all five closed with their outcome); Open Questions empty.
 - [x] **Close-out written in THIS PR** — this doc's final state is committed here, citing
       `merged via PR #448`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
-      *(ticked when the gate has actually run — the PR is being marked ready for review now.)*
+- [x] **The review gate ran in full** — `/code-review` started at **rung 1** of the
+      `references/pr-gates.md` §1 ladder (the Skill probe succeeded; no fallback needed),
+      running the plugin's full workflow: eligibility check, CLAUDE.md map, change summary,
+      five parallel reviewers, then verification of each finding against the files. The
+      subagent fan-out was authorized by the maintainer, since this session's standing
+      instruction withholds the Agent tool. `riviera-review-overlay` was layered on top
+      (RV-PROC-1 walked and re-walked after each fix round; the RV-BE/FE/CT banks are `N/A`
+      — no code in the diff). **11 findings: 9 fixed, 2 rejected with rationale**; see the
+      findings register.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
