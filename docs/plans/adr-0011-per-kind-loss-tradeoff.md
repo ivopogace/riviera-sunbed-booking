@@ -61,15 +61,15 @@ from `main` at `15e15ad`.
       same decision — quotes the removed justification, states that the vehicle *choice* was not
       reconsidered, and records why option 2 was rejected. *Verified by:*
       `grep -c "Amended" docs/adr/ADR-0011-transactional-email-scaleway-tem.md` → `3`.
-- [ ] **AC-3:** Given the published `MailSender` port, when its contract is read, then the
+- [x] **AC-3:** Given the published `MailSender` port, when its contract is read, then the
       "never throws" bullet no longer claims retryability for every flow, and
       `sendOperatorApproved` no longer says it inherits that justification unchanged.
       *Verified by:* reading `notification/api/MailSender.java` — the blanket
       "The flows are user-retryable by design." is gone.
-- [ ] **AC-4:** Given a lost operator-approval mail, when the dispatcher logs the loss, then no
+- [x] **AC-4:** Given a lost operator-approval mail, when the dispatcher logs the loss, then no
       line tells the reader the user must re-request a mail nothing re-sends. *Verified by:*
       `grep -rn "must re-request" platform/src/main` → no hits.
-- [ ] **AC-5:** Given the amendment is prose-only, when the notification module's tests run, then
+- [x] **AC-5:** Given the amendment is prose-only, when the notification module's tests run, then
       they are unchanged and green. *Verified by:*
       `gradle test --tests "*AsyncMailDispatcher*" --tests "*TransactionalMailService*" --tests "*MailTransportBudget*"`
       → PASS, with `git diff --stat` showing **no** file under `platform/src/test/` modified except
@@ -184,17 +184,17 @@ N/A — no contract change. No endpoint, DTO, status code, or wire shape is touc
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 1 done, phase 2 next)`
+**Stage pointer:** `implement (phase 2 done, phase 3 next)`
 
-**Next action:** Phase 2 — the six code sites (`MailSender`, `MailDispatcher`,
-`AsyncMailDispatcher` incl. its three log lines, `MailTransportBudget`,
-`RegistryMailExecutorConfig`, `ObservabilityMetrics`), then push + open the draft PR.
+**Next action:** Phase 3 — the two runbooks (`mailer-profile-smoke-test.md` activation warning +
+the two stale interim bullets; `observability.md`'s drain-window paragraph), then phase 4 close-out
+(merge `origin/main`, mark PR #440 ready, review gate, sonar gate).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan (grill, maintainer decision, this doc) | ✅ | `7ae0ad7` |
-| 1 — the ADR amendment | ✅ | *(this commit — sha recorded in phase 2's window)* |
-| 2 — the code sites (`notification` + `shared`) | | |
+| 1 — the ADR amendment | ✅ | `4da3967` |
+| 2 — the code sites (`notification` + `shared`) | ✅ | *(this commit)* |
 | 3 — the runbook sites (+ two stale interim bullets) | | |
 | 4 — close-out (AC verification, this section) | | |
 
@@ -285,16 +285,16 @@ Skill-routing gate for what the fix touches *before* editing).
 > #375/#415/#423/#434 already pinned — so this phase's discipline is the inverse, **prove the tests
 > did not move**: `git diff --stat` shows no assertion touched, and Step 3 re-runs them green.
 
-- [ ] **Step 1:** Edit each site to state the cost per kind. Justification sites get the full
+- [x] **Step 1:** Edit each site to state the cost per kind. Justification sites get the full
       clause; mechanism sites get a short one. Never remove the `Recovery email` log prefix or
       the metric names — the vehicle keeps its shipped names.
-- [ ] **Step 2:** Verify AC-3 + AC-4 — `grep -rn "must re-request" platform/src/main` → empty;
+- [x] **Step 2:** Verify AC-3 + AC-4 — `grep -rn "must re-request" platform/src/main` → empty;
       `grep -rn "user-retryable" platform/src/main` → only where scoped to the recovery pair.
-- [ ] **Step 3:** Run the touched module's tests (AC-5) —
+- [x] **Step 3:** Run the touched module's tests (AC-5) —
       `gradle test --tests "*AsyncMailDispatcher*" --tests "*TransactionalMailService*" --tests "*MailTransportBudget*"`
       per `riviera-local-debug` (system `gradle`, scoped; never the bare `test` task).
-- [ ] **Step 4: Commit** — `git commit -m "docs(#439): state the per-kind mail loss cost where the code claims it (#439)"`
-- [ ] **Step 5:** Push, open the **draft PR** (CI fires on `pull_request` only — #417), update this section.
+- [x] **Step 4: Commit** — `git commit -m "docs(#439): state the per-kind mail loss cost where the code claims it (#439)"`
+- [x] **Step 5:** Push, open the **draft PR** (CI fires on `pull_request` only — #417), update this section.
 
 ## Phase 3 — The runbook sites
 
@@ -340,8 +340,9 @@ Skill-routing gate for what the fix touches *before* editing).
       operator-approval method states what it does **not** inherit. Verified at commit `<sha>`.
 - [ ] **AC-4:** `grep -rn "must re-request" platform/src/main` → no hits. Verified at commit `<sha>`.
 - [ ] **AC-5:** `gradle test --tests "*AsyncMailDispatcher*" --tests "*TransactionalMailService*" --tests "*MailTransportBudget*"`
-      → PASS; `git diff --stat origin/main...HEAD -- platform/src/test` → one comment line.
-      Verified at commit `<sha>`.
+      → **34 tests, 0 failures, 0 skipped** (AsyncMailDispatcherTest 13, TransactionalMailServiceTest 18,
+      MailTransportBudgetTest 3); `git diff --stat origin/main...HEAD -- platform/src/test` → one file,
+      the stale comment. Verified at commit `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 

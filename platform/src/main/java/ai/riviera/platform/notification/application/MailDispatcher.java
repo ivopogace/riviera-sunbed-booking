@@ -10,7 +10,12 @@ package ai.riviera.platform.notification.application;
  * persist that credential in cleartext and, under this application's {@code archive} completion mode, keep
  * it after the send — defeating the S8 design where only the digest is ever stored. The rule epic #367
  * settled: <em>ids-only payload → registry; bearer-credential payload → this in-memory dispatcher</em>.
- * Losing a send to a crash is acceptable precisely because the flow is user-retryable.
+ *
+ * <p>Losing a send to a crash is acceptable for the recovery pair, whose flow is user-retryable: the
+ * token is already stored, so the person asks again. Since #375 this dispatcher also carries the
+ * operator-approval notice, for which it is <em>not</em> — nothing re-sends that one, so the loss is
+ * unrecoverable and mitigated only operationally (ADR-0011 decision 5, amended #439). The vehicle's
+ * mechanics are one rule; what a loss costs is per-kind.
  *
  * <p><strong>Contract: an implementation never throws.</strong> The send is a best-effort side channel
  * whose outcome may influence neither the response's status code (the D-8 non-enumeration contract) nor

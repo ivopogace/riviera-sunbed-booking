@@ -52,7 +52,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * running on the caller's thread (which would be the original defect, reached from the other side).
  *
  * <p><strong>Shedding here loses nothing</strong>, and that is the one real difference from the
- * recovery dispatcher, whose drop <em>is</em> a loss it accepts because the user can re-request. A
+ * recovery dispatcher, whose drop <em>is</em> a loss it accepts — because the recovery kinds can be
+ * re-requested, and because the approval notice's loss is accepted as the weaker case (#439). A
  * shed send's Event Publication Registry row is still outstanding, so
  * {@code republish-outstanding-events-on-restart} re-delivers it — and until then it keeps
  * {@code riviera.outbox.pending} non-zero, which {@code MoneyPathAlertCheck} already watches. The two

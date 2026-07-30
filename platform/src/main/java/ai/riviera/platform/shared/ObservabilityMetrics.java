@@ -52,9 +52,11 @@ public final class ObservabilityMetrics {
 	 * <p><strong>It measures a strictly worse event than the shed does.</strong> A shed registry mail
 	 * is deferred — its event publication stays outstanding and a restart republishes it. A dropped
 	 * recovery mail is <em>gone</em>: the payload is a single-use bearer credential the registry may
-	 * not persist (ADR-0011 decision 5), so nothing retries it and the user recovers only by
-	 * re-requesting. Read an increment as exactly that: one person who asked for a reset or
-	 * verification link and will wait for a mail that is never coming.
+	 * not persist (ADR-0011 decision 5), so nothing retries it. Read an increment as one person who
+	 * will wait for a mail that is never coming — and read the {@code kind} tag to learn whether they
+	 * can do anything about it. A {@code verification} or {@code password-reset} loss self-heals when
+	 * they ask again; an {@code operator-approved} loss (#375) does not, because nothing re-sends it
+	 * and they were never told to expect it (amended #439, as on {@link #MAIL_RECOVERY_FAILED}).
 	 *
 	 * <p>Carries a {@code reason} tag distinguishing a saturated pool (a degraded relay — act) from the
 	 * two ways a redeploy loses a mail: the request that reached a closed pool ({@code shutdown}), and

@@ -14,7 +14,9 @@ import java.net.URI;
  *   <li><strong>Never throws.</strong> The send's outcome may influence neither the triggering
  *       response's status code (the D-8 non-enumeration contract) nor its latency (the #369 timing
  *       oracle): a transport failure dies inside the dispatched task, a saturated dispatcher drops
- *       the send. The flows are user-retryable by design.</li>
+ *       the send. <strong>What a lost send costs differs by kind</strong> — the recovery pair is
+ *       user-retryable by design, the operator-approval notice is not (ADR-0011 decision 5, amended
+ *       #439; see {@link #sendOperatorApproved}).</li>
  *   <li><strong>Runs off the caller's thread</strong>, on the module's bounded in-memory dispatcher
  *       — never the Event Publication Registry, which would persist the credential-carrying payload
  *       in cleartext (ADR-0011 decision 5: ids-only → registry, bearer-credential → in-memory).</li>
@@ -43,6 +45,14 @@ public interface MailSender {
 	 * edge-orchestrated from an admin request, not a domain fact another module acts on, so minting an
 	 * event to carry the news back to the edge that issued the request would be ceremony. It inherits
 	 * the contract above unchanged — in particular, a mail failure may not fail or slow the approval.
+	 *
+	 * <p>What it does <strong>not</strong> inherit is the reason best-effort delivery is acceptable
+	 * (ADR-0011 decision 5, amended #439). There is no token already stored and no page offering a
+	 * retry, so a lost notice is unrecoverable in the product: the operator learns its account is live
+	 * by trying to sign in, the very experience this exists to remove. That is accepted as the
+	 * knowingly weaker case and mitigated only operationally — the loss counters carry
+	 * {@code kind="operator-approved"} and the runbook's remedy is to tell the operator, which is a
+	 * real remedy because a human is already in the loop: the admin who approved.
 	 */
 	void sendOperatorApproved(String toEmail, URI signInLink);
 }

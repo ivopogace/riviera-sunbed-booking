@@ -23,9 +23,11 @@ import org.springframework.stereotype.Component;
  * <p><strong>The pool is deliberately its own.</strong> Boot's shared {@code applicationTaskExecutor} is
  * what Spring Modulith's {@code @ApplicationModuleListener}s run on — the payment→booking confirmation and
  * booking→payout accrual spine — so a degraded relay sharing it could back up the money path. It is
- * bounded for the complementary reason: a saturated dispatcher drops the send (the user can re-request)
- * rather than queueing without limit or, worse, falling back to running the send on the caller's thread,
- * which would re-open the very oracle this class exists to close.
+ * bounded for the complementary reason: a saturated dispatcher drops the send rather than queueing
+ * without limit or, worse, falling back to running the send on the caller's thread, which would re-open
+ * the very oracle this class exists to close. A dropped recovery mail the person re-requests; a dropped
+ * operator-approval notice (#375) nobody re-sends, which is why the drop counters are read through their
+ * {@code kind} tag rather than in aggregate (ADR-0011 decision 5, amended #439).
  *
  * <p><strong>That rule is the module's, not this class's</strong> (#383). It was stated here and then
  * broken next door: #371's registry-borne booking confirmation went onto the shared executor, because
@@ -106,8 +108,9 @@ import org.springframework.stereotype.Component;
  * window expires this class does <em>not</em> escalate to {@code shutdownNow()}: an interrupt cannot tell
  * a send that already handed the message to the relay from one that has not, and interrupting the first is
  * how at-least-once becomes a duplicate. The cost lands differently here than for the registry vehicle,
- * though, and that asymmetry is the same one as everywhere else in this class — an abandoned recovery send
- * has no publication to be republished from, so it is simply a mail the user must re-request. Which is why
+ * though, and that asymmetry is the same one as everywhere else in this class — an abandoned send on this
+ * vehicle has no publication to be republished from, so it is a mail the recipient must ask for again, or
+ * for the approval notice cannot ask for at all. Which is why
  * #434 made it visible: the registry's equivalent shows up in {@code riviera.outbox.pending}, and this one
  * showed up nowhere until {@link #accountForAbandonedSends()} counted it.
  *
@@ -183,17 +186,23 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	 * Account for a send that will never be delivered. Nothing here may throw or run the task: this runs on
 	 * the caller's request thread, whose response the send may not influence (D-8). Neither line carries the
 	 * address or the link (invariant #7); the correlation id rides the MDC.
+	 *
+	 * <p>Neither line says who must act, because this class cannot know: it dispatches an opaque
+	 * {@code Runnable} and never sees the kind. The mechanism is the same for all of them — nothing retries
+	 * the send — but the <em>cost</em> is not, and only the counter's {@code kind} tag can tell a recovery
+	 * mail the person re-requests from an approval notice nobody re-sends (ADR-0011 decision 5, amended
+	 * #439). So the lines state the mechanism and leave the attribution to the tag the runbook reads.
 	 */
 	private void recordDrop(TaskRejectedException cause) {
 		if (executor.getThreadPoolExecutor().isShutdown()) {
 			droppedWhenShuttingDown.increment();
-			log.warn("Recovery email dispatch rejected during shutdown ({}); the send was dropped and the user "
-					+ "must re-request", cause.getClass().getSimpleName());
+			log.warn("Recovery email dispatch rejected during shutdown ({}); the send was dropped with nothing "
+					+ "to retry from", cause.getClass().getSimpleName());
 			return;
 		}
 		droppedWhenSaturated.increment();
-		log.error("Recovery email dispatcher saturated ({}); the send was dropped with nothing to retry from, so "
-				+ "the user must re-request", cause.getClass().getSimpleName());
+		log.error("Recovery email dispatcher saturated ({}); the send was dropped with nothing to retry from",
+				cause.getClass().getSimpleName());
 	}
 
 	@Override
@@ -243,6 +252,6 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	private static void logAbandonment() {
 		log.warn("Recovery email still queued when the shutdown drain window expired; the send was discarded "
-				+ "with the pool and the user must re-request");
+				+ "with the pool and nothing retries it");
 	}
 }
