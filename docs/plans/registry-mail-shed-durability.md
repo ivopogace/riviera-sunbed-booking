@@ -80,8 +80,8 @@ behaviour**; that class's four tests must stay green, which AC-4's repeat runs a
 | R-3 | A stray republished publication from an earlier IT occupies the shrunk pool and shifts which event is shed | low | high | The distinct `@TestPropertySource` yields a distinct context ⇒ a **fresh** container/database with no outstanding rows; additionally the class waits for a quiet pool before saturating | Claude | closed — `awaitQuietPool()` in `3e783be` |
 | R-4 | The narrowed resubmit re-delivers unrelated publications (#406's reproducible flake) | med | high | Predicate matches `BookingConfirmed.bookingId() == <this test's booking>`, mirroring `RegistryMailBulkheadIT`; asserted by delivery counts per address | Claude | closed — narrowed in `3e783be` |
 | R-5 | Moving `ControllableMailer` out of `RegistryMailBulkheadIT` changes that class's context cache key or drops its `@TestConfiguration` pickup, silently un-wedging it | med | high | The extracted config is `@Import`ed explicitly by both classes; AC-4's repeat runs of `RegistryMailBulkheadIT` are the check | Claude | closed — 4 tests × 3 clean runs, `fa519c8`/`3e783be` |
-| R-6 | A second Postgres container + context slows CI or pressures the sandbox | med | low | Already the norm here (every `@TestPropertySource` IT does it); locally run one IT class at a time per `riviera-local-debug` | Claude | closed — combined local run ~1m; CI timing watched on the PR |
-| R-7 | The shrunk pool is a **shared-state bean** — the `riviera-local-debug` full-suite failure class | low | med | The bean is context-scoped and this context is not shared; the class leaves no publication outstanding and releases the transport in `@AfterEach` | Claude | closed locally (`No publications outstanding!` at context shutdown); full-suite confirmation is the PR's CI run |
+| R-6 | A second Postgres container + context slows CI or pressures the sandbox | med | low | Already the norm here (every `@TestPropertySource` IT does it); locally run one IT class at a time per `riviera-local-debug` | Claude | closed — two containers observed; CI backend job ~3m10s, inside its usual range |
+| R-7 | The shrunk pool is a **shared-state bean** — the `riviera-local-debug` full-suite failure class | low | med | The bean is context-scoped and this context is not shared; the class leaves no publication outstanding and releases the transport in `@AfterEach` | Claude | closed — `No publications outstanding!` locally, and the PR's full-suite CI green on both pushes |
 
 ## Open questions / Assumptions
 
@@ -159,17 +159,18 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `review gate run (degraded) → Sonar gate → merge`
+**Stage pointer:** `merge close-out — written pre-merge; merged via PR #432`
 
-**Next action:** confirm the Sonar reported-issue list is empty on the final head, then merge; the
-review checkbox stays unticked until the `/code-review` subagent fan-out is authorised.
+**Next action:** none in the repo. Post-merge, GitHub-only: confirm #407 closed and link it under
+epic #367. The review gate's strongest rung (F-3) stays declared-and-unticked on the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | `9a2d38c` (draft PR #432) |
 | 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | ✅ | `fa519c8` |
 | 2 — `RegistryMailShedDurabilityIT` (red → green) | ✅ | `3e783be` |
-| 3 — Repeat-run verification (AC-4) + close-out | ⏳ | `596c5f0`; review-round fix pending |
+| 3 — Repeat-run verification (AC-4) | ✅ | `596c5f0` |
+| 4 — Review round (F-1, F-2) + close-out | ✅ | `5397664` + this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -179,7 +180,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | review (inline `/review` + overlay) | The shared `ConfirmationMailFixtures` still seeded its guest as `'Bulkhead Guest'` — the name of only one of its two consumers | fixed (this commit) |
 | F-2 | review (self, AC-4 evidence) | The plan and PR asserted "own context ⇒ own container/database" as the isolation mechanism without ever observing it | fixed (this commit) — two concurrent `postgres:17` containers observed during a combined run; recorded under AC-4 |
-| F-3 | review (process) | The `/code-review` subagent fan-out — the gate's strongest rung — could not run: this session is instructed not to launch agents unasked, and the authorisation request went unanswered | open — declared on the PR, its checkbox left unticked |
+| F-3 | review (process) | The `/code-review` subagent fan-out — the gate's strongest rung — could not run: this session is instructed not to launch agents unasked, and the authorisation request went unanswered | **open by design** — declared in the PR body and in the review comment, checkbox left unticked; re-runnable on request |
+| F-4 | sonar gate | None. Quality gate passed **and** the API-reported list is empty (`total: 0`; 0 new bugs / vulnerabilities / smells; 0 duplicated blocks) against a `success` analysis check-run | n/a |
 
 ---
 
@@ -243,7 +245,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       `*PackageShapeArchitectureTests*`) plus the mail-executor neighbours
       (`*MailListenerExecutorArchitectureTest*`, `*RegistryMailExecutorConfigTest*`,
       `*RegistryMailExecutorWiringIT*`, `*RegistryMailPropertiesTest*`) — all green.
-- [ ] **Step 3:** Mark the PR ready for review; run the Review + Sonar gates; finalize this section.
+- [x] **Step 3:** Mark the PR ready for review; run the Review + Sonar gates; finalize this section.
+      Review gate: overlay + inline `/review` (degraded — F-3). Sonar gate: quality gate **passed**
+      and, per `pr-gates.md` §2, the reported *list* pulled from the API rather than trusting the
+      badge — `api/issues/search` returns `total: 0` and `new_bugs` / `new_vulnerabilities` /
+      `new_code_smells` are all `0` against a `SonarCloud Code Analysis` check-run that concluded
+      `success`, so the zero is an analysed zero, not the unanalysed one that reads identically.
+      `new_lines` is absent because every file in the diff is a test or a doc.
 
 ---
 
