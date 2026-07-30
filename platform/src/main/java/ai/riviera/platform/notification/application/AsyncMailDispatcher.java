@@ -73,6 +73,13 @@ import org.springframework.stereotype.Component;
  * The counter ({@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED}) is the alertable signal; before it, "how
  * often did the recovery vehicle drop?" was answerable only by grepping logs.
  *
+ * <p><strong>One branch logs without counting, and it is the one that can never run</strong> (#442): the
+ * unmatched payload in {@link #recordAbandonment}. Counting it would mean inventing a {@code kind} tag
+ * value meaning "we lost track", which pollutes a documented vocabulary for a state {@link #dispatch} makes
+ * unreachable — so it escalates to {@code ERROR} instead, naming the future edit that broke the assumption.
+ * Stated here rather than left as a silent exception to the sentence above, because a claim about this
+ * class's accounting that its code does not honour is the exact defect #442 was filed to correct.
+ *
  * <p>The per-line half is where this class parts company with {@code RegistryMailExecutorConfig}, which
  * throttles to one escalated line per saturation episode — and the divergence is deliberate on both sides.
  * <strong>A throttle trades repeated lines for the durable record that makes them redundant.</strong> The

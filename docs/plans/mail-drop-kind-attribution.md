@@ -229,7 +229,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|
 | **CI** | 7/7 green on `12c9c3b` (backend, frontend, both CodeQL analyses, SonarCloud scan + app check) |
 | **Sonar** | Quality gate green **and the reported list confirmed empty via API** — 0 issues, 0 hotspots, `new_bugs`/`new_vulnerabilities`/`new_code_smells` all 0, 0.0% duplication, **90.6%** new-code coverage. Not a false-clean read: `new_lines`=198 (measures non-empty) and the `SonarCloud Code Analysis` check concluded `success` |
-| **Review** | `/code-review` plugin workflow (rung 2 of the `pr-gates.md` §1 ladder — `Skill("code-review")` refused by upstream policy as documented), **high** effort, 5 parallel reviewers + `riviera-review-overlay` |
+| **Review** | `/code-review` plugin workflow (rung 2 of the `pr-gates.md` §1 ladder — `Skill("code-review")` refused by upstream policy as documented), **high** effort, 5 parallel reviewers + `riviera-review-overlay`. Subagent fan-out authorized by the maintainer, this session's standing no-Agent instruction notwithstanding (`pr-gates.md` §1 requires asking rather than silently degrading). **1 finding (F-1), fixed**; reviewers 1/2/4/5 clean. RV-STYLE-1: nothing to flag — the diff adds no inline comments, only Javadoc. RV-PROC-1: *Skills consulted* covers every touched area; the F-1 fix is Javadoc-only backend Java, already routed to `riviera-java-conventions` (§6c) |
 | **Docs freshness** | Run pre-merge over `origin/main...HEAD`: **zero findings.** Every removed identifier (`KIND_*`, `dispatch(Runnable)`) survives in the substrate only as past-tense narrative or inside a dated amendment blockquote. CONTEXT.md needs no term — `MailKind` is module-internal and crosses no context boundary. Graph refresh skipped: `graphify-out/` is absent in this cloud clone |
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix re-enters
@@ -238,6 +238,8 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review — reviewer 3 (git-history pass) | The class Javadoc's #415 claim *"Every drop is counted, and every drop is logged — one line each"* stopped being unconditionally true: `recordAbandonment`'s new unmatched-payload branch logs an `ERROR` without incrementing. Rated low-severity and non-blocking by the reviewer — the branch is unreachable (`dispatch` is the only path onto the queue) and fails loudly rather than silently | **fixed in `<f1>`** — fixed despite the low rating, because a prose claim about this class's accounting that its code does not honour is the *exact* defect class #442 exists to correct, and the one that produced findings on PRs #427/#430/#436/#440. The Javadoc now states the single logging-without-counting branch and why counting it would be worse (it would mean inventing a `kind` value meaning "we lost track") |
+| — | review — reviewers 1, 2, 4, 5 | none | — |
 | — | sonar | none — reported list empty | — |
 
 ---
