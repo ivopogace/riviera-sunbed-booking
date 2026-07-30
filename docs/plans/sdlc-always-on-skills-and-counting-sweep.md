@@ -183,17 +183,18 @@ statement is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window
 > as the change it records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement (phase 2 — the counting sweep + its close-out citation)`
+**Stage pointer:** `implement (phase 3 — docs-freshness run over the slice's own diff)`
 
-**Next action:** split `riviera-docs-freshness`'s procedure step 2 into `2a`/`2b`, write
-the counting sweep, and cite it from `pr-gates.md` close-out step 5.
+**Next action:** run `riviera-docs-freshness` over `origin/main...HEAD`, including the new
+counting sweep dogfooded on this diff (R-5); record the run, verify AC-5, then mark PR #448
+ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `51e537c` (PR #448, draft) |
-| 1 — Gap 1: pre-fill the always-on skills in the template | ✅ | see phase-1 commit below |
-| 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | | |
-| 3 — Docs-freshness run over the slice's own diff + close-out | | |
+| 1 — Gap 1: pre-fill the always-on skills in the template | ✅ | `9ad7af3` |
+| 2 — Gap 2: counting sweep in `riviera-docs-freshness` + close-out citation | ✅ | see phase-2 commit below |
+| 3 — Docs-freshness run over the slice's own diff + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -293,18 +294,18 @@ else the line names is a *routed* example (`postgres`, `codebase-design`,
 **Files:** Modify `.claude/skills/riviera-docs-freshness/SKILL.md` (frontmatter +
 procedure step 2) · `.claude/skills/riviera-sdlc/references/pr-gates.md` (close-out step 5)
 
-- [ ] **Step 1: Record the before-state** —
+- [x] **Step 1: Record the before-state** —
 
 ```bash
 grep -rn "counting sweep" .claude/skills/ | wc -l
 ```
 
-→ expected **0** before the edit.
+→ **observed 0** before the edit, as expected.
 
-- [ ] **Step 2: Split procedure step 2** into `2a` (the existing rename/removal grep,
+- [x] **Step 2: Split procedure step 2** into `2a` (the existing rename/removal grep,
   text unchanged) and `2b` (the counting sweep), so steps 3–6 keep their numbers (R-4).
 
-- [ ] **Step 3: Write `2b`** with: the trigger (*this slice made an Nth instance of
+- [x] **Step 3: Write `2b`** with: the trigger (*this slice made an Nth instance of
   something that previously had N−1* — listener, counter, event, module, profile,
   transport, sweep); **why the diff cannot reveal it**; the measured two-step grep recipe
   (phrasing grep filtered by the grown thing's vocabulary); the "read each hit,
@@ -312,17 +313,19 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
   descriptions count as stated facts; and #373's sixteen-statement case history in one
   line, plus the re-run-after-the-fix-round note (`PaymentDueAnnouncerIT`).
 
-- [ ] **Step 4: Add the frontmatter trigger clause** so the sweep is reachable from the
+- [x] **Step 4: Add the frontmatter trigger clause** so the sweep is reachable from the
   skill's "when to load" description, not only from its body.
 
-- [ ] **Step 5: Cite it from `pr-gates.md` close-out step 5** as a bullet under the
+- [x] **Step 5: Cite it from `pr-gates.md` close-out step 5** as a bullet under the
   existing split, in the gate's own voice.
 
-- [ ] **Step 6: Re-run the step-1 command** → expected **≥3** hits across the two files.
+- [x] **Step 6: Re-run the step-1 command** → **3** hits across the two files (the skill's
+  frontmatter trigger + its step-2b heading, and the close-out bullet in `pr-gates.md`).
+  Steps 3–6 of the skill's procedure kept their numbers, as R-4 required.
 
-- [ ] **Step 7: Commit** — `git commit -m "docs(#447): add the counting sweep to riviera-docs-freshness"`
+- [x] **Step 7: Commit** — `git commit -m "docs(#447): add the counting sweep to riviera-docs-freshness"`
 
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -360,9 +363,16 @@ grep -rn "counting sweep" .claude/skills/ | wc -l
   → **all five** distinct names (was `riviera-sdlc` alone), and the
   `riviera-docs-freshness` entry reads `**ran** over <range>, N findings — **or** N/A —
   <reason>`. Verified in the phase-1 commit.
-- [ ] **AC-2:** *(pending — phase 2)*
-- [ ] **AC-3:** *(pending — phase 2)*
-- [ ] **AC-4:** *(pending — phase 2)*
+- [x] **AC-2:** Run `grep -n "counting sweep" .claude/skills/riviera-docs-freshness/SKILL.md`
+  → **2** hits: the frontmatter trigger and the **step 2b** heading inside the Procedure,
+  which states the why-the-diff-cannot-reveal-it rule and carries the runnable two-step
+  grep recipe. Verified in the phase-2 commit.
+- [x] **AC-3:** Run `grep -n "counting sweep" .claude/skills/riviera-sdlc/references/pr-gates.md`
+  → **1** hit, at line 252, inside merge close-out **step 5**. Verified in the phase-2 commit.
+- [x] **AC-4:** Run `grep -c "#427" .claude/skills/riviera-plan-doc/references/plan-doc-template.md`
+  → **1** (the six-slice run, gap 1), and `grep -c "sixteen"
+  .claude/skills/riviera-docs-freshness/SKILL.md` → **2** (step 2b's case history plus the
+  close-out-facing summary, gap 2). Verified in the phase-1 / phase-2 commits.
 - [ ] **AC-5:** *(pending — phase 3)*
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.

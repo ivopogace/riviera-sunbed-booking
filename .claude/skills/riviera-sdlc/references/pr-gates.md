@@ -246,6 +246,12 @@ Merging is not the last step; the close-out is. Every item, every merge:
      `pre-merge` (the skill's "pre-merge smoke" mode over `origin/main...HEAD`) and fold
      those patches into the *code PR itself***. Don't spin up a whole second docs PR + CI
      cycle for edits the code PR could have carried (case history: O6 / PR #219).
+   - **Did this slice make the Nth of something?** A new listener, counter, event, module,
+     profile, transport, or sweep falsifies every doc that says "the two …", "both …", "the
+     first of the two", "five <things>" — and **none of those files is in the diff**, so no
+     amount of reviewing the changed files finds them. Run the skill's **counting sweep**
+     (its procedure step 2b) beside the rename grep: one grep found all sixteen of #373's
+     stale statements in seconds, and #374 hit the same class one slice earlier.
    - **Nothing here is inherently post-merge any more.** Step 4 removed the last repo-commit
      dependency by recording `merged via PR #NN` instead of the merge SHA, so the staleness
      patches and the plan-doc final state both belong in the **code PR itself**. What remains
