@@ -219,7 +219,7 @@ read or written.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0+1 — The seam, both rejection paths, and the drain path | ✅ | `307441c` |
-| 2 — Docs: ADR amendment, runbooks, Javadoc sweep | ✅ | `<phase2>` |
+| 2 — Docs: ADR amendment, runbooks, Javadoc sweep | ✅ | `c99b988` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
