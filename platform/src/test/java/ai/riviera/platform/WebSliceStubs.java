@@ -368,6 +368,17 @@ class WebSliceStubs {
 	}
 
 	/**
+	 * The edge collaborator behind the approval mail (#375). Deliberately the <strong>real</strong> one
+	 * over the inert {@link MailSender} above, not a stub: {@code AdminOperatorController} now depends on
+	 * it, and a stub here would make every web slice green against a class that never ran. A test wanting
+	 * the send to fail overrides the {@code MailSender} bean instead.
+	 */
+	@Bean
+	OperatorApprovalMail operatorApprovalMail(MailSender mailSender, RecoveryProperties recoveryProperties) {
+		return new OperatorApprovalMail(mailSender, recoveryProperties);
+	}
+
+	/**
 	 * {@code AdminEmailSuppressionController}'s port (#391). Inert: the web slices never lift a real
 	 * suppression, and "nothing was on the list" is the outcome that writes nothing.
 	 */

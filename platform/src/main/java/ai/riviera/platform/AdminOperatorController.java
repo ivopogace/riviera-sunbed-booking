@@ -72,12 +72,14 @@ class AdminOperatorController {
 	private final OperatorLifecycle lifecycle;
 	private final CurrentOperator currentOperator;
 	private final PrincipalSessionRevoker sessionRevoker;
+	private final OperatorApprovalMail approvalMail;
 
 	AdminOperatorController(OperatorLifecycle lifecycle, CurrentOperator currentOperator,
-			PrincipalSessionRevoker sessionRevoker) {
+			PrincipalSessionRevoker sessionRevoker, OperatorApprovalMail approvalMail) {
 		this.lifecycle = lifecycle;
 		this.currentOperator = currentOperator;
 		this.sessionRevoker = sessionRevoker;
+		this.approvalMail = approvalMail;
 	}
 
 	/** The admin's view of a pending operator: the technical id (to act on), username, contact email, and when. */
@@ -93,9 +95,20 @@ class AdminOperatorController {
 		return lifecycle.pending().stream().map(PendingOperatorResponse::from).toList();
 	}
 
+	/**
+	 * Approve a registration and, if that is what actually happened, tell the operator by email (#375).
+	 * The mail is deliberately <em>after</em> the transition and gated on its outcome: the address
+	 * arrives on {@link ApprovalOutcome.Approved} straight from the guarded {@code UPDATE}, so a second
+	 * admin racing the same registration is handed none and cannot send a duplicate. Unlike the
+	 * suspension bracket below, nothing here is ordered around a revoke — approval revokes nothing.
+	 */
 	@PostMapping("/{operatorId}/approve")
 	ResponseEntity<?> approve(@PathVariable long operatorId) {
-		return toResponse(lifecycle.approve(new OperatorId(operatorId)));
+		ApprovalOutcome outcome = lifecycle.approve(new OperatorId(operatorId));
+		if (outcome instanceof ApprovalOutcome.Approved approved) {
+			approvalMail.notifyApproved(approved);
+		}
+		return toResponse(outcome);
 	}
 
 	@PostMapping("/{operatorId}/reject")

@@ -74,12 +74,12 @@ fresh from `main` at `d2f3732`; exists before phase 0.
 - [ ] **AC-3:** Given a `PENDING` operator, when an admin **rejects** it — and given an `ACTIVE` operator,
   when an admin **suspends** and then **reinstates** it — then no mail of any kind is recorded.
   *Pinned by:* `OperatorApprovalMailIT.rejectAndSuspendReinstateMailNothing`
-- [ ] **AC-4:** Given a `Mailer` whose `sendOperatorApproved` throws, when an admin approves a `PENDING`
-  operator, then the approval still answers `204`, the operator is `ACTIVE`, and the failure is counted
-  under `riviera.mail.recovery.failed{kind="operator-approved",reason="transport"}` — proving the send is
-  off the request thread and outside the approval's transaction and its session-revocation bracket.
+- [ ] **AC-4:** Given a `Mailer` whose `sendOperatorApproved` throws, when the send runs, then the
+  failure dies inside the dispatched task and is counted under
+  `riviera.mail.recovery.failed{kind="operator-approved",reason="transport"}`; and given an approval,
+  the mail is issued only **after** the transition, so it cannot influence the admin's response.
   *Pinned by:* `TransactionalMailServiceTest.anOperatorApprovedTransportFailureIsSwallowedAndCounted`
-  and `AdminOperatorControllerTest.approveSucceedsWhenTheApprovalMailFails`
+  and `AdminOperatorControllerTest.approveMailsTheOperatorAfterTheTransition`
 - [ ] **AC-5:** Given a suppressed address, when an operator registered with it is approved, then the
   chokepoint skips the send and the mock records nothing — no new bypass of the module's defining
   invariant. *Pinned by:* `TransactionalMailServiceTest.anOperatorApprovedMailToASuppressedAddressIsSkipped`
@@ -116,7 +116,7 @@ which must keep passing verbatim.
 |---|---|---|---|---|---|---|
 | R-1 | `ApprovalOutcome` enum → sealed interface is a **published-vocabulary shape change**; a missed consumer breaks the build or, worse, an `equals` comparison silently stops matching | med | med | Only three production consumers (`OperatorRegistrationService`, `JdbcOperators`, `AdminOperatorController`) + tests; all comparisons are `switch` over the closed set, none is `==`/`equals` on an enum constant — verified by `grep -rn "ApprovalOutcome"` before and after. Exhaustive `switch` with no `default` makes a missed case a **compile error** | Claude | **closed** (phase 1) — the compiler found the one consumer the grep plan had missed (`WebSliceStubs`); no `==` comparison existed anywhere |
 | R-2 | `contact_email` is **nullable** (V29: the env-managed bootstrap admin has none), so `Approved` can carry `null` and the edge could NPE or mail an empty address | low | med | `OperatorApprovalMail` guards null **and** blank before touching `MailSender`; unit-pinned. A `PENDING` row always has one (the edge requires non-blank at registration) — the guard is for the row shape the schema still permits | Claude | open |
-| R-3 | Mail send inside the approval request could slow it or fail it, or interleave with the session-revocation bracket | low | high | The send goes through `TransactionalMailService.dispatchQuietly` → `AsyncMailDispatcher`: off-thread, never throws, failures swallowed-and-counted. It is issued **after** `lifecycle.approve` returns and touches no session state (approve has no revoke bracket — only suspend/reinstate/password paths do). AC-4 pins it | Claude | open |
+| R-3 | Mail send inside the approval request could slow it or fail it, or interleave with the session-revocation bracket | low | high | The send goes through `TransactionalMailService.dispatchQuietly` → `AsyncMailDispatcher`: off-thread, never throws, failures swallowed-and-counted. It is issued **after** `lifecycle.approve` returns and touches no session state (approve has no revoke bracket — only suspend/reinstate/password paths do). AC-4 pins it | Claude | **closed** (phase 2) — and hardened past the mitigation: writing the test surfaced that the *link builder* was the one request-time throw source (a mis-set `link-base-url` would have 500'd a committed approval, the #357 failure shape). The link is now built at construction, so a bad origin fails at boot instead |
 | R-4 | This non-recovery kind rides the `riviera.mail.recovery.*` counters, so a reader of the metric/log could mis-attribute an operator-approval loss to a tourist recovery flow | high | low | Deliberate and documented: "recovery" names the **vehicle** (the in-memory dispatcher), not the flow — the `kind` tag (`operator-approved`) is what disambiguates. `ObservabilityMetrics` Javadoc + `docs/runbooks/observability.md` updated in phase 3; `recordLoss`'s recovery-specific log wording ("the token was issued, so the user can re-request") is generalised, since no token exists on this kind | Claude | open |
 | R-5 | `UPDATE … RETURNING` through `JdbcClient.query(...)` is a shape this repo has not used before; a driver/`JdbcClient` mismatch would surface only against real Postgres | low | high | Proven by a Testcontainers IT against the full Flyway chain, not by a unit test | Claude | **closed** (phase 1) — green in `OperatorLifecycleIT` against real Postgres. It was also less novel than the risk assumed: `insertPending` and the ITs' own fixtures already use `INSERT … RETURNING` through the same `JdbcClient` path. The documented fallback (a same-transaction follow-up read) was not needed |
 | R-6 | Mock/SMTP transports drift — a new kind added to the port but not to one implementation | low | med | `Mailer` is an interface: omitting the method in `MockMailer` or `SmtpMailer` is a compile error. `MailerProfileWiringTest` + `SmtpMailerIT` cover both transports | Claude | open |
@@ -237,16 +237,16 @@ three response statuses (`204` / `409 NOT_PENDING` / `404 NO_SUCH_OPERATOR`); th
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phases 0–1 done, phase 2 next`
+**Stage pointer:** `implement — phases 0–2 done, phase 3 (docs) next`
 
-**Next action:** Phase 2 — write `OperatorApprovalMailIT` (AC-1/2/3) red, then add
-`OperatorApprovalMail` and wire it into `AdminOperatorController.approve`.
+**Next action:** Phase 3 — update `RESPONSIBILITIES.md`, `docs/runbooks/observability.md` and
+`CLAUDE.md`, then mark PR #437 ready for review and run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | ✅ | `afedbec` |
-| 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | ✅ | (this commit) |
-| 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | | |
+| 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | ✅ | `6963c4a` |
+| 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | ✅ | (this commit) |
 | 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -403,6 +403,8 @@ Test `OperatorApprovalMailTest.java` (create) · `OperatorApprovalMailIT.java` (
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-07-30 | phase 0 — new mail kind | every site that enumerates mail kinds | `grep -rln "PASSWORD_RESET\|KIND_PASSWORD_RESET\|BOOKING_CONFIRMATION" platform/src docs/runbooks RESPONSIBILITIES.md CLAUDE.md` | 6, all Java (3 main + 3 test); no doc enumerates kinds by constant | Fixed all 6. The compiler found three more the grep would have missed — the `Mailer`/`MailSender` test doubles (`WebSliceStubs`, `ControllableMailer`, `MailSenderWiringIT.RecordingMailer`), which is the argument for growing an interface rather than a `switch`. |
+| 2026-07-30 | phase 1 — sealed `ApprovalOutcome` | every consumer of the retired enum constants | `grep -rn "ApprovalOutcome" platform/src` | 4 (`JdbcOperators`, `AdminOperatorController`, `WebSliceStubs`, `OperatorLifecycleIT`) | All moved. The plan predicted three; `WebSliceStubs` was the fourth and the compiler, not the grep, is what caught it. No `==`/`equals`-on-constant comparison existed, so no silent-mismatch class to sweep for. |
+| 2026-07-30 | phase 2 — the send site | any other path that makes an operator sign-in-capable and might deserve the same mail | `grep -rn "activate\|provision(" platform/src/main/java/ai/riviera/platform/operator` | 2: the approval path (in scope) and `OperatorProvisioning#provision`, which creates an ACTIVE operator directly | **Skipped deliberately.** Provisioning is the admin/bootstrap path (`OperatorCredentialInitializer`, test fixtures) — there is no applicant waiting to be told, and #375 scopes the mail to the `PENDING → ACTIVE` approval. Recorded so the omission is a decision, not an oversight. |
 
 ---
 
