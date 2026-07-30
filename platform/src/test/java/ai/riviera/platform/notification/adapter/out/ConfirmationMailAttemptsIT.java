@@ -127,7 +127,7 @@ class ConfirmationMailAttemptsIT {
 
 		assertThatThrownBy(() -> jdbc.sql("""
 				INSERT INTO booking_confirmation_mail_attempt
-					(booking_id, trigger_source, outcome, attempted_at)
+				    (booking_id, trigger_source, outcome, attempted_at)
 				VALUES (:booking, 'AUTOMATIC', 'DELIVERED', now())
 				""").param("booking", booking.value()).update())
 				.isInstanceOf(DataIntegrityViolationException.class);

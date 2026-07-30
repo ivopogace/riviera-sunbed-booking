@@ -39,7 +39,7 @@ class JdbcConfirmationMailAttempts implements ConfirmationMailAttempts {
 	public void append(MailAttempt attempt) {
 		jdbc.sql("""
 				INSERT INTO booking_confirmation_mail_attempt
-					(booking_id, trigger_source, outcome, attempted_at)
+				    (booking_id, trigger_source, outcome, attempted_at)
 				VALUES (:booking, :source, :outcome, :attemptedAt)
 				""")
 				.param("booking", attempt.bookingId().value())

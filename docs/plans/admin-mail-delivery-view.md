@@ -325,7 +325,7 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | sonar (phase-0 push, PR #449) | `java:S2479` CRITICAL — a literal tab inside V36's `INSERT` text block (the column-list line was indented one tab past the block's common prefix, so the tab survived incidental-whitespace stripping into the SQL string). The gate passed with it; the repo's 0-new-issues bar does not. | fixed-in-`1a64291` — re-indented past the prefix with **spaces**, the convention `JdbcAccountErasure`/`JdbcCustomerDirectory` already follow. Same latent tab fixed in the IT's text block. No behaviour change (SQL is whitespace-insensitive); IT re-run 13/0/0. |
 
 ---
 
