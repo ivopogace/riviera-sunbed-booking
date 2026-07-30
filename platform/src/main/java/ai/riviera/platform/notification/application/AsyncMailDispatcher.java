@@ -5,6 +5,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import ai.riviera.platform.shared.MdcTaskDecorator;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import io.micrometer.core.instrument.Counter;

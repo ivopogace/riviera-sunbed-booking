@@ -33,6 +33,16 @@
  * Admission test: <em>no business logic, no module-owned state, and no dependency on a module that
  * depends on this one.</em> A type that fails any of those belongs in a bounded context or at the
  * composition root — not here. This package is not a home for "code used in more than one place".
+ *
+ * <p><strong>Two admissions turn on that last sentence, and both answer it the same way</strong> —
+ * with <em>ownership</em>, never with reuse. {@link ai.riviera.platform.shared.ShutdownBudget} (#456)
+ * because no bounded context owns how long the process has to close, and
+ * {@link ai.riviera.platform.shared.MdcTaskDecorator} (#455) because none owns how a pooled worker
+ * inherits the submitting request's logging context. The decorator's case is the sharper of the two:
+ * the mechanism's other half, {@code CorrelationIdFilter}, sits at the composition root that modules
+ * must not depend on, so no module-owned home was ever available to a second consumer. Hold a
+ * candidate to that bar — "three modules need it" is the trigger for asking the question, not an
+ * answer to it.
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Shared Kernel",

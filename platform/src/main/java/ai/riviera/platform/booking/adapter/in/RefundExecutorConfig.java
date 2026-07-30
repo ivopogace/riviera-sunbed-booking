@@ -1,11 +1,13 @@
 package ai.riviera.platform.booking.adapter.in;
 
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ai.riviera.platform.shared.MdcTaskDecorator;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import io.micrometer.core.instrument.Counter;
@@ -17,6 +19,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskDecorator;
+import org.springframework.core.task.support.CompositeTaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -107,8 +110,8 @@ class RefundExecutorConfig {
 		pool.setQueueCapacity(props.queueCapacity());
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
 		pool.setRejectedExecutionHandler(saturation);
-		// One decorator slot, and it is taken: a second must compose, never replace — see the policy.
-		pool.setTaskDecorator(saturation);
+		// One decorator slot, two occupants: a third must join this list, never call setTaskDecorator again.
+		pool.setTaskDecorator(new CompositeTaskDecorator(List.of(saturation, new MdcTaskDecorator())));
 		pool.setWaitForTasksToCompleteOnShutdown(true);
 		pool.setAwaitTerminationMillis(props.shutdownDrain().toMillis());
 		return pool;
@@ -153,18 +156,20 @@ class RefundExecutorConfig {
 	 * redeploy raise an "any increase" alert, and escalating it would describe a gateway degradation
 	 * that never happened.
 	 *
-	 * <p><strong>This policy owns the pool's single {@code TaskDecorator} slot.</strong> A second
-	 * decorator — #410's {@code MdcTaskDecorator} is the likely one (#455) — must join it through a
-	 * {@code CompositeTaskDecorator} rather than calling {@code setTaskDecorator} again, which silently
-	 * replaces the lot: {@link #decorate} would then never run, so the episode flag would never clear
-	 * and every saturation after the first would be counted but never logged. No test would go red for
-	 * the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
+	 * <p><strong>This policy shares the pool's single {@code TaskDecorator} slot.</strong> Since #455 the
+	 * slot holds a {@code CompositeTaskDecorator} of {@link #decorate} and {@link MdcTaskDecorator}, and a
+	 * third decorator must <em>join that list</em> rather than call {@code setTaskDecorator} again, which
+	 * silently replaces the lot: {@link #decorate} would then never run, so the episode flag would never
+	 * clear and every saturation after the first would be counted but never logged. No test would go red
+	 * for the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
 	 *
 	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both defeat the
 	 * bulkhead. The lines carry counts and a metric name only — never a booking code (invariant #7).
 	 * They are attributable without a {@code TaskDecorator} because {@code ThreadPoolExecutor.execute}
 	 * calls {@code reject(...)} on the <strong>calling</strong> thread, which here is the thread
 	 * committing the cancellation, so the context {@code CorrelationIdFilter} put there is still present.
+	 * What #455 added is the other half — the <em>worker</em> lines, where the listener's
+	 * {@code refunded cancelled booking} INFO and any gateway failure run.
 	 */
 	private static final class SaturationPolicy implements RejectedExecutionHandler, TaskDecorator {
 
