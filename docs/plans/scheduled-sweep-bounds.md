@@ -84,11 +84,11 @@ user-observable surface`)
 - [ ] **AC-4:** Given the committed configuration, when the fitness function counts every
   `@Scheduled` method on the production classpath, then `spring.task.scheduling.pool.size` is **at
   least** that count — so adding a fifth scheduled job without raising the pool **fails the build**.
-  *Pinned by:* `SchedulerPoolSizeArchitectureTest.everyScheduledJobHasAThreadOfItsOwn`
+  *Pinned by:* `ScheduledWorkArchitectureTest.everyScheduledJobHasAThreadOfItsOwn`
 - [ ] **AC-5:** Given the whole repository's Spring configuration, when the fitness function scans
   every `application*.properties`, then **no** `spring.jdbc.template.query-timeout` is set anywhere —
   the instrument that would reach `availability`'s claim path cannot be introduced by accident.
-  *Pinned by:* `SchedulerPoolSizeArchitectureTest.noGlobalQueryTimeoutIsIntroduced`
+  *Pinned by:* `ScheduledWorkArchitectureTest.noGlobalQueryTimeoutIsIntroduced`
 - [ ] **AC-6:** Given two clients claiming the same `(set, date)` concurrently, when both submit,
   then exactly one wins — unchanged by this slice. *Pinned by:* the existing `ConcurrentReservationIT`,
   `ConcurrentClaimIT` and `StaffMarkVsOnlineClaimConcurrencyIT`, which must stay green **untouched**.
@@ -253,14 +253,14 @@ already has its own explicit timeouts (#52/#426) and deliberately runs outside a
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 — write `SchedulerPoolSizeArchitectureTest` red against the unset
-`spring.task.scheduling.pool.size`, then set it.
+**Next action:** Phase 1 — write `ScheduledQueryTimeoutIT` red against the four unbounded
+scheduled entry queries, then give each adapter its own bounded `JdbcClient`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Isolate the scheduler's lane (pool size + fitness function) | | |
+| 0 — Isolate the scheduler's lane (pool size + fitness function) | ✅ | |
 | 1 — Bound every scheduled entry query | | |
 | 2 — Prove it end-to-end + correct the stale docs | | |
 
@@ -289,8 +289,9 @@ Skill-routing gate for what the fix touches *before* editing).
   a second, bounded `JdbcClient` used by `findExpirableAwaitingPayment` + `findOverduePendingRequests`.
 - `platform/src/main/java/ai/riviera/platform/customer/adapter/out/JdbcAccountErasure.java` —
   **modify**: same, for `expiredGuestCandidates`.
-- `platform/src/test/java/ai/riviera/platform/SchedulerPoolSizeArchitectureTest.java` — **create**:
-  AC-4 + AC-5 fitness functions.
+- `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — **create**:
+  AC-4 + AC-5 fitness functions. Named for *scheduled work*, not for the pool, because it carries
+  one rule per instrument.
 - `platform/src/test/java/ai/riviera/platform/ScheduledQueryTimeoutIT.java` — **create**: AC-1 + AC-2,
   real `ACCESS EXCLUSIVE` wedges.
 - `platform/src/test/java/ai/riviera/platform/AbandonedSweepSurvivesWedgedJobIT.java` — **create**:
@@ -303,10 +304,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 0 — Isolate the scheduler's lane
 
-**Files:** Create `platform/src/test/java/ai/riviera/platform/SchedulerPoolSizeArchitectureTest.java` ·
+**Files:** Create `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` ·
 Modify `platform/src/main/resources/application.properties`
 
-- [ ] **Step 1: Write the failing test** — count `@Scheduled` methods across
+- [x] **Step 1: Write the failing test** ✅ — count `@Scheduled` methods across
   `ArchitectureTestSupport.productionClasses()`; read `application.properties` from the main
   resources; assert `spring.task.scheduling.pool.size >= count`. Non-vacuity guard: assert the
   discovered method set is exactly the four known jobs (`AbandonedBookingScheduler#sweep`,
@@ -314,18 +315,18 @@ Modify `platform/src/main/resources/application.properties`
   mirroring `MailListenerExecutorArchitectureTest`'s guard — a broken scan must fail loudly, not pass
   green on zero. Second test: no `application*.properties` sets
   `spring.jdbc.template.query-timeout` (AC-5).
-- [ ] **Step 2: Run it, verify it fails** —
-  `gradle test --tests "*SchedulerPoolSizeArchitectureTest*"` → FAIL: property absent (Boot's
+- [x] **Step 2: Run it, verify it fails** —
+  `gradle test --tests "*ScheduledWorkArchitectureTest*"` → FAIL: property absent (Boot's
   default is 1, and 1 < 4).
-- [ ] **Step 3: Minimal implementation** — set `spring.task.scheduling.pool.size=4` with the
+- [x] **Step 3: Minimal implementation** — set `spring.task.scheduling.pool.size=4` with the
   rationale comment (why it must track the job count; that the fitness function enforces it).
-- [ ] **Step 4: Run it, verify it passes** → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search for other shared-executor bounds that could
+- [x] **Step 4: Run it, verify it passes** → PASS.
+- [x] **Step 5: Generalization-audit pass** — search for other shared-executor bounds that could
   starve the same way (`grep -rn "@Async\|TaskExecutor\|ThreadPoolTask" platform/src/main`) and
   record the decision (expected: the two mail pools are already bounded and deliberately isolated
   per #383/#408; Boot's `applicationTaskExecutor` is a separate, larger question).
-- [ ] **Step 6: Commit** — `git commit -m "give every scheduled job a thread of its own (#395)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "give every scheduled job a thread of its own (#395)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -389,6 +390,7 @@ Modify `MoneyPathAlertCheck.java` (javadoc), `docs/deploy/production-hardening.m
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 0 (new pattern: a shared executor with no isolation rule) | other shared/bounded executors that could starve the same way | `grep -rn "ThreadPoolTaskExecutor\|setCorePoolSize\|setQueueCapacity\|applicationTaskExecutor\|@Async" platform/src/main/java` | 2 pools (`RegistryMailExecutorConfig`, `AsyncMailDispatcher`) + 3 `@Async` mail listeners | **skip — already closed.** Both pools are deliberately isolated and bounded (#369/#383/#408) and all three `@Async` sites name their executor explicitly, pinned by `MailListenerExecutorArchitectureTest`. Nothing runs on Boot's shared `applicationTaskExecutor`. The scheduler pool was the last shared executor with no rule |
 
 ---
 
@@ -397,7 +399,7 @@ Modify `MoneyPathAlertCheck.java` (javadoc), `docs/deploy/production-hardening.m
 - [ ] **AC-1:** Run `gradle test --tests "*ScheduledQueryTimeoutIT*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-2:** Same run, `everyScheduledEntryQueryIsBounded` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-3:** Run `gradle test --tests "*AbandonedSweepSurvivesWedgedJobIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4/AC-5:** Run `gradle test --tests "*SchedulerPoolSizeArchitectureTest*"` → PASS. Verified at commit `<sha>`.
+- [ ] **AC-4/AC-5:** Run `gradle test --tests "*ScheduledWorkArchitectureTest*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-6:** Run `gradle test --tests "*ConcurrentReservationIT*" --tests "*ConcurrentClaimIT*" --tests "*StaffMarkVsOnlineClaimConcurrencyIT*"` → PASS, **with no diff in those files**. Verified at commit `<sha>`.
 
 ## Self-review checklist (before merge / PR)
