@@ -180,7 +180,14 @@ resubmits *outstanding* publications; this one was marked **complete** on the li
 return, which is the very property that keeps this loss off `riviera_outbox_pending` (above). The
 per-booking resend that would reach an already-completed publication is **#380, not yet built**. So
 until it lands the remedy is out-of-band: fix the underlying data fault first, then reach the tourist
-through the contact details on the booking. Nothing will retry on its own.
+on the contact address recorded against the booking. Nothing will retry on its own.
+
+**Sending an arrival code by hand means handling a bearer credential (invariant #7).** This is the
+only point in this runbook where a *person* touches one — every automated path above is explicitly
+barred from logging it, and #380's admin view is specified never to render it. So send it only to the
+contact address on the booking, and keep it out of the incident channel, the ticket, and any pasted
+output of the query you used to find it. If that address is itself the fault you just fixed, you have
+no verified channel to send it on: escalate rather than improvise one.
 
 | Tag | Meaning | Which module to investigate | Alert when |
 |---|---|---|---|
