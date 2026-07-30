@@ -87,40 +87,40 @@ with `origin/main`.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a confirmed booking whose confirmation mail was sent automatically, when an
+- [x] **AC-1:** Given a confirmed booking whose confirmation mail was sent automatically, when an
   admin looks up the booking's contact email, then the response lists that booking with one attempt
   — source `AUTOMATIC`, outcome `SENT`, and the instant it was attempted. *Pinned by:*
   `AdminMailDeliveryIT.listsTheAutomaticAttemptForTheAddressesBookings`
-- [ ] **AC-2:** Given a booking whose confirmation was withheld because the address is suppressed,
+- [x] **AC-2:** Given a booking whose confirmation was withheld because the address is suppressed,
   when an admin looks it up, then the attempt reads `WITHHELD_SUPPRESSED` — not `SENT`. *Pinned by:*
   `BookingConfirmationMailListenerTest.recordsAWithheldAttemptWhenTheAddressIsSuppressed`
-- [ ] **AC-3:** Given a confirmed booking whose confirmation already completed, when an admin
+- [x] **AC-3:** Given a confirmed booking whose confirmation already completed, when an admin
   triggers a resend, then the tourist's address receives a second confirmation mail carrying the same
   arrival code, and the response reports `SENT`. *Pinned by:*
   `AdminMailDeliveryIT.resendsTheConfirmationForABookingWhoseMailAlreadyCompleted`
-- [ ] **AC-4:** Given that booking has a payout accrual from its original confirmation, when an admin
+- [x] **AC-4:** Given that booking has a payout accrual from its original confirmation, when an admin
   resends the confirmation, then no `BookingConfirmed` is published and the payout ledger is
   byte-for-byte unchanged. *Pinned by:*
   `AdminMailDeliveryIT.resendDrivesNoOtherBookingConfirmedConsumer`
-- [ ] **AC-5:** Given a resend whose transport fails, when the admin presses the button, then the
+- [x] **AC-5:** Given a resend whose transport fails, when the admin presses the button, then the
   response reports `TRANSPORT_FAILED`, an attempt row records it, and no exception escapes to the
   client. *Pinned by:* `BookingConfirmationResendServiceTest.reportsAndRecordsATransportFailure`
-- [ ] **AC-6:** Given a signed-in operator without the platform-admin role, when it calls either
+- [x] **AC-6:** Given a signed-in operator without the platform-admin role, when it calls either
   endpoint, then the platform answers `403`; anonymous gets `401`. *Pinned by:*
   `AdminMailDeliveryControllerTest.aNonAdminOperatorIsForbiddenAndNeverReachesEitherPort` + `.anAnonymousRequestIsUnauthorizedAndNeverReachesEitherPort`
-- [ ] **AC-7:** Given an email address with no bookings (or an unknown address), when an admin looks
+- [x] **AC-7:** Given an email address with no bookings (or an unknown address), when an admin looks
   it up, then the platform answers `200` with an empty list — never a 404 and never a different
   latency or shape for "address unknown" vs "address known with no bookings". *Pinned by:*
   `AdminMailDeliveryIT.answersAnEmptyListForAnAddressWithNoBookings`
-- [ ] **AC-8:** Given any lookup or resend response, when it is serialised, then it carries no
+- [x] **AC-8:** Given any lookup or resend response, when it is serialised, then it carries no
   booking code and no arrival credential anywhere (invariant #7), and the attempt table holds no
   email address (ADR-0010 erasure reach). *Pinned by:*
   `AdminMailDeliveryIT.neverRendersTheArrivalCode` + `AdminMailDeliveryControllerTest.neverRendersTheArrivalCodeOrTheRecipientAddress` + `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode`
-- [ ] **AC-9:** Given an admin on `/admin/email`, when they enter an address and press Look up, then
+- [x] **AC-9:** Given an admin on `/admin/email`, when they enter an address and press Look up, then
   the page lists each booking with its attempt history and a Resend button, and reports the resend
   outcome in an `aria-live` region. *Pinned by:* `admin-mail-delivery.spec.ts` +
   `admin-mail-delivery.e2e.ts` (CI-safe mocked suite)
-- [ ] **AC-10:** Given the new surface, when axe runs over the loaded card and over its populated
+- [x] **AC-10:** Given the new surface, when axe runs over the loaded card and over its populated
   results state, then there are no serious violations. *Pinned by:*
   `admin-mail-delivery.a11y.spec.ts` + `expectNoSeriousAxeViolations` in the e2e spec.
 
@@ -161,29 +161,31 @@ exists to catch.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Recording the attempt **after** a successful send: if the insert fails, rethrowing would leave the publication outstanding and duplicate the mail on retry | med | med | The record is best-effort *relative to the send it describes*: `ConfirmationMailAttempts` failures are caught, logged at `WARN` and swallowed **at the recording call site only** — never around the send. The view then reads "no attempts recorded", which is honest. Pinned by `ConfirmationAttemptRecorderTest.absorbsAFailedWriteRatherThanFailingTheSendThatAlreadyHappened` | agent | open |
-| R-2 | The attempt insert runs on the registry-mail worker, which holds **no transaction** (#371 deliberately dropped `REQUIRES_NEW`) | high | low | That is the property that makes a `TRANSPORT_FAILED` row survive the rethrow: the insert auto-commits before the exception propagates. Asserted, not assumed, by `BookingConfirmationMailListenerTest.recordsTheFailedAttemptAndStillRethrows` | agent | open |
-| R-3 | A resend re-drives `payout` (invariant #9) or Stripe (invariant #8) | low | high | The resend publishes **nothing** — it calls the send chokepoint directly, so there is no `BookingConfirmed` for `payout`'s accrual or `booking`'s refund listener to consume. AC-4 pins it at integration level (ledger row count unchanged + `PublishedEvents` empty) | agent | open |
-| R-4 | Synchronous SMTP on an admin request thread wedges a Tomcat thread | low | med | Bounded by `riviera.notification.mail.socket-timeout-ms` (#410), which every `spring.mail.properties.mail.smtp.*` timeout interpolates. One admin, one press; the money-path bulkhead (#383) is untouched because this never runs on `applicationTaskExecutor` | agent | open |
-| R-5 | Flyway **V36** collides with a parallel slice | low | high | V36 verified free on `main` and unclaimed by every open PR (only dependabot PRs are open, none touching `db/migration`). If a parallel slice merges first, **this branch renumbers** (default: whoever merges second) and re-runs `--tests "*Migration*"` | agent | open |
-| R-6 | A `mail_kind` column populated with one value reads as "no cancellation mail was sent" when the truth is "cancellation mail was never recorded" | med | med | Table named `booking_confirmation_mail_attempt`; **no** kind column. A later slice that records another kind generalises the table *in the same slice as its write site*, so absence never lies. Recorded in Non-goals | agent | open |
-| R-7 | The lookup becomes an address-enumeration oracle | low | med | ADMIN-gated (a role that can already read the operator list), and the response is identical in shape and status for "unknown address" and "known address, no bookings" — AC-7. The address is the *input*, so nothing is disclosed that the caller did not supply | agent | open |
-| R-8 | PII in URLs: an address in a query string or path lands in access, proxy and browser-history logs | high | med | Both endpoints are `POST` with a JSON body; the address never appears in a path or query. The resend path segment carries the numeric `bookingId`, not the code | agent | open |
-| R-9 | Erasure interaction: a scrubbed (tombstoned) guest contact must not resurrect an address | low | med | The lookup resolves an address to a `CustomerId` through `customer::api` only; ADR-0010 pseudonymises in place, so a scrubbed address simply stops matching and the lookup returns empty. The attempt table stores **no** address, so it needs no erasure reach — pinned by `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode` | agent | open |
-| R-10 | The new `customer` by-email read is confused with `CustomerDirectory.findOrCreate`, which **writes** — a support search would create guest-contact rows | med | high | The new method lands on `CustomerLookup` (the read-only conversation) and is `Optional`-returning; `findOrCreate` is not called anywhere in this slice. Pinned by `JdbcCustomerLookupIT.doesNotCreateAContactForAnUnknownAddress` | agent | open |
-| R-11 | Error-contract drift: a per-controller `{"error": …}` body instead of RFC-7807 | low | low | Both endpoints return `200` with a typed outcome token for every expected flow (the #405 controller's precedent); anything genuinely thrown becomes `ProblemDetail` via the single `ApiErrorHandler`. No `@ExceptionHandler` is added (`ErrorContractArchitectureTests`) | agent | open |
+| R-1 | Recording the attempt **after** a successful send: if the insert fails, rethrowing would leave the publication outstanding and duplicate the mail on retry | med | med | The record is best-effort *relative to the send it describes*: `ConfirmationMailAttempts` failures are caught, logged at `WARN` and swallowed **at the recording call site only** — never around the send. The view then reads "no attempts recorded", which is honest. Pinned by `ConfirmationAttemptRecorderTest.absorbsAFailedWriteRatherThanFailingTheSendThatAlreadyHappened` | agent | closed — held. `ConfirmationAttemptRecorder` swallows a failed write (`DataAccessException` only) and the send is never wrapped; `ConfirmationAttemptRecorderTest` pins both halves, including that a programming error is *not* absorbed. |
+| R-2 | The attempt insert runs on the registry-mail worker, which holds **no transaction** (#371 deliberately dropped `REQUIRES_NEW`) | high | low | That is the property that makes a `TRANSPORT_FAILED` row survive the rethrow: the insert auto-commits before the exception propagates. Asserted, not assumed, by `BookingConfirmationMailListenerTest.recordsTheFailedAttemptAndStillRethrows` | agent | closed — held, and asserted rather than assumed: `BookingConfirmationMailListenerTest.recordsTheFailedAttemptAndStillRethrows`. |
+| R-3 | A resend re-drives `payout` (invariant #9) or Stripe (invariant #8) | low | high | The resend publishes **nothing** — it calls the send chokepoint directly, so there is no `BookingConfirmed` for `payout`'s accrual or `booking`'s refund listener to consume. AC-4 pins it at integration level (ledger row count unchanged + `PublishedEvents` empty) | agent | closed — structurally impossible (nothing is published) and pinned end-to-end by `AdminMailDeliveryIT.resendDrivesNoOtherBookingConfirmedConsumer`: ledger row count and registry publication count both unchanged. |
+| R-4 | Synchronous SMTP on an admin request thread wedges a Tomcat thread | low | med | Bounded by `riviera.notification.mail.socket-timeout-ms` (#410), which every `spring.mail.properties.mail.smtp.*` timeout interpolates. One admin, one press; the money-path bulkhead (#383) is untouched because this never runs on `applicationTaskExecutor` | agent | closed — unchanged posture; the send stays bounded by the relay socket budget and never runs on `applicationTaskExecutor`. ADR-0011's Consequences now scope the request-thread ban to the anonymous flows it was written for (review F-9). |
+| R-5 | Flyway **V36** collides with a parallel slice | low | high | V36 verified free on `main` and unclaimed by every open PR (only dependabot PRs are open, none touching `db/migration`). If a parallel slice merges first, **this branch renumbers** (default: whoever merges second) and re-runs `--tests "*Migration*"` | agent | closed — V36 was still free at merge; no parallel migration landed, so no renumber was needed. |
+| R-6 | A `mail_kind` column populated with one value reads as "no cancellation mail was sent" when the truth is "cancellation mail was never recorded" | med | med | Table named `booking_confirmation_mail_attempt`; **no** kind column. A later slice that records another kind generalises the table *in the same slice as its write site*, so absence never lies. Recorded in Non-goals | agent | closed — shipped without a `mail_kind` column; the rationale is in V36's header and in Non-goals. |
+| R-7 | The lookup becomes an address-enumeration oracle | low | med | ADMIN-gated (a role that can already read the operator list), and the response is identical in shape and status for "unknown address" and "known address, no bookings" — AC-7. The address is the *input*, so nothing is disclosed that the caller did not supply | agent | closed — the two empty answers are byte-identical, pinned by `MailDeliveryLookupServiceTest.answersTheSameEmptyListForAKnownAddressWithNoBookings` alongside its unknown-address twin. |
+| R-8 | PII in URLs: an address in a query string or path lands in access, proxy and browser-history logs | high | med | Both endpoints are `POST` with a JSON body; the address never appears in a path or query. The resend path segment carries the numeric `bookingId`, not the code | agent | closed — both endpoints are `POST` with a JSON body; no address reaches a path or query string. |
+| R-9 | Erasure interaction: a scrubbed (tombstoned) guest contact must not resurrect an address | low | med | The lookup resolves an address to a `CustomerId` through `customer::api` only; ADR-0010 pseudonymises in place, so a scrubbed address simply stops matching and the lookup returns empty. The attempt table stores **no** address, so it needs no erasure reach — pinned by `ConfirmationMailAttemptsIT.storesNoRecipientAddressOrArrivalCode` | agent | closed — the attempt table's column list is asserted against `information_schema`, so it cannot acquire an address column unnoticed. |
+| R-10 | The new `customer` by-email read is confused with `CustomerDirectory.findOrCreate`, which **writes** — a support search would create guest-contact rows | med | high | The new method lands on `CustomerLookup` (the read-only conversation) and is `Optional`-returning; `findOrCreate` is not called anywhere in this slice. Pinned by `JdbcCustomerLookupIT.doesNotCreateAContactForAnUnknownAddress` | agent | closed — `findByEmail` landed on the read-only `CustomerLookup`; `CustomerDirectoryIT.createsNothingForAnAddressNobodyBookedWith` asserts the customer count is unchanged, not merely that the answer is empty. |
+| R-11 | Error-contract drift: a per-controller `{"error": …}` body instead of RFC-7807 | low | low | Both endpoints return `200` with a typed outcome token for every expected flow (the #405 controller's precedent); anything genuinely thrown becomes `ProblemDetail` via the single `ApiErrorHandler`. No `@ExceptionHandler` is added (`ErrorContractArchitectureTests`) | agent | closed — every expected outcome is `200` with a token; the one `400` is RFC-7807 from `ApiProblem`, and `ErrorContractArchitectureTests` stays green. |
 
 ## Open questions / Assumptions
 
-- **Assumption:** an admin phoning with a tourist is holding the address the booking was made
-  with — the same address the confirmation was sent to (`booking.customer_id` → guest contact).
-  A tourist who books under one address and asks about another is out of reach of this view.
-  *Owner:* agent · *Resolves by:* accepted, documented in the endpoint Javadoc.
-- **Assumption:** bookings per address are few enough that an uncapped list is fine; the read is
-  ordered newest-first and capped at **20** bookings defensively. *Owner:* agent · *Resolves by:*
-  phase 2.
+**None open.** Both assumptions were verified during the build and moved below.
 
 ### Resolved
+
+- **Assumption (verified):** the address a support call quotes is the one the booking was made with —
+  `booking.customer_id` is the guest contact the confirmation was addressed to, so the lookup key and
+  the delivery target are the same fact by construction. A tourist asking about a *different* address
+  than they booked with remains out of this view's reach, which is correct rather than a gap.
+- **Assumption (resolved by capping):** bookings per address are few — shipped with a hard 20-booking
+  cap, newest first, so the read is bounded regardless. Pinned by
+  `JdbcCustomerBookingsIT.capsTheListAtTwentyKeepingTheNewest`.
 
 - **Which key does the admin look up by?** → **Email address**, not the arrival code. Anyone able
   to quote the code can also quote their address; the reverse is false, and delivery debugging is
@@ -327,10 +329,10 @@ component/service and one-line-or-none inline comments (RV-STYLE-1). The card se
 > it (plus the current `riviera-sdlc` stage reference) before acting. Update it in the SAME commit
 > window as the change it records.
 
-**Stage pointer:** `PR ready-for-review — review gate next`
+**Stage pointer:** `DONE — merged via PR #449`
 
-**Next action:** Mark PR #449 ready for review, then run the review gate (`references/pr-gates.md`
-§1 invocation ladder + `riviera-review-overlay`), then the Sonar gate, then merge close-out.
+**Next action:** None — the slice is complete. Merged via **PR #449**; the post-merge remainder is
+GitHub-only (close #380, tick epic #367's sub-issue).
 
 **Issue drift to record on #380 before implementation ends:** AC 1 becomes "look up by the tourist's
 email address"; AC 5's "the recipient address is read live via `customer::api`" becomes "the address
@@ -346,7 +348,7 @@ different mechanics. The issue's two implementation notes (JSON expression index
 | 3 — Resend service + ADMIN lookup/resend endpoints | ✅ | `ca4302e` |
 | 4 — Frontend card, service, unit + a11y specs | ✅ | `70b8dea` |
 | 5 — Playwright mocked e2e | ✅ | `bc08591` |
-| 6 — Substrate docs + close-out | ✅ | `10e22ef` |
+| 6 — Substrate docs + close-out (+ review-fix rounds) | ✅ | `10e22ef` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -416,7 +418,7 @@ touches *before* editing).
 **Files:** Create the migration, the port, the four value types, the JDBC adapter · Test
 `platform/src/test/java/…/notification/adapter/out/ConfirmationMailAttemptsIT.java`
 
-- [ ] **Step 1: Write the failing test** (Testcontainers, `@EnabledIfDockerAvailable` like
+- [x] **Step 1: Write the failing test** (Testcontainers, `@EnabledIfDockerAvailable` like
       `EmailSuppressionIT`)
 
 ```java
@@ -454,12 +456,12 @@ void rejectsAnAttemptForANonExistentBooking() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ConfirmationMailAttemptsIT*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ConfirmationMailAttemptsIT*"`
       → FAIL (`relation "booking_confirmation_mail_attempt" does not exist`)
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — the migration first:
+- [x] **Step 3: Minimal implementation** — the migration first:
 
 ```sql
 -- V36: what the platform actually DID about each booking-confirmation mail, recorded at send time.
@@ -501,12 +503,12 @@ Then `ConfirmationMailAttempts` (port), the three token types with their SQL tok
 constants, `MailAttempt`, and the package-private `JdbcConfirmationMailAttempts` using `JdbcClient`
 with a text-block `INSERT`/`SELECT … WHERE booking_id IN (:ids) ORDER BY attempted_at DESC`.
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*ConfirmationMailAttemptsIT*"` → PASS
-- [ ] **Step 5: Generalization-audit pass** — search for other state tokens whose Java/SQL lockstep
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*ConfirmationMailAttemptsIT*"` → PASS
+- [x] **Step 5: Generalization-audit pass** — search for other state tokens whose Java/SQL lockstep
       this slice should match (`grep -rn "CHECK (.* IN (" src/main/resources/db/migration`); decide
       and log.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#380): record every booking-confirmation mail attempt (V36)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window. **Push and open the
+- [x] **Step 6: Commit** — `git commit -m "feat(#380): record every booking-confirmation mail attempt (V36)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window. **Push and open the
       draft PR now** — CI fires on `pull_request` only, so the branch gets no CI until the draft exists
       (#417).
 
@@ -517,7 +519,7 @@ with a text-block `INSERT`/`SELECT … WHERE booking_id IN (:ids) ORDER BY attem
 **Files:** Modify `TransactionalMailService`, `BookingConfirmationMailListener` · Test
 `TransactionalMailServiceTest`, `BookingConfirmationMailListenerTest`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 // TransactionalMailServiceTest
@@ -571,22 +573,22 @@ void recordsAnAbandonedAttemptWhenAFactIsMissing() {
 }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `./gradlew test --tests "*TransactionalMailServiceTest*" --tests "*BookingConfirmationMailListenerTest*"`
       → FAIL (compile: `void` cannot be converted, `attempts` unknown)
-- [ ] **Step 3: Minimal implementation** — `sendBookingConfirmation` returns
+- [x] **Step 3: Minimal implementation** — `sendBookingConfirmation` returns
       `ConfirmationSendOutcome` (suppressed branch `WITHHELD_SUPPRESSED`, otherwise `SENT`; the
       transport failure still propagates untouched). The listener records each branch, and its
       recording call is wrapped so a recording failure is logged at `WARN` and swallowed **there
       only** — never around the send. The existing `MAIL_CONFIRMATION_ABANDONED` counter and its
       `ERROR` line stay exactly as #428 shipped them; the record is additive.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; then the module's package:
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; then the module's package:
       `./gradlew test --tests "ai.riviera.platform.notification.*"`
-- [ ] **Step 5: Generalization-audit pass** — the two sibling registry listeners (#374 cancellation,
+- [x] **Step 5: Generalization-audit pass** — the two sibling registry listeners (#374 cancellation,
       #373 payment-due) discard the same outcome. Decision: **skip by design** (Non-goals, R-6) —
       log the search and the reason.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#380): record the automatic confirmation-mail attempt with its real outcome"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "feat(#380): record the automatic confirmation-mail attempt with its real outcome"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -597,7 +599,7 @@ adapter · Create `CustomerBookings`, `JdbcCustomerBookings`, `BookingConfirmati
 `CustomerBookingSummary` · Test `JdbcBookingNotificationFactsIT`, `JdbcCustomerBookingsIT`,
 `JdbcCustomerLookupIT`, `ModularityTests`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 // JdbcBookingNotificationFactsIT
@@ -645,18 +647,18 @@ void listsTheCustomersBookingsNewestFirstCappedAtTwenty() {
 }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `./gradlew test --tests "*JdbcBookingNotificationFactsIT*" --tests "*JdbcCustomerLookupIT*" --tests "*JdbcCustomerBookingsIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — the two `booking` reads (text-block SQL, `Optional`/`List`
+- [x] **Step 3: Minimal implementation** — the two `booking` reads (text-block SQL, `Optional`/`List`
       returns, `LIMIT 20`) and `CustomerLookup#findByEmail` canonicalising through
       `customer.vocabulary.Emails` inside the adapter. New published types land in
       `booking/vocabulary/` per the kind rule (records, not ports).
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS, then the structural net:
+- [x] **Step 4: Run it, verify it passes** — same command → PASS, then the structural net:
       `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*VenueApiRoleSplitTests*"`
-- [ ] **Step 5: Generalization-audit pass** — check whether any existing caller re-derives what
+- [x] **Step 5: Generalization-audit pass** — check whether any existing caller re-derives what
       `confirmationFacts` now returns; log findings.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#380): publish the reads a mail-delivery view needs"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "feat(#380): publish the reads a mail-delivery view needs"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -666,7 +668,7 @@ void listsTheCustomersBookingsNewestFirstCappedAtTwenty() {
 `MailDeliveryView`, `AdminMailDeliveryController` · Modify `SecurityConfig` · Test
 `BookingConfirmationResendServiceTest`, `MailDeliveryLookupServiceTest`, `AdminMailDeliveryIT`
 
-- [ ] **Step 1: Write the failing tests** — unit-level for the service outcomes, integration for the
+- [x] **Step 1: Write the failing tests** — unit-level for the service outcomes, integration for the
       endpoints (the `AdminMailOutboxIT`/`OperatorLifecycleIT` harness shape):
 
 ```java
@@ -722,18 +724,18 @@ void deniesANonAdminOperator() {                                             // 
 }
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `./gradlew test --tests "*BookingConfirmationResendServiceTest*" --tests "*AdminMailDeliveryIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — the resend service (facts → `BookingMailFactsService.resolve`
+- [x] **Step 3: Minimal implementation** — the resend service (facts → `BookingMailFactsService.resolve`
       → chokepoint → record → typed `ResendOutcome`), the lookup service (address → `CustomerId` →
       bookings → attach attempts + venue names), the controller with `record` request/response DTOs
       and `200` for every expected outcome, and the two ADMIN-gated paths in `SecurityConfig`.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS, then
+- [x] **Step 4: Run it, verify it passes** — same command → PASS, then
       `./gradlew test --tests "ai.riviera.platform.notification.*" --tests "*SecurityConfig*" --tests "*ErrorContractArchitectureTests*"`
-- [ ] **Step 5: Generalization-audit pass** — compare the two admin controllers' outcome-reporting
+- [x] **Step 5: Generalization-audit pass** — compare the two admin controllers' outcome-reporting
       shape; keep them consistent or record the deviation.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#380): admin mail-delivery lookup and one-click confirmation resend"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "feat(#380): admin mail-delivery lookup and one-click confirmation resend"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -743,22 +745,22 @@ void deniesANonAdminOperator() {                                             // 
 `admin-mail-delivery.spec.ts`, `admin-mail-delivery.a11y.spec.ts` · Modify `admin.model.ts`,
 `admin-mail-outbox.ts`
 
-- [ ] **Step 0: Re-run the Skill-routing gate** — load `angular-developer` + the angular-cli MCP
+- [x] **Step 0: Re-run the Skill-routing gate** — load `angular-developer` + the angular-cli MCP
       (`get_best_practices`, and `search_documentation` for Signal Forms in v22) and
       `riviera-tailwind`; append both to *Skills consulted* with what they changed.
-- [ ] **Step 1: Write the failing specs** — lookup renders a booking with its attempts; empty state
+- [x] **Step 1: Write the failing specs** — lookup renders a booking with its attempts; empty state
       reads "no attempts recorded" distinctly from "no bookings"; resend button reports the outcome
       into the `aria-live` region and refreshes that booking's attempts; a rejected request shows an
       error without wiping the results; axe clean in the loaded and populated states.
-- [ ] **Step 2: Run them, verify they fail** — `cd frontend && npx vitest run src/app/admin` → FAIL
-- [ ] **Step 3: Minimal implementation** — Signal Forms email field, the `@Service()` client, the card
+- [x] **Step 2: Run them, verify they fail** — `cd frontend && npx vitest run src/app/admin` → FAIL
+- [x] **Step 3: Minimal implementation** — Signal Forms email field, the `@Service()` client, the card
       rendered under the outbox card on `/admin/email`, Tailwind tokens only (`--riv-card-*`), dates
       formatted in `Europe/Tirane`.
-- [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/admin && npm run lint`
-- [ ] **Step 5: Generalization-audit pass** — check the outbox card's notice/`aria-live` pattern is
+- [x] **Step 4: Run it, verify it passes** — `npx vitest run src/app/admin && npm run lint`
+- [x] **Step 5: Generalization-audit pass** — check the outbox card's notice/`aria-live` pattern is
       reused rather than re-invented; log.
-- [ ] **Step 6: Commit** — `git commit -m "feat(#380): mail-delivery lookup and resend on the admin Email tab"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "feat(#380): mail-delivery lookup and resend on the admin Email tab"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -766,35 +768,35 @@ void deniesANonAdminOperator() {                                             // 
 
 **Files:** Create `frontend/e2e/admin-mail-delivery.e2e.ts`
 
-- [ ] **Step 0: Re-run the Skill-routing gate** — load `playwright-cli`; consult
+- [x] **Step 0: Re-run the Skill-routing gate** — load `playwright-cli`; consult
       `riviera-review-overlay` RV-FE-E2E for suite placement (this spec is **mocked**, in
       `frontend/e2e/`, never `real-backend/`).
-- [ ] **Step 1: Write the failing spec** — admin signs in (existing `auth-mocks.ts` helpers), routes
+- [x] **Step 1: Write the failing spec** — admin signs in (existing `auth-mocks.ts` helpers), routes
       `POST **/api/admin/mail-deliveries/lookup` and `**/resend`, asserts the history renders newest
       first, the resend reports `SENT`, a `WITHHELD_SUPPRESSED` response renders as a withheld
       notice rather than an error, and `expectNoSeriousAxeViolations` passes on the populated card.
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- admin-mail-delivery` → FAIL
-- [ ] **Step 3: Minimal implementation** — adjust test ids/roles as the spec demands; no production
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- admin-mail-delivery` → FAIL
+- [x] **Step 3: Minimal implementation** — adjust test ids/roles as the spec demands; no production
       logic should be needed here.
-- [ ] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y` (whole mocked suite — it is CI's)
-- [ ] **Step 5: Generalization-audit pass** — n/a unless the spec exposes a defect; then log it.
-- [ ] **Step 6: Commit** — `git commit -m "test(#380): e2e the admin mail-delivery view and resend"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y` (whole mocked suite — it is CI's)
+- [x] **Step 5: Generalization-audit pass** — n/a unless the spec exposes a defect; then log it.
+- [x] **Step 6: Commit** — `git commit -m "test(#380): e2e the admin mail-delivery view and resend"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
 ## Phase 6 — Substrate docs + close-out
 
-- [ ] **Step 1:** `RESPONSIBILITIES.md` — `notification` gains the attempt record + the admin
+- [x] **Step 1:** `RESPONSIBILITIES.md` — `notification` gains the attempt record + the admin
       lookup/resend; `booking` gains the two published reads; `customer` gains the by-email read.
-- [ ] **Step 2:** `CLAUDE.md` — the `notification` module row records the attempt table and *why it is
+- [x] **Step 2:** `CLAUDE.md` — the `notification` module row records the attempt table and *why it is
       not the registry*; the `booking` row records the new published reads.
-- [ ] **Step 3:** `docs/adr/ADR-0011` — a note under decision 5: an admin resend is a **second
+- [x] **Step 3:** `docs/adr/ADR-0011` — a note under decision 5: an admin resend is a **second
       trigger** for an existing mail, sent synchronously on the request thread with the outcome
       reported, and is therefore not a third vehicle.
-- [ ] **Step 4:** Load `riviera-docs-freshness` and audit the slice's own range.
-- [ ] **Step 5:** Comment the AC-1/AC-5 rewording on issue #380 (see Execution status → issue drift).
-- [ ] **Step 6:** Finalise Execution status **in this PR's last commit** — stage pointer `DONE`, every
+- [x] **Step 4:** Load `riviera-docs-freshness` and audit the slice's own range.
+- [x] **Step 5:** Comment the AC-1/AC-5 rewording on issue #380 (see Execution status → issue drift).
+- [x] **Step 6:** Finalise Execution status **in this PR's last commit** — stage pointer `DONE`, every
       phase ✅ with its commit, risks closed, Open Questions empty, `merged via PR #NN` (the PR number,
       never a merge SHA).
 
@@ -831,46 +833,46 @@ untouched. No `riviera-*` skill cites a file or method this slice renamed — th
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `./gradlew test --tests "*BookingConfirmationMailListenerTest*"` → PASS. Commit `<sha>`.
-- [ ] **AC-3:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → PASS. Commit `<sha>`.
-- [ ] **AC-4:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → ledger count unchanged, no
-      `BookingConfirmed`. Commit `<sha>`.
-- [ ] **AC-5:** `./gradlew test --tests "*BookingConfirmationResendServiceTest*"` → PASS. Commit `<sha>`.
-- [ ] **AC-6:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → 403/401. Commit `<sha>`.
-- [ ] **AC-7:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → `200` + empty list. Commit `<sha>`.
-- [ ] **AC-8:** `./gradlew test --tests "*AdminMailDeliveryIT*" --tests "*ConfirmationMailAttemptsIT*"` → PASS. Commit `<sha>`.
-- [ ] **AC-9:** `npx vitest run src/app/admin && npm run test:e2e:a11y` → PASS. Commit `<sha>`.
-- [ ] **AC-10:** `npm run test:a11y && npm run test:e2e:a11y` → no serious violations. Commit `<sha>`.
+- [x] **AC-1:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → PASS. Verified on the PR's CI run.
+- [x] **AC-2:** `./gradlew test --tests "*BookingConfirmationMailListenerTest*"` → PASS. Verified on the PR's CI run.
+- [x] **AC-3:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → PASS. Verified on the PR's CI run.
+- [x] **AC-4:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → ledger count unchanged, no
+      `BookingConfirmed`. Verified on the PR's CI run.
+- [x] **AC-5:** `./gradlew test --tests "*BookingConfirmationResendServiceTest*"` → PASS. Verified on the PR's CI run.
+- [x] **AC-6:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → 403/401. Verified on the PR's CI run.
+- [x] **AC-7:** `./gradlew test --tests "*AdminMailDeliveryIT*"` → `200` + empty list. Verified on the PR's CI run.
+- [x] **AC-8:** `./gradlew test --tests "*AdminMailDeliveryIT*" --tests "*ConfirmationMailAttemptsIT*"` → PASS. Verified on the PR's CI run.
+- [x] **AC-9:** `npx vitest run src/app/admin && npm run test:e2e:a11y` → PASS. Verified on the PR's CI run.
+- [x] **AC-10:** `npm run test:a11y && npm run test:e2e:a11y` → no serious violations. Verified on the PR's CI run.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified: no write path, no read of the table); no
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (N/A justified: no write path, no read of the table); no
       concurrency test needed and the reason is written down (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; the three new
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; the three new
       reads are inbound `api/` ports with published types in the right surface by kind (invariant #11);
       `allowedDependencies` needed no widening.
-- [ ] **Payment/payout** section filled (N/A justified) and AC-4 proves the resend re-drives neither
+- [x] **Payment/payout** section filled (N/A justified) and AC-4 proves the resend re-drives neither
       (invariants #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: `attempted_at` stored as UTC `TIMESTAMPTZ`, rendered in `Europe/Tirane`
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: `attempted_at` stored as UTC `TIMESTAMPTZ`, rendered in `Europe/Tirane`
       (invariant #6).
-- [ ] Booking codes never rendered, logged, or stored by this slice (invariant #7) — AC-8.
-- [ ] Flyway **V36** present, its `CHECK`s and FK tested (invariant #12); number still unclaimed at
+- [x] Booking codes never rendered, logged, or stored by this slice (invariant #7) — AC-8.
+- [x] Flyway **V36** present, its `CHECK`s and FK tested (invariant #12); number still unclaimed at
       merge time.
-- [ ] **Frontend** standards met (Signal Forms, signals, no `ngClass`/`ngStyle`, Tailwind tokens) and
+- [x] **Frontend** standards met (Signal Forms, signals, no `ngClass`/`ngStyle`, Tailwind tokens) and
       no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 invocation ladder *plus*
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — the `references/pr-gates.md` §1 invocation ladder *plus*
       `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
