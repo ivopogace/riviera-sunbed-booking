@@ -27,7 +27,8 @@ seeds `customer` / `booking` rows with `JdbcClient`, exactly as `RegistryMailBul
 - `riviera-java-conventions` — §9 tests (Testcontainers for DB behaviour, AssertJ matching the surrounding class), §6a named literals, §6c one-line-or-none comments with the prose in Javadoc.
 - `riviera-modulith` (`references/testing.md`) — full `@SpringBootTest` + `@Import(TestcontainersConfiguration)` + `@EnabledIfDockerAvailable` is the right harness here (not `@ApplicationModuleTest`): the subject spans the listener, the executor bean and the framework-owned registry.
 - `riviera-local-debug` — scoped-test recipe (system `gradle`, JDK-25 toolchain, one IT class at a time); CI owns the full suite. Also the mid-session `dockerd` restart (`scripts/start-dockerd.sh`) after the daemon dropped and a run skipped clean.
-- `riviera-review-overlay` + the inline `/review` engine — the review gate (degraded: no subagent fan-out, see F-3); produced F-1 and F-2.
+- `riviera-review-overlay` + the inline `/review` engine — the first review pass; produced F-1 and F-2.
+- `code-review` (the plugin's full subagent fan-out, run once authorised) — the review gate's strongest rung; no finding reached the 80-confidence bar, and it produced F-5 and F-6.
 - `postgres` — **not loaded**: no migration, no schema change, no new query shape beyond the `event_publication` read the sibling IT already performs.
 
 **Branch:** `claude/sdlc-407-d73ev9` — the cloud session's designated remote branch, standing in for
@@ -159,10 +160,10 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `merge close-out — written pre-merge; merged via PR #432`
+**Stage pointer:** `all gates green (CI + full review gate + Sonar) — awaiting the merge`
 
-**Next action:** none in the repo. Post-merge, GitHub-only: confirm #407 closed and link it under
-epic #367. The review gate's strongest rung (F-3) stays declared-and-unticked on the PR.
+**Next action:** merge PR #432. Post-merge, GitHub-only: confirm #407 closed and link it under
+epic #367.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -170,7 +171,8 @@ epic #367. The review gate's strongest rung (F-3) stays declared-and-unticked on
 | 1 — Shared test fixtures extracted from `RegistryMailBulkheadIT` | ✅ | `fa519c8` |
 | 2 — `RegistryMailShedDurabilityIT` (red → green) | ✅ | `3e783be` |
 | 3 — Repeat-run verification (AC-4) | ✅ | `596c5f0` |
-| 4 — Review round (F-1, F-2) + close-out | ✅ | `5397664` + this commit |
+| 4 — Review round (F-1, F-2) + close-out | ✅ | `5397664`, `af177e2` |
+| 5 — `/code-review` fan-out over the final diff (F-3 closed; F-5, F-6) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -180,7 +182,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | review (inline `/review` + overlay) | The shared `ConfirmationMailFixtures` still seeded its guest as `'Bulkhead Guest'` — the name of only one of its two consumers | fixed (this commit) |
 | F-2 | review (self, AC-4 evidence) | The plan and PR asserted "own context ⇒ own container/database" as the isolation mechanism without ever observing it | fixed (this commit) — two concurrent `postgres:17` containers observed during a combined run; recorded under AC-4 |
-| F-3 | review (process) | The `/code-review` subagent fan-out — the gate's strongest rung — could not run: this session is instructed not to launch agents unasked, and the authorisation request went unanswered | **open by design** — declared in the PR body and in the review comment, checkbox left unticked; re-runnable on request |
+| F-3 | review (process) | The `/code-review` subagent fan-out — the gate's strongest rung — could not run: this session is instructed not to launch agents unasked, and the authorisation request went unanswered | **closed** — the human authorised it; the full workflow ran (eligibility + CLAUDE.md map + summary, 5 parallel reviewers, confidence scoring). The gate is complete and its checkbox is now ticked |
+| F-5 | review (`/code-review` fan-out, bug-scan reviewer) | The shed-counter delta is asserted immediately while every other cross-thread step awaits observable state — scored **60**, below the workflow's 80 bar, so not a reported finding. It did expose a contradiction in this class's own Javadoc, which claimed "nothing here is timed" without naming the one deliberate exception | fixed (this commit) — the immediacy is the claim (an `AFTER_COMMIT` dispatch is rejected on the committing thread); awaiting it would quietly stop asserting that, so the prose was corrected rather than the assertion |
+| F-6 | review (`/code-review` fan-out, comment-compliance reviewer) | `ControllableMailer`'s Javadoc said the extraction was "unchanged" when visibility had widened to cross the package boundary — sub-threshold, but false as written | fixed (this commit) |
 | F-4 | sonar gate | None. Quality gate passed **and** the API-reported list is empty (`total: 0`; 0 new bugs / vulnerabilities / smells; 0 duplicated blocks) against a `success` analysis check-run | n/a |
 
 ---
@@ -310,8 +314,9 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — **left unticked deliberately.** The overlay ran and the
-      inline `/review` engine walked the diff, but `/code-review`'s subagent fan-out did not: this
-      session is instructed not to launch agents without the human's say-so, and the authorisation
-      request went unanswered. Declared on the PR (finding F-3); ticking it would make the PR record
-      lie about the process that ran.
+- [x] **The review gate ran in full** — `riviera-review-overlay` plus, once the human authorised the
+      subagents, the complete `/code-review` workflow: eligibility check, CLAUDE.md map, change
+      summary, **five parallel reviewers** (CLAUDE.md compliance, bug scan, git-history context,
+      prior-PR comments, comment compliance) and per-issue confidence scoring. **Zero issues scored
+      at or above the 80 bar.** The one 60-scored observation and one sub-threshold wording nit were
+      taken anyway (F-5, F-6).

@@ -58,7 +58,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><strong>Nothing here is timed.</strong> Every step waits on observable pool state — the wedge's
  * entry into the transport, then a queue of exactly one — so the send that must be shed is published
- * only once the pool provably has nowhere to put it. Testcontainers; skipped where Docker is absent.
+ * only once the pool provably has nowhere to put it. The one deliberate exception is the shed
+ * counter, asserted <em>immediately</em> rather than awaited: its promptness is part of the claim.
+ * An {@code AFTER_COMMIT} listener is dispatched from inside {@code commit()}, so the rejection
+ * happens on the committing thread before the publish returns — the same property that makes a
+ * throwing rejection handler unacceptable. Awaiting it would quietly stop asserting that.
+ * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, ControllableMailerConfiguration.class })

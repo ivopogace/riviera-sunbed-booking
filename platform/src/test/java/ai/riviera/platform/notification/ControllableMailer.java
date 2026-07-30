@@ -21,7 +21,8 @@ import ai.riviera.platform.notification.application.Mailer;
  * is {@code RegistryMailBulkheadIT}'s AC-7 assertion.
  *
  * <p>Shared by the two ITs that drive the registry mail vehicle (extracted from the bulkhead class
- * at #407, unchanged): {@code RegistryMailBulkheadIT} wedges it to prove the money path overtakes a
+ * at #407 — behaviour identical, visibility widened to cross the package boundary):
+ * {@code RegistryMailBulkheadIT} wedges it to prove the money path overtakes a
  * hanging relay, and {@code RegistryMailShedDurabilityIT} wedges it to fill the bulkhead's pool and
  * queue so the next send is shed. One implementation rather than two near-copies, because the
  * subtleties below are the kind a second copy quietly loses.
