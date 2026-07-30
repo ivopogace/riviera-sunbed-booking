@@ -26,10 +26,29 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *       a shed mail, a shed refund is money owed under invariant #10 and its recovery is restart-only.
  *       Bounded anyway, at ≈52 minutes of worst-case backlog (500 × 25s ÷ 4), past which the Event
  *       Publication Registry is the better queue; the same reasoning #383 applied at ≈50 minutes.</li>
- *   <li><strong>{@link #DEFAULT_SHUTDOWN_DRAIN} = 30s.</strong> One full round-trip plus headroom, so a
- *       redeploy does not abandon a refund that is merely slow. Its ceiling is the platform's SIGTERM
- *       grace: a drain that outlasts it gets the process killed mid-close, which is worse than giving
- *       up cleanly.</li>
+ *   <li><strong>{@link #DEFAULT_SHUTDOWN_DRAIN} = 5s, and it is deliberately far short of one
+ *       round-trip.</strong> The instinct is to cover the full 25s so a redeploy never abandons a refund
+ *       that is merely slow; that instinct is wrong twice over, and the review gate caught it at 30s.
+ *
+ *       <p>First, <strong>the budget is shared and it stacks.</strong> This is the third pool in the
+ *       context that drains on shutdown, and pools are separate beans whose {@code destroy()} methods
+ *       {@code destroySingletons()} runs <em>sequentially on one thread</em> — so the windows add rather
+ *       than overlap. {@code MailTransportProperties} already spends 20s of Render's ~30s SIGTERM→SIGKILL
+ *       grace across its two, and says in as many words that a third pool must not push the combined
+ *       drain past it. At 30s here the total would have been 50s: the process is killed mid-close, Hikari
+ *       and the web layer never close in order, and the long drain does not even finish. 5s leaves 5s of
+ *       the grace for them, the same divide-the-budget-among-claimants logic
+ *       {@code MailTransportProperties.SHUTDOWN_BUDGET_MS} uses.
+ *
+ *       <p>Second, <strong>abandoning a refund is cheap here in a way abandoning a mail is not.</strong>
+ *       The mail pools drain long because an interrupted send cannot be retried safely — at-least-once
+ *       becomes a duplicate. A refund has no such problem: the publication stays outstanding, the next
+ *       start republishes it, and the idempotency key {@code booking-<id>-refund} makes the replay return
+ *       the original refund rather than moving money twice. So the drain only needs to catch the
+ *       <em>common</em> case, which is sub-second; the pathological 25s case is precisely the one it is
+ *       safe to give up on. The ceiling equals the default for the reason
+ *       {@code MailTransportProperties} gives for its own: at that value the drain already fills what
+ *       shutdown may afford this pool, so the knob exists to turn it <em>down</em>.</li>
  * </ul>
  *
  * <p><strong>The values that ship live in {@code application.properties}, not here.</strong> The
@@ -70,7 +89,7 @@ record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duratio
 
 	static final int DEFAULT_QUEUE_CAPACITY = 500;
 
-	static final Duration DEFAULT_SHUTDOWN_DRAIN = Duration.ofSeconds(30);
+	static final Duration DEFAULT_SHUTDOWN_DRAIN = Duration.ofSeconds(5);
 
 	/** 8× the shipped 4. Past this the pool stops being the small thing the spine's pool is protected from. */
 	static final int MAX_POOL_SIZE = 32;
@@ -78,11 +97,17 @@ record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duratio
 	/** 20× the shipped 500 — ≈17 hours of backlog at 4 × 25s, long past where the registry is the better queue. */
 	static final int MAX_QUEUE_CAPACITY = 10_000;
 
-	/** Below one round-trip the drain gives up on refunds that are merely slow, every single redeploy. */
+	/** Below a second the drain gives up on the sub-second common case, every single redeploy. */
 	static final Duration MIN_SHUTDOWN_DRAIN = Duration.ofSeconds(1);
 
-	/** Above the platform's SIGTERM grace the drain does not finish — the process is killed mid-close. */
-	static final Duration MAX_SHUTDOWN_DRAIN = Duration.ofSeconds(60);
+	/**
+	 * Equal to the default, as {@code MailTransportProperties}' own ceiling is: at this value the drain
+	 * already fills what shutdown can afford this pool once the two mail pools have taken their 20s of
+	 * Render's ~30s grace, so the knob exists to turn it <strong>down</strong>. Raising it is not a
+	 * tuning decision but a re-division of a platform-wide budget — do that where the budget is
+	 * stated, not here.
+	 */
+	static final Duration MAX_SHUTDOWN_DRAIN = DEFAULT_SHUTDOWN_DRAIN;
 
 	RefundExecutorProperties {
 		poolSize = poolSize == null ? DEFAULT_POOL_SIZE : poolSize;
@@ -106,10 +131,11 @@ record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duratio
 		if (shutdownDrain.compareTo(MIN_SHUTDOWN_DRAIN) < 0 || shutdownDrain.compareTo(MAX_SHUTDOWN_DRAIN) > 0) {
 			throw new IllegalArgumentException(
 					"riviera.booking.refund.shutdown-drain must be between " + MIN_SHUTDOWN_DRAIN + " and "
-							+ MAX_SHUTDOWN_DRAIN + ", but was " + shutdownDrain + "; it must cover one gateway "
-							+ "round-trip or every redeploy abandons refunds that were merely slow, and it "
-							+ "must stay inside the platform's SIGTERM grace or the drain never finishes — "
-							+ "the process is killed mid-close instead");
+							+ MAX_SHUTDOWN_DRAIN + ", but was " + shutdownDrain + "; below the floor every "
+							+ "redeploy abandons the sub-second common case, and above the ceiling this pool "
+							+ "overspends its share of the platform's SIGTERM grace — pools drain "
+							+ "SEQUENTIALLY at context close, so this window ADDS to the two mail pools' 20s "
+							+ "rather than overlapping it, and the process is killed mid-close instead");
 		}
 	}
 }

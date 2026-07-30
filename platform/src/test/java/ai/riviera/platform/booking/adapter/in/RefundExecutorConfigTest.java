@@ -57,16 +57,16 @@ class RefundExecutorConfigTest {
 
 	/** The shipped defaults, spelled out rather than read from the record, so a silent retune fails here. */
 	private static final RefundExecutorProperties SHIPPED =
-			new RefundExecutorProperties(4, 500, Duration.ofSeconds(30));
+			new RefundExecutorProperties(4, 500, Duration.ofSeconds(5));
 
 	/**
 	 * One worker, one queue slot — the smallest pool that can saturate, so an episode is reached in
 	 * three submissions rather than five hundred and every boundary stays deterministic.
 	 */
 	private static final RefundExecutorProperties TINY =
-			new RefundExecutorProperties(1, 1, Duration.ofSeconds(30));
+			new RefundExecutorProperties(1, 1, Duration.ofSeconds(5));
 
-	/** Short enough that a test can watch the window expire; the shipped one is thirty seconds. */
+	/** Short enough that a test can watch the window expire; the shipped one is five seconds. */
 	private static final Duration TINY_DRAIN = Duration.ofSeconds(1);
 
 	private static final int SHED_REFUNDS = 5;
@@ -263,7 +263,7 @@ class RefundExecutorConfigTest {
 	@Test
 	void drainingATaskWhileTheQueueIsStillBackedUpDoesNotEndTheEpisode() throws Exception {
 		ThreadPoolTaskExecutor pool =
-				initializedExecutor(new RefundExecutorProperties(1, 2, Duration.ofSeconds(30)));
+				initializedExecutor(new RefundExecutorProperties(1, 2, Duration.ofSeconds(5)));
 		CountDownLatch workerGate = new CountDownLatch(1);
 		CountDownLatch workerRunning = new CountDownLatch(1);
 		CountDownLatch queuedGate = new CountDownLatch(1);

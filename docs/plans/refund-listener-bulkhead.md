@@ -75,6 +75,12 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
   ADR-0009 pointer that made the vendor-neutrality scoping explicit rather than assumed.
 - `riviera-local-debug` — the cloud recipe (system `gradle`, JDK-25 toolchain registration, daemon
   on 21) and the scoped-test discipline behind every phase command below.
+- **Review-fix round (F-1…F-5), per the re-entry rule:** `riviera-java-conventions` re-applied for §6c
+  (F-1, the one-line inline-comment rule) and for the `@ConfigurationProperties` compact-constructor
+  bounds (F-4); `riviera-docs-freshness` re-applied for the runbook claim (F-2) and for the now-stale
+  *"a third **mail** pool"* sentence in `MailTransportProperties` that F-4 falsified. **No new area:**
+  every fix is backend Java or a doc already in scope — no migration, no frontend, no new module edge
+  (the mail-side edit is Javadoc only, so `notification` gains no dependency on `booking`).
 - **Not loaded, deliberately:** `postgres` (no migration, no schema, no new query — the ITs read
   `event_publication` with a `count(*)` copied from the existing bulkhead IT); `riviera-frontend` /
   `angular-developer` / `playwright-cli` (backend-only, no user-facing surface, no API shape change).
@@ -147,9 +153,13 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 - **MDC propagation onto the refund pool** (#410's `MdcTaskDecorator`). That class lives in
   `notification.application` and invariant #11 forbids importing it from `booking`; promoting it to
   `shared` is a cross-module move with its own docs cost. Today's shared pool propagates no MDC
-  either, so **this is not a regression** — the shed line itself stays attributable regardless,
-  because `ThreadPoolExecutor.execute` calls `reject(...)` on the *calling* thread, which here is the
-  thread committing the cancellation. **Filed as #455.**
+  either, so **this is not a regression** — but the review gate was right that the first version of
+  this sentence defended only half of it. Two different lines are in play: the **shed** line is
+  attributable regardless, because `ThreadPoolExecutor.execute` calls `reject(...)` on the *calling*
+  thread (the one committing the cancellation); the listener's **own** `refunded cancelled booking {}`
+  line and any gateway-failure throw run on a `booking-refund-N` worker and carry no correlation id.
+  That second half is genuinely uncovered — it is simply uncovered *today* as well, on the shared
+  pool, which is what makes it a gap rather than a regression. **Filed as #455.**
 
 ## Behavior-parity ledger
 
@@ -177,6 +187,7 @@ row dated 2026-07-28 phase 0) as the one genuine sibling it found and deliberate
 | R-4 | The pool is sized against an estimate that real gateway latency falsifies, and correcting it costs a deploy | high | med | All three bounds are `@ConfigurationProperties` with env placeholders (#408's precedent), validated at both ends (AC-8). Retuning is a config change; the P1 re-derivation is a recorded handoff, not a memory | this slice | **closed** — the queue is 500 deep against a worst realistic burst of one venue-day, the shed path is counted (`riviera.refunds.shed`) and documented in the observability runbook, and AC-4 proves the publication survives; the residual retry horizon is #454 |
 | R-5 | `riviera-java-conventions` §8 says *"don't hand-roll thread pools in application code"* | — | — | Honored, not violated: this is a Spring `ThreadPoolTaskExecutor` bean in a driving-adapter `@Configuration`, not a hand-rolled pool in a service. §8's target is `new Thread()`/`ExecutorService` inside domain or application logic, and its second clause — *"the real scaling knob is the Hikari pool"* — is precisely what phase 2 protects by dropping the connection pin | this slice | **closed** — the bean is a Spring `ThreadPoolTaskExecutor` in a driving-adapter `@Configuration`, the shape #383 established; AC-3 pins the Hikari half |
 | R-6 | Full-suite-only failure: a new `@ConfigurationProperties` bean plus a second pool changes context caching, or the shed counter accumulates across tests in one JVM | med | med | The `riviera-local-debug` shared-state rule. The counter is read per-test from a fresh `SimpleMeterRegistry` in the unit tests; the ITs assert deltas, never absolutes. Verified only by the push's CI run | this slice | **open until this push's CI** — and the class did bite once already, in-slice: `RefundBulkheadIT`'s first cut used global counters, so refunds still draining from the wedge test completed *after* the next test's `reset()` and made an exact `== 1` unsatisfiable. Fixed by keying every sample to the booking under test rather than by sleeping |
+| R-8 | **The shutdown drain overspends a budget this module cannot see.** Pool drains add rather than overlap, and the constant that tracks it (`MailTransportProperties.DRAINING_POOLS`) is mail-scoped, so nothing in the suite fails when a pool lands elsewhere | — | **critical** | **Missed at plan time; caught by the review gate** (F-4). Capped at 5s so 20 + 5 fits the ~30s grace; the mail-side Javadoc now records that a non-mail claimant exists; the structural gap — no platform-wide guard — is **#456**, since closing it needs the grace stated somewhere both modules may read | review gate | **closed** — value fixed here, guard tracked in #456 |
 | R-7 | The architecture rule (AC-9) is vacuous — it finds no listener and passes forever | med | med | Non-vacuity is a step, not a hope: proven by **fixtures** rather than the planned manual revert — `RefundListenerRuleFixtures` keeps the negative cases permanent, per #409's lesson that a temporary revert is a proof nobody can re-run | this slice | **closed** — 8 tests, incl. three independent non-vacuity checks |
 
 ## Open questions / Assumptions
@@ -297,10 +308,10 @@ server-side and env-supplied.
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review; Review + Sonar gates due next`
+**Stage pointer:** `review gate — fixing findings (F-1…F-5); re-review + re-check CI/Sonar next`
 
-**Next action:** Mark PR #453 ready for review, then run the Review gate (`references/pr-gates.md` §1)
-followed by the Sonar issue-list pull.
+**Next action:** Push the F-1…F-5 fix round, re-run the review over the changed surface, then
+re-check CI + the Sonar issue list before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -317,7 +328,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | **review gate** (reviewer 5/5, code-comment lens) | **RV-STYLE-1.** The inline comment above `setTaskDecorator` ran to two lines. Per `riviera-java-conventions` §6c the prose belongs in Javadoc, which is exempt — so it moved into `SaturationPolicy`'s Javadoc and the inline shrank to one line | fixed-in-`ffd3e09` |
+| F-2 | **review gate** (reviewer 5/5) | **A false claim in a runbook, which is worse than none.** The new `riviera.refunds.shed` note said the lever is "a restart (or a targeted resubmission)". There is no refund resubmission endpoint — `/api/admin/mail-outbox` is scoped by listener-id prefix to `notification` precisely so an admin resubmitting mail never replays money-path work. An operator would have hunted for a button that does not exist, mid-incident. Rewritten to say restart-only, and to name #454 as the follow-up | fixed-in-`ffd3e09` |
+| F-3 | **review gate** (reviewer 2/5, bug lens) | The episode flag's two writers race: the rejection handler opens it with a CAS, a worker clears it with an unconditional `set(false)` after reading the queue, so a stale read can clear a live episode and cost one extra `ERROR`. **Verified real; deliberately not fixed.** It cannot lose a count or a refund, needs `queueCapacity` (500) submissions inside a nanosecond window to reach, and is the same shape as the merged `RegistryMailExecutorConfig` — fixing one copy would diverge two deliberately-parallel implementations. Written into the Javadoc rather than left implicit | assessed → documented |
+| **F-4** | **review gate** (reviewers 3/5 **and** 4/5, independently) | **Blocker, and the real find of this review.** Pools drain **sequentially** at context close, so drain windows *add*. `MailTransportProperties` already spends 20s of Render's ~30s SIGTERM grace across two pools and says in as many words that a third must not push past it — *"increment this when one lands"*. This slice landed the third with a **30s default and a 60s ceiling**: 50s combined at defaults, 80s if tuned up, i.e. the process SIGKILLed mid-close with Hikari and the web layer torn down instead of closed in order. My own Javadoc's claim that "its ceiling is the platform's SIGTERM grace" was simply false. Capped at **5s = default = ceiling** (the mail budget's own convention), with the reasoning inverted: an abandoned refund is *safe* — outstanding publication + idempotency key — so the drain only needs the sub-second common case | fixed-in-`ffd3e09` |
+| F-5 | **review gate** (reviewer 3/5, history lens) | The MDC deferral's written justification defended only the shed line, not the listener body's own worker-thread line. The **deferral stands** (the gap predates this slice — the shared pool propagates no MDC either), but the Non-goal now says which half is uncovered instead of implying neither is | fixed-in-`ffd3e09` |
 
 ---
 

@@ -73,8 +73,14 @@ the second is the one that matters. The backlog gauge alerts at a *threshold* (d
 first shed refund — the one worth knowing about — is invisible there. And a shed is the only loss mode
 that does **not** trigger its own recovery: a crash restarts by definition and the restart republishes,
 whereas a shed happens while the process is healthy and nothing restarts it. Until someone acts, a
-tourist owed money under invariant #10 has not been paid. If you see this counter move, the lever is
-a restart (or a targeted resubmission) — not waiting.
+tourist owed money under invariant #10 has not been paid.
+
+**The lever today is a restart, and only a restart.** There is deliberately **no** admin re-drive
+endpoint for refunds — `/api/admin/mail-outbox` (#405) is scoped by listener-id prefix to
+`ai.riviera.platform.notification.` and cannot reach `booking`'s refund listener, by design, so that
+an admin resubmitting mail never replays money-path work. If this counter moves, redeploy (or restart)
+to trigger `republish-outstanding-events-on-restart`; do not go looking for a resubmit button.
+Shortening that horizon is #454.
 
 ### `riviera_mail_recovery_dropped_total` (counter, #415)
 

@@ -107,8 +107,7 @@ class RefundExecutorConfig {
 		pool.setQueueCapacity(props.queueCapacity());
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
 		pool.setRejectedExecutionHandler(saturation);
-		// The pool has ONE decorator slot: a second decorator must join this one via a
-		// CompositeTaskDecorator, never replace it, or the episode flag silently stops clearing (#410).
+		// One decorator slot, and it is taken: a second must compose, never replace — see the policy.
 		pool.setTaskDecorator(saturation);
 		pool.setWaitForTasksToCompleteOnShutdown(true);
 		pool.setAwaitTerminationMillis(props.shutdownDrain().toMillis());
@@ -130,6 +129,17 @@ class RefundExecutorConfig {
 	 * {@code WARN} because a shed refund is not merely delayed: nothing retries it until the next
 	 * restart's republish, and until then a tourist owed money under invariant #10 has not been paid.
 	 *
+	 * <p><strong>The flag's two writers race, benignly, and the review gate asked about it.</strong>
+	 * {@code rejectedExecution} opens the episode with a CAS on the submitting thread; a worker clears it
+	 * with a plain {@code set(false)} after reading the queue. A worker that reads the queue as empty and
+	 * writes after a fresh rejection has re-opened it would clear a live episode, costing one extra
+	 * {@code ERROR} line on the next shed. It cannot lose a count ({@code shed.increment()} is
+	 * unconditional and runs first) and cannot lose a refund (the publication is untouched), and reaching
+	 * it needs {@code queueCapacity} submissions inside the nanoseconds between that read and that write —
+	 * 500 at the shipped bounds. Left as-is deliberately: this is the same shape as the merged
+	 * {@code RegistryMailExecutorConfig}, and fixing it in one copy only would diverge two implementations
+	 * kept parallel on purpose.
+	 *
 	 * <p><strong>An episode ends when the queue drains, not when a task starts.</strong> Clearing the
 	 * flag on every task start would tie the log rate to the pool's <em>drain</em> rate rather than to
 	 * the incident, because under saturation each completed refund frees exactly one slot and the next
@@ -142,6 +152,13 @@ class RefundExecutorConfig {
 	 * arrives at this same handler from an <em>idle</em> pool; counting it would make every routine
 	 * redeploy raise an "any increase" alert, and escalating it would describe a gateway degradation
 	 * that never happened.
+	 *
+	 * <p><strong>This policy owns the pool's single {@code TaskDecorator} slot.</strong> A second
+	 * decorator — #410's {@code MdcTaskDecorator} is the likely one (#455) — must join it through a
+	 * {@code CompositeTaskDecorator} rather than calling {@code setTaskDecorator} again, which silently
+	 * replaces the lot: {@link #decorate} would then never run, so the episode flag would never clear
+	 * and every saturation after the first would be counted but never logged. No test would go red for
+	 * the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
 	 *
 	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both defeat the
 	 * bulkhead. The lines carry counts and a metric name only — never a booking code (invariant #7).
