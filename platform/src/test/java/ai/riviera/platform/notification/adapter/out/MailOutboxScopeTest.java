@@ -10,7 +10,7 @@ import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.core.PublicationTargetIdentifier;
 import org.springframework.modulith.events.core.TargetEventPublication;
 
-import ai.riviera.platform.notification.ConfirmationMailFixtures;
+import ai.riviera.platform.notification.BookingMailFixtures;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><strong>How the prefix is kept honest.</strong> The chain is closed in two links: this test pins
  * {@link RegistryMailOutbox#NOTIFICATION_LISTENER_PREFIX} against
- * {@link ConfirmationMailFixtures#LISTENER_ID}, and {@code RegistryMailBulkheadIT} pins that same
+ * {@link BookingMailFixtures#LISTENER_ID}, and {@code RegistryMailBulkheadIT} pins that same
  * constant against the id the live registry writes. Move the listener's package without the V31-style
  * rewrite and the second link goes red; change the prefix so it stops covering the module and the
  * first does.
@@ -52,7 +52,21 @@ class MailOutboxScopeTest {
 	@Test
 	@DisplayName("the confirmation-mail publication is in scope")
 	void matchesThisModulesMailListener() {
-		assertTrue(RegistryMailOutbox.isMailPublication(publicationFor(ConfirmationMailFixtures.LISTENER_ID)));
+		assertTrue(RegistryMailOutbox.isMailPublication(publicationFor(BookingMailFixtures.LISTENER_ID)));
+	}
+
+	/**
+	 * The prefix scope's payoff, claimed by {@link RegistryMailOutbox}'s Javadoc when only one listener
+	 * existed: "#373/#374's listeners are in scope the day they land, without anyone remembering to add
+	 * them." #374 is the first chance to check that rather than trust it — and the check matters
+	 * precisely because {@code BookingCancelled} is the fan-out below, where a stuck refund (invariant
+	 * #8) and a stuck reversal (#9) sit under the same event as this mail.
+	 */
+	@Test
+	@DisplayName("the cancellation-mail publication is in scope")
+	void scopesTheCancellationListener() {
+		assertTrue(RegistryMailOutbox.isMailPublication(
+				publicationFor(BookingMailFixtures.CANCELLATION_LISTENER_ID)));
 	}
 
 	@Test

@@ -32,10 +32,11 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * very experience it was added to remove. That asymmetry is why the loss counters are read through
  * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
- * <p><strong>The booking confirmation</strong> (module-internal, driven by the registry listener)
- * is deliberately the opposite: synchronous on the listener's thread, transport failures
- * propagating, so the Event Publication Registry keeps the publication outstanding and retries —
- * the at-least-once contract (#371). Public only for {@code adapter/in}; not on the published port.
+ * <p><strong>The two booking mails</strong> — the confirmation (#371) and the cancellation/refund
+ * record (#374), both module-internal and driven by registry listeners — are deliberately the
+ * opposite: synchronous on the listener's thread, transport failures propagating, so the Event
+ * Publication Registry keeps the publication outstanding and retries — the at-least-once contract.
+ * Public only for {@code adapter/in}; neither is on the published port.
  *
  * <p><strong>Suppression</strong> — the module's defining invariant, <em>no send to a suppressed
  * address</em> — is enforced here for both vehicles, per send attempt (so a registry retry honors
@@ -127,6 +128,22 @@ public class TransactionalMailService implements MailSender {
 			return;
 		}
 		mailer.sendBookingConfirmation(toEmail, confirmation);
+	}
+
+	/**
+	 * Deliver the cancellation/refund record now, on the caller's thread; a transport failure
+	 * propagates (#374). The registry vehicle's posture, identical to
+	 * {@link #sendBookingConfirmation} and deliberately unlike the dispatched sends above: the throw
+	 * is what keeps the publication outstanding for the restart republish, and the suppression check
+	 * gets no {@link #isSuppressedOrFailOpen} carve-out here for the same reason — a blip should cost
+	 * a retry, not the delivery.
+	 */
+	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Booking-cancellation mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendBookingCancellation(toEmail, cancellation);
 	}
 
 	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {

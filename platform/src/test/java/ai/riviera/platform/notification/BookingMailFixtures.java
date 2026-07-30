@@ -8,20 +8,25 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * What a booking-confirmation mail IT needs before it can assert anything: a confirmable booking, a
- * way to publish its {@code BookingConfirmed} so the after-commit registry vehicle actually runs,
- * and a read of what the Event Publication Registry still owes for it.
+ * What a booking-mail IT needs before it can assert anything: a seeded booking, a way to publish the
+ * event that drives the mail so the after-commit registry vehicle actually runs, and a read of what
+ * the Event Publication Registry still owes for it.
  *
  * <p>Extracted at #407 from {@code RegistryMailBulkheadIT}, which had all of it inline, so the
  * saturation IT could reuse rather than re-derive it — and so the two disciplines below are stated
- * once. Not a Spring bean: each IT builds one from its own autowired collaborators, which keeps it
- * out of every other context in the suite.
+ * once. Renamed from {@code ConfirmationMailFixtures} at #374, when the cancellation mail became a
+ * second registry vehicle needing the identical seed: the disciplines below are properties of
+ * <em>this database and this registry</em>, not of one message kind, and a name saying otherwise
+ * would have invited a second near-copy. Not a Spring bean: each IT builds one from its own
+ * autowired collaborators, which keeps it out of every other context in the suite.
  *
  * <p><strong>Bookings are SQL-seeded and never claimed through {@code availability}.</strong> A
  * claimed {@code (set, date)} row is never released (invariant #2), so classes that seed bookings
@@ -34,7 +39,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * integers in a database several IT classes write to. Callers pass a deliberately-improbable amount
  * per test; the lesson is {@code EventRegistryDurabilityIT}'s, paid for once already.
  */
-public final class ConfirmationMailFixtures {
+public final class BookingMailFixtures {
 
 	/**
 	 * The registry's id for the confirmation listener, exactly as V31 (#382) migrated it. It embeds
@@ -44,11 +49,20 @@ public final class ConfirmationMailFixtures {
 	public static final String LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
 
+	/**
+	 * The registry's id for the cancellation listener (#374). It needs no migration, unlike
+	 * {@link #LISTENER_ID}: the class is new, so its default id is correct on first write and there is
+	 * no historical spelling to rewrite. Pinned the same two ways — {@code MailOutboxScopeTest} against
+	 * the module prefix, {@code BookingCancellationMailIT} against what the running registry writes.
+	 */
+	public static final String CANCELLATION_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
+			+ "BookingCancellationMailListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+
 	private final JdbcClient jdbc;
 	private final TransactionTemplate transactions;
 	private final ApplicationEventPublisher publisher;
 
-	public ConfirmationMailFixtures(JdbcClient jdbc, PlatformTransactionManager txManager,
+	public BookingMailFixtures(JdbcClient jdbc, PlatformTransactionManager txManager,
 			ApplicationEventPublisher publisher) {
 		this.jdbc = jdbc;
 		this.transactions = new TransactionTemplate(txManager);
@@ -91,14 +105,30 @@ public final class ConfirmationMailFixtures {
 				new SetId(set.setId()), date, amountMinor, "EUR");
 	}
 
+	/**
+	 * The cancellation an IT publishes to drive the mail (#374). {@code refundMinor} doubles as the
+	 * amount fragment {@link #outstandingPublicationsFor} matches on, so callers pass an improbable
+	 * value here for the same reason confirmations do.
+	 */
+	public BookingCancelled cancellationOf(SetRef set, long bookingId, LocalDate date, long refundMinor,
+			RefundReason reason) {
+		return new BookingCancelled(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), date, refundMinor, "EUR", reason);
+	}
+
 	/** How much the registry still owes the confirmation listener for one test's event. */
 	public long outstandingMailPublications(long amountMinor) {
+		return outstandingPublicationsFor(LISTENER_ID, amountMinor);
+	}
+
+	/** The same read for any one listener — the cancellation listener needs it too. */
+	public long outstandingPublicationsFor(String listenerId, long amountMinor) {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
 				  AND serialized_event LIKE :amountFragment
 				""")
-				.param("listener", LISTENER_ID).param("amountFragment", "%" + amountMinor + "%")
+				.param("listener", listenerId).param("amountFragment", "%" + amountMinor + "%")
 				.query(Long.class).single();
 	}
 

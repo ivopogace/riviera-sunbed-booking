@@ -134,7 +134,7 @@ and is level with `origin/main`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Refactoring a **shipped** listener (phase 1) silently changes its registry `listener_id`, dead-lettering every outstanding confirmation publication | low | high | The id embeds FQCN + method name + parameter type only — none change. Phase 1 touches the constructor and body, and leaves `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` + `ConfirmationMailFixtures.LISTENER_ID` untouched as the pin | agent | open |
+| R-1 | Refactoring a **shipped** listener (phase 1) silently changes its registry `listener_id`, dead-lettering every outstanding confirmation publication | low | high | The id embeds FQCN + method name + parameter type only — none change. Phase 1 touches the constructor and body, and leaves `RegistryMailBulkheadIT#keepsTheListenerIdV31Migrated` + `BookingMailFixtures.LISTENER_ID` (value untouched) as the pin | agent | open |
 | R-2 | The new listener reaches for `@ApplicationModuleListener` (the obvious spelling) and lands the send on Boot's shared pool — the money-path spine (invariants #8/#9) | med | high | `MailListenerExecutorArchitectureTest` already fails this by construction and was written naming #374; phase 3 additionally extends its non-vacuity guard to name **both** listeners | agent | open |
 | R-3 | The mail promises a refund the async `BookingRefundListener` may then fail to issue (`riviera.refunds.failed`), so the tourist holds a written record of money that never moved | med | med | Accepted and made explicit in the copy: the mail states the refund **decision** and that it is being returned to the original payment method, never that it has settled. The existing `REFUNDS_FAILED` counter + money-path alert remains the detection path. Recorded as a Non-goal, not silently glossed | maintainer | open |
 | R-4 | A venue-wide weather refund cancels N bookings in one transaction, publishing N events that all land on the 2-thread/200-deep registry pool at once — a shed (`riviera.mail.registry.shed`) drops mails from the queue | low | med | The bulkhead is designed for exactly this and the shed is durable: a shed send never runs, so its publication stays outstanding (`RegistryMailShedDurabilityIT`) and #405's admin re-drive or the restart republish recovers it. Realistic N is one venue's online sets (tens), well under the 200-deep queue. No new mitigation; verified, not assumed | agent | open |
@@ -293,17 +293,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is added or altered.
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement (phase 3)` — draft PR **#445** open, so every push is CI-gated.
+**Stage pointer:** `implement (phase 4)` — draft PR **#445** open, so every push is CI-gated.
 
-**Next action:** Phase 3 — the send chokepoint (`TransactionalMailService.sendBookingCancellation`),
-the `MAIL_CANCELLATION_ABANDONED` counter and `BookingCancellationMailListener`, test-first.
+**Next action:** Phase 4 — `BookingCancellationMailIT`, the end-to-end registry path against
+Postgres (both channels, idempotency under republication, suppression).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + branch | ✅ | `8acf653` · draft PR #445 |
 | 1 — Shared booking-mail fact resolver (+ confirmation listener refactor) | ✅ | `5cd3f37` |
-| 2 — Transport: the cancellation message kind | ✅ | `PHASE2SHA` |
-| 3 — Chokepoint + the cancellation listener | | |
+| 2 — Transport: the cancellation message kind | ✅ | `5155745` |
+| 3 — Chokepoint + the cancellation listener | ✅ | `PHASE3SHA` |
 | 4 — End-to-end registry IT | | |
 | 5 — Docs: runbook, RESPONSIBILITIES, CLAUDE.md | | |
 
@@ -358,9 +358,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `.../notification/adapter/out/MailOutboxScopeTest.java` — the new listener id is in scope.
 - `.../notification/adapter/out/MockMailerTest.java`, `SmtpMailerIT.java`,
   `.../application/TransactionalMailServiceTest.java`
-- `.../notification/ConfirmationMailFixtures.java` — a `cancellationOf(...)` factory + the
-  cancellation `LISTENER_ID`; rename to `BookingMailFixtures` if it stops reading as
-  confirmation-specific.
+- `.../notification/BookingMailFixtures.java` — **renamed** from `ConfirmationMailFixtures`: its
+  seed and its two disciplines are properties of this database and this registry, not of one message
+  kind, and the old name would have invited a second near-copy. Gains `cancellationOf(...)` and
+  `CANCELLATION_LISTENER_ID`.
 
 **Docs — modified**
 
@@ -457,13 +458,13 @@ Modify `TransactionalMailService.java`, `ObservabilityMetrics.java`,
 
 ## Phase 4 — End-to-end registry IT
 
-**Files:** Create `BookingCancellationMailIT.java` · Modify `ConfirmationMailFixtures.java`
+**Files:** Create `BookingCancellationMailIT.java` · Modify `BookingMailFixtures.java`
 
 - [ ] **Step 1: Write the failing test** — Testcontainers + `@EnabledIfDockerAvailable`, mirroring
       `BookingConfirmationMailIT`: one mail per cancellation to the guest contact (AC-1); both
       channels (AC-3); resubmitting outstanding publications yields no second mail (AC-5); a
       suppressed address yields none (AC-7). Seed with a **deliberately improbable refund amount per
-      test** and dates no other IT uses — the `ConfirmationMailFixtures` disciplines, which exist
+      test** and dates no other IT uses — the `BookingMailFixtures` disciplines, which exist
       because matching a bare id also matches another test's venue or set id.
 - [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BookingCancellationMailIT*"` → FAIL.
 - [ ] **Step 3: Minimal implementation** — the fixtures' `cancellationOf(...)` factory + cancellation

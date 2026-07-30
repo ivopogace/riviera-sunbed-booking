@@ -23,8 +23,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
-import ai.riviera.platform.notification.ConfirmationMailFixtures;
-import ai.riviera.platform.notification.ConfirmationMailFixtures.SetRef;
+import ai.riviera.platform.notification.BookingMailFixtures;
+import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.notification.ControllableMailer;
 import ai.riviera.platform.notification.ControllableMailerConfiguration;
 import ai.riviera.platform.shared.ObservabilityMetrics;
@@ -83,7 +83,7 @@ class RegistryMailShedDurabilityIT {
 
 	/**
 	 * Improbable amounts, one per booking, because a publication is matched on its serialized amount
-	 * rather than on an id — see {@link ConfirmationMailFixtures}.
+	 * rather than on an id — see {@link BookingMailFixtures}.
 	 */
 	private static final long WEDGE_AMOUNT_MINOR = 407_000_701L;
 
@@ -119,11 +119,11 @@ class RegistryMailShedDurabilityIT {
 	@Autowired
 	ApplicationContext context;
 
-	private ConfirmationMailFixtures fixtures;
+	private BookingMailFixtures fixtures;
 
 	@BeforeEach
 	void resetTransport() {
-		fixtures = new ConfirmationMailFixtures(jdbc, txManager, publisher);
+		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
 		transport.reset();
 	}
 

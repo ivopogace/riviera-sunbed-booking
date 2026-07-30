@@ -18,7 +18,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
-import ai.riviera.platform.notification.ConfirmationMailFixtures.SetRef;
+import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.notification.application.MailOutbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,11 +90,11 @@ class MailOutboxScopeIT {
 	@Autowired
 	MailOutbox outbox;
 
-	private ConfirmationMailFixtures fixtures;
+	private BookingMailFixtures fixtures;
 
 	@BeforeEach
 	void resetTransport() {
-		fixtures = new ConfirmationMailFixtures(jdbc, txManager, publisher);
+		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
 		transport.reset();
 	}
 

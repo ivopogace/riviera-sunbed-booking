@@ -144,6 +144,31 @@ public final class ObservabilityMetrics {
 	 */
 	public static final String MAIL_CONFIRMATION_ABANDONED = "riviera.mail.confirmation.abandoned";
 
+	/**
+	 * Counter: cancellation/refund mails the registry listener <em>gave up on</em> because a fact it
+	 * needs — the booking, the set, or the contact — did not resolve (#374). The sibling of
+	 * {@link #MAIL_CONFIRMATION_ABANDONED}: same vehicle, same invisibility, same three
+	 * {@code reason} tag values, different consequence. An increment here means a tourist whose
+	 * booking was cancelled has no written record of it, and — where a refund applied — none of the
+	 * money owed back.
+	 *
+	 * <p><strong>A sibling series rather than a {@code kind} tag on the confirmation counter, and the
+	 * reason is a rule rather than a preference.</strong> Tagging would have been the #442 move, but
+	 * #442 could make it because {@code MAIL_RECOVERY_*} names a <em>vehicle</em>; this name states a
+	 * <em>flow</em>, so a {@code kind=cancellation} on a metric called {@code confirmation} would be a
+	 * contradiction rather than a dimension. Renaming the shipped one to fit is barred by the standing
+	 * rule that a shipped metric name breaks whatever reads it. What #442's lesson does reach is the
+	 * {@code reason} dimension, which is why both series read it off one enum
+	 * ({@code notification.application.MissingBookingFact}) and cannot drift into two spellings.
+	 *
+	 * <p><strong>Do not sum this with its sibling.</strong> They answer different questions and are
+	 * acted on differently: an abandoned confirmation is chased by reaching the tourist with their
+	 * arrival code (invariant #7 applies to that errand), while an abandoned cancellation is chased by
+	 * confirming the refund itself actually moved — the money is unaffected by this loss, only the
+	 * record of it. Both are data-integrity signals, never relay ones; see the observability runbook.
+	 */
+	public static final String MAIL_CANCELLATION_ABANDONED = "riviera.mail.cancellation.abandoned";
+
 	private ObservabilityMetrics() {
 	}
 }

@@ -19,7 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
-import ai.riviera.platform.notification.ConfirmationMailFixtures.SetRef;
+import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 
@@ -58,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Spring context rather than the suite's shared one — deliberate: a test that deliberately wedges a
  * thread pool must not hand that pool to the next class in the run. The gate is released
  * unconditionally in {@link #releaseTransport()}. Bookings are SQL-seeded on dates no other IT uses
- * via {@link ConfirmationMailFixtures}, and never claimed through {@code availability}.
+ * via {@link BookingMailFixtures}, and never claimed through {@code availability}.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
@@ -95,11 +95,11 @@ class RegistryMailBulkheadIT {
 	@Autowired
 	IncompleteEventPublications incompletePublications;
 
-	private ConfirmationMailFixtures fixtures;
+	private BookingMailFixtures fixtures;
 
 	@BeforeEach
 	void resetTransport() {
-		fixtures = new ConfirmationMailFixtures(jdbc, txManager, publisher);
+		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
 		transport.reset();
 	}
 
@@ -208,7 +208,7 @@ class RegistryMailBulkheadIT {
 		List<String> ids = fixtures.outstandingListenerIds(LISTENER_ID_AMOUNT_MINOR);
 		assertThat(ids)
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding row")
-				.contains(ConfirmationMailFixtures.LISTENER_ID);
+				.contains(BookingMailFixtures.LISTENER_ID);
 	}
 
 	/**

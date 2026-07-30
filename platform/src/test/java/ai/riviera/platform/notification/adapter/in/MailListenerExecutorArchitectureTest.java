@@ -100,18 +100,30 @@ class MailListenerExecutorArchitectureTest {
 	/**
 	 * Guards against a vacuously-green rule. Two filters stand between a class on the classpath and
 	 * an actual assertion — the production import and the platform-event carve-out — so this asserts
-	 * the production listener survives <em>both</em>. Checking only that it was discovered would
-	 * leave the rule green if the carve-out ever swallowed it.
+	 * every production listener survives <em>both</em>. Checking only that they were discovered would
+	 * leave the rule green if the carve-out ever swallowed one.
+	 *
+	 * <p><strong>Named per listener, not counted.</strong> #374 was the case this guard was written
+	 * for — it is the second listener the class Javadoc predicted — and it is also when the guard had
+	 * to stop naming only the first: a rule that examines one of two listeners is half vacuous, and a
+	 * bare count would go green again the moment a listener was added <em>and</em> another silently
+	 * fell out of scope.
 	 */
 	@Test
-	void theRuleExaminesTheProductionListener() {
-		boolean examined = inScopeListeners(notificationEventListeners()).stream()
-				.anyMatch(listener -> listener.getDeclaringClass() == BookingConfirmationMailListener.class
-						&& "on".equals(listener.getName()));
+	void theRuleExaminesBothProductionListeners() {
+		List<Class<?>> examined = inScopeListeners(notificationEventListeners()).stream()
+				.filter(listener -> "on".equals(listener.getName()))
+				.map(Method::getDeclaringClass)
+				.toList();
 
-		assertTrue(examined, "Expected the rule to examine BookingConfirmationMailListener#on under "
-				+ NOTIFICATION_PACKAGE + " — without it the rule is vacuously green and #373/#374 would "
-				+ "inherit a check that checks nothing");
+		assertTrue(examined.contains(BookingConfirmationMailListener.class),
+				"Expected the rule to examine BookingConfirmationMailListener#on under "
+						+ NOTIFICATION_PACKAGE + " — without it the rule is vacuously green; examined: "
+						+ examined);
+		assertTrue(examined.contains(BookingCancellationMailListener.class),
+				"Expected the rule to examine BookingCancellationMailListener#on under "
+						+ NOTIFICATION_PACKAGE + " — a listener the carve-out swallows is a listener free "
+						+ "to land its send on the money-path pool; examined: " + examined);
 	}
 
 	// ---- the boundaries (#409) ---------------------------------------------------------------
