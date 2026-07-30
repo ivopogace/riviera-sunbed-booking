@@ -107,6 +107,32 @@ class AdminMailOutboxControllerTest {
 				.andExpect(jsonPath("$.cooldownRemainingSeconds").value(41));
 	}
 
+	/**
+	 * The carry has to survive a sub-millisecond tail, which is the ordinary case: the remaining window
+	 * is a {@code Duration.between} on a nanosecond-resolution clock, so it is rarely a whole number of
+	 * milliseconds. A {@code plusMillis(999)} ceiling silently truncates these back down and reports a
+	 * second less than the contract promises.
+	 */
+	@Test
+	void roundsUpARemainderThatIsNotAWholeMillisecond() throws Exception {
+		when(resubmission.resubmit()).thenReturn(
+				new MailResubmissionOutcome.CoolingDown(Duration.ofSeconds(40).plusNanos(500_000)));
+
+		mvc.perform(post(RESUBMIT).with(user("operator").roles("ADMIN")).with(csrf()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.cooldownRemainingSeconds").value(41));
+	}
+
+	/** A window that divides evenly is not rounded up past itself — the carry must not add a second. */
+	@Test
+	void leavesAWholeNumberOfSecondsAlone() throws Exception {
+		when(resubmission.status()).thenReturn(new MailOutboxStatus(0, Duration.ofSeconds(30)));
+
+		mvc.perform(get(OUTBOX).with(user("operator").roles("ADMIN")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.cooldownRemainingSeconds").value(30));
+	}
+
 	/** Invariant #7: the outbox's payloads carry booking ids and arrival codes; its API carries neither. */
 	@Test
 	void theResponseCarriesCountsAndNothingElse() throws Exception {

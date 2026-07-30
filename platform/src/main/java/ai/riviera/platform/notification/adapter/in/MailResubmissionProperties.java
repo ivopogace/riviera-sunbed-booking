@@ -26,8 +26,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * <p>The ceiling bounds the typo from the other side. An oversized value does not fail — it just
  * refuses every press for hours, so the lever an admin reaches for during an incident reports
  * {@code COOLING_DOWN} and nothing else, which reads as a broken button rather than as a
- * misconfiguration. A day is far past any plausible tuning (the registry's own retry horizon before
- * this issue was "the next deploy", and shortening that is the point).
+ * misconfiguration. Twenty-four minutes is already far past any plausible tuning — the shipped window
+ * is one minute, and the whole point of the issue is to shorten a retry horizon that used to be "the
+ * next deploy", not to lengthen it.
  *
  * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: Boot
  * validates {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and

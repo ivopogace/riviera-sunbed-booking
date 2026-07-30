@@ -40,7 +40,9 @@ pills and the card are used once each, so neither earns a shared directive; `tex
 named size), `angular-developer` + **angular-cli MCP** (`list_projects` →
 Angular 22 + Vitest; `get_best_practices` → no explicit `standalone`/`OnPush`, `input()`/`output()`,
 `@Service`, native control flow, AXE/WCAG-AA as a hard requirement), `playwright-cli` (mocked
-CI-safe spec authoring). **Not loaded, deliberately:** `postgres` (no migration, no SQL authored —
+CI-safe spec authoring), `riviera-review-overlay` (the review gate — findings F-2..F-8),
+`riviera-docs-freshness` (the close-out sweep over `origin/main...HEAD`; it caught the stale
+restart-is-the-only-recovery claims in `docs/runbooks/observability.md` that nothing else would have). **Not loaded, deliberately:** `postgres` (no migration, no SQL authored —
 see Persistence), `riviera-stripe-payments` (no money moves; the slice's whole point is that it
 *cannot* touch the money path).
 
@@ -290,12 +292,16 @@ service, Tailwind v4 utility classes with `--riv-*` tokens under the porcelain h
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `PR ready for review — Sonar gate PASSED; review gate BLOCKED on subagent authorization`
+**Stage pointer:** `review gate RUN (findings fixed) — Sonar gate PASSED — ready to merge`
 
-**Next action:** The `/code-review` fan-out needs the human to lift this session's standing
-"don't use the Agent tool" rule (`riviera-sdlc` `references/pr-gates.md` §1 — a one-line answer).
-The project overlay bank was walked by hand in the meantime (findings F-2/F-3, both fixed); that is
-**half the gate**, so the PR's review-gate box stays unticked until the generic banks have run.
+**Next action:** Await the human's merge decision. Every gate has run; nothing is outstanding.
+
+**Review gate (RUN):** `/code-review`'s five-agent fan-out over `origin/main...HEAD`, with
+`riviera-review-overlay` layered into the CLAUDE.md-adherence agent. Six findings were raised and
+independently confidence-scored; one cleared the 80 bar (F-6, scored 100) and the rest scored 25-75,
+but every one that was *verified real* was fixed anyway — the bar governs what gets reported, not what
+is worth correcting. Agents 3 and 5 verified the Spring Modulith claims line-by-line against the
+library sources and found no contradiction. See F-4..F-9 in the register.
 
 **Sonar gate (passed, checked — not merely the badge):** 0 new issues, 0 accepted issues,
 0 security hotspots, 0.0% duplication on new code, 94.3% coverage on new code — above the
@@ -319,6 +325,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | CI (backend, run on `c4e3bd7`) | 113 tests failed: `@WebMvcTest` loads **every** controller, so the new `AdminMailOutboxController` broke every web-slice test that did not stub its port. A scoped local run could not show it — the only class with a `@MockitoBean` for that port was the new one | fixed — `WebSliceStubs` gained an inert `MailResubmission`, the file that exists for exactly this |
 | F-2 | Review overlay (RV-STYLE-1) | Two multi-line inline comments introduced by the diff — the new route entry and the new `SecurityConfig` matcher block. Both matched their neighbours, which is why they were written that way; the rule is explicit that consistency is not its goal | fixed — each cut to one line; the full reasoning already lives in the component/controller javadoc |
 | F-3 | Review overlay (RV-PROC-1) | `riviera-tailwind` was loaded before styling the tab strip and the outbox card, but never recorded in *Skills consulted* | fixed — line updated with what it changed |
+| F-4 | `/code-review` agent 2 (scored 75) | `AdminMailOutboxController.seconds()` used `plusMillis(999)` as a ceiling, which cannot carry a sub-millisecond remainder — and the remainder comes from `Duration.between` on a nanosecond clock, so it under-reported by a second roughly 1 call in 1000, contradicting its own javadoc | fixed — carry is `plusNanos(999_999_999)`; pinned by `roundsUpARemainderThatIsNotAWholeMillisecond` + `leavesAWholeNumberOfSecondsAlone` |
+| F-5 | `/code-review` agents 1 + 4 (scored 25) | *Skills consulted* omitted `riviera-review-overlay` and `riviera-docs-freshness`. Scored below the bar on the letter of RV-PROC-1, but the second omission was true rather than clerical — the skill had not been run | fixed properly: the sweep was **run**, found 3 stale runbook claims (F-8), and both skills are now listed |
+| F-6 | `/code-review` agent 1 (scored 100) | The plan's *File structure* and Phase 5 file lists omitted `CLAUDE.md`, which the diff modifies | fixed — both lists completed |
+| F-7 | `/code-review` agent 4 (scored 75) | The `CLAUDE.md` `notification` row grew by 224 words against that file's own "keep this file short and stable" rule (line 8); the row was already 1,229 words vs 132 for the next-longest | fixed — cut to 55 words (the endpoint + the scoping rule + a pointer); the detail already lives in `RESPONSIBILITIES.md` and the adapter javadoc |
+| F-8 | `riviera-docs-freshness` (`origin/main...HEAD`) | `docs/runbooks/observability.md` told an on-call operator, in three places, that an outstanding publication is recovered only by a restart — false the moment this lever ships, and the runbook is exactly where someone would look during the incident it exists for | fixed — all three now name the lever |
+| F-9 | `riviera-docs-freshness` (out of range — **flagged, not fixed**) | `docs/runbooks/observability.md:60` still says the shed-durability case is "not yet covered by a test — #407", but #407 shipped in `649cb73`. Pre-existing drift from that slice's own close-out, not caused by this diff | flagged — outside this slice's range; worth a one-line follow-up |
+| — | `/code-review` agent 3 | Observed that `AlreadyRunning` reports the full cooldown while its javadoc says the concurrent case "resolves in milliseconds" | no action — agent 5 verified against the code and test that the javadoc describes lock contention, not the reported duration, and the reported value is correct (the winner has already stamped the cooldown) |
 
 ---
 
@@ -365,6 +378,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Docs**
 
 - `RESPONSIBILITIES.md` — the `notification` Job line gains the admin re-drive.
+- `CLAUDE.md` — the `notification` module-table row gains the endpoint + the scoping rule (kept short
+  deliberately; the detail lives in `RESPONSIBILITIES.md` and the adapter javadoc).
+- `docs/runbooks/observability.md` — three present-tense claims that a restart is the *only* recovery
+  for an outstanding publication; found by the `riviera-docs-freshness` sweep, not by hand.
 - `docs/plans/admin-mail-outbox-resubmission.md` — this doc, kept live.
 
 ---
@@ -427,7 +444,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 5 — Mocked e2e + substrate docs + close-out
 
-**Files:** Create `frontend/e2e/admin-mail-outbox.e2e.ts` · Modify `RESPONSIBILITIES.md`, this doc
+**Files:** Create `frontend/e2e/admin-mail-outbox.e2e.ts` · Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `docs/runbooks/observability.md`, this doc
 
 - [x] **Step 1–4:** the CI-safe mocked spec (AC-8, AC-10) via `npm run test:e2e:a11y`.
 - [x] **Step 5–7:** audit, commit, finalize the execution status **in this PR** (stage pointer DONE,

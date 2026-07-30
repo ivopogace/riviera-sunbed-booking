@@ -42,6 +42,9 @@ import ai.riviera.platform.notification.application.MailResubmissionOutcome;
 @RequestMapping("/api/admin/mail-outbox")
 class AdminMailOutboxController {
 
+	/** The ceiling's carry — see {@link #seconds(Duration)}. */
+	private static final long NANOS_PER_SECOND = 1_000_000_000L;
+
 	private final MailResubmission resubmission;
 
 	AdminMailOutboxController(MailResubmission resubmission) {
@@ -83,8 +86,13 @@ class AdminMailOutboxController {
 	 * Seconds, rounded <em>up</em>. A caller that polls at the reported instant must find the lever
 	 * accepting, and truncation would put it one poll short of that every time the window does not
 	 * divide evenly.
+	 *
+	 * <p>The carry is a nanosecond short of a second, not a millisecond short: the remainder comes from
+	 * {@code Duration.between} on a nanosecond-resolution clock, so a sub-millisecond tail is ordinary,
+	 * and {@code plusMillis(999)} would fail to carry it and truncate back down — reporting a second
+	 * less than the contract above promises.
 	 */
 	private static long seconds(Duration remaining) {
-		return remaining.plusMillis(999).toSeconds();
+		return remaining.plusNanos(NANOS_PER_SECOND - 1).toSeconds();
 	}
 }
