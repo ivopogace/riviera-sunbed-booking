@@ -36,6 +36,10 @@ questions the issue asked to be weighed were settled with the maintainer on 2026
 
 **Skills consulted:**
 - `riviera-sdlc` — routed the gate; recorded the cloud-branch substitution below.
+- `riviera-review-overlay` (review gate) — layered the RV-BE/FE/PROC bank onto `/code-review`'s five
+  parallel reviewers; RV-STYLE-1 and RV-PROC-1 both fired (F-5, F-6).
+- `riviera-docs-freshness` (close-out step 5, run **pre-merge**) — the substrate audit below; 2
+  findings, both patched in this PR rather than in a docs-only follow-up.
 - `riviera-plan-doc` — this template + the Execution-status state-store rule.
 - `postgres` — `BIGINT GENERATED ALWAYS AS IDENTITY` PK + `TEXT`-with-`CHECK` state tokens over a
   native enum, `TIMESTAMPTZ`, and an explicit index on the FK column (Postgres creates none);
@@ -352,6 +356,9 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-10 | review (`/code-review` agent 5 — comment guidance) | Two comments made false by this PR's own edits: `PARAM_EMAIL`'s "three call sites bind it" (only two do since `COL_EMAIL` split off) and `JdbcBookingNotificationFacts`' class Javadoc still saying "two columns by primary key" after `confirmationFacts` added a seven-column read. | fixed-in-`dcbd749` — both corrected. |
+| F-9 | review (`/code-review` agent 4 — prior-PR themes) | ADR-0011's **Consequences** still read "a future implementer must **not**: send on a request thread" unconditionally, while this PR's decision-5 extension carves out exactly that. #430's precedent: an ADR consequence is amended explicitly, never left standing in contradiction. | fixed-in-`dcbd749` — the Consequences bullet now carries the amendment inline, scoping the ban to the anonymous flows it was written for and pointing at the decision-5 note. |
+| F-8 | review (`/code-review` agent 4 — prior-PR themes) | **Real formatting break I introduced**: the `notification` row's new text was pasted with literal line breaks, so eight lines fell **out of the Markdown table** and rendered as a stray paragraph, truncating the row. Same agent noted the row has ballooned in three consecutive PRs against the file's own "keep this file short and stable" rule. | fixed-in-`dcbd749` — row rejoined to one line **and** the 150-word insertion cut to a single compact clause; the full argument lives in `RESPONSIBILITIES.md`, which is where the module-detail belongs. |
 | F-7 | review (`/code-review` agent 2 — bug scan) | **Real defect.** `admin-mail-delivery.ts` re-read the results after a resend using the **live** form field, not the address that was searched. An admin who starts typing the next address before pressing Resend on the results still on screen has them silently replaced by a different (possibly empty) set, under a notice saying the mail was sent. | fixed-in-`ff3d36f` — the searched address is captured in its own signal and the re-read is keyed on that. Test-first: `re-reads the address that was searched, not whatever is in the field now` reproduced it (red) before the fix. |
 | F-6 | review (`/code-review` agent 1 — CLAUDE.md) | **RV-STYLE-1** (Minor): a two-line `//` inline comment in `JdbcBookingNotificationFacts`. Javadoc is exempt; this was not Javadoc. | fixed-in-`ff3d36f` — cut to one line pointing at `BookingConfirmationFacts#everConfirmed`, where the full reasoning already lived. |
 | F-5 | review (`/code-review` agent 1 — RV-PROC-1) | **Major, and correct.** The routing table's backend-structure row requires `riviera-modulith` **+ `codebase-design` + `domain-modeling``; only the first was loaded and recorded. | fixed-in-`ff3d36f` — both loaded at the review gate and the seams re-vetted through them (outcome in *Skills consulted*). The re-vet **confirmed** the shipped shapes rather than changing them, so no code moved; the process gap was real regardless, and pretending otherwise is what RV-PROC-1 exists to prevent. |

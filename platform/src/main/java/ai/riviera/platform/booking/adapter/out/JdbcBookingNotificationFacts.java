@@ -14,8 +14,10 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * JDBC adapter for {@link BookingNotificationFacts} — two columns by primary key via
- * {@link JdbcClient} (invariant #1, no JPA). Package-private; only the {@code api/} port is
+ * JDBC adapter for {@link BookingNotificationFacts} — both reads are by primary key via
+ * {@link JdbcClient} (invariant #1, no JPA): two columns for the listener's narrow
+ * {@code notificationInfo}, and since #380 the wider {@code confirmationFacts} an admin resend
+ * rebuilds the mail from. Package-private; only the {@code api/} port is
  * referenced cross-module (invariant #11). Read-only.
  */
 @Repository

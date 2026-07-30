@@ -244,7 +244,11 @@ Provider landscape (condensed; full table in the research doc):
   mock keeps recording them so CI/e2e stay hermetic.
 - An activation runbook (mirror `docs/runbooks/stripe-profile-smoke-test.md`) documents
   profile + secrets + a smoke send.
-- A future implementer must **not**: send on a request thread; enable open/click tracking; log a
+- A future implementer must **not**: send on a request thread (**amended 2026-07-30, #380** — this
+  bans it on the *anonymous* flows the rule was written for, where response timing is an enumeration
+  oracle; an **ADMIN-gated support action** re-sending an existing mail may send synchronously, and
+  #380's resend does, because a queued send cannot tell the admin what happened and the bulkhead can
+  shed it silently — see the extension note under decision 5); enable open/click tracking; log a
   tokenized link or booking code at the transport layer (invariant #7); or pick a US-parented
   provider without re-opening this ADR.
 

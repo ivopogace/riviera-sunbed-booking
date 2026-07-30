@@ -22,7 +22,7 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 @Repository
 class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.customer.api.CustomerLookup {
 
-	/** Named once, per the {@code JdbcBookings} bind-parameter convention — three call sites bind it. */
+	/** Named once, per the {@code JdbcBookings} bind-parameter convention — two call sites bind it. */
 	private static final String PARAM_EMAIL = "email";
 
 	/** The column, kept apart from the bind parameter above: the two coincide today by accident, not by rule. */
