@@ -92,6 +92,26 @@ class SmtpMailerIT {
 		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
 
+	/**
+	 * The operator-approval notice (#375). Asserted through the same lens as every other kind — one
+	 * plain-text message, right recipient, right subject, the link exactly as handed in — because the
+	 * one thing that differs about this kind (its link is public, not a bearer credential) changes
+	 * nothing the transport is responsible for.
+	 */
+	@Test
+	void deliversOperatorApprovedEmailOverSmtp() throws Exception {
+		URI signInLink = URI.create("https://app.example/account/sign-in");
+		mailer().sendOperatorApproved(TO, signInLink);
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
+		assertThat(GreenMailUtil.getHeaders(message)).contains("Subject: Your operator account is approved");
+		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
+		String body = message.getContent().toString();
+		assertThat(body).contains(signInLink.toString());
+		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
+	}
+
 	@Test
 	void aVenueNameCarryingNewlinesCannotInjectHeaders() throws Exception {
 		BookingConfirmationMail injected = new BookingConfirmationMail(BOOKING_CODE,

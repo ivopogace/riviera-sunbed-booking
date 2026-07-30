@@ -360,6 +360,10 @@ class WebSliceStubs {
 			@Override
 			public void sendPasswordReset(String toEmail, URI resetLink) {
 			}
+
+			@Override
+			public void sendOperatorApproved(String toEmail, URI signInLink) {
+			}
 		};
 	}
 

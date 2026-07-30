@@ -237,13 +237,14 @@ three response statuses (`204` / `409 NOT_PENDING` / `404 NO_SUCH_OPERATOR`); th
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — complete, committed; entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** Load `riviera-local-debug`, then start phase 0 (the `notification` mail kind) test-first.
+**Next action:** Phase 1 — write the failing `OperatorLifecycleIT` case that expects
+`ApprovalOutcome.Approved` to carry the registered address, then make it pass.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | | |
+| 0 — `notification`: the `OPERATOR_APPROVED` mail kind, end to end inside the module | ✅ | (this commit) |
 | 1 — `operator`: `ApprovalOutcome` sealed + `RETURNING contact_email` | | |
 | 2 — edge: `OperatorApprovalMail` + controller wiring + ITs | | |
 | 3 — docs: `RESPONSIBILITIES.md`, observability runbook, `CLAUDE.md`, close-out | | |
@@ -401,6 +402,7 @@ Test `OperatorApprovalMailTest.java` (create) · `OperatorApprovalMailIT.java` (
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-30 | phase 0 — new mail kind | every site that enumerates mail kinds | `grep -rln "PASSWORD_RESET\|KIND_PASSWORD_RESET\|BOOKING_CONFIRMATION" platform/src docs/runbooks RESPONSIBILITIES.md CLAUDE.md` | 6, all Java (3 main + 3 test); no doc enumerates kinds by constant | Fixed all 6. The compiler found three more the grep would have missed — the `Mailer`/`MailSender` test doubles (`WebSliceStubs`, `ControllableMailer`, `MailSenderWiringIT.RecordingMailer`), which is the argument for growing an interface rather than a `switch`. |
 
 ---
 

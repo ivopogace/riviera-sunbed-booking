@@ -67,6 +67,14 @@ public class MockMailer implements Mailer {
 				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
 	}
 
+	@Override
+	public void sendOperatorApproved(String toEmail, URI signInLink) {
+		SentEmail email = SentEmail.operatorApproved(toEmail, signInLink);
+		sent.add(email);
+		// Logged like a recovery link but for the opposite reason: this URL is public, not a credential.
+		log.info("[mock-mailer] {} link (to {}): {}", email.kind(), sanitize(toEmail), signInLink);
+	}
+
 	private void logRecovery(SentEmail email) {
 		// Dev-only convenience (design D-6): follow the tokenized link without a real inbox. The email is
 		// user-supplied, so neutralize newlines before logging (log-forging, riviera-java-conventions §10).
