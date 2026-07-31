@@ -34,10 +34,11 @@ forced the behavior-parity ledger, which is what turned "restyle only" into the 
 rule-by-rule ledger below) · `tdd` (phase order is the test-first argument: item 2's missing test
 is written and proven red-on-removal **before** item 1 converts the effect it guards) ·
 `riviera-review-overlay` (review gate — due at ready-for-review; RV-FE-7 is the item-3 finding
-being paid off here) · `riviera-docs-freshness` (**due at close-out** over this PR's range — the
-counting sweep matters: deleting `_glass.scss` makes "the shared SCSS recipes" a zero-member set,
-and `shared/_glass.scss` is cited by name in three contrast specs and `amenities.contrast.spec.ts`'s
-"only `status-chip` still lives there") · `riviera-tailwind` (the narrow-vs-full scope fork, the
+being paid off here) · `riviera-docs-freshness` (**ran** over `main..claude/sdlc-477-h25h0j`, **2 findings, both
+patched** — the counting sweep was the one that paid: `riviera-tailwind` stated "7 migrated
+components" (now 8), and its migration checklist named "7 of the ~13 remaining `.scss` files" plus
+`shared/_glass.scss` as an existing file. Neither sentence is in this PR's diff, which is the whole
+argument for the sweep. The nine in-code citations were already re-pointed in phase 4) · `riviera-tailwind` (the narrow-vs-full scope fork, the
 no-`@apply` rule, the "keep the old semantic class as an inert test-hook marker" rule, the
 radius-resolves-by-stylesheet-order warning, and the border-width-snapping gotcha) ·
 `riviera-frontend` (placement: the ported chip is a *presentational primitive with no state and no
@@ -94,7 +95,9 @@ Writing a test that asserts a comment's wording would be ceremony, not coverage.
   "needs its own design before any code (which surface sweeps, and how it distinguishes an orphan
   from an in-flight intent)". That is *fog*, not drift, in the issue-intake gate's sense, so it
   gets its own issue at close-out (user decision, this session) rather than a plan-doc open
-  question. #477 closes on merge; the new issue carries item 5 forward with R-6's full context.
+  question. #477 closes on merge; **filed as #479**, carrying R-6's full context plus the five
+  design questions that have to be answered before any code (which surface sweeps, how an orphan is
+  told from an in-flight intent, which module owns it, cancel-vs-report, and profile gating).
 - **Withdraw for `AWAITING_PAYMENT`** — a product non-goal inherited from #123, restated here so
   it isn't re-derived.
 - **The other six `booking/*.scss` files** (`booking-confirmation`, `booking-dialog`,
