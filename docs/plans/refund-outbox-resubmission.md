@@ -70,7 +70,7 @@ addendum.
   it skips an out-of-scope one). *Pinned by:*
   `RefundOutboxScopeIT.resubmitsTheRefundWithoutTouchingAnyOtherListener`
 - [ ] **AC-3:** The scope constant is pinned **two levels** (#405's R-6) through one
-  shared fixture, `BookingRefundListenerId.VALUE`, derived from the class literals
+  shared fixture, `BookingListenerIds.REFUND`, derived from the class literals
   (compile-safe against a rename): a unit test pins the production constant against the
   fixture, and the existing `RefundBulkheadIT.keepsTheListenerIdUnchanged` — rewired from
   its own private hand-typed copy to the same fixture — pins the fixture against what the
@@ -252,14 +252,14 @@ rewrite is due.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan committed — starting implement (phase 0)`
+**Stage pointer:** `implement (phase 0 done, phase 1 next)`
 
-**Next action:** Phase 0 — write `RefundOutboxScopeTest` red, then the scope constant +
-`RegistryRefundOutbox`.
+**Next action:** Phase 1 — `RefundResubmissionServiceTest` red (AC-1, AC-4, AC-5, AC-7),
+then the service + properties.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | | |
+| 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | ✅ | (this commit) |
 | 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | | |
 | 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | | |
 | 3 — Money-path scoping IT (AC-2, AC-8) | | |
@@ -294,13 +294,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Backend tests** (`platform/src/test/java/ai/riviera/platform/`)
 
-- `booking/adapter/in/BookingRefundListenerId.java` — public test fixture; `VALUE` derived from the class literals (the compile-safe anchor both pinning levels share).
-- `booking/adapter/out/RefundOutboxScopeTest.java` — AC-3 level 1 (constant ↔ `BookingRefundListenerId.VALUE`) + exclusion of `PaymentEventListener` (both real signatures), both payout listeners, the cancellation-mail listener, and an unattributable publication (fail-closed).
+- `booking/adapter/in/BookingListenerIds.java` — public test fixture; `REFUND` / `PAYMENT_CONFIRMED` / `PAYMENT_CANCELED` ids derived from the class literals (the compile-safe anchor both pinning levels share).
+- `booking/adapter/out/RefundOutboxScopeTest.java` — AC-3 level 1 (constant ↔ `BookingListenerIds.REFUND`) + exclusion of `PaymentEventListener` (both real signatures), both payout listeners, the cancellation-mail listener, and an unattributable publication (fail-closed).
 - `booking/application/refund/RefundResubmissionServiceTest.java` — AC-1, AC-4, AC-5, AC-7 against a fake `RefundOutbox` + fixed `Clock`.
 - `AdminRefundOutboxControllerTest.java` — the three outcomes' wire shapes + AC-6; root test package (the `WebSliceStubs` + `SecurityConfig` argument, #405 verbatim).
 - `booking/adapter/in/RefundResubmissionPropertiesTest.java` — AC-9.
 - `booking/RefundOutboxScopeIT.java` — AC-2 + AC-8 (Testcontainers; the reopen-archived-row fixture from `MailOutboxScopeIT`, adapted).
-- `booking/RefundBulkheadIT.java` — **modify:** `REFUND_LISTENER_ID` private constant replaced by `BookingRefundListenerId.VALUE` (AC-3 level 2).
+- `booking/RefundBulkheadIT.java` — **modify:** `REFUND_LISTENER_ID` private constant replaced by `BookingListenerIds.REFUND` (AC-3 level 2).
 - `WebSliceStubs.java` — **modify:** inert `RefundResubmission` (R-6).
 - `notification/adapter/out/MailOutboxScopeTest.java` — **modify (drive-by):** `PAYMENT_LISTENER_ID` names the nonexistent `PaymentSucceeded`; corrected to the real `PaymentConfirmed` signature so the exclusion test tests the id that exists.
 
@@ -319,28 +319,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `booking/adapter/out/RegistryRefundOutbox.java`, `booking/adapter/out/RefundOutboxScopeTest.java`
 · Modify `booking/RefundBulkheadIT.java`, `notification/adapter/out/MailOutboxScopeTest.java`
 
-- [ ] **Step 1: Write the failing test** — first a public test fixture
-  `booking/adapter/in/BookingRefundListenerId.java` whose `VALUE` is **derived from the
-  class literals** (`BookingRefundListener.class.getName() + ".on(" +
-  BookingCancelled.class.getName() + ")"` — it lives in `adapter/in` because the listener
-  is package-private there; deriving beats the mail fixture's hand-typed strings, being
+- [x] **Step 1: Write the failing test** — first a public test fixture
+  `booking/adapter/in/BookingListenerIds.java` whose ids are **derived from the class
+  literals** (`BookingRefundListener.class.getName() + ".on(" +
+  BookingCancelled.class.getName() + ")"` — it lives in `adapter/in` because the listeners
+  are package-private there; deriving beats the mail fixture's hand-typed strings, being
   compile-safe against a rename). Then `RefundOutboxScopeTest`: the production constant
-  equals `BookingRefundListenerId.VALUE`; the scope matches a publication carrying it;
+  equals `BookingListenerIds.REFUND`; the scope matches a publication carrying it;
   rejects `PaymentEventListener.on(PaymentConfirmed)`, `.on(PaymentCanceled)`, both
   payout listener ids, the cancellation-mail listener id, a same-package near-miss, and
   an untargeted publication (fail-closed).
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*RefundOutboxScope*"`
-- [ ] **Step 3: Minimal implementation** — `RefundOutbox` port; `RegistryRefundOutbox`
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*RefundOutboxScope*"` → FAIL (9 compile errors, `RegistryRefundOutbox` absent).
+- [x] **Step 3: Minimal implementation** — `RefundOutbox` port; `RegistryRefundOutbox`
   with `REFUND_LISTENER_ID` + exact-equality predicate over `TargetEventPublication`,
   counting via `findIncompletePublications`, re-driving via
   `resubmitIncompletePublications(Predicate)` (never `ResubmissionOptions` — R-4).
-- [ ] **Step 4: Run it, verify it passes** — same command; then rewire
-  `RefundBulkheadIT.REFUND_LISTENER_ID` to the production constant and fix the
-  `MailOutboxScopeTest` stale string; scoped runs of both.
-- [ ] **Step 5: Generalization-audit pass** — other listener-id strings typed by hand in
-  tests; record findings.
-- [ ] **Step 6: Commit** — `feat(#454): scope a refund outbox to the refund listener's exact id`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command + `--tests "*MailOutboxScopeTest*"` → PASS;
+  `RefundBulkheadIT.REFUND_LISTENER_ID` rewired to `BookingListenerIds.REFUND`; the
+  `MailOutboxScopeTest` stale string fixed; structural net PASS.
+- [x] **Step 5: Generalization-audit pass** — see log.
+- [x] **Step 6: Commit** — `feat(#454): scope a refund outbox to the refund listener's exact id`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Resubmission service: single-flight, cooldown, typed outcome
 
@@ -403,6 +402,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-31 | Phase 0 — hand-typed listener-id strings in tests | Other `listener_id` string literals that could go stale like `MailOutboxScopeTest`'s `PaymentSucceeded` | `grep -rn "Listener.on(" platform/src/test` | `BookingMailFixtures` (3 ids), `MailOutboxScopeTest` (4 ids incl. the stale one — fixed), `RefundBulkheadIT` (rewired) | The notification-side ids stay hand-typed: their listeners are package-private in `notification.adapter.in`, and each is already level-2 pinned by `RegistryMailBulkheadIT` against the live registry, so a class-derived fixture there is a `notification` refactor out of this slice's scope. The two ids in `RefundOutboxScopeTest` for `payout` remain strings for the same reason (no public fixture; exclusion-only role) |
 
 ---
 
