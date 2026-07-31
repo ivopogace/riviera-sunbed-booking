@@ -54,10 +54,19 @@ phase), `codebase-design` (the port-vs-leg seam), `angular-developer` + `riviera
 `playwright-cli` (FE phases).
 
 > **Toolset note (cloud session):** the angular-cli MCP was **absent when the plan was written** and
-> connected mid-session; it was then consulted (`list_projects` → workspace on Angular 22,
-> `get_best_practices`) and its guidance matches the in-repo `frontend/.claude/CLAUDE.md` verbatim,
-> which the FE phases had already followed. Recorded as it actually happened rather than
-> back-dated (SDLC remote addendum, toolset drift).
+> connected mid-session; it was then consulted — `list_projects` (workspace on Angular 22),
+> `get_best_practices` (matches the in-repo `frontend/.claude/CLAUDE.md` verbatim, which the FE
+> phases had already followed), and `search_documentation`. Recorded as it actually happened rather
+> than back-dated (SDLC remote addendum, toolset drift).
+>
+> **What the doc search actually changed.** It surfaced that v22 designates `afterRenderEffect` for
+> effects that write the DOM, while the withdraw prompt's focus move uses plain `effect()` — copied
+> from the cancel prompt's identical effect five lines above, though `venue-map.ts` already uses the
+> canonical API. Chasing that down found the real gap: **neither focus effect had any test**, despite
+> the component citing a11y as their purpose. A test was added for the one this slice introduces, and
+> it **passes** — so plain `effect()` is correct here and the idiom point is cosmetic, not a defect.
+> **Deferred deliberately:** converting both effects is the coherent change and touches behaviour this
+> slice did not, so it belongs in its own commit, not here.
 >
 > **RV-PROC-1 miss, recorded rather than papered over.** `domain-modeling` is required by the
 > SDLC routing table for any backend module/structure change, and this slice edits `CONTEXT.md`'s

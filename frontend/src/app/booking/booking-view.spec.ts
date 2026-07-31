@@ -224,6 +224,19 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
+  it('moves focus to the destructive confirm button when the withdraw prompt appears', async () => {
+    // The component claims this as an a11y behaviour; without a test the claim is unverified.
+    const fixture = await render(stubService({ detail: PENDING }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-withdraw"]'));
+  });
+
   it('asks before withdrawing, and "Keep request" backs out without calling the API', async () => {
     const withdrawCalls: string[] = [];
     const fixture = await render(stubService({ detail: PENDING, withdrawCalls }));
