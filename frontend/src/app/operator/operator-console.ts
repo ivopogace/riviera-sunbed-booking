@@ -21,8 +21,9 @@ interface ConsoleTab {
  * Operator console shell (issue #170, epic #141 foundation). The porcelain-light glass chrome that
  * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, venue
  * title, signed-in-as, sign out) and the pill tab nav with a live Requests badge, hosting each tab
- * as a child route. The tourist app shell (`app.ts`) suppresses its own chrome for `/operator/**`,
- * so this component owns the full viewport.
+ * as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
+ * `/operator/:venueId` (`data.operatorConsole`), so this component owns the full viewport — every
+ * other operator surface wears the shared operator chrome instead (`data.operatorChrome`).
  *
  * <p><strong>Always porcelain</strong>: the `data-riv-theme="porcelain"` host attribute re-scopes the
  * `--riv-*` tokens for the console subtree WITHOUT writing the document-level theme — so a tourist who

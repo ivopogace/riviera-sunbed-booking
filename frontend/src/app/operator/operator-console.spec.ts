@@ -122,6 +122,8 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     expect(host().querySelector('[data-testid="oc-signed-in-as"]')?.textContent).toContain(
       'operator',
     );
+    // The console shell carries its own footer — the shell chrome (and its footer) is suppressed here.
+    expect(host().querySelector('[data-testid="oc-footer"]')).not.toBeNull();
   });
 
   it('carries no inline sign-in card — the guard owns the gate (#277)', async () => {

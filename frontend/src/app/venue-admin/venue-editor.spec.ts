@@ -1,8 +1,7 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
-import { vi } from 'vitest';
+import { provideRouter } from '@angular/router';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
@@ -69,8 +68,8 @@ describe('VenueEditor (onboarding, #177)', () => {
   it('carries no inline sign-in card — the guard owns the gate (#277)', () => {
     expect(host().textContent).not.toContain('Operator sign-in');
     expect(host().querySelector('[name="operator-username"]')).toBeNull();
-    // The signed-in-as strip and the create form render straight away.
-    expect(host().textContent).toContain('Signed in as');
+    // The create form renders straight away; session controls live in the shared operator header.
+    expect(host().textContent).not.toContain('Signed in as');
     expect(host().textContent).toContain('Create venue');
   });
 
@@ -154,19 +153,5 @@ describe('VenueEditor (onboarding, #177)', () => {
     expect(auth.signedIn()).toBe(false);
   });
 
-  it('signs out and leaves for the unified auth page (#277)', async () => {
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-
-    clickButton('Sign out');
-    httpMock
-      .expectOne(`${environment.apiBaseUrl}/api/auth/logout`)
-      .flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-
-    expect(auth.signedIn()).toBe(false);
-    // The guard gates on ACTIVATION, so the page must navigate away rather than sit on a dead session.
-    expect(navigate).toHaveBeenCalledWith(['/account/sign-in'], {
-      queryParams: { audience: 'operator' },
-    });
-  });
+  // Sign-out moved to the shared operator header — covered by operator-chrome.spec.ts.
 });

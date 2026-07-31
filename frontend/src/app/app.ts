@@ -7,6 +7,7 @@ import { FindBooking } from './booking/find-booking';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
+import { OperatorChrome } from './operator/operator-chrome';
 
 /**
  * The Liquid Glass app shell (issue #134): themed gradient background, sticky glass header with
@@ -17,10 +18,14 @@ import { ThemeId, ThemeService } from './core/theme';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, FindBooking],
+  imports: [RouterOutlet, RouterLink, FindBooking, OperatorChrome],
   templateUrl: './app.html',
   styleUrl: './app.scss',
-  host: { '(document:keydown.escape)': 'closeMenus()' },
+  host: {
+    '(document:keydown.escape)': 'closeMenus()',
+    // Pins the subtree porcelain on operator-chrome routes, whatever tourist theme is selected.
+    '[attr.data-riv-theme]': "shellChrome() === 'operator' ? 'porcelain' : null",
+  },
 })
 export class App {
   protected readonly themes = inject(ThemeService);
@@ -72,12 +77,14 @@ export class App {
 
   /**
    * The active route's chrome flags, computed once per navigation from a SINGLE root→leaf walk:
-   * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel) and
-   * `chromeless` (the operator console, `/operator/**` #170, owns a full-bleed porcelain shell → the
-   * tourist header/nav/footer + themed background are suppressed). `operatorConsole` sits on the
-   * console's PARENT route and is not inherited into a child snapshot, so it is OR-ed across the
-   * whole chain; `legacySurface` is a leaf-only flag. Defaults (pre-navigation): legacy compat on,
-   * chrome shown.
+   * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel),
+   * `chromeless` (the operator console, `/operator/:venueId` #170, owns a full-bleed porcelain
+   * shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER operator/admin
+   * surface → the shared porcelain operator header/footer replace the tourist ones, so an admin is
+   * never shown the customer session's "Sign in / Register" while signed in). The console flag sits
+   * on a PARENT route and is not inherited into a child snapshot, so both flags are OR-ed across
+   * the whole chain; `legacySurface` is a leaf-only flag. Defaults (pre-navigation): legacy compat
+   * on, tourist chrome shown.
    */
   private readonly routeChrome = toSignal(
     this.router.events.pipe(
@@ -85,21 +92,30 @@ export class App {
       map(() => {
         let route = this.router.routerState.snapshot.root;
         let chromeless = route.data['operatorConsole'] === true;
+        let operatorChrome = route.data['operatorChrome'] === true;
         while (route.firstChild) {
           route = route.firstChild;
           chromeless ||= route.data['operatorConsole'] === true;
+          operatorChrome ||= route.data['operatorChrome'] === true;
         }
-        return { legacySurface: route.data['legacySurface'] === true, chromeless };
+        return { legacySurface: route.data['legacySurface'] === true, chromeless, operatorChrome };
       }),
     ),
-    { initialValue: { legacySurface: true, chromeless: false } },
+    { initialValue: { legacySurface: true, chromeless: false, operatorChrome: false } },
   );
 
   /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
   protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);
 
-  /** True on the operator console — its porcelain shell replaces the tourist chrome (default false). */
-  protected readonly hideShellChrome = computed(() => this.routeChrome().chromeless);
+  /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
+   *  header/footer, or none at all (the console brings its own). */
+  protected readonly shellChrome = computed(() => {
+    const { chromeless, operatorChrome } = this.routeChrome();
+    if (chromeless) {
+      return 'none';
+    }
+    return operatorChrome ? 'operator' : 'tourist';
+  });
 
   constructor() {
     // Any successful navigation closes the shell overlays — in particular, a found booking code
