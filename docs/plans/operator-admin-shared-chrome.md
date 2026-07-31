@@ -140,8 +140,7 @@ N/A — no money moves; no payment/payout surface touched.
 ## Execution status
 
 > Stage pointer: **complete** — implemented, reviewed (RV-FE bank + RV-STYLE-1 fixes),
-> verified, committed on the designated branch. Next action: none (awaiting user; PR not
-> requested).
+> verified; merged via PR #462. Next action: none.
 
 | Phase | Status | Evidence |
 |---|---|---|
