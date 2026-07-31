@@ -75,7 +75,8 @@ that does **not** trigger its own recovery: a crash restarts by definition and t
 whereas a shed happens while the process is healthy and nothing restarts it. Until someone acts, a
 tourist owed money under invariant #10 has not been paid.
 
-**The lever is `POST /api/admin/refund-outbox/resubmit` (#454).** It re-drives what the registry
+**The lever is `POST /api/admin/refund-outbox/resubmit` (#454; the admin console's Refunds tab at
+`/admin/refunds` drives it since #460).** It re-drives what the registry
 still owes `BookingRefundListener` — thrown, shed, or crash-stranded alike — and nothing else: the
 scope is that listener's **exact id** (an allowlist of one, not the `booking` package prefix, which
 would also sweep `PaymentEventListener`'s payment→confirm spine). The mail lever remains equally

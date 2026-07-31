@@ -58,10 +58,7 @@ describe('AdminRefundOutbox a11y', () => {
     await expectNoAxeViolations(fixture.nativeElement);
   });
 
-  /**
-   * The outcome of a press is the whole point of the screen and it appears without a focus change, so
-   * a screen-reader user only learns it if the region announces itself.
-   */
+  // The outcome appears without a focus change, so only a self-announcing region reaches AT users.
   it('announces the outcome through a polite live region (AC-3)', async () => {
     const fixture = await render({ outstanding: 1, cooldownRemainingSeconds: 0 });
 

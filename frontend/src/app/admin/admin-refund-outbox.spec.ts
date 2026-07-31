@@ -110,10 +110,7 @@ describe('AdminRefundOutbox', () => {
     expect(service.status).toHaveBeenCalledTimes(2);
   });
 
-  /**
-   * The refusal is a `200` the admin acts on, so it must not read as a failure — conflating the two
-   * teaches an admin to distrust a working button (AC-1's core clause).
-   */
+  // A refusal is a `200` the admin acts on — it must never read as a failure (AC-1's core clause).
   it('reports a cooling-down refusal as a refusal, not an error (AC-1)', async () => {
     const service = serviceStub({ outstanding: 2, cooldownRemainingSeconds: 0 });
     service.resubmit.mockResolvedValue({

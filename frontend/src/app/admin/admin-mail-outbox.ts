@@ -31,7 +31,7 @@ import { OutboxLever } from './admin-outbox-lever';
  *
  * <p>Since #380 the page carries a second card, {@link AdminMailDelivery}: the outbox above answers
  * "what does the registry still owe us", that one answers "what happened to this tourist's mail" —
- * the same concern from opposite ends, which is why it is a card here rather than a third tab.
+ * the same concern from opposite ends, which is why it is a card here rather than a tab of its own.
  *
  * <p>Like `/admin`, the page self-gates on {@link OperatorAuth} for UX while the backend
  * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
