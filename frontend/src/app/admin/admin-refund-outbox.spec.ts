@@ -4,9 +4,8 @@ import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
-import { AdminMailDeliveryService } from './admin-mail-delivery.service';
-import { AdminMailOutbox } from './admin-mail-outbox';
-import { AdminMailOutboxService } from './admin-mail-outbox.service';
+import { AdminRefundOutbox } from './admin-refund-outbox';
+import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
 interface AuthState {
@@ -38,27 +37,19 @@ function serviceStub(status: OutboxStatusView = { outstanding: 0, cooldownRemain
   };
 }
 
-/** The nested delivery card's port — never exercised from these specs. */
-const inertDeliveryService = {
-  lookup: async () => ({ bookings: [] }),
-  resend: async () => ({ outcome: 'SENT' as const }),
-};
-
 async function render(
   auth: OperatorAuth,
   service: ReturnType<typeof serviceStub>,
-): Promise<ComponentFixture<AdminMailOutbox>> {
+): Promise<ComponentFixture<AdminRefundOutbox>> {
   await TestBed.configureTestingModule({
-    imports: [AdminMailOutbox],
+    imports: [AdminRefundOutbox],
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: auth },
-      { provide: AdminMailOutboxService, useValue: service },
-      // The page nests the #380 delivery card; inert here, it has its own specs.
-      { provide: AdminMailDeliveryService, useValue: inertDeliveryService },
+      { provide: AdminRefundOutboxService, useValue: service },
     ],
   }).compileComponents();
-  const fixture = TestBed.createComponent(AdminMailOutbox);
+  const fixture = TestBed.createComponent(AdminRefundOutbox);
   fixture.detectChanges();
   // Settled twice: load() awaits refreshStatus(), which awaits the service — two microtask turns.
   await fixture.whenStable();
@@ -67,18 +58,18 @@ async function render(
   return fixture;
 }
 
-function text(fixture: ComponentFixture<AdminMailOutbox>, testId: string): string {
+function text(fixture: ComponentFixture<AdminRefundOutbox>, testId: string): string {
   return (
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? ''
   );
 }
 
-function has(fixture: ComponentFixture<AdminMailOutbox>, testId: string): boolean {
+function has(fixture: ComponentFixture<AdminRefundOutbox>, testId: string): boolean {
   return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) !== null;
 }
 
-async function press(fixture: ComponentFixture<AdminMailOutbox>): Promise<void> {
-  fixture.nativeElement.querySelector('[data-testid="admin-outbox-resubmit"]').click();
+async function press(fixture: ComponentFixture<AdminRefundOutbox>): Promise<void> {
+  fixture.nativeElement.querySelector('[data-testid="admin-refunds-resubmit"]').click();
   // resubmit() -> describe() -> reconcile() -> status(): three awaits before the notice settles.
   await fixture.whenStable();
   await fixture.whenStable();
@@ -86,25 +77,25 @@ async function press(fixture: ComponentFixture<AdminMailOutbox>): Promise<void> 
   fixture.detectChanges();
 }
 
-describe('AdminMailOutbox', () => {
-  it('shows what the registry still owes before anything is pressed (AC-8)', async () => {
+describe('AdminRefundOutbox', () => {
+  it('shows what the registry still owes before anything is pressed (AC-1)', async () => {
     const service = serviceStub({ outstanding: 3, cooldownRemainingSeconds: 0 });
 
     const fixture = await render(authStub(), service);
 
-    expect(text(fixture, 'admin-outbox-outstanding')).toContain('3');
-    expect(text(fixture, 'admin-outbox-outstanding')).toContain('mails are');
+    expect(text(fixture, 'admin-refunds-outstanding')).toContain('3');
+    expect(text(fixture, 'admin-refunds-outstanding')).toContain('refunds are');
     expect(service.status).toHaveBeenCalledTimes(1);
   });
 
   it('says so plainly when nothing is outstanding', async () => {
     const fixture = await render(authStub(), serviceStub());
 
-    expect(has(fixture, 'admin-outbox-empty')).toBe(true);
-    expect(has(fixture, 'admin-outbox-outstanding')).toBe(false);
+    expect(has(fixture, 'admin-refunds-empty')).toBe(true);
+    expect(has(fixture, 'admin-refunds-outstanding')).toBe(false);
   });
 
-  it('reports the count handed back and re-reads the outbox (AC-8)', async () => {
+  it('reports the count handed back and re-reads the outbox (AC-1)', async () => {
     const service = serviceStub({ outstanding: 4, cooldownRemainingSeconds: 0 });
     service.resubmit.mockResolvedValue({
       outcome: 'RESUBMITTED',
@@ -115,15 +106,12 @@ describe('AdminMailOutbox', () => {
 
     await press(fixture);
 
-    expect(text(fixture, 'admin-outbox-notice')).toBe('Handed 4 back for delivery.');
+    expect(text(fixture, 'admin-refunds-notice')).toBe('Handed 4 back to be retried.');
     expect(service.status).toHaveBeenCalledTimes(2);
   });
 
-  /**
-   * The refusal is a `200` the admin acts on, so it must not read as a failure — conflating the two
-   * teaches an admin to distrust a working button.
-   */
-  it('reports a cooling-down refusal as a refusal, not an error (AC-8)', async () => {
+  // A refusal is a `200` the admin acts on — it must never read as a failure (AC-1's core clause).
+  it('reports a cooling-down refusal as a refusal, not an error (AC-1)', async () => {
     const service = serviceStub({ outstanding: 2, cooldownRemainingSeconds: 0 });
     service.resubmit.mockResolvedValue({
       outcome: 'COOLING_DOWN',
@@ -134,13 +122,13 @@ describe('AdminMailOutbox', () => {
 
     await press(fixture);
 
-    expect(text(fixture, 'admin-outbox-notice')).toBe(
+    expect(text(fixture, 'admin-refunds-notice')).toBe(
       'A resubmission ran recently, so this one was skipped. Try again in 41s.',
     );
-    expect(text(fixture, 'admin-outbox-notice')).not.toContain('wrong');
+    expect(text(fixture, 'admin-refunds-notice')).not.toContain('wrong');
   });
 
-  it('reports a concurrent press as ALREADY_RUNNING', async () => {
+  it('reports a concurrent press as ALREADY_RUNNING (AC-1)', async () => {
     const service = serviceStub({ outstanding: 2, cooldownRemainingSeconds: 0 });
     service.resubmit.mockResolvedValue({
       outcome: 'ALREADY_RUNNING',
@@ -151,7 +139,7 @@ describe('AdminMailOutbox', () => {
 
     await press(fixture);
 
-    expect(text(fixture, 'admin-outbox-notice')).toContain('already running');
+    expect(text(fixture, 'admin-refunds-notice')).toContain('already running');
   });
 
   it('surfaces a failed resubmission as an error without claiming a count', async () => {
@@ -161,7 +149,7 @@ describe('AdminMailOutbox', () => {
 
     await press(fixture);
 
-    expect(text(fixture, 'admin-outbox-notice')).toBe(
+    expect(text(fixture, 'admin-refunds-notice')).toBe(
       'Something went wrong — nothing was resubmitted.',
     );
   });
@@ -179,8 +167,8 @@ describe('AdminMailOutbox', () => {
 
     await press(fixture);
 
-    expect(text(fixture, 'admin-outbox-notice')).toBe('Handed 2 back for delivery.');
-    expect(has(fixture, 'admin-outbox-error')).toBe(false);
+    expect(text(fixture, 'admin-refunds-notice')).toBe('Handed 2 back to be retried.');
+    expect(has(fixture, 'admin-refunds-error')).toBe(false);
   });
 
   it('offers a retry when the initial load fails', async () => {
@@ -189,36 +177,36 @@ describe('AdminMailOutbox', () => {
 
     const fixture = await render(authStub(), service);
 
-    expect(has(fixture, 'admin-outbox-error')).toBe(true);
-    expect(has(fixture, 'admin-outbox-resubmit')).toBe(false);
+    expect(has(fixture, 'admin-refunds-error')).toBe(true);
+    expect(has(fixture, 'admin-refunds-resubmit')).toBe(false);
   });
 
-  it('offers no lever to a non-admin operator (AC-9)', async () => {
+  it('offers no lever to a non-admin operator (AC-2)', async () => {
     const service = serviceStub();
 
     const fixture = await render(authStub({ isAdmin: false }), service);
 
-    expect(has(fixture, 'admin-outbox-forbidden')).toBe(true);
-    expect(has(fixture, 'admin-outbox-resubmit')).toBe(false);
+    expect(has(fixture, 'admin-refunds-forbidden')).toBe(true);
+    expect(has(fixture, 'admin-refunds-resubmit')).toBe(false);
     expect(service.status).not.toHaveBeenCalled();
   });
 
-  it('offers no lever, and no tab strip, to a signed-out visitor (AC-9)', async () => {
+  it('offers no lever, and no tab strip, to a signed-out visitor (AC-2)', async () => {
     const service = serviceStub();
 
     const fixture = await render(authStub({ signedIn: false, isAdmin: false }), service);
 
-    expect(has(fixture, 'admin-outbox-signed-out')).toBe(true);
-    expect(has(fixture, 'admin-outbox-resubmit')).toBe(false);
-    expect(has(fixture, 'admin-tab-email')).toBe(false);
+    expect(has(fixture, 'admin-refunds-signed-out')).toBe(true);
+    expect(has(fixture, 'admin-refunds-resubmit')).toBe(false);
+    expect(has(fixture, 'admin-tab-refunds')).toBe(false);
   });
 
-  it('waits for session restore before deciding anything', async () => {
+  it('waits for session restore before deciding anything (AC-2)', async () => {
     const service = serviceStub();
 
     const fixture = await render(authStub({ restoring: true }), service);
 
-    expect(has(fixture, 'admin-outbox-restoring')).toBe(true);
+    expect(has(fixture, 'admin-refunds-restoring')).toBe(true);
     expect(service.status).not.toHaveBeenCalled();
   });
 });

@@ -8,7 +8,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
  * <p><strong>Routed tabs, not local state.</strong> The canvas models tabs as a `tab` state field
  * because it is a single demo page; here each tab is its own lazy route, so it is deep-linkable,
  * back-button-correct, and only the tab you opened is downloaded — the operator console's shape
- * (#170), minus the layout component, which two tabs do not yet justify.
+ * (#170), minus the layout component, which the tab count (three, as of #460) does not yet justify.
  *
  * <p><strong>Which tabs exist is a backend question.</strong> The canvas draws five; three of them
  * (Commissions, Payouts, and Privacy's erasure flow) are out of this slice — the canvas itself
@@ -44,5 +44,6 @@ export class AdminConsoleTabs {
   protected readonly tabs = [
     { path: '/admin', label: 'Operators', testId: 'admin-tab-operators' },
     { path: '/admin/email', label: 'Email', testId: 'admin-tab-email' },
+    { path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' },
   ];
 }

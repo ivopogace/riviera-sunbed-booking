@@ -21,6 +21,7 @@ async function renderAt(url: string): Promise<ComponentFixture<TabsHost>> {
       provideRouter([
         { path: 'admin', component: Blank },
         { path: 'admin/email', component: Blank },
+        { path: 'admin/refunds', component: Blank },
       ]),
     ],
   }).compileComponents();
@@ -42,6 +43,7 @@ describe('AdminConsoleTabs', () => {
 
     expect(tab(fixture, 'admin-tab-operators').getAttribute('href')).toBe('/admin');
     expect(tab(fixture, 'admin-tab-email').getAttribute('href')).toBe('/admin/email');
+    expect(tab(fixture, 'admin-tab-refunds').getAttribute('href')).toBe('/admin/refunds');
   });
 
   /**
@@ -53,6 +55,15 @@ describe('AdminConsoleTabs', () => {
 
     expect(tab(fixture, 'admin-tab-email').getAttribute('aria-current')).toBe('page');
     expect(tab(fixture, 'admin-tab-operators').getAttribute('aria-current')).toBeNull();
+    expect(tab(fixture, 'admin-tab-refunds').getAttribute('aria-current')).toBeNull();
+  });
+
+  it('marks the Refunds tab as current on /admin/refunds (#460 AC-3)', async () => {
+    const fixture = await renderAt('/admin/refunds');
+
+    expect(tab(fixture, 'admin-tab-refunds').getAttribute('aria-current')).toBe('page');
+    expect(tab(fixture, 'admin-tab-operators').getAttribute('aria-current')).toBeNull();
+    expect(tab(fixture, 'admin-tab-email').getAttribute('aria-current')).toBeNull();
   });
 
   /**

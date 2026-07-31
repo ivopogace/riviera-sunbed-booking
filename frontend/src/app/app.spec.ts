@@ -457,6 +457,8 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'admin',
     // #405: the admin console's Email tab — the same porcelain surface, same tab strip.
     'admin/email',
+    // #460: the admin console's Refunds tab — the same porcelain surface, same tab strip.
+    'admin/refunds',
   ];
 
   // The operator console (#170) is a THIRD category: chromeless (its own porcelain shell), neither

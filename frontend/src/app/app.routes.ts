@@ -162,6 +162,12 @@ export const routes: Routes = [
     title: 'Email — Riviera',
   },
   {
+    // Admin console Refunds tab (#460) — the #454 refund-outbox lever; ADMIN-gated server-side.
+    path: 'admin/refunds',
+    loadComponent: () => import('./admin/admin-refund-outbox').then((m) => m.AdminRefundOutbox),
+    title: 'Refunds — Riviera',
+  },
+  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
     // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
     // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the

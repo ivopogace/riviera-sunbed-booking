@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -6,7 +6,7 @@ import { CardGlass } from '../shared/card-glass';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminMailDelivery } from './admin-mail-delivery';
 import { AdminMailOutboxService } from './admin-mail-outbox.service';
-import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model';
+import { OutboxLever } from './admin-outbox-lever';
 
 /**
  * The admin console's Email tab (#405): what the Event Publication Registry still owes — confirmation
@@ -26,9 +26,12 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
  * stale the moment it is rendered, and a button disabled by a stale number is indistinguishable from
  * a broken one. It disables only for the round-trip it is actually making.
  *
+ * <p>Those press semantics are shared with the Refunds tab (#460) and live in {@link OutboxLever};
+ * this component keeps the auth self-gate, the template, and the mail-specific copy.
+ *
  * <p>Since #380 the page carries a second card, {@link AdminMailDelivery}: the outbox above answers
  * "what does the registry still owe us", that one answers "what happened to this tourist's mail" —
- * the same concern from opposite ends, which is why it is a card here rather than a third tab.
+ * the same concern from opposite ends, which is why it is a card here rather than a tab of its own.
  *
  * <p>Like `/admin`, the page self-gates on {@link OperatorAuth} for UX while the backend
  * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
@@ -57,14 +60,16 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
 
-        @if (loading()) {
+        @if (lever.loading()) {
           <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-outbox-loading">
             Loading…
           </p>
-        } @else if (loadError()) {
+        } @else if (lever.loadError()) {
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-outbox-error">
             Something went wrong loading the outbox.
-            <button type="button" class="font-semibold underline" (click)="reload()">Retry</button>
+            <button type="button" class="font-semibold underline" (click)="lever.load()">
+              Retry
+            </button>
           </p>
         } @else {
           <div
@@ -77,7 +82,7 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
               Undelivered confirmation mail
             </h2>
 
-            @if (status(); as outbox) {
+            @if (lever.status(); as outbox) {
               @if (outbox.outstanding === 0) {
                 <p
                   class="mt-2 text-[15px] text-(--riv-card-ink)"
@@ -100,11 +105,11 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
             <button
               type="button"
               class="mt-4 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-              [disabled]="busy()"
-              (click)="resubmit()"
+              [disabled]="lever.busy()"
+              (click)="lever.resubmit()"
               data-testid="admin-outbox-resubmit"
             >
-              {{ busy() ? 'Resubmitting…' : 'Resubmit' }}
+              {{ lever.busy() ? 'Resubmitting…' : 'Resubmit' }}
             </button>
           </div>
 
@@ -114,7 +119,7 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
             aria-live="polite"
             data-testid="admin-outbox-notice"
           >
-            {{ notice() }}
+            {{ lever.notice() }}
           </p>
 
           <app-admin-mail-delivery />
@@ -125,13 +130,11 @@ import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model'
 })
 export class AdminMailOutbox {
   protected readonly auth = inject(OperatorAuth);
-  private readonly service = inject(AdminMailOutboxService);
 
-  protected readonly status = signal<MailOutboxStatusView | undefined>(undefined);
-  protected readonly loading = signal(false);
-  protected readonly loadError = signal(false);
-  protected readonly busy = signal(false);
-  protected readonly notice = signal('');
+  protected readonly lever = new OutboxLever(
+    inject(AdminMailOutboxService),
+    (resubmitted) => `Handed ${resubmitted} back for delivery.`,
+  );
 
   private loaded = false;
 
@@ -140,70 +143,8 @@ export class AdminMailOutbox {
     effect(() => {
       if (!this.auth.restoring() && this.auth.isAdmin() && !this.loaded) {
         this.loaded = true;
-        void this.load();
+        void this.lever.load();
       }
     });
-  }
-
-  protected reload(): void {
-    void this.load();
-  }
-
-  protected async resubmit(): Promise<void> {
-    this.busy.set(true);
-    this.notice.set('');
-    try {
-      const result = await this.service.resubmit();
-      this.notice.set(this.describe(result));
-      await this.reconcile();
-    } catch {
-      this.notice.set('Something went wrong — nothing was resubmitted.');
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** Both refusals are ordinary answers; only a rejected request is an error. */
-  private describe(result: MailResubmissionResultView): string {
-    const wait = `Try again in ${result.cooldownRemainingSeconds}s.`;
-    switch (result.outcome) {
-      case 'RESUBMITTED':
-        return result.resubmitted === 0
-          ? 'Nothing was outstanding, so nothing was resubmitted.'
-          : `Handed ${result.resubmitted} back for delivery.`;
-      case 'ALREADY_RUNNING':
-        return `Another resubmission is already running. ${wait}`;
-      case 'COOLING_DOWN':
-        return `A resubmission ran recently, so this one was skipped. ${wait}`;
-    }
-  }
-
-  private async load(): Promise<void> {
-    this.loading.set(true);
-    this.loadError.set(false);
-    try {
-      await this.refreshStatus();
-    } catch {
-      this.loadError.set(true);
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  private async refreshStatus(): Promise<void> {
-    this.status.set(await this.service.status());
-  }
-
-  /**
-   * Re-read the count after an action. A failure here must not overwrite the outcome notice with an
-   * error — the resubmission still happened — so it drops the count to "unknown" rather than showing
-   * a number that is now wrong.
-   */
-  private async reconcile(): Promise<void> {
-    try {
-      await this.refreshStatus();
-    } catch {
-      this.status.set(undefined);
-    }
   }
 }
