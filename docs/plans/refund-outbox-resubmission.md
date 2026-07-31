@@ -266,10 +266,11 @@ rewrite is due.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement done — PR ready-for-review; review gate + Sonar gate next`
+**Stage pointer:** `DONE — all gates green; merged via PR #459`
 
-**Next action:** Merge latest `origin/main`, mark PR #459 ready for review, run the
-review gate (`/code-review` per the invocation ladder) and the Sonar gate.
+**Next action:** none — slice complete. (Close-out: issue #454 closes via the PR;
+no parent epic checklist applies; docs-freshness ran in phase 4 and the F-3 kernel
+docs landed with the fix round.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -278,7 +279,7 @@ review gate (`/code-review` per the invocation ladder) and the Sonar gate.
 | 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | ✅ | `9b15969` |
 | 3 — Money-path scoping IT (AC-2, AC-8) | ✅ | `801f3c0` |
 | 4 — Substrate docs + close-out | ✅ | `6abbdee` |
-| 5 — Review + Sonar fix round: kernel `ResubmissionThrottle` extraction | ✅ | (this commit) |
+| 5 — Review + Sonar fix round: kernel `ResubmissionThrottle` extraction | ✅ | `394e485`, `3afd5cb` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -461,5 +462,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** N/A upheld.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #459`.
+- [x] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 —
+      `/code-review`'s five-agent fan-out (invoked via the Skill tool, rung 1 of the
+      invocation ladder) + `riviera-review-overlay`; findings F-1/F-2 fixed, result
+      posted to PR #459. **Sonar gate:** green with the reported list verified empty
+      via the API (0 issues, 0 duplicated blocks, 95.8% new-code coverage, 667 new
+      lines analyzed — not a false-clean).
