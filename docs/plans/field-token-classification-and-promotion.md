@@ -161,21 +161,49 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** Implement complete (phase 0 green) — entering CI gate + PR
+**Stage pointer:** Merge — CI green, Review gate run in full (1 below-bar finding fixed), Sonar
+gate green with its authoritative list pulled and empty
 
-**Next action:** push, open the draft PR (CI fires on `pull_request` only), then mark ready and
-run the Review + Sonar gates.
+**Next action:** re-check CI + Sonar on the review-fix push, then merge PR #471 and run the
+close-out (file the `venue-map.scss`-citation follow-up issue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — promote 3 alphas, sweep 9 copies, fork-rename `venue-map`, green run | ✅ | phase-0 commit (this PR) |
+| 0 — promote 3 alphas, sweep 9 copies, fork-rename `venue-map`, green run | ✅ | `0b39d4b` (via PR #471) |
+| review-fix — F-1 two-line inline comment shortened to one | ✅ | review-fix commit (via PR #471) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Review-gate note:** the gate ran in full via **invocation ladder rung 1** — the
+`Skill("code-review")` probe succeeded, so the plugin's own workflow executed: eligibility
+check → CLAUDE.md map → **5 parallel Sonnet review agents** → per-finding Haiku confidence
+scoring, with `riviera-review-overlay` layered on (frontend bank RV-FE-1/6/7, RV-STYLE-1,
+RV-PROC-1 — clean or N/A; RV-PROC-1 verified the *Skills consulted* line against the routing
+table, including the `riviera-tailwind` entry the `venue-map.html` classification required).
+The subagent fan-out was authorized by the user, this session carrying a standing "don't call
+the Agent tool unless requested" instruction — `pr-gates.md` §1 requires asking, not silently
+degrading. The eligibility subagent could not reach the GitHub MCP (interactive auth
+unavailable in subagents); that check was run in the main thread instead rather than skipped.
+
+Agents #2–#5 returned clean. Agent #2's value-preservation pass is the one that matters most
+for R-1 and it confirmed every promoted site kept its exact alpha and `composite()` argument
+order. Agents #3 and #4 each independently re-ran `npm test` (126/979) rather than trusting
+this doc's claim.
+
+**Sonar gate:** quality gate passed **and** the authoritative API list pulled and empty —
+0 issues, 0 hotspots, 0 new bugs/vulns/smells, 0 duplicated blocks, 100% new-code coverage.
+The false-clean guard passed on both legs (`new_lines=19` non-empty, `SonarCloud Code
+Analysis` check-run `success`). Note for the next session: `api/measures/component` returns
+`periods: [{value}]`, **not** `period: {value}` — parsing it the documented-in-passing way
+yields `None` for every metric, which reads exactly like the unanalyzed false-clean the
+runbook warns about. Read the raw JSON before believing an empty measures response.
 
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (agent #1) | `styles.scss:53` — the comment-accuracy commit earlier on this branch rewrote a **one-line** inline comment into **two**, which RV-STYLE-1 and `frontend/.claude/CLAUDE.md` ("Inline comments are one line, or they are not written") forbid for what a diff *writes*. Confidence scored **25** — below the workflow's 80 bar, the scorer weighing the file's many pre-existing multi-line comments as established convention | **fixed anyway** — same call #467's F-1 established for the comment-accuracy class. Shortened to one line, keeping the word "tourist" (the clause that actually disambiguates); the dropped console-mock provenance is not lost — it already lives in `console-stats-strip.contrast.spec.ts`'s header docblock and `it()` title |
+| — | review (agents #3 and #5, independently) | `venue-map.contrast.spec.ts:29,156` still cite `venue-map.scss`, deleted in the Tailwind migration | **not actioned** — pre-existing, outside this diff's lines; both agents noted it is *disclosed* in this plan (R-4 + audit log) rather than silent, which is what keeps it clear of F-2's failure mode. Needs its own issue |
 
 ---
 
