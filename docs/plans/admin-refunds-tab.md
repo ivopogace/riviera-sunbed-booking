@@ -179,16 +179,15 @@ as the sibling tabs do. No deviation.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — failing refund-tab unit/a11y specs + tabs-spec additions,
-then service/component/tab entry/route.
+**Next action:** Phase 3 — author the mocked CI-safe e2e, then `test:e2e:a11y` + build.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `ab33e7c`; draft PR #461 |
 | 1 — Shared `OutboxLever` + Email-tab delegation (parity) | ✅ | full `npm test` (935) + lint green; mail specs untouched beyond type imports |
-| 2 — Refunds tab: service, component, specs, tab strip, route | | |
+| 2 — Refunds tab: service, component, specs, tab strip, route | ✅ | TDD red (missing module) → green; 950 tests + lint pass; `app.spec.ts` route inventory gained `admin/refunds` (restyled, non-legacy) | 
 | 3 — Mocked CI-safe e2e + full frontend verification | | |
 | 4 — Gates + close-out | | |
 
