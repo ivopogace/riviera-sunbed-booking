@@ -31,8 +31,10 @@ red→green per phase) · `riviera-review-overlay` (review gate — after ready-
 #101 issue comment is the close-out record) · `riviera-frontend` (placement: `pages/legal/`,
 flat lazy routes in `app.routes.ts`, e2e-suite split) · `riviera-tailwind` (loaded at
 implement, before styling the new pages — Tailwind v4 go-forward, no new SCSS) ·
-`angular-developer` (loaded at implement — v22 idioms; the angular-cli MCP is absent in
-this cloud session, noted per the toolset-drift rule) · `playwright-cli` (loaded at the
+`angular-developer` (loaded at implement — v22 idioms) · angular-cli MCP (driven over
+stdio — its tools aren't in the session registry, so `get_best_practices` +
+`search_documentation` were called via a scratchpad MCP client; confirmed per-route
+`title` + standalone/inline idioms) · `playwright-cli` (loaded at the
 e2e phase — mocked CI-safe spec authoring) · `riviera-local-debug` (loaded before the
 session's first `npm` — scoped Vitest runs, CI owns the full suite).
 
@@ -143,16 +145,19 @@ N/A — no contract change (no API calls added; legal pages are static).
 > Session-recovery anchor — re-read after compaction; update in the same commit window
 > as the change it records.
 
-**Stage pointer:** plan committed → implement (phase 0)
+**Stage pointer:** implement (phase 1)
 
-**Next action:** load `riviera-tailwind` + `angular-developer`, then phase 0 red tests.
+**Next action:** phase 1 red tests — dialog Review-step links, pay-page links, footer links.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| P — plan doc committed, draft PR opened | ⏳ | |
-| 0 — legal pages + routes (+unit/a11y/contrast specs) | | |
-| 1 — checkout notice lines (dialog, pay) + footer links (+specs) | | |
+| P — plan doc committed, draft PR opened | ✅ | `6aea54a`, PR #464 (draft) |
+| 0 — legal pages + routes (+unit/a11y/contrast specs) | ✅ | this commit — red run (module-not-found), then 6 files / 19 tests green scoped |
+| 1 — checkout notice lines (dialog, pay) + footer links (+specs) | ⏳ | |
 | 2 — e2e mocked spec + local verification (lint, unit, build) | | |
+
+Note (FE-1/FE-2 drift): the pages use external `.html` templates, not inline — the content
+is long-form; `riviera-frontend` sanctions external templates at that size.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

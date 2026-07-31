@@ -34,6 +34,16 @@ describe('app.routes — retired auth surfaces', () => {
     expect(router.url).toBe('/account/sign-in?audience=operator&mode=register');
   });
 
+  it('registers the two lazy legal routes with titles (#101 Slice 3)', () => {
+    // Config-level pin: the real render + axe pass is the e2e's job (legal-pages.e2e.ts).
+    const privacy = routes.find((route) => route.path === 'legal/privacy');
+    const terms = routes.find((route) => route.path === 'legal/terms');
+    expect(privacy?.loadComponent).toBeDefined();
+    expect(privacy?.title).toBe('Privacy policy — Riviera');
+    expect(terms?.loadComponent).toBeDefined();
+    expect(terms?.title).toBe('Terms of service — Riviera');
+  });
+
   it('keeps forwarding the retired staff-daily deep link to the console tab', async () => {
     // Pre-existing O6 (#176) redirect — re-asserted so the S9 route edits cannot silently drop it.
     TestBed.resetTestingModule();

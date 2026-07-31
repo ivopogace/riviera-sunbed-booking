@@ -116,6 +116,18 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
+    // Draft privacy policy (#101 Slice 3) — checkout agreement + footer link target.
+    path: 'legal/privacy',
+    loadComponent: () => import('./pages/legal/privacy-policy').then((m) => m.PrivacyPolicy),
+    title: 'Privacy policy — Riviera',
+  },
+  {
+    // Draft terms of service (#101 Slice 3) — checkout agreement + footer link target.
+    path: 'legal/terms',
+    loadComponent: () => import('./pages/legal/terms-of-service').then((m) => m.TermsOfService),
+    title: 'Terms of service — Riviera',
+  },
+  {
     // Venue onboarding (create a venue), reached from the console header. O8 (#177) retired this
     // page's in-page editing — layout/pricing/details/commodities are console tabs now — so it is no
     // longer a legacy compat surface: the `legacySurface` flag is dropped (its self-styled form
