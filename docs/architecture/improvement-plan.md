@@ -139,11 +139,12 @@ Sequence this **last** — enforcing the shape before the migration is done just
 > scrub-in-place tombstone keeping the statutory-retention financial records, V30, self-service
 > + admin endpoints, `docs/runbooks/data-erasure.md`) and the automated retention sweep
 > (Slice 2, PR #318 — three-gate no-live-basis check, ships **disabled** pending counsel's
-> retention window). Remaining: checkout privacy/terms links (Slice 3, agent-doable), the
-> human-gated legal texts + DPAs (re-pointed 2026-07-24 at the Albanian sh.p.k. + Paysera +
-> Hetzner direction, ADR-0009), and backups/PITR — now **self-managed on the Hetzner
-> hosting move** (ADR-0004's deferred EU-sovereign cutover, its own epic), no longer a
-> "confirm the managed plan" item.
+> retention window) and the checkout privacy/terms links (Slice 3, shipped as clearly-marked
+> **draft** documents via PR #464 — swapping in the counsel texts is a copy-only edit).
+> Remaining: the human-gated legal texts + DPAs (re-pointed 2026-07-24 at the Albanian
+> sh.p.k. + Paysera + Hetzner direction, ADR-0009), and backups/PITR — now **self-managed on
+> the Hetzner hosting move** (ADR-0004's deferred EU-sovereign cutover, its own epic), no
+> longer a "confirm the managed plan" item.
 
 **D6. Disputes + reconciliation.** *(P1/P2)* Handle `charge.dispute.created`; daily reconciliation sweep against Stripe events with a recovery script.
 > **Re-pointed onto Paysera (2026-07-24) — blocked by #284 (ADR-0009):** the migration removes

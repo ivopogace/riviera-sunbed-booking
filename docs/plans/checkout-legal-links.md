@@ -27,8 +27,9 @@ unsatisfiable today: entities pending, current processors are Stripe/Render/Neon
 with placeholders, drift recorded below) · `riviera-plan-doc` (this template — forced the
 draft-vs-real risk row and the parity N/A check) · `tdd` (component specs written first,
 red→green per phase) · `riviera-review-overlay` (review gate — after ready-for-review) ·
-`riviera-docs-freshness` (N/A — no substrate doc states anything this slice changes; the
-#101 issue comment is the close-out record) · `riviera-frontend` (placement: `pages/legal/`,
+`riviera-docs-freshness` (ran pre-merge over `origin/main...HEAD` via the review gate —
+1 finding: this branch's own improvement-plan D5 annotation said Slice 3 was "remaining"
+while this PR ships it; patched in-PR) · `riviera-frontend` (placement: `pages/legal/`,
 flat lazy routes in `app.routes.ts`, e2e-suite split) · `riviera-tailwind` (loaded at
 implement, before styling the new pages — Tailwind v4 go-forward, no new SCSS) ·
 `angular-developer` (loaded at implement — v22 idioms) · angular-cli MCP (driven over
@@ -45,27 +46,27 @@ branch stands in for `feature/checkout-legal-links` (riviera-sdlc cloud addendum
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the guest-checkout dialog on the Review step (either INSTANT or
+- [x] **AC-1:** Given the guest-checkout dialog on the Review step (either INSTANT or
   REQUEST mode), when the step renders, then an agreement notice is visible naming the
   Terms of Service and Privacy Policy as links to `/legal/terms` and `/legal/privacy`
   that open in a new tab (`target="_blank"` + `rel="noopener"`), adjacent to the primary
   action. *Pinned by:* `booking-dialog.spec.ts` ("review step shows the legal agreement
   links", both modes).
-- [ ] **AC-2:** Given the Instant payment page with a payable booking, when the pay
+- [x] **AC-2:** Given the Instant payment page with a payable booking, when the pay
   summary renders, then the same agreement notice with both links is visible with the Pay
   button. *Pinned by:* `booking-pay.spec.ts` ("shows the legal agreement links with the
   pay action").
-- [ ] **AC-3:** Given navigation to `/legal/privacy` and `/legal/terms`, when each page
+- [x] **AC-3:** Given navigation to `/legal/privacy` and `/legal/terms`, when each page
   loads (lazily, with a route `title`), then the document renders with (a) a prominent
   draft-status banner and (b) the erasure/rights section pointing at the shipped
   self-service flows. *Pinned by:* `privacy-policy.spec.ts`, `terms-of-service.spec.ts`,
   `app.routes.spec.ts` (route registration).
-- [ ] **AC-4:** Given the shared shell footer, when any chrome renders it, then Privacy
+- [x] **AC-4:** Given the shared shell footer, when any chrome renders it, then Privacy
   and Terms links are present. *Pinned by:* `app.spec.ts` ("footer carries the legal links").
-- [ ] **AC-5:** Both legal pages pass the axe + contrast a11y gates. *Pinned by:*
-  `privacy-policy.a11y.spec.ts`, `terms-of-service.a11y.spec.ts`,
-  `privacy-policy.contrast.spec.ts`, `terms-of-service.contrast.spec.ts`.
-- [ ] **AC-6:** e2e (CI-safe mocked suite): from a venue map, opening the booking dialog
+- [x] **AC-5:** Both legal pages pass the axe + contrast a11y gates. *Pinned by:*
+  `privacy-policy.a11y.spec.ts`, `terms-of-service.a11y.spec.ts`, and the shared
+  `legal-pages.contrast.spec.ts` (one spec — the two pages share one surface recipe).
+- [x] **AC-6:** e2e (CI-safe mocked suite): from a venue map, opening the booking dialog
   to Review shows the agreement links; following the terms link lands on the terms page;
   both legal pages pass `expectNoSeriousAxeViolations`. *Pinned by:* `e2e/legal-pages.e2e.ts`.
 
@@ -89,20 +90,22 @@ no existing behavior is retired).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Draft legal text is mistaken for a real, counsel-approved policy | med | med | Prominent "Draft — pending legal review" banner on both pages + bracketed `[…]` entity placeholders; #101 stays open for the swap | agent | open |
-| R-2 | In-modal navigation to a legal page destroys checkout state | med | med | Links open in a new tab (`target="_blank"` `rel="noopener"`) from dialog and pay page | agent | open |
-| R-3 | Terms copy contradicts server-enforced rules (cutoff #4, refunds #10) | low | med | Copy states the rules generically ("the evening before, as shown at booking"; refunds server-computed) and defers to the booking view's server-computed values | agent | open |
-| R-4 | New SCSS written for new pages against the Tailwind go-forward | low | low | `riviera-tailwind` loaded before styling; pages styled with Tailwind classes only | agent | open |
-| R-5 | Axe false-fail on animated surfaces in e2e | low | low | House axe helper + `getAnimations().finished` rule (riviera-frontend e2e notes) | agent | open |
+| R-1 | Draft legal text is mistaken for a real, counsel-approved policy | med | med | Prominent "Draft — pending legal review" banner on both pages + bracketed `[…]` entity placeholders; #101 stays open for the swap | agent | closed — banner + placeholders pinned by both page specs; F-5 tightened the retention sentence |
+| R-2 | In-modal navigation to a legal page destroys checkout state | med | med | Links open in a new tab (`target="_blank"` `rel="noopener"`) from dialog and pay page | agent | closed — extended to BOTH footers after review F-6/F-8; asserted in unit + e2e |
+| R-3 | Terms copy contradicts server-enforced rules (cutoff #4, refunds #10) | low | med | Copy states the rules generically and defers to the booking view's server-computed values | agent | closed — review F-2/F-3 removed the shown-at-booking promise and added the partial-refund branch |
+| R-4 | New SCSS written for new pages against the Tailwind go-forward | low | low | `riviera-tailwind` loaded before styling; pages styled with Tailwind classes only | agent | closed — no new `.scss` in the diff |
+| R-5 | Axe false-fail on animated surfaces in e2e | low | low | House axe helper + `getAnimations().finished` rule (riviera-frontend e2e notes) | agent | closed — every audit preceded by `settle(page)` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** adjacent-notice (no checkbox) is sufficient for contract-terms
-  acceptance at checkout — standard marketplace pattern; reversible in one small slice if
-  counsel disagrees. — *Owner:* agent · *Resolves by:* counsel review (#101 remainder)
-- **Assumption:** shipping clearly-marked draft documents now is wanted — endorsed by the
-  maintainer 2026-07-31 ("go ahead with #101 Slice 3" after the draft-placeholder caveat
-  was stated). — *Owner:* maintainer · *Resolves by:* merge
+(empty)
+
+### Resolved
+
+- **Adjacent-notice (no checkbox)** — recorded as the shipped pattern; counsel can reverse in
+  one small slice (#101 remainder carries it). Resolved at the review gate, merged via PR #464.
+- **Draft documents wanted** — endorsed by the maintainer 2026-07-31 and shipped with the
+  draft banner + bracket placeholders pinned by specs. Merged via PR #464.
 
 ## Availability & concurrency (invariant #2)
 
@@ -145,16 +148,17 @@ N/A — no contract change (no API calls added; legal pages are static).
 > Session-recovery anchor — re-read after compaction; update in the same commit window
 > as the change it records.
 
-**Stage pointer:** PR — mark ready for review, then the Review + Sonar gates.
+**Stage pointer:** sonar gate (post review-fix round) → merge close-out.
 
-**Next action:** merge latest `origin/main`, mark PR #464 ready, run `/code-review` per the
-invocation ladder + `riviera-review-overlay`, then the Sonar API issue-list pull.
+**Next action:** confirm CI + Sonar on the review-fix head (pull the API issue list,
+false-clean check), then merge close-out (epic tick, #319 close, #101 comment).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | P — plan doc committed, draft PR opened | ✅ | `6aea54a`, PR #464 (draft) |
 | 0 — legal pages + routes (+unit/a11y/contrast specs) | ✅ | this commit — red run (module-not-found), then 6 files / 19 tests green scoped |
 | 1 — checkout notice lines (dialog, pay) + footer links (+specs) | ✅ | this commit — red first, then full suite 126 files / 979 tests + lint green locally |
+| R — review gate (5-agent fan-out + overlay) + fix round F-2..F-12 | ✅ | this commit — 12 findings, all fixed in-PR; lint + 979 unit + 12 e2e green |
 | 2 — e2e mocked spec + local verification (lint, unit, build) | ✅ | this commit — 4 e2e pass in real Chromium (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`); lint + full unit suite + prod build green |
 
 Note (FE-1/FE-2 drift): the pages use external `.html` templates, not inline — the content
@@ -167,18 +171,34 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (run 30624512347, phase-0 push) | `app.spec.ts` #134 legacy-surface sweep expects every tourist route not on `RESTYLED_PATHS` to be flagged legacy — the new `/legal/*` glass routes weren't allowlisted (scoped-run blind spot; the full suite now runs locally before push) | fixed in phase-1 commit |
+| F-2 | review (RV-FE-3, score 75) | Terms said flatly "non-refundable" after cutoff — the server supports a per-venue partial late-cancel refund (`RefundPolicy`, `late_cancel_refund_bps`) | fixed in review-fix commit |
+| F-3 | review (RV-FE-3, score 75) | Terms promised "the exact closing time is shown while you book" — the tourist UI shows only a display default ("6 PM"), the per-venue cutoff is never rendered; TSDoc made the same claim | fixed in review-fix commit |
+| F-4 | review (copy accuracy, score 75) | Privacy said "a single session cookie" — the XSRF-TOKEN CSRF cookie also ships (`SecurityConfig`) | fixed in review-fix commit |
+| F-5 | review (copy accuracy, score 75) | Privacy stated the retention sweep as running — it ships disabled pending counsel's window | fixed in review-fix commit (conditional wording + bracket placeholder) |
+| F-6 | review (history/#390+#137, score 100) | Footer `routerLink`s render on `/booking/pay` — in-app nav unmounts the Stripe Payment Element, contradicting this PR's own new-tab rule | fixed: footer links now `target="_blank" rel="noopener"`; unit + e2e assert it |
+| F-7 | review (history/#462, score 75) | Operator console's own footer (#462) not brought to parity — console operators had no route to the documents | fixed: same links in `operator-console.html` footer |
+| F-8 | review (history/#462, score 100) | Shell footer under operator chrome navigated in-app to a tourist-chrome page ("Sign in / Register" to a signed-in admin — the #462 bug class) | fixed by the same new-tab change as F-6 |
+| F-9 | review (glass-tokens TSDoc, score 70) | New contrast spec hand-copied card-glass constants against the "ONE test-side mirror" rule | fixed: constants promoted into `glass-tokens.ts`, spec imports them (4 pre-existing copies left as-is — pre-existing, candidate follow-up) |
+| F-10 | review (comment accuracy, score 75) | e2e header TSDoc overstated coverage ("both themes" — only privacy toggles) | fixed: comment narrowed |
+| F-11 | review (prior-PR #438/#362 class) | Improvement-plan D5 line (added on this branch) said Slice 3 "remaining" — false the moment this PR merges; plan doc's `riviera-docs-freshness` N/A was therefore wrong | fixed: D5 reworded to "shipped as drafts via PR #464"; freshness line now records the ran-with-findings outcome |
+| F-12 | review (plan-doc discipline, #438 class) | Plan File structure omitted the two docs files on the branch and named two contrast specs where one combined spec shipped (AC-5 too) | fixed: File structure + AC-5 corrected |
 
 ---
 
 ## File structure
 
-- `frontend/src/app/pages/legal/privacy-policy.ts` (+`.spec.ts`, `.a11y.spec.ts`, `.contrast.spec.ts`) — draft privacy policy page
-- `frontend/src/app/pages/legal/terms-of-service.ts` (+`.spec.ts`, `.a11y.spec.ts`, `.contrast.spec.ts`) — draft terms page
+- `frontend/src/app/pages/legal/privacy-policy.ts`/`.html` (+`.spec.ts`, `.a11y.spec.ts`) — draft privacy policy page
+- `frontend/src/app/pages/legal/terms-of-service.ts`/`.html` (+`.spec.ts`, `.a11y.spec.ts`) — draft terms page
+- `frontend/src/app/pages/legal/legal-pages.contrast.spec.ts` — shared contrast maths for both pages
+- `frontend/src/testing/glass-tokens.ts` — card-glass constants promoted (review-gate F-9)
 - `frontend/src/app/booking/booking-dialog.ts` / `.spec.ts` — Review-step agreement notice
 - `frontend/src/app/booking/booking-pay.ts` / `.spec.ts` — pay-summary agreement notice
-- `frontend/src/app/app.html` + `app.spec.ts` — footer links
+- `frontend/src/app/app.html` + `app.spec.ts` — tourist/operator shell footer links (new tab)
+- `frontend/src/app/operator/operator-console.html` — console footer parity (review-gate F-7)
 - `frontend/src/app/app.routes.ts` + `app.routes.spec.ts` — `/legal/privacy`, `/legal/terms`
 - `frontend/e2e/legal-pages.e2e.ts` — mocked-suite coverage (AC-6)
+- `docs/architecture/improvement-plan.md`, `docs/adr/ADR-0007-package-structure.md` — the epic
+  #93 remaining-scope review annotations (#319/#463), on this branch ahead of the slice
 
 ---
 
@@ -216,15 +236,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1..AC-6: scoped Vitest + Playwright runs listed per phase; verified at the
-  commits recorded in Execution status.
+- [x] AC-1..AC-6: verified — full Vitest suite (979 tests, incl. the six pinning specs) and
+  the 4-test `legal-pages.e2e.ts` run green at the review-fix commit; merged via PR #464.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc (the *content's* bracketed entity
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc (the *content's* bracketed entity
   placeholders are the deliverable, not a doc gap).
-- [ ] Frontend standards met; no `as any`; no new SCSS.
-- [ ] Execution status at HEAD matches reality; risk rows closed; Open Questions empty or deferred with issue #.
-- [ ] Close-out written in THIS PR, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (invocation ladder + `riviera-review-overlay`).
+- [x] Frontend standards met; no `as any`; no new SCSS.
+- [x] Execution status at HEAD matches reality; risk rows closed; Open Questions empty or deferred with issue #.
+- [x] Close-out written in THIS PR, citing `merged via PR #464`.
+- [x] The review gate ran in full — `code-review` plugin workflow via the Skill rung (5-agent fan-out + confidence scoring) + `riviera-review-overlay` frontend bank; findings F-2..F-12 fixed in-PR.

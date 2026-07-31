@@ -5,9 +5,10 @@ import { settle } from './support/booking-dialog';
 
 /**
  * Real-render e2e for the legal surfaces (#101 Slice 3): the two draft documents at
- * `/legal/*` (axe-audited in both themes on the shared card glass), the checkout agreement
- * links on the booking dialog's Review step (new-tab so the modal survives the read), and
- * the standing footer links. The API is mocked (`page.route`), so the spec is CI-safe.
+ * `/legal/*` (privacy axe-audited in both themes; terms shares the identical surface recipe,
+ * audited once), the checkout agreement links on the booking dialog's Review step, and the
+ * standing footer links — every legal link opens a new tab so checkout/console state survives
+ * the read. The API is mocked (`page.route`), so the spec is CI-safe.
  */
 
 const VENUE = {
@@ -98,11 +99,15 @@ test('checkout Review step links open the terms in a new tab, keeping the dialog
   await expect(dialog.getByTestId('dialog-primary')).toHaveText('Continue to payment');
 });
 
-test('footer carries the standing legal links', async ({ page }) => {
+test('footer carries the standing legal links, opening in a new tab', async ({ page }) => {
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
 
   await page.goto('/');
+  const popupPromise = page.waitForEvent('popup');
   await page.locator('.riv-footer').getByRole('link', { name: 'Privacy' }).click();
-  await expect(page).toHaveURL(/\/legal\/privacy$/);
-  await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(/\/legal\/privacy$/);
+  await expect(popup.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
+  // The originating page never navigated — footer links must not tear down app state.
+  await expect(page).toHaveURL(/\/$/);
 });
