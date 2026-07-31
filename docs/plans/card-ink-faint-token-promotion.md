@@ -97,7 +97,7 @@ identical file/test counts, all green, computed values unchanged.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A `0.72` is a coincidental collision, not the faint ink, and blind replacement silently changes what a spec proves | med | med | Every `0.72` in `frontend/` classified before editing (grep + read of each site); the two non-token hits are pinned as AC-4 | session | closed — both collisions left inline (AC-4 verified); test counts and results identical before/after |
-| R-2 | Deleting a local constant strands an unused import or leaves an unused local, failing `npm run lint` | low | low | The four local-const specs already import from `glass-tokens`; usage-checked per file, `npm run lint` before commit | session | closed — `npm run lint` clean at the phase-0 commit; `venue-map`'s orphaned section-header comment reattached to the constants that remain |
+| R-2 | Deleting a local constant strands an unused import or leaves an unused local, failing `npm run lint` | low | low | The four local-const specs already import from `glass-tokens`; usage-checked per file, `npm run lint` before commit | session | closed — `npm run lint` clean at the phase-0 commit. `venue-map`'s deleted constant orphaned a section-header comment; phase 0 reattached it to the constants below, which review finding F-2 showed misdescribed them (they are header-glass, not card-surface, tokens) — the review-fix commit removes the header instead |
 | R-3 | The issue's site list is incomplete, so the sweep leaves a copy behind and the charter stays broken | med | low | Intake grill re-derived the list from source (9, not 8); AC-2's grep sweep is the check, not the issue text | session | closed — `home.contrast.spec.ts` found and added to scope at intake |
 
 ## Open questions / Assumptions
@@ -140,21 +140,42 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, awaiting the Review + Sonar gates
+**Stage pointer:** Merge — CI green, Review gate run (2 findings fixed), Sonar gate green with its list cleared
 
-**Next action:** mark the PR ready for review, then run `/code-review` + `riviera-review-overlay`.
+**Next action:** merge PR #469, then the post-merge close-out items (epic tick N/A; file the
+`FIELD_*_ALPHA` follow-up issue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — promote `CARD_INK_FAINT_ALPHA` + swap 9 specs + green run | ✅ | phase-0 commit on `claude/angular-mcp-search-document-1f4b4z` |
+| 0 — promote `CARD_INK_FAINT_ALPHA` + swap 9 specs + green run | ✅ | `90de256` (via PR #469) |
+| review-fix — F-1 TSDoc overclaim + F-2 misattached header comment | ✅ | review-fix commit (via PR #469) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Review-gate note:** the gate ran in full via the **invocation ladder rung 1** — the
+`Skill("code-review")` probe succeeded, so the plugin's own workflow executed: Haiku
+eligibility check → Haiku CLAUDE.md map → Haiku change summary → **5 parallel Sonnet review
+agents** → adjudication, with `riviera-review-overlay` layered on (frontend bank
+RV-FE-1..E2E, RV-STYLE-1, RV-PROC-1 — all clean or N/A; RV-PROC-1 explicitly verified the
+*Skills consulted* line against the routing table). The subagent fan-out was authorized by
+the user, this session carrying a standing "don't call the Agent tool unless requested"
+instruction — `pr-gates.md` §1 requires asking rather than silently degrading.
+
+Two findings (F-1, F-2) were confirmed and fixed; both are comment-accuracy issues, the
+class #467's F-1 established as worth fixing even below the workflow's 80 confidence bar.
+Agents #3 and #5 independently raised F-1 while agent #4 defended the claim — the conflict
+was adjudicated against source (`styles.scss:61` + `auth-page.contrast.spec.ts:33`), not by
+vote. **Sonar gate:** quality gate passed **and** the authoritative API list pulled and
+empty — 0 issues, 0 duplicated blocks, 100% new-code coverage; the false-clean guard passed
+(`new_lines=2` non-empty, `SonarCloud Code Analysis` check-run `success`).
 
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (agents #3 **and** #5, independently; agent #4 dissented) | The promoted constant's TSDoc claimed it was "the last hand-copied `--riv-card-*` sibling" — **false**: `auth-page.contrast.spec.ts:33` still hand-copies `CARD_TRACK_ALPHA = 0.12` (`--riv-card-track`, `styles.scss:61`), and this plan's own Non-goals name it. Agent #4 defended the claim by reading "hand-copied" as "copied in ≥2 specs", which is not what the comment said; overruled on the literal reading. Same failure class as #467's F-1 (a completeness claim the diff doesn't achieve) | fixed in the review-fix commit — superlative dropped, TSDoc now reads "(promoted at #468)" |
+| F-2 | review (agent #5) | `venue-map.contrast.spec.ts`: deleting the local constant orphaned the `// styles.scss card-surface tokens …` section header, and reattaching it to the constants below **misdescribed** them — `FIELD_FILL_ALPHA`/`FIELD_BORDER_ALPHA` composite over `theme.headerGlass` (lines 117–128), so they are header-glass field tokens, not card-surface ones | fixed in the review-fix commit — orphaned header comment removed instead of reattached (the two remaining constants carry their own accurate comment) |
+| — | review (agent #3, secondary) | `styles.scss:53` states the faint-ink **design** intent as `0.55` while the design source (`docs/design/riviera-sunbeds-liquid-glass-v3.dc.html:1552`) says `0.5`; the operator specs' own `it()` titles ("raised from the design 0.5 for AA") are the accurate ones | **not actioned** — pre-existing, on a line this diff does not touch (out of scope per the review workflow's own false-positive rule). Noted here so it is not lost |
 
 ---
 
@@ -231,11 +252,12 @@ All modifications; nothing created (besides this plan):
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying check.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Backend invariants (#1–#13): untouched — frontend test files only.
-- [ ] **Frontend** standards met — no component code changed; no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state cites the merging PR.
-- [ ] **The review gate ran in full** — the `/code-review` fan-out *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying check.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Backend invariants (#1–#13): untouched — frontend test files only.
+- [x] **Frontend** standards met — no component code changed; no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #469`.
+- [x] **The review gate ran in full** — the `/code-review` fan-out (ladder rung 1, 5 Sonnet
+      agents) *plus* `riviera-review-overlay`.
