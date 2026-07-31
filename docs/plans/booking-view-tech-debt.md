@@ -66,25 +66,25 @@ loaded before the session's first `npm`).
 > Angular API. "Uses `afterRenderEffect`" is an implementation detail; "focus lands on the
 > destructive button" is the behavior, and it must hold *across* the conversion.
 
-- [ ] **AC-1:** Given a cancellable booking, when the guest opens the cancel confirm prompt, then
+- [x] **AC-1:** Given a cancellable booking, when the guest opens the cancel confirm prompt, then
   focus moves to the destructive "Confirm cancellation" button. *Pinned by:*
   `booking-view.spec.ts` › `moves focus to the destructive confirm button when the cancel prompt appears`
-- [ ] **AC-2:** Given the same two prompts (cancel and withdraw), when both focus effects are
+- [x] **AC-2:** Given the same two prompts (cancel and withdraw), when both focus effects are
   re-expressed as `afterRenderEffect` write-phase effects, then **both** focus behaviors still
   hold. *Pinned by:* the AC-1 spec **plus** the pre-existing
   `moves focus to the destructive confirm button when the withdraw prompt appears` — both green
   after the conversion, neither modified by it.
-- [ ] **AC-3:** Given any booking status, when its chip renders through the new shared directive,
+- [x] **AC-3:** Given any booking status, when its chip renders through the new shared directive,
   then the element still carries the `.chip` and `.chip--<status>` marker classes and the same
   fill/ink/geometry as the retired mixin. *Pinned by:* `status-chip.spec.ts` (new — asserts marker
   classes + one fill per status against `STATUS_META`) and the untouched
   `booking-view.spec.ts` / `my-bookings.spec.ts` status assertions.
-- [ ] **AC-4:** Given the booking-view page in both themes, when `booking-view.scss` is deleted and
+- [x] **AC-4:** Given the booking-view page in both themes, when `booking-view.scss` is deleted and
   its rules are re-expressed as Tailwind utilities, then every asserted colour pair still meets
   WCAG AA and the rendered computed styles are unchanged. *Pinned by:* the unmodified
   `booking-view.contrast.spec.ts` + `booking-status.contrast.spec.ts` (values are byte-identical
   by construction) and the before/after computed-style diff recorded in the Verification log.
-- [ ] **AC-5:** Given the CI-safe mocked e2e suite, when the whole booking-view flow is exercised
+- [x] **AC-5:** Given the CI-safe mocked e2e suite, when the whole booking-view flow is exercised
   after the migration, then it passes with no new axe violations. *Pinned by:*
   `npm run test:e2e:a11y` (existing `request-to-book.e2e.ts` + `my-bookings.e2e.ts` cover the
   withdraw, cancel and chip surfaces; no new spec required — see Non-goals).
@@ -252,20 +252,21 @@ stylesheet is retired.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7 — close-out)`
+**Stage pointer:** `merge close-out` — CI green, review gate run (5-reviewer fan-out + overlay), Sonar gate green with its issue list pulled and empty, all 9 findings fixed and re-verified.
 
-**Next action:** file the item-5 issue, merge latest `origin/main`, mark PR #478 ready for review,
-then run the review gate → Sonar gate → docs-freshness close-out.
+**Next action:** merge PR #478, then the post-merge remainder (GitHub-only, no commits): confirm
+#477 closed by `Closes #477`, and confirm the PR-activity subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — Plan doc + draft PR | ✅ | `17c6306` · draft PR #478 |
+| 1 — Plan doc + draft PR | ✅ | `17c6306` · **merged via PR #478** |
 | 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | ✅ | `4a09f7e` |
 | 3 — Item 1: both effects → `afterRenderEffect({ write })` | ✅ | `6f50095` |
 | 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | ✅ | see below |
 | 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | ✅ | see below |
 | 6 — Item 4: `ExpireRequests` javadoc | ✅ | see below |
-| 7 — Close-out: item-5 issue, docs freshness, gates | ⏳ | |
+| 7 — Close-out: item-5 issue (#479), docs freshness, gates | ✅ | `eeb4337` |
+| 8 — Review-gate fix round (9 findings) | ✅ | `435aff6` + the TSDoc move |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -307,15 +308,15 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 1 — Plan doc + draft PR
 
-- [ ] **Step 1: Commit this plan** — `git commit -m "docs(#477): plan the booking-view tech-debt slice"`
-- [ ] **Step 2: Push** — `git push -u origin claude/sdlc-477-h25h0j`
-- [ ] **Step 3: Open the draft PR** immediately (the CI vehicle, not a review request).
+- [x] **Step 1: Commit this plan** — `git commit -m "docs(#477): plan the booking-view tech-debt slice"`
+- [x] **Step 2: Push** — `git push -u origin claude/sdlc-477-h25h0j`
+- [x] **Step 3: Open the draft PR** immediately (the CI vehicle, not a review request).
 
 ## Phase 2 — Item 2: the cancel prompt's missing focus test
 
 **Files:** Modify `frontend/src/app/booking/booking-view.spec.ts`
 
-- [ ] **Step 1: Write the test** — the exact twin of the withdraw one (line ~227), against
+- [x] **Step 1: Write the test** — the exact twin of the withdraw one (line ~227), against
   `DETAIL` (cancellable) rather than `PENDING`:
 
 ```ts
@@ -334,19 +335,19 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 });
 ```
 
-- [ ] **Step 2: Prove it is not vacuous** — this is a **characterization** test: it passes on
+- [x] **Step 2: Prove it is not vacuous** — this is a **characterization** test: it passes on
   today's code, so "watch it fail first" does not apply. Instead, temporarily comment out the
   cancel focus effect in `booking-view.ts`, run the spec, and confirm it goes **red**; restore the
   effect and confirm green. A coverage test that cannot fail is not coverage.
   `npx vitest run src/app/booking/booking-view.spec.ts`
-- [ ] **Step 3: Commit** — `git commit -m "test(#477): pin the cancel prompt's focus move (item 2)"`
-- [ ] **Step 4: Update the execution status** in the same commit window.
+- [x] **Step 3: Commit** — `git commit -m "test(#477): pin the cancel prompt's focus move (item 2)"`
+- [x] **Step 4: Update the execution status** in the same commit window.
 
 ## Phase 3 — Item 1: both focus effects → `afterRenderEffect`
 
 **Files:** Modify `frontend/src/app/booking/booking-view.ts:312-322`
 
-- [ ] **Step 1: Convert both effects together** (converting one would leave two identical effects
+- [x] **Step 1: Convert both effects together** (converting one would leave two identical effects
   in one component using two different APIs — the reason #123 deferred this):
 
 ```ts
@@ -370,86 +371,86 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 
   ...with `effect` dropped from the `@angular/core` import and `afterRenderEffect` added.
 
-- [ ] **Step 2: Run both focus tests** — `npx vitest run src/app/booking/booking-view.spec.ts`
+- [x] **Step 2: Run both focus tests** — `npx vitest run src/app/booking/booking-view.spec.ts`
   → PASS. If either goes red, R-1 has materialized: diagnose the harness's render-hook flush
   before touching the assertions. **Never retune a test to match a regression.**
-- [ ] **Step 3: Commit** — `git commit -m "refactor(#477): move both focus effects to afterRenderEffect (item 1)"`
-- [ ] **Step 4: Update the execution status.**
+- [x] **Step 3: Commit** — `git commit -m "refactor(#477): move both focus effects to afterRenderEffect (item 1)"`
+- [x] **Step 4: Update the execution status.**
 
 ## Phase 4 — Item 3a: port `status-chip` to a shared directive
 
 **Files:** Create `shared/status-chip.ts`, `shared/status-chip.spec.ts` · Modify `booking-view.ts`,
 `my-bookings.ts`, `my-bookings.scss`, the citing contrast specs · Delete `shared/_glass.scss`
 
-- [ ] **Step 1: Write the failing spec** (`status-chip.spec.ts`) — asserts, for a representative
+- [x] **Step 1: Write the failing spec** (`status-chip.spec.ts`) — asserts, for a representative
   status, that the host carries `chip`, `chip--confirmed`, and the fill/ink utilities; and that an
   unknown status still renders the neutral fallback chip (`metaFor`'s FE/BE-skew tolerance).
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/status-chip.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/status-chip.spec.ts`
   → FAIL (module not found).
-- [ ] **Step 3: Implement the directive**, on the `amenity-chip.ts` shape: `selector:
+- [x] **Step 3: Implement the directive**, on the `amenity-chip.ts` shape: `selector:
   '[appStatusChip]'`, host `{ '[class]': 'classes()' }`, one `input()` taking the **modifier**
   (`chip--confirmed`) so both consumers keep their existing `STATUS_META`-derived `chipClass`
   logic untouched, and a `computed()` returning `'chip ' + modifier + base + FILL[modifier]`.
   The fills are the mixin's nine literal triples, carried across unchanged.
-- [ ] **Step 4: Update both consumers** — the `<span>`s in `booking-view.ts` and `my-bookings.ts`
+- [x] **Step 4: Update both consumers** — the `<span>`s in `booking-view.ts` and `my-bookings.ts`
   drop their `class="chip {{ … }}"` (the directive owns the whole list — R-4) and take
   `[appStatusChip]`. Remove `@include glass.status-chip` + the now-unused `@use` from
   `my-bookings.scss` and `booking-view.scss`, then **delete `shared/_glass.scss`**.
-- [ ] **Step 5: Re-point every citation of `shared/_glass.scss`** (R-6) — including
+- [x] **Step 5: Re-point every citation of `shared/_glass.scss`** (R-6) — including
   `amenities.contrast.spec.ts`'s "only `status-chip` still lives there", which becomes false.
-- [ ] **Step 6: Run the touched specs** —
+- [x] **Step 6: Run the touched specs** —
   `npx vitest run src/app/shared/status-chip.spec.ts src/app/shared/booking-status.contrast.spec.ts src/app/booking/booking-view.spec.ts src/app/booking/my-bookings.spec.ts`
   → PASS, with **no assertion edits** in the pre-existing specs.
-- [ ] **Step 7: Commit** — `git commit -m "refactor(#477): port the status-chip mixin to a shared directive (item 3)"`
-- [ ] **Step 8: Update the execution status.**
+- [x] **Step 7: Commit** — `git commit -m "refactor(#477): port the status-chip mixin to a shared directive (item 3)"`
+- [x] **Step 8: Update the execution status.**
 
 ## Phase 5 — Item 3b: `booking-view.scss` → Tailwind
 
 **Files:** Modify `booking-view.ts` · Delete `booking-view.scss` · Modify `booking-view.contrast.spec.ts` (citation only)
 
-- [ ] **Step 1: Capture the "before" computed styles** — with the working tree still on the SCSS
+- [x] **Step 1: Capture the "before" computed styles** — with the working tree still on the SCSS
   version, drive the booking-view page in Chromium via the mocked e2e harness and dump
   `getComputedStyle` for one element per ledger row, in **both** themes, to the scratchpad.
-- [ ] **Step 2: Port the rules** ledger row by ledger row into template/host utilities; delete
+- [x] **Step 2: Port the rules** ledger row by ledger row into template/host utilities; delete
   `booking-view.scss` and its `styleUrl`. Retain every semantic class a spec or e2e queries as an
   inert marker (`riviera-tailwind` rule 2).
-- [ ] **Step 3: Capture "after" and diff** — same elements, same themes. Investigate every
+- [x] **Step 3: Capture "after" and diff** — same elements, same themes. Investigate every
   difference; the only sanctioned one is Chromium's `1.5px → "1px"` border snapping (R-5).
-- [ ] **Step 4: Run the frontend gate** — `npm run lint`, `npm test`, `npm run build`,
+- [x] **Step 4: Run the frontend gate** — `npm run lint`, `npm test`, `npm run build`,
   `npm run test:e2e:a11y`.
-- [ ] **Step 5: Commit** — `git commit -m "refactor(#477): migrate booking-view from SCSS to Tailwind (item 3)"`
-- [ ] **Step 6: Update the execution status** + record the diff result in the Verification log.
+- [x] **Step 5: Commit** — `git commit -m "refactor(#477): migrate booking-view from SCSS to Tailwind (item 3)"`
+- [x] **Step 6: Update the execution status** + record the diff result in the Verification log.
 
 ## Phase 6 — Item 4: the `ExpireRequests` javadoc overclaim
 
 **Files:** Modify `platform/.../booking/application/request/ExpireRequests.java:8-9`
 
-- [ ] **Step 1: Correct the claim** — "a pending request has no PaymentIntent" becomes "no
+- [x] **Step 1: Correct the claim** — "a pending request has no PaymentIntent" becomes "no
   PaymentIntent **on record**", the phrasing already used by `CancelPaymentPort`,
   `StripePaymentGateway` and `WithdrawRequest`, with one clause naming why the distinction is
   load-bearing (a failed accept can leave an *unregistered* residual intent at Stripe).
   Javadoc, so §6c's one-line rule does not bind — this is the sanctioned home for the prose.
-- [ ] **Step 2: Verify nothing else compiles differently** — comment-only; confirm with
+- [x] **Step 2: Verify nothing else compiles differently** — comment-only; confirm with
   `git diff --stat` that the change is a single file, javadoc lines only.
-- [ ] **Step 3: Generalization-audit pass** — grep the whole backend for the same overclaim
+- [x] **Step 3: Generalization-audit pass** — grep the whole backend for the same overclaim
   ("no PaymentIntent" without "on record"). #123 corrected three sites and this is the fourth;
   a fifth would be the same staleness class. Record the search in the log below.
-- [ ] **Step 4: Commit** — `git commit -m "docs(#477): stop overclaiming that a pending request has no PaymentIntent (item 4)"`
-- [ ] **Step 5: Update the execution status.**
+- [x] **Step 4: Commit** — `git commit -m "docs(#477): stop overclaiming that a pending request has no PaymentIntent (item 4)"`
+- [x] **Step 5: Update the execution status.**
 
 ## Phase 7 — Close-out
 
-- [ ] **Step 1: File the item-5 issue** — orphan-PaymentIntent reconciliation, design-first,
+- [x] **Step 1: File the item-5 issue** — orphan-PaymentIntent reconciliation, design-first,
   carrying R-6's context from `docs/plans/withdraw-pending-request.md` and #98's original note.
-- [ ] **Step 2: Merge latest `origin/main`** into the branch; mark the PR ready for review.
-- [ ] **Step 3: Review gate** — `/code-review` per the `pr-gates.md` §1 invocation ladder, plus
+- [x] **Step 2: Merge latest `origin/main`** into the branch; mark the PR ready for review.
+- [x] **Step 3: Review gate** — `/code-review` per the `pr-gates.md` §1 invocation ladder, plus
   `riviera-review-overlay`. Findings re-enter at Implement.
-- [ ] **Step 4: Sonar gate** — pull the new-issue + duplication list from the API; fix every entry.
-- [ ] **Step 5: `riviera-docs-freshness`** over the PR range — with attention to the counting
+- [x] **Step 4: Sonar gate** — pull the new-issue + duplication list from the API; fix every entry.
+- [x] **Step 5: `riviera-docs-freshness`** over the PR range — with attention to the counting
   sweep: `shared/_glass.scss` ceases to exist, so every doc saying "the shared SCSS recipes",
   "7 of the ~13 remaining `.scss` files", or "only `status-chip` still lives there" is stale.
   `riviera-tailwind`'s own migration-checklist paragraph names those counts and must be updated.
-- [ ] **Step 6: Finalize this section in the PR's own last commit**, citing `merged via PR #NN` —
+- [x] **Step 6: Finalize this section in the PR's own last commit**, citing `merged via PR #NN` —
   never a merge SHA (it cannot exist yet; three consecutive slices paid that tax).
 
 ---
@@ -478,40 +479,45 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 | Computed-style parity, booking-view, both themes | Chromium `getComputedStyle` dump keyed by **DOM position** (classes all change, so a class-keyed diff would compare nothing), 10 scenarios × 2 themes × 48 properties, before vs after (phase 5) | **0 unexplained differences** over 586 element records. Structure identical (every element path matched). 230 differences, all machine-classified as visually inert: **192** are border colour/style on elements whose border-width is `0px` in *both* trees (Tailwind's preflight `border: 0 solid` vs the SCSS's `border: 0` — an unrendered token), and **38** are `box-shadow`, where Tailwind's `shadow-*` composes through var slots and prepends no-op `rgba(0,0,0,0) 0px 0px 0px 0px` entries; stripping those, the real shadow is byte-identical |
 | WCAG 2.4.7 focus rings survive | separate **keyboard** probe (phase 5) — the main capture focuses programmatically, which does not reliably arm `:focus-visible`, so it proved nothing about the rings | **identical on all six controls** across three states: `rgb(8,90,110) solid 3px / offset 2px` for the danger, outline and link controls and `rgb(255,255,255) solid 3px` for the Pay-now CTA, each with `:focus-visible` genuinely matched |
 | Full CI-safe e2e suite | `npx playwright test --config playwright.a11y.config.ts` (phase 5) | **114 passed**. Note: `customer-password.e2e.ts`, which #477 recorded as failing in this sandbox, **passes** when the run uses the config's documented `PW_CHROMIUM_EXECUTABLE` escape hatch to point at the pre-installed Chromium 1194 instead of the pinned 1228 download |
+| Review gate | `/code-review` plugin workflow (rung 2 of the `pr-gates.md` §1 ladder — `Skill("code-review")` refused by upstream policy as documented), 5 independent reviewers + `riviera-review-overlay`, user-authorized | **9 findings, all fixed.** Three reviewers independently caught the same dangling citation (F-2); reviewer 5 alone caught two *false statements in my own comments* (F-1's sibling, F-7) and a false justification (F-8). The fan-out earned its keep: the single highest-value finding class here was "a comment asserts something untrue", which no test can catch |
 | Item 4 javadoc | inspection + `git diff --stat` + `gradle compileJava` (phase 6) | **comment-only, 1 file** — every changed line is a javadoc line (verified by filtering the diff for non-`*` lines: empty). Backend compiles |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npx vitest run src/app/booking/booking-view.spec.ts` → the cancel focus test
-  passes, **and** was proven red with the effect removed (phase 2 step 2).
-- [ ] **AC-2:** same command after phase 3 → both focus tests pass, neither assertion edited.
-- [ ] **AC-3:** `npx vitest run src/app/shared/status-chip.spec.ts` + the two consumer specs → PASS.
-- [ ] **AC-4:** `npm test` (contrast specs unmodified) + the computed-style diff → no differences
-  beyond the documented border snapping.
-- [ ] **AC-5:** `npm run test:e2e:a11y` → PASS, no new axe violations.
+- [x] **AC-1:** `ng test --include="src/app/booking/booking-view.spec.ts"` → the cancel focus test
+  passes, **and** was proven red with the effect removed (phase 2 step 2: exactly 1 of 34 failed,
+  `expected <body> to be <button>`). Test name matches the AC's pin verbatim.
+- [x] **AC-2:** same command after phase 3 → 34/34, both focus tests green, neither assertion edited.
+- [x] **AC-3:** `status-chip.spec.ts` (now 6 cases incl. the merge behaviour found at the review gate)
+  + the two consumer specs → PASS, no assertion edits in the pre-existing specs.
+- [x] **AC-4:** contrast specs unmodified (only citations) + the computed-style diff → **0
+  unexplained differences over 586 element records**; the 230 that differ are zero-width border
+  tokens and Tailwind's no-op box-shadow var slots. Focus rings proven separately by keyboard probe.
+  The predicted border-snapping false positive never appeared.
+- [x] **AC-5:** the full mocked suite → **114 passed**, no new axe violations.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — no write path touched); invariant #2 unaffected.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module imports added; no events changed (invariant #11).
-- [ ] **Payment/payout** section filled (N/A, with the reason the javadoc *reads* payment-adjacent).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — untouched; no new logging.
-- [ ] No schema change, so no Flyway migration (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per `pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — no write path touched); invariant #2 unaffected.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module imports added; no events changed (invariant #11).
+- [x] **Payment/payout** section filled (N/A, with the reason the javadoc *reads* payment-adjacent).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched; no new logging.
+- [x] No schema change, so no Flyway migration (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per `pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
