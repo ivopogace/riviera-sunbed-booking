@@ -149,6 +149,20 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain('refunded');
   });
 
+  it('moves focus to the destructive confirm button when the cancel prompt appears', async () => {
+    // Twin of the withdraw prompt's focus test: the component claims this a11y behaviour for BOTH
+    // destructive prompts, and only the withdraw half was pinned (#477 item 2).
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-cancel"]'));
+  });
+
   it('shows a not-found message for an unknown code', async () => {
     const fixture = await render(stubService({ getError: { status: 404 } }));
     const host = fixture.nativeElement as HTMLElement;

@@ -243,15 +243,16 @@ stylesheet is retired.
 
 ## Execution status
 
-**Stage pointer:** `plan → implement` (phase 1 next)
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** commit this plan doc on `claude/sdlc-477-h25h0j`, push, and open the **draft PR**
-immediately — CI fires on `pull_request` only, so an un-PR'd branch gets no CI at all (#417).
+**Next action:** convert **both** focus effects in `booking-view.ts` to
+`afterRenderEffect({ write })` and re-run `booking-view.spec.ts` — both focus tests must stay
+green with no assertion edits (R-1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — Plan doc + draft PR | ⏳ | |
-| 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | | |
+| 1 — Plan doc + draft PR | ✅ | `17c6306` · draft PR #478 |
+| 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | ✅ | see below |
 | 3 — Item 1: both effects → `afterRenderEffect({ write })` | | |
 | 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | | |
 | 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | | |
@@ -453,6 +454,7 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 
 | What | Method | Result |
 |---|---|---|
+| AC-1 is real coverage, not a vacuous pass | commented the cancel focus effect out, ran the spec, restored it (phase 2 step 2) | **proven** — exactly 1 of 34 failed: `expected <body> to be <button>`. Component restored byte-identical (`git diff --stat` = spec only) |
 | Computed-style parity, booking-view, both themes | Chromium `getComputedStyle` before/after (phase 5) | *pending* |
 | Item 4 javadoc | inspection + `git diff --stat` (phase 6) | *pending* |
 
