@@ -97,12 +97,11 @@ import { CardGlass } from '../shared/card-glass';
     </section>
   `,
   styleUrl: './auth.scss',
-  // Chromeless routes suppress the shell's .riv-bg, so this page must paint the token itself.
+  // The shell paints .riv-bg behind this page (operator chrome); no self-painted background needed.
   styles: `
     :host {
       display: block;
       min-height: 100%;
-      background: var(--riv-bg);
     }
     .auth-live:empty {
       margin: 0;

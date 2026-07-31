@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -11,13 +11,14 @@ import { VenueAdminErrorCode } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
 /**
- * Venue onboarding (U7) — sign in as an operator and **create** a venue. This is all that remains of
+ * Venue onboarding (U7) — a signed-in operator **creates** a venue. This is all that remains of
  * the legacy in-page venue editor: editing an existing venue's beach-map layout (O3 #172), row
  * pricing (O4 #174) and details/commodities (O8 #177) now lives in the operator console's tabs, so
  * this page's editing role is retired (issue #177). It stays the reachable "Create a venue" entry
- * point (linked from the console header); on success it links the operator into the console for the
- * new venue to lay out its map. Signal Forms for the create form; the sign-in inputs are plain
- * signals. The server re-validates every field (invariants #3/#5/#12); numeric fields are parsed on submit.
+ * point (linked from the console and operator-chrome headers, which also carry the session
+ * controls); on success it links the operator into the console for the new venue to lay out its
+ * map. Signal Forms for the create form. The server re-validates every field (invariants
+ * #3/#5/#12); numeric fields are parsed on submit.
  */
 @Component({
   selector: 'app-venue-editor',
@@ -27,7 +28,6 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 })
 export class VenueEditor {
   private readonly admin = inject(VenueAdminService);
-  private readonly router = inject(Router);
   private readonly ownedVenues = inject(OwnedVenues);
   protected readonly operator = inject(OperatorAuth);
 
@@ -92,9 +92,10 @@ export class VenueEditor {
   }
 
   /**
-   * Map a write failure to its message and, on a 401, drop the lost session so the sign-in form
-   * re-renders (issue #109): the server session can expire/invalidate mid-create, and without
-   * clearing local auth state the operator is stuck on the signed-in card retrying a dead session.
+   * Map a write failure to its message and, on a 401, drop the lost session (issue #109): the
+   * server session can expire/invalidate mid-create, and without clearing local auth state the
+   * operator would keep retrying a dead session — the shared operator header flips to its sign-in
+   * link and the guarded create form hides.
    */
   private failWrite(error: unknown): void {
     const code = venueAdminErrorOf(error);

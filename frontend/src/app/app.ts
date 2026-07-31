@@ -109,9 +109,13 @@ export class App {
 
   /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
    *  header/footer, or none at all (the console brings its own). */
-  protected readonly shellChrome = computed(() =>
-    this.routeChrome().chromeless ? 'none' : this.routeChrome().operatorChrome ? 'operator' : 'tourist',
-  );
+  protected readonly shellChrome = computed(() => {
+    const { chromeless, operatorChrome } = this.routeChrome();
+    if (chromeless) {
+      return 'none';
+    }
+    return operatorChrome ? 'operator' : 'tourist';
+  });
 
   constructor() {
     // Any successful navigation closes the shell overlays — in particular, a found booking code

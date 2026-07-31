@@ -42,6 +42,8 @@ const surfaceRoutes = [
   { path: 'glass', component: BlankPage },
   { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
+  // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
+  { path: 'account/sign-in', component: BlankPage },
 ];
 
 describe('App (Liquid Glass shell, issue #134)', () => {
@@ -458,6 +460,24 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('.riv-bg')).not.toBeNull();
     expect(el.querySelector('.riv-blob')).toBeNull();
   });
+
+  it('operator-chrome Sign out parks focus on main before the control unmounts (WCAG 2.4.3)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    await router.navigate(['/operator-chrome']);
+    fixture.detectChanges();
+    const signOut = el.querySelector<HTMLButtonElement>('[data-testid="opc-signout"]')!;
+    signOut.focus();
+
+    signOut.click();
+    fixture.detectChanges();
+
+    // The #148/#351 F-8 class: signOut() unmounts the focused button — focus must land on
+    // <main tabindex="-1">, never document.body.
+    expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(el.querySelector('main'));
+  });
 });
 
 describe('app.routes legacy-surface flags (issue #134)', () => {
@@ -519,6 +539,8 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
       expect(route?.data?.['operatorChrome'], `route '${path}' operatorChrome flag`).toBe(true);
       // The two flags are mutually exclusive — the console alone stays fully chromeless.
       expect(route?.data?.['operatorConsole'], `route '${path}' console flag`).toBeUndefined();
+      // Operator surfaces left the tourist binary but must never re-acquire the compat surface.
+      expect(route?.data?.['legacySurface'], `route '${path}' legacy flag`).toBeUndefined();
     }
   });
 

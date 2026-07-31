@@ -152,7 +152,7 @@ export const routes: Routes = [
   {
     // Platform-admin operator surface: the approval queue (S6 #115) + the account list with
     // suspend/reinstate (#128). Self-gates on the ADMIN session; the backend /api/admin/** role gate
-    // is the real authority. Reached from the console header's Admin link when signed in as an admin.
+    // is the real authority. Reached from the console/operator-chrome headers' Admin link.
     path: 'admin',
     loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
     title: 'Operators — Riviera',
@@ -176,10 +176,10 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
-    // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the tourist
-    // shell (app.ts) suppresses its own header/footer here via `data.operatorConsole`, so the
-    // console owns a full-bleed porcelain surface. Each tab is a child route; O3–O6 have swapped the
-    // real tabs in, O7–O8 remain. The legacy /venue-admin editor above stays until O8.
+    // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the shell
+    // (app.ts) suppresses all of its own chrome here via `data.operatorConsole`, so the console
+    // owns a full-bleed porcelain surface. Each tab is a child route (all graduated, O1–O8);
+    // the /venue-admin editor above survives as onboarding only (#177).
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',

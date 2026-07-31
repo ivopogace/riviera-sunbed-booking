@@ -1,5 +1,7 @@
-import { Component, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, computed, DOCUMENT, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 
@@ -73,7 +75,7 @@ import { OperatorAuth } from '../core/operator-auth';
               <a
                 class="text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
                 routerLink="/account/sign-in"
-                [queryParams]="{ audience: 'operator' }"
+                [queryParams]="signInParams()"
                 data-testid="opc-signin"
                 >Sign in</a
               >
@@ -87,9 +89,27 @@ import { OperatorAuth } from '../core/operator-auth';
 export class OperatorChrome {
   protected readonly operator = inject(OperatorAuth);
   private readonly router = inject(Router);
+  private readonly document = inject(DOCUMENT);
+
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  /** Sign-in carries the page as `returnUrl` — it outranks the venue-count landing rule (S9). */
+  protected readonly signInParams = computed(() => ({
+    audience: 'operator',
+    returnUrl: this.currentUrl(),
+  }));
 
   /** Sign out, then leave for the operator sign-in — the guarded operator routes would bounce anyway. */
   protected async onSignOut(): Promise<void> {
+    // Park focus on the shell's <main tabindex="-1"> before the button unmounts (WCAG 2.4.3, the
+    // #148/#351 F-8 class) — signOut() flips signedIn(), destroying the focused control.
+    this.document.querySelector<HTMLElement>('main')?.focus();
     await this.operator.signOut();
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }

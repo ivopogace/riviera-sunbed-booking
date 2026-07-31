@@ -68,8 +68,7 @@ describe('VenueEditor (onboarding, #177)', () => {
   it('carries no inline sign-in card — the guard owns the gate (#277)', () => {
     expect(host().textContent).not.toContain('Operator sign-in');
     expect(host().querySelector('[name="operator-username"]')).toBeNull();
-    // The create form renders straight away; the session controls live in the shared operator
-    // header (OperatorChrome), not on this page.
+    // The create form renders straight away; session controls live in the shared operator header.
     expect(host().textContent).not.toContain('Signed in as');
     expect(host().textContent).toContain('Create venue');
   });

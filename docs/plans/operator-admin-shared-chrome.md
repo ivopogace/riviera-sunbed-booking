@@ -151,6 +151,19 @@ N/A — no money moves; no payment/payout surface touched.
 (4 specs) exposed the venue-editor session-card duplication — resolved as Phase 6, ledger
 row recorded.
 
+**PR #462 review-gate round** (`/code-review` fan-out + overlay, findings scored then fixed):
+sign-out focus strand (WCAG 2.4.3, the #148/#351 F-8 class, scored 100) — focus parked on
+`<main tabindex="-1">` before the control unmounts, pinned in `app.spec.ts`; header sign-in
+link now carries `returnUrl` (scored 75; S9 "outranks all", matching the in-page links);
+Sonar `typescript:S3358` nested ternary in `shellChrome` extracted; dead `Router`
+inject/import + dead `.btn-secondary` rule removed from venue-editor; stale comments
+freshened (`operator-password` bg self-paint dropped — the shell paints `.riv-bg` here now —
+`operator-console`/`venue-editor` TSDoc, two `app.routes.ts` phrases); the operator-surface
+route test re-pins `legacySurface` absent (scored 60, fixed anyway). Deferred with
+rationale: sign-out pill class/flow duplication with the console (rule-of-three — second
+instance; extract on the third) and the cosmetic double "Signed in as" on
+`/account/operator-password` (its `oppw-username` line is e2e-pinned page content).
+
 ## Self-review checklist
 
 - [x] Every AC pinned by a named test, all green

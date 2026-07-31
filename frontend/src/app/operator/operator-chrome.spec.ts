@@ -70,9 +70,11 @@ describe('OperatorChrome', () => {
     operatorAuth.signedIn.set(false);
     operatorAuth.username.set(undefined);
     const { el } = render();
+    // returnUrl carries the current page (the test router sits at '/') — it outranks the
+    // venue-count landing rule (S9), so signing in from the header returns here.
     expect(
       el.querySelector<HTMLAnchorElement>('[data-testid="opc-signin"]')?.getAttribute('href'),
-    ).toBe('/account/sign-in?audience=operator');
+    ).toBe('/account/sign-in?audience=operator&returnUrl=%2F');
     expect(el.querySelector('[data-testid="opc-signout"]')).toBeNull();
     expect(el.querySelector('[data-testid="opc-signed-in-as"]')).toBeNull();
   });
