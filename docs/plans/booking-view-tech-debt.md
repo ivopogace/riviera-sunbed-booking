@@ -151,7 +151,7 @@ prove, which is what the computed-style diff is for.
 | R-3 | The default `afterRenderEffect(cb)` form runs in `mixedReadWrite`, which the Angular docs explicitly warn against ("you risk significant performance degradation") | med | low | Use the explicit-phase spec form `afterRenderEffect({ write: … })`. `focus()` is a DOM **write** and the effect's other reads are *signal* reads, not DOM reads, so `write` is the correct phase. (Note: `venue-map.ts`'s existing call legitimately uses the callback form — it genuinely reads layout *and* writes a signal) | claude | closed — both effects use the `{ write: … }` spec form |
 | R-4 | A directive host `[class]` binding **replaces** a static `class` on the same element, silently dropping `.chip`/`.chip--*` — which four spec files and the e2e query | med | high | The `amenity-chip.ts` precedent documents exactly this trap: the directive owns the **whole** class list including the marker classes, and the consuming template carries no `class` attribute on that element. `status-chip.spec.ts` asserts the markers survive | claude | open |
 | R-5 | Colour/geometry drift the contrast specs cannot see — they are pure maths over hard-coded values and would stay green against a component that no longer renders those values at all | med | high | Before/after **computed-style diff** in a real browser (`riviera-tailwind`'s hard rule), recorded in the Verification log. Known false positive to *not* chase: Chromium snaps `border-width: 1.5px` → `"1px"`, identical to the SCSS | claude | open |
-| R-6 | Deleting `shared/_glass.scss` and `booking-view.scss` leaves dangling citations — the #472/#473 failure class, where specs cited stylesheets that had moved | high | low | Grep every citation of both filenames and re-point in the same commit that deletes them; `riviera-docs-freshness` at close-out over the PR range as the backstop. Known sites: `booking-view.contrast.spec.ts`, `booking-status.contrast.spec.ts`, `amenities.contrast.spec.ts` ("only `status-chip` still lives there" goes false), `my-bookings.scss`'s section comment | claude | open |
+| R-6 | Deleting `shared/_glass.scss` and `booking-view.scss` leaves dangling citations — the #472/#473 failure class, where specs cited stylesheets that had moved | high | low | Grep every citation of both filenames and re-point in the same commit that deletes them; `riviera-docs-freshness` at close-out over the PR range as the backstop. Known sites: `booking-view.contrast.spec.ts`, `booking-status.contrast.spec.ts`, `amenities.contrast.spec.ts` ("only `status-chip` still lives there" goes false), `my-bookings.scss`'s section comment | claude | **closed (phase 4)** — 9 sites re-pointed, incl. two the plan had not predicted: `operator-console.contrast.spec.ts`'s css:S7924 cross-reference and `find-booking.scss`'s "extract a `modal-glass` mixin into shared/_glass.scss" instruction, which named a file that would no longer exist. The five already-ported directives' provenance comments now say **retired** `_glass.scss` |
 | R-7 | `my-bookings` regresses as collateral — it is a *consumer* of the ported mixin but is not otherwise migrated | med | med | Its `@include` is replaced by the directive in the same commit, its chip assertions run unmodified, and its rendering is covered by the computed-style diff and `my-bookings.e2e.ts` | claude | open |
 | R-8 | The banner ink overrides (`.banner .confirm-q`, `.banner .result`) are **descendant selectors** — flattening them onto elements could miss an instance, letting a themed ink land on a fixed banner fill (drifts between themes) | low | med | Only one element of each kind renders inside a banner (the withdraw confirm question and the withdraw result line); both are inside the `PENDING_REQUEST` case. The withdraw-prose assertion in `booking-view.contrast.spec.ts` pins the intent and stays unmodified | claude | open |
 
@@ -243,18 +243,18 @@ stylesheet is retired.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** port the `status-chip` mixin to `shared/status-chip.ts` (spec first), move both
-consumers onto it, delete `shared/_glass.scss`, and re-point every citation of it (R-6).
+**Next action:** capture the "before" computed styles for booking-view in both themes, then port
+`booking-view.scss` to Tailwind ledger-row by ledger-row and diff the "after" (R-5).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — Plan doc + draft PR | ✅ | `17c6306` · draft PR #478 |
 | 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | ✅ | `4a09f7e` |
-| 3 — Item 1: both effects → `afterRenderEffect({ write })` | ✅ | see below |
-| 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | ⏳ | |
-| 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | | |
+| 3 — Item 1: both effects → `afterRenderEffect({ write })` | ✅ | `6f50095` |
+| 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | ✅ | see below |
+| 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | ⏳ | |
 | 6 — Item 4: `ExpireRequests` javadoc | | |
 | 7 — Close-out: item-5 issue, docs freshness, gates | | |
 
@@ -454,6 +454,8 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 | What | Method | Result |
 |---|---|---|
 | AC-1 is real coverage, not a vacuous pass | commented the cancel focus effect out, ran the spec, restored it (phase 2 step 2) | **proven** — exactly 1 of 34 failed: `expected <body> to be <button>`. Component restored byte-identical (`git diff --stat` = spec only) |
+| Status-chip port is behaviour-neutral | 7 specs re-run unmodified after the port (phase 4) | **110 passed** — `booking-view.spec`, `my-bookings.spec` + their contrast specs, `booking-status.contrast`, `amenities.contrast`, `status-chip.spec`. The only edits to pre-existing specs were **citations** (doc comments + one `describe` title), never an assertion |
+| Production build after the port | `npm run build` (phase 4) | **succeeds** — Tailwind generates the ported fills (they are literals in `FILLS`/`BASE`, so the scanner sees them). Three CSS-budget warnings are pre-existing and in files this slice does not touch (`home.scss`, `app.scss`, `booking-pay.scss`) |
 | Computed-style parity, booking-view, both themes | Chromium `getComputedStyle` before/after (phase 5) | *pending* |
 | Item 4 javadoc | inspection + `git diff --stat` (phase 6) | *pending* |
 

@@ -10,7 +10,7 @@ import {
  * WCAG-AA contrast guard for the operator console (issue #170). The console is ALWAYS porcelain
  * (its host scopes `data-riv-theme="porcelain"`), so every pair is proven over the porcelain
  * background stops / header glass. Interactive chrome (sign-in card, active tab pill, Requests badge,
- * buttons) uses OPAQUE SOLID fills — the `css:S7924` treatment (see `_glass.scss`) — so both the WCAG
+ * buttons) uses OPAQUE SOLID fills — the `css:S7924` treatment (see `shared/status-chip.ts`) — so both the WCAG
  * maths and the static analyzer compute contrast without gradient compositing. These values mirror
  * `operator-console.scss`; a colour edit there must re-pass here.
  */

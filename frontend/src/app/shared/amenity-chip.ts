@@ -1,6 +1,6 @@
 import { booleanAttribute, computed, Directive, input } from '@angular/core';
 
-// Tailwind twin of the shared/_glass.scss `amenity-chip` mixin (spike: SCSS-vs-Tailwind comparison).
+// Tailwind twin of the retired shared/_glass.scss `amenity-chip` mixin (spike: SCSS-vs-Tailwind comparison).
 // A soft pill-tag with OPAQUE SOLID fills (the css:S7924 treatment — reads AA-safely on both the
 // light Discover card and the dark glass map header without a per-theme composited proof; every
 // ink/fill pair is proven AA in shared/amenities.contrast.spec.ts). The `water` variant is the

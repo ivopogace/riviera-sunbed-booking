@@ -1,6 +1,6 @@
 import { Directive } from '@angular/core';
 
-// Tailwind twin of the shared/_glass.scss `panel-glass` mixin (spike: SCSS-vs-Tailwind comparison).
+// Tailwind twin of the retired shared/_glass.scss `panel-glass` mixin (spike: SCSS-vs-Tailwind comparison).
 // The dark, AA-proven header glass — the surface for hero/state panels and the map header, where
 // white ink over the bare gradient's light stops would fail WCAG AA. A directive, not a mixin (see
 // shared/retry-button.ts). Apply to any panel host: `<header appPanelGlass>`.

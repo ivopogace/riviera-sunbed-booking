@@ -4,11 +4,9 @@
 // booking-view.contrast.spec.ts).
 //
 // Status chips and banners use OPAQUE SOLID fills (the design's translucent tints composited over
-// white), not rgba — the established css:S7924 treatment (see shared/_glass.scss `failure-icon`):
+// white), not rgba — the established css:S7924 treatment (see shared/status-chip.ts):
 // a solid fill lets both WCAG maths and the static analyzer compute text contrast correctly, and
 // keeps it theme-independent. Every chip/banner/button text pair is pinned in the contrast spec.
-
-@use '../shared/glass' as glass;
 
 :host {
   display: block;
@@ -29,7 +27,6 @@
 }
 
 // Glass base is the shared appCardGlass directive; %card-surface keeps the card EXTRAS only.
-// (glass is still @used below for status-chip.)
 %card-surface {
   -webkit-backdrop-filter: blur(26px) saturate(170%);
   backdrop-filter: blur(26px) saturate(170%);
@@ -79,9 +76,6 @@ h1 {
   line-height: 1.5;
   color: var(--riv-card-ink-soft);
 }
-
-// ---- status chip (shared solid-fill recipe; small text AA 4.5:1 proven in the shared spec) ----
-@include glass.status-chip;
 
 // ---- status banners (solid fills; eyebrow + body + strong all AA on the fill) ----
 .banner {

@@ -1,7 +1,8 @@
 // Liquid Glass "Find a booking" modal (issue #148, design: riviera-sunbeds-liquid-glass-v3.dc.html
 // → Find booking). This is the SECOND glass modal after booking-dialog; per the rule of three the
 // shared modal-glass recipe is NOT extracted yet — the AA-proven values below are cloned from
-// booking-dialog.scss (extract a `modal-glass` mixin into shared/_glass.scss when a 3rd modal lands).
+// booking-dialog.scss (extract a shared `modal-glass` primitive — a directive, per #477 — when a
+// 3rd modal lands).
 // Every text-bearing pair is pinned as a composited effective colour in find-booking.contrast.spec.ts.
 //
 // Deviations from the design file, on purpose (same class as booking-dialog):

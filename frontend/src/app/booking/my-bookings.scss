@@ -1,9 +1,7 @@
 // Liquid Glass "My bookings" list (issue #139, design: riviera-sunbeds-liquid-glass-v3.dc.html →
 // My bookings list card). Card-glass row buttons on the bare themed gradient; row text uses the
 // proven --riv-card-* tokens (asserted over both themes' worst-case stops in
-// my-bookings.contrast.spec.ts). The status chip reuses the shared solid-fill recipe (#139 extract).
-
-@use '../shared/glass' as glass;
+// my-bookings.contrast.spec.ts). The status chip is the shared `appStatusChip` directive (#477).
 
 :host {
   display: block;
@@ -36,9 +34,6 @@ h1 {
   letter-spacing: -0.02em;
   color: var(--riv-card-ink);
 }
-
-// ---- shared status-chip recipe (solid fills; AA proven in booking-status.contrast.spec.ts) ----
-@include glass.status-chip;
 
 // ---- rows ----
 .rows {

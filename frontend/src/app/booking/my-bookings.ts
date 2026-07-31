@@ -8,6 +8,7 @@ import { metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
+import { StatusChip } from '../shared/status-chip';
 import { MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 
@@ -102,7 +103,7 @@ function isNotFound(error: unknown): boolean {
  */
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass],
+  imports: [RouterLink, CardGlass, StatusChip],
   template: `
     <section class="my-bookings" aria-labelledby="mb-title">
       <a routerLink="/" class="back-link">← All beaches</a>
@@ -153,7 +154,7 @@ function isNotFound(error: unknown): boolean {
                     </span>
                     <span class="row-side">
                       <!-- Status conveyed in text (the chip label), never colour alone (WCAG AA). -->
-                      <span class="chip {{ row.view.chipClass }}" data-testid="row-status">{{
+                      <span [appStatusChip]="row.view.chipClass" data-testid="row-status">{{
                         row.view.statusLabel
                       }}</span>
                       <span class="amount-wrap">
