@@ -23,7 +23,7 @@ export const CARD_INK: Rgb = hexToRgb('0c2a33');
 export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
 
-/** `--riv-card-glass` per theme (#101 Slice 3 promotion; older card specs still carry local copies). */
+/** `--riv-card-glass` per theme (promoted at #101 Slice 3; every card spec imports these since #465). */
 export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 /** `--riv-card-ink-soft` alpha over the card glass. */

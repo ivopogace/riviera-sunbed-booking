@@ -24,8 +24,10 @@ widened the sweep from the issue's 4 named specs to **17** carrying copies) ·
 `riviera-plan-doc` (this template — proportional short form for a mechanical slice) ·
 `tdd` (green-to-green refactor: full Vitest run before and after must both pass with
 identical spec counts) · `riviera-review-overlay` (review gate — after PR ready) ·
-`riviera-docs-freshness` (N/A — test-internal refactor; no substrate doc states which
-specs import the tokens) · `riviera-frontend` (spec files stay colocated with their
+`riviera-docs-freshness` (ran, pre-merge smoke over `origin/main...HEAD` — 2 patches
+folded into this PR: the `glass-tokens.ts` charter comment (F-1) and the F-9 register
+pointer in `checkout-legal-links.md`; counting sweep clean — no substrate doc counts
+the specs) · `riviera-frontend` (spec files stay colocated with their
 components; `src/testing/` is the shared test-fixture home) · `angular-developer` +
 angular-cli MCP (`list_projects` + `get_best_practices` — confirms Vitest/jsdom, v22;
 no component code touched) · `playwright-cli` (N/A — no user-facing behaviour change,
@@ -79,9 +81,11 @@ identical test count, all green, values unchanged.
 
 ## Open questions / Assumptions
 
+### Resolved
+
 - **Assumption:** inline `0.78` soft-ink arguments in operator specs count as the
-  hand-copies the issue targets (it explicitly lists `daily-view-tab`/`requests-tab`,
-  whose only soft-ink copy is inline). — *Owner:* session · *Resolves by:* review gate.
+  hand-copies the issue targets — **confirmed** at the review gate (all five review
+  agents treated them as in-scope copies; values verified identical), merged via PR #467.
 
 ## Availability & concurrency (invariant #2)
 
@@ -109,13 +113,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, awaiting CI on the phase-0 push
+**Stage pointer:** DONE — merged via PR #467
 
-**Next action:** check the push's CI run; if green, mark ready for review and run the review gate.
+**Next action:** none — merge close-out (epic tick N/A, no parent epic; issue #465 closes via the PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — import swap across 17 specs + green run | ✅ | see PR #TBD (single commit) |
+| 0 — import swap across 17 specs + green run | ✅ | `4f3b8b4` (merged via PR #467) |
+| review-fix — stale glass-tokens.ts charter comment (F-1) + merge main | ✅ | PR #467 last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -123,6 +128,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (comment accuracy, score 75 — below the workflow's 80 comment bar, fixed anyway per the F-10/F-11 precedent) | `glass-tokens.ts` line 26 said "older card specs still carry local copies" — falsified by this PR | fixed in PR #467's last commit: clause now reads "every card spec imports these since #465" |
+
+**Review-gate note:** `/code-review` ran in full (5-agent fan-out + Haiku scoring) with
+`riviera-review-overlay` layered on (frontend bank: RV-STYLE-1, RV-PROC-1, RV-FE-1,
+RV-FE-E2E walked — all clean/N/A). Agents #2/#3 independently verified every replaced
+value numerically identical to its export and found no deliberate historical forks;
+F-1 above was the sole finding. Sonar gate: quality gate passed, API issue list pulled
+and empty (0 new issues, 0 duplicated blocks; coverage N/A — test-only diff).
 
 ---
 
@@ -148,6 +161,8 @@ All modifications; nothing created:
 - `frontend/src/app/operator/console-stats-strip.contrast.spec.ts` — same
 - `frontend/src/app/operator/layout-editor.contrast.spec.ts` — same
 - `docs/plans/glass-token-spec-sweep.md` — this plan
+- `frontend/src/testing/glass-tokens.ts` — review-fix F-1 only: the card-glass TSDoc's
+  stale "older card specs still carry local copies" clause updated (no value changes)
 
 ---
 
@@ -176,17 +191,20 @@ All modifications; nothing created:
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-3:** grep sweep → no local card-glass/soft-ink copies outside `glass-tokens.ts`.
-- [ ] **AC-2:** `npm test` → all green, same count as baseline.
+- [x] **AC-1/AC-3:** grep sweep → no local card-glass/soft-ink copies outside `glass-tokens.ts`
+      (verified post-sweep: `const CARD_GLASS`/`RIVIERA_CARD_GLASS`/`PORCELAIN_CARD_GLASS`/
+      `CARD_INK_SOFT_ALPHA`/`INK_SOFT_ALPHA` declarations and `, 0.78,` args — zero hits outside the token file).
+- [x] **AC-2:** `npm test` → 126 files / 979 tests green, identical to baseline; independently
+      re-verified by review agents #1 (a11y suite) and #4 (contrast suite).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying check.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Backend invariants (#1–#12): untouched — frontend test files only.
-- [ ] **Frontend** standards met — no component code changed; no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying check.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Backend invariants (#1–#12): untouched — frontend test files only.
+- [x] **Frontend** standards met — no component code changed; no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #467`.
+- [x] **The review gate ran in full** — invocation ladder rung 1 (the Skill probe succeeded;
+      the plugin's 5-agent fan-out + scoring workflow executed) *plus* `riviera-review-overlay`.
