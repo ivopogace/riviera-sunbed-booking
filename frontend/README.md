@@ -62,8 +62,8 @@ This covers two things:
 - **WCAG-AA contrast (`venue-map.contrast.spec.ts`)** — checks the contrast ratio of the
   beach-map design tokens by relative-luminance maths. axe's own `color-contrast` rule
   can't run under jsdom (it needs real rendering), so the colour pairs the map uses are
-  asserted deterministically instead. The token table mirrors `venue-map.scss`: change a
-  colour there and you must re-pass AA here.
+  asserted deterministically instead. The token table mirrors what `venue-map.html` sets
+  itself: change a colour there and you must re-pass AA here.
 
 ## Running end-to-end tests
 
