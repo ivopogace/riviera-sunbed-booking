@@ -1,6 +1,7 @@
 import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
   PORCELAIN_STOPS,
@@ -29,7 +30,6 @@ import {
 const PANEL_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // .find-panel
 const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the panel
 const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark CARD_INK tint) over the field
-const INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft (intro, label, placeholder)
 const ERROR_RED = '#a3160e'; // .find-error, sitting directly on the panel
 
 // The AA-safe dark-teal CTA gradient stops (= --riv-cta-grad), carrying solid white ink.
@@ -59,7 +59,7 @@ describe.each(THEMES)('Find-booking modal panel contrast — $name theme (WCAG A
   });
 
   it('card ink-soft (intro, field label, placeholder) meets AA on the panel glass', () => {
-    expectAaOverStops(CARD_INK, INK_SOFT_ALPHA, PANEL_GLASS, theme.stops);
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PANEL_GLASS, theme.stops);
   });
 
   it('the not-found error red meets AA on the panel glass', () => {

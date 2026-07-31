@@ -1,9 +1,10 @@
 import { AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
-  WHITE,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -24,7 +25,6 @@ import {
  * `--riv-card-ink` copy (dark ink, ample contrast). Values mirror the template; a colour edit re-passes here.
  */
 
-const CARD_GLASS = { color: WHITE, alpha: 0.55 };
 const TEAL = '#0a6e85';
 const REVERSAL = '#a3372a';
 const ALERT = '#a3160e';
@@ -34,20 +34,20 @@ const WEATHER_TINT = hexToRgb('f0aa2e');
 
 /** The card-glass surface composited over a porcelain background stop. */
 function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
-  return rgbToHex(surfaceOver(CARD_GLASS, stop));
+  return rgbToHex(surfaceOver(PORCELAIN_CARD_GLASS, stop));
 }
 
 describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
   it('heading + ledger ink + period-total label + statement ink (--riv-card-ink) meet AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('intro + dates + commission + empty sub-copy (--riv-card-ink-soft 0.78) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.78, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the "Owed to you" label + column headers + footnote (--riv-card-ink-faint 0.72) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.72, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, 0.72, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the owed figure + accrual net (teal #0a6e85) meet AA on the card glass', () => {
@@ -70,7 +70,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
 
   it('the reason-chip text (#a3372a) meets AA over its own #a3372a@0.12 tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const chip = composite(REVERSAL_RGB, 0.12, surfaceOver(CARD_GLASS, stop));
+      const chip = composite(REVERSAL_RGB, 0.12, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
         contrastRatio(REVERSAL, rgbToHex(chip)),
         `chip over ${rgbToHex(stop)}`,
@@ -89,7 +89,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
 
   it('the weather-confirm copy (--riv-card-ink) meets AA over the #f0aa2e@0.10 confirm tint', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const tint = composite(WEATHER_TINT, 0.1, surfaceOver(CARD_GLASS, stop));
+      const tint = composite(WEATHER_TINT, 0.1, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
         contrastRatio(rgbToHex(INK_DARK), rgbToHex(tint)),
         `ink over amber tint ${rgbToHex(stop)}`,

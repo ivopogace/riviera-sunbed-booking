@@ -1,10 +1,11 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_STOPS,
-  WHITE,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -19,15 +20,13 @@ import {
  * Values mirror the template + `styles.scss`; a token edit there must re-pass here.
  */
 
-const CARD_GLASS = { color: WHITE, alpha: 0.55 };
-
 describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {
   it('heading + input value (--riv-card-ink) meet AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('subheader + tier descriptions + € symbol (--riv-card-ink-soft 0.78) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.78, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the row label chip ink (--riv-card-ink) meets AA over the chip tint on the card glass', () => {
@@ -36,7 +35,7 @@ describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {
       const chipSurface = composite(
         PORCELAIN_CHIP.color,
         PORCELAIN_CHIP.alpha,
-        surfaceOver(CARD_GLASS, stop),
+        surfaceOver(PORCELAIN_CARD_GLASS, stop),
       );
       expect(
         contrastRatio(rgbToHex(INK_DARK), rgbToHex(chipSurface)),

@@ -1,11 +1,13 @@
 import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
-  WHITE,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
@@ -21,9 +23,6 @@ import {
  *     `status-chip` mixin at #139 — their AA proof lives in `shared/booking-status.contrast.spec.ts`.)
  */
 
-const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
-const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const ACCENT = '#085a6e'; // --riv-accent-ink (booking code, Paid amount, cancel result, links)
 
 interface Theme {

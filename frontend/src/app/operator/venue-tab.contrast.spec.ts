@@ -1,9 +1,10 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
-  WHITE,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -19,7 +20,6 @@ import {
  * the template + `styles.scss`; a token edit there must re-pass here.
  */
 
-const CARD_GLASS = { color: WHITE, alpha: 0.55 };
 /** The active amenity-chip tint (#2bb8d4 @ 0.22) from the design mock; its ink is #0a4f5e. */
 const CHIP_TEAL: [number, number, number] = [43, 184, 212];
 const CHIP_TEAL_ALPHA = 0.22;
@@ -32,16 +32,16 @@ const BANNER_TINT_ALPHA = 0.14;
 
 describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
   it('headings + labels + input values (--riv-card-ink) meet AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('sub-copy + soft labels + inactive chip ink (--riv-card-ink-soft 0.78) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.78, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the active amenity chip ink (#0a4f5e) meets AA over the teal tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const chipSurface = composite(CHIP_TEAL, CHIP_TEAL_ALPHA, surfaceOver(CARD_GLASS, stop));
+      const chipSurface = composite(CHIP_TEAL, CHIP_TEAL_ALPHA, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
         contrastRatio(ACTIVE_CHIP_INK, rgbToHex(chipSurface)),
         `active chip over ${rgbToHex(stop)}`,
@@ -69,7 +69,7 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
 
   it('the stale-write banner ink (--riv-card-ink) meets AA over the amber tint on the card glass (#224)', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const bannerSurface = composite(BANNER_TINT, BANNER_TINT_ALPHA, surfaceOver(CARD_GLASS, stop));
+      const bannerSurface = composite(BANNER_TINT, BANNER_TINT_ALPHA, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
         contrastRatio(rgbToHex(INK_DARK), rgbToHex(bannerSurface)),
         `stale banner ink over ${rgbToHex(stop)}`,

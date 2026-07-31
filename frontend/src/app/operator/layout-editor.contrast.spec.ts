@@ -1,5 +1,12 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
-import { CARD_INK, INK_DARK, PORCELAIN_STOPS, WHITE, expectAaOverStops } from '../../testing/glass-tokens';
+import {
+  CARD_INK,
+  CARD_INK_SOFT_ALPHA,
+  INK_DARK,
+  PORCELAIN_CARD_GLASS,
+  PORCELAIN_STOPS,
+  expectAaOverStops,
+} from '../../testing/glass-tokens';
 
 /**
  * WCAG-AA contrast guard for the O3 layout editor (#172). The editor is always porcelain (console
@@ -10,7 +17,6 @@ import { CARD_INK, INK_DARK, PORCELAIN_STOPS, WHITE, expectAaOverStops } from '.
  * + `styles.scss`; a token edit there must re-pass here.
  */
 
-const CARD_GLASS = { color: WHITE, alpha: 0.55 };
 // --riv-cta-grad stops (the AA-safe darkened teal, shared with every tourist/operator CTA).
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 // The "Facing the sea" banner: solid white on a darkened teal gradient (kept AA, unlike the design cyan).
@@ -18,15 +24,15 @@ const SEA_BANNER_STOPS = ['#0a6e85', '#0a5a6e'];
 
 describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
   it('panel headings + row labels + promenade banner (--riv-card-ink) meet AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('input labels + tool counts (--riv-card-ink-faint 0.72) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.72, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, 0.72, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('helper text + per-row prices (--riv-card-ink-soft 0.78) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.78, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('Generate / Save (white) meet AA on both CTA gradient stops', () => {
