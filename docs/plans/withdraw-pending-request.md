@@ -51,10 +51,17 @@ will be re-announced then): `riviera-java-conventions` + `riviera-local-debug` (
 phase), `codebase-design` (the port-vs-leg seam), `angular-developer` + `riviera-tailwind` +
 `playwright-cli` (FE phases).
 
-> **Toolset note (cloud session):** no angular-cli MCP server is connected this session, so the
-> routing table's "angular-cli MCP" cell cannot be satisfied. The in-repo `angular-developer` skill
-> and `frontend/.claude/CLAUDE.md` are authoritative here and are what the FE phases use; this is
-> recorded rather than silently half-done (SDLC remote addendum, toolset drift).
+> **Toolset note (cloud session):** the angular-cli MCP was **absent when the plan was written** and
+> connected mid-session; it was then consulted (`list_projects` → workspace on Angular 22,
+> `get_best_practices`) and its guidance matches the in-repo `frontend/.claude/CLAUDE.md` verbatim,
+> which the FE phases had already followed. Recorded as it actually happened rather than
+> back-dated (SDLC remote addendum, toolset drift).
+>
+> **E2e browser note:** this sandbox ships Chromium build 1194 while `@playwright/test` 1.61.1 pins
+> 1228, so the local mocked-suite run used the installed build via a local symlink. 113/114 passed;
+> the one failure (`customer-password.e2e.ts` → account-menu navigation) **reproduces on a clean
+> tree with the same substitution**, so it is not this slice's. CI runs the pinned build and is the
+> authority.
 
 **Branch:** `claude/sdlc-123-issue-review-e447br` — the cloud session's designated remote branch,
 standing in for `feature/withdraw-pending-request` per the SDLC remote addendum.
@@ -63,71 +70,75 @@ standing in for `feature/withdraw-pending-request` per the SDLC remote addendum.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking in `PENDING_REQUEST`, when `WithdrawRequest.withdraw(code)` runs,
+- [x] **AC-1:** Given a booking in `PENDING_REQUEST`, when `WithdrawRequest.withdraw(code)` runs,
   then the outcome is `Withdrawn`, the booking is `WITHDRAWN`, and the `(set, date)` availability
   row is released — in one transaction, so the booking is never `WITHDRAWN` with its set still held
   (invariant #2). *Pinned by:* `WithdrawRequestServiceTest.withdrawsAndReleasesTheHold`,
   `ConcurrentRequestTerminationIT.withdrawnSetIsImmediatelyRebookable`.
 
-- [ ] **AC-2:** Given a booking that is **not** `PENDING_REQUEST` (confirmed, awaiting payment,
+- [x] **AC-2:** Given a booking that is **not** `PENDING_REQUEST` (confirmed, awaiting payment,
   already declined/expired/withdrawn), when withdraw runs, then the outcome is
   `Rejected.NOT_PENDING`, **no** availability release happens, and the stored status is unchanged.
   *Pinned by:* `WithdrawRequestServiceTest.rejectsANonPendingBooking`.
 
-- [ ] **AC-3:** Given an unknown code, when withdraw runs, then the outcome is
+- [x] **AC-3:** Given an unknown code, when withdraw runs, then the outcome is
   `Rejected.NO_SUCH_BOOKING` and nothing is written. *Pinned by:*
   `WithdrawRequestServiceTest.rejectsAnUnknownCode`.
 
-- [ ] **AC-4:** Given a pending request, when a withdraw and the expiry sweep (or a venue decline)
+- [x] **AC-4:** Given a pending request, when a withdraw and the expiry sweep (or a venue decline)
   act on it concurrently, then **exactly one** of them transitions the row and releases the hold —
   the loser is a 0-row no-op with no second release. *Pinned by:*
   `ConcurrentRequestTerminationIT.withdrawAndExpiryReleaseExactlyOnce`.
 
-- [ ] **AC-5:** Given a pending request past its deadline but not yet swept, when the guest
+- [x] **AC-5:** Given a pending request past its deadline but not yet swept, when the guest
   withdraws, then it still succeeds — the withdraw is **not** deadline-guarded, matching decline
   (same release, different terminal label). *Pinned by:*
   `ConcurrentRequestTerminationIT.withdrawsAnOverdueButUnsweptRequest` — an IT, not the unit test:
   the absence of a deadline predicate is a property of the SQL, which a mocked `Bookings` cannot
   show.
 
-- [ ] **AC-6:** Given `POST /api/bookings/{code}/withdraw`, then it is reachable anonymously (the
+- [x] **AC-6:** Given `POST /api/bookings/{code}/withdraw`, then it is reachable anonymously (the
   code is the bearer credential, invariant #7), maps `Withdrawn`→`200`, `NO_SUCH_BOOKING`→`404`,
   `NOT_PENDING`→`409` as RFC-7807 `ProblemDetail`, and **the booking code never appears in any
-  error body or log**. *Pinned by:* `WithdrawRequestIT.mapsEveryOutcomeToItsStatus`,
-  `WithdrawRequestIT.codeNeverLeaksIntoTheProblemBody`.
+  error body or log**. *Pinned by:* `WithdrawRequestIT.withdrawIsReachableAnonymouslyAndWithoutACsrfToken`
+  (one request pins both the permitAll matcher and the CSRF exemption — a missing matcher is a 401,
+  a missing exemption a 403), `.unknownCodeIsNotFound`, `.aBookingThatLeftPendingIsAConflict`,
+  `.withdrawingTwiceIsAConflict`, `.codeNeverLeaksIntoTheProblemBody`.
 
-- [ ] **AC-7:** Given the withdraw path, then `RateLimitFilter` classifies it as a **code-keyed**
+- [x] **AC-7:** Given the withdraw path, then `RateLimitFilter` classifies it as a **code-keyed**
   booking endpoint — it spends both the per-IP and the per-code budget, exactly like cancel — so it
   cannot become an unthrottled booking-code guessing oracle. *Pinned by:*
-  `RateLimitFilterTest.withdrawSpendsThePerCodeBudget`.
+  `RateLimitFilterTest.withdrawSpendsThePerCodeBudget` + `.withdrawAndViewShareOneCodeBudget`
+  (the three code-keyed paths share ONE budget per code — same secret), and
+  `CsrfProtectionIT.guestWithdrawStaysTokenless`.
 
-- [ ] **AC-8:** Given the `BookingStatus` enum, then every value is accepted by the
+- [x] **AC-8:** Given the `BookingStatus` enum, then every value is accepted by the
   `booking_status_check` constraint — i.e. `WITHDRAWN` ships with V37 and the enum/schema stay in
   lockstep (invariant #12). *Pinned by:* `BookingMigrationIT.everyEnumStatusAccepted` (existing;
   iterates `BookingStatus.values()`, so it goes red the moment the enum gains a value the CHECK
   lacks).
 
-- [ ] **AC-9:** Given a `PENDING_REQUEST` booking, when `GET /api/bookings/{code}` is read, then the
+- [x] **AC-9:** Given a `PENDING_REQUEST` booking, when `GET /api/bookings/{code}` is read, then the
   detail reports `withdrawable: true`; for every other status it is `false`, and the existing
   `cancellable` flag is **unchanged** (still `status == CONFIRMED`). *Pinned by:*
-  `ViewBookingServiceTest.pendingRequestIsWithdrawableButNotCancellable`.
+  `ViewBookingServiceTest.pendingRequestIsWithdrawableButNotCancellable`, `.confirmedIsCancellableButNotWithdrawable`, `.anAlreadyWithdrawnRequestIsNoLongerWithdrawable`.
 
-- [ ] **AC-10:** Given the `/booking/:code` view of a `PENDING_REQUEST` booking, then a
+- [x] **AC-10:** Given the `/booking/:code` view of a `PENDING_REQUEST` booking, then a
   `[data-testid="withdraw-request"]` control renders in the pending panel, asks for confirmation
   before acting, and on success flips the chip to `Withdrawn` without a reload; the panel renders
   **no** withdraw control for any other status. *Pinned by:*
   `booking-view.spec.ts` (the flipped `PENDING_REQUEST` case + the new withdraw-flow cases).
 
-- [ ] **AC-11:** Given the shared status vocabulary, then `WITHDRAWN` has a `STATUS_META` row
+- [x] **AC-11:** Given the shared status vocabulary, then `WITHDRAWN` has a `STATUS_META` row
   (`Withdrawn` / `chip--withdrawn` / `Amount` — never `Paid`, no money moved) and its chip ink meets
   WCAG AA on its solid fill. *Pinned by:* `booking-status.spec.ts`,
   `booking-status.contrast.spec.ts`.
 
-- [ ] **AC-12:** Given the mocked CI-safe e2e suite, then a guest can open a pending request, click
+- [x] **AC-12:** Given the mocked CI-safe e2e suite, then a guest can open a pending request, click
   Withdraw, confirm, and see the withdrawn state — with no serious axe violations. *Pinned by:*
   `frontend/e2e/request-to-book.e2e.ts` (withdraw case).
 
-- [ ] **AC-13:** Given an operator whose queue still shows a request the guest has withdrawn, when
+- [x] **AC-13:** Given an operator whose queue still shows a request the guest has withdrawn, when
   the operator accepts or declines it, then the API answers `409 REQUEST_NOT_PENDING` and the
   console shows its existing "already handled" copy — no new operator-side code. *Pinned by:*
   `WithdrawRequestIT.acceptAfterWithdrawIsNotPending`.
@@ -157,13 +168,13 @@ reserved slot is not a retirement.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Withdraw transitions the booking but the hold is not released (or is released twice) — a set held by a terminal booking, or a set freed while still held (invariant #2) | med | **high** | Reuse the `RequestReleaseService` shape verbatim: one `@Transactional` bean, a guarded `UPDATE … RETURNING set_id, booking_date`, release only on a returned row. `RETURNING` makes a lost race a 0-row no-op → released exactly once. AC-1, AC-4 | claude | open |
-| R-2 | New endpoint missing from `SecurityConfig` — the #98 review's finding #1 was exactly this | med | med | Fails **closed** (`anyRequest().authenticated()` → 401), so the risk is a broken feature, not an exposure. Both the CSRF-ignore list and the permitAll matcher are edited in the same phase as the controller, pinned by an anonymous-caller IT | claude | open |
-| R-3 | New endpoint missing from `RateLimitFilter.targetOf` → an **unthrottled** booking-code guessing oracle (the #342 percent-encoding lesson: an unmatched path spends no token and still reaches the controller) | med | **high** | Add `WITHDRAW_TEMPLATE` beside `CANCEL_TEMPLATE`; it joins the existing per-code bucket map (same dimension as view/cancel — same secret being guessed). AC-7 | claude | open |
-| R-4 | Widening `cancellable` to cover withdraw — `ViewBookingService` carries an explicit comment warning against exactly this ("letting a future 'the guest may withdraw an open request' change to the cancellation policy silently widen this one is exactly the accident worth spending a method on") | low | med | A **separate** `withdrawable` field with its own predicate; `cancellable` untouched. AC-9 | claude | open |
-| R-5 | Flyway `V37` collides with a parallel slice | low | med | Verified at plan time: `V36` is the max on `main`, and no open PR carries a migration (the 11 open PRs are 1 docs PR + 10 dependabot bumps). If a migration lands first, **whoever merges second renumbers** | claude | open |
-| R-6 | A request reverted to `PENDING_REQUEST` after a failed PaymentIntent issuance may have a residual intent at Stripe; withdrawing it means no accept retry ever re-adopts that intent | low | low | **Accepted, pre-existing, inert** — an unregistered intent has no `payment` row, and webhooks correlate via that table, so it can never confirm a booking (invariant #8). Already tracked as #98's deferred "orphan-PI reconciliation note"; not new scope here | claude | open |
-| R-7 | FE deployed before BE (or vice versa) renders an unknown `WITHDRAWN` status badly | low | low | `metaFor` already falls back to `humanizeStatus` + a neutral chip + the conservative `Amount` label — `WITHDRAWN` degrades to "Withdrawn", so skew is benign in both directions | claude | open |
+| R-1 | Withdraw transitions the booking but the hold is not released (or is released twice) — a set held by a terminal booking, or a set freed while still held (invariant #2) | med | **high** | Reuse the `RequestReleaseService` shape verbatim: one `@Transactional` bean, a guarded `UPDATE … RETURNING set_id, booking_date`, release only on a returned row. `RETURNING` makes a lost race a 0-row no-op → released exactly once. AC-1, AC-4 | claude | closed |
+| R-2 | New endpoint missing from `SecurityConfig` — the #98 review's finding #1 was exactly this | med | med | Fails **closed** (`anyRequest().authenticated()` → 401), so the risk is a broken feature, not an exposure. Both the CSRF-ignore list and the permitAll matcher are edited in the same phase as the controller, pinned by an anonymous-caller IT | claude | closed |
+| R-3 | New endpoint missing from `RateLimitFilter.targetOf` → an **unthrottled** booking-code guessing oracle (the #342 percent-encoding lesson: an unmatched path spends no token and still reaches the controller) | med | **high** | Add `WITHDRAW_TEMPLATE` beside `CANCEL_TEMPLATE`; it joins the existing per-code bucket map (same dimension as view/cancel — same secret being guessed). AC-7 | claude | closed |
+| R-4 | Widening `cancellable` to cover withdraw — `ViewBookingService` carries an explicit comment warning against exactly this ("letting a future 'the guest may withdraw an open request' change to the cancellation policy silently widen this one is exactly the accident worth spending a method on") | low | med | A **separate** `withdrawable` field with its own predicate; `cancellable` untouched. AC-9 | claude | closed |
+| R-5 | Flyway `V37` collides with a parallel slice | low | med | Verified at plan time: `V36` is the max on `main`, and no open PR carries a migration (the 11 open PRs are 1 docs PR + 10 dependabot bumps). If a migration lands first, **whoever merges second renumbers** | claude | closed |
+| R-6 | A request reverted to `PENDING_REQUEST` after a failed PaymentIntent issuance may have a residual intent at Stripe; withdrawing it means no accept retry ever re-adopts that intent | low | low | **Accepted, pre-existing, inert** — an unregistered intent has no `payment` row, and webhooks correlate via that table, so it can never confirm a booking (invariant #8). Already tracked as #98's deferred "orphan-PI reconciliation note"; not new scope here | claude | closed |
+| R-7 | FE deployed before BE (or vice versa) renders an unknown `WITHDRAWN` status badly | low | low | `metaFor` already falls back to `humanizeStatus` + a neutral chip + the conservative `Amount` label — `WITHDRAWN` degrades to "Withdrawn", so skew is benign in both directions | claude | closed |
 
 ## Open questions / Assumptions
 
@@ -285,10 +296,10 @@ interaction idiom.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 4 (FE status vocabulary + chip)`
+**Stage pointer:** `implement complete — entering the review gate`
 
-**Next action:** Add the `WITHDRAWN` union member + `STATUS_META` row + `chip--withdrawn`, and the
-`my-bookings.ts` `subLineOf` row the phase-0 audit found.
+**Next action:** Mark PR #476 ready for review, then run the review gate per
+`riviera-sdlc/references/pr-gates.md` §1 and re-pull the Sonar new-issue list.
 
 **Draft PR:** #476 (opened on the plan commit so every push is CI-gated).
 
@@ -298,9 +309,9 @@ interaction idiom.
 | 1 — the withdraw leg (port, service, persistence) | ✅ | see below |
 | 2 — HTTP edge + security + rate limit | ✅ | see below |
 | 3 — `withdrawable` read-model flag | ✅ | see below |
-| 4 — FE status vocabulary + chip | | |
-| 5 — FE withdraw control | | |
-| 6 — e2e + docs close-out | | |
+| 4 — FE status vocabulary + chip | ✅ | see below |
+| 5 — FE withdraw control | ✅ | see below |
+| 6 — e2e + docs close-out | ✅ | see below |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -766,35 +777,35 @@ it('withdraws a pending request after confirmation and flips the chip', async ()
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1, AC-2, AC-3, AC-5:** `./gradlew test --tests "*WithdrawRequestServiceTest*"` → PASS.
-- [ ] **AC-1 (integration), AC-6, AC-13:** `./gradlew test --tests "*WithdrawRequestIT*"` → PASS.
-- [ ] **AC-4:** `./gradlew test --tests "*ConcurrentRequestTerminationIT*"` → PASS.
-- [ ] **AC-7:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS.
-- [ ] **AC-8:** `./gradlew test --tests "*BookingMigrationIT*"` → PASS.
-- [ ] **AC-9:** `./gradlew test --tests "*ViewBookingServiceTest*"` → PASS.
-- [ ] **AC-10:** `npm test -- booking-view` → PASS.
-- [ ] **AC-11:** `npm test -- booking-status && npm run test:a11y` → PASS.
-- [ ] **AC-12:** `npm run test:e2e:a11y` → PASS.
+- [x] **AC-1, AC-2, AC-3, AC-5:** `./gradlew test --tests "*WithdrawRequestServiceTest*"` → PASS.
+- [x] **AC-1 (integration), AC-6, AC-13:** `./gradlew test --tests "*WithdrawRequestIT*"` → PASS.
+- [x] **AC-4:** `./gradlew test --tests "*ConcurrentRequestTerminationIT*"` → PASS.
+- [x] **AC-7:** `./gradlew test --tests "*RateLimitFilterTest*"` → PASS.
+- [x] **AC-8:** `./gradlew test --tests "*BookingMigrationIT*"` → PASS.
+- [x] **AC-9:** `./gradlew test --tests "*ViewBookingServiceTest*"` → PASS.
+- [x] **AC-10:** `npm test -- booking-view` → PASS.
+- [x] **AC-11:** `npm test -- booking-status && npm run test:a11y` → PASS.
+- [x] **AC-12:** `npm run test:e2e:a11y` → PASS.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new events (invariant #11).
-- [ ] **Payment/payout** section filled (N/A justified — no PaymentIntent exists pre-accept).
-- [ ] Refund policy untouched (invariant #10) — no refund path added.
-- [ ] Timezone: unchanged; no new date arithmetic (invariant #6).
-- [ ] Booking codes unguessable and never logged or echoed in a problem body (invariant #7).
-- [ ] Flyway migration present (V37) + constraint test (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new events (invariant #11).
+- [x] **Payment/payout** section filled (N/A justified — no PaymentIntent exists pre-accept).
+- [x] Refund policy untouched (invariant #10) — no refund path added.
+- [x] Timezone: unchanged; no new date arithmetic (invariant #6).
+- [x] Booking codes unguessable and never logged or echoed in a problem body (invariant #7).
+- [x] Flyway migration present (V37) + constraint test (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here; this slice ships as **PR #476**.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.

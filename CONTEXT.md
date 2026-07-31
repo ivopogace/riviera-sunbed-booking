@@ -51,12 +51,17 @@ model in `docs/architecture/domain-model.md`.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
   by the `booking.status` CHECK constraint, V19 — keep enum and SQL in lockstep):
   `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,
-  `NO_SHOW`, `DECLINED`, `EXPIRED` (the last three are Request-to-Book, shipped by #98).
+  `NO_SHOW`, `DECLINED`, `EXPIRED` (Request-to-Book, shipped by #98), `WITHDRAWN`
+  (the guest's own retraction of a pending request, #123 — V37).
 - **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
   decision (`PENDING_REQUEST`): it claims the same `availability(set, date)` row as any
   online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
-  is charged until the venue accepts (payment-request-on-accept). Released on decline
-  (`DECLINED`) or when the response deadline passes (`EXPIRED`, swept). The deadline is
+  is charged until the venue accepts (payment-request-on-accept). It has **three** terminal
+  legs, one per party that can end it — the venue declines (`DECLINED`), nobody answers before
+  the response deadline (`EXPIRED`, swept), or the guest retracts it themselves (`WITHDRAWN`,
+  #123) — and each releases the soft-hold in the same transaction as the transition. The
+  guest's leg is deliberately **not** deadline-guarded, so an overdue-but-unswept request is
+  still withdrawable: the same release, a different terminal label. The deadline is
   min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
   the guest has `booking.request.pay-window` (from accept) to pay before the abandoned
   sweep cancels.

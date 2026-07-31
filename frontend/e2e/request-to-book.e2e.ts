@@ -8,7 +8,7 @@ import { settle } from './support/booking-dialog';
  * #137): REQUEST-mode beach map → 2-step dialog whose Review step shows the "Send request" CTA +
  * no-charge copy → 202 PENDING_REQUEST → request-sent screen → the booking-by-code view through its
  * request lifecycle (pending → accepted "Pay now" → fake-Stripe payment → poll to CONFIRMED; plus
- * the DECLINED/EXPIRED terminal views). The API is mocked (`page.route`) and Stripe is the
+ * the guest's own withdraw (#123) and the DECLINED/EXPIRED terminal views). The API is mocked (`page.route`) and Stripe is the
  * deterministic fake (`__RIVIERA_FAKE_STRIPE__`), so the suite is CI-safe with no backend.
  */
 
@@ -53,6 +53,7 @@ const DETAIL_BASE = {
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
   cancellable: false,
+  withdrawable: true,
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
   refundedAmount: null,
@@ -144,6 +145,56 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
   await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
   await expect(page.getByTestId('booking-code')).toContainText(CODE);
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
+});
+
+test('a guest withdraws their pending request and the spot is freed (#123)', async ({ page }) => {
+  let withdrawn = false;
+  const withdrawCalls: string[] = [];
+  await page.route(new RegExp(`/api/bookings/${CODE}/withdraw$`), (route) => {
+    withdrawCalls.push(route.request().method());
+    withdrawn = true;
+    return route.fulfill({ json: { code: CODE, status: 'WITHDRAWN' } });
+  });
+  // The reload after a successful withdraw must serve the new terminal state, exactly as the
+  // backend would — the chip flips without a page reload.
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: withdrawn
+        ? { ...DETAIL_BASE, status: 'WITHDRAWN', withdrawable: false, requestExpiresAt: null }
+        : DETAIL_BASE,
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await expect(page.getByTestId('request-pending')).toContainText('Waiting for the venue');
+
+  await page.getByTestId('withdraw-request').click();
+  await expect(page.getByText('Withdraw this request?')).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'booking view (withdraw confirmation)');
+
+  await page.getByTestId('confirm-withdraw').click();
+
+  await expect(page.getByTestId('booking-status')).toContainText('Withdrawn');
+  expect(withdrawCalls).toEqual(['POST']);
+  await expectNoSeriousAxeViolations(page, 'booking view (withdrawn request)');
+});
+
+test('the withdraw confirmation can be backed out of without calling the API', async ({ page }) => {
+  let withdrawCalled = false;
+  await page.route(new RegExp(`/api/bookings/${CODE}/withdraw$`), (route) => {
+    withdrawCalled = true;
+    return route.fulfill({ json: { code: CODE, status: 'WITHDRAWN' } });
+  });
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: DETAIL_BASE }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('withdraw-request').click();
+  await page.getByRole('button', { name: 'Keep request' }).click();
+
+  await expect(page.getByTestId('withdraw-request')).toBeVisible();
+  expect(withdrawCalled).toBe(false);
 });
 
 test('an expired request shows terminal no-charge copy', async ({ page }) => {

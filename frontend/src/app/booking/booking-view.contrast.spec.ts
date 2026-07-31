@@ -68,6 +68,15 @@ describe('Booking view — status banners (solid fills, WCAG AA, issue #138)', (
   });
 });
 
+describe('Booking view — withdraw prose inside the pending banner (#123)', () => {
+  it('the confirm question and result line reuse the banner ink, so they meet AA on its fill', () => {
+    // .banner .confirm-q / .banner .result are pinned to BANNER_BODY rather than the themed card
+    // tokens: a themed ink over a FIXED banner fill would drift between the two themes.
+    const pendingFill = BANNERS.find(([name]) => name === 'pending')![1];
+    expect(contrastRatio(BANNER_BODY, pendingFill)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+});
+
 describe('Booking view — action buttons (WCAG AA, issue #138)', () => {
   it('the destructive confirm (white) meets AA on both terracotta gradient stops', () => {
     for (const stop of ['#c14a2c', '#a83c25']) {

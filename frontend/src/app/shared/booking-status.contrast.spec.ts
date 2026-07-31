@@ -17,6 +17,7 @@ const CHIPS: readonly [status: string, ink: string, fill: string][] = [
   ['CANCELLED', '#8a3a2a', '#f6e5e0'],
   ['COMPLETED', '#0a5e6e', '#e1f5f9'],
   ['NO_SHOW', '#7a4a3a', '#ece6e3'],
+  ['WITHDRAWN', '#5c5470', '#eeecf4'],
 ];
 
 describe('Status chips (solid fills, WCAG AA) — shared/_glass.scss status-chip', () => {

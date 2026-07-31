@@ -32,6 +32,8 @@ function subLineOf(b: MyBookingSummary): string {
       return 'Enjoyed · thanks for visiting';
     case 'NO_SHOW':
       return 'Marked as no-show';
+    case 'WITHDRAWN':
+      return 'Request withdrawn';
     default:
       return '';
   }
