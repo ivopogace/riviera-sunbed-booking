@@ -245,10 +245,10 @@ stylesheet is retired.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7 — close-out)`
 
-**Next action:** correct the `ExpireRequests` javadoc overclaim (item 4) and run the
-generalization grep for the same claim elsewhere in the backend.
+**Next action:** file the item-5 issue, merge latest `origin/main`, mark PR #478 ready for review,
+then run the review gate → Sonar gate → docs-freshness close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -257,8 +257,8 @@ generalization grep for the same claim elsewhere in the backend.
 | 3 — Item 1: both effects → `afterRenderEffect({ write })` | ✅ | `6f50095` |
 | 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | ✅ | see below |
 | 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | ✅ | see below |
-| 6 — Item 4: `ExpireRequests` javadoc | ⏳ | |
-| 7 — Close-out: item-5 issue, docs freshness, gates | | |
+| 6 — Item 4: `ExpireRequests` javadoc | ✅ | see below |
+| 7 — Close-out: item-5 issue, docs freshness, gates | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -445,6 +445,8 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-31 | phase 6 (item 4) | the corrected "no PaymentIntent" overclaim elsewhere in the backend | `grep -rn "no PaymentIntent" --include=*.java platform/src` | 14 — 11 already correct or legitimately different (`CreateBookingService`, `ReserveOutcome` and the three tests describe the **create** path, where no intent has ever been issued, so "no PaymentIntent" is true there; `payment`'s four already say "on record") | **`ExpireRequests` was the only wrong one**, because it is the only site describing a moment *after* a failed accept could have left a residual intent. Fixed; nothing else to change |
+| 2026-07-31 | phase 6 (same javadoc) | the "mutually exclusive by predicate" claim #123's F-5 corrected | `grep -rn "exclusive by predicate\|disjoint by predicate" --include=*.java platform/src` | 2 | **A second stale claim, in the same sentence as item 4's, that #123 missed.** #123 corrected it in `RequestReleaseService`, `ConcurrentRequestTerminationIT` and `CLAUDE.md` but not here — and withdraw made it *more* wrong, since it is a third undeadlined leg. Fixed to the row-lock argument in the house phrasing; the sweep's javadoc also still said "accept/decline", omitting withdraw entirely. `RequestExpiryVsAcceptRaceIT`'s "disjoint by predicate" is **correct** and left alone — accept-vs-expire is the one genuinely disjoint pair |
 
 ---
 
@@ -461,7 +463,7 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 | Computed-style parity, booking-view, both themes | Chromium `getComputedStyle` dump keyed by **DOM position** (classes all change, so a class-keyed diff would compare nothing), 10 scenarios × 2 themes × 48 properties, before vs after (phase 5) | **0 unexplained differences** over 586 element records. Structure identical (every element path matched). 230 differences, all machine-classified as visually inert: **192** are border colour/style on elements whose border-width is `0px` in *both* trees (Tailwind's preflight `border: 0 solid` vs the SCSS's `border: 0` — an unrendered token), and **38** are `box-shadow`, where Tailwind's `shadow-*` composes through var slots and prepends no-op `rgba(0,0,0,0) 0px 0px 0px 0px` entries; stripping those, the real shadow is byte-identical |
 | WCAG 2.4.7 focus rings survive | separate **keyboard** probe (phase 5) — the main capture focuses programmatically, which does not reliably arm `:focus-visible`, so it proved nothing about the rings | **identical on all six controls** across three states: `rgb(8,90,110) solid 3px / offset 2px` for the danger, outline and link controls and `rgb(255,255,255) solid 3px` for the Pay-now CTA, each with `:focus-visible` genuinely matched |
 | Full CI-safe e2e suite | `npx playwright test --config playwright.a11y.config.ts` (phase 5) | **114 passed**. Note: `customer-password.e2e.ts`, which #477 recorded as failing in this sandbox, **passes** when the run uses the config's documented `PW_CHROMIUM_EXECUTABLE` escape hatch to point at the pre-installed Chromium 1194 instead of the pinned 1228 download |
-| Item 4 javadoc | inspection + `git diff --stat` (phase 6) | *pending* |
+| Item 4 javadoc | inspection + `git diff --stat` + `gradle compileJava` (phase 6) | **comment-only, 1 file** — every changed line is a javadoc line (verified by filtering the diff for non-`*` lines: empty). Backend compiles |
 
 ---
 
