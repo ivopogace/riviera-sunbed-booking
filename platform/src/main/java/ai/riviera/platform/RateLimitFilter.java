@@ -43,8 +43,9 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Per-IP and per-code rate limiting for the three public, unauthenticated booking endpoints
- * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel} and
+ * Per-IP and per-code rate limiting for the four public, unauthenticated booking endpoints
+ * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel},
+ * {@code POST /api/bookings/{code}/withdraw} (#123) and
  * {@code POST /api/bookings} — plus, since issue #109, the session login
  * ({@code POST /api/auth/operator/login}) on its own stricter per-IP budget (D-8: the login is a
  * credential-guessing oracle exactly like the code endpoints), and since S4 (#112) the SSO
@@ -112,11 +113,15 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests. Retry later.","code":"RATE_LIMITED"}""";
 
-	// Mirrors the SecurityConfig matchers for the three public booking endpoints: CREATE_PATH is the
-	// exact create POST; VIEW_TEMPLATE the view-by-code GET; CANCEL_TEMPLATE the cancel POST.
+	// Mirrors the SecurityConfig matchers for the four public booking endpoints: CREATE_PATH is the
+	// exact create POST; VIEW_TEMPLATE the view-by-code GET; CANCEL_TEMPLATE the cancel POST;
+	// WITHDRAW_TEMPLATE the request-withdraw POST (#123). The three code-keyed ones share the per-code
+	// budget deliberately — they are guesses at the SAME secret, so separate budgets would just hand an
+	// attacker three times the attempts against one booking code.
 	private static final String CREATE_PATH = "/api/bookings";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
+	private static final String WITHDRAW_TEMPLATE = "/api/bookings/{code}/withdraw";
 	private static final String CODE_VAR = "code";
 	// The session logins (issue #109, D-8): per-IP throttled on their OWN, stricter budget — a
 	// credential-guessing oracle, like the booking-code endpoints, but a separate dimension so
@@ -442,6 +447,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method)) {
 			if (paths.match(CANCEL_TEMPLATE, path)) {
 				return new Target(paths.extractUriTemplateVariables(CANCEL_TEMPLATE, path).get(CODE_VAR));
+			}
+			if (paths.match(WITHDRAW_TEMPLATE, path)) {
+				return new Target(paths.extractUriTemplateVariables(WITHDRAW_TEMPLATE, path).get(CODE_VAR));
 			}
 			if (path.equals(CREATE_PATH)) {
 				return new Target(null); // create carries no code → per-IP only

@@ -148,6 +148,39 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	/**
+	 * The withdraw POST (#123) is a code-keyed booking endpoint like view and cancel, so it must draw
+	 * the per-code budget. An unmatched path would spend no token and still reach the controller — an
+	 * unthrottled oracle against the very bearer credential the budget exists to protect (the #342
+	 * percent-encoding defect, one path over).
+	 */
+	@Test
+	void withdrawSpendsThePerCodeBudget() throws Exception {
+		// Same code from three distinct IPs, so only the per-code bucket can trip.
+		withdrawFromIp("10.20.0.1", "wdcode-Q").andExpect(status().isNotFound());
+		withdrawFromIp("10.20.0.2", "wdcode-Q").andExpect(status().isNotFound());
+		withdrawFromIp("10.20.0.3", "wdcode-Q")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	/** The withdraw budget is the SAME per-code bucket as the view's — one secret, one budget. */
+	@Test
+	void withdrawAndViewShareOneCodeBudget() throws Exception {
+		viewFromIp("10.21.0.1", "wdshare-R").andExpect(status().isNotFound());
+		withdrawFromIp("10.21.0.2", "wdshare-R").andExpect(status().isNotFound());
+		withdrawFromIp("10.21.0.3", "wdshare-R")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	private ResultActions withdrawFromIp(String ip, String code) throws Exception {
+		// No csrf() on purpose: the path is CSRF-exempt like cancel, so an allowed attempt reaches the
+		// controller and lands as the stubbed 404 — a 429 is unambiguously the limiter.
+		return mvc.perform(post("/api/bookings/{code}/withdraw", code).with(fromIp(ip)));
+	}
+
 	@Test
 	void perCodeIsKeyedByCode() throws Exception {
 		viewFromIp("10.4.0.1", "kcode-Y").andExpect(status().isNotFound());

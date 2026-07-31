@@ -285,10 +285,10 @@ interaction idiom.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 (HTTP edge + security + rate limit)`
+**Stage pointer:** `implement — phase 3 (the withdrawable read-model flag)`
 
-**Next action:** Write `WithdrawRequestIT` red, then add the controller endpoint plus the three
-edge registrations (SecurityConfig CSRF-ignore, SecurityConfig permitAll, RateLimitFilter.targetOf).
+**Next action:** Write `ViewBookingServiceTest.pendingRequestIsWithdrawableButNotCancellable` red,
+then add the separate `withdrawable` predicate (never a widening of `cancellable` — R-4).
 
 **Draft PR:** #476 (opened on the plan commit so every push is CI-gated).
 
@@ -296,7 +296,7 @@ edge registrations (SecurityConfig CSRF-ignore, SecurityConfig permitAll, RateLi
 |-------|--------|---------|
 | 0 — `WITHDRAWN` status + V37 migration | ✅ | see below |
 | 1 — the withdraw leg (port, service, persistence) | ✅ | see below |
-| 2 — HTTP edge + security + rate limit | | |
+| 2 — HTTP edge + security + rate limit | ✅ | see below |
 | 3 — `withdrawable` read-model flag | | |
 | 4 — FE status vocabulary + chip | | |
 | 5 — FE withdraw control | | |
@@ -757,6 +757,7 @@ it('withdraws a pending request after confirmation and flips the chip', async ()
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-31 | phase 2 — a 4th public booking endpoint | every site enumerating the cancel path or counting the booking endpoints | `grep -rn "/cancel" platform/src` | Registrations: `SecurityConfig` (CSRF-ignore + permitAll), `RateLimitFilter.targetOf`, **`EndpointRoleGateCoverageTest.DECLARED_REACHABLE`** — a fourth registration the plan's risk register never named, caught by the test failing rather than by the grep. Prose that counts: `RateLimitFilter` javadoc ("three public endpoints"), `RateLimitProperties` `@param` ("the two code-keyed endpoints"), `application.properties` §rate-limit, `SecurityConfig` CSRF comment, `CsrfProtectionIT` javadoc | All updated. Added `CsrfProtectionIT.guestWithdrawStaysTokenless` beside the cancel pin, and `RateLimitFilterTest.withdrawAndViewShareOneCodeBudget` to pin that the three code-keyed paths share **one** budget per code |
 | 2026-07-31 | phase 0 — a 9th `BookingStatus` | every site that enumerates the status set | `grep -rn "NO_SHOW"` (BE + migrations) and `grep -rn "NO_SHOW\|DECLINED\|EXPIRED"` (FE + docs) | BE: `BookingStatus.java`, `V5`, `V19` (all handled by V37). FE: `shared/booking-status.ts` (union + `STATUS_META`), `shared/booking-status.spec.ts`, `shared/booking-status.contrast.spec.ts`, `shared/_glass.scss`, `booking/booking-view.spec.ts` (chip table), **`booking/my-bookings.ts` `subLineOf` switch** + `my-bookings.spec.ts`. Docs: `docs/architecture/domain-model.md` | `my-bookings.ts` was **not** in the plan's file list — the audit found it. Added to phase 4; the rest were already planned. Docs handled in phase 6 |
 
 ---

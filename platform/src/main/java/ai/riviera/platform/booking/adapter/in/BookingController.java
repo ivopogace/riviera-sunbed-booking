@@ -18,6 +18,8 @@ import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
+import ai.riviera.platform.booking.application.request.WithdrawOutcome;
+import ai.riviera.platform.booking.application.request.WithdrawRequest;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -37,13 +39,15 @@ class BookingController {
 	private final CreateBooking createBooking;
 	private final ViewBooking viewBooking;
 	private final CancelBooking cancelBooking;
+	private final WithdrawRequest withdrawRequest;
 	private final CurrentCustomer currentCustomer;
 
 	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking,
-			CurrentCustomer currentCustomer) {
+			WithdrawRequest withdrawRequest, CurrentCustomer currentCustomer) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
 		this.cancelBooking = cancelBooking;
+		this.withdrawRequest = withdrawRequest;
 		this.currentCustomer = currentCustomer;
 	}
 
@@ -74,6 +78,26 @@ class BookingController {
 					"No booking with this code.");
 			case CancelOutcome.NotCancellable ignored -> error(HttpStatus.CONFLICT, "NOT_CANCELLABLE",
 					"This booking can no longer be cancelled.");
+		};
+	}
+
+	/**
+	 * Withdraw a pending booking request by its code (issue #123). Like cancel, the code is the whole
+	 * authorization (invariant #7) and there is no request body. {@code Withdrawn}→200,
+	 * {@code NO_SUCH_BOOKING}→404, {@code NOT_PENDING}→409. No money is involved — a pending request
+	 * has no PaymentIntent — so there is no refund to report, only the new terminal status.
+	 */
+	@PostMapping("/{code}/withdraw")
+	ResponseEntity<?> withdraw(@PathVariable String code) {
+		return switch (withdrawRequest.withdraw(code)) {
+			case WithdrawOutcome.Withdrawn ignored ->
+					ResponseEntity.ok(WithdrawalView.of(code));
+			case WithdrawOutcome.Rejected rejected -> switch (rejected) {
+				case NO_SUCH_BOOKING -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING",
+						"No booking with this code.");
+				case NOT_PENDING -> error(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
+						"This request is no longer waiting for the venue, so it can't be withdrawn.");
+			};
 		};
 	}
 

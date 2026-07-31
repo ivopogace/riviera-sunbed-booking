@@ -193,6 +193,11 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	ai.riviera.platform.booking.application.request.WithdrawRequest withdrawRequest() {
+		return _ -> ai.riviera.platform.booking.application.request.WithdrawOutcome.Rejected.NO_SUCH_BOOKING;
+	}
+
+	@Bean
 	Clock clock() {
 		return Clock.fixed(Instant.parse("2026-06-30T12:00:00Z"), ZoneOffset.UTC);
 	}

@@ -262,7 +262,7 @@ class SecurityConfig {
 				// XSRF-TOKEN cookie, the SPA echoes it as X-XSRF-TOKEN (resolved plain, while
 				// rendered tokens keep BREACH/Xor protection), and the token loads eagerly so every
 				// response can (re)issue the cookie. The ONLY exemptions left are the genuinely
-				// token-less surfaces: guest booking create/cancel — authorized by the booking code
+				// token-less surfaces: guest booking create/cancel/withdraw — authorized by the booking code
 				// alone (invariant #7), deliberately session-free — and the Stripe webhook, a
 				// server-to-server POST authenticated by its signature header (invariant #8; an
 				// unverified call is rejected in StripeWebhookController with 400). A CSRF rejection
@@ -274,7 +274,7 @@ class SecurityConfig {
 						// mirror the session cookie's posture (the override keeps spa()'s handler).
 						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
-								"/api/payments/stripe/webhook"))
+								"/api/bookings/*/withdraw", "/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Session login (issue #109): anonymous by definition — authentication happens
@@ -382,6 +382,10 @@ class SecurityConfig {
 						// Cancel a booking by its code (U6) — authorized by the code (invariant #7),
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
+						// Withdraw a pending request by its code (#123) — same posture as cancel:
+						// authorized by the code (invariant #7), stateless/token-less (CSRF-exempt
+						// above), no body. Throttled on the per-code budget (RateLimitFilter).
+						.requestMatchers(HttpMethod.POST, "/api/bookings/*/withdraw").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						// Operator self-service password change (#326) — authenticated, OPERATOR-only.
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
