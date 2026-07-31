@@ -1,0 +1,309 @@
+# Admin console Refunds tab (#460) Implementation Plan
+
+> **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
+> or the superpowers `subagent-driven-development`/`executing-plans` skills if present
+> task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+> **Riviera discipline baked into this template:** the Availability & concurrency,
+> Spring-Modulith, and Payment & payout sections are first-class spec sections, not
+> documentation. Invariant numbers refer to `CLAUDE.md`.
+
+**Goal:** Give the #454 refund-outbox re-drive its missing button — a `/admin/refunds`
+console tab on the Email tab's exact pattern, showing the outstanding count and driving
+`POST /api/admin/refund-outbox/resubmit` with all three typed outcomes rendered honestly.
+
+**Architecture:** The one real decision is *how* to mirror: #454's own Sonar gate failed
+(F-3) when the refund lever copied the mail lever's once-only policy verbatim, and was
+fixed by extracting the shared mechanism (`shared.ResubmissionThrottle`). The frontend
+mirror walks into the same trap — a copied component class body is a duplicated block
+under the 0-duplicated-blocks merge bar — so this slice extracts the shared lever state
+machine (`admin/admin-outbox-lever.ts`: status/loading/loadError/busy/notice signals +
+load/resubmit/reconcile/describe) and has **both** tabs delegate to it. The untouched,
+still-green mail specs are the parity proof for the Email-tab refactor.
+
+**Persistence:** JDBC only (invariant #1). No tables/migrations touched — frontend-only.
+
+**Source of intent:** GitHub issue #460 (from #454's deliberate backend-only scope);
+wire shapes: `docs/plans/refund-outbox-resubmission.md` §FE↔BE contract, verified against
+`AdminRefundOutboxController` on `main`.
+
+**Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — confirmed
+the #454 wire shapes byte-for-byte on `main`, found no in-flight overlap, surfaced the
+F-3 duplication precedent that shaped the architecture) · `riviera-plan-doc` (this
+template — forced the behavior-parity ledger for the Email-tab refactor) · `tdd` (each
+phase: failing spec first, component/e2e specs before implementation) ·
+`riviera-review-overlay` (review gate — runs when the PR goes ready-for-review) ·
+`riviera-docs-freshness` (ran over `main..HEAD` at close-out — 0 substrate findings:
+CLAUDE.md/RESPONSIBILITIES.md state backend facts; the #454 plan doc's "no frontend
+consumer in this slice" line described that slice, now superseded by this one, noted
+here) · `riviera-frontend` (placement: everything in the existing `admin/` feature
+folder, flat; route in `app.routes.ts`, lazy + titled; e2e in the CI-safe mocked suite)
+· `riviera-tailwind` (test-hook/testid convention, `text-[Npx]` idiom, porcelain tokens
+reused verbatim from the Email tab — no new styles invented) · `angular-developer` +
+angular-cli MCP (`list_projects` → v22 workspace; `get_best_practices` → signals,
+`@Service`, inline template, native control flow, no `standalone:`/`OnPush` noise) ·
+`playwright-cli` (e2e authoring: stateful `page.route` mock, role/testid locators, the
+shared `expectNoSeriousAxeViolations` policy).
+
+**Branch:** `claude/admin-refunds-tab-2q8qq7` — the session's designated remote branch
+stands in for `feature/admin-refunds-tab` (riviera-sdlc cloud addendum), cut from
+`main@c6e31d1` (includes PR #459's backend).
+
+---
+
+## Acceptance criteria (testable)
+
+> Written at the application boundary: the console drives the admin's refund-outbox
+> port and reports its typed answers; the HTTP plumbing is the adapter detail.
+
+- [ ] **AC-1:** Given a signed-in admin on `/admin/refunds` with a non-empty outbox,
+  when they press Resubmit, then the outstanding count was already visible before the
+  press, the outcome is announced in the live region, and a `COOLING_DOWN` /
+  `ALREADY_RUNNING` answer is reported as a refusal with the retry window — never as a
+  failure. *Pinned by:* `admin-refund-outbox.e2e.ts` (mocked CI-safe suite) +
+  `admin-refund-outbox.spec.ts` (all three outcomes + the rejected-promise error path).
+- [ ] **AC-2:** Given a non-admin operator or a signed-out visitor on `/admin/refunds`,
+  when the page renders, then no Resubmit control and no tab strip are offered and no
+  outbox read is issued — matching the `/admin` self-gate (backend role gate stays the
+  authority). *Pinned by:* `admin-refund-outbox.spec.ts` (forbidden / signed-out /
+  restoring states) + `admin-refund-outbox.e2e.ts` (signed-out visitor).
+- [ ] **AC-3:** Given the tab renders in any state (outstanding, empty, post-press),
+  when axe runs, then no serious violations, and the tab strip exposes the current tab
+  via `aria-current="page"`. *Pinned by:* `admin-refund-outbox.a11y.spec.ts` +
+  `admin-console-tabs.spec.ts` + axe passes in `admin-refund-outbox.e2e.ts`.
+- [ ] **AC-4:** No response field beyond counts/outcome/seconds is rendered or typed —
+  the client consumes exactly `{outstanding, cooldownRemainingSeconds}` and
+  `{outcome, resubmitted, cooldownRemainingSeconds}` (invariant #7: no booking ids or
+  codes, and no invented columns). *Pinned by:* the shared view types in
+  `admin.model.ts` (structural — the service compiles against them, no `any`), checked
+  by review against the diff.
+
+## Non-goals
+
+- **Any backend change.** The endpoints shipped in #454 (PR #459) and are final here.
+- **Per-publication listing** — a #454/#405 non-goal for invariant-#7 reasons (the
+  serialized publications are exactly where booking ids live).
+- **Commissions/Payouts tabs** — no backend exists; same boundary #405 drew.
+- **Polling/auto-refresh of the cooldown** — the window is a server fact rendered at
+  answer time; the button stays enabled (the #405 stale-number argument, kept).
+- **A generic tab-page layout component** — three tabs still don't justify it (#405
+  said the same at two); the shared piece this slice extracts is the lever state
+  machine, not the page shell.
+
+## Behavior-parity ledger (Email-tab refactor)
+
+> The Refunds tab is new behavior; the parity obligation is the **Email tab**, whose
+> component body is refactored to delegate to the extracted `OutboxLever`. Its own
+> specs (`admin-mail-outbox.spec.ts`, `admin-mail-outbox.a11y.spec.ts`,
+> `admin-mail-outbox.e2e.ts`) are deliberately **not modified beyond type imports** —
+> they are the proof. Every behavior below is asserted by one of them today.
+
+| Old-surface behavior | Verdict | How the new surface does it |
+|---|---|---|
+| Status loaded once, only after restore settles + `isAdmin` | preserved | `effect` + `loaded` flag stay in the component; body calls `lever.load()` |
+| Count shown before any press; empty state says so plainly | preserved | `lever.status()` rendered by the unchanged template branches |
+| Resubmit disables only for its own round-trip | preserved | `lever.busy()` on the unchanged button binding |
+| Three outcomes described; refusals never read as errors | preserved | `OutboxLever.describe` — copy identical; success phrase is the per-tab constructor arg |
+| Rejected resubmit → error notice, no count claimed | preserved | `OutboxLever.resubmit` catch — copy identical |
+| Post-press reconcile re-reads status; a failed re-read drops the count to unknown instead of overwriting the outcome | preserved | `OutboxLever.reconcile` — same try/catch shape |
+| Initial-load failure → `role="alert"` + Retry | preserved | `lever.loadError()` + `lever.load()` on the unchanged template branch |
+| Nested #380 delivery card renders inside the admin branch | preserved | untouched — stays in the mail template only |
+
+## Risk register
+
+| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
+|---|---|---|---|---|---|---|
+| R-1 | Sonar duplicated-blocks between the two outbox surfaces (the exact F-3 trap from #454, now in TS) | high (if mirrored naively) | high (0-duplicated-blocks merge bar) | Extract `OutboxLever`; both components delegate; shared view types in `admin.model.ts` replace a third copy of the wire shapes | session | open |
+| R-2 | The Email-tab refactor silently drops a shipped behavior (the O6 #176 class) | low | high | Behavior-parity ledger above; mail specs/e2e untouched beyond type imports and must stay green | session | open |
+| R-3 | AC-4 drift — client invents fields the contract doesn't carry (invariant #7) | low | med | Typed views only, no `any`; template renders `outstanding`/`resubmitted`/seconds/outcome copy exclusively; review checks | session | open |
+| R-4 | Tab-strip active-state regression (`/admin` is a prefix of `/admin/refunds`) | low | low | `routerLinkActiveOptions {exact:true}` already set; tabs spec gains the third route + assertions | session | open |
+| R-5 | Frontend dependency PRs (Dependabot #332–#341) merge mid-slice and conflict on `package-lock` | low | low | None shared with this diff's files; merge-from-main before ready-for-review per SDLC | session | open |
+
+## Open questions / Assumptions
+
+- **Assumption:** success copy for the refund lever reads "Handed N back to be
+  retried." — the mail tab's "for delivery" is mail-specific; the refund listener
+  re-attempts the gateway call, so "retried" is the honest verb. Copy is a
+  self-decided naming/style call per plan-doc rule 2. — *Owner:* session · *Resolves
+  by:* phase 2 (shipped copy).
+
+## Availability & concurrency (invariant #2)
+
+`N/A — does not affect availability.` Frontend-only; the lever re-drives existing
+`BookingCancelled` publications, and even on the backend the #454 sweep is scoped to the
+refund listener's exact id, never touching availability writes.
+
+## Spring Modulith — modules, interfaces, events
+
+`N/A — frontend-only.` No backend code in scope; the consumed endpoints shipped in #454.
+Module ownership: all files land in the existing `admin/` feature folder (the
+`riviera-frontend` taxonomy), importing only `core/` (`OperatorAuth`) and `shared/`
+(`CardGlass`) — no cross-feature import.
+
+## Payment & payout (invariants #5, #8, #9, #10)
+
+`N/A — no payment logic in scope on the client.` The tab renders counts, an outcome
+token, and seconds; the refund decision/amount stay server-side (#10), the money moves
+on `booking`'s own listener, and the re-drive's scoping away from the payment→confirm
+spine is pinned server-side by `RefundOutboxScopeIT` (#454). Nothing here re-decides or
+re-renders money.
+
+## Angular — frontend surfaces touched
+
+| # | Surface | Existing/new | Type | State/reactivity | Forms |
+|---|---|---|---|---|---|
+| FE-1 | `admin/admin-outbox-lever.ts` | new | plain exported class (no decorator) | signals owned by the class; `effect` stays in components | — |
+| FE-2 | `admin/admin-refund-outbox.service.ts` | new | `@Service()` HTTP client | stateless | — |
+| FE-3 | `admin/admin-refund-outbox.ts` | new | standalone component, inline template | `inject()`, delegates to `OutboxLever` | none |
+| FE-4 | `admin/admin-mail-outbox.ts` | refactor | standalone component | delegates to `OutboxLever`; template branches unchanged | none |
+| FE-5 | `admin/admin.model.ts` | modify | shared `OutboxStatusView` / `ResubmissionResultView` replace the Mail-specific pair (one wire shape, deliberately identical on both endpoints) | — | — |
+| FE-6 | `admin/admin-console-tabs.ts` | modify | third tab entry (Refunds) | — | — |
+| FE-7 | `app.routes.ts` | modify | lazy `/admin/refunds` route + title | — | — |
+
+**Standards:** standalone components, `inject()`, native control flow, signals; no
+`standalone:`/`OnPush` flags (v22 defaults); porcelain theme pinned on the host exactly
+as the sibling tabs do. No deviation.
+
+## FE↔BE contract
+
+`No contract change` — this slice is the first consumer of the #454 shapes, verbatim:
+
+- `GET /api/admin/refund-outbox` → `{ outstanding: number, cooldownRemainingSeconds: number }`
+- `POST /api/admin/refund-outbox/resubmit` → `{ outcome: 'RESUBMITTED'|'ALREADY_RUNNING'|'COOLING_DOWN', resubmitted: number, cooldownRemainingSeconds: number }`
+- Client typing: hand-written shared view interfaces in `admin.model.ts`; no `any`.
+- Money/date on the wire: `N/A` — counts and seconds only, never a booking id or code
+  (invariant #7).
+
+## Execution status
+
+> **This section is the session-recovery anchor.** After a compaction or in a fresh
+> session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
+
+**Stage pointer:** `plan committed — implement (phase 1) next`
+
+**Next action:** Phase 1 — failing lever spec expectations via the mail specs (they stay
+green), then extract `OutboxLever` + refactor `admin-mail-outbox.ts`.
+
+| Phase | Status | Commits |
+|-------|--------|---------|
+| 0 — Plan doc + draft PR | ⏳ | |
+| 1 — Shared `OutboxLever` + Email-tab delegation (parity) | | |
+| 2 — Refunds tab: service, component, specs, tab strip, route | | |
+| 3 — Mocked CI-safe e2e + full frontend verification | | |
+| 4 — Gates + close-out | | |
+
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register**
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+
+---
+
+## File structure
+
+- `frontend/src/app/admin/admin-outbox-lever.ts` — the shared lever state machine:
+  `OutboxLever` (status/loading/loadError/busy/notice signals; `load`, `resubmit`,
+  private `describe`/`reconcile`) over an `AdminOutboxPort`; the per-tab success phrase
+  is a constructor argument. The FE mirror of #454's `shared.ResubmissionThrottle`
+  extraction.
+- `frontend/src/app/admin/admin.model.ts` — `OutboxStatusView` +
+  `ResubmissionResultView` (shared wire shape of both outbox endpoints, replacing the
+  Mail-specific pair; docs cite both backend records and invariant #7).
+- `frontend/src/app/admin/admin-refund-outbox.service.ts` — `@Service()` HTTP client
+  for `/api/admin/refund-outbox` (+ `/resubmit`), `implements AdminOutboxPort`.
+- `frontend/src/app/admin/admin-refund-outbox.ts` — the Refunds tab: auth self-gate →
+  tab strip → glass card (count / empty) → Resubmit → polite live-region notice.
+  `data-testid="admin-refunds-*"`.
+- `frontend/src/app/admin/admin-refund-outbox.spec.ts` — unit spec: count-first, all
+  three outcomes, error paths, reconcile, gates (AC-1/2).
+- `frontend/src/app/admin/admin-refund-outbox.a11y.spec.ts` — axe (outstanding/empty)
+  + live-region attributes (AC-3).
+- `frontend/src/app/admin/admin-mail-outbox.ts` — refactor to delegate to `OutboxLever`
+  (template branches byte-identical; class body shrinks).
+- `frontend/src/app/admin/admin-mail-outbox.service.ts` — `implements AdminOutboxPort`
+  + shared type imports (signature unchanged).
+- `frontend/src/app/admin/admin-mail-outbox.spec.ts` / `.a11y.spec.ts` — type-import
+  rename only (Mail* → shared names); assertions untouched.
+- `frontend/src/app/admin/admin-console-tabs.ts` — third entry
+  `{ path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' }`.
+- `frontend/src/app/admin/admin-console-tabs.spec.ts` — third route + href/aria-current
+  coverage.
+- `frontend/src/app/app.routes.ts` — lazy `/admin/refunds` route, `title: 'Refunds — Riviera'`.
+- `frontend/e2e/admin-refund-outbox.e2e.ts` — CI-safe mocked e2e: stateful refund-outbox
+  mock (first press resubmits, later presses cool down), axe at each state, tab-strip
+  `aria-current`, signed-out gate.
+
+---
+
+## Phase 1 — Shared `OutboxLever` + Email-tab delegation
+
+**Files:** Create `admin/admin-outbox-lever.ts` · Modify `admin.model.ts`,
+`admin-mail-outbox.ts`, `admin-mail-outbox.service.ts`, spec type imports.
+
+- [ ] Step 1: consolidate the wire-view types; extract `OutboxLever` with the mail
+  tab's exact semantics (the mail specs are the pre-existing failing net: any drift
+  turns them red).
+- [ ] Step 2: refactor `admin-mail-outbox.ts` to delegate; template branches unchanged.
+- [ ] Step 3: `npm test -- admin-mail-outbox` (both spec files) → green; `npm run lint`.
+- [ ] Step 4: commit + tick this table.
+
+## Phase 2 — Refunds tab
+
+**Files:** Create `admin-refund-outbox.service.ts`, `admin-refund-outbox.ts`,
+`admin-refund-outbox.spec.ts`, `admin-refund-outbox.a11y.spec.ts` · Modify
+`admin-console-tabs.ts`, `admin-console-tabs.spec.ts`, `app.routes.ts`.
+
+- [ ] Step 1: write the failing unit + a11y specs (mirroring the mail specs' shape,
+  refund copy/testids) and the tabs-spec additions → red.
+- [ ] Step 2: implement service + component + tab entry + route → green.
+- [ ] Step 3: `npm test` (full — it's one fast jsdom run) + `npm run lint`.
+- [ ] Step 4: commit + tick this table.
+
+## Phase 3 — Mocked CI-safe e2e + verification
+
+- [ ] Step 1: author `frontend/e2e/admin-refund-outbox.e2e.ts` per `playwright-cli`
+  best practice on the mail e2e's stateful-mock pattern.
+- [ ] Step 2: `npm run test:e2e:a11y` locally (Chromium is pre-installed) → green.
+- [ ] Step 3: `npm run build` → clean.
+- [ ] Step 4: commit + tick this table; merge latest `origin/main`; mark PR ready.
+
+## Phase 4 — Gates + close-out
+
+- [ ] Review gate (`/code-review` per the invocation ladder + `riviera-review-overlay`),
+  Sonar gate (issue list, not just the gate), findings re-enter at Implement.
+- [ ] `riviera-docs-freshness` over the merge range; finalize this doc citing
+  `merged via PR #NN`; merge; close-out checklist.
+
+---
+
+## Generalization-audit log
+
+| Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
+|---|---|---|---|---|---|
+
+---
+
+## Acceptance-criteria verification (final)
+
+- [ ] **AC-1:** `npm test` (refund spec outcomes) + `npm run test:e2e:a11y` → pass. Verified at commit `<sha>`.
+- [ ] **AC-2:** `npm test` (gate states) + e2e signed-out test → pass. Verified at commit `<sha>`.
+- [ ] **AC-3:** a11y spec + tabs spec + e2e axe passes → pass. Verified at commit `<sha>`.
+- [ ] **AC-4:** shared view types carry exactly the three fields; review checked the diff. Verified at commit `<sha>`.
+
+## Self-review checklist (before merge / PR)
+
+- [ ] Every AC has an implementing task and a verifying test.
+- [ ] No placeholders / TODO / TBD anywhere in the doc.
+- [ ] Type & method-signature consistency across phases.
+- [ ] **No JPA** introduced (invariant #1) — frontend-only, vacuously true but checked.
+- [ ] **Availability** section justified N/A (invariant #2).
+- [ ] **Modulith** section justified N/A; no cross-feature FE import (the FE mirror of #11).
+- [ ] **Payment/payout** section justified N/A; nothing re-decides money (#10).
+- [ ] Booking codes: none on this surface (invariant #7 — AC-4).
+- [ ] **Frontend** standards met; no `as any` on the contract.
+- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [ ] **The review gate ran in full** — invocation ladder + overlay, not the overlay alone.
