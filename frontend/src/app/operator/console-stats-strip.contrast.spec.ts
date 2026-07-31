@@ -1,5 +1,6 @@
 import {
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -21,7 +22,7 @@ describe('ConsoleStatsStrip porcelain contrast (WCAG AA, #171)', () => {
   });
 
   it('tile label (--riv-card-ink-faint, 0.72) meets AA — raised from the design 0.5 for AA', () => {
-    expectAaOverStops(CARD_INK, 0.72, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('takings sub-label (--riv-card-ink-soft, 0.78) meets AA on the card glass', () => {

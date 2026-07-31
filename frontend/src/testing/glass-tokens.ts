@@ -28,6 +28,8 @@ export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
+/** `--riv-card-ink-faint` alpha over the card glass (promoted at #468). */
+export const CARD_INK_FAINT_ALPHA = 0.72;
 
 /** `--riv-chip-bg` per theme (over-glass tint). */
 export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };

@@ -1,6 +1,7 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -28,7 +29,7 @@ describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
   });
 
   it('input labels + tool counts (--riv-card-ink-faint 0.72) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.72, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('helper text + per-row prices (--riv-card-ink-soft 0.78) meet AA on the card glass', () => {

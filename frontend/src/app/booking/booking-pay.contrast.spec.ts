@@ -1,6 +1,7 @@
 import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
@@ -25,7 +26,6 @@ import {
  * fills (not translucent tints) so static CSS contrast analysis computes their real colour.
  */
 
-const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint (trust line)
 const ACCENT = '#085a6e'; // --riv-accent-ink (total, code, links)
 const ERROR_RED = '#a3160e'; // .form-error ink
 const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
