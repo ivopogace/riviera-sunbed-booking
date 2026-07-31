@@ -93,6 +93,45 @@ This lets a listener-only consumer (`payout`) depend on `booking::events` withou
 
 `booking` is already the largest module and will grow with Request-to-Book and the ownership checks. Don't split it now (it's cohesive around the lifecycle). Watch two seams: cancellation/refund policy (`CancellationPolicy`, `RefundPolicy`, weather refunds) and the staff/operational read side (`DailyBookingsService`, staff controllers). **Trigger to extract:** Request-to-Book pushing `booking` past ~3,500 LOC, or a third distinct scheduler appearing.
 
+> **B3 resolution (2026-07-31, #463): the LOC clause fired at 5,735 raw LOC — decision: re-set the
+> trigger, don't split.** The raw number stopped measuring what B3 set it to watch:
+> comment/blank-stripped **code** is 2,750 LOC — 52% of the module is the house-style rationale
+> javadoc, and ~580 more raw lines are boot-validated properties/config classes — so raw LOC now
+> tracks documentation discipline, not conceptual load (`venue`, for comparison: 3,711 raw /
+> 2,067 code). Decisively: extracting *both* watched seams (refund execution ~800 raw, staff read
+> side ~400 raw) would still leave `booking` at ~4,500 raw — the trigger's own prescribed
+> consequence cannot restore its condition, which convicts the number, not the module. On B3's own
+> cohesion test the growth is lifecycle-shaped: Request-to-Book (#98) added *states of the same
+> `Booking` aggregate*; account linkage (epic #108) is a nullable column plus a principal-scoped
+> read; the #380/#390 notification/admin reads read booking-owned data, which must live with the
+> data; the #404 refund executor is bulkhead infrastructure for booking's own listener on its own
+> event. The scheduler alarm — B3's actual cohesion signal — has **not** fired (still two).
+> Extraction also carries real one-time costs for zero new enforcement: the registry listener id
+> is the FQCN (`RegistryRefundOutbox.REFUND_LISTENER_ID`; a move needs a roll-forward registry
+> migration, the V18 lesson) plus re-keying `RefundListenerExecutorArchitectureTest`,
+> `RefundOutboxScopeIT`, and `allowedDependencies` — buying a boundary the module already
+> enforces internally (five `application` subpackages; the refund seam's own executor, shed
+> metric, and admin re-drive lever, each pinned by an arch test).
+>
+> **The re-set trigger — split `booking` when any of:**
+> 1. **Code size:** comment/blank-stripped main-source code passes **~4,000 LOC** (2,750 today;
+>    measure: `find platform/src/main/java/ai/riviera/platform/booking -name '*.java' -exec cat {} + | grep -vE '^\s*$|^\s*//|^\s*/?\*' | wc -l`).
+>    Raw LOC is deliberately no longer a clause.
+> 2. **A third distinct scheduler** appears (unchanged from the original trigger).
+> 3. **A non-lifecycle concern lands** — anything that is not a state, a read, or a post-commit
+>    errand of the `Booking` aggregate.
+> 4. **The refund-execution seam deepens** — it acquires its own persistent state (e.g. a refund
+>    table) or a second consumer of its surface.
+>
+> **The designated first cut when it fires:** the refund-execution seam (the `BookingCancelled`
+> listener + bounded executor + shed metric + admin re-drive). Its boundary is already the
+> crispest — own executor, metrics, and admin lever, and `BookingCancelled` already carries the
+> settled refund facts — and the extracted module has the proven `payout` shape: listener-only on
+> `booking::events`, driving `payment::api`. The staff/operational read side is **not** part of
+> that cut; it belongs to B4's read-model trigger. Chart the extraction through the normal SDLC
+> (`to-spec` → `to-issues`); the registry-migration and arch-test re-keying costs above are its
+> known first slices.
+
 **B4. Read-model module (deferred, trigger-based).** The `venue → availability` inversion via `venue::spi` is correctly reasoned and tested — leave it. *If* the dated read side grows more overlays (pricing seasons, weather holds, promotions), introduce a dedicated query module depending on both `venue::api` and `availability::api` that owns the composed browse/map views, collapsing the inversion. Over-engineering today; note it as a trigger.
 
 ### Workstream C — Enforcement (extend the existing ArchUnit fitness tests)
@@ -162,11 +201,13 @@ Sequence this **last** — enforcing the shape before the migration is done just
 
 **Milestone 3 — Production hardening.** D2 (validation/error contract), D3 (scale-out readiness), D4 (observability), D5 (GDPR/backups), D6 (disputes/reconciliation). Parallelizable; none blocks a single-instance soft launch.
 
-**Standing triggers (not scheduled):** B3 (split `booking` at ~3,500 LOC or a third scheduler), B4 (read-model module if dated reads grow), and scale-out work (the moment a second instance is on the table).
+**Standing triggers (not scheduled):** B3 (split `booking` — the re-set clauses in Part 2 B3: ~4,000 *code* LOC, a third scheduler, a non-lifecycle concern, or the refund seam deepening), B4 (read-model module if dated reads grow), and scale-out work (the moment a second instance is on the table).
 
-> **B3 trigger status (checked 2026-07-31): FIRED.** `booking` main source measures
-> **5,735 LOC** — 64% past the ~3,500 mark (the scheduler clause has not fired; still two).
-> The extract-vs-re-set decision is tracked in **#463**; record its outcome here.
+> **B3 trigger status: the original ~3,500-raw-LOC clause fired 2026-07-31 (5,735 raw) and was
+> resolved by #463 as **re-set, not split** — raw LOC mostly measured the house javadoc style,
+> the growth was lifecycle-cohesive, and the scheduler alarm never fired. The re-set clauses and
+> full rationale are in Part 2 B3; the refund-execution seam is the designated first cut if a
+> re-set clause fires.
 
 ---
 
