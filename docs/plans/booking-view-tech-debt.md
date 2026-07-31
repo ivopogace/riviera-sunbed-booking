@@ -146,9 +146,9 @@ prove, which is what the computed-style diff is for.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `afterRenderEffect` does not flush under the zoneless Vitest/jsdom harness the way `effect()` does, so the focus tests break — or worse, pass in tests but no longer focus in a browser | med | high | Phase order is the mitigation: AC-1's test is written and **proven red-on-removal** in phase 2, *before* phase 3 converts anything, so the conversion has a live guard on both prompts. `await fixture.whenStable()` (already the idiom in both existing tests) is what flushes render hooks in a zoneless fixture. Browser-side proof comes from the existing `request-to-book.e2e.ts` run | claude | open |
+| R-1 | `afterRenderEffect` does not flush under the zoneless Vitest/jsdom harness the way `effect()` does, so the focus tests break — or worse, pass in tests but no longer focus in a browser | med | high | Phase order is the mitigation: AC-1's test is written and **proven red-on-removal** in phase 2, *before* phase 3 converts anything, so the conversion has a live guard on both prompts. `await fixture.whenStable()` (already the idiom in both existing tests) is what flushes render hooks in a zoneless fixture. Browser-side proof comes from the existing `request-to-book.e2e.ts` run | claude | **closed — did not materialize**: all 34 booking-view tests green after the conversion, both focus tests unmodified (`4a09f7e`→phase 3) |
 | R-2 | `afterRenderEffect` runs on browser platforms only — an SSR/prerender build would silently lose focus management | low | med | Verified there is no SSR: no `@angular/ssr`/`platform-server` dependency and no `server`/`prerender` target in `angular.json`. Nothing to mitigate; recorded so a future SSR slice knows this is a dependency | claude | closed — verified at plan time |
-| R-3 | The default `afterRenderEffect(cb)` form runs in `mixedReadWrite`, which the Angular docs explicitly warn against ("you risk significant performance degradation") | med | low | Use the explicit-phase spec form `afterRenderEffect({ write: … })`. `focus()` is a DOM **write** and the effect's other reads are *signal* reads, not DOM reads, so `write` is the correct phase. (Note: `venue-map.ts`'s existing call legitimately uses the callback form — it genuinely reads layout *and* writes a signal) | claude | open |
+| R-3 | The default `afterRenderEffect(cb)` form runs in `mixedReadWrite`, which the Angular docs explicitly warn against ("you risk significant performance degradation") | med | low | Use the explicit-phase spec form `afterRenderEffect({ write: … })`. `focus()` is a DOM **write** and the effect's other reads are *signal* reads, not DOM reads, so `write` is the correct phase. (Note: `venue-map.ts`'s existing call legitimately uses the callback form — it genuinely reads layout *and* writes a signal) | claude | closed — both effects use the `{ write: … }` spec form |
 | R-4 | A directive host `[class]` binding **replaces** a static `class` on the same element, silently dropping `.chip`/`.chip--*` — which four spec files and the e2e query | med | high | The `amenity-chip.ts` precedent documents exactly this trap: the directive owns the **whole** class list including the marker classes, and the consuming template carries no `class` attribute on that element. `status-chip.spec.ts` asserts the markers survive | claude | open |
 | R-5 | Colour/geometry drift the contrast specs cannot see — they are pure maths over hard-coded values and would stay green against a component that no longer renders those values at all | med | high | Before/after **computed-style diff** in a real browser (`riviera-tailwind`'s hard rule), recorded in the Verification log. Known false positive to *not* chase: Chromium snaps `border-width: 1.5px` → `"1px"`, identical to the SCSS | claude | open |
 | R-6 | Deleting `shared/_glass.scss` and `booking-view.scss` leaves dangling citations — the #472/#473 failure class, where specs cited stylesheets that had moved | high | low | Grep every citation of both filenames and re-point in the same commit that deletes them; `riviera-docs-freshness` at close-out over the PR range as the backstop. Known sites: `booking-view.contrast.spec.ts`, `booking-status.contrast.spec.ts`, `amenities.contrast.spec.ts` ("only `status-chip` still lives there" goes false), `my-bookings.scss`'s section comment | claude | open |
@@ -243,18 +243,17 @@ stylesheet is retired.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** convert **both** focus effects in `booking-view.ts` to
-`afterRenderEffect({ write })` and re-run `booking-view.spec.ts` — both focus tests must stay
-green with no assertion edits (R-1).
+**Next action:** port the `status-chip` mixin to `shared/status-chip.ts` (spec first), move both
+consumers onto it, delete `shared/_glass.scss`, and re-point every citation of it (R-6).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — Plan doc + draft PR | ✅ | `17c6306` · draft PR #478 |
-| 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | ✅ | see below |
-| 3 — Item 1: both effects → `afterRenderEffect({ write })` | | |
-| 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | | |
+| 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | ✅ | `4a09f7e` |
+| 3 — Item 1: both effects → `afterRenderEffect({ write })` | ✅ | see below |
+| 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | ⏳ | |
 | 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | | |
 | 6 — Item 4: `ExpireRequests` javadoc | | |
 | 7 — Close-out: item-5 issue, docs freshness, gates | | |

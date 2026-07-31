@@ -1,4 +1,11 @@
-import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -309,16 +316,20 @@ export class BookingView {
         this.notFound.set(true);
       }
     });
-    // Move focus to the destructive confirm button when the prompt appears (a11y).
-    effect(() => {
-      if (this.confirming()) {
-        this.confirmButton()?.nativeElement.focus();
-      }
+    // Move focus to the destructive confirm button when its prompt appears (a11y) — a DOM write.
+    afterRenderEffect({
+      write: () => {
+        if (this.confirming()) {
+          this.confirmButton()?.nativeElement.focus();
+        }
+      },
     });
-    effect(() => {
-      if (this.confirmingWithdraw()) {
-        this.withdrawConfirmButton()?.nativeElement.focus();
-      }
+    afterRenderEffect({
+      write: () => {
+        if (this.confirmingWithdraw()) {
+          this.withdrawConfirmButton()?.nativeElement.focus();
+        }
+      },
     });
   }
 
