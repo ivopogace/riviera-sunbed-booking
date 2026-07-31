@@ -50,6 +50,9 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 import ai.riviera.platform.notification.application.BookingConfirmationResend;
 import ai.riviera.platform.notification.application.MailDeliveryLookup;
 import ai.riviera.platform.notification.application.MailOutboxStatus;
+import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
+import ai.riviera.platform.booking.application.refund.RefundResubmission;
+import ai.riviera.platform.booking.application.refund.RefundResubmissionOutcome;
 import ai.riviera.platform.notification.application.MailResubmission;
 import ai.riviera.platform.notification.application.MailResubmissionOutcome;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
@@ -426,6 +429,26 @@ class WebSliceStubs {
 			@Override
 			public MailResubmissionOutcome resubmit() {
 				return new MailResubmissionOutcome.Resubmitted(0, Duration.ZERO);
+			}
+		};
+	}
+
+	/**
+	 * {@code AdminRefundOutboxController}'s port (#454). Inert: an empty outbox with the lever
+	 * accepting, so a slice that merely loads the controller re-drives nothing.
+	 * {@code AdminRefundOutboxControllerTest} overrides it with a {@code @MockitoBean}.
+	 */
+	@Bean
+	RefundResubmission refundResubmission() {
+		return new RefundResubmission() {
+			@Override
+			public RefundOutboxStatus status() {
+				return new RefundOutboxStatus(0, Duration.ZERO);
+			}
+
+			@Override
+			public RefundResubmissionOutcome resubmit() {
+				return new RefundResubmissionOutcome.Resubmitted(0, Duration.ZERO);
 			}
 		};
 	}

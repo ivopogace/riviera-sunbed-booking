@@ -159,6 +159,14 @@ class SecurityConfig {
 	private static final String ADMIN_MAIL_OUTBOX_PATH = "/api/admin/mail-outbox";
 	private static final String ADMIN_MAIL_OUTBOX_RESUBMIT_PATH = "/api/admin/mail-outbox/resubmit";
 	/**
+	 * The refund outbox (#454) — the mail outbox's twin on the money path: what the registry still owes
+	 * {@code booking}'s refund listener, and the lever that re-drives it. The same ADMIN gate and the
+	 * same {@code /api/admin/**} exemption from invariant #13; the lever's own scope (exact listener
+	 * id) is what keeps it off every other listener.
+	 */
+	private static final String ADMIN_REFUND_OUTBOX_PATH = "/api/admin/refund-outbox";
+	private static final String ADMIN_REFUND_OUTBOX_RESUBMIT_PATH = "/api/admin/refund-outbox/resubmit";
+	/**
 	 * The per-booking mail-delivery view and its resend (#380) — the support lever the outbox above
 	 * cannot be: that one re-drives what the registry still <em>owes</em>, while this one re-sends a
 	 * confirmation whose publication already completed, which is the common "never got the email" case.
@@ -338,6 +346,9 @@ class SecurityConfig {
 						// The mail outbox (#405) — same ADMIN gate; platform-wide state, no venue owns it.
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
+						// The refund outbox (#454) — same ADMIN gate; the money-path twin of the above.
+						.requestMatchers(HttpMethod.GET, ADMIN_REFUND_OUTBOX_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_REFUND_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						// Per-booking mail delivery + resend (#380) — same ADMIN gate, platform-wide state.
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)

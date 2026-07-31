@@ -252,15 +252,15 @@ rewrite is due.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 1 done, phase 2 next)`
+**Stage pointer:** `implement (phase 2 done, phase 3 next)`
 
-**Next action:** Phase 2 — `AdminRefundOutboxControllerTest` red (AC-6 + wire shapes),
-then the controller + `SecurityConfig` matchers + the `WebSliceStubs` stub.
+**Next action:** Phase 3 — `RefundOutboxScopeIT` (AC-2, AC-8) against real Postgres.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | ✅ | `fa4876d` |
-| 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | ✅ | (this commit) |
+| 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | ✅ | `74dedde` |
+| 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | ✅ | (this commit) |
 | 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | | |
 | 3 — Money-path scoping IT (AC-2, AC-8) | | |
 | 4 — Substrate docs + close-out | | |
@@ -363,12 +363,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `AdminRefundOutboxController.java`, `AdminRefundOutboxControllerTest.java`
 · Modify `SecurityConfig.java`, `WebSliceStubs.java`
 
-- [ ] **Steps 1–4:** red → implement → green (AC-6 + wire shapes + the seconds round-up),
-  `--tests "*AdminRefundOutbox*"`; the `WebSliceStubs` stub lands **in this phase** (R-6).
-- [ ] **Step 5:** Generalization-audit over the `/api/admin/**` matcher block.
-- [ ] **Step 6: Commit** — `feat(#454): expose the ADMIN refund-outbox status and resubmit endpoints`
-- [ ] **Step 7: Update plan-doc execution status.** *(Open the draft PR at the plan commit —
-  CI fires on `pull_request` only.)*
+- [x] **Steps 1–4:** red → implement → green (AC-6 + wire shapes + the seconds round-up),
+  `--tests "*AdminRefundOutbox*" --tests "*AdminMailOutbox*"` → PASS; the `WebSliceStubs`
+  stub landed **in this phase** (R-6 closed pre-CI); structural net + `ErrorContractArchitectureTests` PASS.
+- [x] **Step 5:** Generalization-audit over the `/api/admin/**` matcher block — every
+  admin surface gates GET/POST per-path with `hasRole(ADMIN_ROLE)`; the two new matchers
+  match the shape exactly; no other admin controller lacks a `WebSliceStubs` entry.
+- [x] **Step 6: Commit** — `feat(#454): expose the ADMIN refund-outbox status and resubmit endpoints`
+- [x] **Step 7: Update plan-doc execution status.** *(The draft PR opened at the plan
+  commit — PR #459.)*
 
 ## Phase 3 — Money-path scoping IT
 
