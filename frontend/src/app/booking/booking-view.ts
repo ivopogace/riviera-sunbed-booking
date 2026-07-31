@@ -31,16 +31,7 @@ const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transitio
 const LINK =
   'text-[14.5px] font-semibold text-(--riv-accent-ink) underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
 
-/**
- * The repeated Tailwind recipes of this view (#477), held here rather than inline because most
- * appear three to seven times — five banners, five detail rows, six buttons — which the retired
- * SCSS shared through selectors instead.
- *
- * <p>Conflicting utilities are never concatenated onto one element: two competing `border-*` or
- * `text-*` utilities resolve by **stylesheet order, not class order**, so each variant spells out
- * its own colour rather than overriding a base. That is why `bannerPending` and `btnOutlineDanger`
- * are whole recipes and not a base plus an override.
- */
+/** The repeated Tailwind recipes of this view — see {@link BookingView} for why they live here. */
 const CLS = {
   card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
   stateCard: `${CARD_SURFACE} mx-auto my-8 max-w-[460px] px-[30px] py-10 text-center`,
@@ -66,8 +57,7 @@ const CLS = {
   rowLabel: 'text-(--riv-card-ink-soft)',
   rowValue: 'm-0 text-right font-bold text-(--riv-card-ink)',
   rowAmount: 'm-0 text-right font-bold text-(--riv-accent-ink)',
-  // `empty:hidden` is the twin of the retired `.result:empty` rule: both live regions render an
-  // empty <p> until they have something to announce.
+  // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
   result:
     'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden',
   confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-(--riv-card-ink)',
@@ -98,6 +88,16 @@ const CLS = {
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
  * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome.
+ *
+ * <p>Styling is Tailwind-only since #477 (the component's SCSS is retired). The recipes live in the
+ * module-local {@link CLS} map rather than inline so the shared *bases* stay single-sourced — the
+ * banner shell across five banners, the row across five rows, the button chrome across six buttons —
+ * which the retired SCSS shared through selectors. Many individual `CLS` entries are then used once;
+ * they sit there to name the variant beside its siblings, not because each one repeats.
+ * Conflicting utilities are never concatenated onto one element: two competing `border-*` or
+ * `text-*` utilities resolve by **stylesheet order, not class order**, so each variant spells out
+ * its own colour rather than overriding a base — which is why `bannerPending` and
+ * `btnOutlineDanger` are whole recipes and not a base plus an override.
  */
 @Component({
   selector: 'app-booking-view',

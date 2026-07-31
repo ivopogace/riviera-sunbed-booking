@@ -23,8 +23,7 @@ describe('StatusChip', () => {
   }
 
   it('keeps the .chip and .chip--* marker classes the specs and e2e query', () => {
-    // Retained as INERT test hooks (riviera-tailwind rule 2): booking-view.spec, my-bookings.spec
-    // and the e2e suites query them, so a styling-only port must not force a test rewrite.
+    // Nothing queried these in the DOM before #477 — this spec is what makes them a real hook.
     const el = chip('chip--confirmed');
     expect(el.classList.contains('chip')).toBe(true);
     expect(el.classList.contains('chip--confirmed')).toBe(true);
@@ -51,8 +50,7 @@ describe('StatusChip', () => {
     ['chip--no-show', 'text-[#7a4a3a]', 'bg-[#ece6e3]', 'border-[#dcd2cd]'],
     ['chip--withdrawn', 'text-[#5c5470]', 'bg-[#eeecf4]', 'border-[#dcd8e6]'],
   ])('renders the %s solid fill carried over from the retired mixin', (modifier, ink, fill, edge) => {
-    // The AA proof for each of these ink/fill pairs lives in booking-status.contrast.spec.ts; this
-    // spec only pins that the directive still emits the pair that proof is about.
+    // booking-status.contrast.spec.ts proves these pairs are AA; this only pins that they're emitted.
     const el = chip(modifier);
     expect(el.classList.contains(ink)).toBe(true);
     expect(el.classList.contains(fill)).toBe(true);
@@ -66,6 +64,24 @@ describe('StatusChip', () => {
       // Exactly one fill utility, i.e. no status silently falling through to a neighbour's colours.
       expect([...el.classList].filter((c) => c.startsWith('bg-[')), status).toHaveLength(1);
     }
+  });
+
+  it('merges with a static class on the consuming element rather than replacing it', () => {
+    // #477 measured this: a host `[class]` binding does NOT clobber a static `class`, as was claimed.
+    @Component({
+      imports: [StatusChip],
+      template: `<span class="legacy-marker" [appStatusChip]="'chip--confirmed'" data-testid="c">S</span>`,
+    })
+    class StaticClassHost {}
+
+    const fixture = TestBed.configureTestingModule({
+      imports: [StaticClassHost],
+    }).createComponent(StaticClassHost);
+    fixture.detectChanges();
+    const el = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="c"]')!;
+
+    expect(el.classList.contains('legacy-marker')).toBe(true);
+    expect(el.classList.contains('chip--confirmed')).toBe(true);
   });
 
   it('falls back to the neutral chip for a status this build does not know', () => {

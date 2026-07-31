@@ -150,8 +150,7 @@ describe('BookingView', () => {
   });
 
   it('moves focus to the destructive confirm button when the cancel prompt appears', async () => {
-    // Twin of the withdraw prompt's focus test: the component claims this a11y behaviour for BOTH
-    // destructive prompts, and only the withdraw half was pinned (#477 item 2).
+    // Twin of the withdraw focus test — the component claims this for BOTH prompts (#477 item 2).
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
 

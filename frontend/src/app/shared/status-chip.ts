@@ -4,11 +4,7 @@ import { Directive, computed, input } from '@angular/core';
 const BASE =
   'inline-flex items-center shrink-0 text-[12px] font-bold tracking-[0.01em] rounded-full px-3 py-[5px] whitespace-nowrap border';
 
-/**
- * Ink / fill / border per status modifier — the design's translucent status tints composited over
- * white. Keyed by the `chip` modifier in {@link STATUS_META}, whose fallback (`chip--expired`)
- * guarantees a hit for a status this build doesn't know.
- */
+/** Ink / fill / border per status modifier, keyed by {@link STATUS_META}'s `chip` value. */
 const FILLS: Record<string, string> = {
   'chip--confirmed': 'text-[#0e6e46] bg-[#d9f2e7] border-[#bfe6d4]',
   'chip--pending': 'text-[#8a5410] bg-[#fceed5] border-[#f2dcae]',
@@ -35,12 +31,22 @@ const FILLS: Record<string, string> = {
  * <p>Fills are OPAQUE SOLID, never rgba — the css:S7924 treatment: a solid fill lets both the WCAG
  * maths and the static analyzer compute small-text contrast correctly, and keeps it
  * theme-independent. Every ink/fill pair is proven AA in `shared/booking-status.contrast.spec.ts`,
- * still the one home of that proof.
+ * still the one home of that proof. `metaFor`'s fallback modifier (`chip--expired`) guarantees a
+ * hit in {@link FILLS} for a status this build doesn't know, so FE/BE skew still renders a chip.
  *
- * <p>The host owns its whole class list via one `[class]` computed — a static `class` on the
- * consuming element would be REPLACED by this binding. That is why the literal marker classes
- * `chip` and `chip--*` are emitted here: they are retained as inert test hooks (the unit specs and
- * both e2e suites query them), while the utilities do the styling.
+ * <p>The marker classes `chip` and `chip--*` are emitted by the directive rather than left on the
+ * consuming template, so the vocabulary and the styling it selects cannot drift apart and no
+ * consumer can forget them. Note they are **not** load-bearing for any existing test — unlike
+ * `amenity-chip`'s markers, nothing queried `.chip` in the DOM before #477 (both e2e suites select
+ * the chip by `data-testid`, and `booking-status.spec.ts` asserts the modifier as *data* out of
+ * {@link STATUS_META}, not as a rendered class). They are kept because that `STATUS_META` vocabulary
+ * is what the modifier means, so rendering it keeps the DOM and the vocabulary in agreement — and
+ * `status-chip.spec.ts` now pins them, which is what makes them a real hook rather than a claimed one.
+ *
+ * <p>Not for the reason the sibling directives used to give: in Angular 22 a static `class` on the
+ * element and a host `[class]` binding **merge**, they do not replace one another (pinned below by
+ * `status-chip.spec.ts`, which is why the claim is stated here rather than trusted). The choice is
+ * about ownership, not about avoiding a clobber.
  */
 @Directive({
   selector: '[appStatusChip]',

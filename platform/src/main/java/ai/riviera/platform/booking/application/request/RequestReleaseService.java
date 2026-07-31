@@ -67,7 +67,9 @@ class RequestReleaseService {
 
 	/**
 	 * The guest's own retraction (issue #123) — the third terminal leg, structurally identical to the
-	 * two above and disjoint from both by the same {@code status} predicate.
+	 * two above and guarded, like decline, on {@code status} alone. That is the opposite of disjoint:
+	 * on an overdue row its {@code WHERE} and expire's both match, and the row lock is what leaves
+	 * exactly one winner (see the class javadoc).
 	 *
 	 * <p>Two deliberate asymmetries. It is keyed on the booking <strong>code</strong>, because the
 	 * guest authorizes by bearer credential rather than by venue scope; and it therefore
