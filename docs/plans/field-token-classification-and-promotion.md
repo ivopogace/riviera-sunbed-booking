@@ -119,7 +119,7 @@ identical file/test counts, all green, computed values unchanged.
 | R-1 | A blind promote collapses `venue-map`'s `0.9` onto the shared `0.55`, silently weakening what its two date-field specs prove | **high** (the named trap) | high | Per-site classification against production source *before* any edit; the fork is renamed so the collision cannot recur; AC-4's identical results are the check | session | closed — `0.9` kept local as `DATE_FIELD_FILL_ALPHA`; both date-field specs still composite it (`venue-map.contrast.spec.ts:117,125`); 979/979 identical |
 | R-2 | Deleting a local constant orphans a section-header comment, which then misdescribes what survives (PR #469's F-2) | med | low | Every deletion site's surrounding comment read first; header kept only where it still describes the remainder, else removed | session | closed — one header was in play (`home`'s "styles.scss card-surface tokens … live in the :root block"); it survives describing `MODE_CHIP_GLASS`, which **is** a card-surface token declared in that `:root` block, so it stays accurate and was kept. No other deletion site had a section header |
 | R-3 | The new TSDoc repeats #467/#469's F-1 — a completeness claim the diff cannot cash | med | low | AC-5; the residual local-constant list is written into the audit log so the TSDoc has no reason to reach for a superlative | session | closed — the three TSDocs state what each mirrors and nothing more; the only cross-reference is `FIELD_FILL_ALPHA`'s pointer at the fork, which is a fact the diff establishes |
-| R-4 | `venue-map`'s renamed constant leaves a stale citation (its comment names `venue-map.scss`, deleted in the Tailwind migration) | med | low | The rewritten comment cites `venue-map.html`, verified to exist at the named line | session | closed for the rewritten comment. **Two further `venue-map.scss` citations remain in that file** (its header docblock, and the row-label chip test) — pre-existing, untouched by this diff, deliberately not actioned here (see the audit log); they need their own issue |
+| R-4 | `venue-map`'s renamed constant leaves a stale citation (its comment names `venue-map.scss`, deleted in the Tailwind migration) | med | low | The rewritten comment cites `venue-map.html`, verified to exist at the named line | session | closed for the rewritten comment. **Two further `venue-map.scss` citations remain in that file** (its header docblock, and the row-label chip test) — pre-existing, untouched by this diff, deliberately not actioned here (see the audit log); tracked as **#472** (filed at close-out; scope verified — `venue-map.scss` is the only dangling `.scss` citation under `frontend/src`) |
 
 ## Open questions / Assumptions
 
@@ -164,8 +164,8 @@ N/A — no contract change.
 **Stage pointer:** Merge — CI green, Review gate run in full (1 below-bar finding fixed), Sonar
 gate green with its authoritative list pulled and empty
 
-**Next action:** re-check CI + Sonar on the review-fix push, then merge PR #471 and run the
-close-out (file the `venue-map.scss`-citation follow-up issue).
+**Next action:** merge PR #471 once the review-fix push is green on both gates. Close-out
+items done: follow-up issue **#472** filed for the `venue-map.scss` citations; no epic to tick.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -203,7 +203,7 @@ runbook warns about. Read the raw JSON before believing an empty measures respon
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review (agent #1) | `styles.scss:53` — the comment-accuracy commit earlier on this branch rewrote a **one-line** inline comment into **two**, which RV-STYLE-1 and `frontend/.claude/CLAUDE.md` ("Inline comments are one line, or they are not written") forbid for what a diff *writes*. Confidence scored **25** — below the workflow's 80 bar, the scorer weighing the file's many pre-existing multi-line comments as established convention | **fixed anyway** — same call #467's F-1 established for the comment-accuracy class. Shortened to one line, keeping the word "tourist" (the clause that actually disambiguates); the dropped console-mock provenance is not lost — it already lives in `console-stats-strip.contrast.spec.ts`'s header docblock and `it()` title |
-| — | review (agents #3 and #5, independently) | `venue-map.contrast.spec.ts:29,156` still cite `venue-map.scss`, deleted in the Tailwind migration | **not actioned** — pre-existing, outside this diff's lines; both agents noted it is *disclosed* in this plan (R-4 + audit log) rather than silent, which is what keeps it clear of F-2's failure mode. Needs its own issue |
+| — | review (agents #3 and #5, independently) | `venue-map.contrast.spec.ts:29,156` still cite `venue-map.scss`, deleted in the Tailwind migration | **not actioned** — pre-existing, outside this diff's lines; both agents noted it is *disclosed* in this plan (R-4 + audit log) rather than silent, which is what keeps it clear of F-2's failure mode. Filed as **#472** |
 
 ---
 
@@ -256,7 +256,7 @@ All modifications; nothing created (besides this plan):
 | 2026-07-31 | intake grill | the three constants #470 names | `grep -rn 'FIELD_FILL_ALPHA\|FIELD_BORDER_ALPHA\|CARD_TRACK_ALPHA' frontend/src` | `FIELD_FILL` ×5 (**4× `0.55`, 1× `0.9`**), `FIELD_BORDER` ×5 (all `0.55`), `CARD_TRACK` ×1 | classified per the table above — 9 promoted, 1 forked |
 | 2026-07-31 | intake grill | does `venue-map`'s `0.9` mirror a token? | `grep -rn '0\.9)' frontend/src/app/venue/venue-map.{ts,html}` | `venue-map.html:69` `bg-[rgba(255,255,255,0.9)]` — a literal, and `border-(--riv-field-border)` beside it | fork confirmed + renamed; the border promotes |
 | 2026-07-31 | intake grill | what local alphas remain after this slice (so no TSDoc overclaims) | `grep -rn '^const [A-Z_]*ALPHA = ' --include='*.contrast.spec.ts'` | `BACK_FILL_ALPHA`, `CHIP_TEAL_ALPHA`, `BANNER_TINT_ALPHA` + the renamed fork | out of scope (Non-goals); recorded so AC-5 has a concrete referent |
-| 2026-07-31 | phase 0, step 4 | the fork comment cited `venue-map.scss`, which the Tailwind migration deleted — does that citation appear elsewhere? | `grep -rn 'venue-map\.scss' frontend/src` | 2 more in `venue-map.contrast.spec.ts` (header docblock "mirrors every text-bearing token in `venue-map.scss`"; the row-label chip test) | **deferred, not actioned** — pre-existing, outside this diff's lines, and a comment-accuracy cleanup does not belong in a classification slice (the same call PR #469's review made on `styles.scss:53`). Needs its own issue |
+| 2026-07-31 | phase 0, step 4 | the fork comment cited `venue-map.scss`, which the Tailwind migration deleted — does that citation appear elsewhere? | `grep -rn 'venue-map\.scss' frontend/src` | 2 more in `venue-map.contrast.spec.ts` (header docblock "mirrors every text-bearing token in `venue-map.scss`"; the row-label chip test) | **deferred, not actioned** — pre-existing, outside this diff's lines, and a comment-accuracy cleanup does not belong in a classification slice (the same call PR #469's review made on `styles.scss:53`). Filed as **#472** |
 
 ---
 
