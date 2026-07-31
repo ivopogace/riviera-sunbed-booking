@@ -156,8 +156,7 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
   it('row-label chip text (A–D) meets AA on its solid chip fill', () => {
     // Decorative (the row-codes column is aria-hidden; each tile's name carries the seat) but proven
     // anyway like the tiles — the v3 design's translucent rgba(12,42,51,.08) is replaced by this
-    // solid composited equivalent so the css:S7924 analyzer computes it (`venue-map.html`'s
-    // `data-testid="row-code"` span: `bg-[#e7ecee]` / `text-[#0a4f5e]`).
+    // solid composited equivalent so the css:S7924 analyzer computes it (`venue-map.html` row-code).
     expect(contrastRatio('#0a4f5e', '#e7ecee')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
