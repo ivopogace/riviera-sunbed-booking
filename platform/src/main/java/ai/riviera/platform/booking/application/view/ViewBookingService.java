@@ -69,6 +69,8 @@ class ViewBookingService implements ViewBooking {
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
 		boolean cancellable = b.status() == BookingStatus.CONFIRMED;
+		// Its own predicate, not a reuse of cancellable's: see BookingDetail (#123).
+		boolean withdrawable = b.status() == BookingStatus.PENDING_REQUEST;
 		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());
 
 		MoneyView refunded = b.refundMinor() == null ? null
@@ -82,7 +84,8 @@ class ViewBookingService implements ViewBooking {
 						: null;
 		return new BookingDetail(b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(),
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
-				cancellable, quote.beforeCutoff(), new MoneyView(quote.refundMinor(), b.currency()),
+				cancellable, withdrawable, quote.beforeCutoff(),
+				new MoneyView(quote.refundMinor(), b.currency()),
 				refunded, b.requestExpiresAt(), payment, emailWithheld);
 	}
 }

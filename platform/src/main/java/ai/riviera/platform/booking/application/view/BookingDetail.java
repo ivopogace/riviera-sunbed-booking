@@ -18,6 +18,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * payable intent on record, so an accepted guest can pay from this code-gated view. A pure value
  * carried out of the use case.
  *
+ * <p>{@code withdrawable} (#123) is the guest's own retraction of a still-open request
+ * ({@code PENDING_REQUEST}) — a <strong>separate</strong> flag from {@code cancellable}, not a
+ * widening of it. The two answer different questions about different states, and only ever one of
+ * them is true; collapsing them would tie the withdraw to the cancellation policy, which has no say
+ * here (no money was ever collected).
+ *
  * <p>{@code emailWithheld} (#390) says the confirmation mail was suppressed, so the post-payment
  * surface can tell the guest the code on screen is their only record. It is {@code true} only for a
  * {@code CONFIRMED} booking whose address is on the do-not-mail list; for every other status it is
@@ -26,7 +32,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, boolean cancellable,
-		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
+		boolean withdrawable, boolean beforeCutoff, MoneyView refundIfCancelledNow,
+		MoneyView refundedAmount,
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld) {
 }

@@ -107,6 +107,42 @@ class ViewBookingServiceTest {
 		verifyNoInteractions(mailDelivery);
 	}
 
+	/**
+	 * The two flags are separate predicates over disjoint states, and the view must never conflate
+	 * them: a pending request has collected nothing, so the cancellation policy has no say in whether
+	 * it can be retracted (#123). The service carries a standing comment warning against exactly the
+	 * widening these two cases forbid.
+	 */
+	@Test
+	void pendingRequestIsWithdrawableButNotCancellable() {
+		givenBooking(BookingStatus.PENDING_REQUEST);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.withdrawable()).isTrue();
+		assertThat(detail.cancellable()).isFalse();
+	}
+
+	@Test
+	void confirmedIsCancellableButNotWithdrawable() {
+		givenBooking(BookingStatus.CONFIRMED);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.withdrawable()).isFalse();
+		assertThat(detail.cancellable()).isTrue();
+	}
+
+	@Test
+	void anAlreadyWithdrawnRequestIsNoLongerWithdrawable() {
+		givenBooking(BookingStatus.WITHDRAWN);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.withdrawable()).isFalse();
+		assertThat(detail.cancellable()).isFalse();
+	}
+
 	private void givenBooking(BookingStatus status) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,

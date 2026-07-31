@@ -285,10 +285,10 @@ interaction idiom.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 3 (the withdrawable read-model flag)`
+**Stage pointer:** `implement — phase 4 (FE status vocabulary + chip)`
 
-**Next action:** Write `ViewBookingServiceTest.pendingRequestIsWithdrawableButNotCancellable` red,
-then add the separate `withdrawable` predicate (never a widening of `cancellable` — R-4).
+**Next action:** Add the `WITHDRAWN` union member + `STATUS_META` row + `chip--withdrawn`, and the
+`my-bookings.ts` `subLineOf` row the phase-0 audit found.
 
 **Draft PR:** #476 (opened on the plan commit so every push is CI-gated).
 
@@ -297,7 +297,7 @@ then add the separate `withdrawable` predicate (never a widening of `cancellable
 | 0 — `WITHDRAWN` status + V37 migration | ✅ | see below |
 | 1 — the withdraw leg (port, service, persistence) | ✅ | see below |
 | 2 — HTTP edge + security + rate limit | ✅ | see below |
-| 3 — `withdrawable` read-model flag | | |
+| 3 — `withdrawable` read-model flag | ✅ | see below |
 | 4 — FE status vocabulary + chip | | |
 | 5 — FE withdraw control | | |
 | 6 — e2e + docs close-out | | |
