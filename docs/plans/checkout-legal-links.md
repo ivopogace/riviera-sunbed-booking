@@ -145,16 +145,17 @@ N/A — no contract change (no API calls added; legal pages are static).
 > Session-recovery anchor — re-read after compaction; update in the same commit window
 > as the change it records.
 
-**Stage pointer:** implement (phase 2 — e2e)
+**Stage pointer:** PR — mark ready for review, then the Review + Sonar gates.
 
-**Next action:** load `playwright-cli`, author `e2e/legal-pages.e2e.ts` (mocked suite), then build + push.
+**Next action:** merge latest `origin/main`, mark PR #464 ready, run `/code-review` per the
+invocation ladder + `riviera-review-overlay`, then the Sonar API issue-list pull.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | P — plan doc committed, draft PR opened | ✅ | `6aea54a`, PR #464 (draft) |
 | 0 — legal pages + routes (+unit/a11y/contrast specs) | ✅ | this commit — red run (module-not-found), then 6 files / 19 tests green scoped |
 | 1 — checkout notice lines (dialog, pay) + footer links (+specs) | ✅ | this commit — red first, then full suite 126 files / 979 tests + lint green locally |
-| 2 — e2e mocked spec + local verification (lint, unit, build) | ⏳ | |
+| 2 — e2e mocked spec + local verification (lint, unit, build) | ✅ | this commit — 4 e2e pass in real Chromium (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`); lint + full unit suite + prod build green |
 
 Note (FE-1/FE-2 drift): the pages use external `.html` templates, not inline — the content
 is long-form; `riviera-frontend` sanctions external templates at that size.
