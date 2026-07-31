@@ -1,6 +1,7 @@
 import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
@@ -39,8 +40,6 @@ import {
 const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
 
 // styles.scss card-surface tokens (theme-invariant ones live in the :root block).
-const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
-
 // The map's date field is near-opaque white on the DARK header glass (venue-map.scss) — a
 // translucent fill would drop dark ink below AA there.
 const FIELD_FILL_ALPHA = 0.9;

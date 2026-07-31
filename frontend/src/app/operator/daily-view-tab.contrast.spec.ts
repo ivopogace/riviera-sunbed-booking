@@ -1,6 +1,7 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -32,7 +33,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   });
 
   it('the "Date" mini-label (--riv-card-ink-faint 0.72) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.72, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the arrival-code chip ink (--riv-card-ink) meets AA over the chip tint on the card glass', () => {

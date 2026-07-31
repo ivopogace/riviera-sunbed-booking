@@ -1,6 +1,7 @@
 import { AA_LARGE, AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
@@ -27,7 +28,6 @@ import {
  * are `aria-hidden` — the heading carries the meaning.
  */
 
-const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
 const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the card glass
 const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint)
 const CARD_TRACK_ALPHA = 0.12; // --riv-card-track (the pill strip behind the audience tabs)
