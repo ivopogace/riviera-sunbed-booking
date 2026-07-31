@@ -150,20 +150,22 @@ prove, which is what the computed-style diff is for.
 | R-2 | `afterRenderEffect` runs on browser platforms only — an SSR/prerender build would silently lose focus management | low | med | Verified there is no SSR: no `@angular/ssr`/`platform-server` dependency and no `server`/`prerender` target in `angular.json`. Nothing to mitigate; recorded so a future SSR slice knows this is a dependency | claude | closed — verified at plan time |
 | R-3 | The default `afterRenderEffect(cb)` form runs in `mixedReadWrite`, which the Angular docs explicitly warn against ("you risk significant performance degradation") | med | low | Use the explicit-phase spec form `afterRenderEffect({ write: … })`. `focus()` is a DOM **write** and the effect's other reads are *signal* reads, not DOM reads, so `write` is the correct phase. (Note: `venue-map.ts`'s existing call legitimately uses the callback form — it genuinely reads layout *and* writes a signal) | claude | closed — both effects use the `{ write: … }` spec form |
 | R-4 | A directive host `[class]` binding **replaces** a static `class` on the same element, silently dropping `.chip`/`.chip--*` — which four spec files and the e2e query | med | high | The `amenity-chip.ts` precedent documents exactly this trap: the directive owns the **whole** class list including the marker classes, and the consuming template carries no `class` attribute on that element. `status-chip.spec.ts` asserts the markers survive | claude | open |
-| R-5 | Colour/geometry drift the contrast specs cannot see — they are pure maths over hard-coded values and would stay green against a component that no longer renders those values at all | med | high | Before/after **computed-style diff** in a real browser (`riviera-tailwind`'s hard rule), recorded in the Verification log. Known false positive to *not* chase: Chromium snaps `border-width: 1.5px` → `"1px"`, identical to the SCSS | claude | open |
+| R-5 | Colour/geometry drift the contrast specs cannot see — they are pure maths over hard-coded values and would stay green against a component that no longer renders those values at all | med | high | Before/after **computed-style diff** in a real browser (`riviera-tailwind`'s hard rule), recorded in the Verification log. Known false positive to *not* chase: Chromium snaps `border-width: 1.5px` → `"1px"`, identical to the SCSS | claude | **closed — measured**: 586 element records × 48 properties × 20 theme/scenario combinations, **0 unexplained differences**. The 230 that did differ are all visually inert and machine-classified (see the Verification log). The predicted border-snapping false positive never even appeared — `border-[1.5px]` compiles to the same snapped `1px` used value the SCSS did |
 | R-6 | Deleting `shared/_glass.scss` and `booking-view.scss` leaves dangling citations — the #472/#473 failure class, where specs cited stylesheets that had moved | high | low | Grep every citation of both filenames and re-point in the same commit that deletes them; `riviera-docs-freshness` at close-out over the PR range as the backstop. Known sites: `booking-view.contrast.spec.ts`, `booking-status.contrast.spec.ts`, `amenities.contrast.spec.ts` ("only `status-chip` still lives there" goes false), `my-bookings.scss`'s section comment | claude | **closed (phase 4)** — 9 sites re-pointed, incl. two the plan had not predicted: `operator-console.contrast.spec.ts`'s css:S7924 cross-reference and `find-booking.scss`'s "extract a `modal-glass` mixin into shared/_glass.scss" instruction, which named a file that would no longer exist. The five already-ported directives' provenance comments now say **retired** `_glass.scss` |
-| R-7 | `my-bookings` regresses as collateral — it is a *consumer* of the ported mixin but is not otherwise migrated | med | med | Its `@include` is replaced by the directive in the same commit, its chip assertions run unmodified, and its rendering is covered by the computed-style diff and `my-bookings.e2e.ts` | claude | open |
-| R-8 | The banner ink overrides (`.banner .confirm-q`, `.banner .result`) are **descendant selectors** — flattening them onto elements could miss an instance, letting a themed ink land on a fixed banner fill (drifts between themes) | low | med | Only one element of each kind renders inside a banner (the withdraw confirm question and the withdraw result line); both are inside the `PENDING_REQUEST` case. The withdraw-prose assertion in `booking-view.contrast.spec.ts` pins the intent and stays unmodified | claude | open |
+| R-7 | `my-bookings` regresses as collateral — it is a *consumer* of the ported mixin but is not otherwise migrated | med | med | Its `@include` is replaced by the directive in the same commit, its chip assertions run unmodified, and its rendering is covered by the computed-style diff and `my-bookings.e2e.ts` | claude | closed — `my-bookings.spec.ts` + `my-bookings.contrast.spec.ts` green unmodified; `my-bookings.e2e.ts` green in the full mocked suite |
+| R-8 | The banner ink overrides (`.banner .confirm-q`, `.banner .result`) are **descendant selectors** — flattening them onto elements could miss an instance, letting a themed ink land on a fixed banner fill (drifts between themes) | low | med | Only one element of each kind renders inside a banner (the withdraw confirm question and the withdraw result line); both are inside the `PENDING_REQUEST` case. The withdraw-prose assertion in `booking-view.contrast.spec.ts` pins the intent and stays unmodified | claude | **closed, with a finding**: the withdraw confirm question is flattened correctly (`confirmQOnBanner`, same `#334a52`). But the sibling half of that selector, **`.banner .result`, matched no element at all** — both live regions render *outside* the banners (deliberately, so they survive the post-action reload). It was dead defensive CSS, so the flattening drops nothing observable; recorded rather than silently deleted |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `.result:empty { display:none }`'s Tailwind twin `empty:hidden` matches on the
-  same condition (no child nodes *and* no text). Angular's `@if`-empty `<p>` renders comment
-  anchors — which are nodes. — *Owner:* claude · *Resolves by:* phase 4 (the computed-style diff
-  measures `display` on both live regions in their empty state; if `:empty` and `empty:` disagree,
-  the rule survives as a one-line `styles:` block rather than being dropped).
+*(none open)*
 
 ### Resolved
+
+- **Assumption (`empty:hidden` ≡ `.result:empty`):** **confirmed by measurement**, not assumed —
+  both live regions compute `display: none` in their empty state before *and* after (phase 5). The
+  concern was real: Angular's `@if`-empty `<p>` contains comment anchors, and `:empty` ignores
+  comment nodes in both spellings. The fallback (keeping the rule in a one-line `styles:` block)
+  was not needed.
 
 - **Open question (scope):** narrow vs full SCSS→Tailwind migration — `riviera-tailwind` step 2
   requires asking when the shared recipe has real blast radius. **Resolved: full port**, delegated
@@ -243,10 +245,10 @@ stylesheet is retired.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** capture the "before" computed styles for booking-view in both themes, then port
-`booking-view.scss` to Tailwind ledger-row by ledger-row and diff the "after" (R-5).
+**Next action:** correct the `ExpireRequests` javadoc overclaim (item 4) and run the
+generalization grep for the same claim elsewhere in the backend.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -254,8 +256,8 @@ stylesheet is retired.
 | 2 — Item 2: cancel-prompt focus test (red-on-removal proven) | ✅ | `4a09f7e` |
 | 3 — Item 1: both effects → `afterRenderEffect({ write })` | ✅ | `6f50095` |
 | 4 — Item 3a: `status-chip` mixin → `shared/status-chip.ts`; delete `_glass.scss` | ✅ | see below |
-| 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | ⏳ | |
-| 6 — Item 4: `ExpireRequests` javadoc | | |
+| 5 — Item 3b: `booking-view.scss` → Tailwind; delete the stylesheet | ✅ | see below |
+| 6 — Item 4: `ExpireRequests` javadoc | ⏳ | |
 | 7 — Close-out: item-5 issue, docs freshness, gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -456,7 +458,9 @@ it('moves focus to the destructive confirm button when the cancel prompt appears
 | AC-1 is real coverage, not a vacuous pass | commented the cancel focus effect out, ran the spec, restored it (phase 2 step 2) | **proven** — exactly 1 of 34 failed: `expected <body> to be <button>`. Component restored byte-identical (`git diff --stat` = spec only) |
 | Status-chip port is behaviour-neutral | 7 specs re-run unmodified after the port (phase 4) | **110 passed** — `booking-view.spec`, `my-bookings.spec` + their contrast specs, `booking-status.contrast`, `amenities.contrast`, `status-chip.spec`. The only edits to pre-existing specs were **citations** (doc comments + one `describe` title), never an assertion |
 | Production build after the port | `npm run build` (phase 4) | **succeeds** — Tailwind generates the ported fills (they are literals in `FILLS`/`BASE`, so the scanner sees them). Three CSS-budget warnings are pre-existing and in files this slice does not touch (`home.scss`, `app.scss`, `booking-pay.scss`) |
-| Computed-style parity, booking-view, both themes | Chromium `getComputedStyle` before/after (phase 5) | *pending* |
+| Computed-style parity, booking-view, both themes | Chromium `getComputedStyle` dump keyed by **DOM position** (classes all change, so a class-keyed diff would compare nothing), 10 scenarios × 2 themes × 48 properties, before vs after (phase 5) | **0 unexplained differences** over 586 element records. Structure identical (every element path matched). 230 differences, all machine-classified as visually inert: **192** are border colour/style on elements whose border-width is `0px` in *both* trees (Tailwind's preflight `border: 0 solid` vs the SCSS's `border: 0` — an unrendered token), and **38** are `box-shadow`, where Tailwind's `shadow-*` composes through var slots and prepends no-op `rgba(0,0,0,0) 0px 0px 0px 0px` entries; stripping those, the real shadow is byte-identical |
+| WCAG 2.4.7 focus rings survive | separate **keyboard** probe (phase 5) — the main capture focuses programmatically, which does not reliably arm `:focus-visible`, so it proved nothing about the rings | **identical on all six controls** across three states: `rgb(8,90,110) solid 3px / offset 2px` for the danger, outline and link controls and `rgb(255,255,255) solid 3px` for the Pay-now CTA, each with `:focus-visible` genuinely matched |
+| Full CI-safe e2e suite | `npx playwright test --config playwright.a11y.config.ts` (phase 5) | **114 passed**. Note: `customer-password.e2e.ts`, which #477 recorded as failing in this sandbox, **passes** when the run uses the config's documented `PW_CHROMIUM_EXECUTABLE` escape hatch to point at the pre-installed Chromium 1194 instead of the pinned 1228 download |
 | Item 4 javadoc | inspection + `git diff --stat` (phase 6) | *pending* |
 
 ---
