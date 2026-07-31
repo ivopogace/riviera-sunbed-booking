@@ -13,11 +13,21 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import jakarta.servlet.http.Cookie;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,9 +44,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "riviera.operator.password=withdraw-test-pw")
 @AutoConfigureMockMvc
 class WithdrawRequestIT {
+
+	private static final String OPERATOR = "operator";
+	private static final String PASSWORD = "withdraw-test-pw";
 
 	@Autowired
 	MockMvc mvc;
@@ -44,11 +57,16 @@ class WithdrawRequestIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@MockitoBean
+	CurrentOperator currentOperator;
+
 	private long venueId;
 	private long setId;
+	private Cookie operatorSession;
 
 	@BeforeEach
-	void seedRequestVenue() {
+	void seedRequestVenue() throws Exception {
+		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 		venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
 				VALUES ('Withdraw Edge Club', 'Edge Beach', 'Edge Region', 'REQUEST', 1500, 'EUR')
@@ -60,6 +78,12 @@ class WithdrawRequestIT {
 				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
 				RETURNING id
 				""").param("venue", venueId).query(Long.class).single();
+		long operator = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES ('withdraw-op-' || :v, 'ACTIVE') RETURNING id")
+				.param("v", venueId).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venueId).param("o", operator).update();
+		when(currentOperator.require(any())).thenReturn(new OperatorId(operator));
 	}
 
 	private long insertPendingRequest(String code, LocalDate date) {
@@ -168,11 +192,31 @@ class WithdrawRequestIT {
 
 		mvc.perform(post("/api/bookings/{code}/withdraw", code)).andExpect(status().isOk());
 
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, bookingId)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+
+		// The stale accept must not resurrect the booking or re-claim the freed set.
 		assertEquals("WITHDRAWN", jdbc.sql("SELECT status FROM booking WHERE id = :id")
 				.param("id", bookingId).query(String.class).single());
 		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability "
 						+ "WHERE set_id = :set AND booking_date = :date")
 				.param("set", setId).param("date", bookable()).query(Long.class).single(),
-				"the withdrawn request's soft-hold is released (invariant #2)");
+				"the withdrawn request's soft-hold stays released (invariant #2)");
+	}
+
+	/** Decline is the operator's other stale-queue action, and answers the same conflict. */
+	@Test
+	void declineAfterWithdrawIsNotPending() throws Exception {
+		String code = uniqueCode("WDSTALD");
+		long bookingId = insertPendingRequest(code, bookable());
+
+		mvc.perform(post("/api/bookings/{code}/withdraw", code)).andExpect(status().isOk());
+
+		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, bookingId)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
 	}
 }

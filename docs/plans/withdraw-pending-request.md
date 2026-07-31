@@ -46,7 +46,9 @@ index — the withdraw keys on the existing `UNIQUE(code)`) · `riviera-modulith
 `booking/application/request/` behind a new `WithdrawRequest` port; **no** `api/`/`events/` surface
 change, so no `allowedDependencies` edit and no EPR `event_type` rewrite) · `riviera-frontend`
 (`booking-status.ts` in `shared/` is the canonical union home; the control belongs in the existing
-`booking/` feature folder, no new folder). Loading at implement time (recorded here in advance;
+`booking/` feature folder, no new folder) · **`domain-modeling`** (loaded LATE — see the note below;
+it caught that the `CONTEXT.md` edit had leaked implementation detail into the glossary, and that
+*Withdraw* deserved its own term entry distinguishing it from *cancel*, *decline* and *expire*). Loading at implement time (recorded here in advance;
 will be re-announced then): `riviera-java-conventions` + `riviera-local-debug` (first backend
 phase), `codebase-design` (the port-vs-leg seam), `angular-developer` + `riviera-tailwind` +
 `playwright-cli` (FE phases).
@@ -56,6 +58,15 @@ phase), `codebase-design` (the port-vs-leg seam), `angular-developer` + `riviera
 > `get_best_practices`) and its guidance matches the in-repo `frontend/.claude/CLAUDE.md` verbatim,
 > which the FE phases had already followed. Recorded as it actually happened rather than
 > back-dated (SDLC remote addendum, toolset drift).
+>
+> **RV-PROC-1 miss, recorded rather than papered over.** `domain-modeling` is required by the
+> SDLC routing table for any backend module/structure change, and this slice edits `CONTEXT.md`'s
+> glossary — the artifact that skill owns. It was **not** loaded at plan time; the review gate's
+> overlay pass caught the omission. Remedy per RV-PROC-1: the skill was then loaded and the glossary
+> section re-vetted through it, which changed the result (the entry was trimmed to glossary language
+> and a *Withdraw* term added). **No ADR:** the WITHDRAWN-vs-CANCELLED choice meets the hard-to-
+> reverse and real-trade-off tests, but its rationale is already durable in `BookingStatus`'s javadoc,
+> `CLAUDE.md`'s module row, and this doc's Resolved section — a fourth copy would be duplication.
 >
 > **E2e browser note:** this sandbox ships Chromium build 1194 while `@playwright/test` 1.61.1 pins
 > 1228, so the local mocked-suite run used the installed build via a local symlink. 113/114 passed;
@@ -326,6 +337,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3 | review (prior-PR guidance) | Three new comments claimed a pending request "has no PaymentIntent" — the exact overclaim #98's review item 8 already corrected once. A request reverted by a failed accept *can* leave an unregistered residual intent (this plan's own R-6) | fixed — all now say "no PaymentIntent **on record**", the phrasing already used by `CancelPaymentPort`/`StripePaymentGateway`, with the reason spelled out on `WithdrawRequest` |
 | F-4 | review (git history) | `RateLimitFilter` still said "three"/"two" endpoints in five places after the withdraw made it four/three — the counting-sweep staleness class this repo names explicitly | fixed — all five, plus `targetOf`'s javadoc |
 | F-5 | review (comments) | `RequestReleaseService`'s "the guards are mutually exclusive by predicate" became false, and my own new text called withdraw+expire "the one pair" not disjoint by predicate — **decline is equally undeadlined**, so decline+expire always had the same property | fixed — the javadoc now states plainly that the **row lock**, not the predicates, is what makes the legs exclusive, and that *accept* is the only predicate-disjoint leg. Corrected in `RequestReleaseService`, `ConcurrentRequestTerminationIT` and `CLAUDE.md` |
+| F-7 | review (overlay, RV-PROC-1) | `domain-modeling` missing from *Skills consulted* although the diff edits the domain glossary it owns | fixed — skill loaded, `CONTEXT.md` re-vetted through it (implementation detail removed, a *Withdraw* term added), line corrected; the miss itself is recorded in the Toolset/Process note rather than hidden |
+| F-8 | review (overlay) | **`WithdrawRequestIT.acceptAfterWithdrawIsNotPending` never called the accept endpoint** — its name and javadoc claimed to prove AC-13 while only re-asserting the withdraw's own effects, so AC-13 was unverified | fixed — it now POSTs to the operator accept endpoint with a real session + ownership row and asserts `409 REQUEST_NOT_PENDING`, plus a sibling `declineAfterWithdrawIsNotPending` for the other stale-queue action |
+| F-9 | review (overlay, RV-FE-7) | The withdraw control's styling landed as SCSS, not Tailwind (the locked go-forward) | **accepted, not fixed** — `booking-view` is wholly un-migrated SCSS and the control mirrors the adjacent `.cancel` block; introducing Tailwind for four rules inside an SCSS component would be the inconsistency, not the fix. `riviera-tailwind` explicitly says SCSS-is-retiring is "the default, not an absolute" |
 | F-6 | review (CLAUDE.md audit) | RV-STYLE-1 — eleven new/expanded multi-line inline comments (the rule: one line, or fold into the exempt doc comment) | fixed — long rationale folded into the adjacent Javadoc/TSDoc (e.g. the withdraw SQL block into the `Bookings` port doc, the sweep-scheduler note into the IT's class doc); the rest trimmed to one line |
 
 ---

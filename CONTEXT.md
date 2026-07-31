@@ -56,15 +56,17 @@ model in `docs/architecture/domain-model.md`.
 - **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
   decision (`PENDING_REQUEST`): it claims the same `availability(set, date)` row as any
   online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
-  is charged until the venue accepts (payment-request-on-accept). It has **three** terminal
-  legs, one per party that can end it — the venue declines (`DECLINED`), nobody answers before
-  the response deadline (`EXPIRED`, swept), or the guest retracts it themselves (`WITHDRAWN`,
-  #123) — and each releases the soft-hold in the same transaction as the transition. The
-  guest's leg is deliberately **not** deadline-guarded, so an overdue-but-unswept request is
-  still withdrawable: the same release, a different terminal label. The deadline is
+  is charged until the venue accepts (payment-request-on-accept). It ends in one of three
+  ways, one per party who can end it: the venue **declines** (`DECLINED`), nobody answers by
+  the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`). Each frees
+  the soft-hold. The deadline is
   min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
   the guest has `booking.request.pay-window` (from accept) to pay before the abandoned
   sweep cancels.
+- **Withdraw** — the guest's own retraction of their pending request, before the venue has
+  decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
+  a refund decision: a withdrawn request was never charged, so there is nothing to refund.
+  Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
 - **Cutoff** — the moment online bookings for a day close (default 18:00 the
   evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.
