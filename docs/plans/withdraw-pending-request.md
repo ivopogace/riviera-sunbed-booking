@@ -67,7 +67,7 @@ standing in for `feature/withdraw-pending-request` per the SDLC remote addendum.
   then the outcome is `Withdrawn`, the booking is `WITHDRAWN`, and the `(set, date)` availability
   row is released — in one transaction, so the booking is never `WITHDRAWN` with its set still held
   (invariant #2). *Pinned by:* `WithdrawRequestServiceTest.withdrawsAndReleasesTheHold`,
-  `WithdrawRequestIT.withdrawnSetIsImmediatelyRebookable`.
+  `ConcurrentRequestTerminationIT.withdrawnSetIsImmediatelyRebookable`.
 
 - [ ] **AC-2:** Given a booking that is **not** `PENDING_REQUEST` (confirmed, awaiting payment,
   already declined/expired/withdrawn), when withdraw runs, then the outcome is
@@ -86,7 +86,9 @@ standing in for `feature/withdraw-pending-request` per the SDLC remote addendum.
 - [ ] **AC-5:** Given a pending request past its deadline but not yet swept, when the guest
   withdraws, then it still succeeds — the withdraw is **not** deadline-guarded, matching decline
   (same release, different terminal label). *Pinned by:*
-  `WithdrawRequestServiceTest.withdrawsAnOverdueButUnsweptRequest`.
+  `ConcurrentRequestTerminationIT.withdrawsAnOverdueButUnsweptRequest` — an IT, not the unit test:
+  the absence of a deadline predicate is a property of the SQL, which a mocked `Bookings` cannot
+  show.
 
 - [ ] **AC-6:** Given `POST /api/bookings/{code}/withdraw`, then it is reachable anonymously (the
   code is the bearer credential, invariant #7), maps `Withdrawn`→`200`, `NO_SUCH_BOOKING`→`404`,
@@ -283,17 +285,17 @@ interaction idiom.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 (the withdraw leg)`
+**Stage pointer:** `implement — phase 2 (HTTP edge + security + rate limit)`
 
-**Next action:** Write `WithdrawRequestServiceTest` red, then add `WithdrawRequest` /
-`WithdrawOutcome` / `WithdrawRequestService` + the `Bookings.withdrawPendingRequest` leg.
+**Next action:** Write `WithdrawRequestIT` red, then add the controller endpoint plus the three
+edge registrations (SecurityConfig CSRF-ignore, SecurityConfig permitAll, RateLimitFilter.targetOf).
 
 **Draft PR:** #476 (opened on the plan commit so every push is CI-gated).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `WITHDRAWN` status + V37 migration | ✅ | see below |
-| 1 — the withdraw leg (port, service, persistence) | | |
+| 1 — the withdraw leg (port, service, persistence) | ✅ | see below |
 | 2 — HTTP edge + security + rate limit | | |
 | 3 — `withdrawable` read-model flag | | |
 | 4 — FE status vocabulary + chip | | |

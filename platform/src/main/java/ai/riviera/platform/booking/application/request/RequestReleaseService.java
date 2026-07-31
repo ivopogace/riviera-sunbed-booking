@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.request;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +13,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The one place a pending request is terminated and its set freed (issue #98) — the request-slice
- * sibling of {@code ClaimReleaseService}, with the two terminal legs side by side so they cannot
- * drift: <strong>decline</strong> (venue said no) and <strong>expire</strong> (venue never
- * answered). Each is a guarded {@code UPDATE … RETURNING} transition plus the
+ * sibling of {@code ClaimReleaseService}, with the three terminal legs side by side so they cannot
+ * drift: <strong>decline</strong> (venue said no), <strong>expire</strong> (venue never answered)
+ * and <strong>withdraw</strong> (the guest retracted it — issue #123). Each is a guarded
+ * {@code UPDATE … RETURNING} transition plus the
  * {@code availability.release}, committing together — a booking is never left
  * {@code DECLINED}/{@code EXPIRED} with its set still claimed (invariant #2), and the
  * {@code RETURNING} makes a lost race (concurrent decline, accept, or sweep) a 0-row no-op, so
@@ -54,5 +56,23 @@ class RequestReleaseService {
 					return true;
 				})
 				.orElse(false);
+	}
+
+	/**
+	 * The guest's own retraction (issue #123) — the third terminal leg, structurally identical to the
+	 * two above and disjoint from both by the same {@code status} predicate.
+	 *
+	 * <p>Two deliberate asymmetries. It is keyed on the booking <strong>code</strong>, because the
+	 * guest authorizes by bearer credential rather than by venue scope; and it therefore
+	 * <strong>returns</strong> the booking id, which decline and expire are already given by their
+	 * caller — so the caller can log which booking ended without logging the code (invariant #7).
+	 */
+	@Transactional
+	public Optional<BookingId> withdraw(String code) {
+		return bookings.withdrawPendingRequest(code)
+				.map(withdrawn -> {
+					availability.release(withdrawn.setId(), withdrawn.bookingDate());
+					return new BookingId(withdrawn.bookingId());
+				});
 	}
 }

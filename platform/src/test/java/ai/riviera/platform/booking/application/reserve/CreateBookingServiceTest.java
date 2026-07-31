@@ -504,6 +504,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest>
+				withdrawPendingRequest(String code) {
+			return Optional.empty();
+		}
+
+		@Override
 		public ConfirmedBooking confirm(long bookingId, Instant confirmedAt) {
 			return null; // unused: confirmation flows through the ConfirmBooking seam, not this port
 		}
