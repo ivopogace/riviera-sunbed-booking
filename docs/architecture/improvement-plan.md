@@ -99,7 +99,7 @@ This lets a listener-only consumer (`payout`) depend on `booking::events` withou
 > javadoc, and ~580 more raw lines are boot-validated properties/config classes — so raw LOC now
 > tracks documentation discipline, not conceptual load (`venue`, for comparison: 3,711 raw /
 > 2,067 code). Decisively: extracting *both* watched seams (refund execution ~800 raw, staff read
-> side ~400 raw) would still leave `booking` at ~4,500 raw — the trigger's own prescribed
+> side ~250 raw) would still leave `booking` at ~4,700 raw — the trigger's own prescribed
 > consequence cannot restore its condition, which convicts the number, not the module. On B3's own
 > cohesion test the growth is lifecycle-shaped: Request-to-Book (#98) added *states of the same
 > `Booking` aggregate*; account linkage (epic #108) is a nullable column plus a principal-scoped
@@ -126,8 +126,9 @@ This lets a listener-only consumer (`payout`) depend on `booking::events` withou
 > **The designated first cut when it fires:** the refund-execution seam (the `BookingCancelled`
 > listener + bounded executor + shed metric + admin re-drive). Its boundary is already the
 > crispest — own executor, metrics, and admin lever, and `BookingCancelled` already carries the
-> settled refund facts — and the extracted module has the proven `payout` shape: listener-only on
-> `booking::events`, driving `payment::api`. The staff/operational read side is **not** part of
+> settled refund facts — and the extracted module reuses `payout`'s proven listener-only shape on
+> `booking::events`, differing in what the listener does: it drives `payment::api`, where
+> `payout`'s listeners are DB-only. The staff/operational read side is **not** part of
 > that cut; it belongs to B4's read-model trigger. Chart the extraction through the normal SDLC
 > (`to-spec` → `to-issues`); the registry-migration and arch-test re-keying costs above are its
 > known first slices.
@@ -203,7 +204,7 @@ Sequence this **last** — enforcing the shape before the migration is done just
 
 **Standing triggers (not scheduled):** B3 (split `booking` — the re-set clauses in Part 2 B3: ~4,000 *code* LOC, a third scheduler, a non-lifecycle concern, or the refund seam deepening), B4 (read-model module if dated reads grow), and scale-out work (the moment a second instance is on the table).
 
-> **B3 trigger status: the original ~3,500-raw-LOC clause fired 2026-07-31 (5,735 raw) and was
+> **B3 trigger status:** the original ~3,500-raw-LOC clause fired 2026-07-31 (5,735 raw) and was
 > resolved by #463 as **re-set, not split** — raw LOC mostly measured the house javadoc style,
 > the growth was lifecycle-cohesive, and the scheduler alarm never fired. The re-set clauses and
 > full rationale are in Part 2 B3; the refund-execution seam is the designated first cut if a
