@@ -23,10 +23,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * write surface INVERT: a session-authenticated write now requires the cookie-to-header token
  * ({@code XSRF-TOKEN} cookie → {@code X-XSRF-TOKEN} header), and a missing/forged token is a
  * {@code 403 INVALID_CSRF_TOKEN} problem (hand-mirrored at the filter, {@code RateLimitFilter}
- * pattern). Only the genuinely token-less surfaces stay exempt — guest booking create/cancel
+ * pattern). Only the genuinely token-less surfaces stay exempt — guest booking create/cancel/withdraw
  * (the booking code is the bearer credential, invariant #7) and the Stripe webhook
  * (signature-authenticated, invariant #8) — their posture is pinned here so the inversion can
- * never silently widen. An ANONYMOUS write without a token stays {@code 401} (the
+ * never silently widen — the withdraw POST (#123) joined that exempt set and is pinned alongside
+ * cancel below. An ANONYMOUS write without a token stays {@code 401} (the
  * ExceptionTranslationFilter routes anonymous denials to the entry point), which existing
  * anonymous-401 tests already pin.
  */
@@ -117,6 +118,13 @@ class CsrfProtectionIT {
 	void guestCancelStaysTokenless() throws Exception {
 		// An unknown code reaches the domain and is a 404 — not a 403, so CSRF did not gate it.
 		mvc.perform(post("/api/bookings/{code}/cancel", "NOSUCHCODE"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void guestWithdrawStaysTokenless() throws Exception {
+		// Same proof as cancel, one path over: a 404 (not a 403) means CSRF did not gate it.
+		mvc.perform(post("/api/bookings/{code}/withdraw", "NOSUCHCODE"))
 				.andExpect(status().isNotFound());
 	}
 

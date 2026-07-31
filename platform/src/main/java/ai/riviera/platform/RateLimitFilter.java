@@ -43,8 +43,9 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Per-IP and per-code rate limiting for the three public, unauthenticated booking endpoints
- * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel} and
+ * Per-IP and per-code rate limiting for the four public, unauthenticated booking endpoints
+ * (issue #56): {@code GET /api/bookings/{code}}, {@code POST /api/bookings/{code}/cancel},
+ * {@code POST /api/bookings/{code}/withdraw} (#123) and
  * {@code POST /api/bookings} — plus, since issue #109, the session login
  * ({@code POST /api/auth/operator/login}) on its own stricter per-IP budget (D-8: the login is a
  * credential-guessing oracle exactly like the code endpoints), and since S4 (#112) the SSO
@@ -52,9 +53,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * the booking code is the bearer credential (invariant #7); the {@code 200}/{@code 404} answer is
  * otherwise a brute-force oracle, so this filter caps request volume.
  *
- * <p><strong>Keying.</strong> The per-IP bucket guards all three endpoints (the primary defence
+ * <p><strong>Keying.</strong> The per-IP bucket guards all four endpoints (the primary defence
  * against an enumerator trying many codes from one IP); the per-code bucket additionally guards the
- * two code-keyed endpoints (against hammering a single known code). A request is rejected if
+ * three code-keyed endpoints (against hammering a single known code), which share one budget per
+ * code because they are guesses at the same secret. A request is rejected if
  * <em>either</em> bucket is empty. The per-code limit is configured above the frontend's ~20/30s
  * payment poll so a real payer is never throttled (ADR-0006).
  *
@@ -112,11 +114,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests. Retry later.","code":"RATE_LIMITED"}""";
 
-	// Mirrors the SecurityConfig matchers for the three public booking endpoints: CREATE_PATH is the
-	// exact create POST; VIEW_TEMPLATE the view-by-code GET; CANCEL_TEMPLATE the cancel POST.
+	// Mirrors the SecurityConfig matchers for the four public booking endpoints (keying: class Javadoc).
 	private static final String CREATE_PATH = "/api/bookings";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
+	private static final String WITHDRAW_TEMPLATE = "/api/bookings/{code}/withdraw";
 	private static final String CODE_VAR = "code";
 	// The session logins (issue #109, D-8): per-IP throttled on their OWN, stricter budget — a
 	// credential-guessing oracle, like the booking-code endpoints, but a separate dimension so
@@ -264,14 +266,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		Instant now = clock.instant();
 		String ip = clientIps.resolve(request);
 
-		// Per-IP: all three endpoints.
+		// Per-IP: all four endpoints.
 		TokenBucket ipBucket = bucketFor(ipBuckets, ip, props.perIp(), now);
 		if (!ipBucket.tryAcquire(now)) {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "ip");
 			return;
 		}
 
-		// Per-code: only the two code-keyed endpoints carry a code.
+		// Per-code: only the three code-keyed endpoints carry a code.
 		if (target.code() != null) {
 			TokenBucket codeBucket = bucketFor(codeBuckets, target.code(), props.perCode(), now);
 			if (!codeBucket.tryAcquire(now)) {
@@ -427,7 +429,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Classify the request in a single pass: {@code null} if it is a CORS preflight or not one of the
-	 * three booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
+	 * four booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
 	 * for create). Computes the path and runs the matcher once, not per check.
 	 */
 	private Target targetOf(HttpServletRequest request) {
@@ -442,6 +444,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method)) {
 			if (paths.match(CANCEL_TEMPLATE, path)) {
 				return new Target(paths.extractUriTemplateVariables(CANCEL_TEMPLATE, path).get(CODE_VAR));
+			}
+			if (paths.match(WITHDRAW_TEMPLATE, path)) {
+				return new Target(paths.extractUriTemplateVariables(WITHDRAW_TEMPLATE, path).get(CODE_VAR));
 			}
 			if (path.equals(CREATE_PATH)) {
 				return new Target(null); // create carries no code → per-IP only

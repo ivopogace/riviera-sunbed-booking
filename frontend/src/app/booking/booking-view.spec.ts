@@ -4,7 +4,13 @@ import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
-import { BookingDetail, BookingStatus, Cancellation, PaymentHandoff } from './booking.model';
+import {
+  BookingDetail,
+  BookingStatus,
+  Cancellation,
+  PaymentHandoff,
+  Withdrawal,
+} from './booking.model';
 import { BookingView } from './booking-view';
 import { BookingService } from './booking.service';
 
@@ -18,12 +24,25 @@ const DETAIL: BookingDetail = {
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
   cancellable: true,
+  withdrawable: false,
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,
+};
+
+const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };
+
+/** A PENDING_REQUEST detail the guest may still retract (#123). */
+const PENDING: BookingDetail = {
+  ...DETAIL,
+  status: 'PENDING_REQUEST',
+  cancellable: false,
+  withdrawable: true,
+  // 16:00Z on a CET (winter, UTC+1) date -> 17:00 Europe/Tirane wall clock.
+  requestExpiresAt: '2026-11-30T16:00:00Z',
 };
 
 const CANCELLATION: Cancellation = {
@@ -41,6 +60,8 @@ function stubService(opts: {
   getError?: unknown;
   cancel?: Cancellation;
   cancelCalls?: string[];
+  withdrawCalls?: string[];
+  withdrawError?: unknown;
   handoffs?: PaymentHandoff[];
   /** A primed detail (#168 find-a-booking hand-off); consumed one-shot for the matching code. */
   prefetched?: BookingDetail;
@@ -55,6 +76,12 @@ function stubService(opts: {
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
       return of(opts.cancel ?? CANCELLATION);
+    },
+    withdraw: (code: string) => {
+      opts.withdrawCalls?.push(code);
+      return (
+        opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL)
+      ) as Observable<Withdrawal>;
     },
     beginPayment: (handoff: PaymentHandoff) => {
       opts.handoffs?.push(handoff);
@@ -131,29 +158,132 @@ describe('BookingView', () => {
   });
 
   it('shows the waiting state and the Tirane-zone deadline for a PENDING_REQUEST booking', async () => {
-    const fixture = await render(
-      stubService({
-        detail: {
-          ...DETAIL,
-          status: 'PENDING_REQUEST',
-          cancellable: false,
-          // 16:00Z on a CET (winter, UTC+1) date → 17:00 Europe/Tirane wall clock.
-          requestExpiresAt: '2026-11-30T16:00:00Z',
-        },
-      }),
-    );
+    const fixture = await render(stubService({ detail: PENDING }));
     const host = fixture.nativeElement as HTMLElement;
 
     const panel = host.querySelector('[data-testid="request-pending"]');
     expect(panel?.textContent).toContain('Waiting for the venue');
     expect(panel?.textContent).toContain('17:00');
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
+    // Cancel is for a CONFIRMED booking; a pending request is retracted, not cancelled (#123).
     expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
-    // Guest request-withdraw is backend #123 and not shipped: render the banner WITHOUT a
-    // withdraw control (leave the slot; don't wire the action).
-    expect(host.querySelector('[data-testid="withdraw-request"]')).toBeNull();
-    expect(host.textContent).not.toContain('Withdraw');
+    expect(host.querySelector('[data-testid="withdraw-request"]')).not.toBeNull();
     await expectNoAxeViolations(host);
+  });
+
+  it('withdraws a pending request after confirmation and flips the chip', async () => {
+    const withdrawCalls: string[] = [];
+    const fixture = await render(
+      stubService({
+        detail: PENDING,
+        detailAfterCancel: { ...PENDING, status: 'WITHDRAWN', withdrawable: false },
+        withdrawCalls,
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(withdrawCalls).toEqual(['ABCD234567']);
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'Withdrawn',
+    );
+    await expectNoAxeViolations(host);
+  });
+
+  it('keeps the withdrawal confirmation visible after the status flips to WITHDRAWN', async () => {
+    // The live region must survive the post-withdraw reload: the guest reads the outcome AFTER the
+    // status changes, and an aria-live node that unmounts on success announces nothing durable.
+    const fixture = await render(
+      stubService({
+        detail: PENDING,
+        detailAfterCancel: { ...PENDING, status: 'WITHDRAWN', withdrawable: false },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="withdraw-result"]')?.textContent).toContain(
+      'Request withdrawn',
+    );
+    // ...and the terminal state explains itself, like DECLINED and EXPIRED do.
+    expect(host.querySelector('[data-testid="request-withdrawn"]')?.textContent).toContain(
+      'haven’t been charged',
+    );
+    await expectNoAxeViolations(host);
+  });
+
+  it('moves focus to the destructive confirm button when the withdraw prompt appears', async () => {
+    // The component claims this as an a11y behaviour; without a test the claim is unverified.
+    const fixture = await render(stubService({ detail: PENDING }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-withdraw"]'));
+  });
+
+  it('asks before withdrawing, and "Keep request" backs out without calling the API', async () => {
+    const withdrawCalls: string[] = [];
+    const fixture = await render(stubService({ detail: PENDING, withdrawCalls }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(host.textContent).toContain('Withdraw this request?');
+
+    const keep = [...host.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Keep request'),
+    ) as HTMLButtonElement;
+    keep.click();
+    fixture.detectChanges();
+
+    expect(withdrawCalls).toEqual([]);
+    expect(host.querySelector('[data-testid="withdraw-request"]')).not.toBeNull();
+  });
+
+  it('keeps the request on screen and explains when the withdraw fails', async () => {
+    const fixture = await render(
+      stubService({ detail: PENDING, withdrawError: { status: 409 } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="withdraw-result"]')?.textContent).toContain(
+      'couldn’t withdraw',
+    );
+    expect(host.querySelector('[data-testid="request-pending"]')).not.toBeNull();
+  });
+
+  it('renders no withdraw control when the server says the request is not withdrawable', async () => {
+    // The server owns the rule (#123) — the template gates on `withdrawable`, never on the status.
+    const fixture = await render(
+      stubService({ detail: { ...PENDING, withdrawable: false } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="request-pending"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="withdraw-request"]')).toBeNull();
   });
 
   // The unified status chip renders the design label for the whole #98 union — one header chip

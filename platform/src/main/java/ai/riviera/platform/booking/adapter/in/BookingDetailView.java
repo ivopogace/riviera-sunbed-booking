@@ -15,14 +15,15 @@ import java.time.Instant;
  * a suppression oracle (D-8). Mirrors the FE {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
-		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean beforeCutoff,
-		MoneyView refundIfCancelledNow, MoneyView refundedAmount, Instant requestExpiresAt,
-		PaymentCredentialsView payment, boolean emailWithheld) {
+		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean withdrawable,
+		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
+		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
 				d.rowLabel(), d.positionNo(), d.bookingDate().toString(), d.amount(), d.cancellable(),
-				d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(), d.requestExpiresAt(),
+				d.withdrawable(), d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(),
+				d.requestExpiresAt(),
 				d.payment() == null ? null
 						: new PaymentCredentialsView(d.payment().clientSecret(),
 								d.payment().paymentIntentId()),

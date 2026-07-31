@@ -97,10 +97,11 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/venues/{venueId}",
 			"GET /api/venues/{venueId}/photos/{hash}",
 			// permitAll — guest checkout is deliberately session-free; the booking code authorizes
-			// the read and the cancel (invariant #7).
+			// the read, the cancel and the request-withdraw (invariant #7).
 			"POST /api/bookings",
 			"GET /api/bookings/{code}",
 			"POST /api/bookings/{code}/cancel",
+			"POST /api/bookings/{code}/withdraw",
 			// permitAll — server-to-server, authenticated by its Stripe signature header (invariant #8).
 			"POST /api/payments/stripe/webhook",
 			// The ONE deliberate fall-through to anyRequest().authenticated(): the reload-restore read

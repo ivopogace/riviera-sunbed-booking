@@ -188,4 +188,19 @@ public interface Bookings {
 	 * race can double-act; a candidate accepted/declined since the read is a clean empty no-op.
 	 */
 	Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now);
+
+	/**
+	 * Withdraw a pending request at the guest's own request (issue #123): the guarded
+	 * {@code PENDING_REQUEST → WITHDRAWN} transition, keyed on the booking {@code code} — the bearer
+	 * credential (invariant #7), so knowing it authorizes the act and no venue scope applies.
+	 * {@code RETURNING}s the booking id and its {@code (set, date)} iff a row actually transitioned,
+	 * so the caller releases the soft-hold exactly once (invariant #2); a lost race against a
+	 * concurrent decline, accept, or expiry sweep is a 0-row {@code empty} no-op.
+	 *
+	 * <p>Like {@link #declinePending} and unlike {@link #expirePendingRequest} it is deliberately NOT
+	 * deadline-guarded: an overdue-but-unswept request may still be withdrawn — the same release,
+	 * a different terminal label.
+	 */
+	Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest> withdrawPendingRequest(
+			String code);
 }

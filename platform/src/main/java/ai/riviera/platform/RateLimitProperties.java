@@ -18,8 +18,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * throttled (ADR-0006 / plan AC-5).
  *
  * @param enabled        master switch; when false no request is ever rate-limited
- * @param perIp          per-client-IP bucket, applied to all three booking endpoints
- * @param perCode        per-booking-code bucket, applied to the two code-keyed endpoints (view/cancel)
+ * @param perIp          per-client-IP bucket, applied to all four booking endpoints
+ * @param perCode        per-booking-code bucket, applied to the three code-keyed endpoints
+ *                       (view/cancel/withdraw), which share one budget per code — same secret
  * @param login          per-client-IP bucket for the session login (issue #109, D-8) — its own,
  *                       deliberately stricter dimension (shipped default 10/min in
  *                       {@code application.properties}) so credential guessing is throttled without

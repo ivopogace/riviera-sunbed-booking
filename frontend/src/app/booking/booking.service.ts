@@ -16,6 +16,7 @@ import {
   MyBookingSummary,
   PaymentHandoff,
   RequestedBooking,
+  Withdrawal,
 } from './booking.model';
 
 /**
@@ -154,6 +155,17 @@ export class BookingService {
   cancel(code: string): Observable<Cancellation> {
     return this.http.post<Cancellation>(
       `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/cancel`,
+      {},
+    );
+  }
+
+  /**
+   * Withdraw a pending request by code (#123, `POST /api/bookings/{code}/withdraw`). No body, and no
+   * money involved — the venue has not accepted, so nothing was ever charged.
+   */
+  withdraw(code: string): Observable<Withdrawal> {
+    return this.http.post<Withdrawal>(
+      `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/withdraw`,
       {},
     );
   }

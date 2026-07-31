@@ -51,15 +51,22 @@ model in `docs/architecture/domain-model.md`.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
   by the `booking.status` CHECK constraint, V19 — keep enum and SQL in lockstep):
   `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,
-  `NO_SHOW`, `DECLINED`, `EXPIRED` (the last three are Request-to-Book, shipped by #98).
+  `NO_SHOW`, `DECLINED`, `EXPIRED` (Request-to-Book, shipped by #98), `WITHDRAWN`
+  (the guest's own retraction of a pending request, #123 — V37).
 - **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
   decision (`PENDING_REQUEST`): it claims the same `availability(set, date)` row as any
   online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
-  is charged until the venue accepts (payment-request-on-accept). Released on decline
-  (`DECLINED`) or when the response deadline passes (`EXPIRED`, swept). The deadline is
+  is charged until the venue accepts (payment-request-on-accept). It ends in one of three
+  ways, one per party who can end it: the venue **declines** (`DECLINED`), nobody answers by
+  the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`). Each frees
+  the soft-hold. The deadline is
   min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
   the guest has `booking.request.pay-window` (from accept) to pay before the abandoned
   sweep cancels.
+- **Withdraw** — the guest's own retraction of their pending request, before the venue has
+  decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
+  a refund decision: a withdrawn request was never charged, so there is nothing to refund.
+  Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
 - **Cutoff** — the moment online bookings for a day close (default 18:00 the
   evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.

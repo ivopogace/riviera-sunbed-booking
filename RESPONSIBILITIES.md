@@ -48,8 +48,10 @@ review-only.
    cancellation and that refund amount.
 
 > **Variant — Request-to-Book** (per venue's booking mode; *shipped — issue #98*): between
-> steps 2 and 3 the host accepts or declines (`booking` owns the request lifecycle and its
-> expiry sweep; ownership checked via `operator::api`); on accept, `payment` issues a fresh
+> steps 2 and 3 the host accepts or declines (`booking` owns the request lifecycle, its
+> expiry sweep, and — since #123 — the guest's own **withdraw**, the third terminal leg beside
+> decline and expiry; ownership checked via `operator::api`, though the withdraw is authorized
+> by the booking code alone, so it is venue-scope-free); on accept, `payment` issues a fresh
 > PaymentIntent (payment-request-on-accept) rather than charging at request time, and from
 > `AWAITING_PAYMENT` onward the Instant spine runs unchanged. Same ownership boundaries apply.
 

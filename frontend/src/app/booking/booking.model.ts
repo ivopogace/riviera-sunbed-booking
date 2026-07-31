@@ -114,6 +114,8 @@ export interface BookingDetail {
   readonly bookingDate: string;
   readonly amount: MoneyView;
   readonly cancellable: boolean;
+  /** The guest may retract this still-open request (#123) — separate from `cancellable`. */
+  readonly withdrawable: boolean;
   readonly beforeCutoff: boolean;
   readonly refundIfCancelledNow: MoneyView;
   readonly refundedAmount: MoneyView | null;
@@ -165,6 +167,16 @@ export interface Cancellation {
   readonly status: string;
   readonly refund: MoneyView;
   readonly tier: RefundTier;
+}
+
+/**
+ * The `POST /api/bookings/{code}/withdraw` 200 body (#123), mirroring the backend `WithdrawalView`.
+ * Deliberately narrower than {@link Cancellation}: a withdrawn request was never charged, so there
+ * is no refund amount and no tier to report — only the new terminal status.
+ */
+export interface Withdrawal {
+  readonly code: string;
+  readonly status: string;
 }
 
 /** Server rejection codes mapped from the HTTP error body, plus a transport fallback. */

@@ -18,6 +18,8 @@ import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
+import ai.riviera.platform.booking.application.request.WithdrawOutcome;
+import ai.riviera.platform.booking.application.request.WithdrawRequest;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -34,16 +36,26 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 @RequestMapping("/api/bookings")
 class BookingController {
 
+	/**
+	 * The unknown-code answer, shared by the view, cancel and withdraw legs (all three code-gated).
+	 * Named for the situation rather than for the wire code, so it does not read as a shadow of the
+	 * {@code WithdrawOutcome.Rejected.NO_SUCH_BOOKING} case label it sits beside.
+	 */
+	private static final String UNKNOWN_CODE = "NO_SUCH_BOOKING";
+	private static final String UNKNOWN_CODE_DETAIL = "No booking with this code.";
+
 	private final CreateBooking createBooking;
 	private final ViewBooking viewBooking;
 	private final CancelBooking cancelBooking;
+	private final WithdrawRequest withdrawRequest;
 	private final CurrentCustomer currentCustomer;
 
 	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking,
-			CurrentCustomer currentCustomer) {
+			WithdrawRequest withdrawRequest, CurrentCustomer currentCustomer) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
 		this.cancelBooking = cancelBooking;
+		this.withdrawRequest = withdrawRequest;
 		this.currentCustomer = currentCustomer;
 	}
 
@@ -56,8 +68,7 @@ class BookingController {
 	ResponseEntity<?> view(@PathVariable String code) {
 		return viewBooking.byCode(code)
 				.<ResponseEntity<?>>map(detail -> ResponseEntity.ok(BookingDetailView.of(detail)))
-				.orElseGet(() -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING",
-						"No booking with this code."));
+				.orElseGet(() -> error(HttpStatus.NOT_FOUND, UNKNOWN_CODE, UNKNOWN_CODE_DETAIL));
 	}
 
 	/**
@@ -70,10 +81,30 @@ class BookingController {
 		return switch (cancelBooking.cancel(code)) {
 			case CancelOutcome.Cancelled cancelled ->
 					ResponseEntity.ok(CancellationView.of(code, cancelled));
-			case CancelOutcome.NotFound ignored -> error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING",
-					"No booking with this code.");
+			case CancelOutcome.NotFound ignored ->
+					error(HttpStatus.NOT_FOUND, UNKNOWN_CODE, UNKNOWN_CODE_DETAIL);
 			case CancelOutcome.NotCancellable ignored -> error(HttpStatus.CONFLICT, "NOT_CANCELLABLE",
 					"This booking can no longer be cancelled.");
+		};
+	}
+
+	/**
+	 * Withdraw a pending booking request by its code (issue #123). Like cancel, the code is the whole
+	 * authorization (invariant #7) and there is no request body. {@code Withdrawn}→200,
+	 * {@code NO_SUCH_BOOKING}→404, {@code NOT_PENDING}→409. No money is involved — a pending request
+	 * has no PaymentIntent on record — so there is no refund to report, only the new terminal status.
+	 */
+	@PostMapping("/{code}/withdraw")
+	ResponseEntity<?> withdraw(@PathVariable String code) {
+		return switch (withdrawRequest.withdraw(code)) {
+			case WithdrawOutcome.Withdrawn ignored ->
+					ResponseEntity.ok(WithdrawalView.of(code));
+			case WithdrawOutcome.Rejected rejected -> switch (rejected) {
+				case NO_SUCH_BOOKING ->
+						error(HttpStatus.NOT_FOUND, UNKNOWN_CODE, UNKNOWN_CODE_DETAIL);
+				case NOT_PENDING -> error(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
+						"This request is no longer waiting for the venue, so it can't be withdrawn.");
+			};
 		};
 	}
 

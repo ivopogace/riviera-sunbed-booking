@@ -28,6 +28,7 @@ function detail(
     bookingDate: '2026-12-01',
     amount: { minorUnits: 4500, currency: 'EUR' },
     cancellable: status === 'CONFIRMED',
+    withdrawable: status === 'PENDING_REQUEST',
     beforeCutoff: true,
     refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
     refundedAmount: null,

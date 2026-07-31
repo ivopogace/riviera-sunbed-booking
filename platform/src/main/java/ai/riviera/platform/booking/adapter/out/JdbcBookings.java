@@ -221,6 +221,25 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest>
+			withdrawPendingRequest(String code) {
+		// One statement is the whole decision — no read-then-write window (contract: the port).
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :withdrawn
+				WHERE code = :code AND status = :pending
+				RETURNING id, set_id, booking_date
+				""")
+				.param("withdrawn", BookingStatus.WITHDRAWN.name())
+				.param("code", code)
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.WithdrawnRequest(
+						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
+	}
+
+	@Override
 	public Optional<RequestSnapshot> requestSnapshot(
 			long bookingId, VenueId venueId) {
 		// Venue-scoped: a foreign venue's booking reads as absent (invariant #13).

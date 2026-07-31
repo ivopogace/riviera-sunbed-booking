@@ -10,11 +10,12 @@ describe('booking-status presentation metadata (shared chip source)', () => {
     ['CANCELLED', 'Cancelled', 'chip--cancelled', 'Paid'],
     ['COMPLETED', 'Completed', 'chip--completed', 'Paid'],
     ['NO_SHOW', 'No-show', 'chip--no-show', 'Paid'],
+    ['WITHDRAWN', 'Withdrawn', 'chip--withdrawn', 'Amount'],
   ])('maps %s to the design label/chip/amount', (status, label, chip, amount) => {
     expect(metaFor(status)).toEqual({ label, chip, amount });
   });
 
-  it('covers exactly the 8 #98 statuses (exhaustive — a 9th status is one row here)', () => {
+  it('covers exactly the 9 lifecycle statuses (exhaustive — a 10th is one row here)', () => {
     expect(Object.keys(STATUS_META).sort()).toEqual([
       'AWAITING_PAYMENT',
       'CANCELLED',
@@ -24,6 +25,7 @@ describe('booking-status presentation metadata (shared chip source)', () => {
       'EXPIRED',
       'NO_SHOW',
       'PENDING_REQUEST',
+      'WITHDRAWN',
     ]);
   });
 

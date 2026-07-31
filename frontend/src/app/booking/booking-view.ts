@@ -22,11 +22,13 @@ import { BookingService } from './booking.service';
  * text, not colour alone (WCAG AA).
  *
  * <p>Request-to-Book (issue #98) status panels: `PENDING_REQUEST` shows the venue's response
- * deadline (no withdraw control — guest request-withdraw is backend #123, not yet shipped);
+ * deadline and offers a two-step **Withdraw request** (#123) — the same confirm-then-act idiom as
+ * cancel, but with no refund to state, because a pending request was never charged; the server's
+ * `withdrawable` flag gates it, never a status check here;
  * `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
- * `DECLINED`/`EXPIRED` explain the terminal, no-charge outcome.
+ * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome.
  */
 @Component({
   selector: 'app-booking-view',
@@ -102,8 +104,56 @@ import { BookingService } from './booking.service';
                   They have until <strong>{{ deadlineLabel(deadline) }}</strong> to respond.
                 </p>
               }
-              <!-- Withdraw request slot: guest request-withdraw is backend issue #123 and not yet
-                   shipped, so no control is rendered here. Wire the action when #123 lands. -->
+              @if (b.withdrawable && !withdrawn()) {
+                <div class="withdraw">
+                  @if (confirmingWithdraw()) {
+                    <p class="confirm-q">Withdraw this request? This can’t be undone.</p>
+                    <div class="actions">
+                      <button
+                        #withdrawConfirmBtn
+                        type="button"
+                        class="btn-danger"
+                        [disabled]="withdrawing()"
+                        (click)="confirmWithdraw()"
+                        data-testid="confirm-withdraw"
+                      >
+                        {{ withdrawing() ? 'Withdrawing…' : 'Confirm withdrawal' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-outline"
+                        [disabled]="withdrawing()"
+                        (click)="keepRequest()"
+                      >
+                        Keep request
+                      </button>
+                    </div>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn-outline danger"
+                      (click)="startWithdraw()"
+                      data-testid="withdraw-request"
+                    >
+                      Withdraw request
+                    </button>
+                  }
+                </div>
+              }
+
+            </section>
+          }
+          @case ('WITHDRAWN') {
+            <section
+              class="banner banner--withdrawn"
+              data-testid="request-withdrawn"
+              aria-labelledby="request-state-title"
+            >
+              <h2 id="request-state-title" class="banner-eyebrow">Request withdrawn</h2>
+              <p class="banner-body">
+                You withdrew this request, so the spot is free for other guests again. You
+                haven’t been charged — pick another set or date to book again.
+              </p>
             </section>
           }
           @case ('DECLINED') {
@@ -149,6 +199,15 @@ import { BookingService } from './booking.service';
             <div class="row"><dt>Refunded</dt><dd data-testid="refunded-amount">{{ formatMoney(b.refundedAmount) }}</dd></div>
           }
         </dl>
+
+        <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
+        <p class="result" role="status" aria-live="polite" data-testid="withdraw-result">
+          @if (withdrawn()) {
+            Request withdrawn. The spot is free for other guests again.
+          } @else if (withdrawFailed()) {
+            We couldn’t withdraw the request. Please try again.
+          }
+        </p>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
         <p class="result" role="status" aria-live="polite" data-testid="cancel-result">
@@ -211,8 +270,14 @@ export class BookingView {
   protected readonly cancelling = signal(false);
   protected readonly cancelFailed = signal(false);
   protected readonly cancellation = signal<Cancellation | undefined>(undefined);
+  protected readonly confirmingWithdraw = signal(false);
+  protected readonly withdrawing = signal(false);
+  protected readonly withdrawFailed = signal(false);
+  protected readonly withdrawn = signal(false);
 
   private readonly confirmButton = viewChild<ElementRef<HTMLButtonElement>>('confirmBtn');
+  private readonly withdrawConfirmButton =
+    viewChild<ElementRef<HTMLButtonElement>>('withdrawConfirmBtn');
 
   private code = '';
 
@@ -234,6 +299,10 @@ export class BookingView {
       this.cancelling.set(false);
       this.cancelFailed.set(false);
       this.cancellation.set(undefined);
+      this.confirmingWithdraw.set(false);
+      this.withdrawing.set(false);
+      this.withdrawFailed.set(false);
+      this.withdrawn.set(false);
       if (this.code) {
         this.load();
       } else {
@@ -244,6 +313,11 @@ export class BookingView {
     effect(() => {
       if (this.confirming()) {
         this.confirmButton()?.nativeElement.focus();
+      }
+    });
+    effect(() => {
+      if (this.confirmingWithdraw()) {
+        this.withdrawConfirmButton()?.nativeElement.focus();
       }
     });
   }
@@ -299,6 +373,35 @@ export class BookingView {
       error: () => {
         this.cancelFailed.set(true);
         this.cancelling.set(false);
+      },
+    });
+  }
+
+  protected startWithdraw(): void {
+    this.confirmingWithdraw.set(true);
+  }
+
+  protected keepRequest(): void {
+    this.confirmingWithdraw.set(false);
+  }
+
+  /**
+   * Retract a still-pending request (#123). No refund to report — the venue never accepted, so
+   * nothing was charged; the reload flips the chip to `Withdrawn` without a page reload.
+   */
+  protected confirmWithdraw(): void {
+    this.withdrawing.set(true);
+    this.withdrawFailed.set(false);
+    this.bookings.withdraw(this.code).subscribe({
+      next: () => {
+        this.withdrawn.set(true);
+        this.confirmingWithdraw.set(false);
+        this.withdrawing.set(false);
+        this.load(true);
+      },
+      error: () => {
+        this.withdrawFailed.set(true);
+        this.withdrawing.set(false);
       },
     });
   }
