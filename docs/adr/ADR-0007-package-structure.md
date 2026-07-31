@@ -20,6 +20,11 @@ The per-module convention today is a fixed seven-package shape:
 It is **over-built for thin modules** and applied uniformly regardless of a module's weight.
 Two independent reads of the actual source agree on the facts:
 
+> *Decision-time snapshot (2026-07-01), not maintained: this table is the evidence the
+> decision was made on. It has since drifted — e.g. `customer` graduated to a full module at
+> S2 (#111) and now has `spi/`; modules added later (`operator`, `notification`, `shared`)
+> are absent. The current tree is described in `CLAUDE.md`. (Dating note added per #319.)*
+
 | Module | Files | LOC | `domain/` | `api/` | `spi/` | Application service? |
 |---|---|---|---|---|---|---|
 | `booking` | 61 | 2426 | yes | yes | no | yes — 8 services, two-phase reserve/collect saga |

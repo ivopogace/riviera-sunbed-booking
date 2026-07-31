@@ -425,6 +425,19 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
   });
 
+  it('carries the legal links in the shared footer, opening in a new tab (#101 Slice 3)', () => {
+    const { el } = shell();
+    const privacy = el.querySelector<HTMLAnchorElement>('.riv-footer a[href="/legal/privacy"]');
+    const terms = el.querySelector<HTMLAnchorElement>('.riv-footer a[href="/legal/terms"]');
+    expect(privacy?.textContent).toContain('Privacy');
+    expect(terms?.textContent).toContain('Terms');
+    // New tab: in-app nav would unmount /booking/pay's Payment Element (see app.html footer note).
+    for (const link of [privacy, terms]) {
+      expect(link?.getAttribute('target')).toBe('_blank');
+      expect(link?.getAttribute('rel')).toContain('noopener');
+    }
+  });
+
   it('suppresses the tourist header/footer chrome on operator-console routes (#170, AC-7)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
@@ -500,6 +513,9 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'booking/pay',
     'booking/requested',
     'booking/:code',
+    // #101 Slice 3: the legal pages — new glass routes, born un-legacied.
+    'legal/privacy',
+    'legal/terms',
   ];
 
   /**

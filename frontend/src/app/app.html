@@ -256,7 +256,12 @@
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
   <footer class="riv-footer">
-    <div class="riv-footer-inner">© Riviera Sunbed Booking</div>
+    <!-- New tab: in-app nav would unmount /booking/pay's Payment Element or swap an admin into tourist chrome (#462). -->
+    <div class="riv-footer-inner">
+      © Riviera Sunbed Booking ·
+      <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
+      <a class="underline" href="/legal/terms" target="_blank" rel="noopener">Terms</a>
+    </div>
   </footer>
   }
 
