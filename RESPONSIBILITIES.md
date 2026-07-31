@@ -133,7 +133,13 @@ what a consumer actually needs and keeps `BookingStatus` internal.
   hold a PaymentIntent or a webhook). Since #404 I do own the **bounded executor** my post-commit
   refund listener drains on — that is wiring for *my* driving adapter, not gateway knowledge: I still
   only call `payment.api.RefundPort` and never learn which gateway is behind it. `payment` must not
-  host it; it does not know it is being called asynchronously, and must not have to
+  host it; it does not know it is being called asynchronously, and must not have to. Since **#454** I
+  also own the ADMIN **refund-outbox re-drive** (`GET`/`POST /api/admin/refund-outbox`) — the retry
+  lever for what the registry still owes *my* refund listener, scoped to that listener's **exact id**
+  (an allowlist of one, never the `booking` package prefix, which would sweep `PaymentEventListener`'s
+  payment→confirm spine — `RefundOutboxScopeIT`). Naming which listener is "the refund" is my
+  knowledge, not `notification`'s (its mail outbox is deliberately scoped to its own listeners) and
+  not `payment`'s (it executes refunds; *when to re-ask* is the caller's call)
 - Computing the payout or commission → **`payout`** (my `BookingConfirmed` event
   *triggers* accrual; I don't do the math)
 - The venue map, pricing, or pool rules → **`venue`**

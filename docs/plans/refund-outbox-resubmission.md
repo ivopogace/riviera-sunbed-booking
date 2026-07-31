@@ -54,11 +54,11 @@ addendum.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given outstanding publications targeted at the refund listener, when the
+- [x] **AC-1:** Given outstanding publications targeted at the refund listener, when the
   resubmission port is invoked, then every one of them is handed back to the registry for
   delivery and the outcome reports how many. *Pinned by:*
   `RefundResubmissionServiceTest.resubmitsEveryOutstandingRefundPublication`
-- [ ] **AC-2 (the issue's revised AC, verbatim in intent):** Given one outstanding
+- [x] **AC-2 (the issue's revised AC, verbatim in intent):** Given one outstanding
   refund publication (`BookingCancelled` → `BookingRefundListener`) **and** one
   outstanding `PaymentConfirmed` publication (→ `PaymentEventListener`) **and** the same
   `BookingCancelled`'s outstanding payout-reversal and cancellation-mail publications,
@@ -69,7 +69,7 @@ addendum.
   predicate skipped (#405's R-9: the framework silently skips a malformed row exactly as
   it skips an out-of-scope one). *Pinned by:*
   `RefundOutboxScopeIT.resubmitsTheRefundWithoutTouchingAnyOtherListener`
-- [ ] **AC-3:** The scope constant is pinned **two levels** (#405's R-6) through one
+- [x] **AC-3:** The scope constant is pinned **two levels** (#405's R-6) through one
   shared fixture, `BookingListenerIds.REFUND`, derived from the class literals
   (compile-safe against a rename): a unit test pins the production constant against the
   fixture, and the existing `RefundBulkheadIT.keepsTheListenerIdUnchanged` — rewired from
@@ -77,34 +77,34 @@ addendum.
   running registry writes. *Pinned by:*
   `RefundOutboxScopeTest.pinsTheConstantAgainstTheListenersRealId` +
   `RefundBulkheadIT.keepsTheListenerIdUnchanged`
-- [ ] **AC-4:** Given a resubmission has just run, when a second invocation arrives
+- [x] **AC-4:** Given a resubmission has just run, when a second invocation arrives
   concurrently **or** inside the cooldown window, then it sweeps nothing and reports
   `ALREADY_RUNNING` / `COOLING_DOWN` rather than a success that moved nothing. *Pinned
   by:* `RefundResubmissionServiceTest.refusesAConcurrentInvocation` +
   `.refusesASecondInvocationInsideTheCooldown`
-- [ ] **AC-5:** Given the service has just been constructed (a deploy has just fired the
+- [x] **AC-5:** Given the service has just been constructed (a deploy has just fired the
   restart republication), when an admin invokes resubmission immediately, then it is
   refused as `COOLING_DOWN` — the boot republish counts as sweep zero (#405's R-3).
   *Pinned by:*
   `RefundResubmissionServiceTest.startsCoolingDownAtBootSoAClickCannotRaceTheRestartRepublish`
-- [ ] **AC-6:** Given an anonymous caller on either refund-outbox endpoint, then `401`;
+- [x] **AC-6:** Given an anonymous caller on either refund-outbox endpoint, then `401`;
   given an authenticated non-admin (`OPERATOR` or `CUSTOMER`), then `403` — before any
   resubmission happens. *Pinned by:*
   `AdminRefundOutboxControllerTest.operatorAndCustomerSessionsAreForbiddenOnBothEndpoints`
   + `.anonymousIsUnauthorizedOnBothEndpoints`
-- [ ] **AC-7:** Given any resubmission, when it logs or responds, then it carries counts
+- [x] **AC-7:** Given any resubmission, when it logs or responds, then it carries counts
   and an outcome token only — no booking id list, no booking code (invariant #7; the
   serialized payloads in `event_publication` are exactly where booking ids live). *Pinned
   by:* `RefundResubmissionServiceTest.logsACountAndNoBookingIdentifier` + the response
   records' shape in `AdminRefundOutboxControllerTest`
-- [ ] **AC-8:** Given a refund publication the registry has already completed (archived
+- [x] **AC-8:** Given a refund publication the registry has already completed (archived
   under `completion-mode=archive`), when the lever is pressed, then no second gateway
   call results. *Pinned by:* `RefundOutboxScopeIT.leavesCompletedPublicationsAlone`
-- [ ] **AC-9:** Given a cooldown property outside its bounds (non-positive, sub-floor, or
+- [x] **AC-9:** Given a cooldown property outside its bounds (non-positive, sub-floor, or
   oversized), when the context binds it, then boot fails with a message naming the
   failure mode; the shipped default binds. *Pinned by:*
   `RefundResubmissionPropertiesTest`
-- [ ] **AC-10 (the issue's AC-1 + AC-4):** The decision (lever now, scheduler deferred
+- [x] **AC-10 (the issue's AC-1 + AC-4):** The decision (lever now, scheduler deferred
   with a stated trigger, restart-only rejected — including the persistently-failing
   gateway answer) lands in the substrate with this slice, and the retry horizon is
   restated **wherever the old one was**: `docs/runbooks/observability.md`'s refund rows
@@ -141,25 +141,26 @@ operational practice, not a surface; the runbook rows that describe it are AC-10
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The lever replays money-path work beyond the refund — `PaymentEventListener` (invariant #8), `payout`'s reversal (#9), the cancellation mail | **certain if scoped by package prefix or event type** | high | Exact listener-id allowlist of one; AC-2's fixture holds an outstanding `PaymentConfirmed` *because* a `BookingCancelled`-only fixture never exercises `PaymentEventListener` and would pass green with the scope wrong | this slice | open |
-| R-2 | The scope constant silently stops matching (rename/move → a no-op lever; the V31/#382 failure mode one level up) | med | high | Two-level pinning (AC-3): constant ↔ class-derived id (compile-safe), id ↔ what the live registry writes (`RefundBulkheadIT` rewired to the production constant) | this slice | open |
-| R-3 | A re-drive double-refunds | low | critical | The gateway call is idempotency-keyed `booking-<id>-refund` derived from `BookingId` + operation (`riviera-stripe-payments`; ADR-0009 keeps this under Paysera), so a replay returns the original refund; additionally the v2 registry's `markResubmitted` claim skips a publication whose previous resubmission is in flight | existing design | open — restated, not newly created; the lever adds no risk beyond the restart republish that already exists |
-| R-4 | `ResubmissionOptions` looks like the intended scoping API but reaches only `FAILED` rows — a **shed** refund sits at `PUBLISHED` and would be silently skipped by the very lever #454 names it as a target of | **certain if used** | high | The `Predicate` overload (`processIncompletePublications`), same as `RegistryMailOutbox`; the adapter javadoc records the trap | this slice | open |
-| R-5 | A press seconds after a deploy races the restart republication and reports success while moving nothing | med | low | Cooldown seeded at construction (AC-5, #405's R-3) | this slice | open |
-| R-6 | Full-suite-only failure: the new controller port breaks every `@WebMvcTest` that doesn't stub it (#405's F-1, verbatim) | **high if unstubbed** | med | An inert `RefundResubmission` joins `WebSliceStubs` in the same phase as the controller, not after CI finds it | this slice | open |
-| R-7 | The cooldown is shared bean state; ITs going through it make the **full suite only** go red (`riviera-local-debug` failure class) | med | med | `RefundOutboxScopeIT` drives `RefundOutbox` directly, below the cooldown; the policy is tested against a controllable `Clock`; IT assertions key to this test's own booking ids, deltas not absolutes | this slice | open |
+| R-1 | The lever replays money-path work beyond the refund — `PaymentEventListener` (invariant #8), `payout`'s reversal (#9), the cancellation mail | **certain if scoped by package prefix or event type** | high | Exact listener-id allowlist of one; AC-2's fixture holds an outstanding `PaymentConfirmed` *because* a `BookingCancelled`-only fixture never exercises `PaymentEventListener` and would pass green with the scope wrong | this slice | closed — `RefundOutboxScopeIT.resubmitsTheRefundWithoutTouchingAnyOtherListener`, with the unscoped control |
+| R-2 | The scope constant silently stops matching (rename/move → a no-op lever; the V31/#382 failure mode one level up) | med | high | Two-level pinning (AC-3): constant ↔ class-derived id (compile-safe), id ↔ what the live registry writes (`RefundBulkheadIT` rewired to the shared fixture) | this slice | closed — `RefundOutboxScopeTest` + `RefundBulkheadIT`, both green |
+| R-3 | A re-drive double-refunds | low | critical | The gateway call is idempotency-keyed `booking-<id>-refund` derived from `BookingId` + operation (`riviera-stripe-payments`; ADR-0009 keeps this under Paysera), so a replay returns the original refund; additionally the v2 registry's `markResubmitted` claim skips a publication whose previous resubmission is in flight | existing design | closed — restated in `RefundOutbox`'s javadoc + the runbook; the lever adds no risk beyond the restart republish that already exists |
+| R-4 | `ResubmissionOptions` looks like the intended scoping API but reaches only `FAILED` rows — a **shed** refund sits at `PUBLISHED` and would be silently skipped by the very lever #454 names it as a target of | **certain if used** | high | The `Predicate` overload (`processIncompletePublications`), same as `RegistryMailOutbox`; the adapter javadoc records the trap | this slice | closed — the `Predicate` overload ships; AC-2's shed case is covered by reading *incomplete* |
+| R-5 | A press seconds after a deploy races the restart republication and reports success while moving nothing | med | low | Cooldown seeded at construction (AC-5, #405's R-3) | this slice | closed — `startsCoolingDownAtBootSoAClickCannotRaceTheRestartRepublish` |
+| R-6 | Full-suite-only failure: the new controller port breaks every `@WebMvcTest` that doesn't stub it (#405's F-1, verbatim) | **high if unstubbed** | med | An inert `RefundResubmission` joins `WebSliceStubs` in the same phase as the controller, not after CI finds it | this slice | closed — landed in phase 2; `AdminMailOutboxControllerTest` re-run green alongside |
+| R-7 | The cooldown is shared bean state; ITs going through it make the **full suite only** go red (`riviera-local-debug` failure class) | med | med | `RefundOutboxScopeIT` drives `RefundOutbox` directly, below the cooldown; the policy is tested against a controllable `Clock`; IT assertions key to this test's own booking ids, deltas not absolutes | this slice | closed in design; residual full-suite verification is the push's CI run |
 | R-8 | A permanently-failing refund (the issue's AC-1 case) is made worse | n/a | — | It cannot be: the lever is human-pressed, bounded by cooldown, and a re-driven failure just leaves the publication outstanding again — the same durable state, with `riviera.refunds.failed` still counting. The persistent case (e.g. insufficient Stripe balance) is fixed by a human topping up **then** pressing — which is the sequencing argument for building the button first | issue decision | closed — recorded in the issue's decision comment + AC-10 lands it in the substrate |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `spring-modulith-events-core` is already on the compile classpath
-  (added project-wide by #405), so `booking`'s new `adapter/out` can pattern-match
-  `TargetEventPublication` with no build change. — *Owner:* this slice · *Resolves by:*
-  phase 0 compile.
-- **Assumption:** the cooldown bounds and default (60s, floor 5s, ceiling 24min) transfer
-  from mail unchanged — both levers throttle a sweep against a gateway/relay that fails
-  fast in an outage. — *Owner:* this slice · *Resolves by:* phase 1; the value is
-  env-tunable (`RIVIERA_REFUND_RESUBMIT_COOLDOWN_MS`) either way.
+*(none open)*
+
+### Resolved
+
+- **`spring-modulith-events-core` was already on the compile classpath** (added
+  project-wide by #405) — phase 0 compiled with no build change (`fa4876d`).
+- **The cooldown bounds and default (60s, floor 5s, ceiling 24min) transferred from mail
+  unchanged** — both levers throttle a sweep against a gateway/relay that fails fast in
+  an outage; env-tunable via `RIVIERA_REFUND_RESUBMIT_COOLDOWN_MS` (`74dedde`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -252,11 +253,10 @@ rewrite is due.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 3 done, phase 4 next)`
+**Stage pointer:** `implement done — PR ready-for-review; review gate + Sonar gate next`
 
-**Next action:** Phase 4 — substrate docs (runbook retry horizon, `RESPONSIBILITIES.md`,
-`CLAUDE.md`), docs-freshness sweep, close-out; then merge `origin/main`, mark PR #459
-ready, run the review + Sonar gates.
+**Next action:** Merge latest `origin/main`, mark PR #459 ready for review, run the
+review gate (`/code-review` per the invocation ladder) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -397,11 +397,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `RESPONSIBILITIES.md`, `CLAUDE.md`, `docs/runbooks/observability.md`, this doc
 
-- [ ] **Steps 1–4:** AC-10 — the runbook's refund retry-horizon claims name the lever;
-  `RESPONSIBILITIES.md` + `CLAUDE.md` one-clause updates; `riviera-docs-freshness` sweep
-  over `origin/main...HEAD`.
-- [ ] **Steps 5–7:** audit, commit, finalize the execution status **in this PR** (stage
-  pointer DONE, phases ✅, risks closed, `merged via PR #NN`).
+- [x] **Steps 1–4:** AC-10 — the runbook's refund retry-horizon claims name the lever
+  (the shed-row clause and the §"the lever" paragraph, which also lands the
+  persistently-failing-gateway answer from the decision comment);
+  `RESPONSIBILITIES.md` booking Not-My-Job gains the #454 ownership statement;
+  `CLAUDE.md` booking row gains one clause; the refund-bulkhead comment in
+  `application.properties` no longer says restart-only.
+- [x] **Steps 5–7:** `riviera-docs-freshness` ran over `origin/main...HEAD` — 4 stale
+  restart-only claims found and patched (all listed above); the counting sweep (second
+  admin outbox lever, second cooldown) found no stale uniqueness claims; the #428
+  reversal's "until the next restart's republish" (`observability.md:45`) was verified
+  **still true** — the new lever deliberately cannot reach it. Committed; execution
+  status finalized in this PR.
 
 ---
 
@@ -415,29 +422,29 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1, AC-4, AC-5, AC-7, AC-9:** `gradle --no-daemon --console=plain test --tests "*RefundResubmission*"` → PASS.
-- [ ] **AC-2, AC-8:** `--tests "*RefundOutboxScopeIT*"` (Docker) → PASS.
-- [ ] **AC-3:** `--tests "*RefundOutboxScopeTest*" --tests "*RefundBulkheadIT*"` → PASS.
-- [ ] **AC-6:** `--tests "*AdminRefundOutbox*"` → PASS.
-- [ ] **AC-10:** docs-freshness sweep run; runbook claims updated.
+- [x] **AC-1, AC-4, AC-5, AC-7, AC-9:** `gradle --no-daemon --console=plain test --tests "*RefundResubmission*"` → PASS.
+- [x] **AC-2, AC-8:** `--tests "*RefundOutboxScopeIT*"` (Docker) → PASS.
+- [x] **AC-3:** `--tests "*RefundOutboxScopeTest*" --tests "*RefundBulkheadIT*"` → PASS.
+- [x] **AC-6:** `--tests "*AdminRefundOutbox*"` → PASS.
+- [x] **AC-10:** docs-freshness sweep run; runbook claims updated.
 - [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A with reasoning.
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant (invariant #11).
-- [ ] **Payment/payout** filled — replay-safety stated, AC-2 proves the scope (invariants #8, #9).
-- [ ] Refund policy untouched; retry horizon restated (invariant #10).
-- [ ] Timezone: the cooldown reads the injected `Clock`, UTC `Instant` only (invariant #6).
-- [ ] No booking code or id list in any log line or response (invariant #7).
-- [ ] No Flyway migration needed; verified no schema change (invariant #12).
-- [ ] **Frontend** N/A upheld.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A with reasoning.
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant (invariant #11).
+- [x] **Payment/payout** filled — replay-safety stated, AC-2 proves the scope (invariants #8, #9).
+- [x] Refund policy untouched; retry horizon restated (invariant #10).
+- [x] Timezone: the cooldown reads the injected `Clock`, UTC `Instant` only (invariant #6).
+- [x] No booking code or id list in any log line or response (invariant #7).
+- [x] No Flyway migration needed; verified no schema change (invariant #12).
+- [x] **Frontend** N/A upheld.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1.
