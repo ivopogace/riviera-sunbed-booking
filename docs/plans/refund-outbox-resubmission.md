@@ -252,15 +252,15 @@ rewrite is due.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 0 done, phase 1 next)`
+**Stage pointer:** `implement (phase 1 done, phase 2 next)`
 
-**Next action:** Phase 1 — `RefundResubmissionServiceTest` red (AC-1, AC-4, AC-5, AC-7),
-then the service + properties.
+**Next action:** Phase 2 — `AdminRefundOutboxControllerTest` red (AC-6 + wire shapes),
+then the controller + `SecurityConfig` matchers + the `WebSliceStubs` stub.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | ✅ | (this commit) |
-| 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | | |
+| 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | ✅ | `fa4876d` |
+| 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | ✅ | (this commit) |
 | 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | | |
 | 3 — Money-path scoping IT (AC-2, AC-8) | | |
 | 4 — Substrate docs + close-out | | |
@@ -349,13 +349,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `RefundResubmissionServiceTest.java`, `RefundResubmissionPropertiesTest.java`
 · Modify `application.properties`
 
-- [ ] **Steps 1–4:** red (AC-1, AC-4, AC-5, AC-7, AC-9) → implement (the
+- [x] **Steps 1–4:** red (30 compile errors, tests written first) → implement (the
   `MailResubmissionService` shape: `tryLock` + cooldown seeded at construction; property
   record with floor/ceiling + env placeholder) → green,
-  `--tests "*RefundResubmission*"`.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `feat(#454): guard refund resubmission with single-flight and a cooldown`
-- [ ] **Step 7: Update plan-doc execution status.**
+  `--tests "*RefundResubmission*"` → PASS.
+- [x] **Step 5: Generalization-audit pass** — the shape was audited at phase 0 (see log);
+  no new pattern introduced beyond the deliberate mirror.
+- [x] **Step 6: Commit** — `feat(#454): guard refund resubmission with single-flight and a cooldown`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — ADMIN endpoints + security matchers + WebSliceStubs
 
