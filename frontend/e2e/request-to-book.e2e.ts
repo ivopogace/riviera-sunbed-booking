@@ -155,8 +155,7 @@ test('a guest withdraws their pending request and the spot is freed (#123)', asy
     withdrawn = true;
     return route.fulfill({ json: { code: CODE, status: 'WITHDRAWN' } });
   });
-  // The reload after a successful withdraw must serve the new terminal state, exactly as the
-  // backend would — the chip flips without a page reload.
+  // The post-withdraw reload serves the new terminal state, exactly as the backend would.
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({
       json: withdrawn

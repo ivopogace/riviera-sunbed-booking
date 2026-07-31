@@ -56,6 +56,7 @@ const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['pending', '#fdf5e6', '#8a5410'],
   ['declined', '#faefec', '#8a3a2a'],
   ['expired', '#f0f2f3', '#4f5f67'],
+  ['withdrawn', '#f0eef6', '#5c5470'],
 ];
 const BANNER_BODY = '#334a52';
 const BANNER_STRONG = '#0a2a33';
@@ -70,8 +71,7 @@ describe('Booking view — status banners (solid fills, WCAG AA, issue #138)', (
 
 describe('Booking view — withdraw prose inside the pending banner (#123)', () => {
   it('the confirm question and result line reuse the banner ink, so they meet AA on its fill', () => {
-    // .banner .confirm-q / .banner .result are pinned to BANNER_BODY rather than the themed card
-    // tokens: a themed ink over a FIXED banner fill would drift between the two themes.
+    // Pinned to BANNER_BODY: a themed ink over a FIXED banner fill drifts between themes.
     const pendingFill = BANNERS.find(([name]) => name === 'pending')![1];
     expect(contrastRatio(BANNER_BODY, pendingFill)).toBeGreaterThanOrEqual(AA_NORMAL);
   });

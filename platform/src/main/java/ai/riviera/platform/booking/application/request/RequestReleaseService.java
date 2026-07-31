@@ -18,9 +18,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * and <strong>withdraw</strong> (the guest retracted it — issue #123). Each is a guarded
  * {@code UPDATE … RETURNING} transition plus the
  * {@code availability.release}, committing together — a booking is never left
- * {@code DECLINED}/{@code EXPIRED} with its set still claimed (invariant #2), and the
- * {@code RETURNING} makes a lost race (concurrent decline, accept, or sweep) a 0-row no-op, so
- * the set is released exactly once. The guards are mutually exclusive by predicate.
+ * {@code DECLINED}/{@code EXPIRED}/{@code WITHDRAWN} with its set still claimed (invariant #2), and
+ * the {@code RETURNING} makes a lost race (concurrent decline, withdraw, accept, or sweep) a 0-row
+ * no-op, so the set is released exactly once.
+ *
+ * <p><strong>What makes the legs exclusive is the row lock, not the predicates.</strong> Only
+ * <em>accept</em> is disjoint from expire by predicate ({@code request_expires_at > now} vs
+ * {@code <= now}). Decline and withdraw are guarded on {@code status} alone — deliberately, so an
+ * overdue-but-unswept request can still be declined or retracted — so on such a row their
+ * {@code WHERE} clauses and expire's all match. Whichever {@code UPDATE} reaches the row first
+ * commits; the others re-evaluate against the new status, match 0 rows, and release nothing.
  *
  * <p>A separate {@code @Transactional} bean (not private methods of the callers) so the
  * transaction proxy is real — the accept path stays deliberately non-transactional around its

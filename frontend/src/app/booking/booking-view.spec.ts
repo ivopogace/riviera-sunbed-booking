@@ -196,6 +196,34 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
+  it('keeps the withdrawal confirmation visible after the status flips to WITHDRAWN', async () => {
+    // The live region must survive the post-withdraw reload: the guest reads the outcome AFTER the
+    // status changes, and an aria-live node that unmounts on success announces nothing durable.
+    const fixture = await render(
+      stubService({
+        detail: PENDING,
+        detailAfterCancel: { ...PENDING, status: 'WITHDRAWN', withdrawable: false },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="withdraw-result"]')?.textContent).toContain(
+      'Request withdrawn',
+    );
+    // ...and the terminal state explains itself, like DECLINED and EXPIRED do.
+    expect(host.querySelector('[data-testid="request-withdrawn"]')?.textContent).toContain(
+      'haven’t been charged',
+    );
+    await expectNoAxeViolations(host);
+  });
+
   it('asks before withdrawing, and "Keep request" backs out without calling the API', async () => {
     const withdrawCalls: string[] = [];
     const fixture = await render(stubService({ detail: PENDING, withdrawCalls }));

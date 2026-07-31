@@ -176,8 +176,7 @@ class RateLimitFilterTest {
 	}
 
 	private ResultActions withdrawFromIp(String ip, String code) throws Exception {
-		// No csrf() on purpose: the path is CSRF-exempt like cancel, so an allowed attempt reaches the
-		// controller and lands as the stubbed 404 — a 429 is unambiguously the limiter.
+		// No csrf() on purpose (the path is exempt): an allowed attempt is a 404, a 429 is the limiter.
 		return mvc.perform(post("/api/bookings/{code}/withdraw", code).with(fromIp(ip)));
 	}
 

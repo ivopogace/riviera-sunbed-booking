@@ -94,6 +94,7 @@ h1 {
 .banner--pending { background: #fdf5e6; border: 1px solid #f3e3bf; }
 .banner--declined { background: #faefec; border: 1px solid #eed6ce; }
 .banner--expired { background: #f0f2f3; border: 1px solid #dde1e3; }
+.banner--withdrawn { background: #f0eef6; border: 1px solid #ddd8e8; }
 
 .banner-eyebrow {
   margin: 0;
@@ -106,6 +107,7 @@ h1 {
 .banner--pending .banner-eyebrow { color: #8a5410; }
 .banner--declined .banner-eyebrow { color: #8a3a2a; }
 .banner--expired .banner-eyebrow { color: #4f5f67; }
+.banner--withdrawn .banner-eyebrow { color: #5c5470; }
 
 .banner-body {
   margin: 6px 0 0;
@@ -209,9 +211,7 @@ h1 {
 .withdraw {
   margin-top: 14px;
 }
-// The banners carry FIXED light fills, so text inside them uses the banner's solid ink rather than
-// the themed card tokens — a themed ink over a fixed fill is exactly how contrast drifts between
-// the two themes. Same value (and same AA proof) as .banner-body.
+// Banner fills are FIXED, so text inside them takes the banner's solid ink, not the themed tokens.
 .banner .confirm-q,
 .banner .result {
   color: #334a52;

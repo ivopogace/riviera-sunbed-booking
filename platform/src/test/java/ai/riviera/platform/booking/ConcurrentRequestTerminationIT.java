@@ -32,18 +32,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The guest withdraw (issue #123) at the SQL seam against real Postgres — the properties a mocked
  * {@code Bookings} cannot prove.
  *
- * <p><strong>The race (AC-4).</strong> Withdraw and the expiry sweep are the one pair of terminal
- * legs whose guards are NOT disjoint by predicate: withdraw is deliberately undeadlined, so on an
- * overdue row both {@code WHERE} clauses match. What separates them is the row lock — whichever
- * {@code UPDATE} reaches the row first commits, and the other re-evaluates its guard against the new
- * status, matches 0 rows, and releases nothing. Exactly one terminal state, exactly one release
- * (invariant #2).
+ * <p><strong>The race (AC-4).</strong> Withdraw's guard is {@code status} alone — deliberately
+ * undeadlined, like decline — so on an overdue row it and the expiry sweep's {@code WHERE} clauses
+ * both match. They are therefore separated by the row lock rather than by predicate (the same
+ * argument decline and the sweep have always relied on; only <em>accept</em> is predicate-disjoint
+ * from expire). Whichever {@code UPDATE} reaches the row first commits, and the other re-evaluates
+ * its guard against the new status, matches 0 rows, and releases nothing — exactly one terminal
+ * state, exactly one release (invariant #2).
+ *
+ * <p>The background {@code RequestSweepScheduler} is pushed far out ({@code initial-delay=PT2H}):
+ * this IT seeds OVERDUE pending requests and races them deliberately, so a scheduler tick from the
+ * cached test context could terminate a fixture before the code under test does (the #98 lesson).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-// Push the background RequestSweepScheduler far out: this IT seeds OVERDUE pending requests and
-// races them deliberately, so a scheduler tick from the cached test context could terminate a
-// fixture before the code under test does and flake the assertions (the #98 lesson).
 @SpringBootTest(properties = "booking.request.initial-delay=PT2H")
 class ConcurrentRequestTerminationIT {
 
@@ -151,8 +153,7 @@ class ConcurrentRequestTerminationIT {
 		String code = uniqueCode("WDLATE");
 		long bookingId = insertRequest(code, date, Instant.now().minusSeconds(30));
 
-		// Not deadline-guarded, matching decline: the guest may still retract a request the sweep has
-		// not reached yet. Same release, different terminal label.
+		// Not deadline-guarded, matching decline — the sweep simply has not reached it yet.
 		assertInstanceOf(WithdrawOutcome.Withdrawn.class, withdrawRequest.withdraw(code));
 		assertEquals("WITHDRAWN", statusOf(bookingId));
 		assertEquals(0L, heldRows(date));
@@ -166,8 +167,7 @@ class ConcurrentRequestTerminationIT {
 
 		assertInstanceOf(WithdrawOutcome.Withdrawn.class, withdrawRequest.withdraw(code));
 
-		// The whole point of the slice: the (set, date) is free for the next buyer at once, rather
-		// than staying held until the venue answers or the deadline passes.
+		// The point of the slice: free for the next buyer at once, not at the venue's convenience.
 		assertEquals(0L, heldRows(date));
 		assertEquals(1, jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :date, 'BOOKED_ONLINE') ON CONFLICT DO NOTHING")

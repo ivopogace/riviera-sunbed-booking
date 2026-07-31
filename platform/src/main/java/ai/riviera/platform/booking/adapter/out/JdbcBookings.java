@@ -223,10 +223,7 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest>
 			withdrawPendingRequest(String code) {
-		// Guarded code-keyed withdraw (issue #123): the code IS the authorization (invariant #7), so
-		// the statement is the whole decision — no read-then-write window for a decline/accept/sweep
-		// to slip through. RETURNING yields the row's facts iff THIS statement transitioned it, so the
-		// hold is released exactly once (invariant #2). No deadline guard — see the port.
+		// One statement is the whole decision — no read-then-write window (contract: the port).
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :withdrawn

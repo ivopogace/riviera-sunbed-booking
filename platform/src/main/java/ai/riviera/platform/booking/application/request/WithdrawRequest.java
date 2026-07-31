@@ -10,9 +10,13 @@ package ai.riviera.platform.booking.application.request;
  * cancel use. There is no operator, no venue scope, and therefore no ownership check: the request
  * being withdrawn is by construction the one whose code the caller holds.
  *
- * <p>No money is involved. A pending request has no PaymentIntent (payment-request-on-accept), so
- * there is nothing to refund, nothing accrued to reverse, and no {@code BookingCancelled} to
- * publish. Internal to {@code booking} ({@code application}), not cross-module {@code api/}.
+ * <p>No money is involved: a pending request has no PaymentIntent <strong>on record</strong>
+ * (payment-request-on-accept), so there is nothing to refund, nothing accrued to reverse, and no
+ * {@code BookingCancelled} to publish. "On record" rather than "at all" is the honest claim and the
+ * one that matters — a request reverted by a failed accept ({@code revertAcceptToPending}) may leave
+ * an <em>unregistered</em> residual intent at Stripe, which has no {@code payment} row and so can
+ * never correlate a webhook (invariant #8). Internal to {@code booking} ({@code application}), not
+ * cross-module {@code api/}.
  */
 public interface WithdrawRequest {
 

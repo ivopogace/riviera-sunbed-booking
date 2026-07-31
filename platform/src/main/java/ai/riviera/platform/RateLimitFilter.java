@@ -53,9 +53,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * the booking code is the bearer credential (invariant #7); the {@code 200}/{@code 404} answer is
  * otherwise a brute-force oracle, so this filter caps request volume.
  *
- * <p><strong>Keying.</strong> The per-IP bucket guards all three endpoints (the primary defence
+ * <p><strong>Keying.</strong> The per-IP bucket guards all four endpoints (the primary defence
  * against an enumerator trying many codes from one IP); the per-code bucket additionally guards the
- * two code-keyed endpoints (against hammering a single known code). A request is rejected if
+ * three code-keyed endpoints (against hammering a single known code), which share one budget per
+ * code because they are guesses at the same secret. A request is rejected if
  * <em>either</em> bucket is empty. The per-code limit is configured above the frontend's ~20/30s
  * payment poll so a real payer is never throttled (ADR-0006).
  *
@@ -113,11 +114,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests. Retry later.","code":"RATE_LIMITED"}""";
 
-	// Mirrors the SecurityConfig matchers for the four public booking endpoints: CREATE_PATH is the
-	// exact create POST; VIEW_TEMPLATE the view-by-code GET; CANCEL_TEMPLATE the cancel POST;
-	// WITHDRAW_TEMPLATE the request-withdraw POST (#123). The three code-keyed ones share the per-code
-	// budget deliberately — they are guesses at the SAME secret, so separate budgets would just hand an
-	// attacker three times the attempts against one booking code.
+	// Mirrors the SecurityConfig matchers for the four public booking endpoints (keying: class Javadoc).
 	private static final String CREATE_PATH = "/api/bookings";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
@@ -269,14 +266,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		Instant now = clock.instant();
 		String ip = clientIps.resolve(request);
 
-		// Per-IP: all three endpoints.
+		// Per-IP: all four endpoints.
 		TokenBucket ipBucket = bucketFor(ipBuckets, ip, props.perIp(), now);
 		if (!ipBucket.tryAcquire(now)) {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "ip");
 			return;
 		}
 
-		// Per-code: only the two code-keyed endpoints carry a code.
+		// Per-code: only the three code-keyed endpoints carry a code.
 		if (target.code() != null) {
 			TokenBucket codeBucket = bucketFor(codeBuckets, target.code(), props.perCode(), now);
 			if (!codeBucket.tryAcquire(now)) {
@@ -432,7 +429,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Classify the request in a single pass: {@code null} if it is a CORS preflight or not one of the
-	 * three booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
+	 * four booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
 	 * for create). Computes the path and runs the matcher once, not per check.
 	 */
 	private Target targetOf(HttpServletRequest request) {

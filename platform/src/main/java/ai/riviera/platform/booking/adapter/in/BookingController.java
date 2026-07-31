@@ -92,7 +92,7 @@ class BookingController {
 	 * Withdraw a pending booking request by its code (issue #123). Like cancel, the code is the whole
 	 * authorization (invariant #7) and there is no request body. {@code Withdrawn}→200,
 	 * {@code NO_SUCH_BOOKING}→404, {@code NOT_PENDING}→409. No money is involved — a pending request
-	 * has no PaymentIntent — so there is no refund to report, only the new terminal status.
+	 * has no PaymentIntent on record — so there is no refund to report, only the new terminal status.
 	 */
 	@PostMapping("/{code}/withdraw")
 	ResponseEntity<?> withdraw(@PathVariable String code) {

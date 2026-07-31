@@ -321,7 +321,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | sonar (push 2) | S1192 ×2 — the withdraw leg made `"NO_SUCH_BOOKING"` / its detail the third occurrence in `BookingController` | fixed in `e85cde4` — extracted constants, named for the *situation* (`UNKNOWN_CODE`) so they don't read as a shadow of the `Rejected.NO_SUCH_BOOKING` case label they now sit beside |
+| F-2 | review (bug scan) | **Blocker-ish UX/a11y:** the withdraw live region sat inside `@case ('PENDING_REQUEST')`, so the "Request withdrawn" confirmation unmounted the instant the status flipped to `WITHDRAWN` — the moment it had something to announce. A withdrawn booking also had *no* terminal banner, unlike `DECLINED`/`EXPIRED` | fixed — hoisted the live region out of the `@switch` beside the cancel one, and added the `@case ('WITHDRAWN')` terminal banner + its contrast row. Pinned by `booking-view.spec.ts` `keepsTheWithdrawalConfirmationVisible…` |
+| F-3 | review (prior-PR guidance) | Three new comments claimed a pending request "has no PaymentIntent" — the exact overclaim #98's review item 8 already corrected once. A request reverted by a failed accept *can* leave an unregistered residual intent (this plan's own R-6) | fixed — all now say "no PaymentIntent **on record**", the phrasing already used by `CancelPaymentPort`/`StripePaymentGateway`, with the reason spelled out on `WithdrawRequest` |
+| F-4 | review (git history) | `RateLimitFilter` still said "three"/"two" endpoints in five places after the withdraw made it four/three — the counting-sweep staleness class this repo names explicitly | fixed — all five, plus `targetOf`'s javadoc |
+| F-5 | review (comments) | `RequestReleaseService`'s "the guards are mutually exclusive by predicate" became false, and my own new text called withdraw+expire "the one pair" not disjoint by predicate — **decline is equally undeadlined**, so decline+expire always had the same property | fixed — the javadoc now states plainly that the **row lock**, not the predicates, is what makes the legs exclusive, and that *accept* is the only predicate-disjoint leg. Corrected in `RequestReleaseService`, `ConcurrentRequestTerminationIT` and `CLAUDE.md` |
+| F-6 | review (CLAUDE.md audit) | RV-STYLE-1 — eleven new/expanded multi-line inline comments (the rule: one line, or fold into the exempt doc comment) | fixed — long rationale folded into the adjacent Javadoc/TSDoc (e.g. the withdraw SQL block into the `Bookings` port doc, the sweep-scheduler note into the IT's class doc); the rest trimmed to one line |
 
 ---
 

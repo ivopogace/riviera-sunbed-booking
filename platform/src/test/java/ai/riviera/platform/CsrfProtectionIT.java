@@ -123,8 +123,7 @@ class CsrfProtectionIT {
 
 	@Test
 	void guestWithdrawStaysTokenless() throws Exception {
-		// Same proof as cancel, one path over: an unknown code reaches the domain and is a 404, so the
-		// CSRF exemption held. Without it this would be a 403 and the FE's withdraw button would break.
+		// Same proof as cancel, one path over: a 404 (not a 403) means CSRF did not gate it.
 		mvc.perform(post("/api/bookings/{code}/withdraw", "NOSUCHCODE"))
 				.andExpect(status().isNotFound());
 	}

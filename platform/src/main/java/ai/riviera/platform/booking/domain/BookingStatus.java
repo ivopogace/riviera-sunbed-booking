@@ -15,8 +15,9 @@ package ai.riviera.platform.booking.domain;
  * by later slices.
  *
  * <p>{@link #WITHDRAWN} is deliberately NOT {@link #CANCELLED}: no money was ever collected (a
- * pending request has no PaymentIntent — payment-request-on-accept), so {@code CANCELLED} keeps
- * meaning "a confirmed booking was cancelled", with a refund decision behind it.
+ * pending request has no PaymentIntent on record — payment-request-on-accept), so
+ * {@code CANCELLED} keeps meaning "a confirmed booking was cancelled", with a refund decision
+ * behind it.
  */
 public enum BookingStatus {
 	PENDING_REQUEST,

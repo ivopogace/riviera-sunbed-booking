@@ -7,8 +7,8 @@ import ai.riviera.platform.booking.domain.BookingStatus;
  * new terminal status, and nothing else.
  *
  * <p>Deliberately narrower than its cancel sibling {@link CancellationView}: a withdrawn request
- * never had a PaymentIntent (payment-request-on-accept), so there is no refund amount and no tier to
- * report. Mirrors the FE {@code Withdrawal} type.
+ * never had a PaymentIntent on record (payment-request-on-accept), so there is no refund amount and
+ * no tier to report. Mirrors the FE {@code Withdrawal} type.
  */
 record WithdrawalView(String code, String status) {
 

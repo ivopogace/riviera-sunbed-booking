@@ -382,9 +382,7 @@ class SecurityConfig {
 						// Cancel a booking by its code (U6) — authorized by the code (invariant #7),
 						// stateless/token-less (CSRF-exempt above). The amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
-						// Withdraw a pending request by its code (#123) — same posture as cancel:
-						// authorized by the code (invariant #7), stateless/token-less (CSRF-exempt
-						// above), no body. Throttled on the per-code budget (RateLimitFilter).
+						// Withdraw a pending request (#123) — same posture as cancel above.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/withdraw").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						// Operator self-service password change (#326) — authenticated, OPERATOR-only.

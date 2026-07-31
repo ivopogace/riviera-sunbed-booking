@@ -28,7 +28,7 @@ import { BookingService } from './booking.service';
  * `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
- * `DECLINED`/`EXPIRED` explain the terminal, no-charge outcome.
+ * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome.
  */
 @Component({
   selector: 'app-booking-view',
@@ -141,13 +141,18 @@ import { BookingService } from './booking.service';
                 </div>
               }
 
-              <!-- Live result of a withdrawal, announced to assistive tech. -->
-              <p class="result" role="status" aria-live="polite" data-testid="withdraw-result">
-                @if (withdrawn()) {
-                  Request withdrawn. The spot is free for other guests again.
-                } @else if (withdrawFailed()) {
-                  We couldn’t withdraw the request. Please try again.
-                }
+            </section>
+          }
+          @case ('WITHDRAWN') {
+            <section
+              class="banner banner--withdrawn"
+              data-testid="request-withdrawn"
+              aria-labelledby="request-state-title"
+            >
+              <h2 id="request-state-title" class="banner-eyebrow">Request withdrawn</h2>
+              <p class="banner-body">
+                You withdrew this request, so the spot is free for other guests again. You
+                haven’t been charged — pick another set or date to book again.
               </p>
             </section>
           }
@@ -194,6 +199,15 @@ import { BookingService } from './booking.service';
             <div class="row"><dt>Refunded</dt><dd data-testid="refunded-amount">{{ formatMoney(b.refundedAmount) }}</dd></div>
           }
         </dl>
+
+        <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
+        <p class="result" role="status" aria-live="polite" data-testid="withdraw-result">
+          @if (withdrawn()) {
+            Request withdrawn. The spot is free for other guests again.
+          } @else if (withdrawFailed()) {
+            We couldn’t withdraw the request. Please try again.
+          }
+        </p>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
         <p class="result" role="status" aria-live="polite" data-testid="cancel-result">
