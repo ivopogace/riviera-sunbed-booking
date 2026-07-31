@@ -256,7 +256,11 @@
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
   <footer class="riv-footer">
-    <div class="riv-footer-inner">© Riviera Sunbed Booking</div>
+    <div class="riv-footer-inner">
+      © Riviera Sunbed Booking ·
+      <a class="underline" routerLink="/legal/privacy">Privacy</a> ·
+      <a class="underline" routerLink="/legal/terms">Terms</a>
+    </div>
   </footer>
   }
 

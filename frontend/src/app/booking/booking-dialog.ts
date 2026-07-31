@@ -145,6 +145,14 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 email.
               </p>
             }
+
+            <!-- New tab (not routerLink) so the modal's checkout state survives reading the document. -->
+            <p class="fine" data-testid="legal-agreement">
+              By continuing you agree to our
+              <a class="underline" data-testid="legal-terms-link" href="/legal/terms" target="_blank" rel="noopener">Terms of Service</a>
+              and acknowledge our
+              <a class="underline" data-testid="legal-privacy-link" href="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+            </p>
           }
         </div>
 

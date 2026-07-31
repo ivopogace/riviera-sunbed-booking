@@ -115,6 +115,21 @@ describe('BookingPay', () => {
     expect(comp.state()).toBe('ready');
   });
 
+  it('shows the legal agreement links with the pay action (#101 Slice 3)', async () => {
+    const { fixture } = await setup(new FakeGateway());
+    const el = fixture.nativeElement as HTMLElement;
+
+    const notice = el.querySelector('[data-testid="legal-agreement"]');
+    const terms = notice?.querySelector<HTMLAnchorElement>('[data-testid="legal-terms-link"]');
+    const privacy = notice?.querySelector<HTMLAnchorElement>('[data-testid="legal-privacy-link"]');
+    expect(terms?.getAttribute('href')).toBe('/legal/terms');
+    expect(privacy?.getAttribute('href')).toBe('/legal/privacy');
+    for (const link of [terms, privacy]) {
+      expect(link?.getAttribute('target')).toBe('_blank');
+      expect(link?.getAttribute('rel')).toContain('noopener');
+    }
+  });
+
   it('surfaces a mount/config failure as the error state', async () => {
     const gateway = new FakeGateway();
     gateway.failMount = 'Stripe publishable key is not configured.';

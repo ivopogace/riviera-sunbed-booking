@@ -165,6 +165,13 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
             </dl>
 
             @if (showPayButton()) {
+              <!-- New tab (not routerLink) so the mounted Payment Element survives reading the document. -->
+              <p class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)" data-testid="legal-agreement">
+                By paying you agree to our
+                <a class="underline" data-testid="legal-terms-link" href="/legal/terms" target="_blank" rel="noopener">Terms of Service</a>
+                and acknowledge our
+                <a class="underline" data-testid="legal-privacy-link" href="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+              </p>
               <button
                 type="button"
                 class="btn-primary"

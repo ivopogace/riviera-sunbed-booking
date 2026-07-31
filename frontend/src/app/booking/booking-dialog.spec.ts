@@ -136,6 +136,29 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(host().textContent).toContain('Miramar Beach Club');
   });
 
+  it('shows the legal agreement links on the Review step, opening in a new tab (#101 Slice 3)', async () => {
+    // The agreement belongs to the commitment step — not shown while filling details.
+    expect(host().querySelector('[data-testid="legal-agreement"]')).toBeNull();
+    await goToReview();
+
+    const notice = host().querySelector('[data-testid="legal-agreement"]');
+    const terms = notice?.querySelector<HTMLAnchorElement>('[data-testid="legal-terms-link"]');
+    const privacy = notice?.querySelector<HTMLAnchorElement>('[data-testid="legal-privacy-link"]');
+    expect(terms?.getAttribute('href')).toBe('/legal/terms');
+    expect(privacy?.getAttribute('href')).toBe('/legal/privacy');
+    // New tab so the modal's checkout state survives reading the document.
+    for (const link of [terms, privacy]) {
+      expect(link?.getAttribute('target')).toBe('_blank');
+      expect(link?.getAttribute('rel')).toContain('noopener');
+    }
+  });
+
+  it('keeps the agreement notice on the Review step in REQUEST mode', async () => {
+    fixture.componentRef.setInput('mode', 'REQUEST');
+    await goToReview();
+    expect(host().querySelector('[data-testid="legal-agreement"]')).not.toBeNull();
+  });
+
   it('shows role=alert field errors only after the first Continue, then advances when valid', async () => {
     // Nothing announced before the first submit attempt.
     expect(host().querySelectorAll('[role="alert"]').length).toBe(0);

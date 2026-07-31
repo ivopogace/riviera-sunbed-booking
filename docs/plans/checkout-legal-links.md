@@ -145,16 +145,16 @@ N/A — no contract change (no API calls added; legal pages are static).
 > Session-recovery anchor — re-read after compaction; update in the same commit window
 > as the change it records.
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2 — e2e)
 
-**Next action:** phase 1 red tests — dialog Review-step links, pay-page links, footer links.
+**Next action:** load `playwright-cli`, author `e2e/legal-pages.e2e.ts` (mocked suite), then build + push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | P — plan doc committed, draft PR opened | ✅ | `6aea54a`, PR #464 (draft) |
 | 0 — legal pages + routes (+unit/a11y/contrast specs) | ✅ | this commit — red run (module-not-found), then 6 files / 19 tests green scoped |
-| 1 — checkout notice lines (dialog, pay) + footer links (+specs) | ⏳ | |
-| 2 — e2e mocked spec + local verification (lint, unit, build) | | |
+| 1 — checkout notice lines (dialog, pay) + footer links (+specs) | ✅ | this commit — red first, then full suite 126 files / 979 tests + lint green locally |
+| 2 — e2e mocked spec + local verification (lint, unit, build) | ⏳ | |
 
 Note (FE-1/FE-2 drift): the pages use external `.html` templates, not inline — the content
 is long-form; `riviera-frontend` sanctions external templates at that size.
@@ -165,6 +165,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run 30624512347, phase-0 push) | `app.spec.ts` #134 legacy-surface sweep expects every tourist route not on `RESTYLED_PATHS` to be flagged legacy — the new `/legal/*` glass routes weren't allowlisted (scoped-run blind spot; the full suite now runs locally before push) | fixed in phase-1 commit |
 
 ---
 
