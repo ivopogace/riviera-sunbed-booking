@@ -6,6 +6,13 @@
 
 ## Part 1 — Current state of the code (as inspected)
 
+> **Dated baseline — as assessed 2026-07-01 (#93's snapshot of `main`), deliberately left
+> un-refreshed.** This part records what motivated the plan, so its facts are frozen at
+> assessment time: the module count ("six"), LOC figures, and gap list are all of that date.
+> The tree has since grown — `operator` (#73), `notification` (#382), the `shared` kernel
+> (#371) — and several gaps below are marked shipped in Part 2. `CLAUDE.md` owns the current
+> module list. *(Decision recorded per #319, Option A.)*
+
 ### What's genuinely strong
 
 The codebase is well past scaffold quality and ahead of its own `docs/`. The architecture is disciplined and the hard parts are done correctly.
@@ -128,8 +135,21 @@ Sequence this **last** — enforcing the shape before the migration is done just
 > **Shipped by #100:** Boot 4 native structured JSON logging (env-gated `logging.structured.format.console=ecs`) + a per-request `CorrelationIdFilter` (MDC + `X-Correlation-Id`, log-injection-safe); an **authenticated** `/actuator/prometheus` that preserves the #75 lockdown (only `health` stays public); the three signals as a `riviera.outbox.pending` gauge, a `riviera.refunds.failed` counter, and the standard `http.server.requests` webhook-5xx slice; and an in-app `@Scheduled` money-path self-check that logs a structured **ERROR** alert (the single-instance route — Grafana Cloud scrape documented as the upgrade). No migration. Runbook: `docs/runbooks/observability.md`.
 
 **D5. GDPR / legal + backups.** *(P1)* Privacy policy + terms at checkout; retention schedule; right-to-erasure workflow (with the statutory-retention exception for tax/payment records); DPAs with Stripe and the host. Confirm automated Postgres backups + PITR on the deploy plan and run one restore drill. (Code-side PII hygiene is already good.)
+> **Partially shipped (#101 stays open):** right-to-erasure (Slice 1, PR #316 — ADR-0010
+> scrub-in-place tombstone keeping the statutory-retention financial records, V30, self-service
+> + admin endpoints, `docs/runbooks/data-erasure.md`) and the automated retention sweep
+> (Slice 2, PR #318 — three-gate no-live-basis check, ships **disabled** pending counsel's
+> retention window). Remaining: checkout privacy/terms links (Slice 3, agent-doable), the
+> human-gated legal texts + DPAs (re-pointed 2026-07-24 at the Albanian sh.p.k. + Paysera +
+> Hetzner direction, ADR-0009), and backups/PITR — now **self-managed on the Hetzner
+> hosting move** (ADR-0004's deferred EU-sovereign cutover, its own epic), no longer a
+> "confirm the managed plan" item.
 
 **D6. Disputes + reconciliation.** *(P1/P2)* Handle `charge.dispute.created`; daily reconciliation sweep against Stripe events with a recovery script.
+> **Re-pointed onto Paysera (2026-07-24) — blocked by #284 (ADR-0009):** the migration removes
+> the Stripe adapter/webhook/SDK outright, so building this against Stripe is throwaway.
+> Implement as #284's reconciliation/dispute slice against Paysera's event catalogue +
+> transaction API; the invariant-#8 net is gateway-neutral, only the adapter changes (#102).
 
 ---
 
@@ -142,6 +162,10 @@ Sequence this **last** — enforcing the shape before the migration is done just
 **Milestone 3 — Production hardening.** D2 (validation/error contract), D3 (scale-out readiness), D4 (observability), D5 (GDPR/backups), D6 (disputes/reconciliation). Parallelizable; none blocks a single-instance soft launch.
 
 **Standing triggers (not scheduled):** B3 (split `booking` at ~3,500 LOC or a third scheduler), B4 (read-model module if dated reads grow), and scale-out work (the moment a second instance is on the table).
+
+> **B3 trigger status (checked 2026-07-31): FIRED.** `booking` main source measures
+> **5,735 LOC** — 64% past the ~3,500 mark (the scheduler clause has not fired; still two).
+> The extract-vs-re-set decision is tracked in **#463**; record its outcome here.
 
 ---
 
