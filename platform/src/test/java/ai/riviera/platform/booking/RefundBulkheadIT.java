@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.adapter.in.BookingListenerIds;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
@@ -96,12 +97,12 @@ class RefundBulkheadIT {
 	private static final int WEDGED_REFUNDS = 10;
 
 	/**
-	 * The registry's id for the refund listener. It embeds the FQCN and signature, none of which this
-	 * slice moves — which is precisely the claim {@link #keepsTheListenerIdUnchanged} exists to prove,
-	 * since a move would owe a Flyway {@code listener_id} rewrite (invariant #12).
+	 * The registry's id for the refund listener, class-derived so a rename breaks the compile rather
+	 * than this pin. {@link #keepsTheListenerIdUnchanged} proves the running registry writes it (a move
+	 * would owe a Flyway {@code listener_id} rewrite, invariant #12) — and since #454 that same check is
+	 * level 2 of the admin lever's scope pinning, {@code RefundOutboxScopeTest} being level 1.
 	 */
-	private static final String REFUND_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
-			+ "BookingRefundListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+	private static final String REFUND_LISTENER_ID = BookingListenerIds.REFUND;
 
 	/** Improbable enough to identify one test's publication in a database several IT classes write to. */
 	private static final long RETRY_REFUND_MINOR = 404_000_601L;

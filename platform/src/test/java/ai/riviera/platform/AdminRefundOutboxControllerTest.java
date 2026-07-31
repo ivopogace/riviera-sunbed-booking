@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import ai.riviera.platform.notification.application.MailOutboxStatus;
-import ai.riviera.platform.notification.application.MailResubmission;
+import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
+import ai.riviera.platform.booking.application.refund.RefundResubmission;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 
 import static org.mockito.Mockito.never;
@@ -26,30 +26,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for the ADMIN mail outbox ({@code /api/admin/mail-outbox}, #405) through the real
- * filter chain — the {@code AdminEmailSuppressionControllerTest} pattern:
+ * HTTP contract for the ADMIN refund outbox ({@code /api/admin/refund-outbox}, #454) through the real
+ * filter chain — the {@code AdminMailOutboxControllerTest} pattern on the money path:
  *
  * <ol>
  * <li><strong>ADMIN role gate</strong> (AC-6): an ADMIN succeeds; an OPERATOR / CUSTOMER is
  * {@code 403}; an anonymous request {@code 401} — and none of them reaches the port, which matters
- * more here than on a read-only surface, since reaching it would consume the cooldown.</li>
+ * doubly here: reaching it would consume the cooldown, and this port fronts a lever that re-drives
+ * money-path work.</li>
  * <li><strong>All three outcomes are {@code 200}</strong>, each carrying the count and the retry
  * window, because a refusal is an expected flow the admin acts on rather than an error.</li>
- * <li><strong>Nothing leaks</strong> (invariant #7): the response bodies are counts and an outcome
- * token, with no address, arrival code or registry payload anywhere.</li>
+ * <li><strong>Nothing leaks</strong> (invariant #7): counts and an outcome token only — the
+ * publications' serialized payloads are exactly where booking ids live, and none of that reaches the
+ * wire.</li>
  * </ol>
  *
  * <p>Lives in the root test package, unlike the controller it covers, because {@code WebSliceStubs} is
- * package-private here and the subject is really the admin surface <em>through</em>
- * {@code SecurityConfig}. The policy behind the port has its own tests
- * ({@code MailResubmissionServiceTest}), as does the scope ({@code MailOutboxScopeTest},
- * {@code MailOutboxScopeIT}). Docker-free {@code @WebMvcTest} slice.
+ * package-private here and the subject is the admin surface <em>through</em> {@code SecurityConfig}.
+ * The policy has its own tests ({@code RefundResubmissionServiceTest}), as does the scope
+ * ({@code RefundOutboxScopeTest}, {@code RefundOutboxScopeIT}). Docker-free {@code @WebMvcTest} slice.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
-class AdminMailOutboxControllerTest {
+class AdminRefundOutboxControllerTest {
 
-	private static final String OUTBOX = "/api/admin/mail-outbox";
+	private static final String OUTBOX = "/api/admin/refund-outbox";
 
 	private static final String RESUBMIT = OUTBOX + "/resubmit";
 
@@ -59,26 +60,26 @@ class AdminMailOutboxControllerTest {
 	MockMvc mvc;
 
 	@MockitoBean
-	MailResubmission resubmission;
+	RefundResubmission resubmission;
 
 	@Test
 	void adminReadsWhatTheRegistryStillOwes() throws Exception {
-		when(resubmission.status()).thenReturn(new MailOutboxStatus(4, Duration.ZERO));
+		when(resubmission.status()).thenReturn(new RefundOutboxStatus(2, Duration.ZERO));
 
 		mvc.perform(get(OUTBOX).with(user("operator").roles("ADMIN", "OPERATOR")))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.outstanding").value(4))
+				.andExpect(jsonPath("$.outstanding").value(2))
 				.andExpect(jsonPath("$.cooldownRemainingSeconds").value(0));
 	}
 
 	@Test
 	void adminResubmitsAndGetsTheCount() throws Exception {
-		when(resubmission.resubmit()).thenReturn(new ResubmissionOutcome.Resubmitted(4, COOLDOWN));
+		when(resubmission.resubmit()).thenReturn(new ResubmissionOutcome.Resubmitted(2, COOLDOWN));
 
 		mvc.perform(post(RESUBMIT).with(user("operator").roles("ADMIN", "OPERATOR")).with(csrf()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.outcome").value("RESUBMITTED"))
-				.andExpect(jsonPath("$.resubmitted").value(4))
+				.andExpect(jsonPath("$.resubmitted").value(2))
 				.andExpect(jsonPath("$.cooldownRemainingSeconds").value(60));
 
 		verify(resubmission).resubmit();
@@ -108,10 +109,9 @@ class AdminMailOutboxControllerTest {
 	}
 
 	/**
-	 * The carry has to survive a sub-millisecond tail, which is the ordinary case: the remaining window
-	 * is a {@code Duration.between} on a nanosecond-resolution clock, so it is rarely a whole number of
-	 * milliseconds. A {@code plusMillis(999)} ceiling silently truncates these back down and reports a
-	 * second less than the contract promises.
+	 * The carry has to survive a sub-millisecond tail — the ordinary case for a
+	 * {@code Duration.between} on a nanosecond clock; a {@code plusMillis(999)} ceiling would truncate
+	 * it back down (#405's F-4, inherited as a test rather than re-learned).
 	 */
 	@Test
 	void roundsUpARemainderThatIsNotAWholeMillisecond() throws Exception {
@@ -126,21 +126,21 @@ class AdminMailOutboxControllerTest {
 	/** A window that divides evenly is not rounded up past itself — the carry must not add a second. */
 	@Test
 	void leavesAWholeNumberOfSecondsAlone() throws Exception {
-		when(resubmission.status()).thenReturn(new MailOutboxStatus(0, Duration.ofSeconds(30)));
+		when(resubmission.status()).thenReturn(new RefundOutboxStatus(0, Duration.ofSeconds(30)));
 
 		mvc.perform(get(OUTBOX).with(user("operator").roles("ADMIN")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.cooldownRemainingSeconds").value(30));
 	}
 
-	/** Invariant #7: the outbox's payloads carry booking ids and arrival codes; its API carries neither. */
+	/** Invariant #7 / AC-7: the outbox's payloads carry booking ids; its API carries counts only. */
 	@Test
 	void theResponseCarriesCountsAndNothingElse() throws Exception {
-		when(resubmission.status()).thenReturn(new MailOutboxStatus(2, Duration.ofSeconds(30)));
+		when(resubmission.status()).thenReturn(new RefundOutboxStatus(1, Duration.ofSeconds(30)));
 
 		mvc.perform(get(OUTBOX).with(user("operator").roles("ADMIN")))
 				.andExpect(status().isOk())
-				.andExpect(content().json("{\"outstanding\":2,\"cooldownRemainingSeconds\":30}", true));
+				.andExpect(content().json("{\"outstanding\":1,\"cooldownRemainingSeconds\":30}", true));
 	}
 
 	@Test

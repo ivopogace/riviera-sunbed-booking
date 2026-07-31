@@ -57,7 +57,7 @@ money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three a
 
 | Metric | Meaning | Alert when |
 |---|---|---|
-| `riviera_refunds_shed_total` (counter, #404) | A cancellation **refund** was shed: the refund bulkhead's pool was saturated — `riviera.booking.refund.pool-size` threads busy and all `queue-capacity` slots full — so `BookingRefundListener` never ran and the gateway was never asked. Like the mail shed below, the work survives: the event publication stays outstanding and `republish-outstanding-events-on-restart` re-delivers it at the next start. **Read it beside `riviera_refunds_failed_total`, never summed with it** — *failed* is a refund the gateway refused (investigate there); *shed* is one it was never asked for (investigate the pool and the burst) | **any increase.** Reaching saturation at all means a burst far larger than one weather-refund sweep, or a gateway degraded long enough to back up 500 refunds. Diagnose the gateway first; raising the bounds trades a lossless shed for a longer backlog |
+| `riviera_refunds_shed_total` (counter, #404) | A cancellation **refund** was shed: the refund bulkhead's pool was saturated — `riviera.booking.refund.pool-size` threads busy and all `queue-capacity` slots full — so `BookingRefundListener` never ran and the gateway was never asked. Like the mail shed below, the work survives: the event publication stays outstanding and `republish-outstanding-events-on-restart` re-delivers it at the next start — and since #454 you need not wait for one: `POST /api/admin/refund-outbox/resubmit` re-drives it on demand. **Read it beside `riviera_refunds_failed_total`, never summed with it** — *failed* is a refund the gateway refused (investigate there); *shed* is one it was never asked for (investigate the pool and the burst) | **any increase.** Reaching saturation at all means a burst far larger than one weather-refund sweep, or a gateway degraded long enough to back up 500 refunds. Diagnose the gateway first; raising the bounds trades a lossless shed for a longer backlog |
 | `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (pinned end-to-end by `RegistryMailShedDurabilityIT`, #407: it saturates a shrunk bulkhead, sheds a real confirmation, and proves the publication is still outstanding afterwards) — and since #405 you need not wait for one: `POST /api/admin/mail-outbox/resubmit` re-drives it on demand. Until it lands, a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
 
 **A rejection during shutdown is not a shed** and does not touch this counter: a redeploy can reject an
@@ -75,12 +75,20 @@ that does **not** trigger its own recovery: a crash restarts by definition and t
 whereas a shed happens while the process is healthy and nothing restarts it. Until someone acts, a
 tourist owed money under invariant #10 has not been paid.
 
-**The lever today is a restart, and only a restart.** There is deliberately **no** admin re-drive
-endpoint for refunds — `/api/admin/mail-outbox` (#405) is scoped by listener-id prefix to
-`ai.riviera.platform.notification.` and cannot reach `booking`'s refund listener, by design, so that
-an admin resubmitting mail never replays money-path work. If this counter moves, redeploy (or restart)
-to trigger `republish-outstanding-events-on-restart`; do not go looking for a resubmit button.
-Shortening that horizon is #454.
+**The lever is `POST /api/admin/refund-outbox/resubmit` (#454).** It re-drives what the registry
+still owes `BookingRefundListener` — thrown, shed, or crash-stranded alike — and nothing else: the
+scope is that listener's **exact id** (an allowlist of one, not the `booking` package prefix, which
+would also sweep `PaymentEventListener`'s payment→confirm spine). The mail lever remains equally
+narrow the other way — `/api/admin/mail-outbox` (#405) is scoped to `ai.riviera.platform.notification.`
+and cannot reach the refund listener — so neither button can replay the other's work.
+`GET /api/admin/refund-outbox` shows the outstanding count first; a press inside the 60s cooldown
+(`riviera.booking.refund-resubmission.cooldown-ms`) answers `COOLING_DOWN` rather than sweeping
+again, and a re-drive is idempotent at the gateway (`booking-<id>-refund`), so pressing it can never
+double-refund. A restart's `republish-outstanding-events-on-restart` remains the unscoped fallback.
+One case the button does not fix, by design: a *persistently* failing gateway (e.g. an insufficient
+Stripe balance — the platform collects into Stripe and pays out via BKT, so funds legitimately leave
+the balance a refund later needs). Fix the cause first — top up — then press; the publication just
+stays outstanding, and `riviera_refunds_failed_total` counts, until it settles.
 
 ### `riviera_mail_recovery_dropped_total` (counter, #415)
 

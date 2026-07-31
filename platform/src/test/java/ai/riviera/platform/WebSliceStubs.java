@@ -23,6 +23,8 @@ import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
+import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
+import ai.riviera.platform.booking.application.refund.RefundResubmission;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.DeclineOutcome;
@@ -51,22 +53,32 @@ import ai.riviera.platform.notification.application.BookingConfirmationResend;
 import ai.riviera.platform.notification.application.MailDeliveryLookup;
 import ai.riviera.platform.notification.application.MailOutboxStatus;
 import ai.riviera.platform.notification.application.MailResubmission;
-import ai.riviera.platform.notification.application.MailResubmissionOutcome;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.ReinstateSuppression;
 import ai.riviera.platform.notification.application.ResendOutcome;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.api.OperatorRegistration;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.payment.adapter.out.StripeProperties;
 import ai.riviera.platform.payment.application.NewPayment;
@@ -424,8 +436,28 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public MailResubmissionOutcome resubmit() {
-				return new MailResubmissionOutcome.Resubmitted(0, Duration.ZERO);
+			public ResubmissionOutcome resubmit() {
+				return new ResubmissionOutcome.Resubmitted(0, Duration.ZERO);
+			}
+		};
+	}
+
+	/**
+	 * {@code AdminRefundOutboxController}'s port (#454). Inert: an empty outbox with the lever
+	 * accepting, so a slice that merely loads the controller re-drives nothing.
+	 * {@code AdminRefundOutboxControllerTest} overrides it with a {@code @MockitoBean}.
+	 */
+	@Bean
+	RefundResubmission refundResubmission() {
+		return new RefundResubmission() {
+			@Override
+			public RefundOutboxStatus status() {
+				return new RefundOutboxStatus(0, Duration.ZERO);
+			}
+
+			@Override
+			public ResubmissionOutcome resubmit() {
+				return new ResubmissionOutcome.Resubmitted(0, Duration.ZERO);
 			}
 		};
 	}

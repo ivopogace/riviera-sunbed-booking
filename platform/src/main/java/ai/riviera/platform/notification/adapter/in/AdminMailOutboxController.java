@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.notification.application.MailOutboxStatus;
 import ai.riviera.platform.notification.application.MailResubmission;
-import ai.riviera.platform.notification.application.MailResubmissionOutcome;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
  * The platform-admin surface for the mail outbox (#405): what the Event Publication Registry still
@@ -78,7 +78,7 @@ class AdminMailOutboxController {
 
 	@PostMapping("/resubmit")
 	MailResubmissionResponse resubmit() {
-		MailResubmissionOutcome outcome = resubmission.resubmit();
+		ResubmissionOutcome outcome = resubmission.resubmit();
 		return new MailResubmissionResponse(outcome.code(), outcome.resubmitted(), seconds(outcome.retryAfter()));
 	}
 

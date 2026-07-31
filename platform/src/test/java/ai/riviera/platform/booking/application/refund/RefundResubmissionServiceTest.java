@@ -1,4 +1,4 @@
-package ai.riviera.platform.notification.application;
+package ai.riviera.platform.booking.application.refund;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -25,24 +25,24 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The sweep-throttle policy of #405 (AC-1, AC-3, AC-4, AC-7), driven at the application boundary
- * against a fake {@link MailOutbox} and a clock the test moves by hand.
+ * The sweep-throttle policy of #454 (AC-1, AC-4, AC-5, AC-7), driven at the application boundary
+ * against a fake {@link RefundOutbox} and a clock the test moves by hand — the
+ * {@code MailResubmissionServiceTest} shape on the money path.
  *
- * <p>What is <em>not</em> under test here is duplicate mail: the registry prevents that itself, one
- * layer down, by claiming each publication before invoking its listener (v2 repository). These tests
- * cover the layer this class does own — how often the whole scope may be swept, and whether a press
- * that achieves nothing says so.
+ * <p>What is <em>not</em> under test here is a duplicate refund: the gateway's idempotency key
+ * ({@code booking-<id>-refund}) prevents that at the money layer and the registry's per-publication
+ * claim one layer down. These tests cover the layer this class does own — how often the whole scope
+ * may be swept, and whether a press that achieves nothing says so.
  *
- * <p>Time is injected rather than slept through on purpose: a cooldown test that waits for real
- * seconds is both slow and flaky, and the property under test is arithmetic on an {@link Instant}, not
- * wall-clock behaviour. The one test that genuinely needs two threads — the single-flight race — gets
- * them, because a lock is not observable any other way.
+ * <p>Time is injected rather than slept through: the property under test is arithmetic on an
+ * {@link Instant}. The one test that genuinely needs two threads — the single-flight race — gets them,
+ * because a lock is not observable any other way.
  */
-class MailResubmissionServiceTest {
+class RefundResubmissionServiceTest {
 
 	private static final Duration COOLDOWN = Duration.ofSeconds(60);
 
-	private static final Instant BOOT = Instant.parse("2026-07-30T09:00:00Z");
+	private static final Instant BOOT = Instant.parse("2026-07-31T09:00:00Z");
 
 	private final MovableClock clock = new MovableClock(BOOT);
 
@@ -52,14 +52,14 @@ class MailResubmissionServiceTest {
 
 	private ch.qos.logback.classic.Logger serviceLogger;
 
-	private MailResubmissionService service;
+	private RefundResubmissionService service;
 
 	@BeforeEach
 	void setUp() {
 		logs.start();
-		serviceLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(MailResubmissionService.class);
+		serviceLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RefundResubmissionService.class);
 		serviceLogger.addAppender(logs);
-		service = new MailResubmissionService(outbox, new MailResubmissionWindow(COOLDOWN), clock);
+		service = new RefundResubmissionService(outbox, new RefundResubmissionWindow(COOLDOWN), clock);
 	}
 
 	@AfterEach
@@ -75,7 +75,7 @@ class MailResubmissionServiceTest {
 
 	@Test
 	@DisplayName("AC-1 — an accepted press re-drives the outbox and reports how many")
-	void resubmitsEveryOutstandingMailPublication() {
+	void resubmitsEveryOutstandingRefundPublication() {
 		settle();
 		outbox.outstanding(3);
 
@@ -96,7 +96,7 @@ class MailResubmissionServiceTest {
 	}
 
 	@Test
-	@DisplayName("AC-3 — a second press inside the cooldown re-drives nothing")
+	@DisplayName("AC-4 — a second press inside the cooldown re-drives nothing")
 	void refusesASecondInvocationInsideTheCooldown() {
 		settle();
 		outbox.outstanding(2);
@@ -107,7 +107,8 @@ class MailResubmissionServiceTest {
 
 		assertThat(outcome).isEqualTo(new ResubmissionOutcome.CoolingDown(Duration.ofSeconds(40)));
 		assertThat(outcome.resubmitted()).isZero();
-		assertThat(outbox.resubmissions()).as("a second sweep would re-attempt every outstanding send").isEqualTo(1);
+		assertThat(outbox.resubmissions())
+				.as("a second sweep would re-ask the gateway for every outstanding refund").isEqualTo(1);
 	}
 
 	@Test
@@ -123,13 +124,11 @@ class MailResubmissionServiceTest {
 	}
 
 	/**
-	 * AC-3's concurrent half. The fake outbox blocks inside {@code resubmitOutstanding} until the
-	 * second caller has been answered, which is the only way to observe the lock: without it the first
-	 * press would finish before the second began and the cooldown — a different guard — would be what
-	 * refused.
+	 * AC-4's concurrent half. The fake outbox blocks inside {@code resubmitOutstanding} until the
+	 * second caller has been answered — the only way to observe the lock rather than the cooldown.
 	 */
 	@Test
-	@DisplayName("AC-3 — a genuinely concurrent press is refused as ALREADY_RUNNING")
+	@DisplayName("AC-4 — a genuinely concurrent press is refused as ALREADY_RUNNING")
 	void refusesAConcurrentInvocation() throws Exception {
 		settle();
 		CountDownLatch inside = new CountDownLatch(1);
@@ -150,13 +149,12 @@ class MailResubmissionServiceTest {
 	}
 
 	/**
-	 * AC-4. {@code republish-outstanding-events-on-restart=true} means the platform has just resubmitted
-	 * every outstanding publication itself, from {@code afterSingletonsInstantiated}. A press landing in
-	 * that window is the restart race #405 names, and it is refused for the same reason any other rapid
-	 * second press is.
+	 * AC-5. {@code republish-outstanding-events-on-restart=true} means the platform has just
+	 * resubmitted every outstanding publication itself. A press landing in that window would report
+	 * success while moving nothing — #405's R-3, inherited verbatim.
 	 */
 	@Test
-	@DisplayName("AC-4 — the boot republication counts as resubmission zero")
+	@DisplayName("AC-5 — the boot republication counts as resubmission zero")
 	void startsCoolingDownAtBootSoAClickCannotRaceTheRestartRepublish() {
 		outbox.outstanding(4);
 
@@ -164,18 +162,20 @@ class MailResubmissionServiceTest {
 		assertThat(outbox.resubmissions()).isZero();
 	}
 
+	/**
+	 * AC-7. The line is pinned in full: a count and the fixed text, structurally free of booking ids
+	 * and codes (invariant #7) — the payloads that carry them never reach this service.
+	 */
 	@Test
-	@DisplayName("AC-7 — the log line carries a count and no bearer credential")
-	void logsACountAndNoBearerCredential() {
+	@DisplayName("AC-7 — the log line carries a count and no booking identifier")
+	void logsACountAndNoBookingIdentifier() {
 		settle();
 		outbox.outstanding(2);
 
 		service.resubmit();
 
-		assertThat(logs.list).singleElement().satisfies(event -> {
-			assertThat(event.getFormattedMessage()).contains("2");
-			assertThat(event.getFormattedMessage()).doesNotContain("@");
-		});
+		assertThat(logs.list).singleElement().satisfies(event -> assertThat(event.getFormattedMessage())
+				.isEqualTo("Admin resubmitted 2 outstanding refund publication(s)"));
 	}
 
 	@Test
@@ -191,16 +191,13 @@ class MailResubmissionServiceTest {
 	void reportsTheOutboxStatus() {
 		outbox.outstanding(7);
 
-		assertThat(service.status()).isEqualTo(new MailOutboxStatus(7, COOLDOWN));
+		assertThat(service.status()).isEqualTo(new RefundOutboxStatus(7, COOLDOWN));
 
 		settle();
-		assertThat(service.status()).isEqualTo(new MailOutboxStatus(7, Duration.ZERO));
+		assertThat(service.status()).isEqualTo(new RefundOutboxStatus(7, Duration.ZERO));
 	}
 
-	/**
-	 * The status read must not consume the guard — an admin refreshing the console page repeatedly
-	 * would otherwise never see the lever accept.
-	 */
+	/** The status read must not consume the guard — polling admins must eventually see it accept. */
 	@Test
 	@DisplayName("reading the status neither re-drives nor restarts the cooldown")
 	void statusIsARead() {
@@ -213,8 +210,8 @@ class MailResubmissionServiceTest {
 		assertThat(service.resubmit().code()).isEqualTo("RESUBMITTED");
 	}
 
-	/** A {@link MailOutbox} that counts calls and can be parked mid-resubmission. */
-	private static final class RecordingOutbox implements MailOutbox {
+	/** A {@link RefundOutbox} that counts calls and can be parked mid-resubmission. */
+	private static final class RecordingOutbox implements RefundOutbox {
 
 		private final AtomicInteger resubmissions = new AtomicInteger();
 

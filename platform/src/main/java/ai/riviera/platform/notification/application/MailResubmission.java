@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.application;
 
+import ai.riviera.platform.shared.ResubmissionOutcome;
+
 /**
  * The driving port behind the ADMIN mail-outbox surface (#405): read what the registry still owes this
  * module, and re-drive it on demand.
@@ -28,8 +30,8 @@ public interface MailResubmission {
 	 * {@code markResubmitted} claim skips a publication whose previous resubmission is still in flight
 	 * (v2 repository — #405 describes the v1 one, where that method is an unoverridden {@code default}).
 	 * What this port adds is a bound on how often the whole scope is swept, and a caller-visible reason
-	 * when it refuses — see {@link MailResubmissionOutcome.AlreadyRunning} and
-	 * {@link MailResubmissionOutcome.CoolingDown}.
+	 * when it refuses — see {@link ResubmissionOutcome.AlreadyRunning} and
+	 * {@link ResubmissionOutcome.CoolingDown}.
 	 */
-	MailResubmissionOutcome resubmit();
+	ResubmissionOutcome resubmit();
 }

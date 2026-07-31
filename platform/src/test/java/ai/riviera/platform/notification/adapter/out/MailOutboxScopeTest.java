@@ -47,7 +47,7 @@ class MailOutboxScopeTest {
 			+ "BookingRefundListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
 
 	private static final String PAYMENT_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
-			+ "PaymentEventListener.on(ai.riviera.platform.payment.events.PaymentSucceeded)";
+			+ "PaymentEventListener.on(ai.riviera.platform.payment.events.PaymentConfirmed)";
 
 	@Test
 	@DisplayName("the confirmation-mail publication is in scope")

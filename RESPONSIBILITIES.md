@@ -133,7 +133,13 @@ what a consumer actually needs and keeps `BookingStatus` internal.
   hold a PaymentIntent or a webhook). Since #404 I do own the **bounded executor** my post-commit
   refund listener drains on — that is wiring for *my* driving adapter, not gateway knowledge: I still
   only call `payment.api.RefundPort` and never learn which gateway is behind it. `payment` must not
-  host it; it does not know it is being called asynchronously, and must not have to
+  host it; it does not know it is being called asynchronously, and must not have to. Since **#454** I
+  also own the ADMIN **refund-outbox re-drive** (`GET`/`POST /api/admin/refund-outbox`) — the retry
+  lever for what the registry still owes *my* refund listener, scoped to that listener's **exact id**
+  (an allowlist of one, never the `booking` package prefix, which would sweep `PaymentEventListener`'s
+  payment→confirm spine — `RefundOutboxScopeIT`). Naming which listener is "the refund" is my
+  knowledge, not `notification`'s (its mail outbox is deliberately scoped to its own listeners) and
+  not `payment`'s (it executes refunds; *when to re-ask* is the caller's call)
 - Computing the payout or commission → **`payout`** (my `BookingConfirmed` event
   *triggers* accrual; I don't do the math)
 - The venue map, pricing, or pool rules → **`venue`**
@@ -462,7 +468,7 @@ moved listener, and the V32 suppression list enforced on both vehicles.
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
 `ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`, `ShutdownBudget`,
-`MdcTaskDecorator`. An
+`MdcTaskDecorator`, `ResubmissionThrottle` + `ResubmissionOutcome`. An
 `@ApplicationModule(type = OPEN)`: technical shared code, so it publishes no
 `api`/`vocabulary` surface and consumers use its types directly.
 
@@ -473,8 +479,11 @@ money-path trio from #100, plus the six mail-loss counters — the registry-mail
 #408, the recovery-mail drop by #415, the recovery-mail transport failure by #423, the abandoned
 booking confirmation by #428, the abandoned cancellation record by #374 and the abandoned
 payment-due notice by #373), the **platform's shutdown budget** (`ShutdownBudget`, #456 — the
-SIGTERM grace and every draining pool's claim on it), and the **one way a pooled worker inherits
-its submitter's logging context** (`MdcTaskDecorator`, #455). Nothing else.
+SIGTERM grace and every draining pool's claim on it), the **one way a pooled worker inherits
+its submitter's logging context** (`MdcTaskDecorator`, #455), and the **once-only guard behind an
+admin outbox-resubmit lever** (`ResubmissionThrottle` + its `ResubmissionOutcome` vocabulary, #454 —
+single-flight plus a construction-seeded cooldown, so a press cannot race the registry's boot
+republication; each lever module keeps its own scope, window value and log noun). Nothing else.
 
 > The metric-name clause is deliberately about *names*, not about observability. A name is a
 > `String` constant, compile-time-inlined, with the emission staying in the module that owns
@@ -490,15 +499,21 @@ its submitter's logging context** (`MdcTaskDecorator`, #455). Nothing else.
 > single reader today, so "more than one module needs it" would not have carried them. That is a
 > narrower claim than the other entries make — hold new *metric-name* entries to it.
 >
-> **No admission here has ever rested on reuse, and the two newest say so explicitly.**
-> `ShutdownBudget` (#456) because no bounded context owns how long the process has to close, and
+> **No admission here has ever rested on reuse, and the three newest say so explicitly.**
+> `ShutdownBudget` (#456) because no bounded context owns how long the process has to close;
 > `MdcTaskDecorator` (#455) because none owns how a pooled worker inherits the submitting request's
-> logging context — the latter is the sharper case, since that mechanism's other half
+> logging context — the sharper case, since that mechanism's other half
 > (`CorrelationIdFilter`) lives at the composition root no module may depend on, leaving a
-> module-owned home structurally unavailable to the second consumer. Three modules wanting a type is
+> module-owned home structurally unavailable to the second consumer; and `ResubmissionThrottle` +
+> `ResubmissionOutcome` (#454) because what the guard throttles — a sweep of the platform's one
+> Event Publication Registry against the root-configured boot republication — is likewise nobody's
+> context, and the second lever module (`booking`, after `notification`'s #405) recreated the
+> decorator's structural bind. Three modules wanting a type is
 > the trigger for asking the question; the answer is always ownership. (#455 overturned #410's
 > placement of the decorator in `notification` — that decision's stated ground was "both users are
-> inside this one module", which #404's refund pool falsified.)
+> inside this one module", which #404's refund pool falsified. #454's plan first made the same shape
+> of call — "two small per-module sweep policies are the cheaper coupling" — and the merge bar's
+> duplication gate falsified it before the PR even merged.)
 
 **Not my job:**
 - **Any business logic or module-owned state** → the owning bounded context. This package
