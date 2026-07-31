@@ -252,15 +252,18 @@ rewrite is due.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2 done, phase 3 next)`
+**Stage pointer:** `implement (phase 3 done, phase 4 next)`
 
-**Next action:** Phase 3 — `RefundOutboxScopeIT` (AC-2, AC-8) against real Postgres.
+**Next action:** Phase 4 — substrate docs (runbook retry horizon, `RESPONSIBILITIES.md`,
+`CLAUDE.md`), docs-freshness sweep, close-out; then merge `origin/main`, mark PR #459
+ready, run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | ✅ | `fa4876d` |
 | 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | ✅ | `74dedde` |
-| 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | ✅ | (this commit) |
+| 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | ✅ | `9b15969` |
+| 3 — Money-path scoping IT (AC-2, AC-8) | ✅ | (this commit) |
 | 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | | |
 | 3 — Money-path scoping IT (AC-2, AC-8) | | |
 | 4 — Substrate docs + close-out | | |
@@ -377,17 +380,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `booking/RefundOutboxScopeIT.java`
 
-- [ ] **Steps 1–4:** AC-2 + AC-8 against real Postgres. Fixture: seed a cancelled
-  booking with a refund owed and a failing `ControllableRefundPort` so the
-  `BookingCancelled` publication for the refund listener stays outstanding (its payout
-  reversal + cancellation mail siblings likewise, via reopened archived rows or held
-  transports as each listener's behavior dictates); seed a second booking
-  `AWAITING_PAYMENT`, publish `PaymentConfirmed`, let it complete, reopen the archived
-  row as `FAILED` (the `MailOutboxScopeIT` fixture rule: the registry's own row, never
-  hand-built). Scoped re-drive → gateway called again for the refund booking only;
-  `PaymentConfirmed` row still outstanding; no reversal; no mail. Unscoped control
-  narrowed to this test's rows → the skipped rows re-drive.
-- [ ] **Steps 5–7:** audit, commit
+- [x] **Steps 1–4:** AC-2 + AC-8 against real Postgres, PASS first run. Fixture as
+  planned, with one refinement found while writing: the payout reversal needs no
+  reopened row at all — a refunded cancellation with **no accrual** defers by the
+  production path itself (#428 throws), so the fixture seeds no accrual, and the
+  unscoped control seeds it just-in-time so the reversal can complete and prove the row
+  was live (the ledger `REVERSAL` appearing only at control time is the strongest form
+  of "the scoped press never touched payout"). The `PaymentConfirmed` and
+  cancellation-mail rows are reopened archived rows (the `MailOutboxScopeIT` rule: the
+  registry's own rows, never hand-built).
+- [x] **Steps 5–7:** audit (fixture patterns match the two sibling ITs; no new
+  generalizable pattern), commit
   (`test(#454): prove the refund re-drive cannot reach any other listener`), status.
 
 ## Phase 4 — Substrate docs + close-out
