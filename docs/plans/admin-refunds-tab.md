@@ -179,16 +179,17 @@ as the sibling tabs do. No deviation.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — merge main, mark ready for review`
 
-**Next action:** Phase 3 — author the mocked CI-safe e2e, then `test:e2e:a11y` + build.
+**Next action:** merge latest `origin/main`, mark PR #461 ready, run the Review gate
+per `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `ab33e7c`; draft PR #461 |
 | 1 — Shared `OutboxLever` + Email-tab delegation (parity) | ✅ | full `npm test` (935) + lint green; mail specs untouched beyond type imports |
 | 2 — Refunds tab: service, component, specs, tab strip, route | ✅ | TDD red (missing module) → green; 950 tests + lint pass; `app.spec.ts` route inventory gained `admin/refunds` (restyled, non-legacy) | 
-| 3 — Mocked CI-safe e2e + full frontend verification | | |
+| 3 — Mocked CI-safe e2e + full frontend verification | ✅ | 4 new e2e green; full mocked suite 104/104; `npm run build` clean (pre-existing SCSS budget warnings only) |
 | 4 — Gates + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
