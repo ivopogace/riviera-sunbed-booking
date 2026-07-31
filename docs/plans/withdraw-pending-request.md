@@ -283,14 +283,16 @@ interaction idiom.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1 (the withdraw leg)`
 
-**Next action:** Load `riviera-java-conventions` + `riviera-local-debug`, then start phase 0
-(add `BookingStatus.WITHDRAWN`, watch `BookingMigrationIT.everyEnumStatusAccepted` go red, add V37).
+**Next action:** Write `WithdrawRequestServiceTest` red, then add `WithdrawRequest` /
+`WithdrawOutcome` / `WithdrawRequestService` + the `Bookings.withdrawPendingRequest` leg.
+
+**Draft PR:** #476 (opened on the plan commit so every push is CI-gated).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `WITHDRAWN` status + V37 migration | | |
+| 0 — `WITHDRAWN` status + V37 migration | ✅ | see below |
 | 1 — the withdraw leg (port, service, persistence) | | |
 | 2 — HTTP edge + security + rate limit | | |
 | 3 — `withdrawable` read-model flag | | |
@@ -346,6 +348,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `booking/booking.model.ts` — `withdrawable` on `BookingDetail`.
 - `booking/booking.service.ts` — `withdraw(code)`.
 - `booking/booking-view.ts` — fill the reserved slot with the control.
+- `booking/my-bookings.ts` + `my-bookings.spec.ts` — the `subLineOf` sub-label row (found by the phase-0 generalization audit, not in the original plan).
 - `booking/booking-view.spec.ts` — **flip** the `toBeNull()` assertions at the pending case; add the
   withdraw-flow cases.
 - `booking/booking-view.contrast.spec.ts` — the withdrawn panel.
@@ -752,6 +755,7 @@ it('withdraws a pending request after confirmation and flips the chip', async ()
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-07-31 | phase 0 — a 9th `BookingStatus` | every site that enumerates the status set | `grep -rn "NO_SHOW"` (BE + migrations) and `grep -rn "NO_SHOW\|DECLINED\|EXPIRED"` (FE + docs) | BE: `BookingStatus.java`, `V5`, `V19` (all handled by V37). FE: `shared/booking-status.ts` (union + `STATUS_META`), `shared/booking-status.spec.ts`, `shared/booking-status.contrast.spec.ts`, `shared/_glass.scss`, `booking/booking-view.spec.ts` (chip table), **`booking/my-bookings.ts` `subLineOf` switch** + `my-bookings.spec.ts`. Docs: `docs/architecture/domain-model.md` | `my-bookings.ts` was **not** in the plan's file list — the audit found it. Added to phase 4; the rest were already planned. Docs handled in phase 6 |
 
 ---
 
