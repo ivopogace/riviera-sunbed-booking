@@ -3,6 +3,9 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  CARD_TRACK_ALPHA,
+  FIELD_BORDER_ALPHA,
+  FIELD_FILL_ALPHA,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -27,10 +30,6 @@ import {
  * Deliberately excluded (WCAG 1.4.3 incidental / decorative): the outcome-card tone glyphs, which
  * are `aria-hidden` — the heading carries the meaning.
  */
-
-const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the card glass
-const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint)
-const CARD_TRACK_ALPHA = 0.12; // --riv-card-track (the pill strip behind the audience tabs)
 
 const ACCENT = hexToRgb('085a6e'); // --riv-accent-ink
 const ERROR_INK = hexToRgb('8c2b22'); // the one role="alert" message colour

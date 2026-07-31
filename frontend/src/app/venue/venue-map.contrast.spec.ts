@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  FIELD_BORDER_ALPHA,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -39,10 +40,8 @@ import {
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
 
-// The map's date field is near-opaque white on the DARK header glass (venue-map.scss) — a
-// translucent fill would drop dark ink below AA there.
-const FIELD_FILL_ALPHA = 0.9;
-const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint) over the field fill
+/** NOT `--riv-field-fill`: a literal (`venue-map.html`) — on the DARK header glass a 0.55 fill fails AA. */
+const DATE_FIELD_FILL_ALPHA = 0.9;
 
 // --riv-cta-grad stops (theme-invariant) — the failure-panel "Try again" button's white text.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
@@ -115,7 +114,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
   it('date field text (dark ink) meets AA on the near-opaque field over the header glass', () => {
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+      const field = composite(WHITE, DATE_FIELD_FILL_ALPHA, panel);
       expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
@@ -123,7 +122,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
   it('date field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+      const field = composite(WHITE, DATE_FIELD_FILL_ALPHA, panel);
       const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
       expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
     }

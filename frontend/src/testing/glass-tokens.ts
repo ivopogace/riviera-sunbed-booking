@@ -30,6 +30,17 @@ export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass (promoted at #468). */
 export const CARD_INK_FAINT_ALPHA = 0.72;
+/** `--riv-card-track` alpha (a `CARD_INK` tint) over the card glass (promoted at #470). */
+export const CARD_TRACK_ALPHA = 0.12;
+
+/**
+ * `--riv-field-fill` alpha (white), composited over whichever surface the field sits on —
+ * the card glass on Discover/auth, the `0.82` panels in the booking and find dialogs.
+ * `venue-map`'s date field is deliberately NOT this token (see that spec's local constant).
+ */
+export const FIELD_FILL_ALPHA = 0.55;
+/** `--riv-field-border` alpha (a `CARD_INK` tint) over the field fill — the WCAG 1.4.11 boundary. */
+export const FIELD_BORDER_ALPHA = 0.55;
 
 /** `--riv-chip-bg` per theme (over-glass tint). */
 export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };

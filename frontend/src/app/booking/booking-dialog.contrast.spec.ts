@@ -2,6 +2,8 @@ import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex 
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  FIELD_BORDER_ALPHA,
+  FIELD_FILL_ALPHA,
   Glass,
   INK_DARK,
   PORCELAIN_STOPS,
@@ -31,8 +33,6 @@ import {
 
 // styles.scss booking-dialog surfaces.
 const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // .booking-panel
-const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the panel
-const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark CARD_INK tint) over the field
 const BACK_FILL_ALPHA = 0.5; // .btn-back glass over the panel
 const ACCENT = '#085a6e'; // --riv-accent-ink (price, total)
 const ERROR_RED = '#a3160e'; // .field-error (on the panel) + .form-error ink (on the solid fill below)
