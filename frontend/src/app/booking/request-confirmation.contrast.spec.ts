@@ -1,11 +1,13 @@
 import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
-  WHITE,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
@@ -17,9 +19,6 @@ import {
  * is decorative (aria-hidden) — 1.4.11-exempt.
  */
 
-const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
-const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-const CARD_INK_SOFT_ALPHA = 0.78;
 const ACCENT = '#085a6e'; // --riv-accent-ink (big reference code)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the "Track this request" button
 

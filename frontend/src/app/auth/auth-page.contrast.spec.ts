@@ -1,9 +1,12 @@
 import { AA_LARGE, AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
   WHITE,
   expectAaOverStops,
@@ -24,9 +27,6 @@ import {
  * are `aria-hidden` — the heading carries the meaning.
  */
 
-const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
-const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
 const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the card glass
 const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark tint)

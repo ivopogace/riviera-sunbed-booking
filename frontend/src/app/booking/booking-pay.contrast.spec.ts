@@ -1,10 +1,13 @@
 import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
+  RIVIERA_CARD_GLASS,
   RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
   WHITE,
@@ -22,9 +25,6 @@ import {
  * fills (not translucent tints) so static CSS contrast analysis computes their real colour.
  */
 
-const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
-const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft (lead, keys, status, labels)
 const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint (trust line)
 const ACCENT = '#085a6e'; // --riv-accent-ink (total, code, links)
 const ERROR_RED = '#a3160e'; // .form-error ink

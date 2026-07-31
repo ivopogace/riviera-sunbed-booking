@@ -1,11 +1,14 @@
 import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
+  RIVIERA_CARD_GLASS,
   RIVIERA_CHIP,
   RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
@@ -36,9 +39,6 @@ import {
 const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
 
 // styles.scss card-surface tokens (theme-invariant ones live in the :root block).
-const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
-const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const CARD_INK_FAINT_ALPHA = 0.72; // --riv-card-ink-faint
 
 // The map's date field is near-opaque white on the DARK header glass (venue-map.scss) — a

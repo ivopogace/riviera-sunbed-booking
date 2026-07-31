@@ -1,6 +1,7 @@
 import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   Glass,
   INK_DARK,
   PORCELAIN_STOPS,
@@ -33,7 +34,6 @@ const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // .booking-panel
 const FIELD_FILL_ALPHA = 0.55; // --riv-field-fill (white) over the panel
 const FIELD_BORDER_ALPHA = 0.55; // --riv-field-border (dark CARD_INK tint) over the field
 const BACK_FILL_ALPHA = 0.5; // .btn-back glass over the panel
-const CARD_INK_SOFT_ALPHA = 0.78; // --riv-card-ink-soft
 const ACCENT = '#085a6e'; // --riv-accent-ink (price, total)
 const ERROR_RED = '#a3160e'; // .field-error (on the panel) + .form-error ink (on the solid fill below)
 const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)

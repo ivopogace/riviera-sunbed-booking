@@ -1,9 +1,10 @@
 import { AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
+  CARD_INK_SOFT_ALPHA,
   INK_DARK,
+  PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
-  WHITE,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -23,27 +24,26 @@ import {
  * colour edit there must re-pass here.
  */
 
-const CARD_GLASS = { color: WHITE, alpha: 0.55 };
 const TEAL = '#0a6e85';
 const ALERT = '#a3160e';
 const ALERT_RGB = hexToRgb(ALERT);
 
 /** The card-glass surface composited over a porcelain background stop. */
 function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
-  return rgbToHex(surfaceOver(CARD_GLASS, stop));
+  return rgbToHex(surfaceOver(PORCELAIN_CARD_GLASS, stop));
 }
 
 describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
   it('heading + guest + strong labels + confirm/dismiss copy (--riv-card-ink) meet AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('intro + meta + empty-state sub-copy (--riv-card-ink-soft 0.78) meet AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.78, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the "Respond by" line (--riv-card-ink-faint 0.72) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, 0.72, CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(CARD_INK, 0.72, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
   it('the price value (teal #0a6e85) meets AA on the card glass', () => {
@@ -64,7 +64,7 @@ describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
 
   it('the urgency-chip text (#a3160e) meets AA over its own #a3160e@0.10 tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const chip = composite(ALERT_RGB, 0.1, surfaceOver(CARD_GLASS, stop));
+      const chip = composite(ALERT_RGB, 0.1, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
         contrastRatio(ALERT, rgbToHex(chip)),
         `chip over ${rgbToHex(stop)}`,
