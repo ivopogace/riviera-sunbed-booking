@@ -58,8 +58,8 @@ pin this down rather than re-derive it:
   `(set, date)` row (invariant #2) and inserts `AWAITING_PAYMENT` before the Stripe call.
 - **Request-to-Book** (built, issue #98): **payment-request-on-accept.** The tourist
   requests — no card charged, **no PaymentIntent yet**; the `(set, date)` row is
-  soft-held pending (blocks like a confirmed booking, invariant #2; released on
-  decline/timeout). On venue **accept**, the booking moves to `AWAITING_PAYMENT` and
+  soft-held pending (blocks like a confirmed booking, invariant #2; released on any of the
+  three terminal legs — decline, timeout, or the guest's own withdraw, #123). On venue **accept**, the booking moves to `AWAITING_PAYMENT` and
   a **fresh PaymentIntent** is created for the guest, confirmed by the **same
   verified webhook** as Instant Book — from `AWAITING_PAYMENT` onward the two flows
   are identical, so the payment/confirmation code is written once.

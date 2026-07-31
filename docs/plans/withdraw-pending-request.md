@@ -38,9 +38,13 @@ brief against `main`, and surfaced the three edge registrations the issue never 
 `riviera-plan-doc` (this template — forced the Module-ownership table, which is what pinned the
 withdraw to `booking` rather than a cancel widening) · `tdd` (each phase red-first; the enum/CHECK
 lockstep IT is the built-in red for phase 0) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (due at merge close-out over this PR's range — the
-slice adds the 9th `BookingStatus`, which is a counting-sweep trigger: every doc saying "the two
-request terminals" or enumerating the lifecycle goes stale outside the diff) · `postgres`
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` at close-out, 6 findings, all
+patched into this PR: `docs/architecture/domain-model.md` — the `BookingStatus` enumeration, the
+state-machine transition + terminal edge, and the "decline/expiry release it" note;
+`BookingMigrationIT`'s Request-to-Book state list; and three skill files stating the old pair —
+`riviera-review-overlay/references/backend-conventions.md`, `riviera-stripe-payments/SKILL.md`,
+`riviera-plan-doc/references/plan-doc-template.md`. **Every one lived outside the diff**, which is
+the counting sweep's whole argument; the third round came only after the second round's fixes) · `postgres`
 (TEXT+CHECK widening over a native enum, forward-only `DROP`/`ADD CONSTRAINT`, and confirmed no new
 index — the withdraw keys on the existing `UNIQUE(code)`) · `riviera-modulith` (the leg belongs in
 `booking/application/request/` behind a new `WithdrawRequest` port; **no** `api/`/`events/` surface
@@ -316,10 +320,9 @@ interaction idiom.
 
 ## Execution status
 
-**Stage pointer:** `implement complete — entering the review gate`
+**Stage pointer:** `DONE — merged via PR #476`
 
-**Next action:** Mark PR #476 ready for review, then run the review gate per
-`riviera-sdlc/references/pr-gates.md` §1 and re-pull the Sonar new-issue list.
+**Next action:** None. Deferred tech debt is tracked on **#477**.
 
 **Draft PR:** #476 (opened on the plan commit so every push is CI-gated).
 
@@ -332,6 +335,7 @@ interaction idiom.
 | 4 — FE status vocabulary + chip | ✅ | see below |
 | 5 — FE withdraw control | ✅ | see below |
 | 6 — e2e + docs close-out | ✅ | see below |
+| 7 — review-gate + overlay findings | ✅ | `652b815`, `e21eddf`, `6e1112a` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -804,6 +808,11 @@ it('withdraws a pending request after confirmation and flips the chip', async ()
 ## Acceptance-criteria verification (final)
 
 > The gate before claiming done. Not a wish.
+
+**Final gate state (PR #476, head `6e1112a`):** CI green (backend, frontend, both CodeQL);
+SonarCloud **0 new issues, 0.0% duplication, 97.6% new-code coverage**, gate OK — pulled from the
+issues API, not read off the badge; review gate ran in full (`/code-review` fan-out +
+`riviera-review-overlay`), 8 findings, 7 fixed and 1 accepted with rationale (F-9).
 
 - [x] **AC-1, AC-2, AC-3, AC-5:** `./gradlew test --tests "*WithdrawRequestServiceTest*"` → PASS.
 - [x] **AC-1 (integration), AC-6, AC-13:** `./gradlew test --tests "*WithdrawRequestIT*"` → PASS.

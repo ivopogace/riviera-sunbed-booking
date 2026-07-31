@@ -27,10 +27,14 @@ holdable by at most one party per date, even under concurrent requests?
 - There must be a test that fires two reservations of the same `(set, date)`
   concurrently and asserts exactly one wins.
 - **Request-to-Book** adds two more guarded write paths on the same row: a
-  **pending hold** when the request is placed, and a **release** on venue
-  decline/timeout. A pending hold blocks other reservations of that `(set, date)`
-  exactly like a confirmed booking; decline/expiry frees it. Treat both as
-  first-class write paths subject to the same single-winner guarantee.
+  **pending hold** when the request is placed, and a **release** on any of its three
+  terminal legs — venue decline, expiry sweep, or the guest's own withdraw (#123). A
+  pending hold blocks other reservations of that `(set, date)` exactly like a confirmed
+  booking; each terminal leg frees it. Treat both as first-class write paths subject to
+  the same single-winner guarantee.
+  **Note the legs are separated by the row lock, not by predicate:** only *accept* is
+  deadline-disjoint from expire — decline and withdraw guard on `status` alone, so on an
+  overdue row their `WHERE` clauses and expire's all match.
 
 **Default severity:** **Blocker** for any unguarded availability write; Major for a
 missing concurrency test on a guarded path.

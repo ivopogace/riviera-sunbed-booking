@@ -257,6 +257,7 @@ classDiagram
         NO_SHOW
         DECLINED
         EXPIRED
+        WITHDRAWN
     }
     Booking --> BookingCode : code
     Booking --> BookingStatus : status
@@ -470,11 +471,13 @@ stateDiagram-v2
     AWAITING_PAYMENT --> CANCELLED: abandoned payment swept (instant TTL / pay-window)
     AWAITING_PAYMENT --> PENDING_REQUEST: payment-request issuance failed (compensating revert)
     PENDING_REQUEST --> EXPIRED: response deadline passed (sweep)
+    PENDING_REQUEST --> WITHDRAWN: guest retracts the request (#123)
     CONFIRMED --> CANCELLED: tourist cancel / weather refund
     CONFIRMED --> COMPLETED: day passed, guest arrived
     CONFIRMED --> NO_SHOW: day passed, no arrival
     DECLINED --> [*]
     EXPIRED --> [*]
+    WITHDRAWN --> [*]
     CANCELLED --> [*]
     COMPLETED --> [*]
     NO_SHOW --> [*]
@@ -483,9 +486,11 @@ stateDiagram-v2
 > **As built (#98):** both entry legs exist. An abandoned payment ends in `CANCELLED`
 > (instant: TTL from creation; accepted request: pay-window from `accepted_at`);
 > `EXPIRED` means the venue never answered before the request deadline (min(request +
-> expiry-window, evening-before cutoff)). The soft-hold is the same `BOOKED_ONLINE`
-> availability row as any online booking (§6.2 unchanged — availability records *that*
-> a set is held, never *why*); decline/expiry release it.
+> expiry-window, evening-before cutoff)), and `WITHDRAWN` (#123) means the guest retracted
+> the request themselves — one terminal state per party who can end a pending request. The
+> soft-hold is the same `BOOKED_ONLINE` availability row as any online booking (§6.2
+> unchanged — availability records *that* a set is held, never *why*); all three terminal
+> legs release it.
 
 ### 6.2 Set availability per (set, date)
 

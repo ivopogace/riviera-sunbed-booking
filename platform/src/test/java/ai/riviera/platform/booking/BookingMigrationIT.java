@@ -74,7 +74,7 @@ class BookingMigrationIT {
 	@Test
 	void everyEnumStatusAccepted() {
 		// #98 (V19): the enum and the CHECK stay in lockstep — every BookingStatus value must be a
-		// valid status token, including the Request-to-Book states PENDING_REQUEST/DECLINED/EXPIRED.
+		// valid status token, incl. the Request-to-Book states PENDING_REQUEST/DECLINED/EXPIRED/WITHDRAWN.
 		long venue = anyVenueId();
 		long set = anyOnlineSetId();
 		long cust = insertCustomer("lockstep@example.com");

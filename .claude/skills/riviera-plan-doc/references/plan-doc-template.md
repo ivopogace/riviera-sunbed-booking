@@ -138,7 +138,7 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 - **Write paths to `availability(set_id, booking_date)`:** <list every channel that
   writes this row in scope — online booking, staff tap-to-mark, cancellation
   release, admin weather refund, Request-to-Book pending hold, request
-  decline/timeout release>
+  decline/timeout/withdraw release>
 - **Uniqueness guarantee:** <the DB constraint that makes a set holdable by at most
   one party per date>
 - **Concurrency strategy:** <`SELECT … FOR UPDATE` row lock | `INSERT … ON CONFLICT
