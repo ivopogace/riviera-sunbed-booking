@@ -1,5 +1,6 @@
 /*
- * Liquid Glass design tokens (issue #134, design: docs/design/riviera-sunbeds-liquid-glass-v2.dc.html).
+ * Liquid Glass design tokens (issue #134, design: the v2 tourist export, superseded in-repo by
+ * docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every "(design: …)" note below cites it).
  *
  * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — the attribute is
  * written only by core/theme.ts. Components consume tokens, never palette literals, so a new
@@ -50,7 +51,8 @@
   --riv-card-glass: rgba(255, 255, 255, 0.78);
   --riv-card-border: rgba(255, 255, 255, 0.6);
   --riv-card-ink: #0a2a33;
-  /* 0.78 / 0.72 (design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
+  /* 0.78 / 0.72 (tourist design: 0.7 / 0.55; the console mock's 0.5 faint label is raised to the
+     same 0.72): AA over the composited card glass (home.contrast.spec.ts) */
   --riv-card-ink-soft: rgba(12, 42, 51, 0.78);
   --riv-card-ink-faint: rgba(12, 42, 51, 0.72);
   /* #085a6e (design: #0a6e85): AA for 16px-bold prices on the riviera card glass */
