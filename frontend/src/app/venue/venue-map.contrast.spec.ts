@@ -26,11 +26,14 @@ import {
  * over that (the `home.contrast.spec.ts` / `app.contrast.spec.ts` pattern). Shared token
  * mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
- * This table mirrors every text-bearing token in `venue-map.scss`. Deviations from the design
- * file, on purpose (plan R-2, same class as T1/T2): the header + back pill sit on the AA-proven
- * dark header glass, not the bare gradient; the seat tiles keep SOLID colours (below) so their
- * ink pairs are AA regardless of backdrop; the date field is near-opaque (it sits on dark glass,
- * unlike Discover's field on light card glass).
+ * This table mirrors every text-bearing token `venue-map.html` sets itself; the shared directives
+ * it composes prove their own (the amenity chips in `shared/amenities.contrast.spec.ts` — solid
+ * fills, so backdrop-independent; the failure panel's inks are the `--riv-card-ink` /
+ * `--riv-card-ink-soft` pair already below). Deviations from the design file, on purpose (plan R-2,
+ * same class as T1/T2): the header + back pill sit on the AA-proven dark header glass, not the bare
+ * gradient; the seat tiles keep SOLID colours (below) so their ink pairs are AA regardless of
+ * backdrop; the date field is near-opaque (it sits on dark glass, unlike Discover's field on light
+ * card glass).
  *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the availability
  * bar track+fill (`N of M free` carries the fact), the ★ / · glyphs and the sun disc
@@ -153,7 +156,8 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
   it('row-label chip text (A–D) meets AA on its solid chip fill', () => {
     // Decorative (the row-codes column is aria-hidden; each tile's name carries the seat) but proven
     // anyway like the tiles — the v3 design's translucent rgba(12,42,51,.08) is replaced by this
-    // solid composited equivalent so the css:S7924 analyzer computes it (venue-map.scss row-code).
+    // solid composited equivalent so the css:S7924 analyzer computes it (`venue-map.html`'s
+    // `data-testid="row-code"` span: `bg-[#e7ecee]` / `text-[#0a4f5e]`).
     expect(contrastRatio('#0a4f5e', '#e7ecee')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
