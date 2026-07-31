@@ -1,18 +1,7 @@
 <section class="editor">
   <h1>Create a venue</h1>
 
-  <!-- S9 (#277): no sign-in card here — operatorSessionGuard gates this route and awaits the
-       session restore, so the page only renders for a signed-in operator. -->
-  <div class="card signed-in">
-    <p>Signed in as <strong>{{ operator.username() }}</strong>.</p>
-    <!-- The only credential-rotation entry point an operator with no venue can reach: the console header
-         link (#326) lives behind a resolved venueId, which is exactly the operator this page serves. -->
-    <a class="btn-secondary" routerLink="/account/operator-password" data-testid="ve-change-password"
-      >Change password</a
-    >
-    <button type="button" class="btn-secondary" (click)="onSignOut()">Sign out</button>
-  </div>
-
+  <!-- No sign-in/session card: operatorSessionGuard gates the route (#277); session controls live in the shared operator header. -->
   @if (errorMessage(); as msg) {
     <p class="form-error" role="alert">{{ msg }}</p>
   }

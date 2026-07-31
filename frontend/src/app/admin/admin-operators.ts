@@ -39,7 +39,12 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
       } @else if (!auth.signedIn()) {
         <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-signed-out">
           Sign in as an admin to review pending registrations.
-          <a routerLink="/venue-admin" class="font-semibold underline">Sign in</a>
+          <a
+            routerLink="/account/sign-in"
+            [queryParams]="{ audience: 'operator', returnUrl: '/admin' }"
+            class="font-semibold underline"
+            >Sign in</a
+          >
         </p>
       } @else if (!auth.isAdmin()) {
         <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-forbidden">

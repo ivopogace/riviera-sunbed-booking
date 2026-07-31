@@ -56,12 +56,6 @@ export class VenueEditor {
     required(path.bookingCutoff, { message: 'Cutoff time is required' });
   });
 
-  protected async onSignOut(): Promise<void> {
-    await this.operator.signOut();
-    // The guard gates on ACTIVATION, so leave the page ourselves rather than sit on a dead session.
-    await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
-  }
-
   protected onCreateVenue(): void {
     this.errorCode.set(undefined);
     submit(this.venueForm, async () => {

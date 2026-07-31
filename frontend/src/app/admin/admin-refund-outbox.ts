@@ -38,7 +38,12 @@ import { OutboxLever } from './admin-outbox-lever';
       } @else if (!auth.signedIn()) {
         <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-refunds-signed-out">
           Sign in as an admin to review outstanding refunds.
-          <a routerLink="/venue-admin" class="font-semibold underline">Sign in</a>
+          <a
+            routerLink="/account/sign-in"
+            [queryParams]="{ audience: 'operator', returnUrl: '/admin/refunds' }"
+            class="font-semibold underline"
+            >Sign in</a
+          >
         </p>
       } @else if (!auth.isAdmin()) {
         <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-refunds-forbidden">
