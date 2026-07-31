@@ -37,7 +37,12 @@ runs at PR-ready) · `riviera-docs-freshness` (runs at close-out over `origin/ma
 the runbook's three restart-only claims for refunds are already known targets) ·
 `riviera-modulith` (placement: ports + service in `application/refund/`, registry adapter
 in `adapter/out`, admin controller in `adapter/in` per the #391/#405 precedent; no new
-published surface, no new grant) · `riviera-java-conventions` (sealed typed outcome over
+published surface, no new grant; fix round: the `shared` kernel admission bar for the
+throttle) · `codebase-design` (fix round — the throttle as one deep module: two methods
+hiding the lock, window arithmetic, stamp-before-sweep order and boot seeding; a real seam
+with two consumers) · `domain-modeling` (fix round — names stay in the platform's
+resubmission/sweep/cooldown vocabulary; no ADR, reversible + precedented) ·
+`riviera-java-conventions` (sealed typed outcome over
 exceptions, package-private adapters, compact-constructor property validation, one-line
 comments) · `riviera-stripe-payments` (the idempotency-key claim that makes replay safe:
 `booking-<id>-refund` derived from `BookingId` + operation, so a re-drive returns the
@@ -128,9 +133,15 @@ addendum.
   re-invoke what already exists.
 - **Touching `payout`'s deferred reversal (#428).** Its publication stays outstanding on
   its own listener; the exact-id scope structurally cannot reach it, and AC-2 proves it.
-- **Widening `notification`'s mail outbox** to cover refunds, or generalizing the two
-  resubmission services into `shared`. The kernel admits no business logic and no
-  module-owned policy; two small per-module sweep policies are the cheaper coupling.
+- **Widening `notification`'s mail outbox** to cover refunds — each lever stays scoped to
+  its own module's listeners. ~~Or generalizing the two resubmission services into
+  `shared`~~ — **reversed in the fix round (F-3)**: the Sonar merge bar's duplication gate
+  (7.0% > 3%) falsified "two per-module copies are the cheaper coupling", exactly the
+  #410 → #455 pattern (a per-module decision falsified by the second consumer). The
+  *mechanism* — `ResubmissionThrottle` + `ResubmissionOutcome` — moved to the `shared`
+  kernel on the admission bar's own terms (ownership: the sweep it throttles races the
+  registry's root-configured boot republication, which no context owns); the scope, the
+  window value, and the log noun stay per-module.
 
 ## Behavior-parity ledger
 
@@ -179,6 +190,8 @@ lever cannot reach it.
 | # | Module | Existing/new | Aggregate root | Why this module owns it |
 |---|---|---|---|---|
 | M-1 | `booking` | existing | `Booking` | The refund listener is `booking`'s own driving adapter; re-driving it is the same job. The scope — "exactly this module's refund listener" — is knowledge only this module has |
+| M-2 | `shared` | existing (kernel) | (none) | Fix round F-3: `ResubmissionThrottle` + `ResubmissionOutcome` — the once-only guard both levers share, admitted on ownership (the sweep races the root-configured boot republication) |
+| M-3 | `notification` | existing | (none) | Fix round F-3: its `MailResubmissionService` now delegates to the kernel throttle; its per-module outcome type is deleted; scope, window and log noun unchanged |
 
 **Cross-module named interfaces (`api/` ports)**
 
@@ -209,7 +222,7 @@ rewrite is due.
 |---|---|---|
 | Decide *which* outstanding publications are "the refund" | `booking` | The listener is `booking`'s own adapter; naming it is this module's knowledge. Not `notification`'s (its outbox is deliberately scoped to its own listeners) and not `payment`'s (`payment` executes refunds; *when to re-ask* the executor is the caller's call, and the caller is `booking`'s listener) |
 | Re-drive outstanding refund publications; count them | `booking` | Same job as owning the listener. `RESPONSIBILITIES.md`'s `booking` Job already carries the refund drive (#404); the re-drive is its retry lever |
-| Once-only policy (single-flight + cooldown) | `booking` | Sweep policy for its own lever — the `notification` precedent; not rate limiting (edge) and not auth (RV-BE-11) |
+| Once-only policy (single-flight + cooldown) | `shared` (mechanism) + per-module window/scope | Revised in fix round F-3: the guard's semantics race the registry's root-owned boot republication — nobody's context — while each module keeps its window value, scope and log noun; not rate limiting (edge) and not auth (RV-BE-11) |
 | ADMIN-gate the two endpoints | root (`SecurityConfig`) | Authorization machinery lives at the platform edge (RV-BE-11); the matchers join the existing `/api/admin/**` ADMIN block |
 
 ## Payment & payout (invariants #5, #8, #9, #10)
@@ -263,10 +276,9 @@ review gate (`/code-review` per the invocation ladder) and the Sonar gate.
 | 0 — Scope + outbox port + registry adapter (+ id-pinning rewire, stale-string drive-by) | ✅ | `fa4876d` |
 | 1 — Resubmission service: single-flight, cooldown, typed outcome, properties | ✅ | `74dedde` |
 | 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | ✅ | `9b15969` |
-| 3 — Money-path scoping IT (AC-2, AC-8) | ✅ | (this commit) |
-| 2 — ADMIN endpoints + security matchers + `WebSliceStubs` | | |
-| 3 — Money-path scoping IT (AC-2, AC-8) | | |
-| 4 — Substrate docs + close-out | | |
+| 3 — Money-path scoping IT (AC-2, AC-8) | ✅ | `801f3c0` |
+| 4 — Substrate docs + close-out | ✅ | `6abbdee` |
+| 5 — Review + Sonar fix round: kernel `ResubmissionThrottle` extraction | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -274,7 +286,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | `/code-review` agent 1 (RV-PROC-1, Major) | `codebase-design` and `domain-modeling` missing from *Skills consulted* despite the slice designing three new seams — the #447 recurring omission | fixed — both loaded for the fix round (which genuinely needed them: the throttle extraction is a seam-design decision), line updated |
+| F-2 | `/code-review` agent 1 (Minor) | Execution-status phase table carried stale duplicate blank rows for phases 2/3 — ambiguous state store | fixed — table rebuilt with real shas |
+| F-3 | Sonar gate (Quality Gate FAILED: 7.0% duplication on new code, ≤3% required; 2 duplicated blocks: `RefundResubmissionOutcome` ≅ `MailResubmissionOutcome`, `RefundResubmissionService` ≅ `MailResubmissionService`) | The deliberate mail-mirror duplicated the once-only policy verbatim | fixed — mechanism extracted to `shared.ResubmissionThrottle` + `shared.ResubmissionOutcome` (kernel admission on ownership, precedent #455/#456); both services now delegate; both per-module outcome types deleted; Non-goal revised with reasoning |
+| F-4 | `/code-review` agent 5 (cosmetic, below bar) | `WebSliceStubs` imports out of package order | fixed — `394e485` |
 
 ---
 

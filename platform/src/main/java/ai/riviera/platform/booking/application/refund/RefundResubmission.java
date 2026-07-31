@@ -1,5 +1,7 @@
 package ai.riviera.platform.booking.application.refund;
 
+import ai.riviera.platform.shared.ResubmissionOutcome;
+
 /**
  * The driving port behind the ADMIN refund-outbox surface (#454): read what the registry still owes
  * the refund listener, and re-drive it on demand.
@@ -25,8 +27,8 @@ public interface RefundResubmission {
 	 * <p>"Once" is layered: the gateway's idempotency key makes a duplicate refund impossible, the
 	 * registry's {@code markResubmitted} claim skips a publication whose previous resubmission is still
 	 * in flight, and what this port adds is a bound on how often the whole scope is swept — with a
-	 * caller-visible reason when it refuses ({@link RefundResubmissionOutcome.AlreadyRunning},
-	 * {@link RefundResubmissionOutcome.CoolingDown}).
+	 * caller-visible reason when it refuses ({@link ResubmissionOutcome.AlreadyRunning},
+	 * {@link ResubmissionOutcome.CoolingDown}).
 	 */
-	RefundResubmissionOutcome resubmit();
+	ResubmissionOutcome resubmit();
 }

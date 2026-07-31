@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
 import ai.riviera.platform.booking.application.refund.RefundResubmission;
-import ai.riviera.platform.booking.application.refund.RefundResubmissionOutcome;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
  * The platform-admin surface for the refund outbox (#454): what the Event Publication Registry still
@@ -65,7 +65,7 @@ class AdminRefundOutboxController {
 
 	@PostMapping("/resubmit")
 	RefundResubmissionResponse resubmit() {
-		RefundResubmissionOutcome outcome = resubmission.resubmit();
+		ResubmissionOutcome outcome = resubmission.resubmit();
 		return new RefundResubmissionResponse(outcome.code(), outcome.resubmitted(), seconds(outcome.retryAfter()));
 	}
 

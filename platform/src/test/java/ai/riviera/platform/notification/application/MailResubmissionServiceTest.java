@@ -20,6 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
+import ai.riviera.platform.shared.ResubmissionOutcome;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -77,9 +79,9 @@ class MailResubmissionServiceTest {
 		settle();
 		outbox.outstanding(3);
 
-		MailResubmissionOutcome outcome = service.resubmit();
+		ResubmissionOutcome outcome = service.resubmit();
 
-		assertThat(outcome).isEqualTo(new MailResubmissionOutcome.Resubmitted(3, COOLDOWN));
+		assertThat(outcome).isEqualTo(new ResubmissionOutcome.Resubmitted(3, COOLDOWN));
 		assertThat(outcome.code()).isEqualTo("RESUBMITTED");
 		assertThat(outcome.resubmitted()).isEqualTo(3);
 		assertThat(outbox.resubmissions()).isEqualTo(1);
@@ -90,7 +92,7 @@ class MailResubmissionServiceTest {
 	void reportsZeroForAnEmptyOutbox() {
 		settle();
 
-		assertThat(service.resubmit()).isEqualTo(new MailResubmissionOutcome.Resubmitted(0, COOLDOWN));
+		assertThat(service.resubmit()).isEqualTo(new ResubmissionOutcome.Resubmitted(0, COOLDOWN));
 	}
 
 	@Test
@@ -101,9 +103,9 @@ class MailResubmissionServiceTest {
 		service.resubmit();
 
 		clock.advance(Duration.ofSeconds(20));
-		MailResubmissionOutcome outcome = service.resubmit();
+		ResubmissionOutcome outcome = service.resubmit();
 
-		assertThat(outcome).isEqualTo(new MailResubmissionOutcome.CoolingDown(Duration.ofSeconds(40)));
+		assertThat(outcome).isEqualTo(new ResubmissionOutcome.CoolingDown(Duration.ofSeconds(40)));
 		assertThat(outcome.resubmitted()).isZero();
 		assertThat(outbox.resubmissions()).as("a second sweep would re-attempt every outstanding send").isEqualTo(1);
 	}
@@ -135,14 +137,14 @@ class MailResubmissionServiceTest {
 		outbox.blockOn(inside, release);
 
 		try (ExecutorService threads = Executors.newSingleThreadExecutor()) {
-			Future<MailResubmissionOutcome> first = threads.submit(service::resubmit);
+			Future<ResubmissionOutcome> first = threads.submit(service::resubmit);
 			assertThat(inside.await(5, TimeUnit.SECONDS)).as("the first press reached the outbox").isTrue();
 
-			MailResubmissionOutcome second = service.resubmit();
+			ResubmissionOutcome second = service.resubmit();
 
 			release.countDown();
 			assertThat(first.get(5, TimeUnit.SECONDS).code()).isEqualTo("RESUBMITTED");
-			assertThat(second).isEqualTo(new MailResubmissionOutcome.AlreadyRunning(COOLDOWN));
+			assertThat(second).isEqualTo(new ResubmissionOutcome.AlreadyRunning(COOLDOWN));
 			assertThat(outbox.resubmissions()).isEqualTo(1);
 		}
 	}
@@ -158,7 +160,7 @@ class MailResubmissionServiceTest {
 	void startsCoolingDownAtBootSoAClickCannotRaceTheRestartRepublish() {
 		outbox.outstanding(4);
 
-		assertThat(service.resubmit()).isEqualTo(new MailResubmissionOutcome.CoolingDown(COOLDOWN));
+		assertThat(service.resubmit()).isEqualTo(new ResubmissionOutcome.CoolingDown(COOLDOWN));
 		assertThat(outbox.resubmissions()).isZero();
 	}
 

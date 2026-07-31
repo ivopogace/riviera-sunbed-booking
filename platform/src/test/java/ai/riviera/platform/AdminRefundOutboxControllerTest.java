@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
 import ai.riviera.platform.booking.application.refund.RefundResubmission;
-import ai.riviera.platform.booking.application.refund.RefundResubmissionOutcome;
+import ai.riviera.platform.shared.ResubmissionOutcome;
 
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -74,7 +74,7 @@ class AdminRefundOutboxControllerTest {
 
 	@Test
 	void adminResubmitsAndGetsTheCount() throws Exception {
-		when(resubmission.resubmit()).thenReturn(new RefundResubmissionOutcome.Resubmitted(2, COOLDOWN));
+		when(resubmission.resubmit()).thenReturn(new ResubmissionOutcome.Resubmitted(2, COOLDOWN));
 
 		mvc.perform(post(RESUBMIT).with(user("operator").roles("ADMIN", "OPERATOR")).with(csrf()))
 				.andExpect(status().isOk())
@@ -87,7 +87,7 @@ class AdminRefundOutboxControllerTest {
 
 	@Test
 	void aConcurrentPressReportsAlreadyRunningAndResubmitsNothing() throws Exception {
-		when(resubmission.resubmit()).thenReturn(new RefundResubmissionOutcome.AlreadyRunning(COOLDOWN));
+		when(resubmission.resubmit()).thenReturn(new ResubmissionOutcome.AlreadyRunning(COOLDOWN));
 
 		mvc.perform(post(RESUBMIT).with(user("operator").roles("ADMIN")).with(csrf()))
 				.andExpect(status().isOk())
@@ -99,7 +99,7 @@ class AdminRefundOutboxControllerTest {
 	@Test
 	void aPressInsideTheWindowReportsCoolingDownWithTheRoundedUpRemainder() throws Exception {
 		when(resubmission.resubmit())
-				.thenReturn(new RefundResubmissionOutcome.CoolingDown(Duration.ofMillis(40_400)));
+				.thenReturn(new ResubmissionOutcome.CoolingDown(Duration.ofMillis(40_400)));
 
 		mvc.perform(post(RESUBMIT).with(user("operator").roles("ADMIN")).with(csrf()))
 				.andExpect(status().isOk())
@@ -116,7 +116,7 @@ class AdminRefundOutboxControllerTest {
 	@Test
 	void roundsUpARemainderThatIsNotAWholeMillisecond() throws Exception {
 		when(resubmission.resubmit()).thenReturn(
-				new RefundResubmissionOutcome.CoolingDown(Duration.ofSeconds(40).plusNanos(500_000)));
+				new ResubmissionOutcome.CoolingDown(Duration.ofSeconds(40).plusNanos(500_000)));
 
 		mvc.perform(post(RESUBMIT).with(user("operator").roles("ADMIN")).with(csrf()))
 				.andExpect(status().isOk())

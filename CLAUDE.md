@@ -137,6 +137,10 @@ invariant #11.
 > SIGTERM grace and each draining pool's claim on it, admitted on **ownership** rather than
 > reuse: no bounded context owns how long the process has to close, which is why the
 > previous arrangement had `notification` stating a number that silently bound `booking`)
+> `ResubmissionThrottle` + `ResubmissionOutcome` (#454 — the once-only guard and outcome vocabulary
+> behind the two admin outbox-resubmit levers, admitted on the same ownership ground: the sweep it
+> throttles races the registry's root-configured boot republication, which no context owns, and the
+> second lever module made a module-owned home structurally unavailable)
 > and `MdcTaskDecorator` (#455 — the one way a pooled worker inherits its submitter's MDC,
 > admitted on the same ground and more sharply: that mechanism's other half,
 > `CorrelationIdFilter`, sits at the composition root no module may depend on, so once #404's
