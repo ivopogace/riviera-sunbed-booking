@@ -7,7 +7,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { AdminMailOutbox } from './admin-mail-outbox';
 import { AdminMailOutboxService } from './admin-mail-outbox.service';
-import { MailOutboxStatusView, MailResubmissionResultView } from './admin.model';
+import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
 interface AuthState {
   restoring?: boolean;
@@ -24,13 +24,13 @@ function authStub(state: AuthState = {}): OperatorAuth {
   } as unknown as OperatorAuth;
 }
 
-function serviceStub(status: MailOutboxStatusView = { outstanding: 0, cooldownRemainingSeconds: 0 }): {
+function serviceStub(status: OutboxStatusView = { outstanding: 0, cooldownRemainingSeconds: 0 }): {
   status: ReturnType<typeof vi.fn>;
   resubmit: ReturnType<typeof vi.fn>;
 } {
   return {
     status: vi.fn(async () => status),
-    resubmit: vi.fn(async (): Promise<MailResubmissionResultView> => ({
+    resubmit: vi.fn(async (): Promise<ResubmissionResultView> => ({
       outcome: 'RESUBMITTED',
       resubmitted: 0,
       cooldownRemainingSeconds: 60,

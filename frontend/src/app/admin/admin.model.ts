@@ -25,22 +25,26 @@ export interface OperatorAccountView {
 }
 
 /**
- * What the Event Publication Registry still owes the notification module (#405); mirrors the backend
- * `AdminMailOutboxController.MailOutboxStatusResponse`. `outstanding` counts publications, not
- * recipients — the console never sees an address or an arrival code (invariant #7).
- * `cooldownRemainingSeconds` is 0 when a resubmission would be accepted now.
+ * What an outbox lever still owes (#405 mail, #460 refunds); mirrors the backend
+ * `AdminMailOutboxController.MailOutboxStatusResponse` and
+ * `AdminRefundOutboxController.RefundOutboxStatusResponse`, whose shapes are deliberately identical
+ * (#454's FE↔BE contract). `outstanding` counts publications — never recipients or bookings: the
+ * console sees no address, booking id, or arrival code (invariant #7). `cooldownRemainingSeconds`
+ * is 0 when a resubmission would be accepted now.
  */
-export interface MailOutboxStatusView {
+export interface OutboxStatusView {
   readonly outstanding: number;
   readonly cooldownRemainingSeconds: number;
 }
 
 /**
- * The result of pressing Resubmit; mirrors `AdminMailOutboxController.MailResubmissionResponse`.
- * Both refusals are `200` with `resubmitted: 0` — an admin acts on them, so they are outcomes rather
- * than errors, and each carries the window until the next attempt is accepted.
+ * The result of pressing Resubmit on either outbox lever; mirrors
+ * `AdminMailOutboxController.MailResubmissionResponse` and
+ * `AdminRefundOutboxController.RefundResubmissionResponse`. Both refusals are `200` with
+ * `resubmitted: 0` — an admin acts on them, so they are outcomes rather than errors, and each
+ * carries the window until the next attempt is accepted.
  */
-export interface MailResubmissionResultView {
+export interface ResubmissionResultView {
   readonly outcome: 'RESUBMITTED' | 'ALREADY_RUNNING' | 'COOLING_DOWN';
   readonly resubmitted: number;
   readonly cooldownRemainingSeconds: number;

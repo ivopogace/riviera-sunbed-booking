@@ -7,7 +7,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { AdminMailOutbox } from './admin-mail-outbox';
 import { AdminMailOutboxService } from './admin-mail-outbox.service';
-import { MailOutboxStatusView } from './admin.model';
+import { OutboxStatusView } from './admin.model';
 
 /**
  * Structural axe audit of the admin console's Email tab (#405): the tab strip, the titled outbox card
@@ -22,7 +22,7 @@ const authStub = {
   principalName: signal('admin-self'),
 } as unknown as OperatorAuth;
 
-function serviceStub(status: MailOutboxStatusView): Partial<AdminMailOutboxService> {
+function serviceStub(status: OutboxStatusView): Partial<AdminMailOutboxService> {
   return {
     status: async () => status,
     resubmit: async () => ({ outcome: 'RESUBMITTED', resubmitted: 0, cooldownRemainingSeconds: 60 }),
@@ -35,7 +35,7 @@ const inertDeliveryService = {
   resend: async () => ({ outcome: 'SENT' as const }),
 };
 
-async function render(status: MailOutboxStatusView): Promise<ComponentFixture<AdminMailOutbox>> {
+async function render(status: OutboxStatusView): Promise<ComponentFixture<AdminMailOutbox>> {
   await TestBed.configureTestingModule({
     imports: [AdminMailOutbox],
     providers: [

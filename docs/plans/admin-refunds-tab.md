@@ -179,15 +179,15 @@ as the sibling tabs do. No deviation.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh
 > session, re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan committed — implement (phase 1) next`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — failing lever spec expectations via the mail specs (they stay
-green), then extract `OutboxLever` + refactor `admin-mail-outbox.ts`.
+**Next action:** Phase 2 — failing refund-tab unit/a11y specs + tabs-spec additions,
+then service/component/tab entry/route.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ⏳ | |
-| 1 — Shared `OutboxLever` + Email-tab delegation (parity) | | |
+| 0 — Plan doc + draft PR | ✅ | `ab33e7c`; draft PR #461 |
+| 1 — Shared `OutboxLever` + Email-tab delegation (parity) | ✅ | full `npm test` (935) + lint green; mail specs untouched beyond type imports |
 | 2 — Refunds tab: service, component, specs, tab strip, route | | |
 | 3 — Mocked CI-safe e2e + full frontend verification | | |
 | 4 — Gates + close-out | | |
